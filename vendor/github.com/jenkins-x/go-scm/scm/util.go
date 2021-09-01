@@ -27,8 +27,8 @@ func Join(owner, name string) string {
 	return owner + "/" + name
 }
 
-// UrlJoin joins the given paths so that there is only ever one '/' character between the paths
-func UrlJoin(paths ...string) string {
+// URLJoin joins the given paths so that there is only ever one '/' character between the paths
+func URLJoin(paths ...string) string {
 	var buffer strings.Builder
 	last := len(paths) - 1
 	for i, path := range paths {
@@ -88,4 +88,14 @@ func ConvertStatusInputToStatus(input *StatusInput) *Status {
 		Desc:   input.Desc,
 		Target: input.Target,
 	}
+}
+
+// IsScmNotFound returns true if the resource is not found
+func IsScmNotFound(err error) bool {
+	if err != nil {
+		// I think that we should instead rely on the http status (404)
+		// until jenkins-x go-scm is updated t return that in the error this works for github and gitlab
+		return strings.Contains(err.Error(), ErrNotFound.Error())
+	}
+	return false
 }

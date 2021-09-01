@@ -2,6 +2,7 @@ package fake
 
 import "github.com/jenkins-x/go-scm/scm"
 
+// Data is used to store/represent test data for the fake client
 type Data struct {
 	Issues                     map[int][]*scm.Issue
 	OrgMembers                 map[string][]string
@@ -30,6 +31,9 @@ type Data struct {
 	CurrentUser                scm.User
 	Users                      []*scm.User
 	Hooks                      map[string][]*scm.Hook
+	Releases                   map[string]map[int]*scm.Release
+	Deployments                map[string][]*scm.Deployment
+	DeploymentStatus           map[string][]*scm.DeploymentStatus
 
 	//All Labels That Exist In The Repo
 	RepoLabelsExisting []string
@@ -66,8 +70,15 @@ type Data struct {
 	RefsDeleted []DeletedRef
 
 	UserPermissions map[string]map[string]string
+
+	// Invitations the current pending invitations
+	Invitations []*scm.Invitation
+
+	// ContentDir the directory used to implement the Content service to access files and directories
+	ContentDir string
 }
 
+// DeletedRef represents a ref that has been deleted
 type DeletedRef struct {
 	Org, Repo, Ref string
 }
@@ -104,5 +115,7 @@ func NewData() *Data {
 		AssigneesAdded:            []string{},
 		UserPermissions:           map[string]map[string]string{},
 		Hooks:                     map[string][]*scm.Hook{},
+		Deployments:               map[string][]*scm.Deployment{},
+		DeploymentStatus:          map[string][]*scm.DeploymentStatus{},
 	}
 }

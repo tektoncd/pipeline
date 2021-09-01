@@ -40,6 +40,9 @@ func encodeCommitListOptions(opts scm.CommitListOptions) string {
 	if opts.Ref != "" {
 		params.Set("ref", opts.Ref)
 	}
+	if opts.Sha != "" {
+		params.Set("sha", opts.Sha)
+	}
 	return params.Encode()
 }
 
@@ -89,6 +92,22 @@ func encodePullRequestListOptions(opts scm.PullRequestListOptions) string {
 	return params.Encode()
 }
 
+func encodeMilestoneListOptions(opts scm.MilestoneListOptions) string {
+	params := url.Values{}
+	if opts.Page != 0 {
+		params.Set("page", strconv.Itoa(opts.Page))
+	}
+	if opts.Size != 0 {
+		params.Set("per_page", strconv.Itoa(opts.Size))
+	}
+	if opts.Open && opts.Closed {
+		params.Set("state", "all")
+	} else if opts.Closed {
+		params.Set("state", "closed")
+	}
+	return params.Encode()
+}
+
 func encodePullRequestMergeOptions(opts *scm.PullRequestMergeOptions) *pullRequestMergeRequest {
 	mr := &pullRequestMergeRequest{}
 	if opts.MergeMethod != "" {
@@ -101,4 +120,20 @@ func encodePullRequestMergeOptions(opts *scm.PullRequestMergeOptions) *pullReque
 		mr.SHA = opts.SHA
 	}
 	return mr
+}
+
+func encodeReleaseListOptions(opts scm.ReleaseListOptions) string {
+	params := url.Values{}
+	if opts.Page != 0 {
+		params.Set("page", strconv.Itoa(opts.Page))
+	}
+	if opts.Size != 0 {
+		params.Set("per_page", strconv.Itoa(opts.Size))
+	}
+	if opts.Open && opts.Closed {
+		params.Set("state", "all")
+	} else if opts.Closed {
+		params.Set("state", "closed")
+	}
+	return params.Encode()
 }

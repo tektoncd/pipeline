@@ -30,6 +30,7 @@ type (
 		Perm      *Perm
 		Branch    string
 		Private   bool
+		Archived  bool
 		Clone     string
 		CloneSSH  string
 		Link      string
@@ -82,11 +83,15 @@ type (
 	// HookEvents represents supported hook events.
 	HookEvents struct {
 		Branch             bool
+		Deployment         bool
+		DeploymentStatus   bool
 		Issue              bool
 		IssueComment       bool
 		PullRequest        bool
 		PullRequestComment bool
 		Push               bool
+		Release            bool
+		Review             bool
 		ReviewComment      bool
 		Tag                bool
 	}
@@ -104,6 +109,7 @@ type (
 		Label  string
 		Desc   string
 		Target string
+		Link   string
 	}
 
 	// StatusInput provides the input fields required for
@@ -113,6 +119,7 @@ type (
 		Label  string
 		Desc   string
 		Target string
+		Link   string
 	}
 
 	// RepositoryService provides access to repository resources.
@@ -150,8 +157,14 @@ type (
 		// Create creates a new repository .
 		Create(context.Context, *RepositoryInput) (*Repository, *Response, error)
 
+		// Fork creatings a new repository as a fork of an existing one.
+		Fork(context.Context, *RepositoryInput, string) (*Repository, *Response, error)
+
 		// CreateHook creates a new repository webhook.
 		CreateHook(context.Context, string, *HookInput) (*Hook, *Response, error)
+
+		// UpdateHook edit a repository webhook
+		UpdateHook(context.Context, string, *HookInput) (*Hook, *Response, error)
 
 		// CreateStatus creates a new commit status.
 		CreateStatus(context.Context, string, string, *StatusInput) (*Status, *Response, error)
@@ -160,13 +173,19 @@ type (
 		DeleteHook(context.Context, string, string) (*Response, error)
 
 		// IsCollaborator returns true if the user is a collaborator on the repository
-		IsCollaborator(ctx context.Context, repo, user string) (bool, *Response, error)
+		IsCollaborator(ctx context.Context, repo string, user string) (bool, *Response, error)
+
+		// AddCollaborator adds a collaborator to the repository
+		AddCollaborator(ctx context.Context, repo, user, permission string) (bool, bool, *Response, error)
 
 		// ListCollaborators lists the collaborators on a repository
 		ListCollaborators(ctx context.Context, repo string, ops ListOptions) ([]User, *Response, error)
 
 		// FindUserPermission returns the user's permission level for a repo
 		FindUserPermission(ctx context.Context, repo string, user string) (string, *Response, error)
+
+		// Delete deletes a repository
+		Delete(ctx context.Context, repo string) (*Response, error)
 	}
 )
 

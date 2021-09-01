@@ -210,6 +210,12 @@ func (s *issueService) Close(ctx context.Context, repo string, number int) (*scm
 	return res, err
 }
 
+func (s *issueService) Reopen(ctx context.Context, repo string, number int) (*scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d?state_event=reopen", encode(repo), number)
+	res, err := s.client.do(ctx, "PUT", path, nil, nil)
+	return res, err
+}
+
 func (s *issueService) Lock(ctx context.Context, repo string, number int) (*scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/issues/%d?discussion_locked=true", encode(repo), number)
 	res, err := s.client.do(ctx, "PUT", path, nil, nil)
@@ -220,6 +226,25 @@ func (s *issueService) Unlock(ctx context.Context, repo string, number int) (*sc
 	path := fmt.Sprintf("api/v4/projects/%s/issues/%d?discussion_locked=false", encode(repo), number)
 	res, err := s.client.do(ctx, "PUT", path, nil, nil)
 	return res, err
+}
+
+func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID int, number int) (*scm.Response, error) {
+	in := &updateIssueOptions{
+		MilestoneID: &number,
+	}
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d", encode(repo), issueID)
+
+	return s.client.do(ctx, "PUT", path, in, nil)
+}
+
+func (s *issueService) ClearMilestone(ctx context.Context, repo string, id int) (*scm.Response, error) {
+	zeroVal := 0
+	in := &updateIssueOptions{
+		MilestoneID: &zeroVal,
+	}
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d", encode(repo), id)
+
+	return s.client.do(ctx, "PUT", path, in, nil)
 }
 
 type updateIssueOptions struct {

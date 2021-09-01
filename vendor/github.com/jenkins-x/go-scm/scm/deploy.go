@@ -14,6 +14,7 @@ type (
 		Link                  string
 		Sha                   string
 		Ref                   string
+		Task                  string
 		FullName              string
 		Description           string
 		OriginalEnvironment   string
@@ -25,6 +26,7 @@ type (
 		Updated               time.Time
 		TransientEnvironment  bool
 		ProductionEnvironment bool
+		Payload               interface{}
 	}
 
 	// DeploymentInput the input to create a new deployment

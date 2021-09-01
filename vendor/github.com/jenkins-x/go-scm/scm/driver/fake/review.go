@@ -44,3 +44,19 @@ func (s *reviewService) Create(ctx context.Context, repo string, number int, inp
 func (s *reviewService) Delete(context.Context, string, int, int) (*scm.Response, error) {
 	panic("implement me")
 }
+
+func (s *reviewService) ListComments(ctx context.Context, repo string, prID int, reviewID int, options scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
+func (s *reviewService) Update(ctx context.Context, repo string, prID int, reviewID int, body string) (*scm.Review, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
+func (s *reviewService) Submit(ctx context.Context, repo string, prID int, reviewID int, input *scm.ReviewSubmitInput) (*scm.Review, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
+func (s *reviewService) Dismiss(ctx context.Context, repo string, prID int, reviewID int, msg string) (*scm.Review, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}

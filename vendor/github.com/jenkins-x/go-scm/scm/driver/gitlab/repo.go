@@ -14,6 +14,20 @@ import (
 
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/driver/internal/null"
+	"github.com/pkg/errors"
+)
+
+const (
+	noPermissions         = 0
+	guestPermissions      = 10
+	reporterPermissions   = 20
+	developerPermissions  = 30
+	maintainerPermissions = 40
+	ownerPermissions      = 50
+
+	privateVisibility  = "private"
+	internalVisibility = "internal"
+	publicVisibility   = "public"
 )
 
 type repository struct {
@@ -37,6 +51,25 @@ type namespace struct {
 type permissions struct {
 	ProjectAccess access `json:"project_access"`
 	GroupAccess   access `json:"group_access"`
+}
+
+type memberPermissions struct {
+	UserID      int `json:"user_id"`
+	AccessLevel int `json:"access_level"`
+}
+
+func stringToAccessLevel(perm string) int {
+	switch perm {
+	case scm.AdminPermission:
+		// owner permission only applies to groups, so fails for projects
+		return maintainerPermissions
+	case scm.WritePermission:
+		return developerPermissions
+	case scm.ReadPermission:
+		return guestPermissions
+	default:
+		return noPermissions
+	}
 }
 
 func accessLevelToString(level int) string {
@@ -97,14 +130,71 @@ type repositoryService struct {
 	client *wrapper
 }
 
-func (s *repositoryService) Create(context.Context, *scm.RepositoryInput) (*scm.Repository, *scm.Response, error) {
-	return nil, nil, scm.ErrNotSupported
+type repositoryInput struct {
+	Name        string `json:"name"`
+	NamespaceID int    `json:"namespace_id"`
+	Description string `json:"description,omitempty"`
+	Visibility  string `json:"visibility"`
+}
+
+func (s *repositoryService) Create(ctx context.Context, input *scm.RepositoryInput) (*scm.Repository, *scm.Response, error) {
+	namespace, err := s.client.findNamespaceByName(ctx, input.Namespace)
+	if err != nil {
+		return nil, nil, err
+	}
+	if namespace == nil {
+		return nil, nil, fmt.Errorf("no namespace found for %s", input.Namespace)
+	}
+	in := new(repositoryInput)
+	in.Name = input.Name
+	in.Description = input.Description
+	in.NamespaceID = namespace.ID
+
+	if input.Private {
+		in.Visibility = privateVisibility
+	} else {
+		in.Visibility = publicVisibility
+	}
+
+	path := "/api/v4/projects"
+	out := new(repository)
+	res, err := s.client.do(ctx, "POST", path, in, out)
+	return convertRepository(out), res, err
+}
+
+type forkInput struct {
+	Namespace string `json:"namespace_path,omitempty"`
+	Name      string `json:"name,omitempty"`
+}
+
+func (s *repositoryService) Fork(ctx context.Context, input *scm.RepositoryInput, origRepo string) (*scm.Repository, *scm.Response, error) {
+	in := new(forkInput)
+	in.Name = input.Name
+	in.Namespace = input.Namespace
+
+	path := fmt.Sprintf("/api/v4/projects/%s/fork", encode(origRepo))
+	out := new(repository)
+	res, err := s.client.do(ctx, "POST", path, in, out)
+	return convertRepository(out), res, err
 }
 
 func (s *repositoryService) FindCombinedStatus(ctx context.Context, repo, ref string) (*scm.CombinedStatus, *scm.Response, error) {
-	statuses, res, err := s.ListStatus(ctx, repo, ref, scm.ListOptions{})
-	if err != nil {
-		return nil, res, err
+	var resp *scm.Response
+	var statuses []*scm.Status
+	var statusesByPage []*scm.Status
+	var err error
+	firstRun := false
+	opts := scm.ListOptions{
+		Page: 1,
+	}
+	for !firstRun || (resp != nil && opts.Page <= resp.Page.Last) {
+		statusesByPage, resp, err = s.ListStatus(ctx, repo, ref, opts)
+		if err != nil {
+			return nil, resp, err
+		}
+		statuses = append(statuses, statusesByPage...)
+		firstRun = true
+		opts.Page++
 	}
 
 	combinedState := scm.StateUnknown
@@ -120,33 +210,75 @@ func (s *repositoryService) FindCombinedStatus(ctx context.Context, repo, ref st
 		State:    combinedState,
 		Sha:      ref,
 		Statuses: statuses,
-	}, res, err
+	}, resp, err
 }
 
 func (s *repositoryService) FindUserPermission(ctx context.Context, repo string, user string) (string, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/members/all", encode(repo))
-	out := []*member{}
-	res, err := s.client.do(ctx, "GET", path, nil, &out)
-	if err != nil {
-		return scm.NoPermission, res, err
+	var resp *scm.Response
+	var err error
+	firstRun := false
+	opts := scm.ListOptions{
+		Page: 1,
 	}
-	for _, u := range out {
-		if u.Username == user {
-			return accessLevelToString(u.AccessLevel), res, nil
+	for !firstRun || (resp != nil && opts.Page <= resp.Page.Last) {
+		path := fmt.Sprintf("api/v4/projects/%s/members/all?%s", encode(repo), encodeListOptions(opts))
+		out := []*member{}
+		resp, err = s.client.do(ctx, "GET", path, nil, &out)
+		if err != nil {
+			return scm.NoPermission, resp, err
 		}
+		firstRun = true
+		for _, u := range out {
+			if u.Username == user {
+				return accessLevelToString(u.AccessLevel), resp, nil
+			}
+		}
+		opts.Page++
 	}
-	return scm.NoPermission, res, nil
+	return scm.NoPermission, resp, nil
+}
+
+func (s *repositoryService) AddCollaborator(ctx context.Context, repo, username, permission string) (bool, bool, *scm.Response, error) {
+	userData, _, err := s.client.Users.FindLogin(ctx, username)
+	if err != nil {
+		return false, false, nil, errors.Wrapf(err, "couldn't look up ID for user %s", username)
+	}
+	if userData == nil {
+		return false, false, nil, fmt.Errorf("no user for %s found", username)
+	}
+	path := fmt.Sprintf("api/v4/projects/%s/members", encode(repo))
+	out := new(user)
+	in := &memberPermissions{
+		UserID:      userData.ID,
+		AccessLevel: stringToAccessLevel(permission),
+	}
+	res, err := s.client.do(ctx, "POST", path, in, &out)
+	if err != nil {
+		return false, false, res, err
+	}
+	return true, false, res, nil
 }
 
 func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user string) (bool, *scm.Response, error) {
-	users, resp, err := s.ListCollaborators(ctx, repo, scm.ListOptions{})
-	if err != nil {
-		return false, resp, err
+	var resp *scm.Response
+	var users []scm.User
+	var err error
+	firstRun := false
+	opts := scm.ListOptions{
+		Page: 1,
 	}
-	for _, u := range users {
-		if u.Name == user || u.Login == user {
-			return true, resp, err
+	for !firstRun || (resp != nil && opts.Page <= resp.Page.Last) {
+		users, resp, err = s.ListCollaborators(ctx, repo, opts)
+		if err != nil {
+			return false, resp, err
 		}
+		firstRun = true
+		for _, u := range users {
+			if u.Name == user || u.Login == user {
+				return true, resp, err
+			}
+		}
+		opts.Page++
 	}
 	return false, resp, err
 }
@@ -224,29 +356,90 @@ func (s *repositoryService) CreateHook(ctx context.Context, repo string, input *
 	if input.SkipVerify {
 		params.Set("enable_ssl_verification", "true")
 	}
+	hasStarEvents := false
+	for _, event := range input.NativeEvents {
+		if event == "*" {
+			hasStarEvents = true
+		}
+	}
 	if input.Events.Branch {
 		// no-op
 	}
-	if input.Events.Issue {
+	if input.Events.Issue || hasStarEvents {
 		params.Set("issues_events", "true")
 	}
 	if input.Events.IssueComment ||
-		input.Events.PullRequestComment {
+		input.Events.PullRequestComment || hasStarEvents {
 		params.Set("note_events", "true")
 	}
-	if input.Events.PullRequest {
+	if input.Events.PullRequest || hasStarEvents {
 		params.Set("merge_requests_events", "true")
 	}
-	if input.Events.Push || input.Events.Branch {
+	if input.Events.Push || input.Events.Branch || hasStarEvents {
 		params.Set("push_events", "true")
 	}
-	if input.Events.Tag {
+	if input.Events.Tag || hasStarEvents {
 		params.Set("tag_push_events", "true")
+	}
+	if input.Events.Release || hasStarEvents {
+		params.Set("releases_events", "true")
 	}
 
 	path := fmt.Sprintf("api/v4/projects/%s/hooks?%s", encode(repo), params.Encode())
 	out := new(hook)
 	res, err := s.client.do(ctx, "POST", path, nil, out)
+	return convertHook(out), res, err
+}
+
+func (s *repositoryService) UpdateHook(ctx context.Context, repo string, input *scm.HookInput) (*scm.Hook, *scm.Response, error) {
+	params := url.Values{}
+	hookID := input.Name
+	params.Set("url", input.Target)
+	if input.Secret != "" {
+		params.Set("token", input.Secret)
+	}
+	if input.SkipVerify {
+		params.Set("enable_ssl_verification", "true")
+	}
+	hasStarEvents := false
+	for _, event := range input.NativeEvents {
+		if event == "*" {
+			hasStarEvents = true
+		}
+	}
+	if input.Events.Branch {
+		// no-op
+	}
+	if input.Events.Issue || hasStarEvents {
+		params.Set("issues_events", "true")
+	} else {
+		params.Set("issues_events", "false")
+	}
+	if input.Events.IssueComment ||
+		input.Events.PullRequestComment || hasStarEvents {
+		params.Set("note_events", "true")
+	} else {
+		params.Set("note_events", "false")
+	}
+	if input.Events.PullRequest || hasStarEvents {
+		params.Set("merge_requests_events", "true")
+	} else {
+		params.Set("merge_requests_events", "false")
+	}
+	if input.Events.Push || input.Events.Branch || hasStarEvents {
+		params.Set("push_events", "true")
+	} else {
+		params.Set("push_events", "false")
+	}
+	if input.Events.Tag || hasStarEvents {
+		params.Set("tag_push_events", "true")
+	} else {
+		params.Set("tag_push_events", "false")
+	}
+
+	path := fmt.Sprintf("api/v4/projects/%s/hooks/%s?%s", encode(repo), hookID, params.Encode())
+	out := new(hook)
+	res, err := s.client.do(ctx, "PUT", path, nil, out)
 	return convertHook(out), res, err
 }
 
@@ -256,7 +449,14 @@ func (s *repositoryService) CreateStatus(ctx context.Context, repo, ref string, 
 	params.Set("name", input.Label)
 	params.Set("target_url", input.Target)
 	params.Set("description", input.Desc)
-	path := fmt.Sprintf("api/v4/projects/%s/statuses/%s?%s", encode(repo), ref, params.Encode())
+	var repoID string
+	// TODO to add a cache to reduce unnecessary network request
+	if repository, response, err := s.Find(ctx, repo); err == nil {
+		repoID = repository.ID
+	} else {
+		return nil, response, errors.Errorf("cannot found repository %s, %v", repo, err)
+	}
+	path := fmt.Sprintf("api/v4/projects/%s/statuses/%s?%s", repoID, ref, params.Encode())
 	out := new(status)
 	res, err := s.client.do(ctx, "POST", path, nil, out)
 	return convertStatus(out), res, err
@@ -265,6 +465,10 @@ func (s *repositoryService) CreateStatus(ctx context.Context, repo, ref string, 
 func (s *repositoryService) DeleteHook(ctx context.Context, repo string, id string) (*scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/hooks/%s", encode(repo), id)
 	return s.client.do(ctx, "DELETE", path, nil, nil)
+}
+
+func (s *repositoryService) Delete(context.Context, string) (*scm.Response, error) {
+	return nil, scm.ErrNotSupported
 }
 
 // helper function to convert from the gogs repository list to
@@ -284,10 +488,12 @@ func convertRepository(from *repository) *scm.Repository {
 		ID:        strconv.Itoa(from.ID),
 		Namespace: from.Namespace.Path,
 		Name:      from.Path,
+		FullName:  from.PathNamespace,
 		Branch:    from.DefaultBranch,
 		Private:   convertPrivate(from.Visibility),
 		Clone:     from.HTTPURL,
 		CloneSSH:  from.SSHURL,
+		Link:      from.WebURL,
 		Perm: &scm.Perm{
 			Pull:  true,
 			Push:  canPush(from),

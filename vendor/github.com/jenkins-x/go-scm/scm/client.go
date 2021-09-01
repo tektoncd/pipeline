@@ -7,8 +7,10 @@ package scm
 import (
 	"context"
 	"errors"
+
 	"io"
 	"net/http"
+
 	"net/url"
 	"strconv"
 	"strings"
@@ -27,6 +29,11 @@ var (
 	// authorized or the user does not have access to the
 	// resource.
 	ErrNotAuthorized = errors.New("Not Authorized")
+
+	// ErrForbidden indicates the user does not have access to
+	// the resource, this is similar to 401, but in this case,
+	// re-authenticating will make no difference.
+	ErrForbidden = errors.New("Forbidden")
 )
 
 type (
@@ -73,6 +80,8 @@ type (
 		URL  string
 		Page int
 		Size int
+		From string
+		To   string
 	}
 
 	// GraphQLService the API to performing GraphQL queries
@@ -92,6 +101,9 @@ type (
 		BaseURL    *url.URL
 		GraphQLURL *url.URL
 
+		// Username is the optional user name for the client
+		Username string
+
 		// Services used for communicating with the API.
 		Driver        Driver
 		Apps          AppService
@@ -101,11 +113,14 @@ type (
 		GraphQL       GraphQLService
 		Organizations OrganizationService
 		Issues        IssueService
+		Milestones    MilestoneService
+		Releases      ReleaseService
 		PullRequests  PullRequestService
 		Repositories  RepositoryService
 		Reviews       ReviewService
 		Users         UserService
 		Webhooks      WebhookService
+		Commits       CommitService
 
 		// DumpResponse optionally specifies a function to
 		// dump the the response body for debugging purposes.
@@ -173,9 +188,9 @@ func (c *Client) Do(ctx context.Context, in *Request) (*Response, error) {
 
 	// dumps the response for debugging purposes.
 	if c.DumpResponse != nil {
-		c.DumpResponse(res, true)
+		_, err = c.DumpResponse(res, true)
 	}
-	return newResponse(res), nil
+	return newResponse(res), err
 }
 
 // newResponse creates a new Response for the provided
@@ -186,17 +201,17 @@ func newResponse(r *http.Response) *Response {
 		Header: r.Header,
 		Body:   r.Body,
 	}
-	res.populatePageValues()
+	res.PopulatePageValues()
 	return res
 }
 
-// populatePageValues parses the HTTP Link response headers
+// PopulatePageValues parses the HTTP Link response headers
 // and populates the various pagination link values in the
 // Response.
 //
 // Copyright 2013 The go-github AUTHORS. All rights reserved.
 // https://github.com/google/go-github
-func (r *Response) populatePageValues() {
+func (r *Response) PopulatePageValues() {
 	links := strings.Split(r.Header.Get("Link"), ",")
 	for _, link := range links {
 		segments := strings.Split(strings.TrimSpace(link), ";")

@@ -289,8 +289,8 @@ func TestUpload_Invalid_Status(t *testing.T) {
 	}
 
 	expectedErrors := []string{
-		"invalid status: \"State\" is empty or has invalid value: {unknown Tekton Status with empty State field https://tekton.dev}",
-		"invalid status: \"Label\" should not be empty: {success  Status without label https://tekton.dev}",
+		"invalid status: \"State\" is empty or has invalid value: {unknown Tekton Status with empty State field https://tekton.dev }",
+		"invalid status: \"Label\" should not be empty: {success  Status without label https://tekton.dev }",
 	}
 	err := h.Upload(ctx, r)
 	if err == nil {

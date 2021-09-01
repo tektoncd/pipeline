@@ -40,6 +40,7 @@ type (
 	// list of repository commits.
 	CommitListOptions struct {
 		Ref  string
+		Sha  string
 		Page int
 		Size int
 	}
@@ -73,8 +74,11 @@ type (
 		// ListCommits returns a list of git commits.
 		ListCommits(ctx context.Context, repo string, opts CommitListOptions) ([]*Commit, *Response, error)
 
-		// ListChanges returns the changeset between two commits.
+		// ListChanges returns the changeset between a commit and its parent.
 		ListChanges(ctx context.Context, repo, ref string, opts ListOptions) ([]*Change, *Response, error)
+
+		// ListChanges returns the changeset between two commits.
+		CompareCommits(ctx context.Context, repo, ref1, ref2 string, opts ListOptions) ([]*Change, *Response, error)
 
 		// ListTags returns a list of git tags.
 		ListTags(ctx context.Context, repo string, opts ListOptions) ([]*Reference, *Response, error)
@@ -84,5 +88,8 @@ type (
 
 		// DeleteRef deletes the given ref
 		DeleteRef(ctx context.Context, repo, ref string) (*Response, error)
+
+		// CreateRef creates a new ref
+		CreateRef(ctx context.Context, repo, ref, sha string) (*Reference, *Response, error)
 	}
 )

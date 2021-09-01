@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// InstallationToken is the token used for interacting with the app
 	InstallationToken struct {
 		Token     string
 		ExpiresAt *time.Time

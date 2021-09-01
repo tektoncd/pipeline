@@ -5,8 +5,8 @@ go 1.13
 require (
 	github.com/aws/aws-sdk-go v1.31.12 // indirect
 	github.com/cloudevents/sdk-go/v2 v2.1.0
-	github.com/docker/cli v20.10.2+incompatible // indirect
-	github.com/docker/docker v20.10.2+incompatible // indirect
+	github.com/docker/cli v20.10.8+incompatible // indirect
+	github.com/docker/docker v20.10.8+incompatible // indirect
 	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-openapi/spec v0.20.2
@@ -17,9 +17,8 @@ require (
 	github.com/googleapis/gnostic v0.5.3 // indirect
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/jenkins-x/go-scm v1.5.117
+	github.com/jenkins-x/go-scm v1.10.10
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/nbio/st v0.0.0-20140626010706-e9e8d9816f32 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 	go.opencensus.io v0.23.0

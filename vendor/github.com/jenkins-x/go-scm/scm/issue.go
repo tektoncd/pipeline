@@ -23,6 +23,7 @@ type (
 		Locked      bool
 		Author      User
 		Assignees   []User
+		ClosedBy    *User
 		PullRequest bool
 		Created     time.Time
 		Updated     time.Time
@@ -56,6 +57,7 @@ type (
 		Body    string
 		Author  User
 		Link    string
+		Version int
 		Created time.Time
 		Updated time.Time
 	}
@@ -119,6 +121,9 @@ type (
 		// Close closes an issue.
 		Close(context.Context, string, int) (*Response, error)
 
+		// Reopen reopens a closed issue.
+		Reopen(context.Context, string, int) (*Response, error)
+
 		// Lock locks an issue discussion.
 		Lock(context.Context, string, int) (*Response, error)
 
@@ -136,6 +141,12 @@ type (
 
 		// UnassignIssue removes the assignment of ne or more users on an issue
 		UnassignIssue(ctx context.Context, repo string, number int, logins []string) (*Response, error)
+
+		// SetMilestone adds a milestone to an issue
+		SetMilestone(ctx context.Context, repo string, issueID int, number int) (*Response, error)
+
+		// ClearMilestone removes the milestone from an issue
+		ClearMilestone(ctx context.Context, repo string, id int) (*Response, error)
 	}
 )
 

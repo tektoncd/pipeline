@@ -40,15 +40,37 @@ func (s *contentService) Find(ctx context.Context, repo, path, ref string) (*scm
 }
 
 func (s *contentService) List(ctx context.Context, repo, path, ref string) ([]*scm.FileEntry, *scm.Response, error) {
-	return nil, nil, scm.ErrNotSupported
+	endpoint := fmt.Sprintf("api/v4/projects/%s/repository/tree?path=%s&ref=%s", encode(repo), path, ref)
+	out := []*entry{}
+	res, err := s.client.do(ctx, "GET", endpoint, nil, &out)
+	return convertEntryList(out), res, err
 }
 
 func (s *contentService) Create(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	endpoint := fmt.Sprintf("api/v4/projects/%s/repository/commits", encode(repo))
+
+	body := &createCommitBody{
+		Message: params.Message,
+		ID:      encode(repo),
+		Branch:  params.Branch,
+		Actions: []createCommitAction{
+			{Action: "create", Path: path, Content: params.Data, Encoding: "base64"},
+		},
+	}
+	return s.client.do(ctx, "POST", endpoint, &body, nil)
 }
 
 func (s *contentService) Update(ctx context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	path = url.QueryEscape(path)
+	path = strings.Replace(path, ".", "%2E", -1)
+	endpoint := fmt.Sprintf("api/v4/projects/%s/repository/files/%s", encode(repo), path)
+
+	body := &updateContentBody{
+		Message: params.Message,
+		Branch:  params.Branch,
+		Content: string(params.Data),
+	}
+	return s.client.do(ctx, "PUT", endpoint, &body, nil)
 }
 
 func (s *contentService) Delete(ctx context.Context, repo, path, ref string) (*scm.Response, error) {
@@ -65,4 +87,52 @@ type content struct {
 	BlobID       string `json:"blob_id"`
 	CommitID     string `json:"commit_id"`
 	LastCommitID string `json:"last_commit_id"`
+}
+
+type createCommitAction struct {
+	Action   string `json:"action"`
+	Path     string `json:"file_path"`
+	Content  []byte `json:"content"`
+	Encoding string `json:"encoding"`
+}
+
+type createCommitBody struct {
+	Branch  string               `json:"branch"`
+	ID      string               `json:"id"`
+	Message string               `json:"commit_message"`
+	Actions []createCommitAction `json:"actions"`
+}
+
+type updateContentBody struct {
+	Branch  string `json:"branch"`
+	Content string `json:"content"`
+	Message string `json:"commit_message"`
+}
+
+type entry struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	Path string `json:"path"`
+	Mode string `json:"mode"`
+}
+
+func convertEntryList(out []*entry) []*scm.FileEntry {
+	answer := make([]*scm.FileEntry, 0, len(out))
+	for _, o := range out {
+		answer = append(answer, convertEntry(o))
+	}
+	return answer
+}
+
+func convertEntry(from *entry) *scm.FileEntry {
+	t := "file"
+	if from.Type == "tree" {
+		t = "dir"
+	}
+	return &scm.FileEntry{
+		Name: from.Name,
+		Path: from.Path,
+		Type: t,
+	}
 }
