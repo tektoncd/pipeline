@@ -1003,7 +1003,7 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
 
-			wantEvents := append(tc.wantEvents, "Warning InternalError 1 error occurred")
+			wantEvents := append(tc.wantEvents, "Warning InternalError 1 error occurred") //nolint
 			reconciledRun, _ := prt.reconcileRun("foo", tc.pipelineRun.Name, wantEvents, tc.permanentError)
 
 			if reconciledRun.Status.CompletionTime == nil {

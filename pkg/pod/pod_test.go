@@ -1604,7 +1604,7 @@ _EOF_
 
 			overrideHomeEnv := false
 			if s, ok := c.featureFlags[featureFlagDisableHomeEnvKey]; ok {
-				var err error = nil
+				var err error
 				if overrideHomeEnv, err = strconv.ParseBool(s); err != nil {
 					t.Fatalf("error parsing bool from %s feature flag: %v", featureFlagDisableHomeEnvKey, err)
 				}
@@ -1762,7 +1762,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 
 			overrideHomeEnv := false
 			if s, ok := c.featureFlags[featureFlagDisableHomeEnvKey]; ok {
-				var err error = nil
+				var err error
 				if overrideHomeEnv, err = strconv.ParseBool(s); err != nil {
 					t.Fatalf("error parsing bool from %s feature flag: %v", featureFlagDisableHomeEnvKey, err)
 				}

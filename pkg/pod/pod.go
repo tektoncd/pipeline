@@ -189,7 +189,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// themselves their value takes precedence.
 	if len(implicitEnvVars) > 0 {
 		for i, s := range stepContainers {
-			env := append(implicitEnvVars, s.Env...)
+			env := append(implicitEnvVars, s.Env...) //nolint
 			stepContainers[i].Env = env
 		}
 	}
@@ -198,7 +198,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if taskRun.Annotations[ExecutionModeAnnotation] == ExecutionModeHermetic && alphaAPIEnabled {
 		for i, s := range stepContainers {
 			// Add it at the end so it overrides
-			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"})
+			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"}) //nolint
 			stepContainers[i].Env = env
 		}
 	}
@@ -227,7 +227,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 				toAdd = append(toAdd, imp)
 			}
 		}
-		vms := append(s.VolumeMounts, toAdd...)
+		vms := append(s.VolumeMounts, toAdd...) //nolint
 		stepContainers[i].VolumeMounts = vms
 	}
 
