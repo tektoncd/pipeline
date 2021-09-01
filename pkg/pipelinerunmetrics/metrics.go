@@ -29,6 +29,7 @@ import (
 	"go.opencensus.io/tag"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 )
@@ -144,12 +145,11 @@ func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun) error {
 	}
 
 	status := "success"
-	if pr.Status.Conditions[0].Status == corev1.ConditionFalse &&
-		(pr.Status.Conditions[0].Reason == ReasonCancelled ||
-			pr.Status.Conditions[0].Reason == ReasonCancelledDeprecated) {
-		status = "cancelled"
-	} else if pr.Status.Conditions[0].Status == corev1.ConditionFalse {
+	if cond := pr.Status.GetCondition(apis.ConditionSucceeded); cond.Status == corev1.ConditionFalse {
 		status = "failed"
+		if cond.Reason == ReasonCancelled || cond.Reason == ReasonCancelledDeprecated {
+			status = "cancelled"
+		}
 	}
 
 	pipelineName := "anonymous"
