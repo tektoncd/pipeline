@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/metrics"
 )
@@ -195,7 +196,7 @@ func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun) error {
 	}
 
 	status := "success"
-	if tr.Status.Conditions[0].Status == corev1.ConditionFalse {
+	if cond := tr.Status.GetCondition(apis.ConditionSucceeded); cond.Status == corev1.ConditionFalse {
 		status = "failed"
 	}
 
@@ -332,7 +333,7 @@ func (r *Recorder) CloudEvents(tr *v1beta1.TaskRun) error {
 	}
 
 	status := "success"
-	if tr.Status.Conditions[0].Status == corev1.ConditionFalse {
+	if cond := tr.Status.GetCondition(apis.ConditionSucceeded); cond.Status == corev1.ConditionFalse {
 		status = "failed"
 	}
 
