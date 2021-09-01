@@ -9,7 +9,6 @@ TESTPKGS = $(shell env GO111MODULE=on $(GO) list -f \
 BIN      = $(CURDIR)/.bin
 
 GOLANGCI_VERSION = v1.42.0
-GOSEC_VERSION    = v2.4.0
 
 GO           = go
 TIMEOUT_UNIT = 5m
@@ -170,14 +169,6 @@ $(BIN)/golangci-lint: ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
 .PHONY: golangci-lint
 golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint
 	$Q $(GOLANGCILINT) run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 --deadline 5m
-
-GOSEC = $(BIN)/gosec
-$(BIN)/gosec: ; $(info $(M) getting gosec $(GOSEC_VERSION))
-	@curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(BIN) $(GOSEC_VERSION)
-
-.PHONY: gosec
-gosec: | $(GOSEC) ; $(info $(M) running gosec…)
-	$Q $(GOSEC) ./...
 
 GOIMPORTS = $(BIN)/goimports
 $(BIN)/goimports: PACKAGE=golang.org/x/tools/cmd/goimports
