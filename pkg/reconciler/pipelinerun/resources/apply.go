@@ -174,7 +174,7 @@ func ApplyTaskResultsToPipelineResults(
 		customTaskStatuses[runStatus.PipelineTaskName] = runStatus
 	}
 
-	var runResults []v1beta1.PipelineRunResult = nil
+	var runResults []v1beta1.PipelineRunResult
 	stringReplacements := map[string]string{}
 	for _, pipelineResult := range results {
 		variablesInPipelineResult, _ := v1beta1.GetVarSubstitutionExpressionsForPipelineResult(pipelineResult)

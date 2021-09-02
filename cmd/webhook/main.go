@@ -133,7 +133,7 @@ func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 }
 
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	// nolint: golint
+	// nolint: revive
 	var (
 		v1alpha1GroupVersion = v1alpha1.SchemeGroupVersion.Version
 		v1beta1GroupVersion  = v1beta1.SchemeGroupVersion.Version

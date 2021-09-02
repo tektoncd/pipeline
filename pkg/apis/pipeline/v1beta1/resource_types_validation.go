@@ -67,10 +67,7 @@ func (tr *TaskRunResources) Validate(ctx context.Context) *apis.FieldError {
 	if err := validateTaskRunResources(ctx, tr.Inputs, "spec.resources.inputs.name"); err != nil {
 		return err
 	}
-	if err := validateTaskRunResources(ctx, tr.Outputs, "spec.resources.outputs.name"); err != nil {
-		return err
-	}
-	return nil
+	return validateTaskRunResources(ctx, tr.Outputs, "spec.resources.outputs.name")
 }
 
 // validateTaskRunResources validates that

@@ -175,11 +175,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) *apis.FieldError {
 	}
 
 	// Validate the pipeline's workspaces.
-	if err := validatePipelineWorkspaces(ps.Workspaces, ps.Tasks); err != nil {
-		return err
-	}
-
-	return nil
+	return validatePipelineWorkspaces(ps.Workspaces, ps.Tasks)
 }
 
 func validatePipelineTasks(ctx context.Context, tasks []PipelineTask) *apis.FieldError {

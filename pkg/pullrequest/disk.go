@@ -96,11 +96,7 @@ func ToDisk(r *Resource, path string) error {
 	if err := refToDisk("head", path, r.PR.Head); err != nil {
 		return err
 	}
-	if err := refToDisk("base", path, r.PR.Base); err != nil {
-		return err
-	}
-
-	return nil
+	return refToDisk("base", path, r.PR.Base)
 }
 
 func commentsToDisk(path string, comments []*scm.Comment) error {
