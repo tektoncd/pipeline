@@ -19,6 +19,7 @@ package taskrunmetrics
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -78,102 +79,114 @@ type Recorder struct {
 	ReportingPeriod time.Duration
 }
 
+// We cannot register the view multiple times, so NewRecorder lazily
+// initializes this singleton and returns the same recorder across any
+// subsequent invocations.
+var (
+	once        sync.Once
+	r           *Recorder
+	recorderErr error
+)
+
 // NewRecorder creates a new metrics recorder instance
 // to log the TaskRun related metrics
 func NewRecorder() (*Recorder, error) {
-	r := &Recorder{
-		initialized: true,
+	// Views cannot be registered multiple times, so recorder should be a singleton.
+	once.Do(func() {
+		r = &Recorder{
+			initialized: true,
 
-		// Default to reporting metrics every 30s.
-		ReportingPeriod: 30 * time.Second,
-	}
+			// Default to reporting metrics every 30s.
+			ReportingPeriod: 30 * time.Second,
+		}
 
-	task, err := tag.NewKey("task")
-	if err != nil {
-		return nil, err
-	}
-	r.task = task
+		task, recorderErr := tag.NewKey("task")
+		if recorderErr != nil {
+			return
+		}
+		r.task = task
 
-	taskRun, err := tag.NewKey("taskrun")
-	if err != nil {
-		return nil, err
-	}
-	r.taskRun = taskRun
+		taskRun, recorderErr := tag.NewKey("taskrun")
+		if recorderErr != nil {
+			return
+		}
+		r.taskRun = taskRun
 
-	namespace, err := tag.NewKey("namespace")
-	if err != nil {
-		return nil, err
-	}
-	r.namespace = namespace
+		namespace, recorderErr := tag.NewKey("namespace")
+		if recorderErr != nil {
+			return
+		}
+		r.namespace = namespace
 
-	status, err := tag.NewKey("status")
-	if err != nil {
-		return nil, err
-	}
-	r.status = status
+		status, recorderErr := tag.NewKey("status")
+		if recorderErr != nil {
+			return
+		}
+		r.status = status
 
-	pipeline, err := tag.NewKey("pipeline")
-	if err != nil {
-		return nil, err
-	}
-	r.pipeline = pipeline
+		pipeline, recorderErr := tag.NewKey("pipeline")
+		if recorderErr != nil {
+			return
+		}
+		r.pipeline = pipeline
 
-	pipelineRun, err := tag.NewKey("pipelinerun")
-	if err != nil {
-		return nil, err
-	}
-	r.pipelineRun = pipelineRun
+		pipelineRun, recorderErr := tag.NewKey("pipelinerun")
+		if recorderErr != nil {
+			return
+		}
+		r.pipelineRun = pipelineRun
 
-	pod, err := tag.NewKey("pod")
-	if err != nil {
-		return nil, err
-	}
-	r.pod = pod
+		pod, recorderErr := tag.NewKey("pod")
+		if recorderErr != nil {
+			return
+		}
+		r.pod = pod
 
-	err = view.Register(
-		&view.View{
-			Description: trDuration.Description(),
-			Measure:     trDuration,
-			Aggregation: trDistribution,
-			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status},
-		},
-		&view.View{
-			Description: prTRDuration.Description(),
-			Measure:     prTRDuration,
-			Aggregation: prTRLatencyDistribution,
-			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status, r.pipeline, r.pipelineRun},
-		},
-		&view.View{
-			Description: trCount.Description(),
-			Measure:     trCount,
-			Aggregation: view.Count(),
-			TagKeys:     []tag.Key{r.status},
-		},
-		&view.View{
-			Description: runningTRsCount.Description(),
-			Measure:     runningTRsCount,
-			Aggregation: view.LastValue(),
-		},
-		&view.View{
-			Description: podLatency.Description(),
-			Measure:     podLatency,
-			Aggregation: view.LastValue(),
-			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.pod},
-		},
-		&view.View{
-			Description: cloudEvents.Description(),
-			Measure:     cloudEvents,
-			Aggregation: view.Sum(),
-			TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status, r.pipeline, r.pipelineRun},
-		},
-	)
+		recorderErr = view.Register(
+			&view.View{
+				Description: trDuration.Description(),
+				Measure:     trDuration,
+				Aggregation: trDistribution,
+				TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status},
+			},
+			&view.View{
+				Description: prTRDuration.Description(),
+				Measure:     prTRDuration,
+				Aggregation: prTRLatencyDistribution,
+				TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status, r.pipeline, r.pipelineRun},
+			},
+			&view.View{
+				Description: trCount.Description(),
+				Measure:     trCount,
+				Aggregation: view.Count(),
+				TagKeys:     []tag.Key{r.status},
+			},
+			&view.View{
+				Description: runningTRsCount.Description(),
+				Measure:     runningTRsCount,
+				Aggregation: view.LastValue(),
+			},
+			&view.View{
+				Description: podLatency.Description(),
+				Measure:     podLatency,
+				Aggregation: view.LastValue(),
+				TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.pod},
+			},
+			&view.View{
+				Description: cloudEvents.Description(),
+				Measure:     cloudEvents,
+				Aggregation: view.Sum(),
+				TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status, r.pipeline, r.pipelineRun},
+			},
+		)
 
-	if err != nil {
-		r.initialized = false
-		return r, err
-	}
+		if recorderErr != nil {
+			r.initialized = false
+			return
+		}
+	})
 
-	return r, nil
+	return r, recorderErr
 }
 
 // DurationAndCount logs the duration of TaskRun execution and

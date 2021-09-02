@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -68,66 +69,77 @@ type Recorder struct {
 	ReportingPeriod time.Duration
 }
 
+// We cannot register the view multiple times, so NewRecorder lazily
+// initializes this singleton and returns the same recorder across any
+// subsequent invocations.
+var (
+	once        sync.Once
+	r           *Recorder
+	recorderErr error
+)
+
 // NewRecorder creates a new metrics recorder instance
 // to log the PipelineRun related metrics
 func NewRecorder() (*Recorder, error) {
-	r := &Recorder{
-		initialized: true,
+	once.Do(func() {
+		r = &Recorder{
+			initialized: true,
 
-		// Default to 30s intervals.
-		ReportingPeriod: 30 * time.Second,
-	}
+			// Default to 30s intervals.
+			ReportingPeriod: 30 * time.Second,
+		}
 
-	pipeline, err := tag.NewKey("pipeline")
-	if err != nil {
-		return nil, err
-	}
-	r.pipeline = pipeline
+		pipeline, recorderErr := tag.NewKey("pipeline")
+		if recorderErr != nil {
+			return
+		}
+		r.pipeline = pipeline
 
-	pipelineRun, err := tag.NewKey("pipelinerun")
-	if err != nil {
-		return nil, err
-	}
-	r.pipelineRun = pipelineRun
+		pipelineRun, recorderErr := tag.NewKey("pipelinerun")
+		if recorderErr != nil {
+			return
+		}
+		r.pipelineRun = pipelineRun
 
-	namespace, err := tag.NewKey("namespace")
-	if err != nil {
-		return nil, err
-	}
-	r.namespace = namespace
+		namespace, recorderErr := tag.NewKey("namespace")
+		if recorderErr != nil {
+			return
+		}
+		r.namespace = namespace
 
-	status, err := tag.NewKey("status")
-	if err != nil {
-		return nil, err
-	}
-	r.status = status
+		status, recorderErr := tag.NewKey("status")
+		if recorderErr != nil {
+			return
+		}
+		r.status = status
 
-	err = view.Register(
-		&view.View{
-			Description: prDuration.Description(),
-			Measure:     prDuration,
-			Aggregation: prDistributions,
-			TagKeys:     []tag.Key{r.pipeline, r.pipelineRun, r.namespace, r.status},
-		},
-		&view.View{
-			Description: prCount.Description(),
-			Measure:     prCount,
-			Aggregation: view.Count(),
-			TagKeys:     []tag.Key{r.status},
-		},
-		&view.View{
-			Description: runningPRsCount.Description(),
-			Measure:     runningPRsCount,
-			Aggregation: view.LastValue(),
-		},
-	)
+		recorderErr = view.Register(
+			&view.View{
+				Description: prDuration.Description(),
+				Measure:     prDuration,
+				Aggregation: prDistributions,
+				TagKeys:     []tag.Key{r.pipeline, r.pipelineRun, r.namespace, r.status},
+			},
+			&view.View{
+				Description: prCount.Description(),
+				Measure:     prCount,
+				Aggregation: view.Count(),
+				TagKeys:     []tag.Key{r.status},
+			},
+			&view.View{
+				Description: runningPRsCount.Description(),
+				Measure:     runningPRsCount,
+				Aggregation: view.LastValue(),
+			},
+		)
 
-	if err != nil {
-		r.initialized = false
-		return r, err
-	}
+		if recorderErr != nil {
+			r.initialized = false
+			return
+		}
+	})
 
-	return r, nil
+	return r, recorderErr
 }
 
 // DurationAndCount logs the duration of PipelineRun execution and
