@@ -140,10 +140,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 	// Deprecated
-	if err := validateResourceVariables(ts.Steps, ts.Inputs, ts.Outputs, ts.Resources); err != nil {
-		return err
-	}
-	return nil
+	return validateResourceVariables(ts.Steps, ts.Inputs, ts.Outputs, ts.Resources)
 }
 
 // validateDeclaredWorkspaces will make sure that the declared workspaces do not try to use

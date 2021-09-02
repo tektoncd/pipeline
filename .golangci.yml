@@ -10,7 +10,7 @@ linters:
   - goimports
   - gosec
   - gocritic
-  - golint
+  - revive
   - misspell
 output:
   uniq-by-line: false

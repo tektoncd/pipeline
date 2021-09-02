@@ -61,10 +61,7 @@ func WriteMessage(path string, pro []v1beta1.PipelineResourceResult) error {
 	if _, err = f.Write(jsonOutput); err != nil {
 		return err
 	}
-	if err := f.Sync(); err != nil {
-		return err
-	}
-	return nil
+	return f.Sync()
 }
 
 // MessageLengthError indicate the length of termination message of container is beyond 4096 which is the max length read by kubenates

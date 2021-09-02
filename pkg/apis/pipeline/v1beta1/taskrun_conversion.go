@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// nolint: golint
+// nolint: revive
 package v1beta1
 
 import (

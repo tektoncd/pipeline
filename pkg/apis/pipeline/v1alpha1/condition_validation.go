@@ -52,8 +52,5 @@ func (cs *ConditionSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	if err := validateSteps([]Step{cs.Check}).ViaField("Check"); err != nil {
-		return err
-	}
-	return nil
+	return validateSteps([]Step{cs.Check}).ViaField("Check")
 }

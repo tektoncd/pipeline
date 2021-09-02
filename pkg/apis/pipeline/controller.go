@@ -18,7 +18,7 @@ package pipeline
 
 const (
 	// PipelineRunControllerName holds the name of the PipelineRun controller
-	// nolint: golint
+	// nolint: revive
 	PipelineRunControllerName = "PipelineRun"
 
 	// TaskRunControllerName holds the name of the TaskRun controller

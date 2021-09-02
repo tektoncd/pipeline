@@ -154,7 +154,7 @@ func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool,
 
 // SeedTestData returns Clients and Informers populated with the
 // given Data.
-// nolint: golint
+// nolint: revive
 func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers) {
 	c := Clients{
 		Kube:        fakekubeclient.Get(ctx),
