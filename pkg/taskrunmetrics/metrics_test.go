@@ -17,6 +17,7 @@ limitations under the License.
 package taskrunmetrics
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -453,4 +454,9 @@ func TestRecordCloudEvents(t *testing.T) {
 
 func unregisterMetrics() {
 	metricstest.Unregister("taskrun_duration_seconds", "pipelinerun_taskrun_duration_seconds", "taskrun_count", "running_taskruns_count", "taskruns_pod_latency", "cloudevent_count")
+
+	// Allow the recorder singleton to be recreated.
+	once = sync.Once{}
+	r = nil
+	recorderErr = nil
 }

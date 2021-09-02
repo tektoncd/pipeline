@@ -17,6 +17,7 @@ limitations under the License.
 package pipelinerunmetrics
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -213,4 +214,9 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 
 func unregisterMetrics() {
 	metricstest.Unregister("pipelinerun_duration_seconds", "pipelinerun_count", "running_pipelineruns_count")
+
+	// Allow the recorder singleton to be recreated.
+	once = sync.Once{}
+	r = nil
+	recorderErr = nil
 }
