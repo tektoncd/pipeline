@@ -103,7 +103,7 @@ func TestPipelineRun(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: getName(taskName, index), Namespace: namespace},
 				Spec: v1beta1.TaskSpec{
 					Params: []v1beta1.ParamSpec{{
-						Name: "path", Type: v1beta1.ParamTypeString,
+						Name: "the.path", Type: v1beta1.ParamTypeString,
 					}, {
 						Name: "dest", Type: v1beta1.ParamTypeString,
 					}},
@@ -112,7 +112,7 @@ func TestPipelineRun(t *testing.T) {
 							Name:    "config-docker",
 							Image:   "gcr.io/tekton-releases/dogfooding/skopeo:latest",
 							Command: []string{"skopeo"},
-							Args:    []string{"copy", "$(params.path)", "$(params.dest)"},
+							Args:    []string{"copy", `$(params["the.path"])`, "$(params.dest)"},
 						}},
 					},
 				},
@@ -179,7 +179,7 @@ func TestPipelineRun(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: getName(taskName, index), Namespace: namespace},
 				Spec: v1beta1.TaskSpec{
 					Params: []v1beta1.ParamSpec{{
-						Name: "path", Type: v1beta1.ParamTypeString,
+						Name: "the.path", Type: v1beta1.ParamTypeString,
 					}, {
 						Name: "dest", Type: v1beta1.ParamTypeString,
 					}},
@@ -188,7 +188,7 @@ func TestPipelineRun(t *testing.T) {
 							Name:    "config-docker",
 							Image:   "gcr.io/tekton-releases/dogfooding/skopeo:latest",
 							Command: []string{"skopeo"},
-							Args:    []string{"copy", "$(params.path)", "$(params.dest)"},
+							Args:    []string{"copy", `$(params["the.path"])`, `$(params["dest"])`},
 						}},
 					},
 				},
@@ -307,7 +307,7 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1beta
 		ObjectMeta: metav1.ObjectMeta{Name: getName(pipelineName, suffix), Namespace: namespace},
 		Spec: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{{
-				Name: "path", Type: v1beta1.ParamTypeString,
+				Name: "the.path", Type: v1beta1.ParamTypeString,
 			}, {
 				Name: "dest", Type: v1beta1.ParamTypeString,
 			}},
@@ -315,7 +315,7 @@ func getHelloWorldPipelineWithSingularTask(suffix int, namespace string) *v1beta
 				Name:    task1Name,
 				TaskRef: &v1beta1.TaskRef{Name: getName(taskName, suffix)},
 				Params: []v1beta1.Param{{
-					Name: "path", Value: *v1beta1.NewArrayOrString("$(params.path)"),
+					Name: "the.path", Value: *v1beta1.NewArrayOrString(`$(params["the.path"])`),
 				}, {
 					Name: "dest", Value: *v1beta1.NewArrayOrString("$(params.dest)"),
 				}},
@@ -692,7 +692,7 @@ func getHelloWorldPipelineRun(suffix int, namespace string) *v1beta1.PipelineRun
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: getName(pipelineName, suffix)},
 			Params: []v1beta1.Param{{
-				Name:  "path",
+				Name:  "the.path",
 				Value: *v1beta1.NewArrayOrString("docker://gcr.io/build-crd-testing/secret-sauce"),
 			}, {
 				Name:  "dest",

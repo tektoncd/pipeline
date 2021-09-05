@@ -35,22 +35,35 @@ func ApplyParameters(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
 
+	patterns := []string{
+		"params.%s",
+		"params[%q]",
+	}
+
 	// Set all the default stringReplacements
 	for _, p := range p.Params {
 		if p.Default != nil {
 			if p.Default.Type == v1beta1.ParamTypeString {
-				stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.StringVal
+				for _, pattern := range patterns {
+					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
+				}
 			} else {
-				arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.ArrayVal
+				for _, pattern := range patterns {
+					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
+				}
 			}
 		}
 	}
 	// Set and overwrite params with the ones from the PipelineRun
 	for _, p := range pr.Spec.Params {
 		if p.Value.Type == v1beta1.ParamTypeString {
-			stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.StringVal
+			for _, pattern := range patterns {
+				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
+			}
 		} else {
-			arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.ArrayVal
+			for _, pattern := range patterns {
+				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
+			}
 		}
 	}
 

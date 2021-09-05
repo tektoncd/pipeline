@@ -185,12 +185,16 @@ func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultR
 func (rs ResolvedResultRefs) getStringReplacements() map[string]string {
 	replacements := map[string]string{}
 	for _, r := range rs {
-		replaceTarget := r.getReplaceTarget()
-		replacements[replaceTarget] = r.Value.StringVal
+		for _, target := range r.getReplaceTarget() {
+			replacements[target] = r.Value.StringVal
+		}
 	}
 	return replacements
 }
 
-func (r *ResolvedResultRef) getReplaceTarget() string {
-	return fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result)
+func (r *ResolvedResultRef) getReplaceTarget() []string {
+	return []string{
+		fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result),
+		fmt.Sprintf("%s.%s.%s[%q]", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result),
+	}
 }
