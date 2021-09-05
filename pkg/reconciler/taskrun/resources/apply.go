@@ -41,30 +41,37 @@ func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
 
+	patterns := []string{
+		"params.%s",
+		"params[%q]",
+		// FIXME(vdemeester) Remove that with deprecating v1beta1
+		"inputs.params.%s",
+	}
+
 	// Set all the default stringReplacements
 	for _, p := range defaults {
 		if p.Default != nil {
 			if p.Default.Type == v1beta1.ParamTypeString {
-				stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.StringVal
-				// FIXME(vdemeester) Remove that with deprecating v1beta1
-				stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Default.StringVal
+				for _, pattern := range patterns {
+					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
+				}
 			} else {
-				arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Default.ArrayVal
-				// FIXME(vdemeester) Remove that with deprecating v1beta1
-				arrayReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Default.ArrayVal
+				for _, pattern := range patterns {
+					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
+				}
 			}
 		}
 	}
 	// Set and overwrite params with the ones from the TaskRun
 	for _, p := range tr.Spec.Params {
 		if p.Value.Type == v1beta1.ParamTypeString {
-			stringReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.StringVal
-			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			stringReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.StringVal
+			for _, pattern := range patterns {
+				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
+			}
 		} else {
-			arrayReplacements[fmt.Sprintf("params.%s", p.Name)] = p.Value.ArrayVal
-			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			arrayReplacements[fmt.Sprintf("inputs.params.%s", p.Name)] = p.Value.ArrayVal
+			for _, pattern := range patterns {
+				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
+			}
 		}
 	}
 	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
@@ -193,8 +200,15 @@ func applyWorkspaceMountPath(variable string, spec *v1beta1.TaskSpec, declaratio
 func ApplyTaskResults(spec *v1beta1.TaskSpec) *v1beta1.TaskSpec {
 	stringReplacements := map[string]string{}
 
+	patterns := []string{
+		"results.%s.path",
+		"results[%q].path",
+	}
+
 	for _, result := range spec.Results {
-		stringReplacements[fmt.Sprintf("results.%s.path", result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
+		for _, pattern := range patterns {
+			stringReplacements[fmt.Sprintf(pattern, result.Name)] = filepath.Join(pipeline.DefaultResultPath, result.Name)
+		}
 	}
 	return ApplyReplacements(spec, stringReplacements, map[string][]string{})
 }

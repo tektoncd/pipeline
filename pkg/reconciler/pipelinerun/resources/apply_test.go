@@ -271,6 +271,35 @@ func TestApplyParameters(t *testing.T) {
 				}},
 			}},
 		},
+	}, {
+		name: "parameter references with subscript notation and special characters",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first.param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
+				{Name: "second/param", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString(`$(params["first.param"])`)},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString(`$(params["second/param"])`)},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "second/param", Value: *v1beta1.NewArrayOrString("second-value")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first.param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
+				{Name: "second/param", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("second-value")},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+			}},
+		},
 	}} {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
@@ -300,7 +329,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			Value: *v1beta1.NewArrayOrString("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
-				Result:       "aResult",
+				Result:       "a.Result",
 			},
 			FromTaskRun: "aTaskRun",
 		}},
@@ -310,7 +339,7 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 				Params: []v1beta1.Param{{
 					Name:  "bParam",
-					Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+					Value: *v1beta1.NewArrayOrString(`$(tasks.aTask.results["a.Result"])`),
 				}},
 			},
 		}},

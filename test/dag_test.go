@@ -71,7 +71,7 @@ func TestDAGPipelineRun(t *testing.T) {
 			}},
 			Steps: []v1beta1.Step{{
 				Container: corev1.Container{Image: "busybox"},
-				Script:    "echo $(params.text)",
+				Script:    `echo $(params["text"])`,
 			}, {
 				Container: corev1.Container{Image: "busybox"},
 				Script:    "ln -s $(resources.inputs.repo.path) $(resources.outputs.repo.path)",
