@@ -17,7 +17,9 @@ For instructions on using variable substitutions see the relevant section of [th
 | Variable | Description |
 | -------- | ----------- |
 | `params.<param name>` | The value of the parameter at runtime. |
+| `params["<param name>"]` | (see above) |
 | `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
+| `tasks.<taskName>.results["<resultName>"]` | (see above)) |
 | `workspaces.<workspaceName>.bound` | Whether a `Workspace` has been bound or not. "false" if the `Workspace` declaration has `optional: true` and the Workspace binding was omitted by the PipelineRun. |
 | `context.pipelineRun.name` | The name of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |
@@ -32,9 +34,11 @@ For instructions on using variable substitutions see the relevant section of [th
 | Variable | Description |
 | -------- | ----------- |
 | `params.<param name>` | The value of the parameter at runtime. |
+| `params["<param name>"]` | (see above) |
 | `resources.inputs.<resourceName>.path` | The path to the input resource's directory. |
 | `resources.outputs.<resourceName>.path` | The path to the output resource's directory. |
 | `results.<resultName>.path` | The path to the file where the `Task` writes its results data. |
+| `results["<resultName>"].path` | (see above) |
 | `workspaces.<workspaceName>.path` | The path to the mounted `Workspace`. Empty string if an optional `Workspace` has not been provided by the TaskRun. |
 | `workspaces.<workspaceName>.bound` | Whether a `Workspace` has been bound or not. "false" if an optional`Workspace` has not been provided by the TaskRun. |
 | `workspaces.<workspaceName>.claim` | The name of the `PersistentVolumeClaim` specified as a volume source for the `Workspace`. Empty string for other volume types. |
