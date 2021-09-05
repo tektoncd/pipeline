@@ -403,10 +403,10 @@ You can specify parameters, such as compilation flags or artifact names, that yo
 
 Parameter names:
 
-- Must only contain alphanumeric characters, hyphens (`-`), and underscores (`_`).
+- Must only contain alphanumeric characters, hyphens (`-`), underscores (`_`), and dots (`.`).
 - Must begin with a letter or an underscore (`_`).
 
-For example, `fooIs-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
+For example, `foo.Is-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
 Each declared parameter has a `type` field, which can be set to either `array` or `string`. `array` is useful in cases where the number
 of compilation flags being supplied to a task varies throughout the `Task's` execution. If not specified, the `type` field defaults to
@@ -432,7 +432,14 @@ spec:
   steps:
     - name: build
       image: my-builder
-      args: ["build", "$(params.flags[*])", "url=$(params.someURL)"]
+      args: [
+        "build",
+        "$(params.flags[*])",
+        # It would be equivalent to use $(params["someURL"]) here,
+        # which is necessary when the parameter name contains '.'
+        # characters (e.g. `$(params["some.other.URL"])`)
+        'url=$(params.someURL)',
+      ]
 ```
 
 The following `TaskRun` supplies a dynamic number of strings within the `flags` parameter:
@@ -744,6 +751,8 @@ variable values as follows:
 - To reference a parameter in a `Task`, use the following syntax, where `<name>` is the name of the parameter:
   ```shell
   $(params.<name>)
+  # or subscript form:
+  $(params["<name>"])
   ```
 - To access parameter values from resources, see [variable substitution](resources.md#variable-substitution)
 
