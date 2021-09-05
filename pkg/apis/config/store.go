@@ -31,6 +31,7 @@ type Config struct {
 	FeatureFlags   *FeatureFlags
 	ArtifactBucket *ArtifactBucket
 	ArtifactPVC    *ArtifactPVC
+	Metrics        *Metrics
 }
 
 // FromContext extracts a Config from the provided context.
@@ -52,11 +53,13 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{})
 	artifactBucket, _ := NewArtifactBucketFromMap(map[string]string{})
 	artifactPVC, _ := NewArtifactPVCFromMap(map[string]string{})
+	metrics, _ := NewMetricsFromMap(map[string]string{})
 	return &Config{
 		Defaults:       defaults,
 		FeatureFlags:   featureFlags,
 		ArtifactBucket: artifactBucket,
 		ArtifactPVC:    artifactPVC,
+		Metrics:        metrics,
 	}
 }
 
@@ -83,6 +86,7 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 				GetFeatureFlagsConfigName():   NewFeatureFlagsFromConfigMap,
 				GetArtifactBucketConfigName(): NewArtifactBucketFromConfigMap,
 				GetArtifactPVCConfigName():    NewArtifactPVCFromConfigMap,
+				GetMetricsConfigName():        NewMetricsFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -115,10 +119,15 @@ func (s *Store) Load() *Config {
 		artifactPVC, _ = NewArtifactPVCFromMap(map[string]string{})
 	}
 
+	metrics := s.UntypedLoad(GetMetricsConfigName())
+	if metrics == nil {
+		metrics, _ = NewMetricsFromMap(map[string]string{})
+	}
 	return &Config{
 		Defaults:       defaults.(*Defaults).DeepCopy(),
 		FeatureFlags:   featureFlags.(*FeatureFlags).DeepCopy(),
 		ArtifactBucket: artifactBucket.(*ArtifactBucket).DeepCopy(),
 		ArtifactPVC:    artifactPVC.(*ArtifactPVC).DeepCopy(),
+		Metrics:        metrics.(*Metrics).DeepCopy(),
 	}
 }

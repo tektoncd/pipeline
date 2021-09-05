@@ -51,6 +51,8 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		clusterTaskInformer := clustertaskinformer.Get(ctx)
 		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
 		resourceInformer := resourceinformer.Get(ctx)
+		configStore := config.NewStore(logger.Named("config-store"), taskrunmetrics.MetricsOnStore(logger))
+		configStore.WatchConfigs(cmw)
 
 		entrypointCache, err := pod.NewEntrypointCache(kubeclientset)
 		if err != nil {
@@ -71,9 +73,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
 		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
-			configStore := config.NewStore(logger.Named("config-store"))
-			configStore.WatchConfigs(cmw)
-
 			return controller.Options{
 				AgentName:   pipeline.TaskRunControllerName,
 				ConfigStore: configStore,

@@ -17,14 +17,18 @@ limitations under the License.
 package pipelinerunmetrics
 
 import (
+	"context"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
 	"github.com/tektoncd/pipeline/pkg/names"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -38,6 +42,19 @@ var (
 	completionTime = metav1.NewTime(startTime.Time.Add(time.Minute))
 )
 
+func getConfigContext() context.Context {
+	ctx := context.Background()
+	cfg := &config.Config{
+		Metrics: &config.Metrics{
+			TaskrunLevel:            config.DefaultTaskrunLevel,
+			PipelinerunLevel:        config.DefaultPipelinerunLevel,
+			DurationTaskrunType:     config.DefaultDurationTaskrunType,
+			DurationPipelinerunType: config.DefaultDurationPipelinerunType,
+		},
+	}
+	return config.ToContext(ctx, cfg)
+}
+
 func TestUninitializedMetrics(t *testing.T) {
 	metrics := Recorder{}
 
@@ -46,6 +63,48 @@ func TestUninitializedMetrics(t *testing.T) {
 	}
 	if err := metrics.RunningPipelineRuns(nil); err == nil {
 		t.Error("Current PR count recording expected to return error but got nil")
+	}
+}
+
+func TestMetricsOnStore(t *testing.T) {
+	log := zap.NewExample()
+	defer log.Sync()
+	logger := log.Sugar()
+
+	ctx := getConfigContext()
+	metrics, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	// We check that there's no change when incorrect config is passed
+	MetricsOnStore(logger)(config.GetMetricsConfigName(), &config.ArtifactBucket{})
+	// Comparing function assign to struct with the one which should yield same value
+	if reflect.ValueOf(metrics.insertTag).Pointer() != reflect.ValueOf(pipelinerunInsertTag).Pointer() {
+		t.Fatal("metrics recorder shouldn't change during this OnStore call")
+	}
+
+	// Test when incorrect value in configmap is pass
+	cfg := &config.Metrics{
+		TaskrunLevel:            "foo",
+		PipelinerunLevel:        "bar",
+		DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
+		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+	}
+	MetricsOnStore(logger)(config.GetMetricsConfigName(), cfg)
+	if reflect.ValueOf(metrics.insertTag).Pointer() != reflect.ValueOf(pipelinerunInsertTag).Pointer() {
+		t.Fatal("metrics recorder shouldn't change during this OnStore call")
+	}
+
+	cfg = &config.Metrics{
+		TaskrunLevel:            config.TaskrunLevelAtNS,
+		PipelinerunLevel:        config.PipelinerunLevelAtNS,
+		DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
+		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+	}
+	MetricsOnStore(logger)(config.GetMetricsConfigName(), cfg)
+	if reflect.ValueOf(metrics.insertTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
+		t.Fatal("metrics recorder didn't change during OnStore call")
 	}
 }
 
@@ -155,7 +214,8 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			unregisterMetrics()
 
-			metrics, err := NewRecorder()
+			ctx := getConfigContext()
+			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
 			}
@@ -163,7 +223,7 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			if err := metrics.DurationAndCount(test.pipelineRun); err != nil {
 				t.Errorf("DurationAndCount: %v", err)
 			}
-			metricstest.CheckDistributionData(t, "pipelinerun_duration_seconds", test.expectedTags, 1, test.expectedDuration, test.expectedDuration)
+			metricstest.CheckLastValueData(t, "pipelinerun_duration_seconds", test.expectedTags, test.expectedDuration)
 			metricstest.CheckCountData(t, "pipelinerun_count", test.expectedCountTags, test.expectedCount)
 
 		})
@@ -200,7 +260,8 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 		}
 	}
 
-	metrics, err := NewRecorder()
+	ctx = getConfigContext()
+	metrics, err := NewRecorder(ctx)
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
 	}
