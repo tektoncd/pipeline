@@ -23,11 +23,13 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -37,17 +39,30 @@ import (
 )
 
 var (
+	pipelinerunTag = tag.MustNewKey("pipelinerun")
+	pipelineTag    = tag.MustNewKey("pipeline")
+	taskrunTag     = tag.MustNewKey("taskrun")
+	taskTag        = tag.MustNewKey("task")
+	namespaceTag   = tag.MustNewKey("namespace")
+	statusTag      = tag.MustNewKey("status")
+	podTag         = tag.MustNewKey("pod")
+
+	trDurationView      *view.View
+	prTRDurationView    *view.View
+	trCountView         *view.View
+	runningTRsCountView *view.View
+	podLatencyView      *view.View
+	cloudEventsView     *view.View
+
 	trDuration = stats.Float64(
 		"taskrun_duration_seconds",
 		"The taskrun's execution time in seconds",
 		stats.UnitDimensionless)
-	trDistribution = view.Distribution(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400)
 
 	prTRDuration = stats.Float64(
 		"pipelinerun_taskrun_duration_seconds",
 		"The pipelinerun's taskrun execution time in seconds",
 		stats.UnitDimensionless)
-	prTRLatencyDistribution = view.Distribution(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400)
 
 	trCount = stats.Float64("taskrun_count",
 		"number of taskruns",
@@ -67,17 +82,16 @@ var (
 )
 
 type Recorder struct {
+	mutex       sync.Mutex
 	initialized bool
 
-	task        tag.Key
-	taskRun     tag.Key
-	namespace   tag.Key
-	status      tag.Key
-	pipeline    tag.Key
-	pipelineRun tag.Key
-	pod         tag.Key
-
 	ReportingPeriod time.Duration
+
+	insertTaskTag func(task,
+		taskrun string) []tag.Mutator
+
+	insertPipelineTag func(pipeline,
+		pipelinerun string) []tag.Mutator
 }
 
 // We cannot register the view multiple times, so NewRecorder lazily
@@ -91,9 +105,9 @@ var (
 
 // NewRecorder creates a new metrics recorder instance
 // to log the TaskRun related metrics
-func NewRecorder() (*Recorder, error) {
-	// Views cannot be registered multiple times, so recorder should be a singleton.
+func NewRecorder(ctx context.Context) (*Recorder, error) {
 	once.Do(func() {
+
 		r = &Recorder{
 			initialized: true,
 
@@ -101,86 +115,9 @@ func NewRecorder() (*Recorder, error) {
 			ReportingPeriod: 30 * time.Second,
 		}
 
-		task, recorderErr := tag.NewKey("task")
-		if recorderErr != nil {
-			return
-		}
-		r.task = task
+		cfg := config.FromContextOrDefaults(ctx)
 
-		taskRun, recorderErr := tag.NewKey("taskrun")
-		if recorderErr != nil {
-			return
-		}
-		r.taskRun = taskRun
-
-		namespace, recorderErr := tag.NewKey("namespace")
-		if recorderErr != nil {
-			return
-		}
-		r.namespace = namespace
-
-		status, recorderErr := tag.NewKey("status")
-		if recorderErr != nil {
-			return
-		}
-		r.status = status
-
-		pipeline, recorderErr := tag.NewKey("pipeline")
-		if recorderErr != nil {
-			return
-		}
-		r.pipeline = pipeline
-
-		pipelineRun, recorderErr := tag.NewKey("pipelinerun")
-		if recorderErr != nil {
-			return
-		}
-		r.pipelineRun = pipelineRun
-
-		pod, recorderErr := tag.NewKey("pod")
-		if recorderErr != nil {
-			return
-		}
-		r.pod = pod
-
-		recorderErr = view.Register(
-			&view.View{
-				Description: trDuration.Description(),
-				Measure:     trDuration,
-				Aggregation: trDistribution,
-				TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status},
-			},
-			&view.View{
-				Description: prTRDuration.Description(),
-				Measure:     prTRDuration,
-				Aggregation: prTRLatencyDistribution,
-				TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status, r.pipeline, r.pipelineRun},
-			},
-			&view.View{
-				Description: trCount.Description(),
-				Measure:     trCount,
-				Aggregation: view.Count(),
-				TagKeys:     []tag.Key{r.status},
-			},
-			&view.View{
-				Description: runningTRsCount.Description(),
-				Measure:     runningTRsCount,
-				Aggregation: view.LastValue(),
-			},
-			&view.View{
-				Description: podLatency.Description(),
-				Measure:     podLatency,
-				Aggregation: view.LastValue(),
-				TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.pod},
-			},
-			&view.View{
-				Description: cloudEvents.Description(),
-				Measure:     cloudEvents,
-				Aggregation: view.Sum(),
-				TagKeys:     []tag.Key{r.task, r.taskRun, r.namespace, r.status, r.pipeline, r.pipelineRun},
-			},
-		)
-
+		recorderErr = viewRegister(cfg.Metrics)
 		if recorderErr != nil {
 			r.initialized = false
 			return
@@ -190,10 +127,159 @@ func NewRecorder() (*Recorder, error) {
 	return r, recorderErr
 }
 
+func viewRegister(cfg *config.Metrics) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	prunTag := []tag.Key{}
+	trunTag := []tag.Key{}
+	switch cfg.PipelinerunLevel {
+	case config.PipelinerunLevelAtPipelinerun:
+		prunTag = []tag.Key{pipelineTag, pipelinerunTag}
+		r.insertPipelineTag = pipelinerunInsertTag
+	case config.PipelinerunLevelAtPipeline:
+		prunTag = []tag.Key{pipelineTag}
+		r.insertPipelineTag = pipelineInsertTag
+	case config.PipelinerunLevelAtNS:
+		prunTag = []tag.Key{}
+		r.insertPipelineTag = nilInsertTag
+	default:
+		return errors.New("invalid config for PipelinerunLevel: " + cfg.PipelinerunLevel)
+	}
+
+	switch cfg.TaskrunLevel {
+	case config.TaskrunLevelAtTaskrun:
+		trunTag = []tag.Key{taskTag, taskrunTag}
+		r.insertTaskTag = taskrunInsertTag
+	case config.TaskrunLevelAtTask:
+		trunTag = []tag.Key{taskTag}
+		r.insertTaskTag = taskInsertTag
+	case config.PipelinerunLevelAtNS:
+		trunTag = []tag.Key{}
+		r.insertTaskTag = nilInsertTag
+	default:
+		return errors.New("invalid config for TaskrunLevel: " + cfg.TaskrunLevel)
+	}
+
+	distribution := view.Distribution(10, 30, 60, 300, 900, 1800, 3600, 5400, 10800, 21600, 43200, 86400)
+
+	if cfg.TaskrunLevel == config.TaskrunLevelAtTaskrun ||
+		cfg.PipelinerunLevel == config.PipelinerunLevelAtPipelinerun {
+		distribution = view.LastValue()
+	} else {
+		switch cfg.DurationTaskrunType {
+		case config.DurationTaskrunTypeHistogram:
+		case config.DurationTaskrunTypeLastValue:
+			distribution = view.LastValue()
+		default:
+			return errors.New("invalid config for DurationTaskrunType: " + cfg.DurationTaskrunType)
+		}
+	}
+
+	trDurationView = &view.View{
+		Description: trDuration.Description(),
+		Measure:     trDuration,
+		Aggregation: distribution,
+		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, trunTag...),
+	}
+	prTRDurationView = &view.View{
+		Description: prTRDuration.Description(),
+		Measure:     prTRDuration,
+		Aggregation: distribution,
+		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, append(trunTag, prunTag...)...),
+	}
+	trCountView = &view.View{
+		Description: trCount.Description(),
+		Measure:     trCount,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{statusTag},
+	}
+	runningTRsCountView = &view.View{
+		Description: runningTRsCount.Description(),
+		Measure:     runningTRsCount,
+		Aggregation: view.LastValue(),
+	}
+	podLatencyView = &view.View{
+		Description: podLatency.Description(),
+		Measure:     podLatency,
+		Aggregation: view.LastValue(),
+		TagKeys:     append([]tag.Key{namespaceTag, podTag}, trunTag...),
+	}
+	cloudEventsView = &view.View{
+		Description: cloudEvents.Description(),
+		Measure:     cloudEvents,
+		Aggregation: view.Sum(),
+		TagKeys:     append([]tag.Key{statusTag, namespaceTag}, append(trunTag, prunTag...)...),
+	}
+	return view.Register(
+		trDurationView,
+		prTRDurationView,
+		trCountView,
+		runningTRsCountView,
+		podLatencyView,
+		cloudEventsView,
+	)
+}
+
+func viewUnregister() {
+	view.Unregister(
+		trDurationView,
+		prTRDurationView,
+		trCountView,
+		runningTRsCountView,
+		podLatencyView,
+		cloudEventsView,
+	)
+}
+
+func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
+	value interface{}) {
+	return func(name string, value interface{}) {
+		if name == config.GetMetricsConfigName() {
+			cfg, ok := value.(*config.Metrics)
+			if !ok {
+				logger.Error("Failed to do type insertion for extracting metrics config")
+				return
+			}
+			viewUnregister()
+			err := viewRegister(cfg)
+			if err != nil {
+				logger.Errorf("Failed to register View %v ", err)
+				return
+			}
+		}
+	}
+}
+
+func pipelinerunInsertTag(pipeline, pipelinerun string) []tag.Mutator {
+	return []tag.Mutator{tag.Insert(pipelineTag, pipeline),
+		tag.Insert(pipelinerunTag, pipelinerun)}
+}
+
+func pipelineInsertTag(pipeline, pipelinerun string) []tag.Mutator {
+	return []tag.Mutator{tag.Insert(pipelineTag, pipeline)}
+}
+
+func taskrunInsertTag(task, taskrun string) []tag.Mutator {
+	return []tag.Mutator{tag.Insert(taskTag, task),
+		tag.Insert(taskrunTag, taskrun)}
+}
+
+func taskInsertTag(task, taskrun string) []tag.Mutator {
+	return []tag.Mutator{tag.Insert(taskTag, task)}
+}
+
+func nilInsertTag(task, taskrun string) []tag.Mutator {
+	return []tag.Mutator{}
+}
+
 // DurationAndCount logs the duration of TaskRun execution and
 // count for number of TaskRuns succeed or failed
 // returns an error if its failed to log the metrics
 func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
 	}
@@ -216,13 +302,10 @@ func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun) error {
 	if ok, pipeline, pipelinerun := tr.IsPartOfPipeline(); ok {
 		ctx, err := tag.New(
 			context.Background(),
-			tag.Insert(r.task, taskName),
-			tag.Insert(r.taskRun, tr.Name),
-			tag.Insert(r.namespace, tr.Namespace),
-			tag.Insert(r.status, status),
-			tag.Insert(r.pipeline, pipeline),
-			tag.Insert(r.pipelineRun, pipelinerun),
-		)
+			append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
+				tag.Insert(statusTag, status)},
+				append(r.insertPipelineTag(pipeline, pipelinerun),
+					r.insertTaskTag(taskName, tr.Name)...)...)...)
 
 		if err != nil {
 			return err
@@ -235,11 +318,9 @@ func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun) error {
 
 	ctx, err := tag.New(
 		context.Background(),
-		tag.Insert(r.task, taskName),
-		tag.Insert(r.taskRun, tr.Name),
-		tag.Insert(r.namespace, tr.Namespace),
-		tag.Insert(r.status, status),
-	)
+		append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
+			tag.Insert(statusTag, status)},
+			r.insertTaskTag(taskName, tr.Name)...)...)
 	if err != nil {
 		return err
 	}
@@ -253,6 +334,9 @@ func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun) error {
 // RunningTaskRuns logs the number of TaskRuns running right now
 // returns an error if its failed to log the metrics
 func (r *Recorder) RunningTaskRuns(lister listers.TaskRunLister) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	if !r.initialized {
 		return errors.New("ignoring the metrics recording, failed to initialize the metrics recorder")
 	}
@@ -283,6 +367,9 @@ func (r *Recorder) RunningTaskRuns(lister listers.TaskRunLister) error {
 // ReportRunningTaskRuns invokes RunningTaskRuns on our configured PeriodSeconds
 // until the context is cancelled.
 func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.TaskRunLister) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	logger := logging.FromContext(ctx)
 	for {
 		select {
@@ -302,6 +389,9 @@ func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.Tas
 // RecordPodLatency logs the duration required to schedule the pod for TaskRun
 // returns an error if its failed to log the metrics
 func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	if !r.initialized {
 		return errors.New("ignoring the metrics recording for pod , failed to initialize the metrics recorder")
 	}
@@ -319,11 +409,9 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error 
 
 	ctx, err := tag.New(
 		context.Background(),
-		tag.Insert(r.task, taskName),
-		tag.Insert(r.taskRun, tr.Name),
-		tag.Insert(r.namespace, tr.Namespace),
-		tag.Insert(r.pod, pod.Name),
-	)
+		append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
+			tag.Insert(podTag, pod.Name)},
+			r.insertTaskTag(taskName, tr.Name)...)...)
 	if err != nil {
 		return err
 	}
@@ -336,6 +424,9 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error 
 // CloudEvents logs the number of cloud events sent for TaskRun
 // returns an error if it fails to log the metrics
 func (r *Recorder) CloudEvents(tr *v1beta1.TaskRun) error {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
 	}
@@ -353,14 +444,10 @@ func (r *Recorder) CloudEvents(tr *v1beta1.TaskRun) error {
 	if ok, pipeline, pipelinerun := tr.IsPartOfPipeline(); ok {
 		ctx, err := tag.New(
 			context.Background(),
-			tag.Insert(r.task, taskName),
-			tag.Insert(r.taskRun, tr.Name),
-			tag.Insert(r.namespace, tr.Namespace),
-			tag.Insert(r.status, status),
-			tag.Insert(r.pipeline, pipeline),
-			tag.Insert(r.pipelineRun, pipelinerun),
-		)
-
+			append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
+				tag.Insert(statusTag, status)},
+				append(r.insertPipelineTag(pipeline, pipelinerun),
+					r.insertTaskTag(taskName, tr.Name)...)...)...)
 		if err != nil {
 			return err
 		}
@@ -370,11 +457,9 @@ func (r *Recorder) CloudEvents(tr *v1beta1.TaskRun) error {
 
 	ctx, err := tag.New(
 		context.Background(),
-		tag.Insert(r.task, taskName),
-		tag.Insert(r.taskRun, tr.Name),
-		tag.Insert(r.namespace, tr.Namespace),
-		tag.Insert(r.status, status),
-	)
+		append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
+			tag.Insert(statusTag, status)},
+			r.insertTaskTag(taskName, tr.Name)...)...)
 	if err != nil {
 		return err
 	}

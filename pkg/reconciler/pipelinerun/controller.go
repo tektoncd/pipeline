@@ -56,6 +56,8 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		pipelineInformer := pipelineinformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
 		conditionInformer := conditioninformer.Get(ctx)
+		configStore := config.NewStore(logger.Named("config-store"), pipelinerunmetrics.MetricsOnStore(logger))
+		configStore.WatchConfigs(cmw)
 
 		c := &Reconciler{
 			KubeClientSet:     kubeclientset,
@@ -74,8 +76,6 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
-			configStore := config.NewStore(logger.Named("config-store"))
-			configStore.WatchConfigs(cmw)
 			return controller.Options{
 				AgentName:   pipeline.PipelineRunControllerName,
 				ConfigStore: configStore,

@@ -99,7 +99,7 @@ type PipelineRunTest struct {
 }
 
 func ensureConfigurationConfigMapsExist(d *test.Data) {
-	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists bool
+	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists, metricsExists bool
 	for _, cm := range d.ConfigMaps {
 		if cm.Name == config.GetDefaultsConfigName() {
 			defaultsExists = true
@@ -112,6 +112,9 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 		}
 		if cm.Name == config.GetArtifactPVCConfigName() {
 			artifactPVCExists = true
+		}
+		if cm.Name == config.GetMetricsConfigName() {
+			metricsExists = true
 		}
 	}
 	if !defaultsExists {
@@ -135,6 +138,12 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 	if !artifactPVCExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.Namespace()},
+			Data:       map[string]string{},
+		})
+	}
+	if !metricsExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetMetricsConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}

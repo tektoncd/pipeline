@@ -42,7 +42,7 @@ func init() {
 type RecorderKey struct{}
 
 func WithClient(ctx context.Context) context.Context {
-	rec, err := NewRecorder()
+	rec, err := NewRecorder(ctx)
 	if err != nil {
 		logging.FromContext(ctx).Errorf("Failed to create taskrun metrics recorder %v", err)
 	}

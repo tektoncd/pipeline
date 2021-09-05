@@ -17,16 +17,20 @@ limitations under the License.
 package taskrunmetrics
 
 import (
+	"context"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
 
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun/fake"
 	"github.com/tektoncd/pipeline/pkg/names"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -39,6 +43,19 @@ var (
 	startTime      = metav1.Now()
 	completionTime = metav1.NewTime(startTime.Time.Add(time.Minute))
 )
+
+func getConfigContext() context.Context {
+	ctx := context.Background()
+	cfg := &config.Config{
+		Metrics: &config.Metrics{
+			TaskrunLevel:            config.DefaultTaskrunLevel,
+			PipelinerunLevel:        config.DefaultPipelinerunLevel,
+			DurationTaskrunType:     config.DefaultDurationTaskrunType,
+			DurationPipelinerunType: config.DefaultDurationPipelinerunType,
+		},
+	}
+	return config.ToContext(ctx, cfg)
+}
 
 func TestUninitializedMetrics(t *testing.T) {
 	metrics := Recorder{}
@@ -54,6 +71,56 @@ func TestUninitializedMetrics(t *testing.T) {
 	}
 	if err := metrics.CloudEvents(&v1beta1.TaskRun{}); err == nil {
 		t.Error("Cloud Events recording expected to return error but got nil")
+	}
+}
+
+func TestMetricsOnStore(t *testing.T) {
+	log := zap.NewExample()
+	defer log.Sync()
+	logger := log.Sugar()
+
+	ctx := getConfigContext()
+	metrics, err := NewRecorder(ctx)
+	if err != nil {
+		t.Fatalf("NewRecorder: %v", err)
+	}
+
+	// We check that there's no change when incorrect config is passed
+	MetricsOnStore(logger)(config.GetMetricsConfigName(), &config.ArtifactBucket{})
+	// Comparing function assign to struct with the one which should yield same value
+	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
+		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
+
+	}
+
+	// Config shouldn't change when incorrect config map is pass
+	cfg := &config.Metrics{
+		TaskrunLevel:            "foo",
+		PipelinerunLevel:        "bar",
+		DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
+		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+	}
+
+	// We test that there's no change when incorrect values in configmap is passed
+	MetricsOnStore(logger)(config.GetMetricsConfigName(), cfg)
+	// Comparing function assign to struct with the one which should yield same value
+	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
+		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
+
+	}
+
+	// We test when we pass correct config
+	cfg = &config.Metrics{
+		TaskrunLevel:            config.TaskrunLevelAtNS,
+		PipelinerunLevel:        config.PipelinerunLevelAtNS,
+		DurationTaskrunType:     config.DurationTaskrunTypeHistogram,
+		DurationPipelinerunType: config.DurationPipelinerunTypeLastValue,
+	}
+
+	MetricsOnStore(logger)(config.GetMetricsConfigName(), cfg)
+	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
+		t.Fatalf("metrics recorder didn't change during OnStore call")
+
 	}
 }
 
@@ -214,7 +281,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			unregisterMetrics()
 
-			metrics, err := NewRecorder()
+			ctx := getConfigContext()
+			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
 			}
@@ -222,7 +290,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			if err := metrics.DurationAndCount(c.taskRun); err != nil {
 				t.Errorf("DurationAndCount: %v", err)
 			}
-			metricstest.CheckDistributionData(t, c.metricName, c.expectedTags, 1, c.expectedDuration, c.expectedDuration)
+			metricstest.CheckLastValueData(t, c.metricName, c.expectedTags, c.expectedDuration)
 			metricstest.CheckCountData(t, "taskrun_count", c.expectedCountTags, c.expectedCount)
 		})
 	}
@@ -257,7 +325,8 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 		}
 	}
 
-	metrics, err := NewRecorder()
+	ctx = getConfigContext()
+	metrics, err := NewRecorder(ctx)
 	if err != nil {
 		t.Fatalf("NewRecorder: %v", err)
 	}
@@ -320,7 +389,8 @@ func TestRecordPodLatency(t *testing.T) {
 		t.Run(td.name, func(t *testing.T) {
 			unregisterMetrics()
 
-			metrics, err := NewRecorder()
+			ctx := getConfigContext()
+			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
 			}
@@ -439,7 +509,8 @@ func TestRecordCloudEvents(t *testing.T) {
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			unregisterMetrics()
-			metrics, err := NewRecorder()
+			ctx := getConfigContext()
+			metrics, err := NewRecorder(ctx)
 			if err != nil {
 				t.Fatalf("NewRecorder: %v", err)
 			}
