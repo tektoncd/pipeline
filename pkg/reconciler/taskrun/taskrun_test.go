@@ -76,8 +76,9 @@ const (
 )
 
 var (
-	namespace = "" // all namespaces
-	images    = pipeline.Images{
+	namespace                    = "" // all namespaces
+	defaultActiveDeadlineSeconds = int64(config.DefaultTimeoutMinutes * 60 * 1.5)
+	images                       = pipeline.Images{
 		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "override-with-nop:latest",
 		GitImage:                 "override-with-git:latest",
@@ -428,6 +429,10 @@ func eventFromChannelUnordered(c chan string, wantEvents []string) error {
 	return fmt.Errorf("too many events received")
 }
 
+func withActiveDeadlineSeconds(spec *corev1.PodSpec) {
+	spec.ActiveDeadlineSeconds = &defaultActiveDeadlineSeconds
+}
+
 func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	taskRunSuccess := tb.TaskRun("test-taskrun-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
 		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
@@ -468,6 +473,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(defaultSAName),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -501,6 +507,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
 					tb.TerminationMessagePath("/tekton/termination"),
 				),
+				withActiveDeadlineSeconds,
 			),
 		),
 	}, {
@@ -515,6 +522,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -652,6 +660,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-home-env",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -686,6 +695,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
 					tb.TerminationMessagePath("/tekton/termination"),
 				),
+				withActiveDeadlineSeconds,
 			),
 		),
 	}, {
@@ -701,6 +711,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-working-dir",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -734,6 +745,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
 					tb.TerminationMessagePath("/tekton/termination"),
 				),
+				withActiveDeadlineSeconds,
 			),
 		),
 	}} {
@@ -1054,6 +1066,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1105,6 +1118,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName("test-sa"),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1156,6 +1170,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(
 					workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
@@ -1339,6 +1354,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1423,6 +1439,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1473,6 +1490,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1557,6 +1575,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1606,6 +1625,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-with-credentials-variable",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1657,6 +1677,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodOwnerReference("TaskRun", "test-taskrun-bundle",
 				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
 			tb.PodSpec(
+				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
