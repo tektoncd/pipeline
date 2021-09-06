@@ -59,6 +59,8 @@ var (
 	featureFlagDisableWorkingDirKey          = "disable-working-directory-overwrite"
 	featureFlagSetReadyAnnotationOnPodCreate = "enable-ready-annotation-on-pod-create"
 
+	defaultActiveDeadlineSeconds = int64(config.DefaultTimeoutMinutes * 60 * deadlineFactor)
+
 	fakeVersion string
 )
 
@@ -141,6 +143,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "simple with breakpoint onFailure enabled, alpha api fields disabled",
@@ -190,6 +193,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "simple with running-in-environment-with-injected-sidecar set to false",
@@ -237,6 +241,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 		wantAnnotations: map[string]string{
 			readyAnnotation: readyAnnotationValue,
@@ -293,6 +298,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "with service account",
@@ -348,6 +354,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "with-pod-template",
@@ -423,8 +430,9 @@ func TestPodBuild(t *testing.T) {
 				Nameservers: []string{"8.8.8.8"},
 				Searches:    []string{"tekton.local"},
 			},
-			EnableServiceLinks: &enableServiceLinks,
-			PriorityClassName:  priorityClassName,
+			EnableServiceLinks:    &enableServiceLinks,
+			PriorityClassName:     priorityClassName,
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "very long step name",
@@ -469,6 +477,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "step name ends with non alphanumeric",
@@ -513,6 +522,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "workingDir in workspace",
@@ -569,6 +579,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "sidecar container",
@@ -626,6 +637,7 @@ func TestPodBuild(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "sidecar container with script",
@@ -701,6 +713,7 @@ _EOF_
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "sidecar container with enable-ready-annotation-on-pod-create",
@@ -761,6 +774,7 @@ _EOF_
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "resource request",
@@ -859,6 +873,7 @@ _EOF_
 				Name:         "tekton-creds-init-home-1",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "step with script and stepTemplate",
@@ -1010,6 +1025,7 @@ _EOF_
 				Name:         "tekton-creds-init-home-2",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "step with script that uses two dollar signs",
@@ -1068,6 +1084,7 @@ _EOF_
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "using another scheduler",
@@ -1122,6 +1139,7 @@ _EOF_
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "setting image pull secret",
@@ -1175,7 +1193,8 @@ _EOF_
 				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "imageSecret"}},
+			ImagePullSecrets:      []corev1.LocalObjectReference{{Name: "imageSecret"}},
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		}},
 		{
 			desc: "setting host aliases",
@@ -1230,7 +1249,8 @@ _EOF_
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
-				HostAliases: []corev1.HostAlias{{IP: "127.0.0.1", Hostnames: []string{"foo.bar"}}},
+				HostAliases:           []corev1.HostAlias{{IP: "127.0.0.1", Hostnames: []string{"foo.bar"}}},
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			}}, {
 			desc: "using hostNetwork",
 			ts: v1beta1.TaskSpec{
@@ -1284,6 +1304,7 @@ _EOF_
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}, {
 			desc: "with a propagated Affinity Assistant name - expect proper affinity",
@@ -1352,6 +1373,7 @@ _EOF_
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}, {
 			desc: "step-with-timeout",
@@ -1400,6 +1422,7 @@ _EOF_
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}, {
 			desc: "task-with-creds-init-disabled",
@@ -1440,7 +1463,8 @@ _EOF_
 					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
-				Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
+				Volumes:               append(implicitVolumes, toolsVolume, downwardVolume),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}, {
 			desc:         "hermetic env var",
@@ -1492,6 +1516,7 @@ _EOF_
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}, {
 			desc:         "override hermetic env var",
@@ -1546,6 +1571,7 @@ _EOF_
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}} {
 		t.Run(c.desc, func(t *testing.T) {
@@ -1651,7 +1677,6 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		trs             v1beta1.TaskRunSpec
 		trAnnotation    map[string]string
 		ts              v1beta1.TaskSpec
-		featureFlags    map[string]string
 		overrideHomeEnv *bool
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
@@ -1704,15 +1729,19 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
+			featureFlags := map[string]string{
+				"enable-api-fields": "alpha",
+			}
 			names.TestingSeed()
 			store := config.NewStore(logtesting.TestLogger(t))
 			store.OnConfigChanged(
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data:       c.featureFlags,
+					Data:       featureFlags,
 				},
 			)
 			kubeclient := fakek8s.NewSimpleClientset(
@@ -1759,29 +1788,13 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 
 			// No entrypoints should be looked up.
 			entrypointCache := fakeCache{}
-
-			overrideHomeEnv := false
-			if s, ok := c.featureFlags[featureFlagDisableHomeEnvKey]; ok {
-				var err error
-				if overrideHomeEnv, err = strconv.ParseBool(s); err != nil {
-					t.Fatalf("error parsing bool from %s feature flag: %v", featureFlagDisableHomeEnvKey, err)
-				}
-			}
 			builder := Builder{
 				Images:          images,
 				KubeClient:      kubeclient,
 				EntrypointCache: entrypointCache,
-				OverrideHomeEnv: overrideHomeEnv,
 			}
 
-			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-				"enable-api-fields": "alpha",
-			})
-			cfg := &config.Config{
-				FeatureFlags: featureFlags,
-			}
-			ctx := config.ToContext(context.Background(), cfg)
-			got, err := builder.Build(ctx, tr, c.ts)
+			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}

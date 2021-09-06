@@ -43,6 +43,10 @@ const (
 
 	// ExecutionModeHermetic indicates hermetic execution mode
 	ExecutionModeHermetic = "hermetic"
+
+	// deadlineFactor is the factor we multiply the taskrun timeout with to determine the activeDeadlineSeconds of the Pod.
+	// It has to be higher than the timeout (to not be killed before)
+	deadlineFactor = 1.5
 )
 
 // These are effectively const, but Go doesn't have such an annotation.
@@ -298,6 +302,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if shouldAddReadyAnnotationOnPodCreate(ctx, taskSpec.Sidecars) {
 		podAnnotations[readyAnnotation] = readyAnnotationValue
 	}
+	activeDeadlineSeconds := int64(taskRun.GetTimeout(ctx).Seconds() * deadlineFactor)
 
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -336,6 +341,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 			PriorityClassName:            priorityClassName,
 			ImagePullSecrets:             podTemplate.ImagePullSecrets,
 			HostAliases:                  podTemplate.HostAliases,
+			ActiveDeadlineSeconds:        &activeDeadlineSeconds, // Set ActiveDeadlineSeconds to mark the pod as "terminating" (like a Job)
 		},
 	}, nil
 }
