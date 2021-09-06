@@ -1,4 +1,9 @@
 /*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
+/*
 Package types implements the CloudEvents type system.
 
 CloudEvents defines a set of abstract types for event context attributes. Each

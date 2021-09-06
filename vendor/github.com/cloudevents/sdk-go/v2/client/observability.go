@@ -1,96 +1,54 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package client
 
 import (
 	"context"
+
+	"github.com/cloudevents/sdk-go/v2/binding"
 	"github.com/cloudevents/sdk-go/v2/event"
-	"github.com/cloudevents/sdk-go/v2/extensions"
-	"github.com/cloudevents/sdk-go/v2/observability"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/trace"
 )
 
-var (
-	// LatencyMs measures the latency in milliseconds for the CloudEvents
-	// client methods.
-	LatencyMs = stats.Float64("cloudevents.io/sdk-go/client/latency", "The latency in milliseconds for the CloudEvents client methods.", "ms")
-)
+// ObservabilityService is an interface users can implement to record metrics, create tracing spans, and plug other observability tools in the Client
+type ObservabilityService interface {
+	// InboundContextDecorators is a method that returns the InboundContextDecorators that must be mounted in the Client to properly propagate some tracing informations.
+	InboundContextDecorators() []func(context.Context, binding.Message) context.Context
 
-var (
-	// LatencyView is an OpenCensus view that shows client method latency.
-	LatencyView = &view.View{
-		Name:        "client/latency",
-		Measure:     LatencyMs,
-		Description: "The distribution of latency inside of client for CloudEvents.",
-		Aggregation: view.Distribution(0, .01, .1, 1, 10, 100, 1000, 10000),
-		TagKeys:     observability.LatencyTags(),
-	}
-)
+	// RecordReceivedMalformedEvent is invoked when an event was received but it's malformed or invalid.
+	RecordReceivedMalformedEvent(ctx context.Context, err error)
+	// RecordCallingInvoker is invoked before the user function is invoked.
+	// The returned callback will be invoked after the user finishes to process the event with the eventual processing error
+	// The error provided to the callback could be both a processing error, or a result
+	RecordCallingInvoker(ctx context.Context, event *event.Event) (context.Context, func(errOrResult error))
+	// RecordSendingEvent is invoked before the event is sent.
+	// The returned callback will be invoked when the response is received
+	// The error provided to the callback could be both a processing error, or a result
+	RecordSendingEvent(ctx context.Context, event event.Event) (context.Context, func(errOrResult error))
 
-type observed int32
-
-// Adheres to Observable
-var _ observability.Observable = observed(0)
-
-const (
-	specversionAttr     = "cloudevents.specversion"
-	idAttr              = "cloudevents.id"
-	typeAttr            = "cloudevents.type"
-	sourceAttr          = "cloudevents.source"
-	subjectAttr         = "cloudevents.subject"
-	datacontenttypeAttr = "cloudevents.datacontenttype"
-
-	reportSend observed = iota
-	reportRequest
-	reportStartReceiver
-)
-
-// MethodName implements Observable.MethodName
-func (o observed) MethodName() string {
-	switch o {
-	case reportSend:
-		return "send"
-	case reportRequest:
-		return "request"
-	case reportStartReceiver:
-		return "start_receiver"
-	default:
-		return "unknown"
-	}
+	// RecordRequestEvent is invoked before the event is requested.
+	// The returned callback will be invoked when the response is received
+	RecordRequestEvent(ctx context.Context, event event.Event) (context.Context, func(errOrResult error, event *event.Event))
 }
 
-// LatencyMs implements Observable.LatencyMs
-func (o observed) LatencyMs() *stats.Float64Measure {
-	return LatencyMs
+type noopObservabilityService struct{}
+
+func (n noopObservabilityService) InboundContextDecorators() []func(context.Context, binding.Message) context.Context {
+	return nil
 }
 
-func EventTraceAttributes(e event.EventReader) []trace.Attribute {
-	as := []trace.Attribute{
-		trace.StringAttribute(specversionAttr, e.SpecVersion()),
-		trace.StringAttribute(idAttr, e.ID()),
-		trace.StringAttribute(typeAttr, e.Type()),
-		trace.StringAttribute(sourceAttr, e.Source()),
-	}
-	if sub := e.Subject(); sub != "" {
-		as = append(as, trace.StringAttribute(subjectAttr, sub))
-	}
-	if dct := e.DataContentType(); dct != "" {
-		as = append(as, trace.StringAttribute(datacontenttypeAttr, dct))
-	}
-	return as
+func (n noopObservabilityService) RecordReceivedMalformedEvent(ctx context.Context, err error) {}
+
+func (n noopObservabilityService) RecordCallingInvoker(ctx context.Context, event *event.Event) (context.Context, func(errOrResult error)) {
+	return ctx, func(errOrResult error) {}
 }
 
-// TraceSpan returns context and trace.Span based on event. Caller must call span.End()
-func TraceSpan(ctx context.Context, e event.Event) (context.Context, *trace.Span) {
-	var span *trace.Span
-	if ext, ok := extensions.GetDistributedTracingExtension(e); ok {
-		ctx, span = ext.StartChildSpan(ctx, observability.ClientSpanName, trace.WithSpanKind(trace.SpanKindServer))
-	}
-	if span == nil {
-		ctx, span = trace.StartSpan(ctx, observability.ClientSpanName, trace.WithSpanKind(trace.SpanKindServer))
-	}
-	if span.IsRecordingEvents() {
-		span.AddAttributes(EventTraceAttributes(&e)...)
-	}
-	return ctx, span
+func (n noopObservabilityService) RecordSendingEvent(ctx context.Context, event event.Event) (context.Context, func(errOrResult error)) {
+	return ctx, func(errOrResult error) {}
+}
+
+func (n noopObservabilityService) RecordRequestEvent(ctx context.Context, e event.Event) (context.Context, func(errOrResult error, event *event.Event)) {
+	return ctx, func(errOrResult error, event *event.Event) {}
 }

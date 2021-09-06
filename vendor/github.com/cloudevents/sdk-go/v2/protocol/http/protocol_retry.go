@@ -1,12 +1,18 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package http
 
 import (
 	"context"
 	"errors"
-	"go.uber.org/zap"
 	"net/http"
 	"net/url"
 	"time"
+
+	"go.uber.org/zap"
 
 	"github.com/cloudevents/sdk-go/v2/binding"
 	cecontext "github.com/cloudevents/sdk-go/v2/context"
@@ -69,16 +75,8 @@ func (p *Protocol) doWithRetry(ctx context.Context, params *cecontext.RetryParam
 		{
 			var httpResult *Result
 			if errors.As(result, &httpResult) {
-				// Potentially retry when:
-				// - 404 Not Found
-				// - 413 Payload Too Large with Retry-After (NOT SUPPORTED)
-				// - 425 Too Early
-				// - 429 Too Many Requests
-				// - 503 Service Unavailable (with or without Retry-After) (IGNORE Retry-After)
-				// - 504 Gateway Timeout
-
 				sc := httpResult.StatusCode
-				if sc == 404 || sc == 425 || sc == 429 || sc == 503 || sc == 504 {
+				if p.isRetriableFunc(sc) {
 					// retry!
 					goto DoBackoff
 				} else {

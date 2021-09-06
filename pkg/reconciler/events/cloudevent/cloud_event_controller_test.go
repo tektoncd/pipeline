@@ -319,7 +319,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			},
 			Status: v1beta1.TaskRunStatus{Status: objectStatus},
 		},
-		wantCEvent: "Validation: valid",
+		wantCEvent: "Context Attributes,",
 		wantEvent:  "",
 	}, {
 		name: "test-send-cloud-event-pipelinerun",
@@ -332,7 +332,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{Status: objectStatus},
 		},
-		wantCEvent: "Validation: valid",
+		wantCEvent: "Context Attributes,",
 		wantEvent:  "",
 	}, {
 		name: "test-send-cloud-event-failed",
@@ -350,18 +350,15 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			ctx := setupFakeContext(t, tc.clientBehaviour, true)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			err := SendCloudEventWithRetries(ctx, tc.object)
-			if err != nil {
+			if err := SendCloudEventWithRetries(ctx, tc.object); err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
 			ceClient := Get(ctx).(FakeClient)
-			err = checkCloudEvents(t, &ceClient, tc.name, tc.wantCEvent)
-			if err != nil {
+			if err := checkCloudEvents(t, &ceClient, tc.name, tc.wantCEvent); err != nil {
 				t.Fatalf(err.Error())
 			}
 			recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-			err = checkEvents(t, recorder, tc.name, tc.wantEvent)
-			if err != nil {
+			if err := checkEvents(t, recorder, tc.name, tc.wantEvent); err != nil {
 				t.Fatalf(err.Error())
 			}
 		})
@@ -380,14 +377,14 @@ func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 		object: &v1beta1.TaskRun{
 			Status: v1beta1.TaskRunStatus{},
 		},
-		wantCEvent: "Validation: valid",
+		wantCEvent: "Context Attributes,",
 		wantEvent:  "",
 	}, {
 		name: "test-send-cloud-event-pipelinerun",
 		object: &v1beta1.PipelineRun{
 			Status: v1beta1.PipelineRunStatus{},
 		},
-		wantCEvent: "Validation: valid",
+		wantCEvent: "Context Attributes,",
 		wantEvent:  "",
 	}}
 	for _, tc := range tests {

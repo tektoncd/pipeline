@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package client
 
 import (
@@ -50,7 +55,8 @@ type Client interface {
 func New(obj interface{}, opts ...Option) (Client, error) {
 	c := &ceClient{
 		// Running runtime.GOMAXPROCS(0) doesn't update the value, just returns the current one
-		pollGoroutines: runtime.GOMAXPROCS(0),
+		pollGoroutines:       runtime.GOMAXPROCS(0),
+		observabilityService: noopObservabilityService{},
 	}
 
 	if p, ok := obj.(protocol.Sender); ok {
@@ -83,6 +89,9 @@ type ceClient struct {
 	// Optional.
 	opener protocol.Opener
 
+	observabilityService ObservabilityService
+
+	inboundContextDecorators  []func(context.Context, binding.Message) context.Context
 	outboundContextDecorators []func(context.Context) context.Context
 	invoker                   Invoker
 	receiverMu                sync.Mutex
@@ -100,30 +109,40 @@ func (c *ceClient) applyOptions(opts ...Option) error {
 }
 
 func (c *ceClient) Send(ctx context.Context, e event.Event) protocol.Result {
+	var err error
 	if c.sender == nil {
-		return errors.New("sender not set")
-	}
-
-	for _, f := range c.outboundContextDecorators {
-		ctx = f(ctx)
-	}
-
-	if len(c.eventDefaulterFns) > 0 {
-		for _, fn := range c.eventDefaulterFns {
-			e = fn(ctx, e)
-		}
-	}
-
-	if err := e.Validate(); err != nil {
+		err = errors.New("sender not set")
 		return err
 	}
 
-	return c.sender.Send(ctx, (*binding.EventMessage)(&e))
+	for _, f := range c.outboundContextDecorators {
+		ctx = f(ctx)
+	}
+
+	if len(c.eventDefaulterFns) > 0 {
+		for _, fn := range c.eventDefaulterFns {
+			e = fn(ctx, e)
+		}
+	}
+	if err = e.Validate(); err != nil {
+		return err
+	}
+
+	// Event has been defaulted and validated, record we are going to preform send.
+	ctx, cb := c.observabilityService.RecordSendingEvent(ctx, e)
+	defer cb(err)
+
+	err = c.sender.Send(ctx, (*binding.EventMessage)(&e))
+	return err
 }
 
 func (c *ceClient) Request(ctx context.Context, e event.Event) (*event.Event, protocol.Result) {
+	var resp *event.Event
+	var err error
+
 	if c.requester == nil {
-		return nil, errors.New("requester not set")
+		err = errors.New("requester not set")
+		return nil, err
 	}
 	for _, f := range c.outboundContextDecorators {
 		ctx = f(ctx)
@@ -135,13 +154,17 @@ func (c *ceClient) Request(ctx context.Context, e event.Event) (*event.Event, pr
 		}
 	}
 
-	if err := e.Validate(); err != nil {
+	if err = e.Validate(); err != nil {
 		return nil, err
 	}
 
+	// Event has been defaulted and validated, record we are going to perform request.
+	ctx, cb := c.observabilityService.RecordRequestEvent(ctx, e)
+	defer cb(err, resp)
+
 	// If provided a requester, use it to do request/response.
-	var resp *event.Event
-	msg, err := c.requester.Request(ctx, (*binding.EventMessage)(&e))
+	var msg binding.Message
+	msg, err = c.requester.Request(ctx, (*binding.EventMessage)(&e))
 	if msg != nil {
 		defer func() {
 			if err := msg.Finish(err); err != nil {
@@ -149,7 +172,7 @@ func (c *ceClient) Request(ctx context.Context, e event.Event) (*event.Event, pr
 			}
 		}()
 	}
-	if !protocol.IsACK(err) {
+	if protocol.IsUndelivered(err) {
 		return nil, err
 	}
 
@@ -159,7 +182,7 @@ func (c *ceClient) Request(ctx context.Context, e event.Event) (*event.Event, pr
 		// If the protocol returns no error, it is an ACK on the request, but we had
 		// issues turning the response into an event, so make an ACK Result and pass
 		// down the ToEvent error as well.
-		err = fmt.Errorf("%w; failed to convert response into event: %s", protocol.ResultACK, rserr)
+		err = protocol.NewReceipt(true, "failed to convert response into event: %v\n%w", rserr, err)
 	} else {
 		resp = rs
 	}
@@ -170,6 +193,9 @@ func (c *ceClient) Request(ctx context.Context, e event.Event) (*event.Event, pr
 // StartReceiver sets up the given fn to handle Receive.
 // See Client.StartReceiver for details. This is a blocking call.
 func (c *ceClient) StartReceiver(ctx context.Context, fn interface{}) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	c.receiverMu.Lock()
 	defer c.receiverMu.Unlock()
 
@@ -177,7 +203,7 @@ func (c *ceClient) StartReceiver(ctx context.Context, fn interface{}) error {
 		return fmt.Errorf("client already has a receiver")
 	}
 
-	invoker, err := newReceiveInvoker(fn, c.eventDefaulterFns...) // TODO: this will have to pick between a observed invoker or not.
+	invoker, err := newReceiveInvoker(fn, c.observabilityService, c.inboundContextDecorators, c.eventDefaulterFns...)
 	if err != nil {
 		return err
 	}
@@ -196,15 +222,6 @@ func (c *ceClient) StartReceiver(ctx context.Context, fn interface{}) error {
 	defer func() {
 		c.invoker = nil
 	}()
-
-	// Start the opener, if set.
-	if c.opener != nil {
-		go func() {
-			if err := c.opener.OpenInbound(ctx); err != nil {
-				cecontext.LoggerFrom(ctx).Errorf("Error while opening the inbound connection: %s", err)
-			}
-		}()
-	}
 
 	// Start Polling.
 	wg := sync.WaitGroup{}
@@ -229,18 +246,33 @@ func (c *ceClient) StartReceiver(ctx context.Context, fn interface{}) error {
 				}
 
 				if err != nil {
-					cecontext.LoggerFrom(ctx).Warnf("Error while receiving a message: %s", err)
+					cecontext.LoggerFrom(ctx).Warn("Error while receiving a message: ", err)
 					continue
 				}
 
-				if err := c.invoker.Invoke(ctx, msg, respFn); err != nil {
-					cecontext.LoggerFrom(ctx).Warnf("Error while handling a message: %s", err)
-				}
+				// Do not block on the invoker.
+				wg.Add(1)
+				go func() {
+					if err := c.invoker.Invoke(ctx, msg, respFn); err != nil {
+						cecontext.LoggerFrom(ctx).Warn("Error while handling a message: ", err)
+					}
+					wg.Done()
+				}()
 			}
 		}()
 	}
+
+	// Start the opener, if set.
+	if c.opener != nil {
+		if err = c.opener.OpenInbound(ctx); err != nil {
+			err = fmt.Errorf("error while opening the inbound connection: %w", err)
+			cancel()
+		}
+	}
+
 	wg.Wait()
-	return nil
+
+	return err
 }
 
 // noRespFn is used to simply forward the protocol.Result for receivers that aren't responders

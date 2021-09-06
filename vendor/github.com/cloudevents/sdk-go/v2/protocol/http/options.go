@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package http
 
 import (
@@ -69,18 +74,18 @@ func WithHeader(key, value string) Option {
 
 // WithShutdownTimeout sets the shutdown timeout when the http server is being shutdown.
 func WithShutdownTimeout(timeout time.Duration) Option {
-	return func(t *Protocol) error {
-		if t == nil {
+	return func(p *Protocol) error {
+		if p == nil {
 			return fmt.Errorf("http shutdown timeout option can not set nil protocol")
 		}
-		t.ShutdownTimeout = timeout
+		p.ShutdownTimeout = timeout
 		return nil
 	}
 }
 
-func checkListen(t *Protocol, prefix string) error {
+func checkListen(p *Protocol, prefix string) error {
 	switch {
-	case t.listener.Load() != nil:
+	case p.listener.Load() != nil:
 		return fmt.Errorf("error setting %v: listener already set", prefix)
 	}
 	return nil
@@ -89,17 +94,17 @@ func checkListen(t *Protocol, prefix string) error {
 // WithPort sets the listening port for StartReceiver.
 // Only one of WithListener or WithPort is allowed.
 func WithPort(port int) Option {
-	return func(t *Protocol) error {
-		if t == nil {
+	return func(p *Protocol) error {
+		if p == nil {
 			return fmt.Errorf("http port option can not set nil protocol")
 		}
 		if port < 0 || port > 65535 {
 			return fmt.Errorf("http port option was given an invalid port: %d", port)
 		}
-		if err := checkListen(t, "http port option"); err != nil {
+		if err := checkListen(p, "http port option"); err != nil {
 			return err
 		}
-		t.Port = port
+		p.Port = port
 		return nil
 	}
 }
@@ -107,29 +112,29 @@ func WithPort(port int) Option {
 // WithListener sets the listener for StartReceiver.
 // Only one of WithListener or WithPort is allowed.
 func WithListener(l net.Listener) Option {
-	return func(t *Protocol) error {
-		if t == nil {
+	return func(p *Protocol) error {
+		if p == nil {
 			return fmt.Errorf("http listener option can not set nil protocol")
 		}
-		if err := checkListen(t, "http listener"); err != nil {
+		if err := checkListen(p, "http listener"); err != nil {
 			return err
 		}
-		t.listener.Store(l)
+		p.listener.Store(l)
 		return nil
 	}
 }
 
 // WithPath sets the path to receive cloudevents on for HTTP transports.
 func WithPath(path string) Option {
-	return func(t *Protocol) error {
-		if t == nil {
+	return func(p *Protocol) error {
+		if p == nil {
 			return fmt.Errorf("http path option can not set nil protocol")
 		}
 		path = strings.TrimSpace(path)
 		if len(path) == 0 {
 			return fmt.Errorf("http path option was given an invalid path: %q", path)
 		}
-		t.Path = path
+		p.Path = path
 		return nil
 	}
 }
@@ -162,22 +167,40 @@ type Middleware func(next nethttp.Handler) nethttp.Handler
 // Middleware is applied to everything before it. For example
 // `NewClient(WithMiddleware(foo), WithMiddleware(bar))` would result in `bar(foo(original))`.
 func WithMiddleware(middleware Middleware) Option {
-	return func(t *Protocol) error {
-		if t == nil {
+	return func(p *Protocol) error {
+		if p == nil {
 			return fmt.Errorf("http middleware option can not set nil protocol")
 		}
-		t.middleware = append(t.middleware, middleware)
+		p.middleware = append(p.middleware, middleware)
 		return nil
 	}
 }
 
 // WithRoundTripper sets the HTTP RoundTripper.
 func WithRoundTripper(roundTripper nethttp.RoundTripper) Option {
-	return func(t *Protocol) error {
-		if t == nil {
+	return func(p *Protocol) error {
+		if p == nil {
 			return fmt.Errorf("http round tripper option can not set nil protocol")
 		}
-		t.roundTripper = roundTripper
+		p.roundTripper = roundTripper
+		return nil
+	}
+}
+
+// WithRoundTripperDecorator decorates the default HTTP RoundTripper chosen.
+func WithRoundTripperDecorator(decorator func(roundTripper nethttp.RoundTripper) nethttp.RoundTripper) Option {
+	return func(p *Protocol) error {
+		if p == nil {
+			return fmt.Errorf("http round tripper option can not set nil protocol")
+		}
+		if p.roundTripper == nil {
+			if p.Client == nil {
+				p.roundTripper = nethttp.DefaultTransport
+			} else {
+				p.roundTripper = p.Client.Transport
+			}
+		}
+		p.roundTripper = decorator(p.roundTripper)
 		return nil
 	}
 }
@@ -232,6 +255,25 @@ func WithDefaultOptionsHandlerFunc(methods []string, rate int, origins []string,
 			AllowedOrigins:  origins,
 			AutoACKCallback: callback,
 		}
+		return nil
+	}
+}
+
+// IsRetriable is a custom function that can be used to override the
+// default retriable status codes.
+type IsRetriable func(statusCode int) bool
+
+// WithIsRetriableFunc sets the function that gets called to determine if an
+// error should be retried. If not set, the defaultIsRetriableFunc is used.
+func WithIsRetriableFunc(isRetriable IsRetriable) Option {
+	return func(p *Protocol) error {
+		if p == nil {
+			return fmt.Errorf("isRetriable handler func can not set nil protocol")
+		}
+		if isRetriable == nil {
+			return fmt.Errorf("isRetriable handler can not be nil")
+		}
+		p.isRetriableFunc = isRetriable
 		return nil
 	}
 }

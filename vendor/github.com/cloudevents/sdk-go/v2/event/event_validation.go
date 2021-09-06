@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package event
 
 import (
@@ -27,7 +32,7 @@ func (e Event) Validate() error {
 
 	errs := map[string]error{}
 	if e.FieldErrors != nil {
-		for k, v := range errs {
+		for k, v := range e.FieldErrors {
 			errs[k] = v
 		}
 	}
