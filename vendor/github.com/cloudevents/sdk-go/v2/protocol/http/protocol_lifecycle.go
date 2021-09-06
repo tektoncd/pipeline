@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package http
 
 import (
@@ -8,8 +13,6 @@ import (
 	"strings"
 
 	"github.com/cloudevents/sdk-go/v2/protocol"
-	"go.opencensus.io/plugin/ochttp"
-	"go.opencensus.io/plugin/ochttp/propagation/tracecontext"
 )
 
 var _ protocol.Opener = (*Protocol)(nil)
@@ -35,12 +38,8 @@ func (p *Protocol) OpenInbound(ctx context.Context) error {
 	}
 
 	p.server = &http.Server{
-		Addr: listener.Addr().String(),
-		Handler: &ochttp.Handler{
-			Propagation:    &tracecontext.HTTPFormat{},
-			Handler:        attachMiddleware(p.Handler, p.middleware),
-			FormatSpanName: formatSpanName,
-		},
+		Addr:    listener.Addr().String(),
+		Handler: attachMiddleware(p.Handler, p.middleware),
 	}
 
 	// Shutdown
@@ -49,7 +48,7 @@ func (p *Protocol) OpenInbound(ctx context.Context) error {
 		p.server = nil
 	}()
 
-	errChan := make(chan error, 1)
+	errChan := make(chan error)
 	go func() {
 		errChan <- p.server.Serve(listener)
 	}()
@@ -57,14 +56,35 @@ func (p *Protocol) OpenInbound(ctx context.Context) error {
 	// wait for the server to return or ctx.Done().
 	select {
 	case <-ctx.Done():
-		// Try a gracefully shutdown.
+		// Try a graceful shutdown.
 		ctx, cancel := context.WithTimeout(context.Background(), p.ShutdownTimeout)
 		defer cancel()
-		err := p.server.Shutdown(ctx)
-		<-errChan // Wait for server goroutine to exit
-		return err
+
+		shdwnErr := p.server.Shutdown(ctx)
+		if shdwnErr != nil {
+			shdwnErr = fmt.Errorf("shutting down HTTP server: %w", shdwnErr)
+		}
+
+		// Wait for server goroutine to exit
+		rntmErr := <-errChan
+		if rntmErr != nil && rntmErr != http.ErrServerClosed {
+			rntmErr = fmt.Errorf("server failed during shutdown: %w", rntmErr)
+
+			if shdwnErr != nil {
+				return fmt.Errorf("combined error during shutdown of HTTP server: %w, %v",
+					shdwnErr, rntmErr)
+			}
+
+			return rntmErr
+		}
+
+		return shdwnErr
+
 	case err := <-errChan:
-		return err
+		if err != nil {
+			return fmt.Errorf("during runtime of HTTP server: %w", err)
+		}
+		return nil
 	}
 }
 
@@ -77,10 +97,6 @@ func (p *Protocol) GetListeningPort() int {
 		}
 	}
 	return -1
-}
-
-func formatSpanName(r *http.Request) string {
-	return "cloudevents.http." + r.URL.Path
 }
 
 // listen if not already listening, update t.Port

@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package binding
 
 import (
@@ -48,7 +53,7 @@ func (m *EventMessage) ReadBinary(ctx context.Context, b BinaryWriter) (err erro
 	// Pass the body
 	body := (*event.Event)(m).Data()
 	if len(body) > 0 {
-		err = b.SetData(bytes.NewReader(body))
+		err = b.SetData(bytes.NewBuffer(body))
 		if err != nil {
 			return err
 		}

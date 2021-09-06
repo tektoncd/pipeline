@@ -1,7 +1,11 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package event
 
 import (
-	"errors"
 	"fmt"
 	"mime"
 	"sort"
@@ -72,8 +76,8 @@ func (ec EventContextV1) ExtensionAs(name string, obj interface{}) error {
 // SetExtension adds the extension 'name' with value 'value' to the CloudEvents context.
 // This function fails if the name doesn't respect the regex ^[a-zA-Z0-9]+$
 func (ec *EventContextV1) SetExtension(name string, value interface{}) error {
-	if !IsAlphaNumeric(name) {
-		return errors.New("bad key, CloudEvents attribute names MUST consist of lower-case letters ('a' to 'z') or digits ('0' to '9') from the ASCII character set")
+	if err := validateExtensionName(name); err != nil {
+		return err
 	}
 
 	name = strings.ToLower(name)
@@ -226,10 +230,8 @@ func (ec EventContextV1) Validate() ValidationError {
 	//  OPTIONAL
 	//  If present, MUST adhere to the format specified in RFC 3986
 	if ec.DataSchema != nil {
-		dataSchema := strings.TrimSpace(ec.DataSchema.String())
-		// empty string is not RFC 3986 compatible.
-		if dataSchema == "" {
-			errors["dataschema"] = fmt.Errorf("if present, MUST adhere to the format specified in RFC 3986")
+		if !ec.DataSchema.Validate() {
+			errors["dataschema"] = fmt.Errorf("if present, MUST adhere to the format specified in RFC 3986, Section 4.3. Absolute URI")
 		}
 	}
 

@@ -1,9 +1,13 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package event
 
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
@@ -65,18 +69,6 @@ func (e Event) ExtensionAs(name string, obj interface{}) error {
 // String returns a pretty-printed representation of the Event.
 func (e Event) String() string {
 	b := strings.Builder{}
-
-	b.WriteString("Validation: ")
-
-	valid := e.Validate()
-	if valid == nil {
-		b.WriteString("valid\n")
-	} else {
-		b.WriteString("invalid\n")
-	}
-	if valid != nil {
-		b.WriteString(fmt.Sprintf("Validation Error: \n%s\n", valid.Error()))
-	}
 
 	b.WriteString(e.Context.String())
 

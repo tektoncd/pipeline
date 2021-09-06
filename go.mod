@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/aws/aws-sdk-go v1.31.12 // indirect
-	github.com/cloudevents/sdk-go/v2 v2.1.0
+	github.com/cloudevents/sdk-go/v2 v2.5.0
 	github.com/docker/cli v20.10.8+incompatible // indirect
 	github.com/docker/docker v20.10.8+incompatible // indirect
 	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
@@ -22,7 +22,9 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 	go.opencensus.io v0.23.0
+	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.0
+	golang.org/x/net v0.0.0-20210903162142-ad29c8ab022f // indirect
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	k8s.io/api v0.21.4

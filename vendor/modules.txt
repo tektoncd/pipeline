@@ -81,7 +81,7 @@ github.com/census-instrumentation/opencensus-proto/gen-go/resource/v1
 github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
-# github.com/cloudevents/sdk-go/v2 v2.1.0
+# github.com/cloudevents/sdk-go/v2 v2.5.0
 github.com/cloudevents/sdk-go/v2
 github.com/cloudevents/sdk-go/v2/binding
 github.com/cloudevents/sdk-go/v2/binding/format
@@ -93,8 +93,6 @@ github.com/cloudevents/sdk-go/v2/event/datacodec
 github.com/cloudevents/sdk-go/v2/event/datacodec/json
 github.com/cloudevents/sdk-go/v2/event/datacodec/text
 github.com/cloudevents/sdk-go/v2/event/datacodec/xml
-github.com/cloudevents/sdk-go/v2/extensions
-github.com/cloudevents/sdk-go/v2/observability
 github.com/cloudevents/sdk-go/v2/protocol
 github.com/cloudevents/sdk-go/v2/protocol/http
 github.com/cloudevents/sdk-go/v2/types
@@ -230,9 +228,6 @@ github.com/josharian/intern
 github.com/json-iterator/go
 # github.com/kelseyhightower/envconfig v1.4.0
 github.com/kelseyhightower/envconfig
-# github.com/lightstep/tracecontext.go v0.0.0-20181129014701-1757c391b1ac
-github.com/lightstep/tracecontext.go/traceparent
-github.com/lightstep/tracecontext.go/tracestate
 # github.com/mailru/easyjson v0.7.7
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
@@ -325,7 +320,7 @@ go.uber.org/atomic
 go.uber.org/automaxprocs/internal/cgroups
 go.uber.org/automaxprocs/internal/runtime
 go.uber.org/automaxprocs/maxprocs
-# go.uber.org/multierr v1.6.0
+# go.uber.org/multierr v1.7.0
 go.uber.org/multierr
 # go.uber.org/zap v1.19.0
 go.uber.org/zap
@@ -343,7 +338,7 @@ golang.org/x/crypto/pkcs12/internal/rc2
 # golang.org/x/mod v0.4.2
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20210825183410-e898025ed96a
+# golang.org/x/net v0.0.0-20210903162142-ad29c8ab022f
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts

@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package protocol
 
 import (
@@ -9,6 +14,7 @@ import (
 // Receiver receives messages.
 type Receiver interface {
 	// Receive blocks till a message is received or ctx expires.
+	// Receive can be invoked safely from different goroutines.
 	//
 	// A non-nil error means the receiver is closed.
 	// io.EOF means it closed cleanly, any other value indicates an error.
@@ -29,7 +35,8 @@ type ResponseFn func(ctx context.Context, m binding.Message, r Result, transform
 
 // Responder receives messages and is given a callback to respond.
 type Responder interface {
-	// Receive blocks till a message is received or ctx expires.
+	// Respond blocks till a message is received or ctx expires.
+	// Respond can be invoked safely from different goroutines.
 	//
 	// A non-nil error means the receiver is closed.
 	// io.EOF means it closed cleanly, any other value indicates an error.

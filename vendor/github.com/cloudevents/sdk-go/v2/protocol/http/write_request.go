@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package http
 
 import (
@@ -106,6 +111,7 @@ func (b *httpRequestWriter) SetAttribute(attribute spec.Attribute, value interfa
 	mapping := attributeHeadersMapping[attribute.Name()]
 	if value == nil {
 		delete(b.Header, mapping)
+		return nil
 	}
 
 	// Http headers, everything is a string!
@@ -120,6 +126,7 @@ func (b *httpRequestWriter) SetAttribute(attribute spec.Attribute, value interfa
 func (b *httpRequestWriter) SetExtension(name string, value interface{}) error {
 	if value == nil {
 		delete(b.Header, extNameToHeaderName(name))
+		return nil
 	}
 	// Http headers, everything is a string!
 	s, err := types.Format(value)

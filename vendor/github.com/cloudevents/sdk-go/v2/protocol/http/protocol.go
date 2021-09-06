@@ -1,6 +1,12 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package http
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -28,6 +34,19 @@ type msgErr struct {
 	err    error
 }
 
+// Default error codes that we retry on - string isn't used, it's just there so
+// people know what each error code's title is.
+// To modify this use Option
+var defaultRetriableErrors = map[int]string{
+	404: "Not Found",
+	413: "Payload Too Large",
+	425: "Too Early",
+	429: "Too Many Requests",
+	502: "Bad Gateway",
+	503: "Service Unavailable",
+	504: "Gateway Timeout",
+}
+
 // Protocol acts as both a http client and a http handler.
 type Protocol struct {
 	Target          *url.URL
@@ -47,7 +66,7 @@ type Protocol struct {
 	// To support Opener:
 
 	// ShutdownTimeout defines the timeout given to the http.Server when calling Shutdown.
-	// If nil, DefaultShutdownTimeout is used.
+	// If 0, DefaultShutdownTimeout is used.
 	ShutdownTimeout time.Duration
 
 	// Port is the port configured to bind the receiver to. Defaults to 8080.
@@ -67,6 +86,8 @@ type Protocol struct {
 	server            *http.Server
 	handlerRegistered bool
 	middleware        []Middleware
+
+	isRetriableFunc IsRetriable
 }
 
 func New(opts ...Option) (*Protocol, error) {
@@ -90,8 +111,17 @@ func New(opts ...Option) (*Protocol, error) {
 		p.ShutdownTimeout = DefaultShutdownTimeout
 	}
 
+	if p.isRetriableFunc == nil {
+		p.isRetriableFunc = defaultIsRetriableFunc
+	}
+
 	return p, nil
 }
+
+// NewObserved creates an HTTP protocol with trace propagating middleware.
+// Deprecated: now this behaves like New and it will be removed in future releases,
+// setup the http observed protocol using the opencensus separate module NewObservedHttp
+var NewObserved = New
 
 func (p *Protocol) applyOptions(opts ...Option) error {
 	for _, fn := range opts {
@@ -110,7 +140,21 @@ func (p *Protocol) Send(ctx context.Context, m binding.Message, transformers ...
 		return fmt.Errorf("nil Message")
 	}
 
-	_, err := p.Request(ctx, m, transformers...)
+	msg, err := p.Request(ctx, m, transformers...)
+	if msg != nil {
+		defer func() { _ = msg.Finish(err) }()
+	}
+	if err != nil && !protocol.IsACK(err) {
+		var res *Result
+		if protocol.ResultAs(err, &res) {
+			if message, ok := msg.(*Message); ok {
+				buf := new(bytes.Buffer)
+				buf.ReadFrom(message.BodyReader)
+				errorStr := buf.String()
+				err = NewResult(res.StatusCode, "%s", errorStr)
+			}
+		}
+	}
 	return err
 }
 
@@ -139,11 +183,9 @@ func (p *Protocol) Request(ctx context.Context, m binding.Message, transformers 
 }
 
 func (p *Protocol) makeRequest(ctx context.Context) *http.Request {
-	// TODO: support custom headers from context?
 	req := &http.Request{
 		Method: http.MethodPost,
-		Header: make(http.Header),
-		// TODO: HeaderFrom(ctx),
+		Header: HeaderFrom(ctx),
 	}
 
 	if p.RequestTemplate != nil {
@@ -327,4 +369,9 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	p.incoming <- msgErr{msg: m, respFn: fn} // Send to Request
 	// Block until ResponseFn is invoked
 	wg.Wait()
+}
+
+func defaultIsRetriableFunc(sc int) bool {
+	_, ok := defaultRetriableErrors[sc]
+	return ok
 }

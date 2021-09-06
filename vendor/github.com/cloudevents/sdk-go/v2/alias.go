@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 // Package v2 reexports a subset of the SDK v2 API.
 package v2
 
@@ -9,7 +14,6 @@ import (
 	"github.com/cloudevents/sdk-go/v2/client"
 	"github.com/cloudevents/sdk-go/v2/context"
 	"github.com/cloudevents/sdk-go/v2/event"
-	"github.com/cloudevents/sdk-go/v2/observability"
 	"github.com/cloudevents/sdk-go/v2/protocol"
 	"github.com/cloudevents/sdk-go/v2/protocol/http"
 	"github.com/cloudevents/sdk-go/v2/types"
@@ -84,16 +88,20 @@ var (
 
 	// Client Creation
 
-	NewClient             = client.New
-	NewClientObserved     = client.NewObserved
+	NewClient     = client.New
+	NewClientHTTP = client.NewHTTP
+	// Deprecated: please use New with the observability options.
+	NewClientObserved = client.NewObserved
+	// Deprecated: Please use NewClientHTTP with the observability options.
 	NewDefaultClient      = client.NewDefault
 	NewHTTPReceiveHandler = client.NewHTTPReceiveHandler
 
 	// Client Options
 
-	WithEventDefaulter   = client.WithEventDefaulter
-	WithUUIDs            = client.WithUUIDs
-	WithTimeNow          = client.WithTimeNow
+	WithEventDefaulter = client.WithEventDefaulter
+	WithUUIDs          = client.WithUUIDs
+	WithTimeNow        = client.WithTimeNow
+	// Deprecated: this is now noop and will be removed in future releases.
 	WithTracePropagation = client.WithTracePropagation()
 
 	// Event Creation
@@ -129,10 +137,6 @@ var (
 	// HTTP Messages
 
 	WriteHTTPRequest = http.WriteRequest
-
-	// Tracing
-
-	EnableTracing = observability.EnableTracing
 
 	// Context
 

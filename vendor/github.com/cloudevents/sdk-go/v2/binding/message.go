@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package binding
 
 import (
@@ -116,6 +121,13 @@ type ExactlyOnceMessage interface {
 	// If sending fails, or if the sender does not support QoS 2, then
 	// Finish() may be called without any call to Received()
 	Received(settle func(error))
+}
+
+// MessageContext interface exposes the internal context that a message might contain
+// Only some Message implementations implement this interface.
+type MessageContext interface {
+	// Get the context associated with this message
+	Context() context.Context
 }
 
 // MessageWrapper interface is used to walk through a decorated Message and unwrap it.

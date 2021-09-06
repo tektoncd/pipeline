@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package http
 
 import (
@@ -32,9 +37,20 @@ func (e *Result) Is(target error) bool {
 	if o, ok := target.(*Result); ok {
 		return e.StatusCode == o.StatusCode
 	}
+
+	// Special case for nil == ACK
+	if o, ok := target.(*protocol.Receipt); ok {
+		if e == nil && o.ACK {
+			return true
+		}
+	}
+
 	// Allow for wrapped errors.
-	err := fmt.Errorf(e.Format, e.Args...)
-	return errors.Is(err, target)
+	if e != nil {
+		err := fmt.Errorf(e.Format, e.Args...)
+		return errors.Is(err, target)
+	}
+	return false
 }
 
 // Error returns the string that is formed by using the format string with the

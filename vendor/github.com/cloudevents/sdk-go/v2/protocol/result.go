@@ -1,3 +1,8 @@
+/*
+ Copyright 2021 The CloudEvents Authors
+ SPDX-License-Identifier: Apache-2.0
+*/
+
 package protocol
 
 import (
@@ -5,7 +10,7 @@ import (
 	"fmt"
 )
 
-// Result leverages go's 1.13 error wrapping.
+// Result leverages go's error wrapping.
 type Result error
 
 // ResultIs reports whether any error in err's chain matches target.
@@ -35,7 +40,7 @@ var ResultIs = errors.Is
 var ResultAs = errors.As
 
 func NewResult(messageFmt string, args ...interface{}) Result {
-	return fmt.Errorf(messageFmt, args...) // TODO: look at adding ACK/Nak support.
+	return fmt.Errorf(messageFmt, args...)
 }
 
 // IsACK true means the recipient acknowledged the event.
@@ -58,6 +63,10 @@ func IsNACK(target Result) bool {
 // is an error that represents some part of the protocol is misconfigured or
 // the event that was attempting to be sent was invalid.
 func IsUndelivered(target Result) bool {
+	if target == nil {
+		// Short-circuit nil result is ACK.
+		return false
+	}
 	return !ResultIs(target, ResultACK) && !ResultIs(target, ResultNACK)
 }
 
@@ -87,19 +96,32 @@ var _ error = (*Receipt)(nil)
 // Is returns if the target error is a Result type checking target.
 func (e *Receipt) Is(target error) bool {
 	if o, ok := target.(*Receipt); ok {
+		if e == nil {
+			// Special case nil e as ACK.
+			return o.ACK
+		}
 		return e.ACK == o.ACK
 	}
 	// Allow for wrapped errors.
-	return errors.Is(e.Err, target)
+	if e != nil {
+		return errors.Is(e.Err, target)
+	}
+	return false
 }
 
 // Error returns the string that is formed by using the format string with the
 // provided args.
 func (e *Receipt) Error() string {
-	return e.Err.Error()
+	if e != nil {
+		return e.Err.Error()
+	}
+	return ""
 }
 
 // Unwrap returns the wrapped error if exist or nil
 func (e *Receipt) Unwrap() error {
-	return errors.Unwrap(e.Err)
+	if e != nil {
+		return errors.Unwrap(e.Err)
+	}
+	return nil
 }
