@@ -91,6 +91,7 @@ func TestPipelineRun(t *testing.T) {
 		name: "service account propagation and pipeline param",
 		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
+			t.Skip("build-crd-testing project got removed, the secret-sauce doesn't exist anymore, skipping")
 			if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, getPipelineRunSecret(index, namespace), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create secret `%s`: %s", getName(secretName, index), err)
 			}
@@ -163,6 +164,7 @@ func TestPipelineRun(t *testing.T) {
 		name: "pipelinerun succeeds with LimitRange minimum in namespace",
 		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
+			t.Skip("build-crd-testing project got removed, the secret-sauce doesn't exist anymore, skipping")
 			if _, err := c.KubeClient.CoreV1().LimitRanges(namespace).Create(ctx, getLimitRange("prlimitrange", namespace, "100m", "99Mi", "100m"), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create LimitRange `%s`: %s", "prlimitrange", err)
 			}
