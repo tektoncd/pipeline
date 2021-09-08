@@ -281,9 +281,6 @@ func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 // ReportRunningPipelineRuns invokes RunningPipelineRuns on our configured PeriodSeconds
 // until the context is cancelled.
 func (r *Recorder) ReportRunningPipelineRuns(ctx context.Context, lister listers.PipelineRunLister) {
-	r.mutex.Lock()
-	r.mutex.Unlock()
-
 	logger := logging.FromContext(ctx)
 
 	for {
