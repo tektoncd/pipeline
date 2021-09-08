@@ -367,9 +367,6 @@ func (r *Recorder) RunningTaskRuns(lister listers.TaskRunLister) error {
 // ReportRunningTaskRuns invokes RunningTaskRuns on our configured PeriodSeconds
 // until the context is cancelled.
 func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.TaskRunLister) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
 	logger := logging.FromContext(ctx)
 	for {
 		select {
