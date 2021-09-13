@@ -329,7 +329,7 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
 
-	ctl := NewController(namespace, images)(ctx, configMapWatcher)
+	ctl := NewController(namespace, ControllerConfiguration{Images: images})(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
