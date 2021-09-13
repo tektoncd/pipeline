@@ -55,6 +55,10 @@ var (
 	disableHighAvailability  = flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
 		"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
 		"issue upstream!")
+	experimentalDisableInTreeResolution = flag.Bool(disableInTreeResolutionFlag, false,
+		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
+
+	disableInTreeResolutionFlag = "experimental-disable-in-tree-resolution"
 )
 
 func main() {
@@ -108,10 +112,20 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+port, mux))
 	}()
 
+	taskrunControllerConfig := taskrun.ControllerConfiguration{
+		Images:                   images,
+		DisableTaskRefResolution: *experimentalDisableInTreeResolution,
+	}
+
+	pipelinerunControllerConfig := pipelinerun.ControllerConfiguration{
+		Images:                       images,
+		DisablePipelineRefResolution: *experimentalDisableInTreeResolution,
+	}
+
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
-		taskrun.NewController(*namespace, images),
-		pipelinerun.NewController(*namespace, images),
+		taskrun.NewController(*namespace, taskrunControllerConfig),
+		pipelinerun.NewController(*namespace, pipelinerunControllerConfig),
 	)
 }
 

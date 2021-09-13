@@ -42,8 +42,18 @@ import (
 	"knative.dev/pkg/logging"
 )
 
+// ControllerConfiguration holds fields used to configure the
+// PipelineRun controller.
+type ControllerConfiguration struct {
+	// Images are the image references used across Tekton Pipelines.
+	Images pipeline.Images
+	// DisablePipelineRefResolution tells the controller not to perform
+	// resolution of pipeline refs from the cluster or bundles.
+	DisablePipelineRefResolution bool
+}
+
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
-func NewController(namespace string, images pipeline.Images) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(namespace string, conf ControllerConfiguration) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		kubeclientset := kubeclient.Get(ctx)
@@ -62,7 +72,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 		c := &Reconciler{
 			KubeClientSet:     kubeclientset,
 			PipelineClientSet: pipelineclientset,
-			Images:            images,
+			Images:            conf.Images,
 			pipelineRunLister: pipelineRunInformer.Lister(),
 			pipelineLister:    pipelineInformer.Lister(),
 			taskLister:        taskInformer.Lister(),
@@ -74,6 +84,7 @@ func NewController(namespace string, images pipeline.Images) func(context.Contex
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           pipelinerunmetrics.Get(ctx),
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
+			disableResolution: conf.DisablePipelineRefResolution,
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{
