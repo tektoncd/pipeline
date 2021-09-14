@@ -59,7 +59,9 @@ func main() {
 	flag.BoolVar(&opts.ExperimentalDisableResolution, "experimental-disable-in-tree-resolution", false,
 		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
 
+	// This parses flags.
 	cfg := injection.ParseAndGetRESTConfigOrDie()
+
 	if err := opts.Images.Validate(); err != nil {
 		log.Fatal(err)
 	}

@@ -76,7 +76,6 @@ const (
 )
 
 var (
-	namespace                    = "" // all namespaces
 	defaultActiveDeadlineSeconds = int64(config.DefaultTimeoutMinutes * 60 * 1.5)
 	images                       = pipeline.Images{
 		EntrypointImage:          "override-with-entrypoint:latest",
