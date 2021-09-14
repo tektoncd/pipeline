@@ -40,42 +40,18 @@ const (
 	ControllerLogKey = "tekton-pipelines-controller"
 )
 
-var (
-	entrypointImage          = flag.String("entrypoint-image", "", "The container image containing our entrypoint binary.")
-	nopImage                 = flag.String("nop-image", "", "The container image used to stop sidecars")
-	gitImage                 = flag.String("git-image", "", "The container image containing our Git binary.")
-	kubeconfigWriterImage    = flag.String("kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
-	shellImage               = flag.String("shell-image", "", "The container image containing a shell")
-	shellImageWin            = flag.String("shell-image-win", "", "The container image containing a windows shell")
-	gsutilImage              = flag.String("gsutil-image", "", "The container image containing gsutil")
-	prImage                  = flag.String("pr-image", "", "The container image containing our PR binary.")
-	imageDigestExporterImage = flag.String("imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
-	namespace                = flag.String("namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
-	threadsPerController     = flag.Int("threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
-	disableHighAvailability  = flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
+func main() {
+	flag.IntVar(&controller.DefaultThreadsPerController, "threads-per-controller", controller.DefaultThreadsPerController, "Threads (goroutines) to create per controller")
+	namespace := flag.String("namespace", corev1.NamespaceAll, "Namespace to restrict informer to. Optional, defaults to all namespaces.")
+	disableHighAvailability := flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
 		"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
 		"issue upstream!")
-	experimentalDisableInTreeResolution = flag.Bool(disableInTreeResolutionFlag, false,
-		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
+	fo := pipeline.NewFlagOptions(flag.CommandLine)
 
-	disableInTreeResolutionFlag = "experimental-disable-in-tree-resolution"
-)
-
-func main() {
+	// This parses flags.
 	cfg := injection.ParseAndGetRESTConfigOrDie()
-	controller.DefaultThreadsPerController = *threadsPerController
-	images := pipeline.Images{
-		EntrypointImage:          *entrypointImage,
-		NopImage:                 *nopImage,
-		GitImage:                 *gitImage,
-		KubeconfigWriterImage:    *kubeconfigWriterImage,
-		ShellImage:               *shellImage,
-		ShellImageWin:            *shellImageWin,
-		GsutilImage:              *gsutilImage,
-		PRImage:                  *prImage,
-		ImageDigestExporterImage: *imageDigestExporterImage,
-	}
-	if err := images.Validate(); err != nil {
+
+	if err := fo.Images.Validate(); err != nil {
 		log.Fatal(err)
 	}
 	if cfg.QPS == 0 {
@@ -112,20 +88,10 @@ func main() {
 		log.Fatal(http.ListenAndServe(":"+port, mux))
 	}()
 
-	taskrunControllerConfig := taskrun.ControllerConfiguration{
-		Images:                   images,
-		DisableTaskRefResolution: *experimentalDisableInTreeResolution,
-	}
-
-	pipelinerunControllerConfig := pipelinerun.ControllerConfiguration{
-		Images:                       images,
-		DisablePipelineRefResolution: *experimentalDisableInTreeResolution,
-	}
-
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
-		taskrun.NewController(*namespace, taskrunControllerConfig),
-		pipelinerun.NewController(*namespace, pipelinerunControllerConfig),
+		taskrun.NewController(fo),
+		pipelinerun.NewController(fo),
 	)
 }
 
