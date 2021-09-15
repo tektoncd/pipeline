@@ -17,32 +17,15 @@ limitations under the License.
 package pipeline
 
 import (
-	"flag"
 	"fmt"
 	"sort"
 )
 
-// FlagOptions holds options passed to the Tekton Pipeline controllers via command-line flags.
-type FlagOptions struct {
+// Options holds options passed to the Tekton Pipeline controllers
+// typically via command-line flags.
+type Options struct {
 	Images                        Images
 	ExperimentalDisableResolution bool
-}
-
-func NewFlagOptions(fs *flag.FlagSet) *FlagOptions {
-	fo := &FlagOptions{}
-	fs.StringVar(&fo.Images.EntrypointImage, "entrypoint-image", "", "The container image containing our entrypoint binary.")
-	fs.StringVar(&fo.Images.NopImage, "nop-image", "", "The container image used to stop sidecars")
-	fs.StringVar(&fo.Images.GitImage, "git-image", "", "The container image containing our Git binary.")
-	fs.StringVar(&fo.Images.KubeconfigWriterImage, "kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
-	fs.StringVar(&fo.Images.ShellImage, "shell-image", "", "The container image containing a shell")
-	fs.StringVar(&fo.Images.ShellImageWin, "shell-image-win", "", "The container image containing a windows shell")
-	fs.StringVar(&fo.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
-	fs.StringVar(&fo.Images.PRImage, "pr-image", "", "The container image containing our PR binary.")
-	fs.StringVar(&fo.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
-	fs.BoolVar(&fo.ExperimentalDisableResolution, "experimental-disable-in-tree-resolution", false,
-		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
-
-	return fo
 }
 
 // Images holds the images reference for a number of container images used

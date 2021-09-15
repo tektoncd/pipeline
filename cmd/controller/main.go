@@ -46,7 +46,19 @@ func main() {
 	disableHighAvailability := flag.Bool("disable-ha", false, "Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
 		"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
 		"issue upstream!")
-	fo := pipeline.NewFlagOptions(flag.CommandLine)
+
+	fo := &pipeline.Options{}
+	flag.StringVar(&fo.Images.EntrypointImage, "entrypoint-image", "", "The container image containing our entrypoint binary.")
+	flag.StringVar(&fo.Images.NopImage, "nop-image", "", "The container image used to stop sidecars")
+	flag.StringVar(&fo.Images.GitImage, "git-image", "", "The container image containing our Git binary.")
+	flag.StringVar(&fo.Images.KubeconfigWriterImage, "kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
+	flag.StringVar(&fo.Images.ShellImage, "shell-image", "", "The container image containing a shell")
+	flag.StringVar(&fo.Images.ShellImageWin, "shell-image-win", "", "The container image containing a windows shell")
+	flag.StringVar(&fo.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
+	flag.StringVar(&fo.Images.PRImage, "pr-image", "", "The container image containing our PR binary.")
+	flag.StringVar(&fo.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
+	flag.BoolVar(&fo.ExperimentalDisableResolution, "experimental-disable-in-tree-resolution", false,
+		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
 
 	// This parses flags.
 	cfg := injection.ParseAndGetRESTConfigOrDie()

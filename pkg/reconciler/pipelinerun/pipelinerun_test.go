@@ -158,7 +158,7 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
 
-	ctl := NewController(&pipeline.FlagOptions{Images: images})(ctx, configMapWatcher)
+	ctl := NewController(&pipeline.Options{Images: images})(ctx, configMapWatcher)
 
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
 		la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {})
