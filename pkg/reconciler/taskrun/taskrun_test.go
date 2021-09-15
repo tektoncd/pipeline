@@ -327,14 +327,20 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
-	// unregisterMetrics()
+	return initializeTaskRunControllerAssets(t, d, pipeline.Options{Images: images})
+}
+
+func getTaskRunControllerWithResolutionDisabled(t *testing.T, d test.Data) (test.Assets, func()) {
+	return initializeTaskRunControllerAssets(t, d, pipeline.Options{Images: images, ExperimentalDisableResolution: true})
+}
+
+func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-
-	ctl := NewController(&pipeline.Options{Images: images})(ctx, configMapWatcher)
+	ctl := NewController(&opts)(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
@@ -3875,4 +3881,114 @@ func TestPodAdoption(t *testing.T) {
 		t.Fatalf("First reconcile created pod %s but TaskRun now has another pod name %s", podName, reconciledRun.Status.PodName)
 	}
 
+}
+
+func TestDisableResolutionFlag_PreventsResolution(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		tr          *v1beta1.TaskRun
+	}{{
+		description: "inline taskspec is not resolved",
+		tr: tb.TaskRun("test-taskrun",
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunLabel("mylabel", "myvalue"),
+			tb.TaskRunSpec(tb.TaskRunTaskSpec(
+				tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd")),
+			)),
+		),
+	}, {
+		description: "taskref is not resolved",
+		tr: tb.TaskRun("test-taskrun",
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunLabel("mylabel", "myvalue"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef("foo")),
+		),
+	}, {
+		description: "bundle is not resolved",
+		tr: tb.TaskRun("test-taskrun",
+			tb.TaskRunNamespace("foo"),
+			tb.TaskRunLabel("mylabel", "myvalue"),
+			tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTypedTask.Name, tb.TaskRefBundle("foobar.bundle.url"))),
+		),
+	}} {
+		tr := tc.tr
+
+		names.TestingSeed()
+		testAssets, cancel := getTaskRunControllerWithResolutionDisabled(t, test.Data{
+			TaskRuns: []*v1beta1.TaskRun{tr},
+		})
+		defer cancel()
+		c := testAssets.Controller
+		clients := testAssets.Clients
+
+		if _, err := clients.Kube.CoreV1().ServiceAccounts(tr.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "default",
+			},
+		}, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+
+		err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+		isRequeue, _ := controller.IsRequeueKey(err)
+		if err != nil && !isRequeue {
+			t.Errorf("Error reconciling TaskRun. Got error %v", err)
+		}
+
+		reconciledRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Error getting updated TaskRun: %v", err)
+		}
+
+		if reconciledRun.Status.TaskSpec != nil {
+			t.Fatal("status.taskspec should not have been resolved during reconciliation")
+		}
+
+		if reconciledRun.Status.PodName != "" {
+			t.Fatal("Pod should not have been created")
+		}
+	}
+}
+
+func TestDisableResolutionFlag_ProceedsWithStatusTaskSpec(t *testing.T) {
+	tr := tb.TaskRun("test-taskrun",
+		tb.TaskRunNamespace("foo"),
+		tb.TaskRunLabel("mylabel", "myvalue"),
+		tb.TaskRunSpec(tb.TaskRunTaskSpec(
+			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd")),
+		)),
+	)
+
+	tr.Status.TaskSpec = tr.Spec.TaskSpec
+
+	names.TestingSeed()
+	testAssets, cancel := getTaskRunControllerWithResolutionDisabled(t, test.Data{
+		TaskRuns: []*v1beta1.TaskRun{tr},
+	})
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if _, err := clients.Kube.CoreV1().ServiceAccounts(tr.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	isRequeue, _ := controller.IsRequeueKey(err)
+	if err != nil && !isRequeue {
+		t.Errorf("Error reconciling TaskRun. Got error %v", err)
+	}
+
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting updated TaskRun: %v", err)
+	}
+
+	if reconciledRun.Status.PodName == "" {
+		t.Fatal("Expected pod to have been created")
+	}
 }
