@@ -33,7 +33,7 @@ func TestValidate(t *testing.T) {
 		PRImage:                  "", // unset!
 		ImageDigestExporterImage: "set",
 	}
-	wantErr := "found unset image flags: [git pr shell]"
+	wantErr := "found unset image flags: [git-image pr-image shell-image]"
 	if err := invalid.Validate(); err == nil {
 		t.Error("invalid Images expected error, got nil")
 	} else if err.Error() != wantErr {
