@@ -364,15 +364,11 @@ and reasons.
 ### Specifying `LimitRange` values
 
 In order to only consume the bare minimum amount of resources needed to execute one `Step` at a
-time from the invoked `Task`, Tekton only requests the *maximum* values for CPU, memory, and ephemeral
-storage from within each `Step`. This is sufficient as `Steps` only execute one at a time in the `Pod`.
-Requests other than the maximum values are set to zero.
+time from the invoked `Task`, Tekton will requests the compute values for CPU, memory, and ephemeral
+storage for each `Step` based on the [`LimitRange`](https://kubernetes.io/docs/concepts/policy/limit-range/)
+object(s), if present. Any `Request` or `Limit` specified by the user (on `Task` for example) will be left unchanged.
 
-When a [`LimitRange`](https://kubernetes.io/docs/concepts/policy/limit-range/) parameter is present in
-the namespace in which `TaskRuns` are executing and *minimum* values are specified for container resource requests,
-Tekton searches through all `LimitRange` values present in the namespace and uses the *minimums* instead of 0.
-
-For more information, see the [`LimitRange` code example](../examples/v1beta1/taskruns/no-ci/limitrange.yaml).
+For more information, see the [`LimitRange` support in Pipeline](./limitrange.md).
 
 ## Configuring the failure timeout
 
@@ -526,18 +522,18 @@ spec:
 ```
 
 Upon failure of a step, the TaskRun Pod execution is halted. If ths TaskRun Pod continues to run without any lifecycle
-change done by the user (running the debug-continue or debug-fail-continue script) the TaskRun would be subject to 
-[TaskRunTimeout](#configuring-the-failure-timeout). 
+change done by the user (running the debug-continue or debug-fail-continue script) the TaskRun would be subject to
+[TaskRunTimeout](#configuring-the-failure-timeout).
 During this time, the user/client can get remote shell access to the step container with a command such as the following.
 
 ```bash
-kubectl exec -it print-date-d7tj5-pod-w5qrn -c step-print-date-human-readable 
+kubectl exec -it print-date-d7tj5-pod-w5qrn -c step-print-date-human-readable
 ```
 
 #### Debug Environment
 
-After the user/client has access to the container environment, they can scour for any missing parts because of which 
-their step might have failed. 
+After the user/client has access to the container environment, they can scour for any missing parts because of which
+their step might have failed.
 
 To control the lifecycle of the step to mark it as a success or a failure or close the breakpoint, there are scripts
 provided in the `/tekton/debug/scripts` directory in the container. The following are the scripts and the tasks they

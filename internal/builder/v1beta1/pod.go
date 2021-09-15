@@ -124,14 +124,8 @@ func PodContainer(name, image string, ops ...ContainerOp) PodSpecOp {
 		c := &corev1.Container{
 			Name:  name,
 			Image: image,
-			// By default, containers request zero resources. Ops
-			// can override this.
 			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:              resource.MustParse("0"),
-					corev1.ResourceMemory:           resource.MustParse("0"),
-					corev1.ResourceEphemeralStorage: resource.MustParse("0"),
-				},
+				Requests: map[corev1.ResourceName]resource.Quantity{},
 			},
 		}
 		for _, op := range ops {
@@ -149,6 +143,9 @@ func PodInitContainer(name, image string, ops ...ContainerOp) PodSpecOp {
 			Name:  name,
 			Image: image,
 			Args:  []string{},
+			Resources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{},
+			},
 		}
 		for _, op := range ops {
 			op(c)

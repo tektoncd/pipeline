@@ -39,6 +39,7 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/contexts"
+	"github.com/tektoncd/pipeline/pkg/internal/limitrange"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
@@ -703,7 +704,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		EntrypointCache: c.entrypointCache,
 		OverrideHomeEnv: shouldOverrideHomeEnv,
 	}
-	pod, err := podbuilder.Build(ctx, tr, *ts)
+	pod, err := podbuilder.Build(ctx, tr, *ts, limitrange.NewTransformer(ctx, tr.Namespace, c.KubeClientSet))
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}
