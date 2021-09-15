@@ -631,6 +631,7 @@ first step in a task.
 
 ## TaskRun Use of Pod Termination Messages
 
+<<<<<<< HEAD
 Tekton Pipelines uses a `Pod's` [termination
 message](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/)
 to pass data from a Step's container to the Pipelines controller.
@@ -644,3 +645,34 @@ the data from the message is internal to Tekton Pipelines, used for
 book-keeping, and some is distributed across a number of fields of the
 `TaskRun's` `status`. For example, a `TaskRun's` `status.taskResults` is
 populated from the termination message.
+=======
+Tekton Pipelines uses a `Pod's`
+[termination message](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/)
+to pass data from a Step's container to the Pipelines controller. Examples of
+this data include: the time that execution of the user's step began, contents of
+task results, contents of pipeline resource results.
+
+The contents and format of the termination message can change. At time of
+writing the message takes the form of a serialized JSON blob. Some of the data
+from the message is internal to Tekton Pipelines, used for book-keeping, and
+some is distributed across a number of fields of the `TaskRun's` `status`. For
+example, a `TaskRun's` `status.taskResults` is populated from the termination
+message.
+
+## Experimentally Disabling PipelineRef and TaskRef Resolution
+
+In
+[TEP-0060](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resource-resolution.md)
+we are exploring ways for the Tekton Pipelines controller to offload
+resolution of `taskRefs` and `pipelineRefs` to external systems. The
+idea is to allow for resolution of these resources from locations that
+aren't supported directly by Pipelines, for example pulling in `Tasks`
+and `Pipelines` from `git` repos.
+
+To support this functionality Pipelines has an experimental flag to
+allow a developer to disable resolution in the TaskRun and PipelineRun
+reconcilers. To do so add `-experimental-disable-in-tree-resolution` as
+an additional `arg` passed to the `tekton-pipelines-controller` in its
+[Deployment YAML](../../config/controller.yaml). Once this is done
+you're free to experiment with non-Pipelines resolution mechanisms.
+>>>>>>> 5681ce992... Test and Document Disable Resolution Flag
