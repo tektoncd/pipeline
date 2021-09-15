@@ -152,26 +152,41 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 // getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
-	// unregisterMetrics()
+	return initializePipelineRunControllerAssets(t, d, pipeline.Options{Images: images})
+}
+
+// getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
+// d, where d represents the state of the system (existing resources) needed for the test. The returned controller
+// has pipeline ref resolution switched off.
+func getPipelineRunControllerWithResolutionDisabled(t *testing.T, d test.Data) (test.Assets, func()) {
+	return initializePipelineRunControllerAssets(t, d, pipeline.Options{Images: images, ExperimentalDisableResolution: true})
+}
+
+// initiailizePipelinerunControllerAssets is a shared helper for
+// controller initialization.
+func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
+<<<<<<< HEAD
 
 	ctl := NewController(namespace, ControllerConfiguration{Images: images})(ctx, configMapWatcher)
 
+=======
+	ctl := NewController(&opts)(ctx, configMapWatcher)
+>>>>>>> 5681ce992... Test and Document Disable Resolution Flag
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
 		la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {})
 	}
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
-
 	return test.Assets{
 		Logger:     logging.FromContext(ctx),
-		Controller: ctl,
 		Clients:    c,
+		Controller: ctl,
 		Informers:  informers,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
 		Ctx:        ctx,
@@ -6874,6 +6889,147 @@ func TestReconcile_DependencyValidationsImmediatelyFailPipelineRun(t *testing.T)
 
 	if cond3.Reason != ReasonRequiredWorkspaceMarkedOptional {
 		t.Errorf("expected optional workspace not supported condition but saw: %v", cond3)
+	}
+}
+
+func TestDisableResolutionFlag_PreventsResolution(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		pr          *v1beta1.PipelineRun
+	}{{
+		description: "inline pipelinespec is not resolved",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pr",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				ServiceAccountName: "test-sa",
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "pt0",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Container: corev1.Container{
+									Image: "foo:latest",
+								},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+	}, {
+		description: "pipelineref from cluster is not resolved",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pr",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				ServiceAccountName: "test-sa",
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test-pipeline",
+				},
+			},
+		},
+	}, {
+		description: "bundle is not resolved",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pr",
+				Namespace: "foo",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				ServiceAccountName: "test-sa",
+				PipelineRef: &v1beta1.PipelineRef{
+					Name:   "test-pipeline",
+					Bundle: "http://bundle.url",
+				},
+			},
+		},
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
+				ServiceAccounts: []*corev1.ServiceAccount{{
+					ObjectMeta: metav1.ObjectMeta{Name: tc.pr.Spec.ServiceAccountName, Namespace: tc.pr.Namespace},
+				}},
+			}
+
+			testAssets, cancel := getPipelineRunControllerWithResolutionDisabled(t, d)
+			defer cancel()
+
+			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, tc.pr.Namespace+"/"+tc.pr.Name)
+			isRequeue, _ := controller.IsRequeueKey(err)
+			if err != nil && !isRequeue {
+				t.Fatalf("unexpected error reconciling: %v", err)
+			}
+
+			reconciledRun, err := testAssets.Clients.Pipeline.TektonV1beta1().PipelineRuns(tc.pr.Namespace).Get(testAssets.Ctx, tc.pr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("unexpected pipelinerun get error: %s", err)
+			}
+
+			if reconciledRun.Status.PipelineSpec != nil {
+				t.Fatal("status.pipelinespec should not have been resolved during reconciliation")
+			}
+		})
+	}
+}
+
+func TestDisableResolutionFlag_ProceedsWithStatusPipelineSpec(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pr",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "test-sa",
+			PipelineSpec: &v1beta1.PipelineSpec{
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "pt0",
+					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Container: corev1.Container{
+								Image: "foo:latest",
+							},
+						}},
+					}},
+				}},
+			},
+		},
+	}
+
+	pr.Status.PipelineSpec = pr.Spec.PipelineSpec
+
+	d := test.Data{
+		PipelineRuns: []*v1beta1.PipelineRun{pr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: pr.Namespace},
+		}},
+	}
+
+	testAssets, cancel := getPipelineRunControllerWithResolutionDisabled(t, d)
+	defer cancel()
+
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, pr.Namespace+"/"+pr.Name)
+	isRequeue, _ := controller.IsRequeueKey(err)
+	if err != nil && !isRequeue {
+		t.Fatalf("unexpected error reconciling: %v", err)
+	}
+
+	labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=%s", pr.Spec.PipelineSpec.Tasks[0].Name, pr.Name)
+	tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(testAssets.Ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+		Limit:         1,
+	})
+
+	if err != nil {
+		t.Fatalf("unexpected error fetching pipelinerun's taskrun: %v", err)
+	}
+	if tr == nil || len(tr.Items) == 0 {
+		t.Fatal("expected pipelinerun to have spawned a taskrun")
 	}
 }
 
