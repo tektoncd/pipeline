@@ -43,7 +43,7 @@ import (
 )
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
-func NewController(fo *pipeline.FlagOptions) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(fo *pipeline.Options) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		kubeclientset := kubeclient.Get(ctx)
