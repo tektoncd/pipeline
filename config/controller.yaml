@@ -138,6 +138,10 @@ spec:
           runAsUser: 65532
           runAsGroup: 65532
         ports:
+        - name: metrics
+          containerPort: 9090
+        - name: profiling
+          containerPort: 8008
         - name: probes
           containerPort: 8080
         livenessProbe:
@@ -186,6 +190,9 @@ spec:
     port: 9090
     protocol: TCP
     targetPort: 9090
+  - name: http-profiling
+    port: 8008
+    targetPort: 8008
   - name: probes
     port: 8080
   selector:
