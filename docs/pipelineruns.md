@@ -396,15 +396,11 @@ Consult the documentation of the custom task that you are using to determine whe
 ### Specifying `LimitRange` values
 
 In order to only consume the bare minimum amount of resources needed to execute one `Step` at a
-time from the invoked `Task`, Tekton only requests the *maximum* values for CPU, memory, and ephemeral
-storage from within each `Step`. This is sufficient as `Steps` only execute one at a time in the `Pod`.
-Requests other than the maximum values are set to zero.
+time from the invoked `Task`, Tekton will request the compute values for CPU, memory, and ephemeral
+storage for each `Step` based on the [`LimitRange`](https://kubernetes.io/docs/concepts/policy/limit-range/)
+object(s), if present. Any `Request` or `Limit` specified by the user (on `Task` for example) will be left unchanged.
 
-When a [`LimitRange`](https://kubernetes.io/docs/concepts/policy/limit-range/) parameter is present in
-the namespace in which `PipelineRuns` are executing and *minimum* values are specified for container resource requests,
-Tekton searches through all `LimitRange` values present in the namespace and uses the *minimums* instead of 0.
-
-For more information, see the [`LimitRange` code example](../examples/v1beta1/pipelineruns/no-ci/limitrange.yaml).
+For more information, see the [`LimitRange` support in Pipeline](./limitrange.md).
 
 ### Configuring a failure timeout
 
@@ -577,7 +573,7 @@ spec:
   status: "PipelineRunCancelled"
 ```
 
-Warning: "PipelineRunCancelled" status is deprecated and would be removed in V1, please use "Cancelled" instead.  
+Warning: "PipelineRunCancelled" status is deprecated and would be removed in V1, please use "Cancelled" instead.
 
 ## Gracefully cancelling a `PipelineRun`
 

@@ -60,6 +60,10 @@ var (
 	featureFlagSetReadyAnnotationOnPodCreate = "enable-ready-annotation-on-pod-create"
 
 	fakeVersion string
+
+	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
+		return x.Cmp(y) == 0
+	})
 )
 
 func init() {
@@ -134,7 +138,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -183,7 +186,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -230,7 +232,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -286,7 +287,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -341,7 +341,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-internal-secret-volume-multi-creds-9l9zj",
 					MountPath: "/tekton/creds-secrets/multi-creds",
 				})...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, secretsVolume, toolsVolume, downwardVolume, corev1.Volume{
@@ -404,7 +403,6 @@ func TestPodBuild(t *testing.T) {
 					downwardMount,
 					{Name: "tekton-creds-init-home-0", MountPath: "/tekton/creds"},
 				}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -462,7 +460,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -506,7 +503,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -562,7 +558,6 @@ func TestPodBuild(t *testing.T) {
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             filepath.Join(pipeline.WorkspaceDir, "test"),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -613,7 +608,6 @@ func TestPodBuild(t *testing.T) {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
 				Name:  "sidecar-sc-name",
@@ -686,14 +680,10 @@ _EOF_
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
-				Name:  "sidecar-sc-name",
-				Image: "sidecar-image",
-				Resources: corev1.ResourceRequirements{
-					Requests: nil,
-				},
+				Name:         "sidecar-sc-name",
+				Image:        "sidecar-image",
 				Command:      []string{"/tekton/scripts/sidecar-script-0-9l9zj"},
 				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 			}},
@@ -748,14 +738,10 @@ _EOF_
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
 				Name:  "sidecar-sc-name",
 				Image: "sidecar-image",
-				Resources: corev1.ResourceRequirements{
-					Requests: nil,
-				},
 			}},
 			Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
@@ -814,9 +800,8 @@ _EOF_
 				}}, implicitVolumeMounts...),
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("8"),
-						corev1.ResourceMemory:           zeroQty,
-						corev1.ResourceEphemeralStorage: zeroQty,
+						corev1.ResourceCPU:    resource.MustParse("8"),
+						corev1.ResourceMemory: resource.MustParse("10Gi"),
 					},
 				},
 				TerminationMessagePath: "/tekton/termination",
@@ -845,9 +830,8 @@ _EOF_
 				}}, implicitVolumeMounts...),
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              zeroQty,
-						corev1.ResourceMemory:           resource.MustParse("100Gi"),
-						corev1.ResourceEphemeralStorage: zeroQty,
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("100Gi"),
 					},
 				},
 				TerminationMessagePath: "/tekton/termination",
@@ -940,7 +924,6 @@ _EOF_
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
 				Name:    "step-two",
@@ -968,7 +951,6 @@ _EOF_
 					Name:      "tekton-creds-init-home-1",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}, {
 				Name:    "step-regular-step",
@@ -997,7 +979,6 @@ _EOF_
 					Name:      "tekton-creds-init-home-2",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume, corev1.Volume{
@@ -1061,7 +1042,6 @@ _EOF_
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, scriptsVolume, toolsVolume, downwardVolume, corev1.Volume{
@@ -1119,7 +1099,7 @@ _EOF_
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
+
 				TerminationMessagePath: "/tekton/termination",
 			}},
 		},
@@ -1172,7 +1152,6 @@ _EOF_
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			ImagePullSecrets: []corev1.LocalObjectReference{{Name: "imageSecret"}},
@@ -1227,7 +1206,6 @@ _EOF_
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
 				HostAliases: []corev1.HostAlias{{IP: "127.0.0.1", Hostnames: []string{"foo.bar"}}},
@@ -1281,7 +1259,6 @@ _EOF_
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
 			},
@@ -1349,7 +1326,6 @@ _EOF_
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
 			},
@@ -1393,7 +1369,6 @@ _EOF_
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
 				Volumes: append(implicitVolumes, toolsVolume, downwardVolume, corev1.Volume{
@@ -1437,7 +1412,6 @@ _EOF_
 						"--",
 					},
 					VolumeMounts:           append([]corev1.VolumeMount{toolsMount, downwardMount}, implicitVolumeMounts...),
-					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 				}},
 				Volumes: append(implicitVolumes, toolsVolume, downwardVolume),
@@ -1482,7 +1456,6 @@ _EOF_
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 					Env: []corev1.EnvVar{
 						{Name: "TEKTON_HERMETIC", Value: "1"},
@@ -1534,7 +1507,6 @@ _EOF_
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
-					Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 					TerminationMessagePath: "/tekton/termination",
 					Env: []corev1.EnvVar{
 						{Name: "TEKTON_HERMETIC", Value: "something_else"},
@@ -1697,7 +1669,6 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
-				Resources:              corev1.ResourceRequirements{Requests: allZeroQty()},
 				TerminationMessagePath: "/tekton/termination",
 			}},
 			Volumes: append(implicitVolumes, debugScriptsVolume, debugInfoVolume, toolsVolume, downwardVolume, corev1.Volume{
