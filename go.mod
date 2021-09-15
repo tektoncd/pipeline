@@ -36,9 +36,3 @@ require (
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
 	knative.dev/pkg v0.0.0-20210827184538-2bd91f75571c
 )
-
-// Knative deps (release-0.20)
-replace (
-	contrib.go.opencensus.io/exporter/stackdriver => contrib.go.opencensus.io/exporter/stackdriver v0.13.4
-	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
-)

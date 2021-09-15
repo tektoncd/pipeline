@@ -4,7 +4,7 @@ cloud.google.com/go/compute/metadata
 contrib.go.opencensus.io/exporter/ocagent
 # contrib.go.opencensus.io/exporter/prometheus v0.4.0
 contrib.go.opencensus.io/exporter/prometheus
-# github.com/Azure/azure-sdk-for-go v43.0.0+incompatible => github.com/Azure/azure-sdk-for-go v38.2.0+incompatible
+# github.com/Azure/azure-sdk-for-go v43.0.0+incompatible
 github.com/Azure/azure-sdk-for-go/services/containerregistry/mgmt/2019-05-01/containerregistry
 github.com/Azure/azure-sdk-for-go/version
 # github.com/Azure/go-autorest v14.2.0+incompatible
