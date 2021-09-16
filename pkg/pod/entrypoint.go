@@ -99,6 +99,9 @@ var (
 	downwardMount = corev1.VolumeMount{
 		Name:      downwardVolumeName,
 		MountPath: downwardMountPoint,
+		// Marking this volume mount readonly is technically redundant,
+		// since the volume itself is readonly, but including for completeness.
+		ReadOnly: true,
 	}
 )
 
