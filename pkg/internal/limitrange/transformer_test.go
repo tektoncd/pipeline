@@ -20,12 +20,15 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	fakek8s "k8s.io/client-go/kubernetes/fake"
+	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	fakelimitrangeinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/limitrange/fake"
+	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 )
 
 var resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
@@ -405,15 +408,16 @@ func TestTransformerOneContainer(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			kubeclient := fakek8s.NewSimpleClientset(
-				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
-				&corev1.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "limitrange", Namespace: "default"},
+			ctx, cancel := setup(t,
+				[]corev1.ServiceAccount{{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}}},
+				[]corev1.LimitRange{{ObjectMeta: metav1.ObjectMeta{Name: "limitrange", Namespace: "default"},
 					Spec: corev1.LimitRangeSpec{
 						Limits: tc.limitranges,
 					},
-				},
+				}},
 			)
-			f := NewTransformer(context.Background(), "default", kubeclient)
+			defer cancel()
+			f := NewTransformer(ctx, "default", fakelimitrangeinformer.Get(ctx).Lister())
 			got, err := f(&corev1.Pod{
 				Spec: tc.podspec,
 			})
@@ -817,15 +821,16 @@ func TestTransformerMultipleContainer(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			kubeclient := fakek8s.NewSimpleClientset(
-				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
-				&corev1.LimitRange{ObjectMeta: metav1.ObjectMeta{Name: "limitrange", Namespace: "default"},
+			ctx, cancel := setup(t,
+				[]corev1.ServiceAccount{{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}}},
+				[]corev1.LimitRange{{ObjectMeta: metav1.ObjectMeta{Name: "limitrange", Namespace: "default"},
 					Spec: corev1.LimitRangeSpec{
 						Limits: tc.limitranges,
 					},
-				},
+				}},
 			)
-			f := NewTransformer(context.Background(), "default", kubeclient)
+			defer cancel()
+			f := NewTransformer(ctx, "default", fakelimitrangeinformer.Get(ctx).Lister())
 			got, err := f(&corev1.Pod{
 				Spec: tc.podspec,
 			})
@@ -943,13 +948,12 @@ func TestTransformerOneContainerMultipleLimitRange(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			runtimeObjects := []runtime.Object{&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}}}
-			for _, l := range tc.limitranges {
-				l := l // because we use pointer, we need to descope this...
-				runtimeObjects = append(runtimeObjects, &l)
-			}
-			kubeclient := fakek8s.NewSimpleClientset(runtimeObjects...)
-			f := NewTransformer(context.Background(), "default", kubeclient)
+			ctx, cancel := setup(t,
+				[]corev1.ServiceAccount{{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}}},
+				tc.limitranges,
+			)
+			defer cancel()
+			f := NewTransformer(ctx, "default", fakelimitrangeinformer.Get(ctx).Lister())
 			got, err := f(&corev1.Pod{
 				Spec: tc.podspec,
 			})
@@ -984,4 +988,28 @@ func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
 			}
 		}
 	}
+}
+
+func setup(t *testing.T, serviceaccounts []corev1.ServiceAccount, limitranges []corev1.LimitRange) (context.Context, func()) {
+	ctx, _ := ttesting.SetupFakeContext(t)
+	ctx, cancel := context.WithCancel(ctx)
+	kubeclient := fakekubeclient.Get(ctx)
+	// LimitRange
+	limitRangeInformer := fakelimitrangeinformer.Get(ctx)
+	kubeclient.PrependReactor("*", "limitranges", test.AddToInformer(t, limitRangeInformer.Informer().GetIndexer()))
+	for _, tl := range limitranges {
+		if _, err := kubeclient.CoreV1().LimitRanges(tl.Namespace).Create(ctx, &tl, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// ServiceAccount
+	serviceAccountInformer := fakeserviceaccountinformer.Get(ctx)
+	kubeclient.PrependReactor("*", "serviceaccounts", test.AddToInformer(t, serviceAccountInformer.Informer().GetIndexer()))
+	for _, ts := range serviceaccounts {
+		if _, err := kubeclient.CoreV1().ServiceAccounts(ts.Namespace).Create(ctx, &ts, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	kubeclient.ClearActions()
+	return ctx, cancel
 }

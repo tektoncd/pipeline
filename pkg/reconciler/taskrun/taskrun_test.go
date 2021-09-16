@@ -1814,7 +1814,7 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
 		t.Error("Wanted a wrapped requeue error, but got nil.")
 	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -1851,7 +1851,7 @@ func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err != nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
 	}
 
@@ -1964,7 +1964,7 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
-	reconcileErr := c.Reconciler.Reconcile(context.Background(), getRunName(noTaskRun))
+	reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(noTaskRun))
 
 	// When a TaskRun was rejected with a permanent error, reconciler must stop and forget about the run
 	// Such TaskRun enters Reconciler and from within the isDone block, marks the run success so that
@@ -2392,9 +2392,6 @@ func TestExpandMountPath(t *testing.T) {
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
 	// c := testAssets.Controller
 	clients := testAssets.Clients
 	saName := "default"
@@ -2415,6 +2412,7 @@ func TestExpandMountPath(t *testing.T) {
 		taskLister:        testAssets.Informers.Task.Lister(),
 		clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
 		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
@@ -2427,7 +2425,7 @@ func TestExpandMountPath(t *testing.T) {
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
 
-	pod, err := r.createPod(ctx, taskRun, rtr)
+	pod, err := r.createPod(testAssets.Ctx, taskRun, rtr)
 
 	if err != nil {
 		t.Fatalf("create pod threw error %v", err)
@@ -2486,10 +2484,6 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
-
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
 	clients := testAssets.Clients
 	saName := "default"
 	if _, err := clients.Kube.CoreV1().ServiceAccounts(taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
@@ -2508,6 +2502,7 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 		taskLister:        testAssets.Informers.Task.Lister(),
 		clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
 		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
@@ -2520,7 +2515,7 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
 
-	_, err := r.createPod(ctx, taskRun, rtr)
+	_, err := r.createPod(testAssets.Ctx, taskRun, rtr)
 
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected to fail validation for duplicate Workspace mount paths, error was %v", err)
@@ -2544,9 +2539,6 @@ func TestHandlePodCreationError(t *testing.T) {
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 
-	ctx, cancel := context.WithCancel(context.TODO())
-	defer cancel()
-
 	// Use the test assets to create a *Reconciler directly for focused testing.
 	c := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
@@ -2555,6 +2547,7 @@ func TestHandlePodCreationError(t *testing.T) {
 		taskLister:        testAssets.Informers.Task.Lister(),
 		clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
 		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
@@ -2588,7 +2581,7 @@ func TestHandlePodCreationError(t *testing.T) {
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
-			c.handlePodCreationError(ctx, taskRun, tc.err)
+			c.handlePodCreationError(testAssets.Ctx, taskRun, tc.err)
 			foundCondition := false
 			for _, cond := range taskRun.Status.Conditions {
 				if cond.Type == tc.expectedType && cond.Status == tc.expectedStatus && cond.Reason == tc.expectedReason {
@@ -3112,7 +3105,7 @@ func TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRunOmittingWorkspace)); err == nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRunOmittingWorkspace)); err == nil {
 		t.Error("Wanted a wrapped requeue error, but got nil.")
 	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("Unexpected reconcile error for TaskRun %q: %v", taskRunOmittingWorkspace.Name, err)
@@ -3280,7 +3273,7 @@ func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) 
 		t.Fatal(err)
 	}
 
-	_ = testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun))
+	_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
 
 	_, err := clients.Pipeline.TektonV1beta1().Tasks(taskRun.Namespace).Get(testAssets.Ctx, taskWithTwoWorkspaces.Name, metav1.GetOptions{})
 	if err != nil {
@@ -3343,7 +3336,7 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := testAssets.Controller.Reconciler.Reconcile(context.Background(), getRunName(taskRun)); err == nil {
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
 		t.Error("Wanted a wrapped requeue error, but got nil.")
 	} else if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("expected no error reconciling valid TaskRun but got %v", err)
@@ -3661,6 +3654,7 @@ func TestFailTaskRun(t *testing.T) {
 				taskLister:        testAssets.Informers.Task.Lister(),
 				clusterTaskLister: testAssets.Informers.ClusterTask.Lister(),
 				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
 				cloudEventClient:  testAssets.Clients.CloudEvents,
 				metrics:           nil, // Not used
 				entrypointCache:   nil, // Not used

@@ -19,7 +19,6 @@ package builder
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -124,9 +123,6 @@ func PodContainer(name, image string, ops ...ContainerOp) PodSpecOp {
 		c := &corev1.Container{
 			Name:  name,
 			Image: image,
-			Resources: corev1.ResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{},
-			},
 		}
 		for _, op := range ops {
 			op(c)
@@ -143,9 +139,6 @@ func PodInitContainer(name, image string, ops ...ContainerOp) PodSpecOp {
 			Name:  name,
 			Image: image,
 			Args:  []string{},
-			Resources: corev1.ResourceRequirements{
-				Requests: map[corev1.ResourceName]resource.Quantity{},
-			},
 		}
 		for _, op := range ops {
 			op(c)

@@ -54,6 +54,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
+	fakelimitrangeinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/limitrange/fake"
 	fakefilteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered/fake"
 	fakeserviceaccountinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount/fake"
 	"knative.dev/pkg/controller"
@@ -74,6 +75,7 @@ type Data struct {
 	Namespaces        []*corev1.Namespace
 	ConfigMaps        []*corev1.ConfigMap
 	ServiceAccounts   []*corev1.ServiceAccount
+	LimitRange        []*corev1.LimitRange
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -97,6 +99,7 @@ type Informers struct {
 	Pod              coreinformers.PodInformer
 	ConfigMap        coreinformers.ConfigMapInformer
 	ServiceAccount   coreinformers.ServiceAccountInformer
+	LimitRange       coreinformers.LimitRangeInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -177,6 +180,7 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		Pod:              fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
 		ConfigMap:        fakeconfigmapinformer.Get(ctx),
 		ServiceAccount:   fakeserviceaccountinformer.Get(ctx),
+		LimitRange:       fakelimitrangeinformer.Get(ctx),
 	}
 
 	// Attach reactors that add resource mutations to the appropriate

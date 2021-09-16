@@ -21,7 +21,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/pod"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/client-go/kubernetes"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 )
 
 var resourceNames = []corev1.ResourceName{corev1.ResourceCPU, corev1.ResourceMemory, corev1.ResourceEphemeralStorage}
@@ -30,9 +30,9 @@ func isZero(q resource.Quantity) bool {
 	return (&q).IsZero()
 }
 
-func NewTransformer(ctx context.Context, namespace string, clientset kubernetes.Interface) pod.Transformer {
+func NewTransformer(ctx context.Context, namespace string, lister corev1listers.LimitRangeLister) pod.Transformer {
 	return func(p *corev1.Pod) (*corev1.Pod, error) {
-		limitRange, err := getVirtualLimitRange(ctx, namespace, clientset)
+		limitRange, err := getVirtualLimitRange(ctx, namespace, lister)
 		if err != nil {
 			return p, err
 		}
