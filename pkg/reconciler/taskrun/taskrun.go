@@ -53,6 +53,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	corev1Listers "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -71,6 +72,7 @@ type Reconciler struct {
 	taskLister        listers.TaskLister
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    resourcelisters.PipelineResourceLister
+	limitrangeLister  corev1Listers.LimitRangeLister
 	cloudEventClient  cloudevent.CEClient
 	entrypointCache   podconvert.EntrypointCache
 	metrics           *taskrunmetrics.Recorder
@@ -704,7 +706,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		EntrypointCache: c.entrypointCache,
 		OverrideHomeEnv: shouldOverrideHomeEnv,
 	}
-	pod, err := podbuilder.Build(ctx, tr, *ts, limitrange.NewTransformer(ctx, tr.Namespace, c.KubeClientSet))
+	pod, err := podbuilder.Build(ctx, tr, *ts, limitrange.NewTransformer(ctx, tr.Namespace, c.limitrangeLister))
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}

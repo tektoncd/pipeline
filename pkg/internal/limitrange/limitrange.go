@@ -20,23 +20,23 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/labels"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 )
 
-func getVirtualLimitRange(ctx context.Context, namespace string, c kubernetes.Interface) (*corev1.LimitRange, error) {
-	limitRanges, err := c.CoreV1().LimitRanges(namespace).List(ctx, metav1.ListOptions{})
+func getVirtualLimitRange(ctx context.Context, namespace string, lister corev1listers.LimitRangeLister) (*corev1.LimitRange, error) {
+	limitRanges, err := lister.LimitRanges(namespace).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
-	var limitRange corev1.LimitRange
+	var limitRange *corev1.LimitRange
 	switch {
-	case len(limitRanges.Items) == 0:
+	case len(limitRanges) == 0:
 		// No LimitRange defined
 		break
-	case len(limitRanges.Items) == 1:
+	case len(limitRanges) == 1:
 		// One LimitRange defined
-		limitRange = limitRanges.Items[0]
+		limitRange = limitRanges[0]
 	default:
 		// Several LimitRange defined
 		// Create a virtual LimitRange with
@@ -45,8 +45,9 @@ func getVirtualLimitRange(ctx context.Context, namespace string, c kubernetes.In
 		// - Default that "fits" into min/max taken above
 		// - Default request that "fits" into min/max taken above
 		// - Smallest ratio (aka the most restrictive one)
+		limitRange = &corev1.LimitRange{}
 		m := map[corev1.LimitType]corev1.LimitRangeItem{}
-		for _, lr := range limitRanges.Items {
+		for _, lr := range limitRanges {
 			for _, item := range lr.Spec.Limits {
 				_, exists := m[item.Type]
 				if !exists {
@@ -74,7 +75,7 @@ func getVirtualLimitRange(ctx context.Context, namespace string, c kubernetes.In
 			}
 		}
 		// Handle Default and DefaultRequest
-		for _, lr := range limitRanges.Items {
+		for _, lr := range limitRanges {
 			for _, item := range lr.Spec.Limits {
 				// Default
 				m[item.Type].Default[corev1.ResourceCPU] = minOfBetween(m[item.Type].Default[corev1.ResourceCPU], item.Default[corev1.ResourceCPU], m[item.Type].Min[corev1.ResourceCPU], m[item.Type].Max[corev1.ResourceCPU])
@@ -90,7 +91,7 @@ func getVirtualLimitRange(ctx context.Context, namespace string, c kubernetes.In
 			limitRange.Spec.Limits = append(limitRange.Spec.Limits, v)
 		}
 	}
-	return &limitRange, nil
+	return limitRange, nil
 }
 
 func maxOf(a, b resource.Quantity) resource.Quantity {

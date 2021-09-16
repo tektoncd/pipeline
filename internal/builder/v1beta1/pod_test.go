@@ -87,9 +87,6 @@ func TestPod(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:  "nop",
 				Image: "nop:latest",
-				Resources: corev1.ResourceRequirements{
-					Requests: map[corev1.ResourceName]resource.Quantity{},
-				},
 			}},
 			InitContainers: []corev1.Container{{
 				Name:       "basic",

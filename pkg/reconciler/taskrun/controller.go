@@ -34,6 +34,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	limitrangeinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/limitrange"
 	filteredpodinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/pod/filtered"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -61,6 +62,7 @@ func NewController(namespace string, conf ControllerConfiguration) func(context.
 		clusterTaskInformer := clustertaskinformer.Get(ctx)
 		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
 		resourceInformer := resourceinformer.Get(ctx)
+		limitrangeInformer := limitrangeinformer.Get(ctx)
 		configStore := config.NewStore(logger.Named("config-store"), taskrunmetrics.MetricsOnStore(logger))
 		configStore.WatchConfigs(cmw)
 
@@ -77,6 +79,7 @@ func NewController(namespace string, conf ControllerConfiguration) func(context.
 			taskLister:        taskInformer.Lister(),
 			clusterTaskLister: clusterTaskInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
+			limitrangeLister:  limitrangeInformer.Lister(),
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           taskrunmetrics.Get(ctx),
 			entrypointCache:   entrypointCache,
