@@ -36,9 +36,12 @@ import (
 )
 
 const (
-	toolsVolumeName  = "tekton-internal-tools"
-	mountPoint       = "/tekton/tools"
-	entrypointBinary = mountPoint + "/entrypoint"
+	binVolumeName    = "tekton-internal-bin"
+	binDir           = "/tekton/bin"
+	entrypointBinary = binDir + "/entrypoint"
+
+	runVolumeName = "tekton-internal-run"
+	runDir        = "/tekton/run"
 
 	downwardVolumeName     = "tekton-internal-downward"
 	downwardMountPoint     = "/tekton/downward"
@@ -55,12 +58,26 @@ const (
 
 var (
 	// TODO(#1605): Generate volumeMount names, to avoid collisions.
-	toolsMount = corev1.VolumeMount{
-		Name:      toolsVolumeName,
-		MountPath: mountPoint,
+	binMount = corev1.VolumeMount{
+		Name:      binVolumeName,
+		MountPath: binDir,
 	}
-	toolsVolume = corev1.Volume{
-		Name:         toolsVolumeName,
+	binROMount = corev1.VolumeMount{
+		Name:      binVolumeName,
+		MountPath: binDir,
+		ReadOnly:  true,
+	}
+	binVolume = corev1.Volume{
+		Name:         binVolumeName,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+
+	runMount = corev1.VolumeMount{
+		Name:      runVolumeName,
+		MountPath: runDir,
+	}
+	runVolume = corev1.Volume{
+		Name:         runVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
 
@@ -105,7 +122,7 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 		// Invoke the entrypoint binary in "cp mode" to copy itself
 		// into the correct location for later steps.
 		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
-		VolumeMounts: []corev1.VolumeMount{toolsMount},
+		VolumeMounts: []corev1.VolumeMount{binMount},
 	}
 
 	if len(steps) == 0 {
@@ -122,7 +139,7 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 				"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
 				"-wait_file_content", // Wait for file contents, not just an empty file.
 				// Start next step.
-				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
+				"-post_file", filepath.Join(runDir, fmt.Sprintf("%d", i)),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
 				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
@@ -130,8 +147,8 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 		default:
 			// All other steps wait for previous file, write next file.
 			argsForEntrypoint = []string{
-				"-wait_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i-1)),
-				"-post_file", filepath.Join(mountPoint, fmt.Sprintf("%d", i)),
+				"-wait_file", filepath.Join(runDir, fmt.Sprintf("%d", i-1)),
+				"-post_file", filepath.Join(runDir, fmt.Sprintf("%d", i)),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
 				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
@@ -174,7 +191,7 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 
 		steps[i].Command = []string{entrypointBinary}
 		steps[i].Args = argsForEntrypoint
-		steps[i].VolumeMounts = append(steps[i].VolumeMounts, toolsMount)
+		steps[i].VolumeMounts = append(steps[i].VolumeMounts, binROMount, runMount)
 		steps[i].TerminationMessagePath = terminationPath
 	}
 	// Mount the Downward volume into the first step container.

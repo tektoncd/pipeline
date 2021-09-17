@@ -47,7 +47,7 @@ and error. The subsequent steps are skipped in this case as well, marking the Ta
 
 #### Halting a Step on failure
 
-The failed step writes `<step-no>.err` to `/tekton/tools` and stops running completely. To be able to debug a step we would
+The failed step writes `<step-no>.err` to `/tekton/run` and stops running completely. To be able to debug a step we would
 need it to continue running (not exit), not skip the next steps and signal health of the step. By disabling step skipping, 
 stopping write of the `<step-no>.err` file and waiting on a signal by the user to disable the halt, we would be simulating a 
 "breakpoint".
@@ -58,7 +58,7 @@ environment using a CLI or an IDE.
 #### Exiting breakpoint
 
 To exit a step which has been paused upon failure, the step would wait on a file similar to `<step-no>.breakpointexit` which 
-would unpause and exit the step container. eg: Step 0 fails and is paused. Writing `0.breakpointexit` in `/tekton/tools`
+would unpause and exit the step container. eg: Step 0 fails and is paused. Writing `0.breakpointexit` in `/tekton/run`
 would unpause and exit the step container.
 
 ## Debug Environment 
@@ -75,8 +75,8 @@ to reflect step number. eg: Step 0 will have `/tekton/debug/info/0`, Step 1 will
 
 ### Debug Scripts
 
-`/tekton/debug/scripts/debug-continue` : Mark the step as completed with success by writing to `/tekton/tools`. eg: User wants to exit
-breakpoint for failed step 0. Running this script would create `/tekton/tools/0` and `/tekton/tools/0.breakpointexit`.
+`/tekton/debug/scripts/debug-continue` : Mark the step as completed with success by writing to `/tekton/run`. eg: User wants to exit
+breakpoint for failed step 0. Running this script would create `/tekton/run/0` and `/tekton/run/0.breakpointexit`.
 
-`/tekton/debug/scripts/debug-fail-continue` : Mark the step as completed with failure by writing to `/tekton/tools`. eg: User wants to exit
-breakpoint for failed step 0. Running this script would create `/tekton/tools/0.err` and `/tekton/tools/0.breakpointexit`.
+`/tekton/debug/scripts/debug-fail-continue` : Mark the step as completed with failure by writing to `/tekton/run`. eg: User wants to exit
+breakpoint for failed step 0. Running this script would create `/tekton/run/0.err` and `/tekton/run/0.breakpointexit`.

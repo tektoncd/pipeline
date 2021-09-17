@@ -182,7 +182,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// place the entrypoint first in case other init containers rely on its
 	// features (e.g. decode-script).
 	initContainers = append([]corev1.Container{entrypointInit}, initContainers...)
-	volumes = append(volumes, toolsVolume, downwardVolume)
+	volumes = append(volumes, binVolume, runVolume, downwardVolume)
 
 	// Add implicit env vars.
 	// They're prepended to the list, so that if the user specified any

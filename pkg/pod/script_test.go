@@ -163,21 +163,21 @@ touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNjcmlwdC0x
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 scriptfile="/tekton/scripts/script-2-mz4c7"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 CiMhL2Jpbi9zaApzY3JpcHQtMw==
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 scriptfile="/tekton/scripts/script-3-mssqb"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNldCAteGUKbm8tc2hlYmFuZw==
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -258,19 +258,19 @@ touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNjcmlwdC0x
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 scriptfile="/tekton/scripts/script-2-mz4c7"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 CiMhL2Jpbi9zaApzY3JpcHQtMw==
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 scriptfile="/tekton/scripts/script-3-mssqb"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNldCAteGUKbm8tc2hlYmFuZw==
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 tmpfile="/tekton/debug/scripts/debug-continue"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'debug-continue-heredoc-randomly-generated-78c5n'
@@ -279,7 +279,7 @@ set -xe
 
 numberOfSteps=4
 debugInfo=/tekton/debug/info
-tektonTools=/tekton/tools
+tektonTools=/tekton/run
 
 postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
 stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
@@ -301,7 +301,7 @@ set -xe
 
 numberOfSteps=4
 debugInfo=/tekton/debug/info
-tektonTools=/tekton/tools
+tektonTools=/tekton/run
 
 postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
 stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
@@ -316,7 +316,7 @@ else
 fi
 debug-fail-continue-heredoc-randomly-generated-6nl7g
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount, debugScriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
 	}
 	want := []corev1.Container{{
 		Image:   "step-1",
@@ -394,21 +394,21 @@ touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNjcmlwdC0x
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 scriptfile="/tekton/scripts/script-2-mz4c7"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNjcmlwdC0z
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 scriptfile="/tekton/scripts/sidecar-script-0-mssqb"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNpZGVjYXItMQ==
 _EOF_
-/tekton/tools/entrypoint decode-script "${scriptfile}"
+/tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -499,7 +499,7 @@ script-3
 no-shebang
 "@ | Out-File -FilePath /tekton/scripts/script-3-mssqb.cmd
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -583,7 +583,7 @@ script-3
 sidecar-1
 "@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-mssqb
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
@@ -645,7 +645,7 @@ sidecar-1`,
 sidecar-1
 "@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-9l9zj
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, toolsMount},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image: "step-1",
