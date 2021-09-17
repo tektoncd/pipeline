@@ -137,6 +137,8 @@ with the binary and file(s) is mounted.
 If the image is a private registry, the service account should include an
 [ImagePullSecret](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#add-imagepullsecrets-to-a-service-account)
 
+For more details, see [entrypoint/README.md](../../cmd/entrypoint/README.md).
+
 ## Reserved directories
 
 ### /workspace
@@ -152,6 +154,8 @@ Here is an example of a directory layout for a simple Task with 2 script steps:
 
 ```
 /tekton
+|-- bin
+    `-- entrypoint
 |-- creds
 |-- downward
 |   |-- ..2021_09_16_18_31_06.270542700
@@ -160,6 +164,8 @@ Here is an example of a directory layout for a simple Task with 2 script steps:
 |   `-- ready -> ..data/ready
 |-- home
 |-- results
+|-- run
+    `-- 0
 |-- scripts
 |   |-- script-0-t4jd8
 |   `-- script-1-4pjwp
@@ -169,23 +175,21 @@ Here is an example of a directory layout for a simple Task with 2 script steps:
 |   |-- step-foo
 |   `-- step-unnamed-0
 |       `-- exitCode
-|-- termination
-`-- tools
-    |-- 0
-    `-- entrypoint
+`-- termination
 ```
 
 | Path                | Description                                                                                                                                                                                                                                                          |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | /tekton             | Directory used for Tekton specific functionality                                                                                                                                                                                                                     |
+| /tekton/bin         | Tekton provided binaries / tools                                                                                                                                                                                                                                     |
 | /tekton/creds       | Location of Tekton mounted secrets. See [Authentication at Run Time](../auth.md) for more details.                                                                                                                                                                   |
 | /tekton/downward    | Location of data mounted via the [Downward API](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/#the-downward-api).                                                                                              |
 | /tekton/home        | (deprecated - see https://github.com/tektoncd/pipeline/issues/2013) Default home directory for user containers.                                                                                                                                                      |
 | /tekton/results     | Where [results](#results) are written to (path available to `Task` authors via [`$(results.name.path)`](../variables.md))                                                                                                                                            |
+| /tekton/run         | Runtime variable data. [Used for coordinating step ordering](#entrypoint-rewriting-and-step-ordering).                                                                                                                                                               |
 | /tekton/scripts     | Contains user provided scripts specified in the TaskSpec.                                                                                                                                                                                                            |
 | /tekton/steps       | Where the `step` exitCodes are written to (path available to `Task` authors via [`$(steps.<stepName>.exitCode.path)`](../variables.md#variables-available-in-a-task))                                                                                                |
 | /tekton/termination | where the eventual [termination log message](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#writing-and-reading-a-termination-message) is written to [Sequencing step containers](#entrypoint-rewriting-and-step-ordering) |
-| /tekton/tools       | Contains tools like the [entrypoint binary](#entrypoint-rewriting-and-step-ordering), post_files for coordinating step starts                                                                                                                                        |
 
 The following directories are covered by the
 [Tekton API Compatibility policy](../api_compatibility_policy.md), and can be

@@ -29,14 +29,14 @@ Any extra positional arguments are passed to the original entrypoint command.
 ## Example
 
 The following example of usage for `entrypoint` waits for
-`/tekton/tools/3` file to exist and executes the command `bash` with args
-`echo` and `hello`, then writes the file `/tekton/tools/4`, or
-`/tekton/tools/4.err` in case the command fails.
+`/tekton/run/3` file to exist and executes the command `bash` with args
+`echo` and `hello`, then writes the file `/tekton/run/4`, or
+`/tekton/run/4.err` in case the command fails.
 
 ```shell
 entrypoint \
-  -wait_file /tekton/tools/3 \
-  -post_file /tekton/tools/4 \
+  -wait_file /tekton/run/3 \
+  -post_file /tekton/run/4 \
   -entrypoint bash -- \
   echo hello
 ```
@@ -64,14 +64,14 @@ to contain contents before proceeding.
 The following example of usage for `entrypoint` waits for
 `/tekton/downward/ready` file to exist and contain actual contents
 (`-wait_file_contents`), and executes the command `bash` with args
-`echo` and `hello`, then writes the file `/tekton/tools/1`, or
-`/tekton/tools/1.err` in case the command fails.
+`echo` and `hello`, then writes the file `/tekton/run/1`, or
+`/tekton/run/1.err` in case the command fails.
 
 ```shell
 entrypoint \
   -wait_file /tekton/downward/ready \
   -wait_file_contents \
-  -post_file /tekton/tools/1 \
+  -post_file /tekton/run/1 \
   -entrypoint bash -- \
   echo hello
 ```
@@ -79,7 +79,7 @@ entrypoint \
 ## `cp` Mode
 
 In order to make the `entrypoint` binary available to the user's steps, it gets
-copied to a Volume that's shared with all the steps' containers. This is done
+copied to a Volume that's shared with all the steps' containers as read-only. This is done
 in an `initContainer` pre-step, that runs before steps start.
 
 To reduce external dependencies, the `entrypoint` binary actually copies
@@ -95,22 +95,23 @@ initContainers:
   args:
   - cp
   - /ko-app/entrypoint  # <-- path to the entrypoint binary inside the image
-  - /tekton/tools/entrypoint
+  - /tekton/bin/entrypoint
   volumeMounts:
-  - name: tekton-internal-tools
-    mountPath: /tekton/tools
+  - name: tekton-internal-bin
+    mountPath: /tekton/bin
 
 containers:
 - image: user-image
   command:
-  - /tekton/tools/entrypoint
+  - /tekton/bin/entrypoint
   ... args to entrypoint ...
   volumeMounts:
-  - name: tekton-internal-tools
-    mountPath: /tekton/tools
+  - name: tekton-internal-bin
+    mountPath: /tekton/bin
+    readonly: true
 
 volumes:
-- name: tekton-internal-tools
+- name: tekton-internal-bin
   volumeSource:
     emptyDir: {}
 ```

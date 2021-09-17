@@ -78,6 +78,8 @@ func VolumeMount(name, mountPath string, ops ...VolumeMountOp) ContainerOp {
 	}
 }
 
+var VolumeMountRO = func(vm *corev1.VolumeMount) { vm.ReadOnly = true }
+
 // Resources adds ResourceRequirements to the Container (step).
 func Resources(ops ...ResourceRequirementsOp) ContainerOp {
 	return func(c *corev1.Container) {

@@ -70,7 +70,7 @@ import (
 )
 
 const (
-	entrypointLocation = "/tekton/tools/entrypoint"
+	entrypointLocation = "/tekton/bin/entrypoint"
 	workspaceDir       = "/workspace"
 	currentAPIVersion  = "tekton.dev/v1beta1"
 )
@@ -198,8 +198,14 @@ var (
 		resourcev1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget2),
 	))
 
-	toolsVolume = corev1.Volume{
-		Name: "tekton-internal-tools",
+	binVolume = corev1.Volume{
+		Name: "tekton-internal-bin",
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+	runVolume = corev1.Volume{
+		Name: "tekton-internal-run",
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
@@ -245,7 +251,7 @@ var (
 	getPlaceToolsInitContainer = func(ops ...tb.ContainerOp) tb.PodSpecOp {
 		actualOps := []tb.ContainerOp{
 			tb.Command("/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointLocation),
-			tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+			tb.VolumeMount("tekton-internal-bin", "/tekton/bin"),
 			tb.WorkingDir("/"),
 			tb.Args(),
 		}
@@ -484,7 +490,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(defaultSAName),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -496,7 +502,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -507,7 +513,8 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 						"/mycmd",
 						"--",
 					),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -533,7 +540,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName("test-sa"),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -545,7 +552,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -556,7 +563,8 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 						"/mycmd",
 						"--",
 					),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -671,7 +679,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -683,7 +691,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -695,7 +703,8 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 						"--",
 					),
 					tb.EnvVar("foo", "bar"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -722,7 +731,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -734,7 +743,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -745,7 +754,8 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 						"/mycmd",
 						"--",
 					),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1077,7 +1087,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1089,7 +1099,7 @@ func TestReconcile(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1100,7 +1110,8 @@ func TestReconcile(t *testing.T) {
 						"/mycmd",
 						"--",
 					),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1129,7 +1140,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName("test-sa"),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1141,7 +1152,7 @@ func TestReconcile(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1152,7 +1163,8 @@ func TestReconcile(t *testing.T) {
 						"/mycmd",
 						"--",
 					),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1182,7 +1194,7 @@ func TestReconcile(t *testing.T) {
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
 				tb.PodVolumes(
-					workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+					workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 						Name:         "tekton-creds-init-home-0",
 						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 					},
@@ -1216,12 +1228,12 @@ func TestReconcile(t *testing.T) {
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-create-dir-myimage-mssqb", "busybox",
-					tb.Command("/tekton/tools/entrypoint"),
+					tb.Command("/tekton/bin/entrypoint"),
 					tb.Args("-wait_file",
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1233,7 +1245,8 @@ func TestReconcile(t *testing.T) {
 						"--",
 						"-p",
 						"/workspace/output/myimage"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1245,9 +1258,9 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("step-git-source-workspace-mz4c7", "override-with-git:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-post_file",
-						"/tekton/tools/1",
+						"/tekton/run/1",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1262,7 +1275,8 @@ func TestReconcile(t *testing.T) {
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.WorkingDir(workspaceDir),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-creds-init-home-1", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -1273,9 +1287,9 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("step-mycontainer", "myimage",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file",
-						"/tekton/tools/1",
+						"/tekton/run/1",
 						"-post_file",
-						"/tekton/tools/2",
+						"/tekton/run/2",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1291,7 +1305,8 @@ func TestReconcile(t *testing.T) {
 						"--my-additional-arg=gcr.io/kristoff/sven",
 						"--my-taskname-arg=test-task-with-substitution",
 						"--my-taskrun-arg=test-taskrun-substitution"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-creds-init-home-2", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -1302,9 +1317,9 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("step-myothercontainer", "myotherimage",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file",
-						"/tekton/tools/2",
+						"/tekton/run/2",
 						"-post_file",
-						"/tekton/tools/3",
+						"/tekton/run/3",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1315,7 +1330,8 @@ func TestReconcile(t *testing.T) {
 						"/mycmd",
 						"--",
 						"--my-other-arg=https://foo.git"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-creds-init-home-3", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -1326,9 +1342,9 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("step-image-digest-exporter-9l9zj", "override-with-imagedigest-exporter-image:latest",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file",
-						"/tekton/tools/3",
+						"/tekton/run/3",
 						"-post_file",
-						"/tekton/tools/4",
+						"/tekton/run/4",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1338,7 +1354,8 @@ func TestReconcile(t *testing.T) {
 						"-entrypoint",
 						"/ko-app/imagedigestexporter", "--",
 						"-images", "[{\"name\":\"myimage\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/myimage\"}]"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-creds-init-home-4", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -1365,7 +1382,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}, corev1.Volume{
@@ -1380,7 +1397,7 @@ func TestReconcile(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1398,7 +1415,8 @@ func TestReconcile(t *testing.T) {
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.WorkingDir("/workspace"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1410,9 +1428,9 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("step-mycontainer", "myimage",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-post_file",
-						"/tekton/tools/1",
+						"/tekton/run/1",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1422,7 +1440,8 @@ func TestReconcile(t *testing.T) {
 						"-entrypoint",
 						"/mycmd",
 						"--", "--my-arg=foo"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-creds-init-home-1", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -1450,7 +1469,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1462,7 +1481,7 @@ func TestReconcile(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1473,7 +1492,8 @@ func TestReconcile(t *testing.T) {
 						"/mycmd",
 						"--",
 					),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1501,7 +1521,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}, corev1.Volume{
@@ -1516,7 +1536,7 @@ func TestReconcile(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1535,7 +1555,8 @@ func TestReconcile(t *testing.T) {
 					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
 					tb.EnvVar("HOME", "/tekton/home"),
 					tb.WorkingDir("/workspace"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1547,9 +1568,9 @@ func TestReconcile(t *testing.T) {
 				tb.PodContainer("step-mystep", "ubuntu",
 					tb.Command(entrypointLocation),
 					tb.Args("-wait_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-post_file",
-						"/tekton/tools/1",
+						"/tekton/run/1",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1558,7 +1579,8 @@ func TestReconcile(t *testing.T) {
 						"/tekton/steps/1",
 						"-entrypoint",
 						"/mycmd", "--"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-creds-init-home-1", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
 					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
@@ -1586,7 +1608,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1598,7 +1620,7 @@ func TestReconcile(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1608,7 +1630,8 @@ func TestReconcile(t *testing.T) {
 						"-entrypoint",
 						"/mycmd",
 						"--"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1636,19 +1659,19 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
 				tb.PodRestartPolicy(corev1.RestartPolicyNever),
 				getPlaceToolsInitContainer(),
 				tb.PodContainer("step-mycontainer", "myimage",
-					tb.Command("/tekton/tools/entrypoint"),
+					tb.Command("/tekton/bin/entrypoint"),
 					tb.Args("-wait_file",
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1659,7 +1682,8 @@ func TestReconcile(t *testing.T) {
 						// Important bit here: /tekton/creds
 						"/mycmd /tekton/creds",
 						"--"),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
@@ -1688,7 +1712,7 @@ func TestReconcile(t *testing.T) {
 			tb.PodSpec(
 				withActiveDeadlineSeconds,
 				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, toolsVolume, downwardVolume, corev1.Volume{
+				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1700,7 +1724,7 @@ func TestReconcile(t *testing.T) {
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/tools/0",
+						"/tekton/run/0",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1711,7 +1735,8 @@ func TestReconcile(t *testing.T) {
 						"/mycmd",
 						"--",
 					),
-					tb.VolumeMount("tekton-internal-tools", "/tekton/tools"),
+					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
+					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
 					tb.VolumeMount("tekton-internal-downward", "/tekton/downward"),
 					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
 					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
