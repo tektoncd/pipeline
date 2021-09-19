@@ -21,13 +21,6 @@ import (
 	"sort"
 )
 
-// Options holds options passed to the Tekton Pipeline controllers
-// typically via command-line flags.
-type Options struct {
-	Images                        Images
-	ExperimentalDisableResolution bool
-}
-
 // Images holds the images reference for a number of container images used
 // across tektoncd pipelines.
 type Images struct {

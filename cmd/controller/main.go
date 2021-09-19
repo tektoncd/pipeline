@@ -47,23 +47,23 @@ func main() {
 		"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
 		"issue upstream!")
 
-	fo := &pipeline.Options{}
-	flag.StringVar(&fo.Images.EntrypointImage, "entrypoint-image", "", "The container image containing our entrypoint binary.")
-	flag.StringVar(&fo.Images.NopImage, "nop-image", "", "The container image used to stop sidecars")
-	flag.StringVar(&fo.Images.GitImage, "git-image", "", "The container image containing our Git binary.")
-	flag.StringVar(&fo.Images.KubeconfigWriterImage, "kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
-	flag.StringVar(&fo.Images.ShellImage, "shell-image", "", "The container image containing a shell")
-	flag.StringVar(&fo.Images.ShellImageWin, "shell-image-win", "", "The container image containing a windows shell")
-	flag.StringVar(&fo.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
-	flag.StringVar(&fo.Images.PRImage, "pr-image", "", "The container image containing our PR binary.")
-	flag.StringVar(&fo.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
-	flag.BoolVar(&fo.ExperimentalDisableResolution, "experimental-disable-in-tree-resolution", false,
+	opts := &pipeline.Options{}
+	flag.StringVar(&opts.Images.EntrypointImage, "entrypoint-image", "", "The container image containing our entrypoint binary.")
+	flag.StringVar(&opts.Images.NopImage, "nop-image", "", "The container image used to stop sidecars")
+	flag.StringVar(&opts.Images.GitImage, "git-image", "", "The container image containing our Git binary.")
+	flag.StringVar(&opts.Images.KubeconfigWriterImage, "kubeconfig-writer-image", "", "The container image containing our kubeconfig writer binary.")
+	flag.StringVar(&opts.Images.ShellImage, "shell-image", "", "The container image containing a shell")
+	flag.StringVar(&opts.Images.ShellImageWin, "shell-image-win", "", "The container image containing a windows shell")
+	flag.StringVar(&opts.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
+	flag.StringVar(&opts.Images.PRImage, "pr-image", "", "The container image containing our PR binary.")
+	flag.StringVar(&opts.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
+	flag.BoolVar(&opts.ExperimentalDisableResolution, "experimental-disable-in-tree-resolution", false,
 		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
 
 	// This parses flags.
 	cfg := injection.ParseAndGetRESTConfigOrDie()
 
-	if err := fo.Images.Validate(); err != nil {
+	if err := opts.Images.Validate(); err != nil {
 		log.Fatal(err)
 	}
 	if cfg.QPS == 0 {
@@ -102,8 +102,8 @@ func main() {
 
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
-		taskrun.NewController(fo),
-		pipelinerun.NewController(fo),
+		taskrun.NewController(opts),
+		pipelinerun.NewController(opts),
 	)
 }
 
