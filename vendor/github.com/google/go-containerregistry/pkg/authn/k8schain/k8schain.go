@@ -23,7 +23,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	credentialprovider "github.com/vdemeester/k8s-pkg-credentialprovider"
 	credentialprovidersecrets "github.com/vdemeester/k8s-pkg-credentialprovider/secrets"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -66,7 +66,7 @@ func New(ctx context.Context, client kubernetes.Interface, opt Options) (authn.K
 	//    Pod's service account.
 
 	// First, fetch all of the explicitly declared pull secrets
-	var pullSecrets []v1.Secret
+	var pullSecrets []corev1.Secret
 	if client != nil {
 		for _, name := range opt.ImagePullSecrets {
 			ps, err := client.CoreV1().Secrets(opt.Namespace).Get(ctx, name, metav1.GetOptions{})
@@ -90,18 +90,7 @@ func New(ctx context.Context, client kubernetes.Interface, opt Options) (authn.K
 		}
 	}
 
-	once.Do(func() {
-		keyring = credentialprovider.NewDockerKeyring()
-	})
-
-	// Third, extend the default keyring with the pull secrets.
-	kr, err := credentialprovidersecrets.MakeDockerKeyring(pullSecrets, keyring)
-	if err != nil {
-		return nil, err
-	}
-	return &keychain{
-		keyring: kr,
-	}, nil
+	return NewFromPullSecrets(ctx, pullSecrets)
 }
 
 // NewInCluster returns a new authn.Keychain suitable for resolving image references as
@@ -130,6 +119,23 @@ func NewInCluster(ctx context.Context, opt Options) (authn.Keychain, error) {
 // for all of the major public clouds, but in library form (vs. an executable you exec).
 func NewNoClient(ctx context.Context) (authn.Keychain, error) {
 	return New(ctx, nil, Options{})
+}
+
+// NewFromPullSecrets returns a new authn.Keychain suitable for resolving image references as
+// scoped by the pull secrets.
+func NewFromPullSecrets(ctx context.Context, pullSecrets []corev1.Secret) (authn.Keychain, error) {
+	once.Do(func() {
+		keyring = credentialprovider.NewDockerKeyring()
+	})
+
+	// Extend the default keyring with the pull secrets.
+	kr, err := credentialprovidersecrets.MakeDockerKeyring(pullSecrets, keyring)
+	if err != nil {
+		return nil, err
+	}
+	return &keychain{
+		keyring: kr,
+	}, nil
 }
 
 type lazyProvider struct {
