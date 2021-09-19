@@ -43,7 +43,7 @@ import (
 )
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
-func NewController(fo *pipeline.Options) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(opts *pipeline.Options) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		kubeclientset := kubeclient.Get(ctx)
@@ -62,7 +62,7 @@ func NewController(fo *pipeline.Options) func(context.Context, configmap.Watcher
 		c := &Reconciler{
 			KubeClientSet:     kubeclientset,
 			PipelineClientSet: pipelineclientset,
-			Images:            fo.Images,
+			Images:            opts.Images,
 			pipelineRunLister: pipelineRunInformer.Lister(),
 			pipelineLister:    pipelineInformer.Lister(),
 			taskLister:        taskInformer.Lister(),
@@ -74,7 +74,7 @@ func NewController(fo *pipeline.Options) func(context.Context, configmap.Watcher
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           pipelinerunmetrics.Get(ctx),
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
-			disableResolution: fo.ExperimentalDisableResolution,
+			disableResolution: opts.ExperimentalDisableResolution,
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{
