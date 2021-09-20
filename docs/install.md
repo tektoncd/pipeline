@@ -363,8 +363,8 @@ The default is `false`. For more information, see the [associated issue](https:/
 use of custom tasks in pipelines.
 
 - `enable-api-fields`: set this flag to "stable" to allow only the
-most stable features to be used. Set it to "alpha" to allow alpha
-features to be used.
+most stable features to be used. Set it to "alpha" to allow [alpha
+features](#alpha-features) to be used.
 
 - `scope-when-expressions-to-task`: set this flag to "true" to scope `when` expressions to guard a `Task` only. Set it
   to "false" to guard a `Task` and its dependent `Tasks`. It defaults to "false". For more information, see [guarding
@@ -391,10 +391,17 @@ the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment.
 
 Features currently in "alpha" are:
 
-- [Tekton Bundles](./taskruns.md#tekton-bundles)
-- [Custom Tasks](./runs.md)
-- [Isolated Step & Sidecar Workspaces](./workspaces.md#isolated-workspaces)
-- [Hermetic Execution Mode](./hermetic.md)
+| Feature                                                                         | TEP                                                                                                         | Release                                                              | Individual Flag             |
+|:------------------------------------------------------------------------------- |:----------------------------------------------------------------------------------------------------------- |:-------------------------------------------------------------------- |:--------------------------- |
+| [Bundles ](./pipelineruns.md#tekton-bundles)                                    | [TEP-0005](https://github.com/tektoncd/community/blob/main/teps/0005-tekton-oci-bundles.md)                 | [v0.18.0](https://github.com/tektoncd/pipeline/releases/tag/v0.18.0) | `enable-tekton-oci-bundles` |
+| [`Runs` and `Custom Tasks`](./runs.md)                                          | [TEP-0002](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md)                       | [v0.19.0](https://github.com/tektoncd/pipeline/releases/tag/v0.19.0) | `enable-custom-tasks`       |
+| [Isolated `Step` & `Sidecar` `Workspaces`](./workspaces.md#isolated-workspaces) | [TEP-0029](https://github.com/tektoncd/community/blob/main/teps/0029-step-workspaces.md)                    | [v0.24.0](https://github.com/tektoncd/pipeline/releases/tag/v0.24.0) |                             |
+| [Hermetic Execution Mode](./hermetic.md)                                        | [TEP-0025](https://github.com/tektoncd/community/blob/main/teps/0025-hermekton.md)                          | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                             |
+| [Graceful Termination](./pipelineruns.md#gracefully-cancelling-a-pipelinerun)   | [TEP-0058](https://github.com/tektoncd/community/blob/main/teps/0058-graceful-pipeline-run-termination.md)  | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                             |
+| [`PipelineRun` Timeouts](./pipelineruns.md#configuring-a-failure-timeout)       | [TEP-0046](https://github.com/tektoncd/community/blob/main/teps/0046-finallytask-execution-post-timeout.md) | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                             |
+| [Specifying `onError` for a `Step`](./tasks.md#specifying-onerror-for-a-step)   | [TEP-0040](https://github.com/tektoncd/community/blob/main/teps/0040-ignore-step-errors.md)                 | [v0.27.0](https://github.com/tektoncd/pipeline/releases/tag/v0.27.0) |                             |
+| [Implicit `Parameters`](./taskruns.md#implicit-parameters)                      | [TEP-0023](https://github.com/tektoncd/community/blob/main/teps/0023-implicit-mapping.md)                   | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                             |
+| [Windows Scrips](./tasks.md#windows-scripts)                                    | [TEP-0057](https://github.com/tektoncd/community/blob/main/teps/0057-windows-support.md)                    | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                             |
 
 ## Configuring High Availability
 
