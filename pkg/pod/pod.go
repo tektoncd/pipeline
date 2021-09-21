@@ -26,7 +26,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
-	"github.com/tektoncd/pipeline/pkg/workspace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -271,17 +270,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		return nil, err
 	}
 
-	// Using node affinity on taskRuns sharing PVC workspace, with an Affinity Assistant
-	// is mutually exclusive with other affinity on taskRun pods. If other
-	// affinity is wanted, that should be added on the Affinity Assistant pod unless
-	// assistant is disabled. When Affinity Assistant is disabled, an affinityAssistantName is not set.
-	var affinity *corev1.Affinity
-	if affinityAssistantName := taskRun.Annotations[workspace.AnnotationAffinityAssistantName]; affinityAssistantName != "" {
-		affinity = nodeAffinityUsingAffinityAssistant(affinityAssistantName)
-	} else {
-		affinity = podTemplate.Affinity
-	}
-
 	mergedPodContainers := stepContainers
 
 	// Merge sidecar containers with step containers.
@@ -337,7 +325,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 			Volumes:                      volumes,
 			NodeSelector:                 podTemplate.NodeSelector,
 			Tolerations:                  podTemplate.Tolerations,
-			Affinity:                     affinity,
+			Affinity:                     podTemplate.Affinity,
 			SecurityContext:              podTemplate.SecurityContext,
 			RuntimeClassName:             podTemplate.RuntimeClassName,
 			AutomountServiceAccountToken: podTemplate.AutomountServiceAccountToken,
@@ -378,25 +366,6 @@ func makeLabels(s *v1beta1.TaskRun) map[string]string {
 	// specifies this label, it should be overridden by this value.
 	labels[pipeline.TaskRunLabelKey] = s.Name
 	return labels
-}
-
-// nodeAffinityUsingAffinityAssistant achieves Node Affinity for taskRun pods
-// sharing PVC workspace by setting PodAffinity so that taskRuns is
-// scheduled to the Node were the Affinity Assistant pod is scheduled.
-func nodeAffinityUsingAffinityAssistant(affinityAssistantName string) *corev1.Affinity {
-	return &corev1.Affinity{
-		PodAffinity: &corev1.PodAffinity{
-			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{{
-				LabelSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{
-						workspace.LabelInstance:  affinityAssistantName,
-						workspace.LabelComponent: workspace.ComponentNameAffinityAssistant,
-					},
-				},
-				TopologyKey: "kubernetes.io/hostname",
-			}},
-		},
-	}
 }
 
 // ShouldOverrideHomeEnv returns a bool indicating whether a Pod should have its
