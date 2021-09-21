@@ -103,30 +103,15 @@ var (
 )
 
 // orderContainers returns the specified steps, modified so that they are
-// executed in order by overriding the entrypoint binary. It also returns the
-// init container that places the entrypoint binary pulled from the
-// entrypointImage.
+// executed in order by overriding the entrypoint binary.
 //
 // Containers must have Command specified; if the user didn't specify a
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug) (corev1.Container, []corev1.Container, error) {
-	initContainer := corev1.Container{
-		Name:  "place-tools",
-		Image: entrypointImage,
-		// Rewrite default WorkingDir from "/home/nonroot" to "/"
-		// as suggested at https://github.com/GoogleContainerTools/distroless/issues/718
-		// to avoid permission errors with nonroot users not equal to `65532`
-		WorkingDir: "/",
-		// Invoke the entrypoint binary in "cp mode" to copy itself
-		// into the correct location for later steps.
-		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
-		VolumeMounts: []corev1.VolumeMount{binMount},
-	}
-
+func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug) ([]corev1.Container, error) {
 	if len(steps) == 0 {
-		return corev1.Container{}, nil, errors.New("No steps specified")
+		return nil, errors.New("No steps specified")
 	}
 
 	for i, s := range steps {
@@ -169,7 +154,7 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 
 		cmd, args := s.Command, s.Args
 		if len(cmd) == 0 {
-			return corev1.Container{}, nil, fmt.Errorf("Step %d did not specify command", i)
+			return nil, fmt.Errorf("Step %d did not specify command", i)
 		}
 		if len(cmd) > 1 {
 			args = append(cmd[1:], args...)
@@ -197,7 +182,7 @@ func orderContainers(entrypointImage string, commonExtraEntrypointArgs []string,
 	// Mount the Downward volume into the first step container.
 	steps[0].VolumeMounts = append(steps[0].VolumeMounts, downwardMount)
 
-	return initContainer, steps, nil
+	return steps, nil
 }
 
 func resultArgument(steps []corev1.Container, results []v1beta1.TaskResult) []string {

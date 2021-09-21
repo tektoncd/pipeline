@@ -105,7 +105,6 @@ type Transformer func(*corev1.Pod) (*corev1.Pod, error)
 func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec v1beta1.TaskSpec, transformers ...Transformer) (*corev1.Pod, error) {
 	var (
 		scriptsInit                                       *corev1.Container
-		entrypointInit                                    corev1.Container
 		initContainers, stepContainers, sidecarContainers []corev1.Container
 		volumes                                           []corev1.Volume
 		volumeMounts                                      []corev1.VolumeMount
@@ -171,10 +170,23 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Rewrite steps with entrypoint binary. Append the entrypoint init
 	// container to place the entrypoint binary. Also add timeout flags
 	// to entrypoint binary.
+	entrypointInit := corev1.Container{
+		Name:  "place-tools",
+		Image: b.Images.EntrypointImage,
+		// Rewrite default WorkingDir from "/home/nonroot" to "/"
+		// as suggested at https://github.com/GoogleContainerTools/distroless/issues/718
+		// to avoid permission errors with nonroot users not equal to `65532`
+		WorkingDir: "/",
+		// Invoke the entrypoint binary in "cp mode" to copy itself
+		// into the correct location for later steps.
+		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
+		VolumeMounts: []corev1.VolumeMount{binMount},
+	}
+
 	if alphaAPIEnabled {
-		entrypointInit, stepContainers, err = orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug)
+		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug)
 	} else {
-		entrypointInit, stepContainers, err = orderContainers(b.Images.EntrypointImage, credEntrypointArgs, stepContainers, &taskSpec, nil)
+		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, nil)
 	}
 	if err != nil {
 		return nil, err
