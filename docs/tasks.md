@@ -335,9 +335,6 @@ steps:
 
 #### Specifying `onError` for a `step`
 
-This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
-to specify `onError` for a `step`.
-
 When a `step` in a `task` results in a failure, the rest of the steps in the `task` are skipped and the `taskRun` is
 declared a failure. If you would like to ignore such step errors and continue executing the rest of the steps in
 the task, you can specify `onError` for such a `step`.
@@ -386,8 +383,8 @@ kubectl get tr taskrun-unit-test-t6qcl -o json | jq .status
   ],
 ```
 
-For an end-to-end example, see [the taskRun ignoring a step error](../examples/v1beta1/taskruns/alpha/ignore-step-error.yaml)
-and [the pipelineRun ignoring a step error](../examples/v1beta1/pipelineruns/alpha/ignore-step-error.yaml).
+For an end-to-end example, see [the taskRun ignoring a step error](../examples/v1beta1/taskruns/ignore-step-error.yaml)
+and [the pipelineRun ignoring a step error](../examples/v1beta1/pipelineruns/ignore-step-error.yaml).
 
 #### Accessing Step's `exitCode` in subsequent `Steps`
 

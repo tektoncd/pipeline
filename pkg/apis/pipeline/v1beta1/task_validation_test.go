@@ -1178,13 +1178,7 @@ func TestStepOnError(t *testing.T) {
 			ts := &v1beta1.TaskSpec{
 				Steps: tt.steps,
 			}
-			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-				"enable-api-fields": "alpha",
-			})
-			cfg := &config.Config{
-				FeatureFlags: featureFlags,
-			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := context.Background()
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if tt.expectedError == nil && err != nil {
@@ -1239,18 +1233,6 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 				Workspaces: []v1beta1.WorkspaceUsage{{
 					Name: "foo",
 				}},
-			}},
-		},
-	}, {
-		name:            "step onError requires alpha",
-		requiredVersion: "alpha",
-		spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				OnError: "continue",
-				Container: corev1.Container{
-					Image: "image",
-					Args:  []string{"arg"},
-				},
 			}},
 		},
 	}, {
