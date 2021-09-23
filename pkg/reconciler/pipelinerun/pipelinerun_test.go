@@ -170,13 +170,7 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-<<<<<<< HEAD
-
-	ctl := NewController(namespace, ControllerConfiguration{Images: images})(ctx, configMapWatcher)
-
-=======
 	ctl := NewController(&opts)(ctx, configMapWatcher)
->>>>>>> 5681ce992... Test and Document Disable Resolution Flag
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
 		la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {})
 	}
