@@ -1,7 +1,7 @@
 // +build e2e
 
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2021 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -236,6 +236,45 @@ func TestStepTimeout(t *testing.T) {
 		t.Logf("step-canceled exited with exit code %d, expected exit code 1", exitcode)
 	}
 
+}
+
+// TestStepTimeoutWithWS is an integration test that will verify a Step can be timed out.
+func TestStepTimeoutWithWS(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
+	defer tearDown(context.Background(), t, c, namespace)
+
+	taskRun := mustParseTaskRun(t, `
+metadata:
+  name: taskrun-with-timeout-step
+spec:
+  workspaces:
+    - name: test
+      emptyDir: {}
+  taskSpec:
+    workspaces:
+      - name: test
+    steps:
+      - name: timeout
+        image: busybox
+        script: sleep 1
+        timeout: 1ms`)
+
+	t.Logf("Creating TaskRun %s in namespace %s", taskRun.Name, namespace)
+	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", taskRun.Name, err)
+	}
+
+	failMsg := "\"step-timeout\" exited because the step exceeded the specified timeout limit"
+	t.Logf("Waiting for %s in namespace %s to time out", "step-timeout", namespace)
+	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithMessage(failMsg, taskRun.Name), "StepTimeout"); err != nil {
+		t.Logf("Error in taskRun %s status: %s\n", taskRun.Name, err)
+		t.Errorf("Expected: %s", failMsg)
+	}
 }
 
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
