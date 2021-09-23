@@ -38,24 +38,27 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 	}{{
 		name:     "nil-template",
 		template: nil,
-		steps: []Step{{Container: corev1.Container{
-			Image: "some-image",
-		}}},
-		expected: []Step{{Container: corev1.Container{
-			Image: "some-image",
-		}}},
+		steps: []Step{{
+			Container: corev1.Container{Image: "some-image"},
+			OnError:   "foo",
+		}},
+		expected: []Step{{
+			Container: corev1.Container{Image: "some-image"},
+			OnError:   "foo",
+		}},
 	}, {
 		name: "not-overlapping",
 		template: &corev1.Container{
 			Command: []string{"/somecmd"},
 		},
-		steps: []Step{{Container: corev1.Container{
-			Image: "some-image",
-		}}},
-		expected: []Step{{Container: corev1.Container{
-			Command: []string{"/somecmd"},
-			Image:   "some-image",
-		}}},
+		steps: []Step{{
+			Container: corev1.Container{Image: "some-image"},
+			OnError:   "foo",
+		}},
+		expected: []Step{{
+			Container: corev1.Container{Command: []string{"/somecmd"}, Image: "some-image"},
+			OnError:   "foo",
+		}},
 	}, {
 		name: "overwriting-one-field",
 		template: &corev1.Container{
