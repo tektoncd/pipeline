@@ -57,3 +57,54 @@ spec:
               onError: continue
               script: |
                 exit 20
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-with-failing-step-and-ws-
+spec:
+  workspaces:
+    - name: ws
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 16Mi
+  pipelineSpec:
+    tasks:
+      - name: writer
+        taskSpec:
+          steps:
+            - name: write
+              image: alpine
+              onError: continue
+              script: |
+                ls -1 /tekton/run/
+                echo bar > $(workspaces.task-ws.path)/foo
+                exit 1
+          workspaces:
+            - name: task-ws
+        workspaces:
+          - name: task-ws
+            workspace: ws
+      - name: reader
+        runAfter:
+          - writer
+        taskSpec:
+          steps:
+            - name: read
+              image: alpine
+              onError: continue
+              script: |
+                cat $(workspaces.myws.path)/foo | grep bar
+                exit 1
+          workspaces:
+            - name: myws
+        workspaces:
+          - name: myws
+            workspace: ws
+    workspaces:
+      - name: ws
