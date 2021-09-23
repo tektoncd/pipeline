@@ -335,12 +335,7 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-<<<<<<< HEAD
-
-	ctl := NewController(namespace, ControllerConfiguration{Images: images})(ctx, configMapWatcher)
-=======
 	ctl := NewController(&opts)(ctx, configMapWatcher)
->>>>>>> 5681ce992... Test and Document Disable Resolution Flag
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
