@@ -20,7 +20,7 @@ require (
 	github.com/jenkins-x/go-scm v1.10.10
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
+	github.com/tektoncd/plumbing v0.0.0-20211012143332-c7cc43d9bc0c
 	go.opencensus.io v0.23.0
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.0

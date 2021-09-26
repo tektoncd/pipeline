@@ -61,19 +61,26 @@ spec:
   steps:
 
   - name: create-ko-yaml
-    image: busybox
+    image: golang:1.16
     script: |
       #!/bin/sh
       set -ex
+
+      # Combine Distroless with a Windows base image, used for the entrypoint image.
+      COMBINED_BASE_IMAGE=$(go run ./vendor/github.com/tektoncd/plumbing/cmd/combine/main.go \
+        gcr.io/distroless/base:debug-nonroot \
+        mcr.microsoft.com/windows/nanoserver:1809 \
+        ${CONTAINER_REGISTRY}/$(params.package)/combined-base-image:latest)
 
       cat <<EOF > ${PROJECT_ROOT}/.ko.yaml
       # This matches the value configured in .ko.yaml
       defaultBaseImage: gcr.io/distroless/static:nonroot
       baseImageOverrides:
-        $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/git-init-build-base:latest
+        # Use the combined base image for entrypoint.
+        $(params.package)/cmd/entrypoint: ${COMBINED_BASE_IMAGE}
 
+        $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/git-init-build-base:latest
         # These match values configured in .ko.yaml
-        $(params.package)/cmd/entrypoint: gcr.io/distroless/base:debug-nonroot
         $(params.package)/cmd/pullrequest-init: ${CONTAINER_REGISTRY}/$(params.package)/pullrequest-init-build-base:latest
       EOF
 
