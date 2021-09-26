@@ -27,6 +27,9 @@ func TestPrefix_NilError(t *testing.T) {
 func TestPrefix_NonError(t *testing.T) {
 	original := errors.New("foo")
 	result := Prefix(original, "bar")
+	if result == nil {
+		t.Fatal("error result was nil")
+	}
 	if result.Error() != "bar foo" {
 		t.Fatalf("bad: %s", result)
 	}

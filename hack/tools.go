@@ -4,6 +4,7 @@ package tools
 
 import (
 	_ "github.com/tektoncd/plumbing"
+	_ "github.com/tektoncd/plumbing/cmd/combine"
 	_ "github.com/tektoncd/plumbing/scripts"
 
 	_ "k8s.io/code-generator/cmd/client-gen"
