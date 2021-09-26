@@ -47,7 +47,7 @@ You will use webhooks triggered by your personal fork of the
 `tektoncd/plumbing` repo and forward them the cluster running on
 your laptop.
 
-Create a GitHub personal token with `admin:repo_hook` persmissions
+Create a GitHub personal token with `admin:repo_hook` permissions
 at least. This will be used to create the webhook.
 
 Run the script below to deploy Tekton CI on the local kind cluster:
