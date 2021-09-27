@@ -201,7 +201,7 @@ spec:
           else
             TAG="$(params.versionTag)"
             crane cp ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
-            echo ${REGION}.$IMAGE_WITH_SHA, >> $(results.IMAGES.path)
           fi
+          echo ${REGION}.$IMAGE_WITH_SHA, >> $(results.IMAGES.path)
         done
       done
