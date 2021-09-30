@@ -38,6 +38,7 @@ func ApplyParameters(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.
 	patterns := []string{
 		"params.%s",
 		"params[%q]",
+		"params['%s']",
 	}
 
 	// Set all the default stringReplacements

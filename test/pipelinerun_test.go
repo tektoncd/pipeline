@@ -106,14 +106,14 @@ func TestPipelineRun(t *testing.T) {
 					Params: []v1beta1.ParamSpec{{
 						Name: "the.path", Type: v1beta1.ParamTypeString,
 					}, {
-						Name: "dest", Type: v1beta1.ParamTypeString,
+						Name: "the.dest", Type: v1beta1.ParamTypeString,
 					}},
 					Steps: []v1beta1.Step{{
 						Container: corev1.Container{
 							Name:    "config-docker",
 							Image:   "gcr.io/tekton-releases/dogfooding/skopeo:latest",
 							Command: []string{"skopeo"},
-							Args:    []string{"copy", `$(params["the.path"])`, "$(params.dest)"},
+							Args:    []string{"copy", `$(params["the.path"])`, "$(params['the.dest'])"},
 						}},
 					},
 				},
@@ -190,7 +190,7 @@ func TestPipelineRun(t *testing.T) {
 							Name:    "config-docker",
 							Image:   "gcr.io/tekton-releases/dogfooding/skopeo:latest",
 							Command: []string{"skopeo"},
-							Args:    []string{"copy", `$(params["the.path"])`, `$(params["dest"])`},
+							Args:    []string{"copy", `$(params["the.path"])`, `$(params['dest'])`},
 						}},
 					},
 				},
