@@ -796,8 +796,10 @@ variable values as follows:
 
 - To reference a parameter in a `Task`, use the following syntax, where `<name>` is the name of the parameter:
   ```shell
+  # dot notation
   $(params.<name>)
-  # or subscript form:
+  # or bracket notation (wrapping <name> with either single or double quotes):
+  $(params['<name>'])
   $(params["<name>"])
   ```
 - To access parameter values from resources, see [variable substitution](resources.md#variable-substitution)

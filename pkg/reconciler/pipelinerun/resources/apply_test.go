@@ -272,31 +272,42 @@ func TestApplyParameters(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "parameter references with subscript notation and special characters",
+		name: "parameter references with bracket notation and special characters",
 		original: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first.param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
 				{Name: "second/param", Type: v1beta1.ParamTypeString},
+				{Name: "third.param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
+				{Name: "fourth/param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
 				Params: []v1beta1.Param{
 					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString(`$(params["first.param"])`)},
 					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString(`$(params["second/param"])`)},
-					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("static value")},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString(`$(params['third.param'])`)},
+					{Name: "first-task-fourth-param", Value: *v1beta1.NewArrayOrString(`$(params['fourth/param'])`)},
+					{Name: "first-task-fifth-param", Value: *v1beta1.NewArrayOrString("static value")},
 				},
 			}},
 		},
-		params: []v1beta1.Param{{Name: "second/param", Value: *v1beta1.NewArrayOrString("second-value")}},
+		params: []v1beta1.Param{
+			{Name: "second/param", Value: *v1beta1.NewArrayOrString("second-value")},
+			{Name: "fourth/param", Value: *v1beta1.NewArrayOrString("fourth-value")},
+		},
 		expected: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first.param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
 				{Name: "second/param", Type: v1beta1.ParamTypeString},
+				{Name: "third.param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
+				{Name: "fourth/param", Type: v1beta1.ParamTypeString},
 			},
 			Tasks: []v1beta1.PipelineTask{{
 				Params: []v1beta1.Param{
 					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("second-value")},
-					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("static value")},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("default-value")},
+					{Name: "first-task-fourth-param", Value: *v1beta1.NewArrayOrString("fourth-value")},
+					{Name: "first-task-fifth-param", Value: *v1beta1.NewArrayOrString("static value")},
 				},
 			}},
 		},

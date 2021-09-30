@@ -55,7 +55,7 @@ var (
 				Image: `$(params["myimage"])`,
 				Env: []corev1.EnvVar{{
 					Name:  "foo",
-					Value: "$(params.FOO)",
+					Value: "$(params['FOO'])",
 				}},
 			},
 		}},
@@ -1164,12 +1164,19 @@ func TestTaskResults(t *testing.T) {
 				Image: "bash:latest",
 			},
 			Script: "#!/usr/bin/env bash\ndate | tee $(results.current-date-human-readable.path)",
+		}, {
+			Container: corev1.Container{
+				Name:  "print-date-human-readable-again",
+				Image: "bash:latest",
+			},
+			Script: "#!/usr/bin/env bash\ndate | tee $(results['current-date-human-readable'].path)",
 		}},
 	}
 	want := applyMutation(ts, func(spec *v1beta1.TaskSpec) {
 		spec.Steps[0].Script = "#!/usr/bin/env bash\ndate +%s | tee /tekton/results/current.date.unix.timestamp"
 		spec.Steps[0].Args[0] = "/tekton/results/current.date.unix.timestamp"
 		spec.Steps[1].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
+		spec.Steps[2].Script = "#!/usr/bin/env bash\ndate | tee /tekton/results/current-date-human-readable"
 	})
 	got := resources.ApplyTaskResults(ts)
 	if d := cmp.Diff(want, got); d != "" {
