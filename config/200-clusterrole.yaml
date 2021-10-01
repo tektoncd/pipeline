@@ -87,7 +87,7 @@ rules:
     resourceNames: ["webhook.pipeline.tekton.dev"]
     # When there are changes to the configs or secrets, knative updates the mutatingwebhook config
     # with the updated certificates or the refreshed set of rules.
-    verbs: ["get", "update"]
+    verbs: ["get", "update", "delete"]
   - apiGroups: ["admissionregistration.k8s.io"]
     resources: ["validatingwebhookconfigurations"]
     # validation.webhook.pipeline.tekton.dev performs schema validation when you, for example, create TaskRuns.
@@ -95,7 +95,7 @@ rules:
     resourceNames: ["validation.webhook.pipeline.tekton.dev", "config.webhook.pipeline.tekton.dev"]
     # When there are changes to the configs or secrets, knative updates the validatingwebhook config
     # with the updated certificates or the refreshed set of rules.
-    verbs: ["get", "update"]
+    verbs: ["get", "update", "delete"]
   - apiGroups: ["policy"]
     resources: ["podsecuritypolicies"]
     resourceNames: ["tekton-pipelines"]
@@ -105,4 +105,10 @@ rules:
     verbs: ["get"]
     # The webhook configured the namespace as the OwnerRef on various cluster-scoped resources,
     # which requires we can Get the system namespace.
+    resourceNames: ["tekton-pipelines"]
+  - apiGroups: [""]
+    resources: ["namespaces/finalizers"]
+    verbs: ["update"]
+    # The webhook configured the namespace as the OwnerRef on various cluster-scoped resources,
+    # which requires we can update the system namespace finalizers.
     resourceNames: ["tekton-pipelines"]
