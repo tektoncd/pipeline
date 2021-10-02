@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -38,11 +37,19 @@ func TestTaskRun_Invalid(t *testing.T) {
 		want *apis.FieldError
 	}{{
 		name: "invalid taskspec",
-		task: tb.TaskRun("taskmetaname"),
+		task: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskmetaname",
+			},
+		},
 		want: apis.ErrMissingField("spec"),
 	}, {
 		name: "invalid taskrun metadata",
-		task: tb.TaskRun("task,name"),
+		task: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "task,name",
+			},
+		},
 		want: &apis.FieldError{
 			Message: `invalid resource name "task,name": must be a valid DNS label`,
 			Paths:   []string{"metadata.name"},
@@ -59,9 +66,16 @@ func TestTaskRun_Invalid(t *testing.T) {
 }
 
 func TestTaskRun_Validate(t *testing.T) {
-	tr := tb.TaskRun("taskname", tb.TaskRunSpec(
-		tb.TaskRunTaskRef("taskrefname"),
-	))
+	tr := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "taskname",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name: "taskrefname",
+			},
+		},
+	}
 	if err := tr.Validate(context.Background()); err != nil {
 		t.Errorf("TaskRun.Validate() error = %v", err)
 	}
@@ -74,19 +88,45 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 		wantErr *apis.FieldError
 	}{{
 		name: "make sure WorkspaceBinding validation invoked",
-		tr: tb.TaskRun("taskname", tb.TaskRunSpec(
-			tb.TaskRunTaskRef("task"),
-			// When using PVC it's required that you provide a volume name
-			tb.TaskRunWorkspacePVC("workspace", "", ""),
-		)),
+		tr: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskname",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "task",
+				},
+				Workspaces: []v1alpha1.WorkspaceBinding{{
+					Name: "workspace",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "",
+					},
+				}},
+			},
+		},
 		wantErr: apis.ErrMissingField("workspace.persistentvolumeclaim.claimname"),
 	}, {
 		name: "bind same workspace twice",
-		tr: tb.TaskRun("taskname", tb.TaskRunSpec(
-			tb.TaskRunTaskRef("task"),
-			tb.TaskRunWorkspaceEmptyDir("workspace", ""),
-			tb.TaskRunWorkspaceEmptyDir("workspace", ""),
-		)),
+		tr: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskname",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "task",
+				},
+				Workspaces: []v1alpha1.WorkspaceBinding{
+					{
+						Name:     "workspace",
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+					{
+						Name:     "workspace",
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			},
+		},
 		wantErr: apis.ErrMultipleOneOf("spec.workspaces.name"),
 	}}
 	for _, ts := range tests {

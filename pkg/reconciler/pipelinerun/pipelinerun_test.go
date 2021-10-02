@@ -30,7 +30,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/go-containerregistry/pkg/registry"
-	tbv1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -1243,8 +1242,18 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 	successConditionCheckName := "success-condition"
 	failingConditionCheckName := "fail-condition"
 
-	successCondition := tbv1alpha1.Condition("cond-1", tbv1alpha1.ConditionNamespace("foo"))
-	failingCondition := tbv1alpha1.Condition("cond-2", tbv1alpha1.ConditionNamespace("foo"))
+	successCondition := &v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cond-1",
+			Namespace: "foo",
+		},
+	}
+	failingCondition := &v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cond-2",
+			Namespace: "foo",
+		},
+	}
 
 	pipelineTask := v1beta1.PipelineTask{
 		TaskRef: &v1beta1.TaskRef{Name: "unit-test-task"},
@@ -3411,30 +3420,45 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
 	conditions := []*v1alpha1.Condition{
-		tbv1alpha1.Condition("cond-1",
-			tbv1alpha1.ConditionNamespace("foo"),
-			tbv1alpha1.ConditionLabels(
-				map[string]string{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "cond-1",
+				Namespace: "foo",
+				Labels: map[string]string{
 					"label-1": "value-1",
 					"label-2": "value-2",
-				}),
-			tbv1alpha1.ConditionAnnotations(
-				map[string]string{
+				},
+				Annotations: map[string]string{
 					"annotation-1": "value-1",
-				}),
-			tbv1alpha1.ConditionSpec(
-				tbv1alpha1.ConditionSpecCheck("", "foo", tb.Args("bar")),
-			)),
-		tbv1alpha1.Condition("cond-2",
-			tbv1alpha1.ConditionNamespace("foo"),
-			tbv1alpha1.ConditionLabels(
-				map[string]string{
+				},
+			},
+			Spec: v1alpha1.ConditionSpec{
+				Check: v1alpha1.Step{
+					Container: corev1.Container{
+						Image: "foo",
+						Args:  []string{"bar"},
+					},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "cond-2",
+				Namespace: "foo",
+				Labels: map[string]string{
 					"label-3": "value-3",
 					"label-4": "value-4",
-				}),
-			tbv1alpha1.ConditionSpec(
-				tbv1alpha1.ConditionSpecCheck("", "foo", tb.Args("bar")),
-			)),
+				},
+			},
+			Spec: v1alpha1.ConditionSpec{
+				Check: v1alpha1.Step{
+					Container: corev1.Container{
+						Image: "foo",
+						Args:  []string{"bar"},
+					},
+				},
+			},
+		},
 	}
 	ps := []*v1beta1.Pipeline{tb.Pipeline("test-pipeline", tb.PipelineNamespace("foo"), tb.PipelineSpec(
 		tb.PipelineTask("hello-world-1", "hello-world",
@@ -3491,11 +3515,20 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	// multiple conditions, some that fails. It verifies that reconcile is successful, taskruns are
 	// created and the status is updated. It checks that the correct events are sent.
 	names.TestingSeed()
-	conditions := []*v1alpha1.Condition{
-		tbv1alpha1.Condition("always-false", tbv1alpha1.ConditionNamespace("foo"), tbv1alpha1.ConditionSpec(
-			tbv1alpha1.ConditionSpecCheck("", "foo", tb.Args("bar")),
-		)),
-	}
+	conditions := []*v1alpha1.Condition{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "always-false",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Check: v1alpha1.Step{
+				Container: corev1.Container{
+					Image: "foo",
+					Args:  []string{"bar"},
+				},
+			},
+		},
+	}}
 	pipelineRunName := "test-pipeline-run-with-conditions"
 	prccs := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
 
@@ -4943,11 +4976,20 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	trs := []*v1beta1.TaskRun{taskRunDone, taskRunOrphaned, taskRunWithCondition,
 		taskRunForOrphanedCondition, taskRunForConditionOfOrphanedTaskRun}
 	runs := []*v1alpha1.Run{orphanedRun}
-	cs := []*v1alpha1.Condition{
-		tbv1alpha1.Condition("always-true", tbv1alpha1.ConditionNamespace("foo"), tbv1alpha1.ConditionSpec(
-			tbv1alpha1.ConditionSpecCheck("", "foo", tbv1alpha1.Args("bar")),
-		)),
-	}
+	cs := []*v1alpha1.Condition{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "always-true",
+			Namespace: "foo",
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Check: v1alpha1.Step{
+				Container: corev1.Container{
+					Image: "foo",
+					Args:  []string{"bar"},
+				},
+			},
+		},
+	}}
 
 	cms := []*corev1.ConfigMap{
 		{

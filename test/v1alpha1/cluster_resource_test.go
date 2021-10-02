@@ -22,7 +22,8 @@ import (
 	"context"
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,15 +78,45 @@ func TestClusterResource(t *testing.T) {
 }
 
 func getClusterResource(namespace, name, sname string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(name, tb.PipelineResourceNamespace(namespace), tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeCluster,
-		tb.PipelineResourceSpecParam("Name", "helloworld-cluster"),
-		tb.PipelineResourceSpecParam("Url", "https://1.1.1.1"),
-		tb.PipelineResourceSpecParam("username", "test-user"),
-		tb.PipelineResourceSpecParam("password", "test-password"),
-		tb.PipelineResourceSpecSecretParam("cadata", sname, "cadatakey"),
-		tb.PipelineResourceSpecSecretParam("token", sname, "tokenkey"),
-	))
+	return &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeCluster,
+			Params: []v1alpha1.ResourceParam{
+				{
+					Name:  "Name",
+					Value: "helloworld-cluster",
+				},
+				{
+					Name:  "Url",
+					Value: "https://1.1.1.1",
+				},
+				{
+					Name:  "username",
+					Value: "test-user",
+				},
+				{
+					Name:  "password",
+					Value: "test-password",
+				},
+			},
+			SecretParams: []v1alpha1.SecretParam{
+				{
+					FieldName:  "cadata",
+					SecretKey:  "cadatakey",
+					SecretName: sname,
+				},
+				{
+					FieldName:  "token",
+					SecretKey:  "tokenkey",
+					SecretName: sname,
+				},
+			},
+		},
+	}
 }
 
 func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
@@ -102,34 +133,91 @@ func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
 }
 
 func getClusterResourceTask(name, configName string) *v1alpha1.Task {
-	return tb.Task(name, tb.TaskSpec(
-		tb.TaskInputs(tb.InputsResource("target-cluster", v1alpha1.PipelineResourceTypeCluster)),
-		tb.TaskVolume("config-vol", tb.VolumeSource(corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: configName,
+	return &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "target-cluster",
+						Type: v1alpha1.PipelineResourceTypeCluster,
+					},
+				}},
+			},
+			TaskSpec: v1beta1.TaskSpec{
+				Volumes: []corev1.Volume{{
+					Name: "config-vol",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: configName,
+							},
+						},
+					},
+				}},
+				Steps: []v1alpha1.Step{
+					{
+						Container: corev1.Container{
+							Image:   "ubuntu",
+							Name:    "check-file-existence",
+							Command: []string{"cat"},
+							Args:    []string{"/workspace/target-cluster/kubeconfig"},
+						},
+					},
+					{
+						Container: corev1.Container{
+							Image:   "ubuntu",
+							Name:    "check-config-data",
+							Command: []string{"cat"},
+							Args:    []string{"/config/test.data"},
+							VolumeMounts: []corev1.VolumeMount{{
+								Name:      "config-vol",
+								MountPath: "/config",
+							}},
+						},
+					},
+					{
+						Container: corev1.Container{
+							Image:   "ubuntu",
+							Name:    "check-contents",
+							Command: []string{"bash"},
+							Args:    []string{"-c", "cmp -b /workspace/target-cluster/kubeconfig /config/test.data"},
+							VolumeMounts: []corev1.VolumeMount{{
+								Name:      "config-vol",
+								MountPath: "/config",
+							}},
+						},
+					},
 				},
 			},
-		})),
-		tb.Step("ubuntu", tb.StepName("check-file-existence"),
-			tb.StepCommand("cat"), tb.StepArgs("/workspace/target-cluster/kubeconfig"),
-		),
-		tb.Step("ubuntu", tb.StepName("check-config-data"),
-			tb.StepCommand("cat"), tb.StepArgs("/config/test.data"),
-			tb.StepVolumeMount("config-vol", "/config"),
-		),
-		tb.Step("ubuntu", tb.StepName("check-contents"),
-			tb.StepCommand("bash"), tb.StepArgs("-c", "cmp -b /workspace/target-cluster/kubeconfig /config/test.data"),
-			tb.StepVolumeMount("config-vol", "/config"),
-		),
-	))
+		},
+	}
 }
 
 func getClusterResourceTaskRun(namespace, name, taskName, resName string) *v1alpha1.TaskRun {
-	return tb.TaskRun(name, tb.TaskRunNamespace(namespace), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(taskName),
-		tb.TaskRunInputs(tb.TaskRunInputsResource("target-cluster", tb.TaskResourceBindingRef(resName))),
-	))
+	return &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name: taskName,
+			},
+			Inputs: &v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+						Name: "target-cluster",
+						ResourceRef: &v1alpha1.PipelineResourceRef{
+							Name: resName,
+						},
+					},
+				}},
+			},
+		},
+	}
 }
 
 func getClusterConfigMap(namespace, name string) *corev1.ConfigMap {

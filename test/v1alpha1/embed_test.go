@@ -23,7 +23,9 @@ import (
 	"fmt"
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -67,15 +69,38 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 }
 
 func getEmbeddedTask(args []string) *v1alpha1.Task {
-	return tb.Task(embedTaskName,
-		tb.TaskSpec(
-			tb.TaskInputs(tb.InputsResource("docs", v1alpha1.PipelineResourceTypeGit)),
-			tb.Step("ubuntu",
-				tb.StepCommand("/bin/bash"),
-				tb.StepArgs("-c", "cat /workspace/docs/LICENSE"),
-			),
-			tb.Step("busybox", tb.StepCommand(args...)),
-		))
+	return &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: embedTaskName,
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: "docs",
+						Type: v1alpha1.PipelineResourceTypeGit,
+					},
+				}},
+			},
+			TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{
+					{
+						Container: corev1.Container{
+							Image:   "ubuntu",
+							Command: []string{"/bin/bash"},
+							Args:    []string{"-c", "cat /workspace/docs/LICENSE"},
+						},
+					},
+					{
+						Container: corev1.Container{
+							Image:   "busybox",
+							Command: args,
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
@@ -86,11 +111,23 @@ func getEmbeddedTaskRun(namespace string) *v1alpha1.TaskRun {
 			Value: "https://github.com/knative/docs",
 		}},
 	}
-	return tb.TaskRun(embedTaskRunName,
-		tb.TaskRunNamespace(namespace),
-		tb.TaskRunSpec(
-			tb.TaskRunInputs(
-				tb.TaskRunInputsResource("docs", tb.TaskResourceBindingResourceSpec(testSpec)),
-			),
-			tb.TaskRunTaskRef(embedTaskName)))
+	return &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      embedTaskRunName,
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name: embedTaskName,
+			},
+			Inputs: &v1alpha1.TaskRunInputs{
+				Resources: []v1alpha1.TaskResourceBinding{{
+					PipelineResourceBinding: v1alpha1.PipelineResourceBinding{
+						Name:         "docs",
+						ResourceSpec: testSpec,
+					},
+				}},
+			},
+		},
+	}
 }

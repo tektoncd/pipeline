@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	tbv1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -1670,10 +1669,6 @@ func TestGetResourcesFromBindings(t *testing.T) {
 }
 
 func TestGetResourcesFromBindings_Missing(t *testing.T) {
-	// p := tb.Pipeline("pipelines", "namespace", tb.PipelineSpec(
-	//	tb.PipelineDeclaredResource("git-resource", "git"),
-	//	tb.PipelineDeclaredResource("image-resource", "image"),
-	// ))
 	pr := tb.PipelineRun("pipelinerun", tb.PipelineRunSpec("pipeline",
 		tb.PipelineRunResourceBinding("git-resource", tb.PipelineResourceBindingRef("sweet-resource")),
 	))
@@ -2408,9 +2403,17 @@ func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 func TestResolvedConditionCheck_WithResources(t *testing.T) {
 	names.TestingSeed()
 
-	condition := tbv1alpha1.Condition("always-true", tbv1alpha1.ConditionSpec(
-		tbv1alpha1.ConditionResource("workspace", resourcev1alpha1.PipelineResourceTypeGit),
-	))
+	condition := &v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "always-true",
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Resources: []v1alpha1.ResourceDeclaration{{
+				Name: "workspace",
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+			}},
+		},
+	}
 
 	gitResource := tb.PipelineResource("some-repo", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
 		resourcev1alpha1.PipelineResourceTypeGit))

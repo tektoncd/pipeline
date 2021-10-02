@@ -21,8 +21,9 @@ import (
 	"testing"
 	"time"
 
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -37,12 +38,28 @@ func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
 		tr              *v1alpha1.TaskRun
 		expectedPVCName string
 	}{{
-		name:            "invalid owner reference",
-		tr:              tb.TaskRun("taskrunname", tb.TaskRunOwnerReference("SomeOtherOwner", "testpr")),
+		name: "invalid owner reference",
+		tr: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunname",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "SomeOtherOwner",
+					Name: "testpr",
+				}},
+			},
+		},
 		expectedPVCName: "",
 	}, {
-		name:            "valid pipelinerun owner",
-		tr:              tb.TaskRun("taskrunname", tb.TaskRunOwnerReference("PipelineRun", "testpr")),
+		name: "valid pipelinerun owner",
+		tr: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunname",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "testpr",
+				}},
+			},
+		},
 		expectedPVCName: "testpr-pvc",
 	}, {
 		name:            "nil taskrun",
@@ -64,11 +81,27 @@ func TestTaskRun_HasPipelineRun(t *testing.T) {
 		want bool
 	}{{
 		name: "invalid owner reference",
-		tr:   tb.TaskRun("taskrunname", tb.TaskRunOwnerReference("SomeOtherOwner", "testpr")),
+		tr: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunname",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "SomeOtherOwner",
+					Name: "testpr",
+				}},
+			},
+		},
 		want: false,
 	}, {
 		name: "valid pipelinerun owner",
-		tr:   tb.TaskRun("taskrunname", tb.TaskRunOwnerReference("PipelineRun", "testpr")),
+		tr: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunname",
+				OwnerReferences: []metav1.OwnerReference{{
+					Kind: "PipelineRun",
+					Name: "testpr",
+				}},
+			},
+		},
 		want: true,
 	}}
 	for _, tt := range tests {
@@ -81,21 +114,29 @@ func TestTaskRun_HasPipelineRun(t *testing.T) {
 }
 
 func TestTaskRunIsDone(t *testing.T) {
-	tr := tb.TaskRun("", tb.TaskRunStatus(tb.StatusCondition(
-		apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionFalse,
+	tr := &v1alpha1.TaskRun{
+		Status: v1alpha1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
 		},
-	)))
+	}
 	if !tr.IsDone() {
 		t.Fatal("Expected pipelinerun status to be done")
 	}
 }
 
 func TestTaskRunIsCancelled(t *testing.T) {
-	tr := tb.TaskRun("", tb.TaskRunSpec(
-		tb.TaskRunSpecStatus(v1alpha1.TaskRunSpecStatusCancelled)),
-	)
+	tr := &v1alpha1.TaskRun{
+		Spec: v1alpha1.TaskRunSpec{
+			Status: v1alpha1.TaskRunSpecStatusCancelled,
+		},
+	}
 	if !tr.IsCancelled() {
 		t.Fatal("Expected pipelinerun status to be cancelled")
 	}
@@ -121,7 +162,11 @@ func TestTaskRunHasVolumeClaimTemplate(t *testing.T) {
 }
 
 func TestTaskRunKey(t *testing.T) {
-	tr := tb.TaskRun("taskrunname")
+	tr := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "taskrunname",
+		},
+	}
 	expectedKey := fmt.Sprintf("TaskRun/%p", tr)
 	if tr.GetRunKey() != expectedKey {
 		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, tr.GetRunKey())
@@ -156,7 +201,11 @@ func TestTaskRunHasStarted(t *testing.T) {
 	}}
 	for _, tc := range params {
 		t.Run(tc.name, func(t *testing.T) {
-			tr := tb.TaskRun("taskrunname")
+			tr := &v1alpha1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "taskrunname",
+				},
+			}
 			tr.Status = tc.trStatus
 			if tr.HasStarted() != tc.expectedValue {
 				t.Fatalf("Expected taskrun HasStarted() to return %t but got %t", tc.expectedValue, tr.HasStarted())
@@ -174,16 +223,25 @@ func TestTaskRunIsOfPipelinerun(t *testing.T) {
 		expetectedPipelineRun string
 	}{{
 		name: "yes",
-		tr: tb.TaskRun("taskrunname",
-			tb.TaskRunLabel(pipeline.PipelineLabelKey, "pipeline"),
-			tb.TaskRunLabel(pipeline.PipelineRunLabelKey, "pipelinerun"),
-		),
+		tr: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunname",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "pipeline",
+					pipeline.PipelineRunLabelKey: "pipelinerun",
+				},
+			},
+		},
 		expectedValue:         true,
 		expetectedPipeline:    "pipeline",
 		expetectedPipelineRun: "pipelinerun",
 	}, {
-		name:          "no",
-		tr:            tb.TaskRun("taskrunname"),
+		name: "no",
+		tr: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "taskrunname",
+			},
+		},
 		expectedValue: false,
 	}}
 
@@ -214,21 +272,74 @@ func TestHasTimedOut(t *testing.T) {
 		expectedStatus bool
 	}{{
 		name: "TaskRun not started",
-		taskRun: tb.TaskRun("test-taskrun-not-started", tb.TaskRunSpec(
-			tb.TaskRunTaskRef("task-name"),
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(zeroTime))),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-taskrun-not-started",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "task-name",
+				},
+			},
+			Status: v1alpha1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{},
+					},
+				},
+				TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: zeroTime},
+				},
+			},
+		},
 		expectedStatus: false,
 	}, {
 		name: "TaskRun no timeout",
-		taskRun: tb.TaskRun("test-taskrun-no-timeout", tb.TaskRunSpec(
-			tb.TaskRunTaskRef("task-name"), tb.TaskRunTimeout(0),
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(time.Now().Add(-15*time.Hour)))),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-taskrun-no-timeout",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "task-name",
+				},
+				Timeout: &metav1.Duration{Duration: 0},
+			},
+			Status: v1alpha1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{},
+					},
+				},
+				TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: time.Now().Add(-15 * time.Hour)},
+				},
+			},
+		},
 		expectedStatus: false,
 	}, {
 		name: "TaskRun timed out",
-		taskRun: tb.TaskRun("test-taskrun-timeout", tb.TaskRunSpec(
-			tb.TaskRunTaskRef("task-name"), tb.TaskRunTimeout(10*time.Second),
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{}), tb.TaskRunStartTime(time.Now().Add(-15*time.Second)))),
+		taskRun: &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-taskrun-timeout",
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskRef: &v1alpha1.TaskRef{
+					Name: "task-name",
+				},
+				Timeout: &metav1.Duration{Duration: 10 * time.Second},
+			},
+			Status: v1alpha1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{},
+					},
+				},
+				TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: time.Now().Add(-15 * time.Second)},
+				},
+			},
+		},
 		expectedStatus: true,
 	}}
 
