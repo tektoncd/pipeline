@@ -26,7 +26,6 @@ import (
 	"testing"
 	"time"
 
-	tbv1alpha1 "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -884,8 +883,20 @@ func getPipelineWithFailingCondition(suffix int, namespace string) *v1beta1.Pipe
 }
 
 func getFailingCondition() *v1alpha1.Condition {
-	return tbv1alpha1.Condition(cond1Name, tbv1alpha1.ConditionSpec(tbv1alpha1.ConditionSpecCheck("", "ubuntu",
-		tb.Command("/bin/bash"), tb.Args("exit 1"))))
+	return &v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: cond1Name,
+		},
+		Spec: v1alpha1.ConditionSpec{
+			Check: v1alpha1.Step{
+				Container: corev1.Container{
+					Image:   "ubuntu",
+					Command: []string{"/bin/bash"},
+					Args:    []string{"exit 1"},
+				},
+			},
+		},
+	}
 }
 
 func getConditionalPipelineRun(suffix int, namespace string) *v1beta1.PipelineRun {

@@ -26,7 +26,8 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -72,28 +73,55 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	defer deleteBucketSecret(ctx, c, t, namespace)
 
 	t.Logf("Creating GCS bucket %s", bucketName)
-	createbuckettask := tb.Task("createbuckettask", tb.TaskSpec(
-		tb.TaskVolume("bucket-secret-volume", tb.VolumeSource(corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: bucketSecretName,
+	createbuckettask := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "createbuckettask",
+		},
+		Spec: v1alpha1.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
+				Volumes: []corev1.Volume{{
+					Name: "bucket-secret-volume",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: bucketSecretName,
+						},
+					},
+				}},
+				Steps: []v1alpha1.Step{{
+					Container: corev1.Container{
+						Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk:alpine",
+						Name:    "step1",
+						Command: []string{"/bin/bash"},
+						Args:    []string{"-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil mb gs://%s", bucketName)},
+						VolumeMounts: []corev1.VolumeMount{{
+							Name:      "bucket-secret-volume",
+							MountPath: fmt.Sprintf("/var/secret/%s", bucketSecretName),
+						}},
+						Env: []corev1.EnvVar{{
+							Name:  "CREDENTIALS",
+							Value: fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey),
+						}},
+					},
+				}},
 			},
-		})),
-		tb.Step("gcr.io/google.com/cloudsdktool/cloud-sdk:alpine", tb.StepName("step1"),
-			tb.StepCommand("/bin/bash"),
-			tb.StepArgs("-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil mb gs://%s", bucketName)),
-			tb.StepVolumeMount("bucket-secret-volume", fmt.Sprintf("/var/secret/%s", bucketSecretName)),
-			tb.StepEnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey)),
-		),
-	),
-	)
+		},
+	}
 
 	t.Logf("Creating Task %s", "createbuckettask")
 	if _, err := c.TaskClient.Create(ctx, createbuckettask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "createbuckettask", err)
 	}
 
-	createbuckettaskrun := tb.TaskRun("createbuckettaskrun",
-		tb.TaskRunSpec(tb.TaskRunTaskRef("createbuckettask")))
+	createbuckettaskrun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "createbuckettaskrun",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name: "createbuckettask",
+			},
+		},
+	}
 
 	t.Logf("Creating TaskRun %s", "createbuckettaskrun")
 	if _, err := c.TaskRunClient.Create(ctx, createbuckettaskrun, metav1.CreateOptions{}); err != nil {
@@ -124,59 +152,171 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	defer resetConfigMap(ctx, t, c, systemNamespace, config.GetArtifactBucketConfigName(), originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
-	helloworldResource := tb.PipelineResource(helloworldResourceName, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("Url", "https://github.com/pivotal-nader-ziada/gohelloworld"),
-		tb.PipelineResourceSpecParam("Revision", "master"),
-	),
-	)
+	helloworldResource := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: helloworldResourceName,
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+			Params: []v1alpha1.ResourceParam{
+				{
+					Name:  "Url",
+					Value: "https://github.com/pivotal-nader-ziada/gohelloworld",
+				},
+				{
+					Name:  "Revision",
+					Value: "master",
+				},
+			},
+		},
+	}
 	if _, err := c.PipelineResourceClient.Create(ctx, helloworldResource, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", helloworldResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", addFileTaskName)
-	addFileTask := tb.Task(addFileTaskName, tb.TaskSpec(
-		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
-		tb.TaskOutputs(tb.OutputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
-		tb.Step("ubuntu", tb.StepName("addfile"), tb.StepCommand("/bin/bash"),
-			tb.StepArgs("-c", "'#!/bin/bash\necho hello' > /workspace/helloworldgit/newfile"),
-		),
-		tb.Step("ubuntu", tb.StepName("make-executable"), tb.StepCommand("chmod"),
-			tb.StepArgs("+x", "/workspace/helloworldgit/newfile")),
-	))
+	addFileTask := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: addFileTaskName,
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: helloworldResourceName,
+						Type: v1alpha1.PipelineResourceTypeGit,
+					},
+				}},
+			},
+			Outputs: &v1alpha1.Outputs{
+				Resources: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: helloworldResourceName,
+						Type: v1alpha1.PipelineResourceTypeGit,
+					},
+				}},
+			},
+			TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{
+					{
+						Container: corev1.Container{
+							Image:   "ubuntu",
+							Name:    "addfile",
+							Command: []string{"/bin/bash"},
+							Args:    []string{"-c", "'#!/bin/bash\necho hello' > /workspace/helloworldgit/newfile"},
+						},
+					},
+					{
+						Container: corev1.Container{
+							Image:   "ubuntu",
+							Name:    "make-executable",
+							Command: []string{"chmod"},
+							Args:    []string{"+x", "/workspace/helloworldgit/newfile"},
+						},
+					},
+				},
+			},
+		},
+	}
 	if _, err := c.TaskClient.Create(ctx, addFileTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", addFileTaskName, err)
 	}
 
 	t.Logf("Creating Task %s", runFileTaskName)
-	readFileTask := tb.Task(runFileTaskName, tb.TaskSpec(
-		tb.TaskInputs(tb.InputsResource(helloworldResourceName, v1alpha1.PipelineResourceTypeGit)),
-		tb.Step("ubuntu", tb.StepName("runfile"), tb.StepCommand("/workspace/helloworld/newfile")),
-	))
+	readFileTask := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: runFileTaskName,
+		},
+		Spec: v1alpha1.TaskSpec{
+			Inputs: &v1alpha1.Inputs{
+				Resources: []v1alpha1.TaskResource{{
+					ResourceDeclaration: v1alpha1.ResourceDeclaration{
+						Name: helloworldResourceName,
+						Type: v1alpha1.PipelineResourceTypeGit,
+					},
+				}},
+			},
+			TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{
+					{
+						Container: corev1.Container{
+							Image:   "runfile",
+							Name:    "addfile",
+							Command: []string{"/workspace/helloworld/newfile"},
+						},
+					},
+				},
+			},
+		},
+	}
 	if _, err := c.TaskClient.Create(ctx, readFileTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", runFileTaskName, err)
 	}
 
 	t.Logf("Creating Pipeline %s", bucketTestPipelineName)
-	bucketTestPipeline := tb.Pipeline(bucketTestPipelineName, tb.PipelineSpec(
-		tb.PipelineDeclaredResource("source-repo", "git"),
-		tb.PipelineTask("addfile", addFileTaskName,
-			tb.PipelineTaskInputResource("helloworldgit", "source-repo"),
-			tb.PipelineTaskOutputResource("helloworldgit", "source-repo"),
-		),
-		tb.PipelineTask("runfile", runFileTaskName,
-			tb.PipelineTaskInputResource("helloworldgit", "source-repo", tb.From("addfile")),
-		),
-	))
+	bucketTestPipeline := &v1alpha1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: bucketTestPipelineName,
+		},
+		Spec: v1alpha1.PipelineSpec{
+			Resources: []v1alpha1.PipelineDeclaredResource{{
+				Name: "source-repo",
+				Type: "git",
+			}},
+			Tasks: []v1alpha1.PipelineTask{
+				{
+					TaskRef: &v1alpha1.TaskRef{
+						Name: addFileTaskName,
+					},
+					Name: "addfile",
+					Resources: &v1alpha1.PipelineTaskResources{
+						Inputs: []v1alpha1.PipelineTaskInputResource{{
+							Name:     "helloworldgit",
+							Resource: "source-repo",
+						}},
+						Outputs: []v1alpha1.PipelineTaskOutputResource{{
+							Name:     "helloworldgit",
+							Resource: "source-repo",
+						}},
+					},
+				},
+				{
+					TaskRef: &v1alpha1.TaskRef{
+						Name: runFileTaskName,
+					},
+					Name: "runfile",
+					Resources: &v1alpha1.PipelineTaskResources{
+						Inputs: []v1alpha1.PipelineTaskInputResource{{
+							Name:     "helloworldgit",
+							Resource: "source-repo",
+							From:     []string{"addfile"},
+						}},
+					},
+				},
+			},
+		},
+	}
 	if _, err := c.PipelineClient.Create(ctx, bucketTestPipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", bucketTestPipelineName, err)
 	}
 
 	t.Logf("Creating PipelineRun %s", bucketTestPipelineRunName)
-	bucketTestPipelineRun := tb.PipelineRun(bucketTestPipelineRunName, tb.PipelineRunSpec(
-		bucketTestPipelineName,
-		tb.PipelineRunResourceBinding("source-repo", tb.PipelineResourceBindingRef(helloworldResourceName)),
-	))
+	bucketTestPipelineRun := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: bucketTestPipelineRunName,
+		},
+		Spec: v1alpha1.PipelineRunSpec{
+			PipelineRef: &v1alpha1.PipelineRef{
+				Name: bucketTestPipelineRunName,
+			},
+			Resources: []v1alpha1.PipelineResourceBinding{{
+				Name: "source-repo",
+				ResourceRef: &v1alpha1.PipelineResourceRef{
+					Name: helloworldResourceName,
+				},
+			}},
+		},
+	}
 	if _, err := c.PipelineRunClient.Create(ctx, bucketTestPipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", bucketTestPipelineRunName, err)
 	}
@@ -238,28 +378,39 @@ func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, co
 }
 
 func runTaskToDeleteBucket(ctx context.Context, c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
-	deletelbuckettask := tb.Task("deletelbuckettask", tb.TaskSpec(
-		tb.TaskVolume("bucket-secret-volume", tb.VolumeSource(corev1.VolumeSource{
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: bucketSecretName,
+	deletelbuckettask := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "deletelbuckettask",
+		},
+		Spec: v1alpha1.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
+				Volumes: []corev1.Volume{{
+					Name: "bucket-secret-volume",
+					VolumeSource: corev1.VolumeSource{
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: bucketSecretName,
+						},
+					},
+				}},
 			},
-		})),
-		tb.Step("gcr.io/google.com/cloudsdktool/cloud-sdk:alpine", tb.StepName("step1"),
-			tb.StepCommand("/bin/bash"),
-			tb.StepArgs("-c", fmt.Sprintf("gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key && gsutil rm -r gs://%s", bucketName)),
-			tb.StepVolumeMount("bucket-secret-volume", fmt.Sprintf("/var/secret/%s", bucketSecretName)),
-			tb.StepEnvVar("CREDENTIALS", fmt.Sprintf("/var/secret/%s/%s", bucketSecretName, bucketSecretKey)),
-		),
-	),
-	)
+		},
+	}
 
 	t.Logf("Creating Task %s", "deletelbuckettask")
 	if _, err := c.TaskClient.Create(ctx, deletelbuckettask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", "deletelbuckettask", err)
 	}
 
-	deletelbuckettaskrun := tb.TaskRun("deletelbuckettaskrun",
-		tb.TaskRunSpec(tb.TaskRunTaskRef("deletelbuckettask")))
+	deletelbuckettaskrun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "deletelbuckettaskrun",
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name: "deletelbuckettask",
+			},
+		},
+	}
 
 	t.Logf("Creating TaskRun %s", "deletelbuckettaskrun")
 	if _, err := c.TaskRunClient.Create(ctx, deletelbuckettaskrun, metav1.CreateOptions{}); err != nil {

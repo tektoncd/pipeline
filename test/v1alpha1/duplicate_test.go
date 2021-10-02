@@ -24,7 +24,10 @@ import (
 	"sync"
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -48,12 +51,24 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 		taskrunName := helpers.ObjectNameForTest(t)
 		t.Logf("Creating taskrun %q.", taskrunName)
 
-		taskrun := tb.TaskRun(taskrunName, tb.TaskRunSpec(
-			tb.TaskRunTaskSpec(tb.Step("busybox",
-				tb.StepCommand("/bin/echo"),
-				tb.StepArgs("simple"),
-			)),
-		))
+		taskrun := &v1alpha1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: taskrunName,
+			},
+			Spec: v1alpha1.TaskRunSpec{
+				TaskSpec: &v1alpha1.TaskSpec{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1alpha1.Step{{
+							Container: corev1.Container{
+								Image:   "busybox",
+								Command: []string{"/bin/echo"},
+								Args:    []string{"simple"},
+							},
+						}},
+					},
+				},
+			},
+		}
 		if _, err := c.TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Error creating taskrun: %v", err)
 		}

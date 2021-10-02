@@ -23,9 +23,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,23 +46,51 @@ func TestTaskRunFailure(t *testing.T) {
 	taskRunName := "failing-taskrun"
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := tb.Task("failing-task", tb.TaskSpec(
-		tb.Step("busybox",
-			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "echo hello"),
-		),
-		tb.Step("busybox",
-			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "exit 1"),
-		),
-		tb.Step("busybox",
-			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "sleep 30s"),
-		),
-	))
+	task := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "failing-task",
+		},
+		Spec: v1alpha1.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{
+					{
+						Container: corev1.Container{
+							Image:   "busybox",
+							Command: []string{"/bin/sh"},
+							Args:    []string{"-c", "echo hello"},
+						},
+					},
+					{
+						Container: corev1.Container{
+							Image:   "busybox",
+							Command: []string{"/bin/sh"},
+							Args:    []string{"-c", "exit 1"},
+						},
+					},
+					{
+						Container: corev1.Container{
+							Image:   "busybox",
+							Command: []string{"/bin/sh"},
+							Args:    []string{"-c", "sleep 30s"},
+						},
+					},
+				},
+			},
+		},
+	}
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := tb.TaskRun(taskRunName, tb.TaskRunSpec(
-		tb.TaskRunTaskRef("failing-task"),
-	))
+	taskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: taskRunName,
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name: "failing-task",
+			},
+		},
+	}
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
@@ -125,18 +154,35 @@ func TestTaskRunStatus(t *testing.T) {
 
 	fqImageName := "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649"
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := tb.Task("status-task", tb.TaskSpec(
-		// This was the digest of the latest tag as of 8/12/2019
-		tb.Step("busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
-			tb.StepCommand("/bin/sh"), tb.StepArgs("-c", "echo hello"),
-		),
-	))
+	task := &v1alpha1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "status-task",
+		},
+		Spec: v1alpha1.TaskSpec{
+			TaskSpec: v1beta1.TaskSpec{
+				Steps: []v1alpha1.Step{{
+					Container: corev1.Container{
+						Image:   "busybox@sha256:895ab622e92e18d6b461d671081757af7dbaa3b00e3e28e12505af7817f73649",
+						Command: []string{"/bin/sh"},
+						Args:    []string{"-c", "echo hello"},
+					},
+				}},
+			},
+		},
+	}
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := tb.TaskRun(taskRunName, tb.TaskRunSpec(
-		tb.TaskRunTaskRef("status-task"),
-	))
+	taskRun := &v1alpha1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: taskRunName,
+		},
+		Spec: v1alpha1.TaskRunSpec{
+			TaskRef: &v1alpha1.TaskRef{
+				Name: "status-task",
+			},
+		},
+	}
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}

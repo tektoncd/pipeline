@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
-	ta "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -170,7 +169,28 @@ func TestGetTaskFunc(t *testing.T) {
 			name:       "remote-v1alpha1-task-without-defaults",
 			localTasks: []runtime.Object{},
 			remoteTasks: []runtime.Object{
-				ta.Task("simple", ta.TaskType, ta.TaskNamespace("default"), ta.TaskSpec(ta.TaskParam("foo", ""), ta.Step("something"))),
+				&v1alpha1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "simple",
+						Namespace: "default",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1alpha1",
+						Kind:       "Task",
+					},
+					Spec: v1alpha1.TaskSpec{
+						TaskSpec: v1beta1.TaskSpec{
+							Params: []v1alpha1.ParamSpec{{
+								Name: "foo",
+							}},
+							Steps: []v1alpha1.Step{{
+								Container: corev1.Container{
+									Image: "something",
+								},
+							}},
+						},
+					},
+				},
 			},
 			ref: &v1alpha1.TaskRef{
 				Name:   "simple",

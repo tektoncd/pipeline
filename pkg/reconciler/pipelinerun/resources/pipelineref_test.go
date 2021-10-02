@@ -24,8 +24,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
-	ta "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -42,8 +40,16 @@ import (
 )
 
 var (
-	simplePipeline = tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"))
-	dummyPipeline  = tb.Pipeline("dummy", tb.PipelineType, tb.PipelineNamespace("default"))
+	dummyPipeline = &v1beta1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dummy",
+			Namespace: "default",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pipeline",
+			APIVersion: "tekton.dev/v1beta1",
+		},
+	}
 )
 
 func TestLocalPipelineRef(t *testing.T) {
@@ -56,11 +62,11 @@ func TestLocalPipelineRef(t *testing.T) {
 	}{
 		{
 			name:      "local-pipeline",
-			pipelines: []runtime.Object{simplePipeline, dummyPipeline},
+			pipelines: []runtime.Object{simplePipeline(), dummyPipeline},
 			ref: &v1beta1.PipelineRef{
 				Name: "simple",
 			},
-			expected: simplePipeline,
+			expected: simplePipeline(),
 			wantErr:  false,
 		},
 		{
@@ -128,51 +134,68 @@ func TestGetPipelineFunc(t *testing.T) {
 	}{{
 		name: "remote-pipeline",
 		localPipelines: []runtime.Object{
-			tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"), tb.PipelineSpec(tb.PipelineTask("something", "something"))),
+			simplePipelineWithBaseSpec(),
 			dummyPipeline,
 		},
-		remotePipelines: []runtime.Object{simplePipeline, dummyPipeline},
+		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
 		ref: &v1beta1.PipelineRef{
 			Name:   "simple",
 			Bundle: u.Host + "/remote-pipeline",
 		},
-		expected: simplePipeline,
+		expected: simplePipeline(),
 	}, {
 		name: "local-pipeline",
 		localPipelines: []runtime.Object{
-			tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"), tb.PipelineSpec(tb.PipelineTask("something", "something"))),
+			simplePipelineWithBaseSpec(),
 			dummyPipeline,
 		},
-		remotePipelines: []runtime.Object{simplePipeline, dummyPipeline},
+		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
 		ref: &v1beta1.PipelineRef{
 			Name: "simple",
 		},
-		expected: tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"), tb.PipelineSpec(tb.PipelineTask("something", "something"))),
+		expected: simplePipelineWithBaseSpec(),
 	}, {
 		name:           "remote-pipeline-without-defaults",
-		localPipelines: []runtime.Object{simplePipeline},
+		localPipelines: []runtime.Object{simplePipeline()},
 		remotePipelines: []runtime.Object{
-			tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"),
-				tb.PipelineSpec(tb.PipelineTask("something", "something"), tb.PipelineParamSpec("foo", ""))),
+			simplePipelineWithSpecAndParam(""),
 			dummyPipeline},
 		ref: &v1beta1.PipelineRef{
 			Name:   "simple",
 			Bundle: u.Host + "/remote-pipeline-without-defaults",
 		},
-		expected: tb.Pipeline("simple", tb.PipelineType, tb.PipelineNamespace("default"),
-			tb.PipelineSpec(tb.PipelineTask("something", "something", tb.PipelineTaskRefKind(v1beta1.NamespacedTaskKind)), tb.PipelineParamSpec("foo", v1beta1.ParamTypeString))),
+		expected: simplePipelineWithSpecParamAndKind(v1beta1.ParamTypeString, v1beta1.NamespacedTaskKind),
 	}, {
 		name:           "remote-v1alpha1-pipeline-without-defaults",
-		localPipelines: []runtime.Object{simplePipeline},
+		localPipelines: []runtime.Object{simplePipeline()},
 		remotePipelines: []runtime.Object{
-			ta.Pipeline("simple", ta.PipelineType, ta.PipelineNamespace("default"),
-				ta.PipelineSpec(ta.PipelineTask("something", "something"), ta.PipelineParamSpec("foo", "")))},
+			&v1alpha1.Pipeline{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "simple",
+					Namespace: "default",
+				},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Pipeline",
+					APIVersion: "tekton.dev/v1alpha1",
+				},
+				Spec: v1alpha1.PipelineSpec{
+					Tasks: []v1alpha1.PipelineTask{{
+						Name: "something",
+						TaskRef: &v1alpha1.TaskRef{
+							Name: "something",
+						},
+					}},
+					Params: []v1alpha1.ParamSpec{{
+						Name: "foo",
+					}},
+				},
+			},
+		},
 		ref: &v1alpha1.PipelineRef{
 			Name:   "simple",
 			Bundle: u.Host + "/remote-v1alpha1-pipeline-without-defaults",
 		},
-		expected: tb.Pipeline("simple", tb.PipelineNamespace("default"),
-			tb.PipelineSpec(tb.PipelineTask("something", "something", tb.PipelineTaskRefKind(v1beta1.NamespacedTaskKind)), tb.PipelineParamSpec("foo", v1beta1.ParamTypeString))),
+		expected: simplePipelineWithSpecParamKindNoType(v1beta1.ParamTypeString, v1beta1.NamespacedTaskKind),
 	}}
 
 	for _, tc := range testcases {
@@ -217,7 +240,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	tektonclient := fake.NewSimpleClientset(simplePipeline, dummyPipeline)
+	tektonclient := fake.NewSimpleClientset(simplePipeline(), dummyPipeline)
 	kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
@@ -266,4 +289,62 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 	if diff := cmp.Diff(actualPipeline, expectedPipeline); expectedPipeline != nil && diff != "" {
 		t.Error(diff)
 	}
+}
+
+func basePipeline(name string) *v1beta1.Pipeline {
+	return &v1beta1.Pipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: "default",
+		},
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pipeline",
+			APIVersion: "tekton.dev/v1beta1",
+		},
+	}
+}
+
+func simplePipeline() *v1beta1.Pipeline {
+	return basePipeline("simple")
+}
+
+func simplePipelineWithBaseSpec() *v1beta1.Pipeline {
+	p := simplePipeline()
+	p.Spec = v1beta1.PipelineSpec{
+		Tasks: []v1beta1.PipelineTask{{
+			Name: "something",
+			TaskRef: &v1beta1.TaskRef{
+				Name: "something",
+			},
+		}},
+	}
+
+	return p
+}
+
+func simplePipelineWithSpecAndParam(pt v1alpha1.ParamType) *v1beta1.Pipeline {
+	p := simplePipelineWithBaseSpec()
+	p.Spec.Params = []v1beta1.ParamSpec{{
+		Name: "foo",
+		Type: pt,
+	}}
+
+	return p
+}
+
+func simplePipelineWithSpecParamAndKind(pt v1beta1.ParamType, tk v1beta1.TaskKind) *v1beta1.Pipeline {
+	p := simplePipelineWithBaseSpec()
+	p.Spec.Params = []v1beta1.ParamSpec{{
+		Name: "foo",
+		Type: pt,
+	}}
+	p.Spec.Tasks[0].TaskRef.Kind = tk
+
+	return p
+}
+
+func simplePipelineWithSpecParamKindNoType(pt v1beta1.ParamType, tk v1beta1.TaskKind) *v1beta1.Pipeline {
+	p := simplePipelineWithSpecParamAndKind(pt, tk)
+	p.TypeMeta = metav1.TypeMeta{}
+	return p
 }

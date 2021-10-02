@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -131,7 +130,11 @@ func TestPipelineRunHasVolumeClaimTemplate(t *testing.T) {
 }
 
 func TestPipelineRunKey(t *testing.T) {
-	pr := tb.PipelineRun("prunname")
+	pr := &v1alpha1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "prunname",
+		},
+	}
 	expectedKey := fmt.Sprintf("PipelineRun/%p", pr)
 	if pr.GetRunKey() != expectedKey {
 		t.Fatalf("Expected taskrun key to be %s but got %s", expectedKey, pr.GetRunKey())
@@ -206,14 +209,22 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(t.Name(), func(t *testing.T) {
-			pr := tb.PipelineRun("pr",
-				tb.PipelineRunSpec("test-pipeline",
-					tb.PipelineRunTimeout(tc.timeout),
-				),
-				tb.PipelineRunStatus(
-					tb.PipelineRunStartTime(tc.starttime),
-				),
-			)
+			pr := &v1alpha1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pr",
+				},
+				Spec: v1alpha1.PipelineRunSpec{
+					PipelineRef: &v1alpha1.PipelineRef{
+						Name: "test-pipeline",
+					},
+					Timeout: &metav1.Duration{Duration: tc.timeout},
+				},
+				Status: v1alpha1.PipelineRunStatus{
+					PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
+						StartTime: &metav1.Time{Time: tc.starttime},
+					},
+				},
+			}
 
 			if pr.IsTimedOut() != tc.expected {
 				t.Fatalf("Expected isTimedOut to be %t", tc.expected)
@@ -230,10 +241,21 @@ func TestPipelineRunGetServiceAccountName(t *testing.T) {
 	}{
 		{
 			name: "default SA",
-			pr: tb.PipelineRun("pr",
-				tb.PipelineRunSpec("prs",
-					tb.PipelineRunServiceAccountName("defaultSA"),
-					tb.PipelineRunServiceAccountNameTask("taskName", "taskSA"))),
+			pr: &v1alpha1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pr",
+				},
+				Spec: v1alpha1.PipelineRunSpec{
+					PipelineRef: &v1alpha1.PipelineRef{
+						Name: "prs",
+					},
+					ServiceAccountName: "defaultSA",
+					ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{{
+						TaskName:           "taskName",
+						ServiceAccountName: "taskSA",
+					}},
+				},
+			},
 			saNames: map[string]string{
 				"unknown":  "defaultSA",
 				"taskName": "taskSA",
@@ -241,12 +263,27 @@ func TestPipelineRunGetServiceAccountName(t *testing.T) {
 		},
 		{
 			name: "mixed default SA",
-			pr: tb.PipelineRun("defaultSA",
-				tb.PipelineRunSpec("defaultSA",
-					tb.PipelineRunServiceAccountName("defaultSA"),
-					tb.PipelineRunServiceAccountNameTask("task1", "task1SA"),
-					tb.PipelineRunServiceAccountNameTask("task2", "task2SA"),
-				)),
+			pr: &v1alpha1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "defaultSA",
+				},
+				Spec: v1alpha1.PipelineRunSpec{
+					PipelineRef: &v1alpha1.PipelineRef{
+						Name: "defaultSA",
+					},
+					ServiceAccountName: "defaultSA",
+					ServiceAccountNames: []v1alpha1.PipelineRunSpecServiceAccountName{
+						{
+							TaskName:           "task1",
+							ServiceAccountName: "task1SA",
+						},
+						{
+							TaskName:           "task2",
+							ServiceAccountName: "task2SA",
+						},
+					},
+				},
+			},
 			saNames: map[string]string{
 				"unknown": "defaultSA",
 				"task1":   "task1SA",
