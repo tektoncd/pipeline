@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -236,24 +235,6 @@ func TestTaskRunDefaulting(t *testing.T) {
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 		},
-	}, {
-		name: "TaskRef upgrade context",
-		in: &v1beta1.TaskRun{
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{Name: "foo"},
-			},
-		},
-		want: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{"app.kubernetes.io/managed-by": "tekton-pipelines"},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: "foo", Kind: v1beta1.NamespacedTaskKind},
-				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-		},
-		wc: contexts.WithUpgradeViaDefaulting,
 	}, {
 		name: "TaskRef default config context",
 		in: &v1beta1.TaskRun{

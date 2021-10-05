@@ -38,7 +38,6 @@ import (
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/internal/limitrange"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
@@ -129,7 +128,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 		// We may be reading a version of the object that was stored at an older version
 		// and may not have had all of the assumed default specified.
-		tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+		tr.SetDefaults(ctx)
 
 		// Try to send cloud events first
 		cloudEventErr := cloudevent.SendCloudEvents(tr, c.cloudEventClient, logger)
@@ -287,9 +286,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
 func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskSpec, *resources.ResolvedTaskResources, error) {
 	logger := logging.FromContext(ctx)
-	// We may be reading a version of the object that was stored at an older version
-	// and may not have had all of the assumed default specified.
-	tr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+	tr.SetDefaults(ctx)
 
 	if c.disableResolution && tr.Status.TaskSpec == nil {
 		return nil, nil, errResourceNotResolved

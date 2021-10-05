@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -47,7 +46,7 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 		}
 		taskMeta = t.TaskMetadata()
 		taskSpec = t.TaskSpec()
-		taskSpec.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+		taskSpec.SetDefaults(ctx)
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec

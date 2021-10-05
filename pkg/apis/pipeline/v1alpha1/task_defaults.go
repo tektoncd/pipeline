@@ -19,8 +19,6 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	"knative.dev/pkg/apis"
 )
 
@@ -32,15 +30,6 @@ func (t *Task) SetDefaults(ctx context.Context) {
 
 // SetDefaults set any defaults for the task spec
 func (ts *TaskSpec) SetDefaults(ctx context.Context) {
-	if contexts.IsUpgradeViaDefaulting(ctx) {
-		v := v1beta1.TaskSpec{}
-		if ts.ConvertTo(ctx, &v) == nil {
-			alpha := TaskSpec{}
-			if alpha.ConvertFrom(ctx, &v) == nil {
-				*ts = alpha
-			}
-		}
-	}
 	for i := range ts.Params {
 		ts.Params[i].SetDefaults(ctx)
 	}

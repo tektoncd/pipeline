@@ -38,7 +38,6 @@ import (
 	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
@@ -188,9 +187,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	}
 
 	if pr.IsDone() {
-		// We may be reading a version of the object that was stored at an older version
-		// and may not have had all of the assumed default specified.
-		pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+		pr.SetDefaults(ctx)
 
 		if err := artifacts.CleanupArtifactStorage(ctx, pr, c.KubeClientSet); err != nil {
 			logger.Errorf("Failed to delete PVC for PipelineRun %s: %v", pr.Name, err)
@@ -338,9 +335,7 @@ func (c *Reconciler) resolvePipelineState(
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc resources.GetPipeline) error {
 	logger := logging.FromContext(ctx)
 	cfg := config.FromContextOrDefaults(ctx)
-	// We may be reading a version of the object that was stored at an older version
-	// and may not have had all of the assumed default specified.
-	pr.SetDefaults(contexts.WithUpgradeViaDefaulting(ctx))
+	pr.SetDefaults(ctx)
 
 	// When pipeline run is pending, return to avoid creating the task
 	if pr.IsPending() {
