@@ -26,7 +26,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -216,21 +215,6 @@ func TestPipelineRunDefaulting(t *testing.T) {
 			},
 		},
 	}, {
-		name: "PipelineRef upgrade context",
-		in: &v1beta1.PipelineRun{
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
-			},
-		},
-		want: &v1beta1.PipelineRun{
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef:        &v1beta1.PipelineRef{Name: "foo"},
-				ServiceAccountName: config.DefaultServiceAccountValue,
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-		},
-		wc: contexts.WithUpgradeViaDefaulting,
-	}, {
 		name: "Embedded PipelineSpec default",
 		in: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
@@ -253,7 +237,6 @@ func TestPipelineRunDefaulting(t *testing.T) {
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 		},
-		wc: contexts.WithUpgradeViaDefaulting,
 	}, {
 		name: "PipelineRef default config context",
 		in: &v1beta1.PipelineRun{

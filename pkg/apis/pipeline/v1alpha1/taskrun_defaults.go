@@ -21,8 +21,6 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/contexts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -47,16 +45,6 @@ func (tr *TaskRun) SetDefaults(ctx context.Context) {
 }
 
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
-	if contexts.IsUpgradeViaDefaulting(ctx) {
-		v := v1beta1.TaskRunSpec{}
-		if trs.ConvertTo(ctx, &v) == nil {
-			alpha := TaskRunSpec{}
-			if alpha.ConvertFrom(ctx, &v) == nil {
-				*trs = alpha
-			}
-		}
-	}
-
 	cfg := config.FromContextOrDefaults(ctx)
 	if trs.TaskRef != nil && trs.TaskRef.Kind == "" {
 		trs.TaskRef.Kind = NamespacedTaskKind
