@@ -166,6 +166,7 @@ Here is an example of a directory layout for a simple Task with 2 script steps:
 |-- results
 |-- run
     `-- 0
+        `-- out
 |-- scripts
 |   |-- script-0-t4jd8
 |   `-- script-1-4pjwp

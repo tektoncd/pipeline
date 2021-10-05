@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -105,8 +106,8 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		scriptsInit                                       *corev1.Container
 		initContainers, stepContainers, sidecarContainers []corev1.Container
 		volumes                                           []corev1.Volume
-		volumeMounts                                      []corev1.VolumeMount
 	)
+	volumeMounts := []corev1.VolumeMount{binROMount}
 	implicitEnvVars := []corev1.EnvVar{}
 	alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
 
@@ -185,7 +186,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// place the entrypoint first in case other init containers rely on its
 	// features (e.g. decode-script).
 	initContainers = append([]corev1.Container{entrypointInit}, initContainers...)
-	volumes = append(volumes, binVolume, runVolume, downwardVolume)
+	volumes = append(volumes, binVolume, downwardVolume)
 
 	// Add implicit env vars.
 	// They're prepended to the list, so that if the user specified any
@@ -218,6 +219,14 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		if v != nil && vm != nil {
 			volumes = append(volumes, *v)
 			s.VolumeMounts = append(s.VolumeMounts, *vm)
+		}
+
+		// Add /tekton/run state volumes.
+		// Each step should only mount their own volume as RW,
+		// all other steps should be mounted RO.
+		volumes = append(volumes, runVolume(i))
+		for j := 0; j < len(stepContainers); j++ {
+			s.VolumeMounts = append(s.VolumeMounts, runMount(j, i != j))
 		}
 
 		requestedVolumeMounts := map[string]bool{}
@@ -368,4 +377,19 @@ func shouldAddReadyAnnotationOnPodCreate(ctx context.Context, sidecars []v1beta1
 	// controllers.
 	cfg := config.FromContextOrDefaults(ctx)
 	return !cfg.FeatureFlags.RunningInEnvWithInjectedSidecars
+}
+
+func runMount(i int, ro bool) corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      fmt.Sprintf("%s-%d", runVolumeName, i),
+		MountPath: filepath.Join(runDir, strconv.Itoa(i)),
+		ReadOnly:  ro,
+	}
+}
+
+func runVolume(i int) corev1.Volume {
+	return corev1.Volume{
+		Name:         fmt.Sprintf("%s-%d", runVolumeName, i),
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
 }

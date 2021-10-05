@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -72,15 +73,6 @@ var (
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
 
-	runMount = corev1.VolumeMount{
-		Name:      runVolumeName,
-		MountPath: runDir,
-	}
-	runVolume = corev1.Volume{
-		Name:         runVolumeName,
-		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
-	}
-
 	// TODO(#1605): Signal sidecar readiness by injecting entrypoint,
 	// remove dependency on Downward API.
 	downwardVolume = corev1.Volume{
@@ -127,7 +119,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
 				"-wait_file_content", // Wait for file contents, not just an empty file.
 				// Start next step.
-				"-post_file", filepath.Join(runDir, fmt.Sprintf("%d", i)),
+				"-post_file", filepath.Join(runDir, strconv.Itoa(i), "out"),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
 				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
@@ -135,8 +127,8 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 		default:
 			// All other steps wait for previous file, write next file.
 			argsForEntrypoint = []string{
-				"-wait_file", filepath.Join(runDir, fmt.Sprintf("%d", i-1)),
-				"-post_file", filepath.Join(runDir, fmt.Sprintf("%d", i)),
+				"-wait_file", filepath.Join(runDir, strconv.Itoa(i-1), "out"),
+				"-post_file", filepath.Join(runDir, strconv.Itoa(i), "out"),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
 				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
@@ -179,7 +171,6 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 
 		steps[i].Command = []string{entrypointBinary}
 		steps[i].Args = argsForEntrypoint
-		steps[i].VolumeMounts = append(steps[i].VolumeMounts, binROMount, runMount)
 		steps[i].TerminationMessagePath = terminationPath
 	}
 	// Mount the Downward volume into the first step container.

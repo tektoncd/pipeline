@@ -23,7 +23,9 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -99,7 +101,10 @@ var (
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
+
 	ignoreEnvVarOrdering = cmpopts.SortSlices(func(x, y corev1.EnvVar) bool { return x.Name < y.Name })
+	volumeSort           = cmpopts.SortSlices(func(i, j corev1.Volume) bool { return i.Name < j.Name })
+	volumeMountSort      = cmpopts.SortSlices(func(i, j corev1.VolumeMount) bool { return i.Name < j.Name })
 	cloudEventTarget1    = "https://foo"
 	cloudEventTarget2    = "https://bar"
 
@@ -412,12 +417,7 @@ var (
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
-	runVolume = corev1.Volume{
-		Name: "tekton-internal-run",
-		VolumeSource: corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		},
-	}
+
 	workspaceVolume = corev1.Volume{
 		Name: "tekton-internal-workspace",
 		VolumeSource: corev1.VolumeSource{
@@ -468,6 +468,15 @@ var (
 	}
 	fakeVersion string
 )
+
+func runVolume(i int) corev1.Volume {
+	return corev1.Volume{
+		Name: fmt.Sprintf("tekton-internal-run-%d", i),
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	}
+}
 
 func init() {
 	os.Setenv("KO_DATA_PATH", "./testdata/")
@@ -766,7 +775,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
 			}
 
-			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, ignoreEnvVarOrdering); d != "" {
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, volumeSort, volumeMountSort, ignoreEnvVarOrdering); d != "" {
 				t.Errorf("Pod spec doesn't match, %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -901,7 +910,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
 			}
 
-			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, ignoreEnvVarOrdering); d != "" {
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, volumeSort, volumeMountSort, ignoreEnvVarOrdering); d != "" {
 				t.Errorf("Pod spec doesn't match, %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -1541,7 +1550,7 @@ func TestReconcile(t *testing.T) {
 			}
 
 			pod.Name = tc.wantPod.Name // Ignore pod name differences, the pod name is generated and tested in pod_test.go
-			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, ignoreEnvVarOrdering); d != "" {
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, volumeSort, volumeMountSort, ignoreEnvVarOrdering); d != "" {
 				t.Errorf("Pod spec doesn't match %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -4477,17 +4486,20 @@ func TestDisableResolutionFlag_ProceedsWithStatusTaskSpec(t *testing.T) {
 	}
 }
 
-func podVolumeMounts(idx int) []corev1.VolumeMount {
+func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 	var mnts []corev1.VolumeMount
 	mnts = append(mnts, corev1.VolumeMount{
 		Name:      "tekton-internal-bin",
 		MountPath: "/tekton/bin",
 		ReadOnly:  true,
 	})
-	mnts = append(mnts, corev1.VolumeMount{
-		Name:      "tekton-internal-run",
-		MountPath: "/tekton/run",
-	})
+	for i := 0; i < totalSteps; i++ {
+		mnts = append(mnts, corev1.VolumeMount{
+			Name:      fmt.Sprintf("tekton-internal-run-%d", i),
+			MountPath: filepath.Join("/tekton/run", strconv.Itoa(i)),
+			ReadOnly:  i != idx,
+		})
+	}
 	if idx == 0 {
 		mnts = append(mnts, corev1.VolumeMount{
 			Name:      "tekton-internal-downward",
@@ -4526,11 +4538,11 @@ func podArgs(stepName string, cmd string, additionalArgs []string, idx int) []st
 	if idx == 0 {
 		args = append(args, "/tekton/downward/ready", "-wait_file_content")
 	} else {
-		args = append(args, fmt.Sprintf("/tekton/run/%d", idx-1))
+		args = append(args, fmt.Sprintf("/tekton/run/%d/out", idx-1))
 	}
 	args = append(args,
 		"-post_file",
-		fmt.Sprintf("/tekton/run/%d", idx),
+		fmt.Sprintf("/tekton/run/%d/out", idx),
 		"-termination_path",
 		"/tekton/termination",
 		"-step_metadata_dir",
@@ -4599,7 +4611,6 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 				resultsVolume,
 				stepsVolume,
 				binVolume,
-				runVolume,
 				downwardVolume,
 			},
 			InitContainers:        []corev1.Container{placeToolsInitContainer},
@@ -4614,11 +4625,13 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 			Name:         fmt.Sprintf("tekton-creds-init-home-%d", idx),
 			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 		})
+		p.Spec.Volumes = append(p.Spec.Volumes, runVolume(idx))
+
 		stepContainer := corev1.Container{
 			Image:                  s.image,
 			Name:                   fmt.Sprintf("step-%s", s.name),
 			Command:                []string{entrypointLocation},
-			VolumeMounts:           podVolumeMounts(idx),
+			VolumeMounts:           podVolumeMounts(idx, len(steps)),
 			TerminationMessagePath: "/tekton/termination",
 		}
 		stepContainer.Args = podArgs(s.name, s.cmd, s.args, idx)
