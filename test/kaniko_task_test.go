@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -134,18 +133,39 @@ func TestKanikoTaskRun(t *testing.T) {
 }
 
 func getGitResource() *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoGitResourceName, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("Url", "https://github.com/GoogleContainerTools/kaniko"),
-		tb.PipelineResourceSpecParam("Revision", revision),
-	))
+	return &resources.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: kanikoGitResourceName,
+		},
+		Spec: resources.PipelineResourceSpec{
+			Type: resources.PipelineResourceTypeGit,
+			Params: []resources.ResourceParam{
+				{
+					Name:  "Url",
+					Value: "https://github.com/GoogleContainerTools/kaniko",
+				},
+				{
+					Name:  "Revision",
+					Value: revision,
+				},
+			},
+		},
+	}
 }
 
 func getImageResource(repo string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(kanikoImageResourceName, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeImage,
-		tb.PipelineResourceSpecParam("url", repo),
-	))
+	return &resources.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: kanikoImageResourceName,
+		},
+		Spec: resources.PipelineResourceSpec{
+			Type: resources.PipelineResourceTypeImage,
+			Params: []resources.ResourceParam{{
+				Name:  "url",
+				Value: repo,
+			}},
+		},
+	}
 }
 
 func getTask(repo, namespace string) *v1beta1.Task {

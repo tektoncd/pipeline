@@ -26,7 +26,6 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -142,12 +141,24 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	defer resetConfigMap(ctx, t, c, systemNamespace, config.GetArtifactBucketConfigName(), originalConfigMapData)
 
 	t.Logf("Creating Git PipelineResource %s", helloworldResourceName)
-	helloworldResource := tb.PipelineResource(helloworldResourceName, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("Url", "https://github.com/pivotal-nader-ziada/gohelloworld"),
-		tb.PipelineResourceSpecParam("Revision", "master"),
-	),
-	)
+	helloworldResource := &resourcev1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: helloworldResourceName,
+		},
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+			Params: []resourcev1alpha1.ResourceParam{
+				{
+					Name:  "Url",
+					Value: "https://github.com/pivotal-nader-ziada/gohelloworld",
+				},
+				{
+					Name:  "Revision",
+					Value: "master",
+				},
+			},
+		},
+	}
 	if _, err := c.PipelineResourceClient.Create(ctx, helloworldResource, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", helloworldResourceName, err)
 	}
@@ -215,7 +226,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 						Name: "helloworldgit", Resource: "source-repo",
 					}},
 					Outputs: []v1beta1.PipelineTaskOutputResource{{
-						Name: "helloworldgit", Resource: "source-rep",
+						Name: "helloworldgit", Resource: "source-repo",
 					}},
 				},
 			}, {

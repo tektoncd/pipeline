@@ -19,8 +19,9 @@ package git_test
 import (
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -31,7 +32,15 @@ import (
 )
 
 func TestNewGitResource_Invalid(t *testing.T) {
-	if _, err := git.NewResource("test-resource", "override-with-git:latest", tb.PipelineResource("git-resource", tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGCS))); err == nil {
+	if _, err := git.NewResource("test-resource", "override-with-git:latest",
+		&resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "git-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGCS,
+			},
+		}); err == nil {
 		t.Error("Expected error creating Git resource")
 	}
 }
@@ -43,12 +52,24 @@ func TestNewGitResource_Valid(t *testing.T) {
 		want             *git.Resource
 	}{{
 		desc: "With Revision",
-		pipelineResource: tb.PipelineResource("git-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "git-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -65,11 +86,18 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "Without Revision",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{{
+					Name:  "URL",
+					Value: "git@github.com:test/test.git",
+				}},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -86,12 +114,24 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With Refspec",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Refspec", "refs/changes/22/222134"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Refspec",
+						Value: "refs/changes/22/222134",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -108,11 +148,18 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "Without Refspec",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{{
+					Name:  "URL",
+					Value: "git@github.com:test/test.git",
+				}},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -129,12 +176,24 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With Submodules",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -151,13 +210,28 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "Without Submodules",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-				tb.PipelineResourceSpecParam("Submodules", "false"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+					{
+						Name:  "Submodules",
+						Value: "false",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -174,13 +248,28 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With positive depth",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-				tb.PipelineResourceSpecParam("Depth", "8"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+					{
+						Name:  "Depth",
+						Value: "8",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -197,13 +286,28 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With zero depth",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-				tb.PipelineResourceSpecParam("Depth", "0"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+					{
+						Name:  "Depth",
+						Value: "0",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -220,14 +324,32 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "Without SSLVerify",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-				tb.PipelineResourceSpecParam("Depth", "0"),
-				tb.PipelineResourceSpecParam("SSLVerify", "false"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+					{
+						Name:  "Depth",
+						Value: "0",
+					},
+					{
+						Name:  "SSLVerify",
+						Value: "false",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -244,14 +366,32 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With HTTPProxy",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-				tb.PipelineResourceSpecParam("Depth", "0"),
-				tb.PipelineResourceSpecParam("HTTPProxy", "http-proxy.git.com"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+					{
+						Name:  "Depth",
+						Value: "0",
+					},
+					{
+						Name:  "HTTPProxy",
+						Value: "http-proxy.git.com",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -268,14 +408,32 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With HTTPSProxy",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-				tb.PipelineResourceSpecParam("Depth", "0"),
-				tb.PipelineResourceSpecParam("HTTPSProxy", "https-proxy.git.com"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+					{
+						Name:  "Depth",
+						Value: "0",
+					},
+					{
+						Name:  "HTTPSProxy",
+						Value: "https-proxy.git.com",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,
@@ -292,14 +450,32 @@ func TestNewGitResource_Valid(t *testing.T) {
 		},
 	}, {
 		desc: "With NOProxy",
-		pipelineResource: tb.PipelineResource("test-resource",
-			tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit,
-				tb.PipelineResourceSpecParam("URL", "git@github.com:test/test.git"),
-				tb.PipelineResourceSpecParam("Revision", "test"),
-				tb.PipelineResourceSpecParam("Depth", "0"),
-				tb.PipelineResourceSpecParam("NOProxy", "*"),
-			),
-		),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git@github.com:test/test.git",
+					},
+					{
+						Name:  "Revision",
+						Value: "test",
+					},
+					{
+						Name:  "Depth",
+						Value: "0",
+					},
+					{
+						Name:  "NOProxy",
+						Value: "*",
+					},
+				},
+			},
+		},
 		want: &git.Resource{
 			Name:       "test-resource",
 			Type:       resourcev1alpha1.PipelineResourceTypeGit,

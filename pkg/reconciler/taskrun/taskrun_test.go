@@ -28,10 +28,11 @@ import (
 	"testing"
 	"time"
 
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/go-containerregistry/pkg/registry"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -98,104 +99,312 @@ var (
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
+	handleMapOrdering = cmpopts.SortMaps(func(x, y string) bool { return x < y })
 	cloudEventTarget1 = "https://foo"
 	cloudEventTarget2 = "https://bar"
 
-	simpleStep        = tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd"))
-	simpleTask        = tb.Task("test-task", tb.TaskSpec(simpleStep), tb.TaskNamespace("foo"))
-	simpleTypedTask   = tb.Task("test-task", tb.TaskType, tb.TaskSpec(simpleStep), tb.TaskNamespace("foo"))
-	taskMultipleSteps = tb.Task("test-task-multi-steps", tb.TaskSpec(
-		tb.Step("foo", tb.StepName("z-step"),
-			tb.StepCommand("/mycmd"),
-		),
-		tb.Step("foo", tb.StepName("v-step"),
-			tb.StepCommand("/mycmd"),
-		),
-		tb.Step("foo", tb.StepName("x-step"),
-			tb.StepCommand("/mycmd"),
-		),
-	), tb.TaskNamespace("foo"))
-
-	taskMultipleStepsIgnoreError = tb.Task("test-task-multi-steps-with-ignore-error", tb.TaskSpec(
-		tb.Step("foo", tb.StepName("step-0"),
-			tb.StepCommand("/mycmd"),
-			tb.StepOnError("continue"),
-		),
-		tb.Step("foo", tb.StepName("step-1"),
-			tb.StepCommand("/mycmd"),
-		),
-	), tb.TaskNamespace("foo"))
-
-	clustertask = tb.ClusterTask("test-cluster-task", tb.ClusterTaskSpec(simpleStep))
-	taskSidecar = tb.Task("test-task-sidecar", tb.TaskSpec(
-		tb.Sidecar("sidecar", "image-id"),
-	), tb.TaskNamespace("foo"))
-	taskMultipleSidecars = tb.Task("test-task-sidecar", tb.TaskSpec(
-		tb.Sidecar("sidecar", "image-id"),
-		tb.Sidecar("sidecar2", "image-id"),
-	), tb.TaskNamespace("foo"))
-
-	outputTask = tb.Task("test-output-task", tb.TaskSpec(
-		simpleStep, tb.TaskResources(
-			tb.TaskResourcesInput(gitResource.Name, resourcev1alpha1.PipelineResourceTypeGit),
-			tb.TaskResourcesInput(anotherGitResource.Name, resourcev1alpha1.PipelineResourceTypeGit),
-		),
-		tb.TaskResources(tb.TaskResourcesOutput(gitResource.Name, resourcev1alpha1.PipelineResourceTypeGit)),
-	))
-
-	saTask = tb.Task("test-with-sa", tb.TaskSpec(tb.Step("foo", tb.StepName("sa-step"), tb.StepCommand("/mycmd"))), tb.TaskNamespace("foo"))
-
-	templatedTask = tb.Task("test-task-with-substitution", tb.TaskSpec(
-		tb.TaskParam("myarg", v1beta1.ParamTypeString),
-		tb.TaskParam("myarghasdefault", v1beta1.ParamTypeString, tb.ParamSpecDefault("dont see me")),
-		tb.TaskParam("myarghasdefault2", v1beta1.ParamTypeString, tb.ParamSpecDefault("thedefault")),
-		tb.TaskParam("configmapname", v1beta1.ParamTypeString),
-		tb.TaskResources(
-			tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
-			tb.TaskResourcesOutput("myimage", resourcev1alpha1.PipelineResourceTypeImage),
-		),
-		tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
-			"--my-arg=$(inputs.params.myarg)",
-			"--my-arg-with-default=$(inputs.params.myarghasdefault)",
-			"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
-			"--my-additional-arg=$(outputs.resources.myimage.url)",
-			"--my-taskname-arg=$(context.task.name)",
-			"--my-taskrun-arg=$(context.taskRun.name)",
-		)),
-		tb.Step("myotherimage", tb.StepName("myothercontainer"), tb.StepCommand("/mycmd"), tb.StepArgs(
-			"--my-other-arg=$(inputs.resources.workspace.url)",
-		)),
-		tb.TaskVolume("volume-configmap", tb.VolumeSource(corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "$(inputs.params.configmapname)",
+	simpleStep = v1beta1.Step{
+		Container: corev1.Container{
+			Name:    "simple-step",
+			Image:   "foo",
+			Command: []string{"/mycmd"},
+		},
+	}
+	simpleTask = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{simpleStep},
+		},
+	}
+	simpleTypedTask = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task", "foo"),
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "tekton.dev/v1beta1",
+			Kind:       "Task",
+		},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{simpleStep},
+		},
+	}
+	taskMultipleSteps = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-multi-steps", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{
+				{
+					Container: corev1.Container{
+						Image:   "foo",
+						Name:    "z-step",
+						Command: []string{"/mycmd"},
+					},
+				},
+				{
+					Container: corev1.Container{
+						Image:   "foo",
+						Name:    "v-step",
+						Command: []string{"/mycmd"},
+					},
+				},
+				{
+					Container: corev1.Container{
+						Image:   "foo",
+						Name:    "x-step",
+						Command: []string{"/mycmd"},
+					},
 				},
 			},
-		})),
-	), tb.TaskNamespace("foo"))
+		},
+	}
 
-	twoOutputsTask = tb.Task("test-two-output-task", tb.TaskSpec(
-		simpleStep, tb.TaskResources(
-			tb.TaskResourcesOutput(cloudEventResource.Name, resourcev1alpha1.PipelineResourceTypeCloudEvent),
-			tb.TaskResourcesOutput(anotherCloudEventResource.Name, resourcev1alpha1.PipelineResourceTypeCloudEvent),
-		),
-	), tb.TaskNamespace("foo"))
+	taskMultipleStepsIgnoreError = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-multi-steps-with-ignore-error", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{
+				{
+					Container: corev1.Container{
+						Image:   "foo",
+						Name:    "step-0",
+						Command: []string{"/mycmd"},
+					},
+					OnError: "continue",
+				},
+				{
+					Container: corev1.Container{
+						Image:   "foo",
+						Name:    "step-1",
+						Command: []string{"/mycmd"},
+					},
+				},
+			},
+		},
+	}
 
-	gitResource = tb.PipelineResource("git-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		resourcev1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foo.git"),
-	))
-	anotherGitResource = tb.PipelineResource("another-git-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		resourcev1alpha1.PipelineResourceTypeGit, tb.PipelineResourceSpecParam("URL", "https://foobar.git"),
-	))
-	imageResource = tb.PipelineResource("image-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		resourcev1alpha1.PipelineResourceTypeImage, tb.PipelineResourceSpecParam("URL", "gcr.io/kristoff/sven"),
-	))
-	cloudEventResource = tb.PipelineResource("cloud-event-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		resourcev1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget1),
-	))
-	anotherCloudEventResource = tb.PipelineResource("another-cloud-event-resource", tb.PipelineResourceNamespace("foo"), tb.PipelineResourceSpec(
-		resourcev1alpha1.PipelineResourceTypeCloudEvent, tb.PipelineResourceSpecParam("TargetURI", cloudEventTarget2),
-	))
+	clustertask = &v1beta1.ClusterTask{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-cluster-task"},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{simpleStep},
+		},
+	}
+	taskSidecar = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-sidecar", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Sidecars: []v1beta1.Sidecar{{
+				Container: corev1.Container{
+					Name:  "sidecar",
+					Image: "image-id",
+				},
+			}},
+		},
+	}
+	taskMultipleSidecars = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-sidecar", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Sidecars: []v1beta1.Sidecar{
+				{
+					Container: corev1.Container{
+						Name:  "sidecar",
+						Image: "image-id",
+					},
+				},
+				{
+					Container: corev1.Container{
+						Name:  "sidecar2",
+						Image: "image-id",
+					},
+				},
+			},
+		},
+	}
+
+	outputTask = &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-output-task"},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{simpleStep},
+			Resources: &v1beta1.TaskResources{
+				Inputs: []v1beta1.TaskResource{
+					{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: gitResource.Name,
+							Type: resourcev1alpha1.PipelineResourceTypeGit,
+						},
+					},
+					{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: anotherGitResource.Name,
+							Type: resourcev1alpha1.PipelineResourceTypeGit,
+						},
+					},
+				},
+				Outputs: []v1beta1.TaskResource{{
+					ResourceDeclaration: v1beta1.ResourceDeclaration{
+						Name: gitResource.Name,
+						Type: resourcev1alpha1.PipelineResourceTypeGit,
+					},
+				}},
+			},
+		},
+	}
+
+	saTask = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-with-sa", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name:    "sa-step",
+					Image:   "foo",
+					Command: []string{"/mycmd"},
+				},
+			}},
+		},
+	}
+
+	templatedTask = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-with-substitution", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myarg",
+					Type: v1beta1.ParamTypeString,
+				},
+				{
+					Name:    "myarghasdefault",
+					Type:    v1beta1.ParamTypeString,
+					Default: v1beta1.NewArrayOrString("dont see me"),
+				},
+				{
+					Name:    "myarghasdefault2",
+					Type:    v1beta1.ParamTypeString,
+					Default: v1beta1.NewArrayOrString("thedefault"),
+				},
+				{
+					Name: "configmapname",
+					Type: v1beta1.ParamTypeString,
+				},
+			},
+			Resources: &v1beta1.TaskResources{
+				Inputs: []v1beta1.TaskResource{{
+					ResourceDeclaration: v1beta1.ResourceDeclaration{
+						Name: "workspace",
+						Type: resourcev1alpha1.PipelineResourceTypeGit,
+					},
+				}},
+				Outputs: []v1beta1.TaskResource{{
+					ResourceDeclaration: v1beta1.ResourceDeclaration{
+						Name: "myimage",
+						Type: resourcev1alpha1.PipelineResourceTypeImage,
+					},
+				}},
+			},
+			Steps: []v1beta1.Step{
+				{
+					Container: corev1.Container{
+						Image:   "myimage",
+						Name:    "mycontainer",
+						Command: []string{"/mycmd"},
+						Args: []string{
+							"--my-arg=$(inputs.params.myarg)",
+							"--my-arg-with-default=$(inputs.params.myarghasdefault)",
+							"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
+							"--my-additional-arg=$(outputs.resources.myimage.url)",
+							"--my-taskname-arg=$(context.task.name)",
+							"--my-taskrun-arg=$(context.taskRun.name)",
+						},
+					},
+				},
+				{
+					Container: corev1.Container{
+						Image:   "myotherimage",
+						Name:    "myothercontainer",
+						Command: []string{"/mycmd"},
+						Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
+					},
+				},
+			},
+			Volumes: []corev1.Volume{{
+				Name: "volume-configmap",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "$(inputs.params.configmapname)",
+						},
+					},
+				},
+			}},
+		},
+	}
+
+	twoOutputsTask = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-two-output-task", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{simpleStep},
+			Resources: &v1beta1.TaskResources{
+				Outputs: []v1beta1.TaskResource{
+					{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: cloudEventResource.Name,
+							Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
+						},
+					},
+					{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: anotherCloudEventResource.Name,
+							Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	gitResource = &resourcev1alpha1.PipelineResource{
+		ObjectMeta: objectMeta("git-resource", "foo"),
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeGit,
+			Params: []resourcev1alpha1.ResourceParam{{
+				Name:  "URL",
+				Value: "https://foo.git",
+			}},
+		},
+	}
+	anotherGitResource = &resourcev1alpha1.PipelineResource{
+		ObjectMeta: objectMeta("another-git-resource", "foo"),
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeGit,
+			Params: []resourcev1alpha1.ResourceParam{{
+				Name:  "URL",
+				Value: "https://foobar.git",
+			}},
+		},
+	}
+	imageResource = &resourcev1alpha1.PipelineResource{
+		ObjectMeta: objectMeta("image-resource", "foo"),
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeImage,
+			Params: []resourcev1alpha1.ResourceParam{{
+				Name:  "URL",
+				Value: "gcr.io/kristoff/sven",
+			}},
+		},
+	}
+	cloudEventResource = &resourcev1alpha1.PipelineResource{
+		ObjectMeta: objectMeta("cloud-event-resource", "foo"),
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
+			Params: []resourcev1alpha1.ResourceParam{{
+				Name:  "TargetURI",
+				Value: cloudEventTarget1,
+			}},
+		},
+	}
+	anotherCloudEventResource = &resourcev1alpha1.PipelineResource{
+		ObjectMeta: objectMeta("another-cloud-event-resource", "foo"),
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
+			Params: []resourcev1alpha1.ResourceParam{{
+				Name:  "TargetURI",
+				Value: cloudEventTarget2,
+			}},
+		},
+	}
 
 	binVolume = corev1.Volume{
 		Name: "tekton-internal-bin",
@@ -247,15 +456,15 @@ var (
 		},
 	}
 
-	getPlaceToolsInitContainer = func(ops ...tb.ContainerOp) tb.PodSpecOp {
-		actualOps := []tb.ContainerOp{
-			tb.Command("/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointLocation),
-			tb.VolumeMount("tekton-internal-bin", "/tekton/bin"),
-			tb.WorkingDir("/"),
-			tb.Args(),
-		}
-		actualOps = append(actualOps, ops...)
-		return tb.PodInitContainer("place-tools", "override-with-entrypoint:latest", actualOps...)
+	placeToolsInitContainer = corev1.Container{
+		Command: []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointLocation},
+		VolumeMounts: []corev1.VolumeMount{{
+			MountPath: "/tekton/bin",
+			Name:      "tekton-internal-bin",
+		}},
+		WorkingDir: "/",
+		Name:       "place-tools",
+		Image:      "override-with-entrypoint:latest",
 	}
 	fakeVersion string
 )
@@ -449,18 +658,26 @@ func eventFromChannelUnordered(c chan string, wantEvents []string) error {
 	return fmt.Errorf("too many events received")
 }
 
-func withActiveDeadlineSeconds(spec *corev1.PodSpec) {
-	spec.ActiveDeadlineSeconds = &defaultActiveDeadlineSeconds
-}
-
 func TestReconcile_ExplicitDefaultSA(t *testing.T) {
-	taskRunSuccess := tb.TaskRun("test-taskrun-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
-	))
-	taskRunWithSaSuccess := tb.TaskRun("test-taskrun-with-sa-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunServiceAccountName("test-sa"),
-	))
+	taskRunSuccess := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-success", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       simpleTask.Name,
+				APIVersion: "a1",
+			},
+		},
+	}
+	taskRunWithSaSuccess := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-sa-run-success", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       saTask.Name,
+				APIVersion: "a1",
+			},
+			ServiceAccountName: "test-sa",
+		},
+	}
 	taskruns := []*v1beta1.TaskRun{taskRunSuccess, taskRunWithSaSuccess}
 	defaultSAName := "pipelines"
 	d := test.Data{
@@ -484,102 +701,19 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantPod: tb.Pod("test-taskrun-run-success-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-task"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-run-success"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(defaultSAName),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-simple-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-simple-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-					),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				withActiveDeadlineSeconds,
-			),
-		),
+		wantPod: expectedPod("test-taskrun-run-success-pod-abcde", "test-task", "test-taskrun-run-success", "foo", defaultSAName, false, nil, []stepForExpectedPod{{
+			image: "foo",
+			name:  "simple-step",
+			cmd:   "/mycmd",
+		}}),
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
-		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-with-sa"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName("test-sa"),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-sa-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-sa-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-					),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod-abcde", "test-with-sa", "test-taskrun-with-sa-run-success", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+			image: "foo",
+			name:  "sa-step",
+			cmd:   "/mycmd",
+		}}),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			saName := tc.taskRun.Spec.ServiceAccountName
@@ -632,7 +766,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
 			}
 
-			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, handleMapOrdering); d != "" {
 				t.Errorf("Pod spec doesn't match, %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -646,20 +780,38 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 // to ensure the 'feature-flags' config map can be used to disable the
 // corresponding behavior.
 func TestReconcile_FeatureFlags(t *testing.T) {
-	taskWithEnvVar := tb.Task("test-task-with-env-var",
-		tb.TaskSpec(tb.Step("foo",
-			tb.StepName("simple-step"), tb.StepCommand("/mycmd"), tb.StepEnvVar("foo", "bar"),
-		)),
-		tb.TaskNamespace("foo"),
-	)
-	taskRunWithDisableHomeEnv := tb.TaskRun("test-taskrun-run-home-env",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(taskWithEnvVar.Name)),
-	)
-	taskRunWithDisableWorkingDirOverwrite := tb.TaskRun("test-taskrun-run-working-dir",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTask.Name)),
-	)
+	taskWithEnvVar := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-with-env-var", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image:   "foo",
+					Name:    "simple-step",
+					Command: []string{"/mycmd"},
+					Env: []corev1.EnvVar{{
+						Name:  "foo",
+						Value: "bar",
+					}},
+				},
+			}},
+		},
+	}
+	taskRunWithDisableHomeEnv := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-home-env", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: taskWithEnvVar.Name,
+			},
+		},
+	}
+	taskRunWithDisableWorkingDirOverwrite := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-working-dir", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+	}
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRunWithDisableHomeEnv, taskRunWithDisableWorkingDirOverwrite},
 		Tasks:    []*v1beta1.Task{simpleTask, taskWithEnvVar},
@@ -673,105 +825,21 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 		name:        "disable-home-env-overwrite",
 		taskRun:     taskRunWithDisableHomeEnv,
 		featureFlag: "disable-home-env-overwrite",
-		wantPod: tb.Pod("test-taskrun-run-home-env-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-task-with-env-var"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-run-home-env"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-run-home-env",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-simple-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-simple-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-					),
-					tb.EnvVar("foo", "bar"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				withActiveDeadlineSeconds,
-			),
-		),
+		wantPod: expectedPod("test-taskrun-run-home-env-pod-abcde", "test-task-with-env-var", "test-taskrun-run-home-env", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+			image:   "foo",
+			name:    "simple-step",
+			cmd:     "/mycmd",
+			envVars: map[string]string{"foo": "bar"},
+		}}),
 	}, {
 		name:        "disable-working-dir-overwrite",
 		taskRun:     taskRunWithDisableWorkingDirOverwrite,
 		featureFlag: "disable-working-directory-overwrite",
-		wantPod: tb.Pod("test-taskrun-run-working-dir-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-task"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-run-working-dir"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-run-working-dir",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-simple-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-simple-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-					),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				withActiveDeadlineSeconds,
-			),
-		),
+		wantPod: expectedPod("test-taskrun-run-working-dir-pod-abcde", "test-task", "test-taskrun-run-working-dir", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+			image: "foo",
+			name:  "simple-step",
+			cmd:   "/mycmd",
+		}}),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
@@ -846,20 +914,34 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 // TestReconcile_CloudEvents runs reconcile with a cloud event sink configured
 // to ensure that events are sent in different cases
 func TestReconcile_CloudEvents(t *testing.T) {
-	simpleTask := tb.Task("test-task",
-		tb.TaskSpec(tb.Step("foo",
-			tb.StepName("simple-step"), tb.StepCommand("/mycmd"), tb.StepEnvVar("foo", "bar"),
-		)),
-		tb.TaskNamespace("foo"),
-	)
-	taskRun := tb.TaskRun("test-taskrun-not-started",
-		tb.TaskRunSelfLink("/test/taskrun1"),
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTask.Name)),
-	)
+	task := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image:   "foo",
+					Name:    "simple-step",
+					Command: []string{"/mycmd"},
+					Env: []corev1.EnvVar{{
+						Name:  "foo",
+						Value: "bar",
+					}},
+				},
+			}},
+		},
+	}
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-not-started", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: task.Name,
+			},
+		},
+	}
+	taskRun.ObjectMeta.SelfLink = "/test/taskrun1"
 	d := test.Data{
+		Tasks:    []*v1beta1.Task{task},
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
-		Tasks:    []*v1beta1.Task{simpleTask},
 	}
 
 	names.TestingSeed()
@@ -928,113 +1010,245 @@ func TestReconcile_CloudEvents(t *testing.T) {
 }
 
 func TestReconcile(t *testing.T) {
-	taskRunSuccess := tb.TaskRun("test-taskrun-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
-	))
-	taskRunWithSaSuccess := tb.TaskRun("test-taskrun-with-sa-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(saTask.Name, tb.TaskRefAPIVersion("a1")), tb.TaskRunServiceAccountName("test-sa"),
-	))
-	taskRunSubstitution := tb.TaskRun("test-taskrun-substitution", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(templatedTask.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunParam("myarg", "foo"),
-		tb.TaskRunParam("myarghasdefault", "bar"),
-		tb.TaskRunParam("configmapname", "configbar"),
-		tb.TaskRunResources(
-			tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
-			tb.TaskRunResourcesOutput("myimage", tb.TaskResourceBindingRef("image-resource")),
-		),
-	))
-	taskRunInputOutput := tb.TaskRun("test-taskrun-input-output",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunOwnerReference("PipelineRun", "test"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(outputTask.Name),
-			tb.TaskRunResources(
-				tb.TaskRunResourcesInput(gitResource.Name,
-					tb.TaskResourceBindingRef(gitResource.Name),
-					tb.TaskResourceBindingPaths("source-folder"),
-				),
-				tb.TaskRunResourcesInput(anotherGitResource.Name,
-					tb.TaskResourceBindingRef(anotherGitResource.Name),
-					tb.TaskResourceBindingPaths("source-folder"),
-				),
-				tb.TaskRunResourcesOutput(gitResource.Name,
-					tb.TaskResourceBindingRef(gitResource.Name),
-					tb.TaskResourceBindingPaths("output-folder"),
-				),
-			),
-		),
-	)
-	taskRunWithTaskSpec := tb.TaskRun("test-taskrun-with-taskspec", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunParam("myarg", "foo"),
-		tb.TaskRunResources(
-			tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef(gitResource.Name)),
-		),
-		tb.TaskRunTaskSpec(
-			tb.TaskParam("myarg", v1beta1.ParamTypeString, tb.ParamSpecDefault("mydefault")),
-			tb.TaskResources(
-				tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit),
-			),
-			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd"),
-				tb.StepArgs("--my-arg=$(inputs.params.myarg)"),
-			),
-		),
-	))
-
-	taskRunWithResourceSpecAndTaskSpec := tb.TaskRun("test-taskrun-with-resource-spec", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunResources(
-			tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingResourceSpec(&resourcev1alpha1.PipelineResourceSpec{
-				Type: resourcev1alpha1.PipelineResourceTypeGit,
-				Params: []resourcev1alpha1.ResourceParam{{
-					Name:  "URL",
-					Value: "github.com/foo/bar.git",
-				}, {
-					Name:  "revision",
-					Value: "rel-can",
+	taskRunSuccess := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-success", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       simpleTask.Name,
+				APIVersion: "a1",
+			},
+		},
+	}
+	taskRunWithSaSuccess := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-sa-run-success", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       saTask.Name,
+				APIVersion: "a1",
+			},
+			ServiceAccountName: "test-sa",
+		},
+	}
+	taskRunSubstitution := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-substitution", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       templatedTask.Name,
+				APIVersion: "a1",
+			},
+			Params: []v1beta1.Param{
+				{
+					Name:  "myarg",
+					Value: *v1beta1.NewArrayOrString("foo"),
+				},
+				{
+					Name:  "myarghasdefault",
+					Value: *v1beta1.NewArrayOrString("bar"),
+				},
+				{
+					Name:  "configmapname",
+					Value: *v1beta1.NewArrayOrString("configbar"),
+				},
+			},
+			Resources: &v1beta1.TaskRunResources{
+				Inputs: []v1beta1.TaskResourceBinding{{
+					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+						Name: "workspace",
+						ResourceRef: &v1beta1.PipelineResourceRef{
+							Name: gitResource.Name,
+						},
+					},
 				}},
-			})),
-		),
-		tb.TaskRunTaskSpec(
-			tb.TaskResources(
-				tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
-			tb.Step("ubuntu", tb.StepName("mystep"), tb.StepCommand("/mycmd")),
-		),
-	))
+				Outputs: []v1beta1.TaskResourceBinding{{
+					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+						Name: "myimage",
+						ResourceRef: &v1beta1.PipelineResourceRef{
+							Name: imageResource.Name,
+						},
+					},
+				}},
+			},
+		},
+	}
+	taskRunInputOutput := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-input-output", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: outputTask.Name,
+			},
+			Resources: &v1beta1.TaskRunResources{
+				Inputs: []v1beta1.TaskResourceBinding{
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name:        gitResource.Name,
+							ResourceRef: &v1beta1.PipelineResourceRef{Name: gitResource.Name},
+						},
+						Paths: []string{"source-folder"},
+					},
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name:        anotherGitResource.Name,
+							ResourceRef: &v1beta1.PipelineResourceRef{Name: anotherGitResource.Name},
+						},
+						Paths: []string{"source-folder"},
+					},
+				},
+				Outputs: []v1beta1.TaskResourceBinding{{
+					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+						Name:        gitResource.Name,
+						ResourceRef: &v1beta1.PipelineResourceRef{Name: gitResource.Name},
+					},
+					Paths: []string{"output-folder"},
+				}},
+			},
+		},
+	}
+	taskRunInputOutput.OwnerReferences = []metav1.OwnerReference{{
+		Kind: "PipelineRun",
+		Name: "test",
+	}}
+	taskRunWithTaskSpec := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-taskspec", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
+				Name:  "myarg",
+				Value: *v1beta1.NewArrayOrString("foo"),
+			}},
+			Resources: &v1beta1.TaskRunResources{
+				Inputs: []v1beta1.TaskResourceBinding{{
+					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+						Name:        "workspace",
+						ResourceRef: &v1beta1.PipelineResourceRef{Name: gitResource.Name},
+					},
+				}},
+			},
+			TaskSpec: &v1beta1.TaskSpec{
+				Params: []v1beta1.ParamSpec{{
+					Name:    "myarg",
+					Type:    v1beta1.ParamTypeString,
+					Default: v1beta1.NewArrayOrString("mydefault"),
+				}},
+				Resources: &v1beta1.TaskResources{
+					Inputs: []v1beta1.TaskResource{{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: "workspace",
+							Type: resourcev1alpha1.PipelineResourceTypeGit,
+						},
+					}},
+				},
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "myimage",
+						Name:    "mycontainer",
+						Command: []string{"/mycmd"},
+						Args:    []string{"--my-arg=$(inputs.params.myarg)"},
+					},
+				}},
+			},
+		},
+	}
 
-	taskRunWithClusterTask := tb.TaskRun("test-taskrun-with-cluster-task",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(clustertask.Name, tb.TaskRefKind(v1beta1.ClusterTaskKind))),
-	)
+	taskRunWithResourceSpecAndTaskSpec := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-resource-spec", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			Resources: &v1beta1.TaskRunResources{
+				Inputs: []v1beta1.TaskResourceBinding{{
+					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+						Name: "workspace",
+						ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
+							Type: resourcev1alpha1.PipelineResourceTypeGit,
+							Params: []resourcev1alpha1.ResourceParam{{
+								Name:  "URL",
+								Value: "github.com/foo/bar.git",
+							}, {
+								Name:  "revision",
+								Value: "rel-can",
+							}},
+						},
+					},
+				}},
+			},
+			TaskSpec: &v1beta1.TaskSpec{
+				Resources: &v1beta1.TaskResources{
+					Inputs: []v1beta1.TaskResource{{
+						ResourceDeclaration: v1beta1.ResourceDeclaration{
+							Name: "workspace",
+							Type: resourcev1alpha1.PipelineResourceTypeGit,
+						},
+					}},
+				},
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "ubuntu",
+						Name:    "mystep",
+						Command: []string{"/mycmd"},
+					},
+				}},
+			},
+		},
+	}
 
-	taskRunWithLabels := tb.TaskRun("test-taskrun-with-labels",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunLabel("TaskRunLabel", "TaskRunValue"),
-		tb.TaskRunLabel(pipeline.TaskRunLabelKey, "WillNotBeUsed"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-		),
-	)
+	taskRunWithClusterTask := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-cluster-task", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: clustertask.Name,
+				Kind: v1beta1.ClusterTaskKind,
+			},
+		},
+	}
 
-	taskRunWithAnnotations := tb.TaskRun("test-taskrun-with-annotations",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunAnnotation("TaskRunAnnotation", "TaskRunValue"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-		),
-	)
+	taskRunWithLabels := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-labels", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+	}
+	taskRunWithLabels.Labels = map[string]string{
+		"TaskRunLabel":           "TaskRunValue",
+		pipeline.TaskRunLabelKey: "WillNotBeUsed",
+	}
 
-	taskRunWithPod := tb.TaskRun("test-taskrun-with-pod",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTask.Name)),
-		tb.TaskRunStatus(tb.PodName("some-pod-abcdethat-no-longer-exists")),
-	)
+	taskRunWithAnnotations := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-annotations", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+	}
+	taskRunWithAnnotations.Annotations = map[string]string{"TaskRunAnnotation": "TaskRunValue"}
 
-	taskRunWithCredentialsVariable := tb.TaskRun("test-taskrun-with-credentials-variable",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskSpec(
-			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd $(credentials.path)")),
-		),
-		))
+	taskRunWithPod := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-pod", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName: "some-pod-abcdethat-no-longer-exists",
+			},
+		},
+	}
+
+	taskRunWithCredentialsVariable := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-with-credentials-variable", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "myimage",
+						Name:    "mycontainer",
+						Command: []string{"/mycmd $(credentials.path)"},
+					},
+				}},
+			},
+		},
+	}
 
 	// Set up a fake registry to push an image to.
 	s := httptest.NewServer(registry.New())
@@ -1050,10 +1264,15 @@ func TestReconcile(t *testing.T) {
 		t.Fatalf("failed to upload image with simple task: %s", err.Error())
 	}
 
-	taskRunBundle := tb.TaskRun("test-taskrun-bundle",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTypedTask.Name, tb.TaskRefBundle(ref))),
-	)
+	taskRunBundle := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-bundle", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:   simpleTypedTask.Name,
+				Bundle: ref,
+			},
+		},
+	}
 
 	taskruns := []*v1beta1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
@@ -1081,52 +1300,11 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-run-success-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-task"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-run-success"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-run-success",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-simple-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-simple-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-					),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-run-success-pod-abcde", "test-task", "test-taskrun-run-success", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+			image: "foo",
+			name:  "simple-step",
+			cmd:   "/mycmd",
+		}}),
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
@@ -1134,52 +1312,11 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-with-sa-run-success-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-with-sa"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-with-sa-run-success"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-with-sa-run-success",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName("test-sa"),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-sa-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-sa-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-					),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod-abcde", "test-with-sa", "test-taskrun-with-sa-run-success", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+			image: "foo",
+			name:  "sa-step",
+			cmd:   "/mycmd",
+		}}),
 	}, {
 		name:    "params",
 		taskRun: taskRunSubstitution,
@@ -1187,189 +1324,63 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-substitution-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-task-with-substitution"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-substitution"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-substitution",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(
-					workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-						Name:         "tekton-creds-init-home-0",
-						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+		wantPod: expectedPod("test-taskrun-substitution-pod-abcde", "test-task-with-substitution", "test-taskrun-substitution", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
+			Name: "volume-configmap",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "configbar",
 					},
-					corev1.Volume{
-						Name:         "tekton-creds-init-home-1",
-						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-					},
-					corev1.Volume{
-						Name:         "tekton-creds-init-home-2",
-						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-					},
-					corev1.Volume{
-						Name:         "tekton-creds-init-home-3",
-						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-					},
-					corev1.Volume{
-						Name:         "tekton-creds-init-home-4",
-						VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-					},
-					corev1.Volume{
-						Name: "volume-configmap",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "configbar",
-								},
-							},
-						},
-					},
-				),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-create-dir-myimage-mssqb", "busybox",
-					tb.Command("/tekton/bin/entrypoint"),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-create-dir-myimage-mssqb",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"mkdir",
-						"--",
-						"-p",
-						"/workspace/output/myimage"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				tb.PodContainer("step-git-source-workspace-mz4c7", "override-with-git:latest",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/run/0",
-						"-post_file",
-						"/tekton/run/1",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-git-source-workspace-mz4c7",
-						"-step_metadata_dir_link",
-						"/tekton/steps/1",
-						"-entrypoint",
-						"/ko-app/git-init",
-						"--",
-						"-url", "https://foo.git",
-						"-path", "/workspace/workspace"),
-					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
-					tb.EnvVar("HOME", "/tekton/home"),
-					tb.WorkingDir(workspaceDir),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-creds-init-home-1", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				tb.PodContainer("step-mycontainer", "myimage",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/run/1",
-						"-post_file",
-						"/tekton/run/2",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-mycontainer",
-						"-step_metadata_dir_link",
-						"/tekton/steps/2",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-						"--my-arg=foo",
-						"--my-arg-with-default=bar",
-						"--my-arg-with-default2=thedefault",
-						"--my-additional-arg=gcr.io/kristoff/sven",
-						"--my-taskname-arg=test-task-with-substitution",
-						"--my-taskrun-arg=test-taskrun-substitution"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-creds-init-home-2", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				tb.PodContainer("step-myothercontainer", "myotherimage",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/run/2",
-						"-post_file",
-						"/tekton/run/3",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-myothercontainer",
-						"-step_metadata_dir_link",
-						"/tekton/steps/3",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-						"--my-other-arg=https://foo.git"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-creds-init-home-3", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				tb.PodContainer("step-image-digest-exporter-9l9zj", "override-with-imagedigest-exporter-image:latest",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/run/3",
-						"-post_file",
-						"/tekton/run/4",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-image-digest-exporter-9l9zj",
-						"-step_metadata_dir_link",
-						"/tekton/steps/4",
-						"-entrypoint",
-						"/ko-app/imagedigestexporter", "--",
-						"-images", "[{\"name\":\"myimage\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/myimage\"}]"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-creds-init-home-4", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+				},
+			},
+		}}, []stepForExpectedPod{
+			{
+				name:  "create-dir-myimage-mssqb",
+				image: "busybox",
+				cmd:   "mkdir",
+				args:  []string{"-p", "/workspace/output/myimage"},
+			},
+			{
+				name:  "git-source-workspace-mz4c7",
+				image: "override-with-git:latest",
+				cmd:   "/ko-app/git-init",
+				args: []string{"-url", "https://foo.git",
+					"-path", "/workspace/workspace"},
+				envVars: map[string]string{
+					"TEKTON_RESOURCE_NAME": "workspace",
+					"HOME":                 "/tekton/home",
+				},
+				workingDir: workspaceDir,
+			},
+			{
+				name:  "mycontainer",
+				image: "myimage",
+				cmd:   "/mycmd",
+				args: []string{
+					"--my-arg=foo",
+					"--my-arg-with-default=bar",
+					"--my-arg-with-default2=thedefault",
+					"--my-additional-arg=gcr.io/kristoff/sven",
+					"--my-taskname-arg=test-task-with-substitution",
+					"--my-taskrun-arg=test-taskrun-substitution",
+				},
+			},
+			{
+				name:  "myothercontainer",
+				image: "myotherimage",
+				cmd:   "/mycmd",
+				args:  []string{"--my-other-arg=https://foo.git"},
+			},
+			{
+				name:  "image-digest-exporter-9l9zj",
+				image: "override-with-imagedigest-exporter-image:latest",
+				cmd:   "/ko-app/imagedigestexporter",
+				args: []string{
+					"-images",
+					"[{\"name\":\"myimage\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/myimage\"}]",
+				},
+			},
+		}),
 	}, {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
@@ -1377,85 +1388,28 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-with-taskspec-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-with-taskspec"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-with-taskspec",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}, corev1.Volume{
-					Name:         "tekton-creds-init-home-1",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-git-source-workspace-9l9zj", "override-with-git:latest",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-git-source-workspace-9l9zj",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/ko-app/git-init",
-						"--",
-						"-url",
-						"https://foo.git",
-						"-path",
-						"/workspace/workspace",
-					),
-					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
-					tb.EnvVar("HOME", "/tekton/home"),
-					tb.WorkingDir("/workspace"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				tb.PodContainer("step-mycontainer", "myimage",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/run/0",
-						"-post_file",
-						"/tekton/run/1",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-mycontainer",
-						"-step_metadata_dir_link",
-						"/tekton/steps/1",
-						"-entrypoint",
-						"/mycmd",
-						"--", "--my-arg=foo"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-creds-init-home-1", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-with-taskspec-pod-abcde", "", "test-taskrun-with-taskspec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
+			{
+				name:  "git-source-workspace-9l9zj",
+				image: "override-with-git:latest",
+				cmd:   "/ko-app/git-init",
+				args: []string{"-url", "https://foo.git",
+					"-path", "/workspace/workspace"},
+				envVars: map[string]string{
+					"TEKTON_RESOURCE_NAME": "workspace",
+					"HOME":                 "/tekton/home",
+				},
+				workingDir: workspaceDir,
+			},
+			{
+				name:  "mycontainer",
+				image: "myimage",
+				cmd:   "/mycmd",
+				args: []string{
+					"--my-arg=foo",
+				},
+			},
+		}),
 	}, {
 		name:    "success-with-cluster-task",
 		taskRun: taskRunWithClusterTask,
@@ -1463,52 +1417,11 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-with-cluster-task-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.ClusterTaskLabelKey, "test-cluster-task"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-with-cluster-task"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-with-cluster-task",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-simple-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-simple-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-					),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-with-cluster-task-pod-abcde", "test-cluster-task", "test-taskrun-with-cluster-task", "foo", config.DefaultServiceAccountValue, true, nil, []stepForExpectedPod{{
+			name:  "simple-step",
+			image: "foo",
+			cmd:   "/mycmd",
+		}}),
 	}, {
 		name:    "taskrun-with-resource-spec-task-spec",
 		taskRun: taskRunWithResourceSpecAndTaskSpec,
@@ -1516,85 +1429,27 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-with-resource-spec-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-with-resource-spec"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-with-resource-spec",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}, corev1.Volume{
-					Name:         "tekton-creds-init-home-1",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-git-source-workspace-9l9zj", "override-with-git:latest",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-git-source-workspace-9l9zj",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/ko-app/git-init",
-						"--",
-						"-url",
-						"github.com/foo/bar.git",
-						"-path",
-						"/workspace/workspace",
-						"-revision",
-						"rel-can"),
-					tb.EnvVar("TEKTON_RESOURCE_NAME", "workspace"),
-					tb.EnvVar("HOME", "/tekton/home"),
-					tb.WorkingDir("/workspace"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-				tb.PodContainer("step-mystep", "ubuntu",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/run/0",
-						"-post_file",
-						"/tekton/run/1",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-mystep",
-						"-step_metadata_dir_link",
-						"/tekton/steps/1",
-						"-entrypoint",
-						"/mycmd", "--"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-creds-init-home-1", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-with-resource-spec-pod-abcde", "", "test-taskrun-with-resource-spec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
+			{
+				name:  "git-source-workspace-9l9zj",
+				image: "override-with-git:latest",
+				cmd:   "/ko-app/git-init",
+				args: []string{"-url", "github.com/foo/bar.git",
+					"-path", "/workspace/workspace",
+					"-revision", "rel-can",
+				},
+				envVars: map[string]string{
+					"TEKTON_RESOURCE_NAME": "workspace",
+					"HOME":                 "/tekton/home",
+				},
+				workingDir: workspaceDir,
+			},
+			{
+				name:  "mystep",
+				image: "ubuntu",
+				cmd:   "/mycmd",
+			},
+		}),
 	}, {
 		name:    "taskrun-with-pod",
 		taskRun: taskRunWithPod,
@@ -1602,51 +1457,11 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-with-pod-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-task"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-with-pod"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-with-pod",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-simple-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-simple-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-with-pod-pod-abcde", "test-task", "test-taskrun-with-pod", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+			name:  "simple-step",
+			image: "foo",
+			cmd:   "/mycmd",
+		}}),
 	}, {
 		name:    "taskrun-with-credentials-variable-default-tekton-creds",
 		taskRun: taskRunWithCredentialsVariable,
@@ -1654,51 +1469,11 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-with-credentials-variable-pod-9l9zj",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-with-credentials-variable"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-with-credentials-variable",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-mycontainer", "myimage",
-					tb.Command("/tekton/bin/entrypoint"),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-mycontainer",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						// Important bit here: /tekton/creds
-						"/mycmd /tekton/creds",
-						"--"),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod-abcde", "", "test-taskrun-with-credentials-variable", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+			name:  "mycontainer",
+			image: "myimage",
+			cmd:   "/mycmd /tekton/creds",
+		}}),
 	}, {
 		name:    "remote-task",
 		taskRun: taskRunBundle,
@@ -1706,52 +1481,11 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: tb.Pod("test-taskrun-bundle-pod-abcde",
-			tb.PodNamespace("foo"),
-			tb.PodAnnotation(podconvert.ReleaseAnnotation, fakeVersion),
-			tb.PodLabel(pipeline.TaskLabelKey, "test-task"),
-			tb.PodLabel(pipeline.TaskRunLabelKey, "test-taskrun-bundle"),
-			tb.PodLabel("app.kubernetes.io/managed-by", "tekton-pipelines"),
-			tb.PodOwnerReference("TaskRun", "test-taskrun-bundle",
-				tb.OwnerReferenceAPIVersion(currentAPIVersion)),
-			tb.PodSpec(
-				withActiveDeadlineSeconds,
-				tb.PodServiceAccountName(config.DefaultServiceAccountValue),
-				tb.PodVolumes(workspaceVolume, homeVolume, resultsVolume, stepsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
-					Name:         "tekton-creds-init-home-0",
-					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-				}),
-				tb.PodRestartPolicy(corev1.RestartPolicyNever),
-				getPlaceToolsInitContainer(),
-				tb.PodContainer("step-simple-step", "foo",
-					tb.Command(entrypointLocation),
-					tb.Args("-wait_file",
-						"/tekton/downward/ready",
-						"-wait_file_content",
-						"-post_file",
-						"/tekton/run/0",
-						"-termination_path",
-						"/tekton/termination",
-						"-step_metadata_dir",
-						"/tekton/steps/step-simple-step",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
-						"-entrypoint",
-						"/mycmd",
-						"--",
-					),
-					tb.VolumeMount("tekton-internal-bin", "/tekton/bin", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-internal-run", "/tekton/run"),
-					tb.VolumeMount("tekton-internal-downward", "/tekton/downward", tb.VolumeMountRO),
-					tb.VolumeMount("tekton-creds-init-home-0", "/tekton/creds"),
-					tb.VolumeMount("tekton-internal-workspace", workspaceDir),
-					tb.VolumeMount("tekton-internal-home", "/tekton/home"),
-					tb.VolumeMount("tekton-internal-results", "/tekton/results"),
-					tb.VolumeMount("tekton-internal-steps", "/tekton/steps"),
-					tb.TerminationMessagePath("/tekton/termination"),
-				),
-			),
-		),
+		wantPod: expectedPod("test-taskrun-bundle-pod-abcde", "test-task", "test-taskrun-bundle", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+			name:  "simple-step",
+			image: "foo",
+			cmd:   "/mycmd",
+		}}),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
@@ -1807,7 +1541,7 @@ func TestReconcile(t *testing.T) {
 			}
 
 			pod.Name = tc.wantPod.Name // Ignore pod name differences, the pod name is generated and tested in pod_test.go
-			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, handleMapOrdering); d != "" {
 				t.Errorf("Pod spec doesn't match %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -1823,9 +1557,14 @@ func TestReconcile(t *testing.T) {
 }
 
 func TestReconcile_SetsStartTime(t *testing.T) {
-	taskRun := tb.TaskRun("test-taskrun", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(simpleTask.Name),
-	))
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+	}
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 		Tasks:    []*v1beta1.Task{simpleTask},
@@ -1861,13 +1600,20 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 
 func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 	startTime := time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC)
-	taskRun := tb.TaskRun("test-taskrun", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(simpleTask.Name)),
-		tb.TaskRunStatus(
-			tb.TaskRunStartTime(startTime),
-			tb.PodName("the-pod"),
-		),
-	)
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: startTime},
+				PodName:   "the-pod",
+			},
+		},
+	}
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 		Tasks:    []*v1beta1.Task{simpleTask},
@@ -1891,10 +1637,23 @@ func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 }
 
 func TestReconcileInvalidTaskRuns(t *testing.T) {
-	noTaskRun := tb.TaskRun("notaskrun", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(tb.TaskRunTaskRef("notask")))
-	withWrongRef := tb.TaskRun("taskrun-with-wrong-ref", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef("taskrun-with-wrong-ref", tb.TaskRefKind(v1beta1.ClusterTaskKind)),
-	))
+	noTaskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("notaskrun", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "notask",
+			},
+		},
+	}
+	withWrongRef := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("taskrun-with-wrong-ref", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "taskrun-with-wrong-ref",
+				Kind: v1beta1.ClusterTaskKind,
+			},
+		},
+	}
 	taskRuns := []*v1beta1.TaskRun{noTaskRun, withWrongRef}
 	tasks := []*v1beta1.Task{simpleTask}
 
@@ -1975,14 +1734,29 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 }
 
 func TestReconcileTaskRunWithPermanentError(t *testing.T) {
-	noTaskRun := tb.TaskRun("notaskrun", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(tb.TaskRunTaskRef("notask")),
-		tb.TaskRunStatus(tb.TaskRunStartTime(time.Now()),
-			tb.StatusCondition(apis.Condition{
-				Type:    apis.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Reason:  podconvert.ReasonFailedResolution,
-				Message: "error when listing tasks for taskRun taskrun-failure: tasks.tekton.dev \"notask\" not found",
-			})))
+	noTaskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("notaskrun", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "notask",
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:    apis.ConditionSucceeded,
+						Status:  corev1.ConditionFalse,
+						Reason:  podconvert.ReasonFailedResolution,
+						Message: "error when listing tasks for taskRun taskrun-failure: tasks.tekton.dev \"notask\" not found",
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}
 
 	taskRuns := []*v1beta1.TaskRun{noTaskRun}
 
@@ -2026,11 +1800,19 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 }
 
 func TestReconcilePodFetchError(t *testing.T) {
-	taskRun := tb.TaskRun("test-taskrun-run-success",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef("test-task")),
-		tb.TaskRunStatus(tb.PodName("will-not-be-found")),
-	)
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-success", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "test-task",
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName: "will-not-be-found",
+			},
+		},
+	}
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 		Tasks:    []*v1beta1.Task{simpleTask},
@@ -2081,7 +1863,14 @@ func makePod(taskRun *v1beta1.TaskRun, task *v1beta1.Task) (*corev1.Pod, error) 
 
 func TestReconcilePodUpdateStatus(t *testing.T) {
 	const taskLabel = "test-task"
-	taskRun := tb.TaskRun("test-taskrun-run-success", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(tb.TaskRunTaskRef(taskLabel)))
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-success", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: taskLabel,
+			},
+		},
+	}
 
 	pod, err := makePod(taskRun, simpleTask)
 	if err != nil {
@@ -2178,9 +1967,21 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		Reason:  "Build succeeded",
 		Message: "Build succeeded",
 	}
-	taskRun := tb.TaskRun("test-taskrun-run-success", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(simpleTask.Name),
-	), tb.TaskRunStatus(tb.StatusCondition(*taskSt)))
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun-run-success"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					*taskSt,
+				},
+			},
+		},
+	}
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{
 			taskRun,
@@ -2206,15 +2007,25 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 }
 
 func TestReconcileOnCancelledTaskRun(t *testing.T) {
-	taskRun := tb.TaskRun("test-taskrun-run-cancelled",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-			tb.TaskRunCancelled,
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		})))
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-cancelled", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+			Status: v1beta1.TaskRunSpecStatusCancelled,
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					},
+				},
+			},
+		},
+	}
 	pod, err := makePod(taskRun, simpleTask)
 	if err != nil {
 		t.Fatalf("MakePod: %v", err)
@@ -2285,16 +2096,28 @@ func TestReconcileTimeouts(t *testing.T) {
 	testcases := []testCase{
 		{
 			name: "taskrun with timeout",
-			taskRun: tb.TaskRun("test-taskrun-timeout",
-				tb.TaskRunNamespace("foo"),
-				tb.TaskRunSpec(
-					tb.TaskRunTaskRef(simpleTask.Name),
-					tb.TaskRunTimeout(10*time.Second),
-				),
-				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionUnknown}),
-					tb.TaskRunStartTime(time.Now().Add(-15*time.Second)))),
+			taskRun: &v1beta1.TaskRun{
+				ObjectMeta: objectMeta("test-taskrun-timeout", "foo"),
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef: &v1beta1.TaskRef{
+						Name: simpleTask.Name,
+					},
+					Timeout: &metav1.Duration{Duration: 10 * time.Second},
+				},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{
+							apis.Condition{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionUnknown,
+							},
+						},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: &metav1.Time{Time: time.Now().Add(-15 * time.Second)},
+					},
+				},
+			},
 
 			expectedStatus: &apis.Condition{
 				Type:    apis.ConditionSucceeded,
@@ -2307,16 +2130,27 @@ func TestReconcileTimeouts(t *testing.T) {
 			},
 		}, {
 			name: "taskrun with default timeout",
-			taskRun: tb.TaskRun("test-taskrun-default-timeout-60-minutes",
-				tb.TaskRunNamespace("foo"),
-				tb.TaskRunSpec(
-					tb.TaskRunTaskRef(simpleTask.Name),
-				),
-				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionUnknown}),
-					tb.TaskRunStartTime(time.Now().Add(-61*time.Minute)))),
-
+			taskRun: &v1beta1.TaskRun{
+				ObjectMeta: objectMeta("test-taskrun-default-timeout-60-minutes", "foo"),
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef: &v1beta1.TaskRef{
+						Name: simpleTask.Name,
+					},
+				},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{
+							apis.Condition{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionUnknown,
+							},
+						},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: &metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+				},
+			},
 			expectedStatus: &apis.Condition{
 				Type:    apis.ConditionSucceeded,
 				Status:  corev1.ConditionFalse,
@@ -2328,16 +2162,28 @@ func TestReconcileTimeouts(t *testing.T) {
 			},
 		}, {
 			name: "task run with nil timeout uses default",
-			taskRun: tb.TaskRun("test-taskrun-nil-timeout-default-60-minutes",
-				tb.TaskRunNamespace("foo"),
-				tb.TaskRunSpec(
-					tb.TaskRunTaskRef(simpleTask.Name),
-					tb.TaskRunNilTimeout,
-				),
-				tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionUnknown}),
-					tb.TaskRunStartTime(time.Now().Add(-61*time.Minute)))),
+			taskRun: &v1beta1.TaskRun{
+				ObjectMeta: objectMeta("test-taskrun-nil-timeout-default-60-minutes", "foo"),
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef: &v1beta1.TaskRef{
+						Name: simpleTask.Name,
+					},
+					Timeout: nil,
+				},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{
+							apis.Condition{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionUnknown,
+							},
+						},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: &metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+					},
+				},
+			},
 
 			expectedStatus: &apis.Condition{
 				Type:    apis.ConditionSucceeded,
@@ -2384,26 +2230,52 @@ func TestExpandMountPath(t *testing.T) {
 	expectedMountPath := "/temppath/replaced"
 	expectedReplacedArgs := fmt.Sprintf("replacedArgs - %s", expectedMountPath)
 	// The task's Workspace has a parameter variable
-	simpleTask := tb.Task("test-task",
-		tb.TaskSpec(
-			tb.TaskWorkspace("tr-workspace", "a test task workspace", "/temppath/$(params.source-path)", true),
-			tb.TaskParam("source-path", "string"),
-			tb.TaskParam("source-path-two", "string"),
-			tb.Step("foo",
-				tb.StepName("simple-step"), tb.StepCommand("echo"), tb.StepArgs("replacedArgs - $(workspaces.tr-workspace.path)"),
-			)),
+	simpleTask := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:        "tr-workspace",
+				Description: "a test task workspace",
+				MountPath:   "/temppath/$(params.source-path)",
+				ReadOnly:    true,
+			}},
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "source-path",
+					Type: v1beta1.ParamTypeString,
+				},
+				{
+					Name: "source-path-two",
+					Type: v1beta1.ParamTypeString,
+				},
+			},
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image:   "foo",
+					Name:    "simple-step",
+					Command: []string{"echo"},
+					Args:    []string{"replacedArgs - $(workspaces.tr-workspace.path)"},
+				},
+			}},
+		},
+	}
 
-		tb.TaskNamespace("foo"),
-	)
-
-	taskRun := tb.TaskRun("test-taskrun-not-started",
-		tb.TaskRunSelfLink("/test/taskrun1"),
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTask.Name),
-			tb.TaskRunWorkspaceEmptyDir("tr-workspace", ""),
-			tb.TaskRunParam("source-path", "replaced"),
-		),
-	)
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-not-started", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+			Workspaces: []v1beta1.WorkspaceBinding{{
+				Name:     "tr-workspace",
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			}},
+			Params: []v1beta1.Param{{
+				Name:  "source-path",
+				Value: *v1beta1.NewArrayOrString("replaced"),
+			}},
+		},
+	}
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 		Tasks:    []*v1beta1.Task{simpleTask},
@@ -2473,30 +2345,76 @@ func TestExpandMountPath(t *testing.T) {
 func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 	expectedError := "workspace mount path \"/temppath/duplicate\" must be unique: workspaces[1].mountpath"
 	// The task has two workspaces, with different mount path strings.
-	simpleTask := tb.Task("test-task",
-		tb.TaskSpec(
-			tb.TaskWorkspace("tr-workspace", "a test task workspace", "/temppath/$(params.source-path)", true),
-			tb.TaskWorkspace("tr-workspace-two", "a second task workspace", "/temppath/$(params.source-path-two)", true),
-			tb.TaskParam("source-path", "string"),
-			tb.TaskParam("source-path-two", "string"),
-			tb.Step("foo",
-				tb.StepName("simple-step"), tb.StepCommand("/mycmd"), tb.StepEnvVar("foo", "bar"),
-			)),
-
-		tb.TaskNamespace("foo"),
-	)
+	simpleTask := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{
+				{
+					Name:        "tr-workspace",
+					Description: "a test task workspace",
+					MountPath:   "/temppath/$(params.source-path)",
+					ReadOnly:    true,
+				},
+				{
+					Name:        "tr-workspace-two",
+					Description: "a second task workspace",
+					MountPath:   "/temppath/$(params.source-path-two)",
+					ReadOnly:    true,
+				},
+			},
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "source-path",
+					Type: v1beta1.ParamTypeString,
+				},
+				{
+					Name: "source-path-two",
+					Type: v1beta1.ParamTypeString,
+				},
+			},
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image:   "foo",
+					Name:    "simple-step",
+					Command: []string{"/mycmd"},
+					Env: []corev1.EnvVar{{
+						Name:  "foo",
+						Value: "bar",
+					}},
+				},
+			}},
+		},
+	}
 
 	// The parameter values will cause the two Workspaces to have duplicate mount path values after the parameters are expanded.
-	taskRun := tb.TaskRun("test-taskrun-not-started",
-		tb.TaskRunSelfLink("/test/taskrun1"),
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTask.Name),
-			tb.TaskRunWorkspaceEmptyDir("tr-workspace", ""),
-			tb.TaskRunWorkspaceEmptyDir("tr-workspace-two", ""),
-			tb.TaskRunParam("source-path", "duplicate"),
-			tb.TaskRunParam("source-path-two", "duplicate"),
-		),
-	)
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-not-started", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+			Workspaces: []v1beta1.WorkspaceBinding{
+				{
+					Name:     "tr-workspace",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+				{
+					Name:     "tr-workspace-two",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+			Params: []v1beta1.Param{
+				{
+					Name:  "source-path",
+					Value: *v1beta1.NewArrayOrString("duplicate"),
+				},
+				{
+					Name:  "source-path-two",
+					Value: *v1beta1.NewArrayOrString("duplicate"),
+				},
+			},
+		},
+	}
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 		Tasks:    []*v1beta1.Task{simpleTask},
@@ -2553,15 +2471,27 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 }
 
 func TestHandlePodCreationError(t *testing.T) {
-	taskRun := tb.TaskRun("test-taskrun-pod-creation-failed", tb.TaskRunSpec(
-		tb.TaskRunTaskRef(simpleTask.Name),
-	), tb.TaskRunStatus(
-		tb.TaskRunStartTime(time.Now()),
-		tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		}),
-	))
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun-pod-creation-failed"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 		Tasks:    []*v1beta1.Task{simpleTask},
@@ -2628,92 +2558,256 @@ func TestHandlePodCreationError(t *testing.T) {
 
 func TestReconcileCloudEvents(t *testing.T) {
 
-	taskRunWithNoCEResources := tb.TaskRun("test-taskrun-no-ce-resources",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name, tb.TaskRefAPIVersion("a1")),
-		))
-	taskRunWithTwoCEResourcesNoInit := tb.TaskRun("test-taskrun-two-ce-resources-no-init",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunResources(
-				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
-			),
-		),
-	)
-	taskRunWithTwoCEResourcesInit := tb.TaskRun("test-taskrun-two-ce-resources-init",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunResources(
-				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
-			),
-		),
-		tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
-		),
-	)
-	taskRunWithCESucceded := tb.TaskRun("test-taskrun-ce-succeeded",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSelfLink("/task/1234"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunResources(
-				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
-			),
-		),
-		tb.TaskRunStatus(
-			tb.StatusCondition(apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionTrue,
-			}),
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
-		),
-	)
-	taskRunWithCEFailed := tb.TaskRun("test-taskrun-ce-failed",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSelfLink("/task/1234"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunResources(
-				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
-			),
-		),
-		tb.TaskRunStatus(
-			tb.StatusCondition(apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-			}),
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
-		),
-	)
-	taskRunWithCESuccededOneAttempt := tb.TaskRun("test-taskrun-ce-succeeded-one-attempt",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunSelfLink("/task/1234"),
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(twoOutputsTask.Name),
-			tb.TaskRunResources(
-				tb.TaskRunResourcesOutput(cloudEventResource.Name, tb.TaskResourceBindingRef(cloudEventResource.Name)),
-				tb.TaskRunResourcesOutput(anotherCloudEventResource.Name, tb.TaskResourceBindingRef(anotherCloudEventResource.Name)),
-			),
-		),
-		tb.TaskRunStatus(
-			tb.StatusCondition(apis.Condition{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionTrue,
-			}),
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1beta1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "fakemessage", 0, v1beta1.CloudEventConditionUnknown),
-		),
-	)
+	taskRunWithNoCEResources := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-no-ce-resources", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       simpleTask.Name,
+				APIVersion: "a1",
+			},
+		},
+	}
+	taskRunWithTwoCEResourcesNoInit := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-two-ce-resources-no-init", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: twoOutputsTask.Name,
+			},
+			Resources: &v1beta1.TaskRunResources{
+				Outputs: []v1beta1.TaskResourceBinding{
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: cloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: cloudEventResource.Name,
+							},
+						},
+					},
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: anotherCloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: anotherCloudEventResource.Name,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	taskRunWithTwoCEResourcesInit := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-two-ce-resources-init", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: twoOutputsTask.Name,
+			},
+			Resources: &v1beta1.TaskRunResources{
+				Outputs: []v1beta1.TaskResourceBinding{
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: cloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: cloudEventResource.Name,
+							},
+						},
+					},
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: anotherCloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: anotherCloudEventResource.Name,
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				CloudEvents: []v1beta1.CloudEventDelivery{
+					{
+						Target: cloudEventTarget1,
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition: v1beta1.CloudEventConditionUnknown,
+						},
+					},
+					{
+						Target: cloudEventTarget2,
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition: v1beta1.CloudEventConditionUnknown,
+						},
+					},
+				},
+			},
+		},
+	}
+	taskRunWithCESucceded := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-ce-succeeded", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: twoOutputsTask.Name,
+			},
+			Resources: &v1beta1.TaskRunResources{
+				Outputs: []v1beta1.TaskResourceBinding{
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: cloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: cloudEventResource.Name,
+							},
+						},
+					},
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: anotherCloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: anotherCloudEventResource.Name,
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				CloudEvents: []v1beta1.CloudEventDelivery{
+					{
+						Target: cloudEventTarget1,
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition: v1beta1.CloudEventConditionUnknown,
+						},
+					},
+					{
+						Target: cloudEventTarget2,
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition: v1beta1.CloudEventConditionUnknown,
+						},
+					},
+				},
+			},
+		},
+	}
+	taskRunWithCESucceded.ObjectMeta.SelfLink = "/task/1234"
+	taskRunWithCEFailed := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-ce-failed", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: twoOutputsTask.Name,
+			},
+			Resources: &v1beta1.TaskRunResources{
+				Outputs: []v1beta1.TaskResourceBinding{
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: cloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: cloudEventResource.Name,
+							},
+						},
+					},
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: anotherCloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: anotherCloudEventResource.Name,
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				CloudEvents: []v1beta1.CloudEventDelivery{
+					{
+						Target: cloudEventTarget1,
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition: v1beta1.CloudEventConditionUnknown,
+						},
+					},
+					{
+						Target: cloudEventTarget2,
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition: v1beta1.CloudEventConditionUnknown,
+						},
+					},
+				},
+			},
+		},
+	}
+	taskRunWithCEFailed.ObjectMeta.SelfLink = "/task/1234"
+	taskRunWithCESuccededOneAttempt := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-ce-succeeded-one-attempt", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: twoOutputsTask.Name,
+			},
+			Resources: &v1beta1.TaskRunResources{
+				Outputs: []v1beta1.TaskResourceBinding{
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: cloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: cloudEventResource.Name,
+							},
+						},
+					},
+					{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							Name: anotherCloudEventResource.Name,
+							ResourceRef: &resourcev1alpha1.PipelineResourceRef{
+								Name: anotherCloudEventResource.Name,
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				CloudEvents: []v1beta1.CloudEventDelivery{
+					{
+						Target: cloudEventTarget1,
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition:  v1beta1.CloudEventConditionUnknown,
+							RetryCount: 1,
+						},
+					},
+					{
+						Target: cloudEventTarget2,
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition: v1beta1.CloudEventConditionUnknown,
+							Error:     "fakemessage",
+						},
+					},
+				},
+			},
+		},
+	}
+	taskRunWithCESuccededOneAttempt.ObjectMeta.SelfLink = "/task/1234"
 	taskruns := []*v1beta1.TaskRun{
 		taskRunWithNoCEResources, taskRunWithTwoCEResourcesNoInit,
 		taskRunWithTwoCEResourcesInit, taskRunWithCESucceded, taskRunWithCEFailed,
@@ -2737,38 +2831,95 @@ func TestReconcileCloudEvents(t *testing.T) {
 	}, {
 		name:    "ce-resources-no-init",
 		taskRun: taskRunWithTwoCEResourcesNoInit,
-		wantCloudEvents: tb.TaskRun("want", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
-		)).Status.CloudEvents,
+		wantCloudEvents: []v1beta1.CloudEventDelivery{
+			{
+				Target: cloudEventTarget1,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition: v1beta1.CloudEventConditionUnknown,
+				},
+			},
+			{
+				Target: cloudEventTarget2,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition: v1beta1.CloudEventConditionUnknown,
+				},
+			},
+		},
 	}, {
 		name:    "ce-resources-init",
 		taskRun: taskRunWithTwoCEResourcesInit,
-		wantCloudEvents: tb.TaskRun("want2", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 0, v1beta1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 0, v1beta1.CloudEventConditionUnknown),
-		)).Status.CloudEvents,
+		wantCloudEvents: []v1beta1.CloudEventDelivery{
+			{
+				Target: cloudEventTarget1,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition: v1beta1.CloudEventConditionUnknown,
+				},
+			},
+			{
+				Target: cloudEventTarget2,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition: v1beta1.CloudEventConditionUnknown,
+				},
+			},
+		},
 	}, {
 		name:    "ce-resources-init-task-successful",
 		taskRun: taskRunWithCESucceded,
-		wantCloudEvents: tb.TaskRun("want3", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1beta1.CloudEventConditionSent),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 1, v1beta1.CloudEventConditionSent),
-		)).Status.CloudEvents,
+		wantCloudEvents: []v1beta1.CloudEventDelivery{
+			{
+				Target: cloudEventTarget1,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition:  v1beta1.CloudEventConditionSent,
+					RetryCount: 1,
+				},
+			},
+			{
+				Target: cloudEventTarget2,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition:  v1beta1.CloudEventConditionSent,
+					RetryCount: 1,
+				},
+			},
+		},
 	}, {
 		name:    "ce-resources-init-task-failed",
 		taskRun: taskRunWithCEFailed,
-		wantCloudEvents: tb.TaskRun("want4", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1beta1.CloudEventConditionSent),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "", 1, v1beta1.CloudEventConditionSent),
-		)).Status.CloudEvents,
+		wantCloudEvents: []v1beta1.CloudEventDelivery{
+			{
+				Target: cloudEventTarget1,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition:  v1beta1.CloudEventConditionSent,
+					RetryCount: 1,
+				},
+			},
+			{
+				Target: cloudEventTarget2,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition:  v1beta1.CloudEventConditionSent,
+					RetryCount: 1,
+				},
+			},
+		},
 	}, {
 		name:    "ce-resources-init-task-successful-one-attempt",
 		taskRun: taskRunWithCESuccededOneAttempt,
-		wantCloudEvents: tb.TaskRun("want5", tb.TaskRunStatus(
-			tb.TaskRunCloudEvent(cloudEventTarget1, "", 1, v1beta1.CloudEventConditionUnknown),
-			tb.TaskRunCloudEvent(cloudEventTarget2, "fakemessage", 1, v1beta1.CloudEventConditionSent),
-		)).Status.CloudEvents,
+		wantCloudEvents: []v1beta1.CloudEventDelivery{
+			{
+				Target: cloudEventTarget1,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition:  v1beta1.CloudEventConditionUnknown,
+					RetryCount: 1,
+				},
+			},
+			{
+				Target: cloudEventTarget2,
+				Status: v1beta1.CloudEventDeliveryState{
+					Condition:  v1beta1.CloudEventConditionSent,
+					RetryCount: 1,
+					Error:      "fakemessage",
+				},
+			},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			names.TestingSeed()
@@ -2811,19 +2962,26 @@ func TestReconcileCloudEvents(t *testing.T) {
 
 func TestReconcile_Single_SidecarState(t *testing.T) {
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
-	taskRun := tb.TaskRun("test-taskrun-sidecars",
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(taskSidecar.Name),
-		),
-		tb.TaskRunStatus(
-			tb.SidecarState(
-				tb.SidecarStateName("sidecar"),
-				tb.SidecarStateImageID("image-id"),
-				tb.SidecarStateContainerName("sidecar-sidecar"),
-				tb.SetSidecarStateRunning(runningState),
-			),
-		),
-	)
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun-sidecars"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: taskSidecar.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Sidecars: []v1beta1.SidecarState{{
+					Name:          "sidecar",
+					ImageID:       "image-id",
+					ContainerName: "sidecar-sidecar",
+					ContainerState: corev1.ContainerState{
+						Running: &runningState,
+					},
+				}},
+			},
+		},
+	}
 
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
@@ -2860,27 +3018,36 @@ func TestReconcile_Single_SidecarState(t *testing.T) {
 func TestReconcile_Multiple_SidecarStates(t *testing.T) {
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
 	waitingState := corev1.ContainerStateWaiting{Reason: "PodInitializing"}
-	taskRun := tb.TaskRun("test-taskrun-sidecars",
-		tb.TaskRunSpec(
-			tb.TaskRunTaskRef(taskMultipleSidecars.Name),
-		),
-		tb.TaskRunStatus(
-			tb.SidecarState(
-				tb.SidecarStateName("sidecar1"),
-				tb.SidecarStateImageID("image-id"),
-				tb.SidecarStateContainerName("sidecar-sidecar1"),
-				tb.SetSidecarStateRunning(runningState),
-			),
-		),
-		tb.TaskRunStatus(
-			tb.SidecarState(
-				tb.SidecarStateName("sidecar2"),
-				tb.SidecarStateImageID("image-id"),
-				tb.SidecarStateContainerName("sidecar-sidecar2"),
-				tb.SetSidecarStateWaiting(waitingState),
-			),
-		),
-	)
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun-sidecars"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: taskMultipleSidecars.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Sidecars: []v1beta1.SidecarState{
+					{
+						Name:          "sidecar1",
+						ImageID:       "image-id",
+						ContainerName: "sidecar-sidecar1",
+						ContainerState: corev1.ContainerState{
+							Running: &runningState,
+						},
+					},
+					{
+						Name:          "sidecar2",
+						ImageID:       "image-id",
+						ContainerName: "sidecar-sidecar2",
+						ContainerState: corev1.ContainerState{
+							Waiting: &waitingState,
+						},
+					},
+				},
+			},
+		},
+	}
 
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
@@ -2929,13 +3096,25 @@ func TestReconcile_Multiple_SidecarStates(t *testing.T) {
 // TestReconcileWorkspaceMissing tests a reconcile of a TaskRun that does
 // not include a Workspace that the Task is expecting.
 func TestReconcileWorkspaceMissing(t *testing.T) {
-	taskWithWorkspace := tb.Task("test-task-with-workspace",
-		tb.TaskSpec(
-			tb.TaskWorkspace("ws1", "a test task workspace", "", true),
-		), tb.TaskNamespace("foo"))
-	taskRun := tb.TaskRun("test-taskrun-missing-workspace", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
-	))
+	taskWithWorkspace := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-with-workspace", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:        "ws1",
+				Description: "a test task workspace",
+				ReadOnly:    true,
+			}},
+		},
+	}
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-missing-workspace", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       taskWithWorkspace.Name,
+				APIVersion: "a1",
+			},
+		},
+	}
 	d := test.Data{
 		Tasks:             []*v1beta1.Task{taskWithWorkspace},
 		TaskRuns:          []*v1beta1.TaskRun{taskRun},
@@ -2974,14 +3153,32 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 // TestReconcileValidDefaultWorkspace tests a reconcile of a TaskRun that does
 // not include a Workspace that the Task is expecting and it uses the default Workspace instead.
 func TestReconcileValidDefaultWorkspace(t *testing.T) {
-	taskWithWorkspace := tb.Task("test-task-with-workspace", tb.TaskNamespace("foo"),
-		tb.TaskSpec(
-			tb.TaskWorkspace("ws1", "a test task workspace", "", true),
-			tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd")),
-		))
-	taskRun := tb.TaskRun("test-taskrun-default-workspace", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
-	))
+	taskWithWorkspace := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-with-workspace", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:        "ws1",
+				Description: "a test task workspace",
+				ReadOnly:    true,
+			}},
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image:   "foo",
+					Name:    "simple-step",
+					Command: []string{"/mycmd"},
+				},
+			}},
+		},
+	}
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-default-workspace", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       taskWithWorkspace.Name,
+				APIVersion: "a1",
+			},
+		},
+	}
 	d := test.Data{
 		Tasks:             []*v1beta1.Task{taskWithWorkspace},
 		TaskRuns:          []*v1beta1.TaskRun{taskRun},
@@ -3032,14 +3229,32 @@ func TestReconcileValidDefaultWorkspace(t *testing.T) {
 // not include a Workspace that the Task is expecting, and gets an error updating
 // the TaskRun with an invalid default workspace.
 func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
-	taskWithWorkspace := tb.Task("test-task-with-workspace", tb.TaskNamespace("foo"),
-		tb.TaskSpec(
-			tb.TaskWorkspace("ws1", "a test task workspace", "", true),
-			tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd")),
-		))
-	taskRun := tb.TaskRun("test-taskrun-default-workspace", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
-	))
+	taskWithWorkspace := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-with-workspace", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:        "ws1",
+				Description: "a test task workspace",
+				ReadOnly:    true,
+			}},
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image:   "foo",
+					Name:    "simple-step",
+					Command: []string{"/mycmd"},
+				},
+			}},
+		},
+	}
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-default-workspace", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       taskWithWorkspace.Name,
+				APIVersion: "a1",
+			},
+		},
+	}
 	d := test.Data{
 		Tasks:             []*v1beta1.Task{taskWithWorkspace},
 		TaskRuns:          []*v1beta1.TaskRun{taskRun},
@@ -3174,20 +3389,38 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 	}{{
 		desc: "Fail ResolveTaskResources",
 		d: test.Data{
-			Tasks: []*v1beta1.Task{
-				tb.Task("test-task-missing-resource",
-					tb.TaskSpec(
-						tb.TaskResources(tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
-					), tb.TaskNamespace("foo")),
-			},
-			TaskRuns: []*v1beta1.TaskRun{
-				tb.TaskRun("test-taskrun-missing-resource", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-					tb.TaskRunTaskRef("test-task-missing-resource", tb.TaskRefAPIVersion("a1")),
-					tb.TaskRunResources(
-						tb.TaskRunResourcesInput("workspace", tb.TaskResourceBindingRef("git")),
-					),
-				)),
-			},
+			Tasks: []*v1beta1.Task{{
+				ObjectMeta: objectMeta("test-task-missing-resource", "foo"),
+				Spec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1beta1.TaskResource{{
+							ResourceDeclaration: v1beta1.ResourceDeclaration{
+								Name: "workspace",
+								Type: resourcev1alpha1.PipelineResourceTypeGit,
+							},
+						}},
+					},
+				},
+			}},
+			TaskRuns: []*v1beta1.TaskRun{{
+				ObjectMeta: objectMeta("test-taskrun-missing-resource", "foo"),
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef: &v1beta1.TaskRef{
+						Name:       "test-task-missing-resource",
+						APIVersion: "a1",
+					},
+					Resources: &v1beta1.TaskRunResources{
+						Inputs: []v1beta1.TaskResourceBinding{{
+							PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+								Name: "workspace",
+								ResourceRef: &v1beta1.PipelineResourceRef{
+									Name: "git",
+								},
+							},
+						}},
+					},
+				},
+			}},
 			ClusterTasks:      nil,
 			PipelineResources: nil,
 		},
@@ -3200,17 +3433,28 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 	}, {
 		desc: "Fail ValidateResolvedTaskResources",
 		d: test.Data{
-			Tasks: []*v1beta1.Task{
-				tb.Task("test-task-missing-resource",
-					tb.TaskSpec(
-						tb.TaskResources(tb.TaskResourcesInput("workspace", resourcev1alpha1.PipelineResourceTypeGit)),
-					), tb.TaskNamespace("foo")),
-			},
-			TaskRuns: []*v1beta1.TaskRun{
-				tb.TaskRun("test-taskrun-missing-resource", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-					tb.TaskRunTaskRef("test-task-missing-resource", tb.TaskRefAPIVersion("a1")),
-				)),
-			},
+			Tasks: []*v1beta1.Task{{
+				ObjectMeta: objectMeta("test-task-missing-resource", "foo"),
+				Spec: v1beta1.TaskSpec{
+					Resources: &v1beta1.TaskResources{
+						Inputs: []v1beta1.TaskResource{{
+							ResourceDeclaration: v1beta1.ResourceDeclaration{
+								Name: "workspace",
+								Type: resourcev1alpha1.PipelineResourceTypeGit,
+							},
+						}},
+					},
+				},
+			}},
+			TaskRuns: []*v1beta1.TaskRun{{
+				ObjectMeta: objectMeta("test-taskrun-missing-resource", "foo"),
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef: &v1beta1.TaskRef{
+						Name:       "test-task-missing-resource",
+						APIVersion: "a1",
+					},
+				},
+			}},
 			ClusterTasks:      nil,
 			PipelineResources: nil,
 		},
@@ -3263,21 +3507,49 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 // Affinity Assistant is validated and that the validation fails for a TaskRun that is incompatible with
 // Affinity Assistant; e.g. using more than one PVC-backed workspace.
 func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) {
-	taskWithTwoWorkspaces := tb.Task("test-task-two-workspaces", tb.TaskNamespace("foo"),
-		tb.TaskSpec(
-			tb.TaskWorkspace("ws1", "task workspace", "", true),
-			tb.TaskWorkspace("ws2", "another workspace", "", false),
-		))
-	taskRun := tb.TaskRun("taskrun-with-two-workspaces", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(taskWithTwoWorkspaces.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunWorkspacePVC("ws1", "", "pvc1"),
-		tb.TaskRunWorkspaceVolumeClaimTemplate("ws2", "", &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pvc2",
+	taskWithTwoWorkspaces := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-two-workspaces", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{
+				{
+					Name:        "ws1",
+					Description: "task workspace",
+					ReadOnly:    true,
+				},
+				{
+					Name:        "ws2",
+					Description: "another workspace",
+					ReadOnly:    false,
+				},
 			},
-			Spec: corev1.PersistentVolumeClaimSpec{},
-		}),
-	))
+		},
+	}
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("taskrun-with-two-workspaces", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       taskWithTwoWorkspaces.Name,
+				APIVersion: "a1",
+			},
+			Workspaces: []v1beta1.WorkspaceBinding{
+				{
+					Name: "ws1",
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "pvc1",
+					},
+				},
+				{
+					Name: "ws2",
+					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pvc2",
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{},
+					},
+				},
+			},
+		},
+	}
 
 	// associate the TaskRun with a dummy Affinity Assistant
 	taskRun.Annotations[workspace.AnnotationAffinityAssistantName] = "dummy-affinity-assistant"
@@ -3331,20 +3603,43 @@ func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) 
 func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 	workspaceName := "ws1"
 	claimName := "mypvc"
-	taskWithWorkspace := tb.Task("test-task-with-workspace", tb.TaskNamespace("foo"),
-		tb.TaskSpec(
-			tb.TaskWorkspace(workspaceName, "a test task workspace", "", true),
-			tb.Step("foo", tb.StepName("simple-step"), tb.StepCommand("/mycmd")),
-		))
-	taskRun := tb.TaskRun("test-taskrun-missing-workspace", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-		tb.TaskRunTaskRef(taskWithWorkspace.Name, tb.TaskRefAPIVersion("a1")),
-		tb.TaskRunWorkspaceVolumeClaimTemplate(workspaceName, "", &corev1.PersistentVolumeClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: claimName,
+	taskWithWorkspace := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-task-with-workspace", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:        workspaceName,
+				Description: "a test task workspace",
+				ReadOnly:    true,
+			}},
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image:   "foo",
+					Name:    "simple-step",
+					Command: []string{"/mycmd"},
+				},
+			}},
+		},
+	}
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-missing-workspace", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       taskWithWorkspace.Name,
+				APIVersion: "a1",
 			},
-			Spec: corev1.PersistentVolumeClaimSpec{},
-		}),
-	))
+			Workspaces: []v1beta1.WorkspaceBinding{
+				{
+					Name: workspaceName,
+					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: claimName,
+						},
+						Spec: corev1.PersistentVolumeClaimSpec{},
+					},
+				},
+			},
+		},
+	}
 	d := test.Data{
 		Tasks:             []*v1beta1.Task{taskWithWorkspace},
 		TaskRuns:          []*v1beta1.TaskRun{taskRun},
@@ -3394,6 +3689,10 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 }
 
 func TestFailTaskRun(t *testing.T) {
+	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
+	terminatedState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: time.Now()}, FinishedAt: metav1.Time{Time: time.Now()}, Reason: "Completed"}
+	terminatedWithErrorState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: time.Now()}, FinishedAt: metav1.Time{Time: time.Now()}, Reason: "Completed", ExitCode: 12}
+	waitingState := corev1.ContainerStateWaiting{Reason: "PodInitializing"}
 	testCases := []struct {
 		name               string
 		taskRun            *v1beta1.TaskRun
@@ -3404,13 +3703,25 @@ func TestFailTaskRun(t *testing.T) {
 		expectedStepStates []v1beta1.StepState
 	}{{
 		name: "no-pod-scheduled",
-		taskRun: tb.TaskRun("test-taskrun-run-failed", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-			tb.TaskRunCancelled,
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		}))),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-failed", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+				Status: v1beta1.TaskRunSpecStatusCancelled,
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+			},
+		},
 		reason:  "some reason",
 		message: "some message",
 		expectedStatus: apis.Condition{
@@ -3421,13 +3732,28 @@ func TestFailTaskRun(t *testing.T) {
 		},
 	}, {
 		name: "pod-scheduled",
-		taskRun: tb.TaskRun("test-taskrun-run-failed", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-			tb.TaskRunCancelled,
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		}), tb.PodName("foo-is-bar"))),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-failed", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+				Status: v1beta1.TaskRunSpecStatusCancelled,
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+				},
+			},
+		},
 		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-is-bar",
@@ -3442,15 +3768,33 @@ func TestFailTaskRun(t *testing.T) {
 		},
 	}, {
 		name: "step-status-update-cancel",
-		taskRun: tb.TaskRun("test-taskrun-run-cancel", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-			tb.TaskRunCancelled,
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		}), tb.StepState(
-			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
-		), tb.PodName("foo-is-bar"))),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-cancel", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+				Status: v1beta1.TaskRunSpecStatusCancelled,
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{{
+						ContainerState: corev1.ContainerState{
+							Running: &runningState,
+						},
+					}},
+				},
+			},
+		},
 		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-is-bar",
@@ -3475,15 +3819,33 @@ func TestFailTaskRun(t *testing.T) {
 		},
 	}, {
 		name: "step-status-update-timeout",
-		taskRun: tb.TaskRun("test-taskrun-run-timeout", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-			tb.TaskRunTaskRef(simpleTask.Name),
-			tb.TaskRunTimeout(time.Duration(10*time.Second)),
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		}), tb.StepState(
-			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
-		), tb.PodName("foo-is-bar"))),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-timeout", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+				Timeout: &metav1.Duration{Duration: 10 * time.Second},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{{
+						ContainerState: corev1.ContainerState{
+							Running: &runningState,
+						},
+					}},
+				},
+			},
+		},
 		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-is-bar",
@@ -3508,20 +3870,45 @@ func TestFailTaskRun(t *testing.T) {
 		},
 	}, {
 		name: "step-status-update-multiple-steps",
-		taskRun: tb.TaskRun("test-taskrun-run-timeout-multiple-steps", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-			tb.TaskRunTaskRef(taskMultipleSteps.Name),
-			tb.TaskRunTimeout(time.Duration(10*time.Second)),
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		}), tb.StepState(
-			tb.SetStepStateTerminated(corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: time.Now()}, FinishedAt: metav1.Time{Time: time.Now()}, Reason: "Completed"}),
-		), tb.StepState(
-			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
-		), tb.StepState(
-			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
-		),
-			tb.PodName("foo-is-bar"))),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-timeout-multiple-steps", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskMultipleSteps.Name,
+				},
+				Timeout: &metav1.Duration{Duration: 10 * time.Second},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{
+						{
+							ContainerState: corev1.ContainerState{
+								Terminated: &terminatedState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Running: &runningState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Running: &runningState,
+							},
+						},
+					},
+				},
+			},
+		},
 		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-is-bar",
@@ -3562,20 +3949,45 @@ func TestFailTaskRun(t *testing.T) {
 		},
 	}, {
 		name: "step-status-update-multiple-steps-waiting-state",
-		taskRun: tb.TaskRun("test-taskrun-run-timeout-multiple-steps-waiting", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-			tb.TaskRunTaskRef(taskMultipleSteps.Name),
-			tb.TaskRunTimeout(time.Duration(10*time.Second)),
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		}), tb.StepState(
-			tb.SetStepStateWaiting(corev1.ContainerStateWaiting{Reason: "PodInitializing"}),
-		), tb.StepState(
-			tb.SetStepStateWaiting(corev1.ContainerStateWaiting{Reason: "PodInitializing"}),
-		), tb.StepState(
-			tb.SetStepStateWaiting(corev1.ContainerStateWaiting{Reason: "PodInitializing"}),
-		),
-			tb.PodName("foo-is-bar"))),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-timeout-multiple-steps-waiting", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskMultipleSteps.Name,
+				},
+				Timeout: &metav1.Duration{Duration: 10 * time.Second},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{
+						{
+							ContainerState: corev1.ContainerState{
+								Waiting: &waitingState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Waiting: &waitingState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Waiting: &waitingState,
+							},
+						},
+					},
+				},
+			},
+		},
 		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-is-bar",
@@ -3616,22 +4028,39 @@ func TestFailTaskRun(t *testing.T) {
 		},
 	}, {
 		name: "step-status-update-with-multiple-steps-and-some-continue-on-error",
-		taskRun: tb.TaskRun("test-taskrun-run-ignore-step-error", tb.TaskRunNamespace("foo"), tb.TaskRunSpec(
-			tb.TaskRunTaskRef(taskMultipleStepsIgnoreError.Name),
-		), tb.TaskRunStatus(tb.StatusCondition(apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionTrue,
-		}), tb.StepState(
-			tb.SetStepStateTerminated(corev1.ContainerStateTerminated{
-				StartedAt:  metav1.Time{Time: time.Now()},
-				FinishedAt: metav1.Time{Time: time.Now()},
-				Reason:     "Completed",
-				ExitCode:   12,
-			}),
-		), tb.StepState(
-			tb.SetStepStateRunning(corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}),
-		),
-			tb.PodName("foo-is-bar"))),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-ignore-step-error", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: taskMultipleStepsIgnoreError.Name,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{
+						{
+							ContainerState: corev1.ContainerState{
+								Terminated: &terminatedWithErrorState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Running: &runningState,
+							},
+						},
+					},
+				},
+			},
+		},
 		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
 			Namespace: "foo",
 			Name:      "foo-is-bar",
@@ -3712,10 +4141,21 @@ func TestFailTaskRun(t *testing.T) {
 func Test_storeTaskSpec(t *testing.T) {
 
 	ctx, _ := ttesting.SetupFakeContext(t)
-	tr := tb.TaskRun("foo", tb.TaskRunSpec(tb.TaskRunTaskRef("foo-task")))
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "foo-task",
+			},
+		},
+	}
 
-	ts := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("foo-task"))).Spec
-	ts1 := tb.Task("some-task", tb.TaskSpec(tb.TaskDescription("foo-task"))).Spec
+	ts := v1beta1.TaskSpec{
+		Description: "foo-task",
+	}
+	ts1 := v1beta1.TaskSpec{
+		Description: "foo-task",
+	}
 	want := ts.DeepCopy()
 
 	// The first time we set it, it should get copied.
@@ -3802,13 +4242,21 @@ func TestWillOverwritePodAffinity(t *testing.T) {
 
 func TestPodAdoption(t *testing.T) {
 
-	tr := tb.TaskRun("test-taskrun",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunLabel("mylabel", "myvalue"),
-		tb.TaskRunSpec(tb.TaskRunTaskSpec(
-			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd")),
-		)),
-	)
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "myimage",
+						Name:    "mycontainer",
+						Command: []string{"/mycmd"},
+					},
+				}},
+			},
+		},
+	}
+	tr.ObjectMeta.Labels = map[string]string{"mylabel": "myvalue"}
 
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{tr},
@@ -3889,27 +4337,53 @@ func TestDisableResolutionFlag_PreventsResolution(t *testing.T) {
 		tr          *v1beta1.TaskRun
 	}{{
 		description: "inline taskspec is not resolved",
-		tr: tb.TaskRun("test-taskrun",
-			tb.TaskRunNamespace("foo"),
-			tb.TaskRunLabel("mylabel", "myvalue"),
-			tb.TaskRunSpec(tb.TaskRunTaskSpec(
-				tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd")),
-			)),
-		),
+		tr: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun",
+				Namespace: "foo",
+				Labels:    map[string]string{"mylabel": "myvalue"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Container: corev1.Container{
+							Image:   "myimage",
+							Name:    "mycontainer",
+							Command: []string{"/mycmd"},
+						},
+					}},
+				},
+			},
+		},
 	}, {
 		description: "taskref is not resolved",
-		tr: tb.TaskRun("test-taskrun",
-			tb.TaskRunNamespace("foo"),
-			tb.TaskRunLabel("mylabel", "myvalue"),
-			tb.TaskRunSpec(tb.TaskRunTaskRef("foo")),
-		),
+		tr: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun",
+				Namespace: "foo",
+				Labels:    map[string]string{"mylabel": "myvalue"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "foo",
+				},
+			},
+		},
 	}, {
 		description: "bundle is not resolved",
-		tr: tb.TaskRun("test-taskrun",
-			tb.TaskRunNamespace("foo"),
-			tb.TaskRunLabel("mylabel", "myvalue"),
-			tb.TaskRunSpec(tb.TaskRunTaskRef(simpleTypedTask.Name, tb.TaskRefBundle("foobar.bundle.url"))),
-		),
+		tr: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun",
+				Namespace: "foo",
+				Labels:    map[string]string{"mylabel": "myvalue"},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name:   simpleTypedTask.Name,
+					Bundle: "foobar.bundle.url",
+				},
+			},
+		},
 	}} {
 		tr := tc.tr
 
@@ -3951,13 +4425,24 @@ func TestDisableResolutionFlag_PreventsResolution(t *testing.T) {
 }
 
 func TestDisableResolutionFlag_ProceedsWithStatusTaskSpec(t *testing.T) {
-	tr := tb.TaskRun("test-taskrun",
-		tb.TaskRunNamespace("foo"),
-		tb.TaskRunLabel("mylabel", "myvalue"),
-		tb.TaskRunSpec(tb.TaskRunTaskSpec(
-			tb.Step("myimage", tb.StepName("mycontainer"), tb.StepCommand("/mycmd")),
-		)),
-	)
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun",
+			Namespace: "foo",
+			Labels:    map[string]string{"mylabel": "myvalue"},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "myimage",
+						Name:    "mycontainer",
+						Command: []string{"/mycmd"},
+					},
+				}},
+			},
+		},
+	}
 
 	tr.Status.TaskSpec = tr.Spec.TaskSpec
 
@@ -3990,5 +4475,179 @@ func TestDisableResolutionFlag_ProceedsWithStatusTaskSpec(t *testing.T) {
 
 	if reconciledRun.Status.PodName == "" {
 		t.Fatal("Expected pod to have been created")
+	}
+}
+
+func podVolumeMounts(idx int) []corev1.VolumeMount {
+	var mnts []corev1.VolumeMount
+	mnts = append(mnts, corev1.VolumeMount{
+		Name:      "tekton-internal-bin",
+		MountPath: "/tekton/bin",
+		ReadOnly:  true,
+	})
+	mnts = append(mnts, corev1.VolumeMount{
+		Name:      "tekton-internal-run",
+		MountPath: "/tekton/run",
+	})
+	if idx == 0 {
+		mnts = append(mnts, corev1.VolumeMount{
+			Name:      "tekton-internal-downward",
+			MountPath: "/tekton/downward",
+			ReadOnly:  true,
+		})
+	}
+	mnts = append(mnts, corev1.VolumeMount{
+		Name:      fmt.Sprintf("tekton-creds-init-home-%d", idx),
+		MountPath: "/tekton/creds",
+	})
+	mnts = append(mnts, corev1.VolumeMount{
+		Name:      "tekton-internal-workspace",
+		MountPath: workspaceDir,
+	})
+	mnts = append(mnts, corev1.VolumeMount{
+		Name:      "tekton-internal-home",
+		MountPath: "/tekton/home",
+	})
+	mnts = append(mnts, corev1.VolumeMount{
+		Name:      "tekton-internal-results",
+		MountPath: "/tekton/results",
+	})
+	mnts = append(mnts, corev1.VolumeMount{
+		Name:      "tekton-internal-steps",
+		MountPath: "/tekton/steps",
+	})
+
+	return mnts
+}
+
+func podArgs(stepName string, cmd string, additionalArgs []string, idx int) []string {
+	args := []string{
+		"-wait_file",
+	}
+	if idx == 0 {
+		args = append(args, "/tekton/downward/ready", "-wait_file_content")
+	} else {
+		args = append(args, fmt.Sprintf("/tekton/run/%d", idx-1))
+	}
+	args = append(args,
+		"-post_file",
+		fmt.Sprintf("/tekton/run/%d", idx),
+		"-termination_path",
+		"/tekton/termination",
+		"-step_metadata_dir",
+		fmt.Sprintf("/tekton/steps/step-%s", stepName),
+		"-step_metadata_dir_link",
+		fmt.Sprintf("/tekton/steps/%d", idx),
+		"-entrypoint",
+		cmd,
+		"--",
+	)
+
+	args = append(args, additionalArgs...)
+
+	return args
+}
+
+func podObjectMeta(name, taskName, taskRunName, ns string, isClusterTask bool) metav1.ObjectMeta {
+	trueB := true
+	om := metav1.ObjectMeta{
+		Name:      name,
+		Namespace: ns,
+		Annotations: map[string]string{
+			podconvert.ReleaseAnnotation: fakeVersion,
+		},
+		Labels: map[string]string{
+			pipeline.TaskRunLabelKey:       taskRunName,
+			"app.kubernetes.io/managed-by": "tekton-pipelines",
+		},
+		OwnerReferences: []metav1.OwnerReference{{
+			Kind:               "TaskRun",
+			Name:               taskRunName,
+			Controller:         &trueB,
+			BlockOwnerDeletion: &trueB,
+			APIVersion:         currentAPIVersion,
+		}},
+	}
+
+	if taskName != "" {
+		if isClusterTask {
+			om.Labels[pipeline.ClusterTaskLabelKey] = taskName
+		} else {
+			om.Labels[pipeline.TaskLabelKey] = taskName
+		}
+	}
+
+	return om
+}
+
+type stepForExpectedPod struct {
+	name       string
+	image      string
+	cmd        string
+	args       []string
+	envVars    map[string]string
+	volumes    []corev1.Volume
+	workingDir string
+}
+
+func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
+	p := &corev1.Pod{
+		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, ns, isClusterTask),
+		Spec: corev1.PodSpec{
+			Volumes: []corev1.Volume{
+				workspaceVolume,
+				homeVolume,
+				resultsVolume,
+				stepsVolume,
+				binVolume,
+				runVolume,
+				downwardVolume,
+			},
+			InitContainers:        []corev1.Container{placeToolsInitContainer},
+			RestartPolicy:         corev1.RestartPolicyNever,
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			ServiceAccountName:    saName,
+		},
+	}
+
+	for idx, s := range steps {
+		p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{
+			Name:         fmt.Sprintf("tekton-creds-init-home-%d", idx),
+			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+		})
+		stepContainer := corev1.Container{
+			Image:                  s.image,
+			Name:                   fmt.Sprintf("step-%s", s.name),
+			Command:                []string{entrypointLocation},
+			VolumeMounts:           podVolumeMounts(idx),
+			TerminationMessagePath: "/tekton/termination",
+		}
+		stepContainer.Args = podArgs(s.name, s.cmd, s.args, idx)
+
+		for k, v := range s.envVars {
+			stepContainer.Env = append(stepContainer.Env, corev1.EnvVar{
+				Name:  k,
+				Value: v,
+			})
+		}
+
+		if s.workingDir != "" {
+			stepContainer.WorkingDir = s.workingDir
+		}
+
+		p.Spec.Containers = append(p.Spec.Containers, stepContainer)
+	}
+
+	p.Spec.Volumes = append(p.Spec.Volumes, extraVolumes...)
+
+	return p
+}
+
+func objectMeta(name, ns string) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:        name,
+		Namespace:   ns,
+		Labels:      map[string]string{},
+		Annotations: map[string]string{},
 	}
 }

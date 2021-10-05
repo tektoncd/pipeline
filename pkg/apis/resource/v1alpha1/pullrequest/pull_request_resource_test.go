@@ -19,8 +19,9 @@ package pullrequest_test
 import (
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -32,13 +33,33 @@ import (
 
 func TestPullRequest_NewResource(t *testing.T) {
 	url := "https://github.com/tektoncd/pipeline/pulls/1"
-	pr := tb.PipelineResource("foo", tb.PipelineResourceSpec(
-		resourcev1alpha1.PipelineResourceTypePullRequest,
-		tb.PipelineResourceSpecParam("url", url),
-		tb.PipelineResourceSpecParam("provider", "github"),
-		tb.PipelineResourceSpecSecretParam("authToken", "test-secret-key", "test-secret-name"),
-		tb.PipelineResourceSpecParam("disable-strict-json-comments", "true"),
-	))
+	pr := &resourcev1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypePullRequest,
+			Params: []resourcev1alpha1.ResourceParam{
+				{
+					Name:  "url",
+					Value: url,
+				},
+				{
+					Name:  "provider",
+					Value: "github",
+				},
+				{
+					Name:  "disable-strict-json-comments",
+					Value: "true",
+				},
+			},
+			SecretParams: []resourcev1alpha1.SecretParam{{
+				FieldName:  "authToken",
+				SecretKey:  "test-secret-key",
+				SecretName: "test-secret-name",
+			}},
+		},
+	}
 	got, err := pullrequest.NewResource("test-resource", "override-with-pr:latest", pr)
 	if err != nil {
 		t.Fatalf("Error creating storage resource: %s", err.Error())
@@ -60,7 +81,14 @@ func TestPullRequest_NewResource(t *testing.T) {
 }
 
 func TestPullRequest_NewResource_error(t *testing.T) {
-	pr := tb.PipelineResource("foo", tb.PipelineResourceSpec(resourcev1alpha1.PipelineResourceTypeGit))
+	pr := &resourcev1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeGit,
+		},
+	}
 	if _, err := pullrequest.NewResource("test-resource", "override-with-pr:latest", pr); err == nil {
 		t.Error("NewPullRequestResource() want error, got nil")
 	}

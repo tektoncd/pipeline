@@ -26,7 +26,6 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -620,13 +619,24 @@ func getFanInFanOutPipeline(suffix int, namespace string) *v1beta1.Pipeline {
 }
 
 func getFanInFanOutGitResources() []*v1alpha1.PipelineResource {
-	return []*v1alpha1.PipelineResource{
-		tb.PipelineResource("kritis-resource-git", tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeGit,
-			tb.PipelineResourceSpecParam("Url", "https://github.com/grafeas/kritis"),
-			tb.PipelineResourceSpecParam("Revision", "master"),
-		)),
-	}
+	return []*v1alpha1.PipelineResource{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "kritis-resource-git",
+		},
+		Spec: resource.PipelineResourceSpec{
+			Type: resource.PipelineResourceTypeGit,
+			Params: []resource.ResourceParam{
+				{
+					Name:  "Url",
+					Value: "https://github.com/grafeas/kritis",
+				},
+				{
+					Name:  "Revision",
+					Value: "master",
+				},
+			},
+		},
+	}}
 }
 
 func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceAccount {
