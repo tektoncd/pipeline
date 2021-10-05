@@ -6,8 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -31,10 +32,22 @@ var (
 
 var pipelineRunState = PipelineRunState{{
 	TaskRunName: "aTaskRun",
-	TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
-		tb.StatusCondition(successCondition),
-		tb.TaskRunResult("aResult", "aResultValue"),
-	)),
+	TaskRun: &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "aTaskRun",
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{successCondition},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				TaskRunResults: []v1beta1.TaskRunResult{{
+					Name:  "aResult",
+					Value: "aResultValue",
+				}},
+			},
+		},
+	},
 	PipelineTask: &v1beta1.PipelineTask{
 		Name:    "aTask",
 		TaskRef: &v1beta1.TaskRef{Name: "aTask"},
@@ -121,7 +134,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		name: "successful resolution: param not using result reference",
 		pipelineRunState: PipelineRunState{{
 			TaskRunName: "aTaskRun",
-			TaskRun:     tb.TaskRun("aTaskRun"),
+			TaskRun:     &v1beta1.TaskRun{ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"}},
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "aTask",
 				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
@@ -137,10 +150,20 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		name: "successful resolution: using result reference",
 		pipelineRunState: PipelineRunState{{
 			TaskRunName: "aTaskRun",
-			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
-				tb.StatusCondition(successCondition),
-				tb.TaskRunResult("aResult", "aResultValue"),
-			)),
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						TaskRunResults: []v1beta1.TaskRunResult{{
+							Name:  "aResult",
+							Value: "aResultValue",
+						}},
+					},
+				},
+			},
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "aTask",
 				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
@@ -163,20 +186,40 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		name: "successful resolution: using multiple result reference",
 		pipelineRunState: PipelineRunState{{
 			TaskRunName: "aTaskRun",
-			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
-				tb.StatusCondition(successCondition),
-				tb.TaskRunResult("aResult", "aResultValue"),
-			)),
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						TaskRunResults: []v1beta1.TaskRunResult{{
+							Name:  "aResult",
+							Value: "aResultValue",
+						}},
+					},
+				},
+			},
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "aTask",
 				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
 			},
 		}, {
 			TaskRunName: "bTaskRun",
-			TaskRun: tb.TaskRun("bTaskRun", tb.TaskRunStatus(
-				tb.StatusCondition(successCondition),
-				tb.TaskRunResult("bResult", "bResultValue"),
-			)),
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "bTaskRun"},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						TaskRunResults: []v1beta1.TaskRunResult{{
+							Name:  "bResult",
+							Value: "bResultValue",
+						}},
+					},
+				},
+			},
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
@@ -206,10 +249,20 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		name: "successful resolution: duplicate result references",
 		pipelineRunState: PipelineRunState{{
 			TaskRunName: "aTaskRun",
-			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
-				tb.StatusCondition(successCondition),
-				tb.TaskRunResult("aResult", "aResultValue"),
-			)),
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{successCondition},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						TaskRunResults: []v1beta1.TaskRunResult{{
+							Name:  "aResult",
+							Value: "aResultValue",
+						}},
+					},
+				},
+			},
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "aTask",
 				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
@@ -232,9 +285,14 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		name: "unsuccessful resolution: referenced result doesn't exist in referenced task",
 		pipelineRunState: PipelineRunState{{
 			TaskRunName: "aTaskRun",
-			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
-				tb.StatusCondition(successCondition),
-			)),
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{successCondition},
+					},
+				},
+			},
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "aTask",
 				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
@@ -273,9 +331,14 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		name: "failed resolution: using result reference to a failed task",
 		pipelineRunState: PipelineRunState{{
 			TaskRunName: "aTaskRun",
-			TaskRun: tb.TaskRun("aTaskRun", tb.TaskRunStatus(
-				tb.StatusCondition(failedCondition),
-			)),
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: duckv1beta1.Conditions{failedCondition},
+					},
+				},
+			},
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "aTask",
 				TaskRef: &v1beta1.TaskRef{Name: "aTask"},

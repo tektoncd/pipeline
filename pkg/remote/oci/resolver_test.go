@@ -27,7 +27,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/registry"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/oci"
@@ -71,7 +70,15 @@ func TestOCIResolver(t *testing.T) {
 		{
 			name: "single-task",
 			objs: []runtime.Object{
-				tb.Task("simple-task", tb.TaskType),
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "simple-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
 			},
 			mapper:       test.DefaultObjectAnnotationMapper,
 			listExpected: []remote.ResolvedObject{{Kind: "task", APIVersion: "v1beta1", Name: "simple-task"}},
@@ -79,7 +86,15 @@ func TestOCIResolver(t *testing.T) {
 		{
 			name: "cluster-task",
 			objs: []runtime.Object{
-				tb.ClusterTask("simple-task", tb.ClusterTaskType),
+				&v1beta1.ClusterTask{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "simple-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "ClusterTask",
+					},
+				},
 			},
 			mapper:       test.DefaultObjectAnnotationMapper,
 			listExpected: []remote.ResolvedObject{{Kind: "clustertask", APIVersion: "v1beta1", Name: "simple-task"}},
@@ -87,8 +102,24 @@ func TestOCIResolver(t *testing.T) {
 		{
 			name: "multiple-tasks",
 			objs: []runtime.Object{
-				tb.Task("first-task", tb.TaskType),
-				tb.Task("second-task", tb.TaskType),
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "first-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "second-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
 			},
 			mapper: test.DefaultObjectAnnotationMapper,
 			listExpected: []remote.ResolvedObject{
@@ -99,17 +130,105 @@ func TestOCIResolver(t *testing.T) {
 		{
 			name: "too-many-objects",
 			objs: []runtime.Object{
-				tb.Task("first-task", tb.TaskType),
-				tb.Task("second-task", tb.TaskType),
-				tb.Task("third-task", tb.TaskType),
-				tb.Task("fourth-task", tb.TaskType),
-				tb.Task("fifth-task", tb.TaskType),
-				tb.Task("sixth-task", tb.TaskType),
-				tb.Task("seventh-task", tb.TaskType),
-				tb.Task("eighth-task", tb.TaskType),
-				tb.Task("ninth-task", tb.TaskType),
-				tb.Task("tenth-task", tb.TaskType),
-				tb.Task("eleventh-task", tb.TaskType),
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "first-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "second-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "third-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "fourth-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "fifth-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "sixth-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "seventh-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eighth-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "ninth-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "tenth-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
+				&v1beta1.Task{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "eleventh-task",
+					},
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "tekton.dev/v1beta1",
+						Kind:       "Task",
+					},
+				},
 			},
 			mapper:       test.DefaultObjectAnnotationMapper,
 			listExpected: []remote.ResolvedObject{},

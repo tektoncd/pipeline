@@ -19,16 +19,24 @@ package image_test
 import (
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/google/go-cmp/cmp"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestNewImageResource_Invalid(t *testing.T) {
-	r := tb.PipelineResource("test-resource", tb.PipelineResourceSpec(v1alpha1.PipelineResourceTypeGit))
+	r := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-resource",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeGit,
+		},
+	}
 
 	_, err := image.NewResource("test-resource", r)
 	if err == nil {
@@ -44,14 +52,24 @@ func TestNewImageResource_Valid(t *testing.T) {
 		Digest: "test",
 	}
 
-	r := tb.PipelineResource(
-		"image-resource",
-		tb.PipelineResourceSpec(
-			v1alpha1.PipelineResourceTypeImage,
-			tb.PipelineResourceSpecParam("URL", "https://test.com/test/test"),
-			tb.PipelineResourceSpecParam("Digest", "test"),
-		),
-	)
+	r := &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "image-resource",
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeImage,
+			Params: []v1alpha1.ResourceParam{
+				{
+					Name:  "URL",
+					Value: "https://test.com/test/test",
+				},
+				{
+					Name:  "Digest",
+					Value: "test",
+				},
+			},
+		},
+	}
 
 	got, err := image.NewResource("image-resource", r)
 	if err != nil {

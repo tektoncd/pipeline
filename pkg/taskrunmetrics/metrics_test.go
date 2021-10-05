@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -416,27 +415,40 @@ func TestRecordCloudEvents(t *testing.T) {
 		expectedCount float64
 	}{{
 		name: "for succeeded task",
-		taskRun: tb.TaskRun("taskrun-1",
-			tb.TaskRunNamespace("ns"),
-			tb.TaskRunLabel(pipeline.PipelineLabelKey, "pipeline-1"),
-			tb.TaskRunLabel(pipeline.PipelineRunLabelKey, "pipelinerun-1"),
-			tb.TaskRunSpec(
-				tb.TaskRunTaskRef("task-1"),
-			),
-			tb.TaskRunStatus(
-				tb.TaskRunStartTime(time.Now()),
-				tb.TaskRunCompletionTime(time.Now().Add(1*time.Minute)),
-				tb.StatusCondition(apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-				}),
-				tb.TaskRunCloudEvent(
-					"http://event_target",
-					"",
-					1,
-					v1beta1.CloudEventConditionSent,
-				),
-			)),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrun-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "pipeline-1",
+					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+				},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "task-1",
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime:      &metav1.Time{Time: time.Now()},
+					CompletionTime: &metav1.Time{Time: time.Now().Add(1 * time.Minute)},
+					CloudEvents: []v1beta1.CloudEventDelivery{{
+						Target: "http://event_target",
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition:  v1beta1.CloudEventConditionSent,
+							RetryCount: 1,
+						},
+					}},
+				},
+			},
+		},
 		expectedTags: map[string]string{
 			"pipeline":    "pipeline-1",
 			"pipelinerun": "pipelinerun-1",
@@ -448,27 +460,40 @@ func TestRecordCloudEvents(t *testing.T) {
 		expectedCount: 2,
 	}, {
 		name: "for failed task",
-		taskRun: tb.TaskRun("taskrun-1",
-			tb.TaskRunNamespace("ns"),
-			tb.TaskRunLabel(pipeline.PipelineLabelKey, "pipeline-1"),
-			tb.TaskRunLabel(pipeline.PipelineRunLabelKey, "pipelinerun-1"),
-			tb.TaskRunSpec(
-				tb.TaskRunTaskRef("task-1"),
-			),
-			tb.TaskRunStatus(
-				tb.TaskRunStartTime(time.Now()),
-				tb.TaskRunCompletionTime(time.Now().Add(1*time.Minute)),
-				tb.StatusCondition(apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionFalse,
-				}),
-				tb.TaskRunCloudEvent(
-					"http://event_target",
-					"",
-					2,
-					v1beta1.CloudEventConditionFailed,
-				),
-			)),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrun-1",
+				Namespace: "ns",
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "pipeline-1",
+					pipeline.PipelineRunLabelKey: "pipelinerun-1",
+				},
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "task-1",
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime:      &metav1.Time{Time: time.Now()},
+					CompletionTime: &metav1.Time{Time: time.Now().Add(1 * time.Minute)},
+					CloudEvents: []v1beta1.CloudEventDelivery{{
+						Target: "http://event_target",
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition:  v1beta1.CloudEventConditionFailed,
+							RetryCount: 2,
+						},
+					}},
+				},
+			},
+		},
 		expectedTags: map[string]string{
 			"pipeline":    "pipeline-1",
 			"pipelinerun": "pipelinerun-1",
@@ -480,25 +505,36 @@ func TestRecordCloudEvents(t *testing.T) {
 		expectedCount: 3,
 	}, {
 		name: "for task not part of pipeline",
-		taskRun: tb.TaskRun("taskrun-1",
-			tb.TaskRunNamespace("ns"),
-			tb.TaskRunSpec(
-				tb.TaskRunTaskRef("task-1"),
-			),
-			tb.TaskRunStatus(
-				tb.TaskRunStartTime(time.Now()),
-				tb.TaskRunCompletionTime(time.Now().Add(1*time.Minute)),
-				tb.StatusCondition(apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-				}),
-				tb.TaskRunCloudEvent(
-					"http://event_target",
-					"",
-					1,
-					v1beta1.CloudEventConditionSent,
-				),
-			)),
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "taskrun-1",
+				Namespace: "ns",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "task-1",
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime:      &metav1.Time{Time: time.Now()},
+					CompletionTime: &metav1.Time{Time: time.Now().Add(1 * time.Minute)},
+					CloudEvents: []v1beta1.CloudEventDelivery{{
+						Target: "http://event_target",
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition:  v1beta1.CloudEventConditionSent,
+							RetryCount: 1,
+						},
+					}},
+				},
+			},
+		},
 		expectedTags: map[string]string{
 			"task":      "task-1",
 			"taskrun":   "taskrun-1",

@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -109,19 +108,35 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 }
 
 func getGoHelloworldGitResource(sourceResourceName string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(sourceResourceName, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeGit,
-		tb.PipelineResourceSpecParam("url", "https://github.com/tektoncd/pipeline"),
-	))
+	return &resources.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: sourceResourceName,
+		},
+		Spec: resources.PipelineResourceSpec{
+			Type: resources.PipelineResourceTypeGit,
+			Params: []resources.ResourceParam{{
+				Name:  "url",
+				Value: "https://github.com/tektoncd/pipeline",
+			}},
+		},
+	}
 }
 
 func getHelmImageResource(dockerRepo, sourceImageName string) *v1alpha1.PipelineResource {
 	imageName := fmt.Sprintf("%s/%s", dockerRepo, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(sourceImageName))
 
-	return tb.PipelineResource(sourceImageName, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeImage,
-		tb.PipelineResourceSpecParam("url", imageName),
-	))
+	return &resources.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: sourceImageName,
+		},
+		Spec: resources.PipelineResourceSpec{
+			Type: resources.PipelineResourceTypeImage,
+			Params: []resources.ResourceParam{{
+				Name:  "url",
+				Value: imageName,
+			}},
+		},
+	}
 }
 
 func getCreateImageTask(namespace, createImageTaskName string) *v1beta1.Task {

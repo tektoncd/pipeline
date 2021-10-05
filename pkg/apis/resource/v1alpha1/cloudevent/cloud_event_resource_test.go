@@ -19,8 +19,9 @@ package cloudevent_test
 import (
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/google/go-cmp/cmp"
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
@@ -33,16 +34,34 @@ func TestNewResource_Invalid(t *testing.T) {
 		pipelineResource *resourcev1alpha1.PipelineResource
 	}{{
 		name: "create resource with no parameter",
-		pipelineResource: tb.PipelineResource("cloud-event-resource-no-uri", tb.PipelineResourceSpec(
-			resourcev1alpha1.PipelineResourceTypeCloudEvent,
-		)),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "cloud-event-resource-no-uri",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
+			},
+		},
 	}, {
 		name: "create resource with invalid type",
-		pipelineResource: tb.PipelineResource("git-resource", tb.PipelineResourceSpec(
-			resourcev1alpha1.PipelineResourceTypeGit,
-			tb.PipelineResourceSpecParam("URL", "git://fake/repo"),
-			tb.PipelineResourceSpecParam("Revision", "fake_rev"),
-		)),
+		pipelineResource: &resourcev1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "git-resource",
+			},
+			Spec: resourcev1alpha1.PipelineResourceSpec{
+				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Params: []resourcev1alpha1.ResourceParam{
+					{
+						Name:  "URL",
+						Value: "git://fake/repo",
+					},
+					{
+						Name:  "Revision",
+						Value: "fake_rev",
+					},
+				},
+			},
+		},
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -55,10 +74,18 @@ func TestNewResource_Invalid(t *testing.T) {
 }
 
 func TestNewResource_Valid(t *testing.T) {
-	pr := tb.PipelineResource("cloud-event-resource-uri", tb.PipelineResourceSpec(
-		resourcev1alpha1.PipelineResourceTypeCloudEvent,
-		tb.PipelineResourceSpecParam("TargetURI", "http://fake-sink"),
-	))
+	pr := &resourcev1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cloud-event-resource-uri",
+		},
+		Spec: resourcev1alpha1.PipelineResourceSpec{
+			Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
+			Params: []resourcev1alpha1.ResourceParam{{
+				Name:  "TargetURI",
+				Value: "http://fake-sink",
+			}},
+		},
+	}
 	expectedResource := &cloudevent.Resource{
 		Name:      "test-resource",
 		TargetURI: "http://fake-sink",

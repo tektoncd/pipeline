@@ -22,7 +22,6 @@ import (
 	"context"
 	"testing"
 
-	tb "github.com/tektoncd/pipeline/internal/builder/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -80,15 +79,44 @@ func TestClusterResource(t *testing.T) {
 }
 
 func getClusterResource(name, sname string) *v1alpha1.PipelineResource {
-	return tb.PipelineResource(name, tb.PipelineResourceSpec(
-		v1alpha1.PipelineResourceTypeCluster,
-		tb.PipelineResourceSpecParam("Name", "helloworld-cluster"),
-		tb.PipelineResourceSpecParam("Url", "https://1.1.1.1"),
-		tb.PipelineResourceSpecParam("username", "test-user"),
-		tb.PipelineResourceSpecParam("password", "test-password"),
-		tb.PipelineResourceSpecSecretParam("cadata", sname, "cadatakey"),
-		tb.PipelineResourceSpecSecretParam("token", sname, "tokenkey"),
-	))
+	return &v1alpha1.PipelineResource{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+		Spec: v1alpha1.PipelineResourceSpec{
+			Type: v1alpha1.PipelineResourceTypeCluster,
+			Params: []v1alpha1.ResourceParam{
+				{
+					Name:  "Name",
+					Value: "helloworld-cluster",
+				},
+				{
+					Name:  "Url",
+					Value: "https://1.1.1.1",
+				},
+				{
+					Name:  "username",
+					Value: "test-user",
+				},
+				{
+					Name:  "password",
+					Value: "test-password",
+				},
+			},
+			SecretParams: []v1alpha1.SecretParam{
+				{
+					FieldName:  "cadata",
+					SecretKey:  "cadatakey",
+					SecretName: sname,
+				},
+				{
+					FieldName:  "token",
+					SecretKey:  "tokenkey",
+					SecretName: sname,
+				},
+			},
+		},
+	}
 }
 
 func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
