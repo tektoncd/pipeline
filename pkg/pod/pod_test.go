@@ -63,6 +63,8 @@ var (
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
+	volumeSort      = cmpopts.SortSlices(func(i, j corev1.Volume) bool { return i.Name < j.Name })
+	volumeMountSort = cmpopts.SortSlices(func(i, j corev1.VolumeMount) bool { return i.Name < j.Name })
 )
 
 func init() {
@@ -122,7 +124,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -133,16 +135,16 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
-				}}, implicitVolumeMounts...),
+				}, runMount(0, false), binROMount}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-			}),
+			}, runVolume(0)),
 			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
@@ -171,7 +173,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -182,13 +184,13 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -218,7 +220,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -229,13 +231,13 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -269,7 +271,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -284,7 +286,7 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, append(append([]corev1.VolumeMount{}, implicitVolumeMounts...), corev1.VolumeMount{
@@ -293,7 +295,7 @@ func TestPodBuild(t *testing.T) {
 				})...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, secretsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, secretsVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -338,7 +340,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -350,13 +352,13 @@ func TestPodBuild(t *testing.T) {
 					"--",
 				},
 				VolumeMounts: append([]corev1.VolumeMount{
-					binROMount, runMount,
+					binROMount, runMount(0, false),
 					downwardMount,
 					{Name: "tekton-creds-init-home-0", MountPath: "/tekton/creds"},
 				}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -397,7 +399,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -408,13 +410,13 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -441,7 +443,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -452,13 +454,13 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -496,7 +498,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -507,14 +509,14 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				WorkingDir:             filepath.Join(pipeline.WorkspaceDir, "test"),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -548,7 +550,7 @@ func TestPodBuild(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -559,7 +561,7 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -571,7 +573,7 @@ func TestPodBuild(t *testing.T) {
 					Requests: nil,
 				},
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -621,7 +623,7 @@ _EOF_
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -632,7 +634,7 @@ _EOF_
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -643,7 +645,7 @@ _EOF_
 				Command:      []string{"/tekton/scripts/sidecar-script-0-9l9zj"},
 				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
 			}},
-			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -680,7 +682,7 @@ _EOF_
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -691,7 +693,7 @@ _EOF_
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -700,7 +702,7 @@ _EOF_
 				Name:  "sidecar-sc-name",
 				Image: "sidecar-image",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -741,7 +743,7 @@ _EOF_
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -752,7 +754,7 @@ _EOF_
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), runMount(1, true), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -769,9 +771,9 @@ _EOF_
 				Command: []string{"/tekton/bin/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-post_file",
-					"/tekton/run/1",
+					"/tekton/run/1/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -782,7 +784,7 @@ _EOF_
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, true), runMount(1, false), {
 					Name:      "tekton-creds-init-home-1",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -794,7 +796,7 @@ _EOF_
 				},
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), runVolume(1), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}, corev1.Volume{
@@ -865,7 +867,7 @@ _EOF_
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -879,7 +881,7 @@ _EOF_
 					"args",
 				},
 				Env: []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
-				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, binROMount, runMount(0, false), runMount(1, true), runMount(2, true), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -890,9 +892,9 @@ _EOF_
 				Command: []string{"/tekton/bin/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-post_file",
-					"/tekton/run/1",
+					"/tekton/run/1/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -906,7 +908,7 @@ _EOF_
 					"args",
 				},
 				Env: []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
-				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, scriptsVolumeMount, binROMount, runMount, {
+				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, scriptsVolumeMount, binROMount, runMount(0, true), runMount(1, false), runMount(2, true), {
 					Name:      "tekton-creds-init-home-1",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -917,9 +919,9 @@ _EOF_
 				Command: []string{"/tekton/bin/entrypoint"},
 				Args: []string{
 					"-wait_file",
-					"/tekton/run/1",
+					"/tekton/run/1/out",
 					"-post_file",
-					"/tekton/run/2",
+					"/tekton/run/2/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -934,13 +936,13 @@ _EOF_
 					"args",
 				},
 				Env: []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, true), runMount(1, true), runMount(2, false), {
 					Name:      "tekton-creds-init-home-2",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume(0), runVolume(1), runVolume(2), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}, corev1.Volume{
@@ -987,7 +989,7 @@ _EOF_
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -998,13 +1000,13 @@ _EOF_
 					"/tekton/scripts/script-0-9l9zj",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -1032,7 +1034,7 @@ _EOF_
 			RestartPolicy:  corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{placeToolsInit},
 			SchedulerName:  "there-scheduler",
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -1045,7 +1047,7 @@ _EOF_
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -1056,7 +1058,7 @@ _EOF_
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -1086,7 +1088,7 @@ _EOF_
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{placeToolsInit},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -1099,7 +1101,7 @@ _EOF_
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -1110,7 +1112,7 @@ _EOF_
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -1141,7 +1143,7 @@ _EOF_
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
 				InitContainers: []corev1.Container{placeToolsInit},
-				Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1154,7 +1156,7 @@ _EOF_
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/run/0",
+						"/tekton/run/0/out",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1165,7 +1167,7 @@ _EOF_
 						"cmd",
 						"--",
 					},
-					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
@@ -1195,7 +1197,7 @@ _EOF_
 				RestartPolicy:  corev1.RestartPolicyNever,
 				InitContainers: []corev1.Container{placeToolsInit},
 				HostNetwork:    true,
-				Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1208,7 +1210,7 @@ _EOF_
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/run/0",
+						"/tekton/run/0/out",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1219,7 +1221,7 @@ _EOF_
 						"cmd",
 						"--",
 					},
-					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
@@ -1250,7 +1252,7 @@ _EOF_
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/run/0",
+						"/tekton/run/0/out",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1263,13 +1265,13 @@ _EOF_
 						"cmd",
 						"--",
 					},
-					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
 					TerminationMessagePath: "/tekton/termination",
 				}},
-				Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1299,7 +1301,7 @@ _EOF_
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/run/0",
+						"/tekton/run/0/out",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1310,10 +1312,10 @@ _EOF_
 						"cmd",
 						"--",
 					},
-					VolumeMounts:           append([]corev1.VolumeMount{binROMount, runMount, downwardMount}, implicitVolumeMounts...),
+					VolumeMounts:           append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount}, implicitVolumeMounts...),
 					TerminationMessagePath: "/tekton/termination",
 				}},
-				Volumes:               append(implicitVolumes, binVolume, runVolume, downwardVolume),
+				Volumes:               append(implicitVolumes, binVolume, runVolume(0), downwardVolume),
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}, {
@@ -1341,7 +1343,7 @@ _EOF_
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/run/0",
+						"/tekton/run/0/out",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1352,7 +1354,7 @@ _EOF_
 						"cmd",
 						"--",
 					},
-					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
@@ -1361,7 +1363,7 @@ _EOF_
 						{Name: "TEKTON_HERMETIC", Value: "1"},
 					},
 				}},
-				Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1393,7 +1395,7 @@ _EOF_
 						"/tekton/downward/ready",
 						"-wait_file_content",
 						"-post_file",
-						"/tekton/run/0",
+						"/tekton/run/0/out",
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
@@ -1404,7 +1406,7 @@ _EOF_
 						"cmd",
 						"--",
 					},
-					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
 					}}, implicitVolumeMounts...),
@@ -1415,7 +1417,7 @@ _EOF_
 						{Name: "TEKTON_HERMETIC", Value: "1"},
 					},
 				}},
-				Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 				}),
@@ -1490,7 +1492,7 @@ _EOF_
 				t.Errorf("Pod name %q should have prefix 'taskrun-name-pod-'", got.Name)
 			}
 
-			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
+			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp, volumeSort, volumeMountSort); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 
@@ -1546,7 +1548,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 					"/tekton/downward/ready",
 					"-wait_file_content",
 					"-post_file",
-					"/tekton/run/0",
+					"/tekton/run/0/out",
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
@@ -1558,13 +1560,13 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, debugScriptsVolume, debugInfoVolume, binVolume, runVolume, downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, debugScriptsVolume, debugInfoVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -1642,7 +1644,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 				t.Errorf("Pod name %q should have prefix 'taskrun-name-pod-'", got.Name)
 			}
 
-			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp); d != "" {
+			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp, volumeSort, volumeMountSort); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 
