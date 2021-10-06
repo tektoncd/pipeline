@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -55,8 +54,6 @@ var (
 		return k == ReleaseAnnotation
 	}
 	featureInjectedSidecar                   = "running-in-environment-with-injected-sidecars"
-	featureFlagDisableHomeEnvKey             = "disable-home-env-overwrite"
-	featureFlagDisableWorkingDirKey          = "disable-working-directory-overwrite"
 	featureFlagSetReadyAnnotationOnPodCreate = "enable-ready-annotation-on-pod-create"
 
 	defaultActiveDeadlineSeconds = int64(config.DefaultTimeoutMinutes * 60 * deadlineFactor)
@@ -246,59 +243,6 @@ func TestPodBuild(t *testing.T) {
 		},
 		wantAnnotations: map[string]string{
 			readyAnnotation: readyAnnotationValue,
-		},
-	}, {
-		desc: "simple-with-home-overwrite-flag",
-		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:    "name",
-				Image:   "image",
-				Command: []string{"cmd"}, // avoid entrypoint lookup.
-			}}},
-		},
-		featureFlags: map[string]string{
-			// Providing this flag will make the test set the pod builder's
-			// OverrideHomeEnv setting.
-			"disable-home-env-overwrite": "true",
-		},
-		want: &corev1.PodSpec{
-			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
-			Containers: []corev1.Container{{
-				Name:    "step-name",
-				Image:   "image",
-				Command: []string{"/tekton/bin/entrypoint"},
-				Args: []string{
-					"-wait_file",
-					"/tekton/downward/ready",
-					"-wait_file_content",
-					"-post_file",
-					"/tekton/run/0",
-					"-termination_path",
-					"/tekton/termination",
-					"-step_metadata_dir",
-					"/tekton/steps/step-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
-					"-entrypoint",
-					"cmd",
-					"--",
-				},
-				Env: []corev1.EnvVar{{
-					Name:  "HOME",
-					Value: "/tekton/home",
-				}},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount, downwardMount, {
-					Name:      "tekton-creds-init-home-0",
-					MountPath: "/tekton/creds",
-				}}, implicitVolumeMounts...),
-				TerminationMessagePath: "/tekton/termination",
-			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume, downwardVolume, corev1.Volume{
-				Name:         "tekton-creds-init-home-0",
-				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
-			}),
-			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
 		desc: "with service account",
@@ -1532,18 +1476,10 @@ _EOF_
 			// No entrypoints should be looked up.
 			entrypointCache := fakeCache{}
 
-			overrideHomeEnv := false
-			if s, ok := c.featureFlags[featureFlagDisableHomeEnvKey]; ok {
-				var err error
-				if overrideHomeEnv, err = strconv.ParseBool(s); err != nil {
-					t.Fatalf("error parsing bool from %s feature flag: %v", featureFlagDisableHomeEnvKey, err)
-				}
-			}
 			builder := Builder{
 				Images:          images,
 				KubeClient:      kubeclient,
 				EntrypointCache: entrypointCache,
-				OverrideHomeEnv: overrideHomeEnv,
 			}
 			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
 			if err != nil {
@@ -1737,89 +1673,6 @@ func TestMakeLabels(t *testing.T) {
 	})
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff labels %s", diff.PrintWantGot(d))
-	}
-}
-
-func TestShouldOverrideHomeEnv(t *testing.T) {
-	for _, tc := range []struct {
-		description string
-		configMap   *corev1.ConfigMap
-		expected    bool
-	}{{
-		description: "Default behaviour: A missing disable-home-env-overwrite flag should result in false",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		},
-		expected: false,
-	}, {
-		description: "Setting disable-home-env-overwrite to false should result in true",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureFlagDisableHomeEnvKey: "false",
-			},
-		},
-		expected: true,
-	}, {
-		description: "Setting disable-home-env-overwrite to true should result in false",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureFlagDisableHomeEnvKey: "true",
-			},
-		},
-		expected: false,
-	}} {
-		t.Run(tc.description, func(t *testing.T) {
-			store := config.NewStore(logtesting.TestLogger(t))
-			store.OnConfigChanged(tc.configMap)
-			if result := ShouldOverrideHomeEnv(store.ToContext(context.Background())); result != tc.expected {
-				t.Errorf("Expected %t Received %t", tc.expected, result)
-			}
-		})
-	}
-}
-
-func TestShouldOverrideWorkingDir(t *testing.T) {
-	for _, tc := range []struct {
-		description string
-		configMap   *corev1.ConfigMap
-		expected    bool
-	}{{
-		description: "Default behaviour: A missing disable-working-directory-overwrite flag should result in false",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		},
-		expected: false,
-	}, {
-		description: "Setting disable-working-directory-overwrite to false should result in true",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureFlagDisableWorkingDirKey: "false",
-			},
-		},
-		expected: true,
-	}, {
-		description: "Setting disable-working-directory-overwrite to true should result in false",
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureFlagDisableWorkingDirKey: "true",
-			},
-		},
-		expected: false,
-	}} {
-		t.Run(tc.description, func(t *testing.T) {
-			store := config.NewStore(logtesting.TestLogger(t))
-			store.OnConfigChanged(tc.configMap)
-			ctx := store.ToContext(context.Background())
-			if result := shouldOverrideWorkingDir(ctx); result != tc.expected {
-				t.Errorf("Expected %t Received %t", tc.expected, result)
-			}
-		})
 	}
 }
 

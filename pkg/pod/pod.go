@@ -91,7 +91,6 @@ type Builder struct {
 	Images          pipeline.Images
 	KubeClient      kubernetes.Interface
 	EntrypointCache EntrypointCache
-	OverrideHomeEnv bool
 }
 
 // Transformer is a function that will transform a Pod. This can be used to mutate
@@ -114,13 +113,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
 	volumeMounts = append(volumeMounts, implicitVolumeMounts...)
-
-	if b.OverrideHomeEnv {
-		implicitEnvVars = append(implicitEnvVars, corev1.EnvVar{
-			Name:  "HOME",
-			Value: pipeline.HomeDir,
-		})
-	}
 
 	// Create Volumes and VolumeMounts for any credentials found in annotated
 	// Secrets, along with any arguments needed by Step entrypoints to process
@@ -243,15 +235,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	// This loop:
-	// - defaults workingDir to /workspace
 	// - sets container name to add "step-" prefix or "step-unnamed-#" if not specified.
 	// TODO(#1605): Remove this loop and make each transformation in
 	// isolation.
-	shouldOverrideWorkingDir := shouldOverrideWorkingDir(ctx)
 	for i, s := range stepContainers {
-		if s.WorkingDir == "" && shouldOverrideWorkingDir {
-			stepContainers[i].WorkingDir = pipeline.WorkspaceDir
-		}
 		stepContainers[i].Name = names.SimpleNameGenerator.RestrictLength(StepName(s.Name, i))
 	}
 
@@ -366,28 +353,6 @@ func makeLabels(s *v1beta1.TaskRun) map[string]string {
 	// specifies this label, it should be overridden by this value.
 	labels[pipeline.TaskRunLabelKey] = s.Name
 	return labels
-}
-
-// ShouldOverrideHomeEnv returns a bool indicating whether a Pod should have its
-// $HOME environment variable overwritten with /tekton/home or if it should be
-// left unmodified. The default behaviour is to overwrite the $HOME variable
-// but this is planned to change in an upcoming release.
-//
-// For further reference see https://github.com/tektoncd/pipeline/issues/2013
-func ShouldOverrideHomeEnv(ctx context.Context) bool {
-	cfg := config.FromContextOrDefaults(ctx)
-	return !cfg.FeatureFlags.DisableHomeEnvOverwrite
-}
-
-// shouldOverrideWorkingDir returns a bool indicating whether a Pod should have its
-// working directory overwritten with /workspace or if it should be
-// left unmodified. The default behaviour is to overwrite the working directory with '/workspace'
-// if not specified by the user,  but this is planned to change in an upcoming release.
-//
-// For further reference see https://github.com/tektoncd/pipeline/issues/1836
-func shouldOverrideWorkingDir(ctx context.Context) bool {
-	cfg := config.FromContextOrDefaults(ctx)
-	return !cfg.FeatureFlags.DisableWorkingDirOverwrite
 }
 
 // shouldAddReadyAnnotationonPodCreate returns a bool indicating whether the
