@@ -19,6 +19,9 @@ package test
 import (
 	"testing"
 
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -64,4 +67,13 @@ kind: Pipeline
 ` + yaml
 	mustParseYAML(t, yaml, &pipeline)
 	return &pipeline
+}
+
+func mustParsePipelineResource(t *testing.T, yaml string) *resourcev1alpha1.PipelineResource {
+	var resource v1alpha1.PipelineResource
+	yaml = `apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+` + yaml
+	mustParseYAML(t, yaml, &resource)
+	return &resource
 }
