@@ -69,6 +69,11 @@ func TestErrorWrappedErrors(t *testing.T) {
 	if !reflect.DeepEqual(multi.Errors, multi.WrappedErrors()) {
 		t.Fatalf("bad: %s", multi.WrappedErrors())
 	}
+
+	multi = nil
+	if err := multi.WrappedErrors(); err != nil {
+		t.Fatalf("bad: %#v", multi)
+	}
 }
 
 func TestErrorUnwrap(t *testing.T) {
