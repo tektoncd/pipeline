@@ -188,10 +188,9 @@ func TestTaskConversion(t *testing.T) {
 func TestTaskConversionFromDeprecated(t *testing.T) {
 	versions := []apis.Convertible{&v1beta1.Task{}}
 	tests := []struct {
-		name     string
-		in       *Task
-		want     *Task
-		badField string
+		name string
+		in   *Task
+		want *Task
 	}{{
 		name: "inputs params",
 		in: &Task{
@@ -300,12 +299,6 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
 				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
-					if test.badField != "" {
-						cce, ok := err.(*CannotConvertError)
-						if ok && cce.Field == test.badField {
-							return
-						}
-					}
 					t.Errorf("ConvertTo() = %v", err)
 				}
 				t.Logf("ConvertTo() = %#v", ver)

@@ -31,7 +31,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	return map[string]common.OpenAPIDefinition{
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                              schema_pkg_apis_pipeline_pod_Template(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ArrayOrString":                     schema_pkg_apis_pipeline_v1beta1_ArrayOrString(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CannotConvertError":                schema_pkg_apis_pipeline_v1beta1_CannotConvertError(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDelivery":                schema_pkg_apis_pipeline_v1beta1_CloudEventDelivery(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDeliveryState":           schema_pkg_apis_pipeline_v1beta1_CloudEventDeliveryState(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask":                       schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref),
@@ -310,34 +309,6 @@ func schema_pkg_apis_pipeline_v1beta1_ArrayOrString(ref common.ReferenceCallback
 					},
 				},
 				Required: []string{"type", "stringVal", "arrayVal"},
-			},
-		},
-	}
-}
-
-func schema_pkg_apis_pipeline_v1beta1_CannotConvertError(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "CannotConvertError is returned when a field cannot be converted.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"Message": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-					"Field": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-				},
-				Required: []string{"Message", "Field"},
 			},
 		},
 	}

@@ -287,24 +287,6 @@
         }
       }
     },
-    "v1beta1.CannotConvertError": {
-      "description": "CannotConvertError is returned when a field cannot be converted.",
-      "type": "object",
-      "required": [
-        "Message",
-        "Field"
-      ],
-      "properties": {
-        "Field": {
-          "type": "string",
-          "default": ""
-        },
-        "Message": {
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
     "v1beta1.CloudEventDelivery": {
       "description": "CloudEventDelivery is the target of a cloud event along with the state of delivery.",
       "type": "object",

@@ -138,18 +138,6 @@ func (trs *TaskRunStatus) GetRunningReason() string {
 	return TaskRunReasonRunning.String()
 }
 
-// MarkResourceNotConvertible adds a Warning-severity condition to the resource noting
-// that it cannot be converted to a higher version.
-func (trs *TaskRunStatus) MarkResourceNotConvertible(err *CannotConvertError) {
-	taskRunCondSet.Manage(trs).SetCondition(apis.Condition{
-		Type:     ConditionTypeConvertible,
-		Status:   corev1.ConditionFalse,
-		Severity: apis.ConditionSeverityWarning,
-		Reason:   err.Field,
-		Message:  err.Message,
-	})
-}
-
 // MarkResourceOngoing sets the ConditionSucceeded condition to ConditionUnknown
 // with the reason and message.
 func (trs *TaskRunStatus) MarkResourceOngoing(reason TaskRunReason, message string) {

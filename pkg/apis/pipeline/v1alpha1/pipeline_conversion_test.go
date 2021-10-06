@@ -219,11 +219,6 @@ func TestPipelineConversionFromWithFinally(t *testing.T) {
 			source.(*v1beta1.Pipeline).Spec.Finally = []v1beta1.PipelineTask{{Name: "finaltask", TaskRef: &TaskRef{Name: "task"}}}
 			got := &Pipeline{}
 			if err := got.ConvertFrom(context.Background(), source); err != nil {
-				cce, ok := err.(*CannotConvertError)
-				// conversion error contains the field name which resulted in the failure and should be equal to "Finally" here
-				if ok && cce.Field == FinallyFieldName {
-					return
-				}
 				t.Errorf("ConvertFrom() should have failed")
 			}
 		})
