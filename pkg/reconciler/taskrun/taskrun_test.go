@@ -99,9 +99,9 @@ var (
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
-	handleMapOrdering = cmpopts.SortMaps(func(x, y string) bool { return x < y })
-	cloudEventTarget1 = "https://foo"
-	cloudEventTarget2 = "https://bar"
+	ignoreEnvVarOrdering = cmpopts.SortSlices(func(x, y corev1.EnvVar) bool { return x.Name < y.Name })
+	cloudEventTarget1    = "https://foo"
+	cloudEventTarget2    = "https://bar"
 
 	simpleStep = v1beta1.Step{
 		Container: corev1.Container{
@@ -766,7 +766,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
 			}
 
-			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, handleMapOrdering); d != "" {
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, ignoreEnvVarOrdering); d != "" {
 				t.Errorf("Pod spec doesn't match, %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -901,7 +901,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
 			}
 
-			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp); d != "" {
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, ignoreEnvVarOrdering); d != "" {
 				t.Errorf("Pod spec doesn't match, %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
@@ -1541,7 +1541,7 @@ func TestReconcile(t *testing.T) {
 			}
 
 			pod.Name = tc.wantPod.Name // Ignore pod name differences, the pod name is generated and tested in pod_test.go
-			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, handleMapOrdering); d != "" {
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, ignoreEnvVarOrdering); d != "" {
 				t.Errorf("Pod spec doesn't match %s", diff.PrintWantGot(d))
 			}
 			if len(clients.Kube.Actions()) == 0 {
