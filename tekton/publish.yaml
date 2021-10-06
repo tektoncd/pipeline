@@ -202,6 +202,8 @@ spec:
             TAG="$(params.versionTag)"
             crane cp ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
           fi
-          echo ${REGION}.$IMAGE_WITH_SHA, >> $(results.IMAGES.path)
+          # Until we are able to store larger results, we cannot include the
+          # regional copies of the images in the result - see https://github.com/tektoncd/pipeline/issues/4282
+          # echo ${REGION}.$IMAGE_WITH_SHA, >> $(results.IMAGES.path)
         done
       done
