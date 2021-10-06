@@ -1856,7 +1856,6 @@ func makePod(taskRun *v1beta1.TaskRun, task *v1beta1.Task) (*corev1.Pod, error) 
 		Images:          images,
 		KubeClient:      kubeclient,
 		EntrypointCache: entrypointCache,
-		OverrideHomeEnv: true,
 	}
 	return builder.Build(context.Background(), taskRun, task.Spec)
 }

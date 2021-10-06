@@ -39,6 +39,7 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
+	"github.com/tektoncd/pipeline/pkg/internal/deprecated"
 	"github.com/tektoncd/pipeline/pkg/internal/limitrange"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
@@ -692,9 +693,6 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		return nil, err
 	}
 
-	// Check if the HOME env var of every Step should be set to /tekton/home.
-	shouldOverrideHomeEnv := podconvert.ShouldOverrideHomeEnv(ctx)
-
 	// Apply path substitutions for the legacy credentials helper (aka "creds-init")
 	ts = resources.ApplyCredentialsPath(ts, pipeline.CredsDir)
 
@@ -702,11 +700,12 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		Images:          c.Images,
 		KubeClient:      c.KubeClientSet,
 		EntrypointCache: c.entrypointCache,
-		OverrideHomeEnv: shouldOverrideHomeEnv,
 	}
 	pod, err := podbuilder.Build(ctx, tr, *ts,
 		limitrange.NewTransformer(ctx, tr.Namespace, c.limitrangeLister),
 		affinityassistant.NewTransformer(ctx, tr.Annotations),
+		deprecated.NewOverrideWorkingDirTransformer(ctx),
+		deprecated.NewOverrideHomeTransformer(ctx),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
