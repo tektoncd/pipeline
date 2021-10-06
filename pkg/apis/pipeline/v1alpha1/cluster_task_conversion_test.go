@@ -187,10 +187,9 @@ func TestClusterTaskConversion(t *testing.T) {
 func TestClusterTaskConversionFromDeprecated(t *testing.T) {
 	versions := []apis.Convertible{&v1beta1.ClusterTask{}}
 	tests := []struct {
-		name     string
-		in       *ClusterTask
-		want     *ClusterTask
-		badField string
+		name string
+		in   *ClusterTask
+		want *ClusterTask
 	}{{
 		name: "inputs params",
 		in: &ClusterTask{
@@ -299,12 +298,6 @@ func TestClusterTaskConversionFromDeprecated(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
 				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
-					if test.badField != "" {
-						cce, ok := err.(*CannotConvertError)
-						if ok && cce.Field == test.badField {
-							return
-						}
-					}
 					t.Errorf("ConvertTo() = %v", err)
 				}
 				t.Logf("ConvertTo() = %#v", ver)

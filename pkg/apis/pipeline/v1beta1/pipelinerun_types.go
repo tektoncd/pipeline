@@ -23,7 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -356,18 +355,6 @@ func (pr *PipelineRunStatus) MarkFailed(reason, messageFormat string, messageA .
 // MarkRunning changes the Succeeded condition to Unknown with the provided reason and message.
 func (pr *PipelineRunStatus) MarkRunning(reason, messageFormat string, messageA ...interface{}) {
 	pipelineRunCondSet.Manage(pr).MarkUnknown(apis.ConditionSucceeded, reason, messageFormat, messageA...)
-}
-
-// MarkResourceNotConvertible adds a Warning-severity condition to the resource noting
-// that it cannot be converted to a higher version.
-func (pr *PipelineRunStatus) MarkResourceNotConvertible(err *CannotConvertError) {
-	pipelineRunCondSet.Manage(pr).SetCondition(apis.Condition{
-		Type:     ConditionTypeConvertible,
-		Status:   corev1.ConditionFalse,
-		Severity: apis.ConditionSeverityWarning,
-		Reason:   err.Field,
-		Message:  err.Message,
-	})
 }
 
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
