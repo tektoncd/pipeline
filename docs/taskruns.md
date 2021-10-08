@@ -448,8 +448,8 @@ The following tables shows how to read the overall status of a `TaskRun`:
 :-------|:-------|:---------------------:|--------------:
 Unknown|Started|No|The TaskRun has just been picked up by the controller.
 Unknown|Pending|No|The TaskRun is waiting on a Pod in status Pending.
-Unknown|Running|No|The TaskRun has been validate and started to perform its work.
-Unknown|TaskRunCancelled|No|The user requested the TaskRun to be cancelled. Cancellation has not be done yet.
+Unknown|Running|No|The TaskRun has been validated and started to perform its work.
+Unknown|TaskRunCancelled|No|The user requested the TaskRun to be cancelled. Cancellation has not been done yet.
 True|Succeeded|Yes|The TaskRun completed successfully.
 False|Failed|Yes|The TaskRun failed because one of the steps failed.
 False|\[Error message\]|No|The TaskRun encountered a non-permanent error, and it's still running. It may ultimately succeed.
