@@ -23,13 +23,16 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/kmeta"
 )
 
 const (
@@ -58,6 +61,8 @@ type Pipeline struct {
 	Spec PipelineSpec `json:"spec"`
 }
 
+var _ kmeta.OwnerRefable = (*Pipeline)(nil)
+
 func (p *Pipeline) PipelineMetadata() metav1.ObjectMeta {
 	return p.ObjectMeta
 }
@@ -68,6 +73,11 @@ func (p *Pipeline) PipelineSpec() PipelineSpec {
 
 func (p *Pipeline) Copy() PipelineObject {
 	return p.DeepCopy()
+}
+
+// GetGroupVersionKind implements kmeta.OwnerRefable.
+func (*Pipeline) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind(pipeline.PipelineControllerName)
 }
 
 // PipelineSpec defines the desired state of Pipeline.
