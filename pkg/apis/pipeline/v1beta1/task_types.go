@@ -17,8 +17,11 @@ limitations under the License.
 package v1beta1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/pkg/kmeta"
 )
 
 const (
@@ -52,6 +55,8 @@ type Task struct {
 	Spec TaskSpec `json:"spec"`
 }
 
+var _ kmeta.OwnerRefable = (*Task)(nil)
+
 func (t *Task) TaskSpec() TaskSpec {
 	return t.Spec
 }
@@ -62,6 +67,11 @@ func (t *Task) TaskMetadata() metav1.ObjectMeta {
 
 func (t *Task) Copy() TaskObject {
 	return t.DeepCopy()
+}
+
+// GetGroupVersionKind implements kmeta.OwnerRefable.
+func (*Task) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind(pipeline.TaskControllerName)
 }
 
 // TaskSpec defines the desired state of Task.

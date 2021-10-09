@@ -17,7 +17,10 @@ limitations under the License.
 package v1beta1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"knative.dev/pkg/kmeta"
 )
 
 // +genclient
@@ -37,6 +40,8 @@ type ClusterTask struct {
 	// +optional
 	Spec TaskSpec `json:"spec,omitempty"`
 }
+
+var _ kmeta.OwnerRefable = (*ClusterTask)(nil)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -58,4 +63,9 @@ func (t *ClusterTask) TaskMetadata() metav1.ObjectMeta {
 
 func (t *ClusterTask) Copy() TaskObject {
 	return t.DeepCopy()
+}
+
+// GetGroupVersionKind implements kmeta.OwnerRefable.
+func (*ClusterTask) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind(pipeline.ClusterTaskControllerName)
 }

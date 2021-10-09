@@ -21,8 +21,18 @@ const (
 	// nolint: revive
 	PipelineRunControllerName = "PipelineRun"
 
+	// PipelineControllerName holds the name of the Pipeline controller
+	// nolint: revive
+	PipelineControllerName = "Pipeline"
+
 	// TaskRunControllerName holds the name of the TaskRun controller
 	TaskRunControllerName = "TaskRun"
+
+	// TaskControllerName holds the name of the Task controller
+	TaskControllerName = "Task"
+
+	// ClusterTaskControllerName holds the name of the Task controller
+	ClusterTaskControllerName = "ClusterTask"
 
 	// RuncControllerName holds the name of the Custom Task controller
 	RunControllerName = "Run"
