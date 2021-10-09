@@ -37,6 +37,7 @@ const (
 
 // +genclient
 // +genclient:noStatus
+// +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Task represents a collection of sequential steps that are run as part of a
