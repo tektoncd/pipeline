@@ -210,6 +210,34 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
+	}, {
+		name: "for pipeline without start or completion time",
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-1", Namespace: "ns"},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
+				Status:      v1beta1.PipelineRunSpecStatusPending,
+			},
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+			},
+		},
+		expectedTags: map[string]string{
+			"pipeline":    "pipeline-1",
+			"pipelinerun": "pipelinerun-1",
+			"namespace":   "ns",
+			"status":      "failed",
+		},
+		expectedCountTags: map[string]string{
+			"status": "failed",
+		},
+		expectedDuration: 0,
+		expectedCount:    1,
 	}} {
 		t.Run(test.name, func(t *testing.T) {
 			unregisterMetrics()

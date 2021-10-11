@@ -216,9 +216,12 @@ func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun) error {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", pr.Name)
 	}
 
-	duration := time.Since(pr.Status.StartTime.Time)
-	if pr.Status.CompletionTime != nil {
-		duration = pr.Status.CompletionTime.Sub(pr.Status.StartTime.Time)
+	duration := time.Duration(0)
+	if pr.Status.StartTime != nil {
+		duration = time.Since(pr.Status.StartTime.Time)
+		if pr.Status.CompletionTime != nil {
+			duration = pr.Status.CompletionTime.Sub(pr.Status.StartTime.Time)
+		}
 	}
 
 	status := "success"
