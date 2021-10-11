@@ -35,7 +35,7 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 		ts.Params[i].SetDefaults(ctx)
 	}
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
-		ctx = AddContextParamSpec(ctx, ts.Params)
-		ts.Params = GetContextParamSpecs(ctx)
+		ctx = addContextParamSpec(ctx, ts.Params)
+		ts.Params = getContextParamSpecs(ctx)
 	}
 }

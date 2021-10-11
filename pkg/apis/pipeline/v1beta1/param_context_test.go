@@ -27,7 +27,7 @@ func TestAddContextParams(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("no-alpha", func(t *testing.T) {
-		ctx := AddContextParams(ctx, []Param{{Name: "a"}})
+		ctx := addContextParams(ctx, []Param{{Name: "a"}})
 		if v := ctx.Value(paramCtxKey); v != nil {
 			t.Errorf("expected no param context values, got %v", v)
 		}
@@ -108,7 +108,7 @@ func TestAddContextParams(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = AddContextParams(ctx, tc.params)
+			ctx = addContextParams(ctx, tc.params)
 			got := ctx.Value(paramCtxKey)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("-want,+got: %s", diff)
@@ -121,7 +121,7 @@ func TestAddContextParamSpec(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("no-alpha", func(t *testing.T) {
-		ctx := AddContextParamSpec(ctx, []ParamSpec{{Name: "a"}})
+		ctx := addContextParamSpec(ctx, []ParamSpec{{Name: "a"}})
 		if v := ctx.Value(paramCtxKey); v != nil {
 			t.Errorf("expected no param context values, got %v", v)
 		}
@@ -188,7 +188,7 @@ func TestAddContextParamSpec(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = AddContextParamSpec(ctx, tc.params)
+			ctx = addContextParamSpec(ctx, tc.params)
 			got := ctx.Value(paramCtxKey)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
 				t.Errorf("-want,+got: %s", diff)
@@ -214,8 +214,8 @@ func TestGetContextParams(t *testing.T) {
 		},
 	}
 	t.Run("no-alpha", func(t *testing.T) {
-		ctx := AddContextParamSpec(ctx, want)
-		if v := GetContextParamSpecs(ctx); v != nil {
+		ctx := addContextParamSpec(ctx, want)
+		if v := getContextParamSpecs(ctx); v != nil {
 			t.Errorf("expected no param context values, got %v", v)
 		}
 	})
@@ -225,7 +225,7 @@ func TestGetContextParams(t *testing.T) {
 	cfg.FeatureFlags = &config.FeatureFlags{EnableAPIFields: "alpha"}
 	ctx = config.ToContext(ctx, cfg)
 
-	ctx = AddContextParamSpec(ctx, want)
+	ctx = addContextParamSpec(ctx, want)
 
 	for _, tc := range []struct {
 		name    string
@@ -270,7 +270,7 @@ func TestGetContextParams(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := GetContextParams(ctx, tc.overlay...)
+			got := getContextParams(ctx, tc.overlay...)
 			if diff := cmp.Diff(tc.want, got, cmpopts.SortSlices(func(x, y Param) bool { return x.Name < y.Name })); diff != "" {
 				t.Errorf("-want,+got: %s", diff)
 			}
@@ -295,8 +295,8 @@ func TestGetContextParamSpecs(t *testing.T) {
 		},
 	}
 	t.Run("no-alpha", func(t *testing.T) {
-		ctx := AddContextParamSpec(ctx, want)
-		if v := GetContextParamSpecs(ctx); v != nil {
+		ctx := addContextParamSpec(ctx, want)
+		if v := getContextParamSpecs(ctx); v != nil {
 			t.Errorf("expected no param context values, got %v", v)
 		}
 	})
@@ -306,8 +306,8 @@ func TestGetContextParamSpecs(t *testing.T) {
 	cfg.FeatureFlags = &config.FeatureFlags{EnableAPIFields: "alpha"}
 	ctx = config.ToContext(ctx, cfg)
 
-	ctx = AddContextParamSpec(ctx, want)
-	got := GetContextParamSpecs(ctx)
+	ctx = addContextParamSpec(ctx, want)
+	got := getContextParamSpecs(ctx)
 	if diff := cmp.Diff(want, got, cmpopts.SortSlices(func(x, y ParamSpec) bool { return x.Name < y.Name })); diff != "" {
 		t.Errorf("-want,+got: %s", diff)
 	}
