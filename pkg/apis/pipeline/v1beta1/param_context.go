@@ -30,9 +30,9 @@ var paramCtxKey struct{}
 // This maps param names -> ParamSpec.
 type paramCtxVal map[string]ParamSpec
 
-// AddContextParams adds the given Params to the param context. This only
+// addContextParams adds the given Params to the param context. This only
 // preserves the fields included in ParamSpec - Name and Type.
-func AddContextParams(ctx context.Context, in []Param) context.Context {
+func addContextParams(ctx context.Context, in []Param) context.Context {
 	if in == nil {
 		return ctx
 	}
@@ -67,8 +67,8 @@ func AddContextParams(ctx context.Context, in []Param) context.Context {
 	return context.WithValue(ctx, paramCtxKey, out)
 }
 
-// AddContextParamSpec adds the given ParamSpecs to the param context.
-func AddContextParamSpec(ctx context.Context, in []ParamSpec) context.Context {
+// addContextParamSpec adds the given ParamSpecs to the param context.
+func addContextParamSpec(ctx context.Context, in []ParamSpec) context.Context {
 	if in == nil {
 		return ctx
 	}
@@ -97,12 +97,12 @@ func AddContextParamSpec(ctx context.Context, in []ParamSpec) context.Context {
 	return context.WithValue(ctx, paramCtxKey, out)
 }
 
-// GetContextParams returns the current context parameters overlayed with a
+// getContextParams returns the current context parameters overlayed with a
 // given set of params. Overrides should generally be the current layer you
 // are trying to evaluate. Any context params not in the overrides will default
 // to a generic pass-through param of the given type (i.e. $(params.name) or
 // $(params.name[*])).
-func GetContextParams(ctx context.Context, overlays ...Param) []Param {
+func getContextParams(ctx context.Context, overlays ...Param) []Param {
 	pv := paramCtxVal{}
 	v := ctx.Value(paramCtxKey)
 	if v == nil && len(overlays) == 0 {
@@ -151,8 +151,8 @@ func GetContextParams(ctx context.Context, overlays ...Param) []Param {
 	return out
 }
 
-// GetContextParamSpecs returns the current context ParamSpecs.
-func GetContextParamSpecs(ctx context.Context) []ParamSpec {
+// getContextParamSpecs returns the current context ParamSpecs.
+func getContextParamSpecs(ctx context.Context) []ParamSpec {
 	v := ctx.Value(paramCtxKey)
 	if v == nil {
 		return nil

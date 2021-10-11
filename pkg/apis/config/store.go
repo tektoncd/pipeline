@@ -53,7 +53,7 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{})
 	artifactBucket, _ := NewArtifactBucketFromMap(map[string]string{})
 	artifactPVC, _ := NewArtifactPVCFromMap(map[string]string{})
-	metrics, _ := NewMetricsFromMap(map[string]string{})
+	metrics, _ := newMetricsFromMap(map[string]string{})
 	return &Config{
 		Defaults:       defaults,
 		FeatureFlags:   featureFlags,
@@ -121,7 +121,7 @@ func (s *Store) Load() *Config {
 
 	metrics := s.UntypedLoad(GetMetricsConfigName())
 	if metrics == nil {
-		metrics, _ = NewMetricsFromMap(map[string]string{})
+		metrics, _ = newMetricsFromMap(map[string]string{})
 	}
 	return &Config{
 		Defaults:       defaults.(*Defaults).DeepCopy(),

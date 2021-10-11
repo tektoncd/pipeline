@@ -117,8 +117,8 @@ func (cfg *Metrics) Equals(other *Metrics) bool {
 		other.DurationPipelinerunType == cfg.DurationPipelinerunType
 }
 
-// NewMetricsFromMap returns a Config given a map corresponding to a ConfigMap
-func NewMetricsFromMap(cfgMap map[string]string) (*Metrics, error) {
+// newMetricsFromMap returns a Config given a map corresponding to a ConfigMap
+func newMetricsFromMap(cfgMap map[string]string) (*Metrics, error) {
 	tc := Metrics{
 		TaskrunLevel:            DefaultTaskrunLevel,
 		PipelinerunLevel:        DefaultPipelinerunLevel,
@@ -144,5 +144,5 @@ func NewMetricsFromMap(cfgMap map[string]string) (*Metrics, error) {
 
 // NewArtifactBucketFromConfigMap returns a Config for the given configmap
 func NewMetricsFromConfigMap(config *corev1.ConfigMap) (*Metrics, error) {
-	return NewMetricsFromMap(config.Data)
+	return newMetricsFromMap(config.Data)
 }
