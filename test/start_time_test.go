@@ -16,11 +16,12 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/tektoncd/pipeline/test/parse"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
@@ -40,32 +41,24 @@ func TestStartTime(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 	t.Logf("Creating TaskRun in namespace %q", namespace)
-	tr, err := c.TaskRunClient.Create(ctx, &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "start-time-test-",
-			Namespace:    namespace,
-		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{Image: "ubuntu"},
-					Script:    "sleep 10",
-				}, {
-					Container: corev1.Container{Image: "ubuntu"},
-					Script:    "sleep 10",
-				}, {
-					Container: corev1.Container{Image: "ubuntu"},
-					Script:    "sleep 10",
-				}, {
-					Container: corev1.Container{Image: "ubuntu"},
-					Script:    "sleep 10",
-				}, {
-					Container: corev1.Container{Image: "ubuntu"},
-					Script:    "sleep 10",
-				}},
-			},
-		},
-	}, metav1.CreateOptions{})
+	tr, err := c.TaskRunClient.Create(ctx, parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  generateName: start-time-test-
+  namespace: %s
+spec:
+  taskSpec:
+    steps:
+    - image: ubuntu
+      script: sleep 10
+    - image: ubuntu
+      script: sleep 10
+    - image: ubuntu
+      script: sleep 10
+    - image: ubuntu
+      script: sleep 10
+    - image: ubuntu
+      script: sleep 10
+`, namespace)), metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Error creating TaskRun: %v", err)
 	}

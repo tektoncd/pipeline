@@ -20,11 +20,12 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/parse"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -46,23 +47,19 @@ func TestTaskRunRetry(t *testing.T) {
 	// configured to retry 5 times.
 	pipelineRunName := "retry-pipeline"
 	numRetries := 5
-	if _, err := c.PipelineRunClient.Create(ctx, &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineSpec: &v1alpha1.PipelineSpec{
-				Tasks: []v1alpha1.PipelineTask{{
-					Name: "retry-me",
-					TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1alpha1.Step{{
-							Container: corev1.Container{Image: "busybox"},
-							Script:    "exit 1",
-						}},
-					}},
-					Retries: numRetries,
-				}},
-			},
-		},
-	}, metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineRunClient.Create(ctx, parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: retry-me
+      retries: %d
+      taskSpec:
+        steps:
+        - image: busybox
+          script: exit 1
+`, pipelineRunName, numRetries)), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRunName, err)
 	}
 

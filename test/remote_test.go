@@ -23,15 +23,15 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	"github.com/ghodss/yaml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	tkremote "github.com/tektoncd/pipeline/pkg/remote/oci"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestCreateImage(t *testing.T) {
@@ -40,15 +40,10 @@ func TestCreateImage(t *testing.T) {
 	defer s.Close()
 	u, _ := url.Parse(s.URL)
 
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-create-image",
-		},
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Task",
-		},
-	}
+	task := parse.MustParseTask(t, `
+metadata:
+  name: test-create-image
+`)
 
 	ref, err := CreateImage(u.Host+"/task/test-create-image", task)
 	if err != nil {

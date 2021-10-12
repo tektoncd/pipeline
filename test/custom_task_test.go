@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -33,7 +35,6 @@ import (
 	"go.opencensus.io/trace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
@@ -63,58 +64,46 @@ func TestCustomTask(t *testing.T) {
 	pipelineRunName := "custom-task-pipeline"
 	if _, err := c.PipelineRunClient.Create(
 		ctx,
-		&v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name: "custom-task-ref",
-						TaskRef: &v1beta1.TaskRef{
-							APIVersion: apiVersion,
-							Kind:       kind,
-						},
-					}, {
-						Name: "custom-task-spec",
-						TaskSpec: &v1beta1.EmbeddedTask{
-							TypeMeta: runtime.TypeMeta{
-								APIVersion: apiVersion,
-								Kind:       kind,
-							},
-							Metadata: v1beta1.PipelineTaskMetadata{Labels: metadataLabel},
-							Spec: runtime.RawExtension{
-								Raw: customTaskRawSpec,
-							},
-						},
-					}, {
-						Name: "result-consumer",
-						Params: []v1beta1.Param{{
-							Name: "input-result-from-custom-task-ref", Value: *v1beta1.NewArrayOrString("$(tasks.custom-task-ref.results.runResult)"),
-						}, {
-							Name: "input-result-from-custom-task-spec", Value: *v1beta1.NewArrayOrString("$(tasks.custom-task-spec.results.runResult)"),
-						}},
-						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-							Params: []v1beta1.ParamSpec{{
-								Name: "input-result-from-custom-task-ref", Type: v1beta1.ParamTypeString,
-							}, {
-								Name: "input-result-from-custom-task-spec", Type: v1beta1.ParamTypeString,
-							}},
-							Steps: []v1beta1.Step{{Container: corev1.Container{
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "echo $(input-result-from-custom-task-ref) $(input-result-from-custom-task-spec)"},
-							}}},
-						}},
-					}},
-					Results: []v1beta1.PipelineResult{{
-						Name:  "prResult-ref",
-						Value: "$(tasks.custom-task-ref.results.runResult)",
-					}, {
-						Name:  "prResult-spec",
-						Value: "$(tasks.custom-task-spec.results.runResult)",
-					}},
-				},
-			},
-		},
+		parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    results:
+    - name: prResult-ref
+      value: $(tasks.custom-task-ref.results.runResult)
+    - name: prResult-spec
+      value: $(tasks.custom-task-spec.results.runResult)
+    tasks:
+    - name: custom-task-ref
+      taskRef:
+        apiVersion: %s
+        kind: %s
+    - name: custom-task-spec
+      taskSpec:
+        apiVersion: %s
+        kind: %s
+        metadata:
+          labels:
+            test-label: test
+        spec: %s
+    - name: result-consumer
+      params:
+      - name: input-result-from-custom-task-ref
+        value: $(tasks.custom-task-ref.results.runResult)
+      - name: input-result-from-custom-task-spec
+        value: $(tasks.custom-task-spec.results.runResult)
+      taskSpec:
+        params:
+        - name: input-result-from-custom-task-ref
+          type: string
+        - name: input-result-from-custom-task-spec
+          type: string
+        steps:
+        - args: ['-c', 'echo $(input-result-from-custom-task-ref) $(input-result-from-custom-task-spec)']
+          command: ['/bin/bash']
+          image: ubuntu
+`, pipelineRunName, apiVersion, kind, apiVersion, kind, customTaskRawSpec)),
 		metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRunName, err)
 	}
@@ -266,25 +255,26 @@ func TestPipelineRunCustomTaskTimeout(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
 	defer tearDown(context.Background(), t, c, namespace)
-	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "custom-task-ref",
-				TaskRef: &v1beta1.TaskRef{
-					APIVersion: apiVersion,
-					Kind:       kind,
-				},
-			}},
-		},
-	}
-	pipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: pipeline.Name},
-			Timeout:     &metav1.Duration{Duration: 5 * time.Second},
-		},
-	}
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: custom-task-ref
+    taskRef:
+      apiVersion: %s
+      kind: %s
+`, helpers.ObjectNameForTest(t), namespace, apiVersion, kind))
+	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: %s
+  timeout: 5s
+`, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}

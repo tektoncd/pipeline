@@ -21,11 +21,10 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -69,31 +68,29 @@ func TestSidecarTaskSupport(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			sidecarTaskName := fmt.Sprintf("%s-%d", sidecarTaskName, i)
 			sidecarTaskRunName := fmt.Sprintf("%s-%d", sidecarTaskRunName, i)
-			task := &v1alpha1.Task{
-				ObjectMeta: metav1.ObjectMeta{Name: sidecarTaskName},
-				Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
-						Image:   "busybox",
-						Name:    primaryContainerName,
-						Command: test.stepCommand,
-					}}},
-					Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{
-						Image:   "busybox",
-						Name:    sidecarContainerName,
-						Command: test.sidecarCommand,
-					}}},
-				}},
-			}
+			task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  steps:
+  - name: %s
+    image: busybox
+    command: [%s]
+  sidecars:
+  - name: %s
+    image: busybox
+    command: [%s]
+`, sidecarTaskName, primaryContainerName, stringSliceToYAMLArray(test.stepCommand), sidecarContainerName, stringSliceToYAMLArray(test.sidecarCommand)))
 
-			taskRun := &v1alpha1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{Name: sidecarTaskRunName},
-				Spec: v1alpha1.TaskRunSpec{
-					TaskRef: &v1alpha1.TaskRef{
-						Name: sidecarTaskName,
-					},
-					Timeout: &metav1.Duration{time.Minute},
-				},
-			}
+			taskRun := parse.MustParseAlphaTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: %s
+  timeout: 1m
+`, sidecarTaskRunName, namespace, sidecarTaskName))
 
 			t.Logf("Creating Task %q", sidecarTaskName)
 			if _, err := clients.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
@@ -176,4 +173,12 @@ func TestSidecarTaskSupport(t *testing.T) {
 			}
 		})
 	}
+}
+
+func stringSliceToYAMLArray(stringSlice []string) string {
+	var quoted []string
+	for _, s := range stringSlice {
+		quoted = append(quoted, fmt.Sprintf("'%s'", s))
+	}
+	return strings.Join(quoted, ", ")
 }

@@ -18,9 +18,12 @@ package test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -91,167 +94,134 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 		t.Fatalf("Failed to create Task producing task results: %s", err)
 	}
 
-	taskConsumingResultInParam := getSuccessTaskConsumingResults(t, namespace, []v1beta1.ParamSpec{{Name: "dagtask-result"}}, []v1beta1.TaskResult{})
+	taskConsumingResultInParam := getSuccessTaskConsumingResults(t, namespace, "dagtask-result")
 	if _, err := c.TaskClient.Create(ctx, taskConsumingResultInParam, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task consuming task results in param: %s", err)
 	}
 
-	taskConsumingResultInWhenExpression := getSuccessTaskConsumingResults(t, namespace, []v1beta1.ParamSpec{}, []v1beta1.TaskResult{})
+	taskConsumingResultInWhenExpression := getSuccessTask(t, namespace)
 	if _, err := c.TaskClient.Create(ctx, taskConsumingResultInWhenExpression, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task consuming task results in when expressions: %s", err)
 	}
 
-	we := v1beta1.WhenExpressions{{
-		Input:    "foo",
-		Operator: "notin",
-		Values:   []string{"foo"},
-	}}
-
-	dag := map[string]pipelineTask{
-		"dagtask1": {
-			TaskName: task.Name,
-		},
-		"dagtask2": {
-			TaskName: delayedTask.Name,
-		},
-		"dagtask3": {
-			TaskName:  successTask.Name,
-			Condition: cond.Name,
-		},
-		"dagtask4": {
-			TaskName: successTask.Name,
-			When:     we,
-		},
-		"dagtask5": {
-			TaskName: taskProducingResult.Name,
-		},
-	}
-
-	f := map[string]pipelineTask{
-		"finaltask1": {
-			TaskName: successTask.Name,
-		},
-		"finaltask2": {
-			TaskName: finalTaskWithStatus.Name,
-			Param: []v1beta1.Param{{
-				Name: "dagtask1-status",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask1.status)",
-				},
-			}, {
-				Name: "dagtask2-status",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask2.status)",
-				},
-			}, {
-				Name: "dagtask3-status",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask3.status)",
-				},
-			}, {
-				Name: "dagtasks-aggregate-status",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.status)",
-				},
-			}},
-		},
-		// final task consuming result from a failed dag task
-		"finaltaskconsumingdagtask1": {
-			TaskName: taskConsumingResultInParam.Name,
-			Param: []v1beta1.Param{{
-				Name: "dagtask-result",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask1.results.result)",
-				},
-			}},
-		},
-		// final task consuming result from a skipped dag task due to when expression
-		"finaltaskconsumingdagtask4": {
-			TaskName: taskConsumingResultInParam.Name,
-			Param: []v1beta1.Param{{
-				Name: "dagtask-result",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask4.results.result)",
-				},
-			}},
-		},
-		"finaltaskconsumingdagtask5": {
-			TaskName: taskConsumingResultInParam.Name,
-			Param: []v1beta1.Param{{
-				Name: "dagtask-result",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask5.results.result)",
-				},
-			}},
-		},
-		// final task with when expressions using results from skipped dag task
-		"guardedfinaltaskconsumingdagtask4": {
-			TaskName: taskConsumingResultInWhenExpression.Name,
-			When: v1beta1.WhenExpressions{{
-				Input:    "$(tasks.dagtask4.results.result)",
-				Operator: "in",
-				Values:   []string{"aResult"},
-			}},
-		},
-		// final task with when expressions using results from successful dag task
-		// when expressions evaluate to true
-		"guardedfinaltaskusingdagtask5result1": {
-			TaskName: taskConsumingResultInWhenExpression.Name,
-			When: v1beta1.WhenExpressions{{
-				Input:    "$(tasks.dagtask5.results.result)",
-				Operator: "in",
-				Values:   []string{"Hello"},
-			}},
-		},
-		// final task with when expressions using results from successful dag task
-		// when expressions evaluate to false
-		"guardedfinaltaskusingdagtask5result2": {
-			TaskName: taskConsumingResultInWhenExpression.Name,
-			When: v1beta1.WhenExpressions{{
-				Input:    "$(tasks.dagtask5.results.result)",
-				Operator: "notin",
-				Values:   []string{"Hello"},
-			}},
-		},
-		// final task with when expressions using execution status of a dag task
-		// when expressions evaluate to true
-		"guardedfinaltaskusingdagtask5status1": {
-			TaskName: taskConsumingResultInWhenExpression.Name,
-			When: v1beta1.WhenExpressions{{
-				Input:    "$(tasks.dagtask5.status)",
-				Operator: "in",
-				Values:   []string{"Succeeded"},
-			}, {
-				Input:    "$(tasks.status)",
-				Operator: "in",
-				Values:   []string{"Failed"},
-			}},
-		},
-		// final task with when expressions using execution status of a dag task
-		// when expressions evaluate to false
-		"guardedfinaltaskusingdagtask5status2": {
-			TaskName: taskConsumingResultInWhenExpression.Name,
-			When: v1beta1.WhenExpressions{{
-				Input:    "$(tasks.dagtask5.status)",
-				Operator: "in",
-				Values:   []string{"Failed"},
-			}, {
-				Input:    "$(tasks.status)",
-				Operator: "notin",
-				Values:   []string{"Failed"},
-			}},
-		},
-	}
-
-	pipeline := getPipeline(t, namespace, dag, f)
-
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  finally:
+  - name: finaltask1
+    taskRef:
+      name: %s
+  - name: finaltask2
+    params:
+    - name: dagtask1-status
+      value: $(tasks.dagtask1.status)
+    - name: dagtask2-status
+      value: $(tasks.dagtask2.status)
+    - name: dagtask3-status
+      value: $(tasks.dagtask3.status)
+    - name: dagtasks-aggregate-status
+      value: $(tasks.status)
+    taskRef:
+      name: %s
+  - name: finaltaskconsumingdagtask1
+    params:
+    - name: dagtask-result
+      value: $(tasks.dagtask1.results.result)
+    taskRef:
+      name: %s
+  - name: finaltaskconsumingdagtask4
+    params:
+    - name: dagtask-result
+      value: $(tasks.dagtask4.results.result)
+    taskRef:
+      name: %s
+  - name: finaltaskconsumingdagtask5
+    params:
+    - name: dagtask-result
+      value: $(tasks.dagtask5.results.result)
+    taskRef:
+      name: %s
+  - name: guardedfinaltaskconsumingdagtask4
+    taskRef:
+      name: %s
+    when:
+    - input: $(tasks.dagtask4.results.result)
+      operator: in
+      values:
+      - aResult
+  - name: guardedfinaltaskusingdagtask5result1
+    taskRef:
+      name: %s
+    when:
+    - input: $(tasks.dagtask5.results.result)
+      operator: in
+      values:
+      - Hello
+  - name: guardedfinaltaskusingdagtask5result2
+    taskRef:
+      name: %s
+    when:
+    - input: $(tasks.dagtask5.results.result)
+      operator: notin
+      values:
+      - Hello
+  - name: guardedfinaltaskusingdagtask5status1
+    taskRef:
+      name: %s
+    when:
+    - input: $(tasks.dagtask5.status)
+      operator: in
+      values:
+      - Succeeded
+    - input: $(tasks.status)
+      operator: in
+      values:
+      - Failed
+  - name: guardedfinaltaskusingdagtask5status2
+    taskRef:
+      name: %s
+    when:
+    - input: $(tasks.dagtask5.status)
+      operator: in
+      values:
+      - Failed
+    - input: $(tasks.status)
+      operator: notin
+      values:
+      - Failed
+  tasks:
+  - name: dagtask1
+    taskRef:
+      name: %s
+  - name: dagtask2
+    taskRef:
+      name: %s
+  - name: dagtask3
+    taskRef:
+      name: %s
+    conditions:
+    - conditionRef: %s
+  - name: dagtask4
+    taskRef:
+      name: %s
+    when:
+    - input: foo
+      operator: notin
+      values:
+      - foo
+  - name: dagtask5
+    taskRef:
+      name: %s
+`, helpers.ObjectNameForTest(t), namespace,
+		// Finally
+		successTask.Name, finalTaskWithStatus.Name, taskConsumingResultInParam.Name,
+		taskConsumingResultInParam.Name, taskConsumingResultInParam.Name, taskConsumingResultInWhenExpression.Name,
+		taskConsumingResultInWhenExpression.Name, taskConsumingResultInWhenExpression.Name, taskConsumingResultInWhenExpression.Name,
+		taskConsumingResultInWhenExpression.Name,
+		// Tasks
+		task.Name, delayedTask.Name, successTask.Name, cond.Name, successTask.Name, taskProducingResult.Name))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
@@ -378,8 +348,12 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
 		Name: "dagtask3",
 	}, {
-		Name:            "dagtask4",
-		WhenExpressions: we,
+		Name: "dagtask4",
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "foo",
+			Operator: "notin",
+			Values:   []string{"foo"},
+		}},
 	}, {
 		Name: "finaltaskconsumingdagtask1",
 	}, {
@@ -435,15 +409,20 @@ func TestPipelineLevelFinally_OneFinalTaskFailed_Failure(t *testing.T) {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	pt := map[string]pipelineTask{
-		"dagtask1": {TaskName: task.Name},
-	}
-
-	fpt := map[string]pipelineTask{
-		"finaltask1": {TaskName: finalTask.Name},
-	}
-
-	pipeline := getPipeline(t, namespace, pt, fpt)
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  finally:
+  - name: finaltask1
+    taskRef:
+      name: %s
+  tasks:
+  - name: dagtask1
+    taskRef:
+      name: %s
+`, helpers.ObjectNameForTest(t), namespace, finalTask.Name, task.Name))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
@@ -496,7 +475,7 @@ func TestPipelineLevelFinally_OneFinalTask_CancelledRunFinally(t *testing.T) {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
-	task2 := getSuccessTaskConsumingResults(t, namespace, []v1beta1.ParamSpec{{Name: "dagtask1-result"}}, []v1beta1.TaskResult{})
+	task2 := getSuccessTaskConsumingResults(t, namespace, "dagtask1-result")
 	if _, err := c.TaskClient.Create(ctx, task2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
@@ -506,44 +485,37 @@ func TestPipelineLevelFinally_OneFinalTask_CancelledRunFinally(t *testing.T) {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	finalTask2 := getSuccessTaskConsumingResults(t, namespace, []v1beta1.ParamSpec{{Name: "dagtask1-result"}}, []v1beta1.TaskResult{})
+	finalTask2 := getSuccessTaskConsumingResults(t, namespace, "dagtask1-result")
 	if _, err := c.TaskClient.Create(ctx, finalTask2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	pt := map[string]pipelineTask{
-		"dagtask1": {
-			TaskName: task1.Name,
-		},
-		"dagtask2": {
-			TaskName: task2.Name,
-			Param: []v1beta1.Param{{
-				Name: "dagtask1-result",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask1.results.result)",
-				},
-			}},
-		},
-	}
-
-	fpt := map[string]pipelineTask{
-		"finaltask1": {
-			TaskName: finalTask1.Name,
-		},
-		"finaltask2": {
-			TaskName: finalTask2.Name,
-			Param: []v1beta1.Param{{
-				Name: "dagtask1-result",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask1.results.result)",
-				},
-			}},
-		},
-	}
-
-	pipeline := getPipeline(t, namespace, pt, fpt)
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  finally:
+  - name: finaltask1
+    taskRef:
+      name: %s
+  - name: finaltask2
+    params:
+    - name: dagtask1-result
+      value: $(tasks.dagtask1.results.result)
+    taskRef:
+      name: %s
+  tasks:
+  - name: dagtask1
+    taskRef:
+      name: %s
+  - name: dagtask2
+    params:
+    - name: dagtask1-result
+      value: $(tasks.dagtask1.results.result)
+    taskRef:
+      name: %s
+`, helpers.ObjectNameForTest(t), namespace, finalTask1.Name, finalTask2.Name, task1.Name, task2.Name))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
@@ -618,7 +590,7 @@ func TestPipelineLevelFinally_OneFinalTask_StoppedRunFinally(t *testing.T) {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
-	task2 := getSuccessTaskConsumingResults(t, namespace, []v1beta1.ParamSpec{{Name: "dagtask1-result"}}, []v1beta1.TaskResult{})
+	task2 := getSuccessTaskConsumingResults(t, namespace, "dagtask1-result")
 	if _, err := c.TaskClient.Create(ctx, task2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
@@ -628,44 +600,37 @@ func TestPipelineLevelFinally_OneFinalTask_StoppedRunFinally(t *testing.T) {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	finalTask2 := getSuccessTaskConsumingResults(t, namespace, []v1beta1.ParamSpec{{Name: "dagtask1-result"}}, []v1beta1.TaskResult{})
+	finalTask2 := getSuccessTaskConsumingResults(t, namespace, "dagtask1-result")
 	if _, err := c.TaskClient.Create(ctx, finalTask2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	pt := map[string]pipelineTask{
-		"dagtask1": {
-			TaskName: task1.Name,
-		},
-		"dagtask2": {
-			TaskName: task2.Name,
-			Param: []v1beta1.Param{{
-				Name: "dagtask1-result",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask1.results.result)",
-				},
-			}},
-		},
-	}
-
-	fpt := map[string]pipelineTask{
-		"finaltask1": {
-			TaskName: finalTask1.Name,
-		},
-		"finaltask2": {
-			TaskName: finalTask2.Name,
-			Param: []v1beta1.Param{{
-				Name: "dagtask1-result",
-				Value: v1beta1.ArrayOrString{
-					Type:      "string",
-					StringVal: "$(tasks.dagtask1.results.result)",
-				},
-			}},
-		},
-	}
-
-	pipeline := getPipeline(t, namespace, pt, fpt)
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  finally:
+  - name: finaltask1
+    taskRef:
+      name: %s
+  - name: finaltask2
+    params:
+    - name: dagtask1-result
+      value: $(tasks.dagtask1.results.result)
+    taskRef:
+      name: %s
+  tasks:
+  - name: dagtask1
+    taskRef:
+      name: %s
+  - name: dagtask2
+    params:
+    - name: dagtask1-result
+      value: $(tasks.dagtask1.results.result)
+    taskRef:
+      name: %s
+`, helpers.ObjectNameForTest(t), namespace, finalTask1.Name, finalTask2.Name, task1.Name, task2.Name))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
@@ -760,125 +725,120 @@ func isSkipped(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) b
 	return false
 }
 
-func getTaskDef(n, namespace, script string, params []v1beta1.ParamSpec, results []v1beta1.TaskResult) *v1beta1.Task {
-	return &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: n, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Image: "alpine"},
-				Script:    script,
-			}},
-			Params:  params,
-			Results: results,
-		},
-	}
-}
-
 func getSuccessTask(t *testing.T, namespace string) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 0", []v1beta1.ParamSpec{}, []v1beta1.TaskResult{})
+	return parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'exit 0'
+`, helpers.ObjectNameForTest(t), namespace))
 }
 
 func getFailTask(t *testing.T, namespace string) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 1", []v1beta1.ParamSpec{}, []v1beta1.TaskResult{})
+	return parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'exit 1'
+`, helpers.ObjectNameForTest(t), namespace))
 }
 
 func getDelaySuccessTask(t *testing.T, namespace string) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "sleep 5; exit 0", []v1beta1.ParamSpec{}, []v1beta1.TaskResult{})
+	return parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'sleep 5; exit 0'
+`, helpers.ObjectNameForTest(t), namespace))
 }
 
 func getTaskVerifyingStatus(t *testing.T, namespace string) *v1beta1.Task {
-	params := []v1beta1.ParamSpec{{
-		Name: "dagtask1-status",
-	}, {
-		Name: "dagtask2-status",
-	}, {
-		Name: "dagtask3-status",
-	}, {
-		Name: "dagtasks-aggregate-status",
-	}}
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 0", params, []v1beta1.TaskResult{})
+	return parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'exit 0'
+  params:
+  - name: dagtask1-status
+  - name: dagtask2-status
+  - name: dagtask3-status
+  - name: dagtasks-aggregate-status
+`, helpers.ObjectNameForTest(t), namespace))
 }
 
 func getSuccessTaskProducingResults(t *testing.T, namespace string) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "echo -n \"Hello\" > $(results.result.path)", []v1beta1.ParamSpec{}, []v1beta1.TaskResult{{Name: "result"}})
+	return parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'echo -n "Hello" > $(results.result.path)'
+  results:
+  - name: result
+`, helpers.ObjectNameForTest(t), namespace))
 }
 
 func getDelaySuccessTaskProducingResults(t *testing.T, namespace string) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "sleep 5; echo -n \"Hello\" > $(results.result.path)", []v1beta1.ParamSpec{}, []v1beta1.TaskResult{{Name: "result"}})
+	return parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'sleep 5; echo -n "Hello" > $(results.result.path)'
+  results:
+  - name: result
+`, helpers.ObjectNameForTest(t), namespace))
 }
 
-func getSuccessTaskConsumingResults(t *testing.T, namespace string, params []v1beta1.ParamSpec, results []v1beta1.TaskResult) *v1beta1.Task {
-	return getTaskDef(helpers.ObjectNameForTest(t), namespace, "exit 0", params, results)
+func getSuccessTaskConsumingResults(t *testing.T, namespace string, paramName string) *v1beta1.Task {
+	return parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'exit 0'
+  params:
+  - name: %s
+`, helpers.ObjectNameForTest(t), namespace, paramName))
 }
 
 func getCondition(t *testing.T, namespace string) *v1alpha1.Condition {
-	return &v1alpha1.Condition{
-		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
-		Spec: v1alpha1.ConditionSpec{
-			Check: v1alpha1.Step{
-				Container: corev1.Container{Image: "ubuntu"},
-				Script:    "exit 1",
-			},
-		},
-	}
-}
-
-type pipelineTask struct {
-	TaskName  string
-	Condition string
-	Param     []v1beta1.Param
-	When      v1beta1.WhenExpressions
-}
-
-func getPipeline(t *testing.T, namespace string, dag map[string]pipelineTask, f map[string]pipelineTask) *v1beta1.Pipeline {
-	var pt []v1beta1.PipelineTask
-	var fpt []v1beta1.PipelineTask
-	for k, v := range dag {
-		task := v1beta1.PipelineTask{
-			Name:    k,
-			TaskRef: &v1beta1.TaskRef{Name: v.TaskName},
-		}
-		if v.Condition != "" {
-			task.Conditions = []v1beta1.PipelineTaskCondition{{
-				ConditionRef: v.Condition,
-			}}
-		}
-		if len(v.Param) != 0 {
-			task.Params = v.Param
-		}
-		if len(v.When) != 0 {
-			task.WhenExpressions = v.When
-		}
-		pt = append(pt, task)
-	}
-	for k, v := range f {
-		finalTask := v1beta1.PipelineTask{
-			Name:    k,
-			TaskRef: &v1beta1.TaskRef{Name: v.TaskName},
-		}
-		if len(v.Param) != 0 {
-			finalTask.Params = v.Param
-		}
-		if len(v.When) != 0 {
-			finalTask.WhenExpressions = v.When
-		}
-		fpt = append(fpt, finalTask)
-	}
-	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks:   pt,
-			Finally: fpt,
-		},
-	}
-	return pipeline
+	return parse.MustParseCondition(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec: 
+  check:
+    image: ubuntu
+    script: 'exit 1'
+`, helpers.ObjectNameForTest(t), namespace))
 }
 
 func getPipelineRun(t *testing.T, namespace, p string) *v1beta1.PipelineRun {
-	return &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: p},
-		},
-	}
+	return parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: %s
+`, helpers.ObjectNameForTest(t), namespace, p))
 }

@@ -20,11 +20,13 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -105,6 +107,7 @@ func TestGitPipelineRun(t *testing.T) {
 			defer tearDown(ctx, t, c, namespace)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
+			// Still using the struct here rather than YAML because we'd have to conditionally determine which fields to set in the YAML.
 			if _, err := c.PipelineResourceClient.Create(ctx, &v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{Name: gitSourceResourceName},
 				Spec: v1alpha1.PipelineResourceSpec{
@@ -121,40 +124,33 @@ func TestGitPipelineRun(t *testing.T) {
 			}
 
 			t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-			if _, err := c.PipelineRunClient.Create(ctx, &v1alpha1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Name: gitTestPipelineRunName},
-				Spec: v1alpha1.PipelineRunSpec{
-					Resources: []v1alpha1.PipelineResourceBinding{{
-						Name:        "git-repo",
-						ResourceRef: &v1alpha1.PipelineResourceRef{Name: gitSourceResourceName},
-					}},
-					PipelineSpec: &v1alpha1.PipelineSpec{
-						Resources: []v1alpha1.PipelineDeclaredResource{{
-							Name: "git-repo", Type: v1alpha1.PipelineResourceTypeGit,
-						}},
-						Tasks: []v1alpha1.PipelineTask{{
-							Name: "git-check",
-							TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-								Resources: &v1beta1.TaskResources{
-									Inputs: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
-										Name: "gitsource", Type: v1alpha1.PipelineResourceTypeGit,
-									}}},
-								},
-								Steps: []v1alpha1.Step{{Container: corev1.Container{
-									Image: "alpine/git",
-									Args:  []string{"--git-dir=/workspace/gitsource/.git", "show"},
-								}}},
-							}},
-							Resources: &v1alpha1.PipelineTaskResources{
-								Inputs: []v1alpha1.PipelineTaskInputResource{{
-									Name:     "gitsource",
-									Resource: "git-repo",
-								}},
-							},
-						}},
-					},
-				},
-			}, metav1.CreateOptions{}); err != nil {
+			if _, err := c.PipelineRunClient.Create(ctx, parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    resources:
+    - name: git-repo
+      type: git
+    tasks:
+    - name: git-check
+      resources:
+        inputs:
+        - name: gitsource
+          resource: git-repo
+      taskSpec:
+        resources:
+          inputs:
+          - name: gitsource
+            type: git
+        steps:
+        - args: ['--git-dir=/workspace/gitsource/.git', 'show']
+          image: alpine/git
+  resources:
+  - name: git-repo
+    resourceRef:
+      name: %s
+`, gitTestPipelineRunName, gitSourceResourceName)), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create PipelineRun %q: %s", gitTestPipelineRunName, err)
 			}
 
@@ -192,6 +188,7 @@ func TestGitPipelineRunFail(t *testing.T) {
 			defer tearDown(ctx, t, c, namespace)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
+			// Still using the struct here rather than YAML because we'd have to conditionally determine which fields to set in the YAML.
 			if _, err := c.PipelineResourceClient.Create(ctx, &v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{Name: gitSourceResourceName},
 				Spec: v1alpha1.PipelineResourceSpec{
@@ -207,40 +204,33 @@ func TestGitPipelineRunFail(t *testing.T) {
 			}
 
 			t.Logf("Creating PipelineRun %s", gitTestPipelineRunName)
-			if _, err := c.PipelineRunClient.Create(ctx, &v1alpha1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Name: gitTestPipelineRunName},
-				Spec: v1alpha1.PipelineRunSpec{
-					Resources: []v1alpha1.PipelineResourceBinding{{
-						Name:        "git-repo",
-						ResourceRef: &v1alpha1.PipelineResourceRef{Name: gitSourceResourceName},
-					}},
-					PipelineSpec: &v1alpha1.PipelineSpec{
-						Resources: []v1alpha1.PipelineDeclaredResource{{
-							Name: "git-repo", Type: v1alpha1.PipelineResourceTypeGit,
-						}},
-						Tasks: []v1alpha1.PipelineTask{{
-							Name: "git-check",
-							TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-								Resources: &v1beta1.TaskResources{
-									Inputs: []v1alpha1.TaskResource{{ResourceDeclaration: v1alpha1.ResourceDeclaration{
-										Name: "gitsource", Type: v1alpha1.PipelineResourceTypeGit,
-									}}},
-								},
-								Steps: []v1alpha1.Step{{Container: corev1.Container{
-									Image: "alpine/git",
-									Args:  []string{"--git-dir=/workspace/gitsource/.git", "show"},
-								}}},
-							}},
-							Resources: &v1alpha1.PipelineTaskResources{
-								Inputs: []v1alpha1.PipelineTaskInputResource{{
-									Name:     "gitsource",
-									Resource: "git-repo",
-								}},
-							},
-						}},
-					},
-				},
-			}, metav1.CreateOptions{}); err != nil {
+			if _, err := c.PipelineRunClient.Create(ctx, parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineSpec:
+    resources:
+    - name: git-repo
+      type: git
+    tasks:
+    - name: git-check
+      resources:
+        inputs:
+        - name: gitsource
+          resource: git-repo
+      taskSpec:
+        resources:
+          inputs:
+          - name: gitsource
+            type: git
+        steps:
+        - args: ['--git-dir=/workspace/gitsource/.git', 'show']
+          image: alpine/git
+  resources:
+  - name: git-repo
+    resourceRef:
+      name: %s
+`, gitTestPipelineRunName, gitSourceResourceName)), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create PipelineRun %q: %s", gitTestPipelineRunName, err)
 			}
 

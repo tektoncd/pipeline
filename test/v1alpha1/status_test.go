@@ -22,9 +22,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/tektoncd/pipeline/test/parse"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -44,35 +42,23 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "banana",
-		},
-		Spec: v1alpha1.TaskSpec{
-			TaskSpec: v1beta1.TaskSpec{
-				Steps: []v1alpha1.Step{{
-					Container: corev1.Container{
-						Image:   "busybox",
-						Command: []string{"ls", "-la"},
-					},
-				}},
-			},
-		},
-	}
+	task := parse.MustParseAlphaTask(t, `
+metadata:
+  name: banana
+spec:
+  steps:
+  - image: busybox
+    command: ['ls', '-la']`)
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "apple",
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			ServiceAccountName: "inexistent",
-			TaskRef: &v1alpha1.TaskRef{
-				Name: "banana",
-			},
-		},
-	}
+	taskRun := parse.MustParseAlphaTaskRun(t, `
+metadata:
+  name: apple
+spec:
+  taskRef:
+    name: banana
+  serviceAccountName: inexistent`)
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
@@ -82,30 +68,21 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	pipeline := &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "tomatoes",
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{{
-				Name: "foo",
-				TaskRef: &v1alpha1.TaskRef{
-					Name: "banana",
-				},
-			}},
-		},
-	}
-	pipelineRun := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pear",
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: &v1alpha1.PipelineRef{
-				Name: "tomatoes",
-			},
-			ServiceAccountName: "inexistent",
-		},
-	}
+	pipeline := parse.MustParseAlphaPipeline(t, `
+metadata:
+  name: tomatoes
+spec:
+  tasks:
+  - name: foo
+    taskRef:
+      name: banana`)
+	pipelineRun := parse.MustParseAlphaPipelineRun(t, `
+metadata:
+  name: pear
+spec:
+  pipelineRef:
+    name: tomatoes
+  serviceAccountName: inexistent`)
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
 	}

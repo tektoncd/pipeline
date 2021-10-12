@@ -22,6 +22,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
@@ -40,7 +42,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := mustParseTask(t, `
+	task := parse.MustParseTask(t, `
 metadata:
   name: banana
 spec:
@@ -51,7 +53,7 @@ spec:
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := mustParseTaskRun(t, `
+	taskRun := parse.MustParseTaskRun(t, `
 metadata:
   name: apple
 spec:
@@ -67,7 +69,7 @@ spec:
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	pipeline := mustParsePipeline(t, `
+	pipeline := parse.MustParsePipeline(t, `
 metadata:
   name: tomatoes
 spec:
@@ -78,7 +80,7 @@ spec:
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", "tomatoes", err)
 	}
-	pipelineRun := mustParsePipelineRun(t, `
+	pipelineRun := parse.MustParsePipelineRun(t, `
 metadata:
   name: pear
 spec:

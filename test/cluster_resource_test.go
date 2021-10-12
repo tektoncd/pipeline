@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -80,7 +82,7 @@ func TestClusterResource(t *testing.T) {
 }
 
 func getClusterResource(t *testing.T, name, sname string) *resourcev1alpha1.PipelineResource {
-	return mustParsePipelineResource(t, fmt.Sprintf(`
+	return parse.MustParsePipelineResource(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -102,7 +104,6 @@ spec:
     secretKey: tokenkey
     secretName: %s
 `, name, sname, sname))
-
 }
 
 func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
@@ -119,7 +120,7 @@ func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
 }
 
 func getClusterResourceTask(t *testing.T, namespace, name, configName string) *v1beta1.Task {
-	return mustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -155,7 +156,7 @@ spec:
 }
 
 func getClusterResourceTaskRun(t *testing.T, namespace, name, taskName, resName string) *v1beta1.TaskRun {
-	return mustParseTaskRun(t, fmt.Sprintf(`
+	return parse.MustParseTaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s

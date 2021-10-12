@@ -17,7 +17,10 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
+
+	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -40,29 +43,25 @@ func TestWindowsScript(t *testing.T) {
 	taskRunName := "windows-script-taskrun"
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 
-	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Image: "mcr.microsoft.com/powershell:nanoserver",
-					},
-					Script: `#!win pwsh.exe -File
-echo Hello`,
-				}, {
-					Container: corev1.Container{
-						Image: "mcr.microsoft.com/powershell:nanoserver",
-					},
-					Script: `#!win
-echo Hello`,
-				}},
-			},
-			PodTemplate: &v1beta1.PodTemplate{
-				NodeSelector: map[string]string{"kubernetes.io/os": "windows"},
-			},
-		},
-	}
+	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  podTemplate:
+    nodeSelector:
+      kubernetes.io/os: windows
+  taskSpec:
+    steps:
+    - image: mcr.microsoft.com/powershell:nanoserver
+      script: |-
+        #!win pwsh.exe -File
+        echo Hello
+    - image: mcr.microsoft.com/powershell:nanoserver
+      script: |-
+        #!win
+        echo Hello
+`, taskRunName, namespace))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
@@ -115,35 +114,29 @@ func TestWindowsScriptFailure(t *testing.T) {
 	taskRunName := "failing-windows-taskrun"
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 
-	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Image: "mcr.microsoft.com/powershell:nanoserver",
-					},
-					Script: `#!win pwsh.exe -File
-echo Hello`,
-				}, {
-					Container: corev1.Container{
-						Image: "mcr.microsoft.com/powershell:nanoserver",
-					},
-					Script: `#!win pwsh.exe -File
-exit 42`,
-				}, {
-					Container: corev1.Container{
-						Image: "mcr.microsoft.com/powershell:nanoserver",
-					},
-					Script: `#!win pwsh.exe -File
-echo Hello`,
-				}},
-			},
-			PodTemplate: &v1beta1.PodTemplate{
-				NodeSelector: map[string]string{"kubernetes.io/os": "windows"},
-			},
-		},
-	}
+	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  podTemplate:
+    nodeSelector:
+      kubernetes.io/os: windows
+  taskSpec:
+    steps:
+    - image: mcr.microsoft.com/powershell:nanoserver
+      script: |-
+        #!win pwsh.exe -File
+        echo Hello
+    - image: mcr.microsoft.com/powershell:nanoserver
+      script: |-
+        #!win pwsh.exe -File
+        exit 42
+    - image: mcr.microsoft.com/powershell:nanoserver
+      script: |-
+        #!win pwsh.exe -File
+        echo Hello
+`, taskRunName, namespace))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}

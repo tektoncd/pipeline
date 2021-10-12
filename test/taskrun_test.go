@@ -20,9 +20,12 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -47,33 +50,33 @@ func TestTaskRunFailure(t *testing.T) {
 	taskRunName := "failing-taskrun"
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "failing-task", Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image:   "busybox",
-				Command: []string{"/bin/sh"},
-				Args:    []string{"-c", "echo hello"},
-			}}, {Container: corev1.Container{
-				Image:   "busybox",
-				Command: []string{"/bin/sh"},
-				Args:    []string{"-c", "exit 1"},
-			}}, {Container: corev1.Container{
-				Image:   "busybox",
-				Command: []string{"/bin/sh"},
-				Args:    []string{"-c", "sleep 30s"},
-			}}},
-		},
-	}
+	task := parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: failing-task
+  namespace: %s
+spec:
+  steps:
+  - image: busybox
+    command: ['/bin/sh']
+    args: ['-c', 'echo hello']
+  - image: busybox
+    command: ['/bin/sh']
+    args: ['-c', 'exit 1']
+  - image: busybox
+    command: ['/bin/sh']
+    args: ['-c', 'sleep 30s']
+`, namespace))
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Name: "failing-task"},
-		},
-	}
+	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: failing-task
+`, taskRunName, namespace))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
@@ -145,26 +148,27 @@ func TestTaskRunStatus(t *testing.T) {
 	fqImageName := getTestImage(busyboxImage)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "status-task", Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			// This was the digest of the latest tag as of 8/12/2019
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Image:   fqImageName,
-				Command: []string{"/bin/sh"},
-				Args:    []string{"-c", "echo hello"},
-			}}},
-		},
-	}
+	task := parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: status-task
+  namespace: %s
+spec:
+  steps:
+  - image: %s
+    command: ['/bin/sh']
+    args: ['-c', 'echo hello']
+`, namespace, fqImageName))
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Name: "status-task"},
-		},
-	}
+	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: status-task
+`, taskRunName, namespace))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}

@@ -20,10 +20,11 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/tektoncd/pipeline/test/parse"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
@@ -45,26 +46,20 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating TaskRun in namespace %s", namespace)
-	if _, err := c.TaskRunClient.Create(ctx, &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: epTaskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Image:      "busybox",
-						WorkingDir: "/workspace",
-					},
-					Script: "sleep 3 && touch foo",
-				}, {
-					Container: corev1.Container{
-						Image:      "ubuntu",
-						WorkingDir: "/workspace",
-					},
-					Script: "ls foo",
-				}},
-			},
-		},
-	}, metav1.CreateOptions{}); err != nil {
+	if _, err := c.TaskRunClient.Create(ctx, parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskSpec:
+    steps:
+    - image: busybox
+      workingDir: /workspace
+      script: 'sleep 3 && touch foo'
+    - image: ubuntu
+      workingDir: /workspace
+      script: 'ls foo'
+`, epTaskRunName, namespace)), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 

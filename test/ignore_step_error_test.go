@@ -22,6 +22,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -35,7 +37,7 @@ func TestMissingResultWhenStepErrorIsIgnored(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	pipelineRun := mustParsePipelineRun(t, `
+	pipelineRun := parse.MustParsePipelineRun(t, `
 metadata:
   name: pipelinerun-with-failing-step
 spec:
