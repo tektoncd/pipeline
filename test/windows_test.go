@@ -20,7 +20,10 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
+
+	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -49,23 +52,20 @@ func TestWindows(t *testing.T) {
 	taskRunName := "windows-taskrun"
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 
-	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Image:   "mcr.microsoft.com/windows/nanoserver:1809",
-						Command: []string{"cmd.exe"},
-						Args:    []string{"/c", "echo hello"},
-					},
-				}},
-			},
-			PodTemplate: &v1beta1.PodTemplate{
-				NodeSelector: map[string]string{"kubernetes.io/os": "windows"},
-			},
-		},
-	}
+	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  podTemplate:
+    nodeSelector:
+      kubernetes.io/os: windows
+  taskSpec:
+    steps:
+    - args: ['-c', 'echo hello']
+      command: ['cmd.exe']
+      image: mcr.microsoft.com/windows/nanoserver:1809
+`, taskRunName, namespace))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
@@ -109,33 +109,26 @@ func TestWindowsFailure(t *testing.T) {
 	taskRunName := "failing-windows-taskrun"
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 
-	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: taskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Image:   "mcr.microsoft.com/windows/nanoserver:1809",
-						Command: []string{"cmd.exe"},
-						Args:    []string{"/c", "echo hello"},
-					}}, {
-					Container: corev1.Container{
-						Image:   "mcr.microsoft.com/windows/nanoserver:1809",
-						Command: []string{"cmd.exe"},
-						Args:    []string{"/c", "exit 1"},
-					}}, {
-					Container: corev1.Container{
-						Image:   "mcr.microsoft.com/windows/nanoserver:1809",
-						Command: []string{"cmd.exe"},
-						Args:    []string{"/c", "ping localhost -n 5"},
-					}},
-				},
-			},
-			PodTemplate: &v1beta1.PodTemplate{
-				NodeSelector: map[string]string{"kubernetes.io/os": "windows"},
-			},
-		},
-	}
+	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  podTemplate:
+    nodeSelector:
+      kubernetes.io/os: windows
+  taskSpec:
+    steps:
+    - args: ['-c', 'echo hello']
+      command: ['cmd.exe']
+      image: mcr.microsoft.com/windows/nanoserver:1809
+    - args: ['-c', 'exit 1']
+      command: ['cmd.exe']
+      image: mcr.microsoft.com/windows/nanoserver:1809
+    - args: ['-c', 'ping localhost -n 5']
+      command: ['cmd.exe']
+      image: mcr.microsoft.com/windows/nanoserver:1809
+`, taskRunName, namespace))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}

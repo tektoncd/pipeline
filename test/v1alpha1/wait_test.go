@@ -21,27 +21,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-)
-
-var (
-	success = apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}
-	failure = apis.Condition{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}
 )
 
 func TestWaitForTaskRunStateSucceed(t *testing.T) {
 	d := Data{
-		TaskRuns: []*v1alpha1.TaskRun{{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-			Status: v1alpha1.TaskRunStatus{Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{success},
-			}},
-		}},
+		TaskRuns: []*v1alpha1.TaskRun{parse.MustParseAlphaTaskRun(t, `
+metadata:
+  name: foo
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+`)},
 	}
 	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
@@ -51,12 +46,14 @@ func TestWaitForTaskRunStateSucceed(t *testing.T) {
 }
 func TestWaitForTaskRunStateFailed(t *testing.T) {
 	d := Data{
-		TaskRuns: []*v1alpha1.TaskRun{{
-			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-			Status: v1alpha1.TaskRunStatus{Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{failure},
-			}},
-		}},
+		TaskRuns: []*v1alpha1.TaskRun{parse.MustParseAlphaTaskRun(t, `
+metadata:
+  name: foo
+status:
+  conditions:
+  - status: "False"
+    type: Succeeded
+`)},
 	}
 	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
@@ -68,12 +65,14 @@ func TestWaitForTaskRunStateFailed(t *testing.T) {
 
 func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 	d := Data{
-		PipelineRuns: []*v1alpha1.PipelineRun{{
-			ObjectMeta: metav1.ObjectMeta{Name: "bar"},
-			Status: v1alpha1.PipelineRunStatus{Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{success},
-			}},
-		}},
+		PipelineRuns: []*v1alpha1.PipelineRun{parse.MustParseAlphaPipelineRun(t, `
+metadata:
+  name: bar
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+`)},
 	}
 	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()
@@ -85,12 +84,14 @@ func TestWaitForPipelineRunStateSucceed(t *testing.T) {
 
 func TestWaitForPipelineRunStateFailed(t *testing.T) {
 	d := Data{
-		PipelineRuns: []*v1alpha1.PipelineRun{{
-			ObjectMeta: metav1.ObjectMeta{Name: "bar"},
-			Status: v1alpha1.PipelineRunStatus{Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{failure},
-			}},
-		}},
+		PipelineRuns: []*v1alpha1.PipelineRun{parse.MustParseAlphaPipelineRun(t, `
+metadata:
+  name: bar
+status:
+  conditions:
+  - status: "False"
+    type: Succeeded
+`)},
 	}
 	c, ctx, cancel := fakeClients(t, d)
 	defer cancel()

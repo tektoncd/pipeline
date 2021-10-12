@@ -26,9 +26,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	knativetest "knative.dev/pkg/test"
@@ -60,25 +61,20 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 				defer tearDown(ctx, t, c, namespace)
 
-				pipelineRun := &v1beta1.PipelineRun{
-					ObjectMeta: metav1.ObjectMeta{Name: helpers.ObjectNameForTest(t), Namespace: namespace},
-					Spec: v1beta1.PipelineRunSpec{
-						PipelineSpec: &v1beta1.PipelineSpec{
-							Tasks: []v1beta1.PipelineTask{{
-								Name:    "task",
-								Retries: numRetries,
-								TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-									Steps: []v1beta1.Step{{
-										Container: corev1.Container{
-											Image: "busybox",
-										},
-										Script: "sleep 5000",
-									}},
-								}},
-							}},
-						},
-					},
-				}
+				pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineSpec:
+    tasks:
+    - name: task
+      retries: %d
+      taskSpec:
+        steps:
+        - image: busybox
+          script: 'sleep 5000'
+`, helpers.ObjectNameForTest(t), namespace, numRetries))
 
 				t.Logf("Creating PipelineRun in namespace %s", namespace)
 				if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {

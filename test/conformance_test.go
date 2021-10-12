@@ -20,8 +20,11 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -55,17 +58,16 @@ func TestTaskRun(t *testing.T) {
 	}{{
 		name:   "successful-task-run",
 		trName: "echo-hello-task-run",
-		tr: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "echo-hello-task-run", Namespace: namespace},
-			Spec: v1beta1.TaskRunSpec{
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
-						Image:   fqImageName,
-						Command: []string{"echo", "\"hello\""},
-					}}},
-				},
-			},
-		},
+		tr: parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: echo-hello-task-run
+  namespace: %s
+spec:
+  taskSpec:
+    steps:
+    - image: %s
+      command: ['echo', '"hello"']
+`, namespace, fqImageName)),
 		fn:                      TaskRunSucceed,
 		expectedConditionStatus: corev1.ConditionTrue,
 		expectedStepState: []v1beta1.StepState{{
@@ -79,26 +81,23 @@ func TestTaskRun(t *testing.T) {
 	}, {
 		name:   "failed-task-run",
 		trName: "failed-echo-hello-task-run",
-		tr: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "failed-echo-hello-task-run", Namespace: namespace},
-			Spec: v1beta1.TaskRunSpec{
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
-						Image:   fqImageName,
-						Command: []string{"/bin/sh"},
-						Args:    []string{"-c", "echo hello"},
-					}}, {Container: corev1.Container{
-						Image:   fqImageName,
-						Command: []string{"/bin/sh"},
-						Args:    []string{"-c", "exit 1"},
-					}}, {Container: corev1.Container{
-						Image:   fqImageName,
-						Command: []string{"/bin/sh"},
-						Args:    []string{"-c", "sleep 30s"},
-					}}},
-				},
-			},
-		},
+		tr: parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: failed-echo-hello-task-run
+  namespace: %s
+spec:
+  taskSpec:
+    steps:
+    - image: %s
+      command: ['/bin/sh']
+      args: ['-c', 'echo hello']
+    - image: %s
+      command: ['/bin/sh']
+      args: ['-c', 'exit 1']
+    - image: %s
+      command: ['/bin/sh']
+      args: ['-c', 'sleep 30s']
+`, namespace, fqImageName, fqImageName, fqImageName)),
 		fn:                      TaskRunFailed,
 		expectedConditionStatus: corev1.ConditionFalse,
 		expectedStepState: []v1beta1.StepState{{

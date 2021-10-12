@@ -30,6 +30,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tektoncd/pipeline/test/parse"
+
 	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -37,7 +39,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	corev1 "k8s.io/api/core/v1"
@@ -72,30 +73,28 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
 	}
 
-	task := &v1beta1.Task{
-		TypeMeta:   metav1.TypeMeta{Kind: "Task", APIVersion: "tekton.dev/v1beta1"},
-		ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Name: "hello", Image: "alpine"},
-				Script:    "echo Hello",
-			}},
-		},
-	}
+	task := parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: alpine
+    script: 'echo Hello'
+`, taskName, namespace))
 
-	pipeline := &v1beta1.Pipeline{
-		TypeMeta:   metav1.TypeMeta{Kind: "Pipeline", APIVersion: "tekton.dev/v1beta1"},
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "hello-world",
-				TaskRef: &v1beta1.TaskRef{
-					Name:   taskName,
-					Bundle: repo,
-				},
-			}},
-		},
-	}
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: hello-world
+    taskRef:
+      name: %s
+      bundle: %s
+`, pipelineName, namespace, taskName, repo))
 
 	// Write the task and pipeline into an image to the registry in the proper format.
 	rawTask, err := yaml.Marshal(task)
@@ -140,14 +139,14 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	publishImg(ctx, t, c, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
-	pr := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name:   pipelineName,
-				Bundle: repo,
-			},
-		}}
+	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineRef:
+    name: %s
+    bundle: %s
+`, pipelineRunName, pipelineName, repo))
 	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
@@ -212,19 +211,17 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
 	}
 
-	pipeline := &v1beta1.Pipeline{
-		TypeMeta:   metav1.TypeMeta{Kind: "Pipeline", APIVersion: "tekton.dev/v1beta1"},
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "hello-world",
-				TaskRef: &v1beta1.TaskRef{
-					Name:   taskName,
-					Bundle: "registry",
-				},
-			}},
-		},
-	}
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: hello-world
+    taskRef:
+      name: %s
+      bundle: registry
+`, pipelineName, namespace, taskName))
 
 	// Write the pipeline into an image to the registry in the proper format. We don't write the task because we are
 	// using an non Tekton Bundle.
@@ -254,14 +251,14 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	publishImg(ctx, t, c, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
-	pr := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name:   pipelineName,
-				Bundle: repo,
-			},
-		}}
+	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineRef:
+    name: %s
+    bundle: %s
+`, pipelineRunName, pipelineName, repo))
 	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
@@ -297,30 +294,28 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
 	}
 
-	task := &v1beta1.Task{
-		TypeMeta:   metav1.TypeMeta{Kind: "Task", APIVersion: "tekton.dev/v1beta1"},
-		ObjectMeta: metav1.ObjectMeta{Name: taskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Name: "hello", Image: "alpine"},
-				Script:    "echo Hello",
-			}},
-		},
-	}
+	task := parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  steps:
+  - name: hello
+    image: alpine
+    script: 'echo Hello'
+`, taskName, namespace))
 
-	pipeline := &v1beta1.Pipeline{
-		TypeMeta:   metav1.TypeMeta{Kind: "Pipeline", APIVersion: "tekton.dev/v1beta1"},
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineName, Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "hello-world",
-				TaskRef: &v1beta1.TaskRef{
-					Name:   taskName,
-					Bundle: repo,
-				},
-			}},
-		},
-	}
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: hello-world
+    taskRef:
+      name: %s
+      bundle: %s
+`, pipelineName, namespace, taskName, repo))
 
 	// Write the pipeline into an image to the registry in the proper format. Write the task using incorrect
 	// annotations.
@@ -367,14 +362,14 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	publishImg(ctx, t, c, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
-	pr := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineRunName},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name:   pipelineName,
-				Bundle: repo,
-			},
-		}}
+	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineRef:
+    name: %s
+    bundle: %s
+`, pipelineRunName, pipelineName, repo))
 	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}

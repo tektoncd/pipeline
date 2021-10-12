@@ -20,17 +20,16 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"sort"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/test/parse"
+
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
@@ -57,146 +56,147 @@ func TestDAGPipelineRun(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	// Create the Task that echoes text
-	repoTaskResource := v1alpha1.TaskResource{ResourceDeclaration: v1alpha1.ResourceDeclaration{
-		Name: "repo", Type: resource.PipelineResourceTypeGit,
-	}}
-	echoTask := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "echo-task", Namespace: namespace},
-		Spec: v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs:  []v1alpha1.TaskResource{repoTaskResource},
-				Outputs: []v1alpha1.TaskResource{repoTaskResource},
-			},
-			Params: []v1alpha1.ParamSpec{{
-				Name: "text", Type: v1alpha1.ParamTypeString,
-				Description: "The text that should be echoed",
-			}},
-			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{Image: "busybox"},
-				Script:    "echo $(params.text)",
-			}, {
-				Container: corev1.Container{Image: "busybox"},
-				Script:    "ln -s $(resources.inputs.repo.path) $(resources.outputs.repo.path)",
-			}},
-		}},
-	}
+	echoTask := parse.MustParseAlphaTask(t, fmt.Sprintf(`
+metadata:
+  name: echo-task
+  namespace: %s
+spec:
+  resources:
+    inputs:
+    - name: repo
+      type: git
+    outputs:
+    - name: repo
+      type: git
+  params:
+  - name: text
+    type: string
+    description: 'The text that should be echoed'
+  steps:
+  - image: busybox
+    script: 'echo $(params["text"])'
+  - image: busybox
+    script: 'ln -s $(resources.inputs.repo.path) $(resources.outputs.repo.path)'
+`, namespace))
 	if _, err := c.TaskClient.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)
 	}
 
 	// Create the repo PipelineResource (doesn't really matter which repo we use)
-	repoResource := &resource.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{Name: "repo"},
-		Spec: resource.PipelineResourceSpec{
-			Type: resource.PipelineResourceTypeGit,
-			Params: []resource.ResourceParam{{
-				Name:  "Url",
-				Value: "https://github.com/githubtraining/example-basic",
-			}},
-		},
-	}
+	repoResource := parse.MustParsePipelineResource(t, `
+metadata:
+  name: repo
+spec:
+  type: git
+  params:
+  - name: Url
+    value: https://github.com/githubtraining/example-basic
+`)
 	if _, err := c.PipelineResourceClient.Create(ctx, repoResource, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create simple repo PipelineResource: %s", err)
 	}
 
 	// Intentionally declaring Tasks in a mixed up order to ensure the order
 	// of execution isn't at all dependent on the order they are declared in
-	pipeline := &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "dag-pipeline", Namespace: namespace},
-		Spec: v1alpha1.PipelineSpec{
-			Resources: []v1alpha1.PipelineDeclaredResource{{
-				Name: "repo", Type: resource.PipelineResourceTypeGit,
-			}},
-			Tasks: []v1alpha1.PipelineTask{{
-				Name:    "pipeline-task-3",
-				TaskRef: &v1alpha1.TaskRef{Name: "echo-task"},
-				Params: []v1alpha1.Param{{
-					Name: "text", Value: *v1beta1.NewArrayOrString("wow"),
-				}},
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "repo", Resource: "repo",
-						From: []string{"pipeline-task-2-parallel-1", "pipeline-task-2-parallel-2"},
-					}},
-					Outputs: []v1alpha1.PipelineTaskOutputResource{{
-						Name: "repo", Resource: "repo",
-					}},
-				},
-			}, {
-				Name:    "pipeline-task-2-parallel-2",
-				TaskRef: &v1alpha1.TaskRef{Name: "echo-task"},
-				Params: []v1alpha1.Param{{
-					Name: "text", Value: *v1beta1.NewArrayOrString("such parallel"),
-				}},
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "repo", Resource: "repo",
-						From: []string{"pipeline-task-1"},
-					}},
-					Outputs: []v1alpha1.PipelineTaskOutputResource{{
-						Name: "repo", Resource: "repo",
-					}},
-				},
-			}, {
-				Name:    "pipeline-task-4",
-				TaskRef: &v1alpha1.TaskRef{Name: "echo-task"},
-				Params: []v1alpha1.Param{{
-					Name: "text", Value: *v1beta1.NewArrayOrString("very cloud native"),
-				}},
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "repo", Resource: "repo",
-					}},
-					Outputs: []v1alpha1.PipelineTaskOutputResource{{
-						Name: "repo", Resource: "repo",
-					}},
-				},
-				RunAfter: []string{"pipeline-task-3"},
-			}, {
-				Name:    "pipeline-task-2-parallel-1",
-				TaskRef: &v1alpha1.TaskRef{Name: "echo-task"},
-				Params: []v1alpha1.Param{{
-					Name: "text", Value: *v1beta1.NewArrayOrString("much graph"),
-				}},
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "repo", Resource: "repo",
-						From: []string{"pipeline-task-1"},
-					}},
-					Outputs: []v1alpha1.PipelineTaskOutputResource{{
-						Name: "repo", Resource: "repo",
-					}},
-				},
-			}, {
-				Name:    "pipeline-task-1",
-				TaskRef: &v1alpha1.TaskRef{Name: "echo-task"},
-				Params: []v1alpha1.Param{{
-					Name: "text", Value: *v1beta1.NewArrayOrString("how to ci/cd?"),
-				}},
-				Resources: &v1alpha1.PipelineTaskResources{
-					Inputs: []v1alpha1.PipelineTaskInputResource{{
-						Name: "repo", Resource: "repo",
-					}},
-					Outputs: []v1alpha1.PipelineTaskOutputResource{{
-						Name: "repo", Resource: "repo",
-					}},
-				},
-			}},
-		},
-	}
+	pipeline := parse.MustParseAlphaPipeline(t, fmt.Sprintf(`
+metadata:
+  name: dag-pipeline
+  namespace: %s
+spec:
+  resources:
+  - name: repo
+    type: git
+  tasks:
+  - name: pipeline-task-3
+    params:
+    - name: text
+      value: wow
+    resources:
+      inputs:
+      - from:
+        - pipeline-task-2-parallel-1
+        - pipeline-task-2-parallel-2
+        name: repo
+        resource: repo
+      outputs:
+      - name: repo
+        resource: repo
+    taskRef:
+      name: echo-task
+  - name: pipeline-task-2-parallel-2
+    params:
+    - name: text
+      value: such parallel
+    resources:
+      inputs:
+      - from:
+        - pipeline-task-1
+        name: repo
+        resource: repo
+      outputs:
+      - name: repo
+        resource: repo
+    taskRef:
+      name: echo-task
+  - name: pipeline-task-4
+    params:
+    - name: text
+      value: very cloud native
+    resources:
+      inputs:
+      - name: repo
+        resource: repo
+      outputs:
+      - name: repo
+        resource: repo
+    runAfter:
+    - pipeline-task-3
+    taskRef:
+      name: echo-task
+  - name: pipeline-task-2-parallel-1
+    params:
+    - name: text
+      value: much graph
+    resources:
+      inputs:
+      - from:
+        - pipeline-task-1
+        name: repo
+        resource: repo
+      outputs:
+      - name: repo
+        resource: repo
+    taskRef:
+      name: echo-task
+  - name: pipeline-task-1
+    params:
+    - name: text
+      value: how to ci/cd?
+    resources:
+      inputs:
+      - name: repo
+        resource: repo
+      outputs:
+      - name: repo
+        resource: repo
+    taskRef:
+      name: echo-task
+`, namespace))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline: %s", err)
 	}
-	pipelineRun := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "dag-pipeline-run", Namespace: namespace},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: &v1alpha1.PipelineRef{Name: "dag-pipeline"},
-			Resources: []v1alpha1.PipelineResourceBinding{{
-				Name:        "repo",
-				ResourceRef: &v1alpha1.PipelineResourceRef{Name: "repo"},
-			}},
-		},
-	}
+	pipelineRun := parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: dag-pipeline-run
+  namespace: %s
+spec:
+  pipelineRef:
+    name: dag-pipeline
+  resources:
+  - name: repo
+    resourceRef:
+      name: repo
+`, namespace))
 	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}

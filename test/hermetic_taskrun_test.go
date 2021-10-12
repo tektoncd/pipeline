@@ -22,12 +22,11 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"time"
+
+	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 // TestHermeticTaskRun make sure that the hermetic execution mode actually drops network from a TaskRun step
@@ -44,7 +43,7 @@ func TestHermeticTaskRun(t *testing.T) {
 
 	tests := []struct {
 		desc       string
-		getTaskRun func(string, string, string) *v1beta1.TaskRun
+		getTaskRun func(*testing.T, string, string, string) *v1beta1.TaskRun
 	}{
 		{
 			desc:       "run-as-root",
@@ -59,7 +58,7 @@ func TestHermeticTaskRun(t *testing.T) {
 		t.Run(test.desc, func(t *testing.T) {
 			// first, run the task run with hermetic=false to prove that it succeeds
 			regularTaskRunName := fmt.Sprintf("not-hermetic-%s", test.desc)
-			regularTaskRun := test.getTaskRun(regularTaskRunName, namespace, "")
+			regularTaskRun := test.getTaskRun(t, regularTaskRunName, namespace, "")
 			t.Logf("Creating TaskRun %s, hermetic=false", regularTaskRunName)
 			if _, err := c.TaskRunClient.Create(ctx, regularTaskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRunName, err)
@@ -71,7 +70,7 @@ func TestHermeticTaskRun(t *testing.T) {
 			// now, run the task mode with hermetic mode
 			// it should fail, since it shouldn't be able to access any network
 			hermeticTaskRunName := fmt.Sprintf("hermetic-should-fail-%s", test.desc)
-			hermeticTaskRun := test.getTaskRun(hermeticTaskRunName, namespace, "hermetic")
+			hermeticTaskRun := test.getTaskRun(t, hermeticTaskRunName, namespace, "hermetic")
 			t.Logf("Creating TaskRun %s, hermetic=true", hermeticTaskRunName)
 			if _, err := c.TaskRunClient.Create(ctx, hermeticTaskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRun.Name, err)
@@ -83,62 +82,49 @@ func TestHermeticTaskRun(t *testing.T) {
 	}
 }
 
-func taskRun(name, namespace, executionMode string) *v1beta1.TaskRun {
-	return &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: name,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				"experimental.tekton.dev/execution-mode": executionMode,
-			},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			Timeout: &metav1.Duration{Duration: time.Minute},
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{
-					{
-						Container: corev1.Container{
-							Name:  "access-network",
-							Image: "ubuntu",
-						},
-						Script: `#!/bin/bash
-set -ex
-apt-get update
-apt-get install -y curl`,
-					},
-				},
-			},
-		},
-	}
+func taskRun(t *testing.T, name, namespace, executionMode string) *v1beta1.TaskRun {
+	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  annotations:
+    experimental.tekton.dev/execution-mode: %s
+  name: %s
+  namespace: %s
+spec:
+  taskSpec:
+    steps:
+    - image: ubuntu
+      name: access-network
+      resources: {}
+      script: |-
+        #!/bin/bash
+        set -ex
+        apt-get update
+        apt-get install -y curl
+  timeout: 1m0s
+`, executionMode, name, namespace))
 }
 
-func unpriviligedTaskRun(name, namespace, executionMode string) *v1beta1.TaskRun {
-	return &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: name,
-			Namespace: namespace,
-			Annotations: map[string]string{
-				"experimental.tekton.dev/execution-mode": executionMode,
-			},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			Timeout: &metav1.Duration{Duration: time.Minute},
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{
-					{
-						Container: corev1.Container{
-							Name:  "curl",
-							Image: "gcr.io/cloud-builders/curl",
-							SecurityContext: &corev1.SecurityContext{
-								RunAsUser:                pointer.Int64Ptr(1000),
-								RunAsNonRoot:             pointer.BoolPtr(true),
-								AllowPrivilegeEscalation: pointer.BoolPtr(false),
-							},
-						},
-						Script: `#!/bin/bash
-set -ex
-curl google.com`,
-					},
-				},
-			},
-		},
-	}
+func unpriviligedTaskRun(t *testing.T, name, namespace, executionMode string) *v1beta1.TaskRun {
+	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  annotations:
+    experimental.tekton.dev/execution-mode: %s
+  name: %s
+  namespace: %s
+spec:
+  taskSpec:
+    steps:
+    - image: gcr.io/cloud-builders/curl
+      name: curl
+      resources: {}
+      script: |-
+        #!/bin/bash
+        set -ex
+        curl google.com
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsNonRoot: true
+        runAsUser: 1000
+  timeout: 1m0s
+`, executionMode, name, namespace))
 }

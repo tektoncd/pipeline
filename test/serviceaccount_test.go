@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/parse"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -113,60 +113,48 @@ func TestPipelineRunWithServiceAccounts(t *testing.T) {
 	}
 
 	// Create a Pipeline with multiple tasks
-	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "pipelinewithsas", Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "task1",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Container: corev1.Container{
-							Image: "ubuntu",
-						},
-						Script: `echo task1`,
-					}},
-				}},
-			}, {
-				Name: "task2",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Container: corev1.Container{
-							Image: "ubuntu",
-						},
-						Script: `echo task2`,
-					}},
-				}},
-			}, {
-				Name: "task3",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Container: corev1.Container{
-							Image: "ubuntu",
-						},
-						Script: `echo task3`,
-					}},
-				}},
-			}},
-		},
-	}
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: pipelinewithsas
+  namespace: %s
+spec:
+  tasks:
+  - name: task1
+    taskSpec:
+      steps:
+      - image: ubuntu
+        script: echo task1
+  - name: task2
+    taskSpec:
+      steps:
+      - image: ubuntu
+        script: echo task2
+  - name: task3
+    taskSpec:
+      steps:
+      - image: ubuntu
+        script: echo task3
+`, namespace))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
 
 	// Create a PipelineRun that uses those ServiceAccount
-	pipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerunwithasas", Namespace: namespace},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "pipelinewithsas"},
-			ServiceAccountName: "sa1",
-			ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{
-				TaskName: "task2", ServiceAccountName: "sa2",
-			}},
-			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
-				PipelineTaskName: "task3", TaskServiceAccountName: "sa3",
-			}},
-		},
-	}
+	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pipelinerunwithasas
+  namespace: %s
+spec:
+  pipelineRef:
+    name: pipelinewithsas
+  serviceAccountName: sa1
+  serviceAccountNames:
+  - serviceAccountName: sa2
+    taskName: task2
+  taskRunSpecs:
+  - pipelineTaskName: task3
+    taskServiceAccountName: sa3
+`, namespace))
 
 	_, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 	if err != nil {
@@ -243,41 +231,38 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 	}
 
 	// Create a Pipeline with multiple tasks
-	pipeline := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "pipelinewithsas", Namespace: namespace},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "task1",
-				TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Container: corev1.Container{
-							Image: "ubuntu",
-						},
-						Script: `echo task1`,
-					}},
-				}},
-			}},
-		},
-	}
+	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: pipelinewithsas
+  namespace: %s
+spec:
+  tasks:
+  - name: task1
+    taskSpec:
+      metadata: {}
+      steps:
+      - image: ubuntu
+        script: echo task1
+`, namespace))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
 
 	dnsPolicy := corev1.DNSClusterFirst
 	// Create a PipelineRun that uses those ServiceAccount
-	pipelineRun := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerunwithasas", Namespace: namespace},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "pipelinewithsas"},
-			ServiceAccountName: "sa1",
-			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
-				PipelineTaskName: "task1",
-				TaskPodTemplate: &pod.Template{
-					DNSPolicy: &dnsPolicy,
-				},
-			}},
-		},
-	}
+	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pipelinerunwithasas
+  namespace: %s
+spec:
+  pipelineRef:
+    name: pipelinewithsas
+  serviceAccountName: sa1
+  taskRunSpecs:
+  - pipelineTaskName: task1
+    taskPodTemplate:
+      dnsPolicy: %s
+`, namespace, dnsPolicy))
 
 	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)

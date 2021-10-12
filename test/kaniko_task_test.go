@@ -23,12 +23,12 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
+
+	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resources "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -62,22 +62,22 @@ func TestKanikoTaskRun(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating Git PipelineResource %s", kanikoGitResourceName)
-	if _, err := c.PipelineResourceClient.Create(ctx, getGitResource(), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineResourceClient.Create(ctx, getGitResource(t), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
 	t.Logf("Creating Image PipelineResource %s", repo)
-	if _, err := c.PipelineResourceClient.Create(ctx, getImageResource(repo), metav1.CreateOptions{}); err != nil {
+	if _, err := c.PipelineResourceClient.Create(ctx, getImageResource(t, repo), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", kanikoTaskName)
-	if _, err := c.TaskClient.Create(ctx, getTask(repo, namespace), metav1.CreateOptions{}); err != nil {
+	if _, err := c.TaskClient.Create(ctx, getTask(t, repo, namespace), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", kanikoTaskName, err)
 	}
 
 	t.Logf("Creating TaskRun %s", kanikoTaskRunName)
-	if _, err := c.TaskRunClient.Create(ctx, getTaskRun(namespace), metav1.CreateOptions{}); err != nil {
+	if _, err := c.TaskRunClient.Create(ctx, getTaskRun(t, namespace), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", kanikoTaskRunName, err)
 	}
 
@@ -132,95 +132,82 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 }
 
-func getGitResource() *v1alpha1.PipelineResource {
-	return &resources.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: kanikoGitResourceName,
-		},
-		Spec: resources.PipelineResourceSpec{
-			Type: resources.PipelineResourceTypeGit,
-			Params: []resources.ResourceParam{
-				{
-					Name:  "Url",
-					Value: "https://github.com/GoogleContainerTools/kaniko",
-				},
-				{
-					Name:  "Revision",
-					Value: revision,
-				},
-			},
-		},
-	}
+func getGitResource(t *testing.T) *v1alpha1.PipelineResource {
+	return parse.MustParsePipelineResource(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  type: git
+  params:
+  - name: Url
+    value: https://github.com/GoogleContainerTools/kaniko
+  - name: Revision
+    value: %s
+`, kanikoGitResourceName, revision))
 }
 
-func getImageResource(repo string) *v1alpha1.PipelineResource {
-	return &resources.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: kanikoImageResourceName,
-		},
-		Spec: resources.PipelineResourceSpec{
-			Type: resources.PipelineResourceTypeImage,
-			Params: []resources.ResourceParam{{
-				Name:  "url",
-				Value: repo,
-			}},
-		},
-	}
+func getImageResource(t *testing.T, repo string) *v1alpha1.PipelineResource {
+	return parse.MustParsePipelineResource(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  type: image
+  params:
+  - name: url
+    value: %s
+`, kanikoImageResourceName, repo))
 }
 
-func getTask(repo, namespace string) *v1beta1.Task {
-	root := int64(0)
-	return &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: kanikoTaskName, Namespace: namespace},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "gitsource", Type: resources.PipelineResourceTypeGit,
-				}}},
-				Outputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "builtImage", Type: resources.PipelineResourceTypeImage,
-				}}},
-			},
-			Steps: []v1beta1.Step{{Container: corev1.Container{
-				Name:  "kaniko",
-				Image: getTestImage(kanikoImage),
-				Args: []string{
-					"--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label",
-					fmt.Sprintf("--destination=%s", repo),
-					"--context=/workspace/gitsource",
-					"--oci-layout-path=/workspace/output/builtImage",
-					"--insecure",
-					"--insecure-pull",
-					"--insecure-registry=registry." + namespace + ":5000/",
-				},
-				SecurityContext: &corev1.SecurityContext{
-					RunAsUser: &root,
-				},
-			}}},
-			Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{
-				Name:  "registry",
-				Image: getTestImage(registryImage),
-			}}},
-		},
-	}
+func getTask(t *testing.T, repo, namespace string) *v1beta1.Task {
+	return parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  resources:
+    inputs:
+    - name: gitsource
+      type: git
+    outputs:
+    - name: builtImage
+      type: image
+  steps:
+  - name: kaniko
+    image: %s
+    args: ['--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label',
+           '--destination=%s',
+		   '--context=/workspace/gitsource',
+		   '--oci-layout-path=/workspace/output/builtImage',
+		   '--insecure',
+		   '--insecure-pull',
+		   '--insecure-registry=registry.%s:5000/']
+    securityContext:
+      runAsUser: 0
+  sidecars:
+  - name: registry
+    image: %s
+`, kanikoTaskName, namespace, getTestImage(kanikoImage), repo, namespace, getTestImage(registryImage)))
 }
 
-func getTaskRun(namespace string) *v1beta1.TaskRun {
-	return &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: kanikoTaskRunName, Namespace: namespace},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{Name: kanikoTaskName},
-			Timeout: &metav1.Duration{Duration: 2 * time.Minute},
-			Resources: &v1beta1.TaskRunResources{
-				Inputs: []v1beta1.TaskResourceBinding{{PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-					Name: "gitsource", ResourceRef: &v1beta1.PipelineResourceRef{Name: kanikoGitResourceName},
-				}}},
-				Outputs: []v1beta1.TaskResourceBinding{{PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-					Name: "builtImage", ResourceRef: &v1beta1.PipelineResourceRef{Name: kanikoImageResourceName},
-				}}},
-			},
-		},
-	}
+func getTaskRun(t *testing.T, namespace string) *v1beta1.TaskRun {
+	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  taskRef:
+    name: %s
+  timeout: 2m
+  resources:
+    inputs:
+    - name: gitsource
+      resourceRef:
+        name: %s
+    outputs:
+    - name: builtImage
+      resourceRef:
+        name: %s
+`, kanikoTaskRunName, namespace, kanikoTaskName, kanikoGitResourceName, kanikoImageResourceName))
 }
 
 // getRemoteDigest starts a pod to query the registry from the namespace itself, using skopeo (and jq).

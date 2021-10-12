@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -58,26 +58,26 @@ func TestPipelineRun(t *testing.T) {
 		testSetup              func(ctx context.Context, t *testing.T, c *clients, namespace string, index int)
 		expectedTaskRuns       []string
 		expectedNumberOfEvents int
-		pipelineRunFunc        func(int, string) *v1alpha1.PipelineRun
+		pipelineRunFunc        func(*testing.T, int, string) *v1alpha1.PipelineRun
 	}
 
 	tds := []tests{{
 		name: "fan-in and fan-out",
 		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) {
 			t.Helper()
-			for _, task := range getFanInFanOutTasks() {
+			for _, task := range getFanInFanOutTasks(t) {
 				if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 					t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 				}
 			}
 
-			for _, res := range getFanInFanOutGitResources() {
+			for _, res := range getFanInFanOutGitResources(t) {
 				if _, err := c.PipelineResourceClient.Create(ctx, res, metav1.CreateOptions{}); err != nil {
 					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
 				}
 			}
 
-			if _, err := c.PipelineClient.Create(ctx, getFanInFanOutPipeline(index), metav1.CreateOptions{}); err != nil {
+			if _, err := c.PipelineClient.Create(ctx, getFanInFanOutPipeline(t, index), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(pipelineName, index), err)
 			}
 		},
@@ -98,41 +98,26 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to create SA `%s`: %s", getName(saName, index), err)
 			}
 
-			task := &v1alpha1.Task{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: getName(taskName, index),
-				},
-				Spec: v1alpha1.TaskSpec{
-					Inputs: &v1alpha1.Inputs{
-						Params: []v1alpha1.ParamSpec{
-							{
-								Name: "path",
-								Type: v1alpha1.ParamTypeString,
-							},
-							{
-								Name: "dest",
-								Type: v1alpha1.ParamTypeString,
-							},
-						},
-					},
-					TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1alpha1.Step{{
-							// Reference build: https://github.com/knative/build/tree/master/test/docker-basic
-							Container: corev1.Container{
-								Name:    "config-docker",
-								Image:   "gcr.io/tekton-releases/dogfooding/skopeo:latest",
-								Command: []string{"skopeo"},
-								Args:    []string{"copy", "$(inputs.params.path)", "$(inputs.params.dest)"},
-							},
-						}},
-					},
-				},
-			}
+			task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  params:
+  - name: path
+    type: string
+  - name: dest
+    type: string
+  steps:
+  - name: config-docker
+    image: gcr.io/tekton-releases/dogfooding/skopeo:latest
+    command: ['skopeo']
+    args: ['copy', '$(inputs.params.path)', '$(inputs.params.dest)']
+`, getName(taskName, index)))
 			if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
 			}
 
-			if _, err := c.PipelineClient.Create(ctx, getHelloWorldPipelineWithSingularTask(index), metav1.CreateOptions{}); err != nil {
+			if _, err := c.PipelineClient.Create(ctx, getHelloWorldPipelineWithSingularTask(t, index), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(pipelineName, index), err)
 			}
 		},
@@ -149,27 +134,20 @@ func TestPipelineRun(t *testing.T) {
 				t.Fatalf("Failed to create Condition `%s`: %s", cond1Name, err)
 			}
 
-			task := &v1alpha1.Task{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: getName(taskName, index),
-				},
-				Spec: v1alpha1.TaskSpec{
-					TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1alpha1.Step{{
-							Container: corev1.Container{
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "echo hello, world"},
-							},
-						}},
-					},
-				},
-			}
+			task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  steps:
+  - image: ubuntu
+    command: ['/bin/bash']
+    args: ['-c', 'echo hello, world']
+`, getName(taskName, index)))
 
 			if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", getName(taskName, index), err)
 			}
-			if _, err := c.PipelineClient.Create(ctx, getPipelineWithFailingCondition(index), metav1.CreateOptions{}); err != nil {
+			if _, err := c.PipelineClient.Create(ctx, getPipelineWithFailingCondition(t, index), metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", getName(pipelineName, index), err)
 			}
 		},
@@ -196,7 +174,7 @@ func TestPipelineRun(t *testing.T) {
 			td.testSetup(ctx, t, c, namespace, i)
 
 			prName := fmt.Sprintf("%s%d", pipelineRunName, i)
-			pipelineRun, err := c.PipelineRunClient.Create(ctx, td.pipelineRunFunc(i, namespace), metav1.CreateOptions{})
+			pipelineRun, err := c.PipelineRunClient.Create(ctx, td.pipelineRunFunc(t, i, namespace), metav1.CreateOptions{})
 			if err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
 			}
@@ -275,300 +253,187 @@ func TestPipelineRun(t *testing.T) {
 	}
 }
 
-func getHelloWorldPipelineWithSingularTask(suffix int) *v1alpha1.Pipeline {
-	return &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: getName(pipelineName, suffix),
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Params: []v1alpha1.ParamSpec{
-				{
-					Name: "path",
-					Type: v1alpha1.ParamTypeString,
-				},
-				{
-					Name: "dest",
-					Type: v1alpha1.ParamTypeString,
-				},
-			},
-			Tasks: []v1alpha1.PipelineTask{{
-				Name: task1Name,
-				TaskRef: &v1alpha1.TaskRef{
-					Name: getName(taskName, suffix),
-				},
-				Params: []v1alpha1.Param{
-					{
-						Name: "path",
-						Value: v1alpha1.ArrayOrString{
-							Type:      v1alpha1.ParamTypeString,
-							StringVal: "$(params.path)",
-						},
-					},
-					{
-						Name: "dest",
-						Value: v1alpha1.ArrayOrString{
-							Type:      v1alpha1.ParamTypeString,
-							StringVal: "$(params.dest)",
-						},
-					},
-				},
-			}},
-		},
-	}
+func getHelloWorldPipelineWithSingularTask(t *testing.T, suffix int) *v1alpha1.Pipeline {
+	return parse.MustParseAlphaPipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  params:
+  - name: path
+    type: string
+  - name: dest
+    type: string
+  tasks:
+  - name: %s
+    params:
+    - name: path
+      value: $(params["path"])
+    - name: dest
+      value: $(params.dest)
+    taskRef:
+      name: %s
+`, getName(pipelineName, suffix), task1Name, getName(taskName, suffix)))
 }
 
-func getFanInFanOutTasks() []*v1alpha1.Task {
-	inWorkspaceResource := v1alpha1.TaskResource{
-		ResourceDeclaration: v1alpha1.ResourceDeclaration{
-			Name: "workspace",
-			Type: v1alpha1.PipelineResourceTypeGit,
-		},
-	}
-	outWorkspaceResource := v1alpha1.TaskResource{
-		ResourceDeclaration: v1alpha1.ResourceDeclaration{
-			Name: "workspace",
-			Type: v1alpha1.PipelineResourceTypeGit,
-		},
-	}
+func getFanInFanOutTasks(t *testing.T) []*v1alpha1.Task {
 	return []*v1alpha1.Task{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "create-file",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name:       "workspace",
-							Type:       v1alpha1.PipelineResourceTypeGit,
-							TargetPath: "brandnewspace",
-						},
-					}},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{outWorkspaceResource},
-				},
-				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{
-						{
-							Container: corev1.Container{
-								Name:    "write-data-task-0-step-0",
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "echo stuff > $(outputs.resources.workspace.path)/stuff"},
-							},
-						},
-						{
-							Container: corev1.Container{
-								Name:    "write-data-task-0-step-1",
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "echo other > $(outputs.resources.workspace.path)/other"},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "check-create-file-exists",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{inWorkspaceResource},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{outWorkspaceResource},
-				},
-				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{
-						{
-							Container: corev1.Container{
-								Name:    "read-from-task-0",
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]"},
-							},
-						},
-						{
-							Container: corev1.Container{
-								Name:    "write-data-task-1",
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "echo something > $(outputs.resources.workspace.path)/something"},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "check-create-file-exists-2",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{inWorkspaceResource},
-				},
-				Outputs: &v1alpha1.Outputs{
-					Resources: []v1alpha1.TaskResource{outWorkspaceResource},
-				},
-				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{
-						{
-							Container: corev1.Container{
-								Name:    "read-from-task-0",
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]"},
-							},
-						},
-						{
-							Container: corev1.Container{
-								Name:    "write-data-task-1",
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "echo else > $(outputs.resources.workspace.path)/else"},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "read-files",
-			},
-			Spec: v1alpha1.TaskSpec{
-				Inputs: &v1alpha1.Inputs{
-					Resources: []v1alpha1.TaskResource{{
-						ResourceDeclaration: v1alpha1.ResourceDeclaration{
-							Name:       "workspace",
-							Type:       v1alpha1.PipelineResourceTypeGit,
-							TargetPath: "readingspace",
-						},
-					}},
-				},
-				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1alpha1.Step{
-						{
-							Container: corev1.Container{
-								Name:    "read-from-task-0",
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]"},
-							},
-						},
-						{
-							Container: corev1.Container{
-								Name:    "read-from-task-1",
-								Image:   "ubuntu",
-								Command: []string{"/bin/bash"},
-								Args:    []string{"-c", "[[ else == $(cat $(inputs.resources.workspace.path)/else) ]]"},
-							},
-						},
-					},
-				},
-			},
-		},
+		parse.MustParseAlphaTask(t, `
+metadata:
+  name: create-file
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      targetPath: brandnewspace
+      type: git
+  outputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - args: ['-c', 'echo stuff > $(resources.outputs.workspace.path)/stuff']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: write-data-task-0-step-0
+  - args: ['-c', 'echo other > $(resources.outputs.workspace.path)/other']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: write-data-task-0-step-1
+`),
+		parse.MustParseAlphaTask(t, `
+metadata:
+  name: check-create-files-exists
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  outputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - args: ['-c', '[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: read-from-task-0
+  - args: ['-c', 'echo something > $(outputs.resources.workspace.path)/something']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: write-data-task-1
+`),
+		parse.MustParseAlphaTask(t, `
+metadata:
+  name: check-create-files-exists-2
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+  outputs:
+    resources:
+    - name: workspace
+      type: git
+  steps:
+  - args: ['-c', '[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: read-from-task-0
+  - args: ['-c', 'echo else > $(outputs.resources.workspace.path)/else']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: write-data-task-1
+`),
+		parse.MustParseAlphaTask(t, `
+metadata:
+  name: read-files
+spec:
+  inputs:
+    resources:
+    - name: workspace
+      type: git
+      targetPath: readingspace
+  steps:
+  - args: ['-c', '[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: read-from-task-0
+  - args: ['-c', '[[ else == $(cat $(inputs.resources.workspace.path)/else) ]]']
+    command: ['/bin/bash']
+    image: ubuntu
+    name: read-from-task-1
+`),
 	}
 }
 
-func getFanInFanOutPipeline(suffix int) *v1alpha1.Pipeline {
-	outGitResource := v1alpha1.PipelineTaskOutputResource{
-		Name:     "workspace",
-		Resource: "git-repo",
-	}
-
-	return &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: getName(pipelineName, suffix),
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Resources: []v1alpha1.PipelineDeclaredResource{{
-				Name: "git-repo",
-				Type: v1alpha1.PipelineResourceTypeGit,
-			}},
-			Tasks: []v1alpha1.PipelineTask{
-				{
-					Name: "create-file-kritis",
-					TaskRef: &v1alpha1.TaskRef{
-						Name: "create-file",
-					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Inputs: []v1alpha1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-						}},
-						Outputs: []v1alpha1.PipelineTaskOutputResource{outGitResource},
-					},
-				},
-				{
-					Name: "create-fan-out-1",
-					TaskRef: &v1alpha1.TaskRef{
-						Name: "check-create-file-exists",
-					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Inputs: []v1alpha1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-							From:     []string{"create-file-kritis"},
-						}},
-						Outputs: []v1alpha1.PipelineTaskOutputResource{outGitResource},
-					},
-				},
-				{
-					Name: "create-fan-out-2",
-					TaskRef: &v1alpha1.TaskRef{
-						Name: "check-create-file-exists-2",
-					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Inputs: []v1alpha1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-							From:     []string{"create-file-kritis"},
-						}},
-						Outputs: []v1alpha1.PipelineTaskOutputResource{outGitResource},
-					},
-				},
-				{
-					Name: "check-fan-in",
-					TaskRef: &v1alpha1.TaskRef{
-						Name: "read-files",
-					},
-					Resources: &v1alpha1.PipelineTaskResources{
-						Inputs: []v1alpha1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-							From:     []string{"create-fan-out-2", "create-fan-out-1"},
-						}},
-					},
-				},
-			},
-		},
-	}
+func getFanInFanOutPipeline(t *testing.T, suffix int) *v1alpha1.Pipeline {
+	return parse.MustParseAlphaPipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  resources:
+  - name: git-repo
+    type: git
+  tasks:
+  - name: create-file-kritis
+    resources:
+      inputs:
+      - name: workspace
+        resource: git-repo
+      outputs:
+      - name: workspace
+        resource: git-repo
+    taskRef:
+      name: create-file
+  - name: create-fan-out-1
+    resources:
+      inputs:
+      - from:
+        - create-file-kritis
+        name: workspace
+        resource: git-repo
+      outputs:
+      - name: workspace
+        resource: git-repo
+    taskRef:
+      name: check-create-files-exists
+  - name: create-fan-out-2
+    resources:
+      inputs:
+      - from:
+        - create-file-kritis
+        name: workspace
+        resource: git-repo
+      outputs:
+      - name: workspace
+        resource: git-repo
+    taskRef:
+      name: check-create-files-exists-2
+  - name: check-fan-in
+    resources:
+      inputs:
+      - from:
+        - create-fan-out-2
+        - create-fan-out-1
+        name: workspace
+        resource: git-repo
+    taskRef:
+      name: read-files
+`, getName(pipelineName, suffix)))
 }
 
-func getFanInFanOutGitResources() []*v1alpha1.PipelineResource {
-	return []*v1alpha1.PipelineResource{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "kritis-resource-git",
-		},
-		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeGit,
-			Params: []v1alpha1.ResourceParam{
-				{
-					Name:  "Url",
-					Value: "https://github.com/grafeas/kritis",
-				},
-				{
-					Name:  "Revision",
-					Value: "master",
-				},
-			},
-		},
-	}}
+func getFanInFanOutGitResources(t *testing.T) []*v1alpha1.PipelineResource {
+	return []*v1alpha1.PipelineResource{parse.MustParsePipelineResource(t, `
+metadata:
+  name: kritis-resource-git
+spec:
+  type: git
+  params:
+  - name: Url
+    value: https://github.com/grafeas/kritis
+  - name: Revision
+    value: master
+`)}
 }
 
 func getPipelineRunServiceAccount(suffix int) *corev1.ServiceAccount {
@@ -581,26 +446,19 @@ func getPipelineRunServiceAccount(suffix int) *corev1.ServiceAccount {
 		}},
 	}
 }
-func getFanInFanOutPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
-	return &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      getName(pipelineRunName, suffix),
-			Namespace: namespace,
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: &v1alpha1.PipelineRef{
-				Name: getName(pipelineName, suffix),
-			},
-			Resources: []v1alpha1.PipelineResourceBinding{
-				{
-					Name: "git-repo",
-					ResourceRef: &v1alpha1.PipelineResourceRef{
-						Name: "kritis-resource-git",
-					},
-				},
-			},
-		},
-	}
+func getFanInFanOutPipelineRun(t *testing.T, suffix int, namespace string) *v1alpha1.PipelineRun {
+	return parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: %s
+  resources:
+  - name: git-repo
+    resourceRef:
+      name: kritis-resource-git
+`, getName(pipelineRunName, suffix), namespace, getName(pipelineName, suffix)))
 }
 
 func getPipelineRunSecret(suffix int) *corev1.Secret {
@@ -631,32 +489,23 @@ func getPipelineRunSecret(suffix int) *corev1.Secret {
 	}
 }
 
-func getHelloWorldPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
-	return &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      getName(pipelineRunName, suffix),
-			Namespace: namespace,
-			Labels: map[string]string{
-				"hello-world-key": "hello-world-value",
-			},
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: &v1alpha1.PipelineRef{
-				Name: getName(pipelineName, suffix),
-			},
-			ServiceAccountName: fmt.Sprintf("%s%d", saName, suffix),
-			Params: []v1alpha1.Param{
-				{
-					Name:  "path",
-					Value: *v1beta1.NewArrayOrString("docker://gcr.io/build-crd-testing/secret-sauce"),
-				},
-				{
-					Name:  "dest",
-					Value: *v1beta1.NewArrayOrString("dir:///tmp/"),
-				},
-			},
-		},
-	}
+func getHelloWorldPipelineRun(t *testing.T, suffix int, namespace string) *v1alpha1.PipelineRun {
+	return parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  labels:
+    hello-world-key: hello-world-value
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: path
+    value: docker://gcr.io/build-crd-testing/secret-sauce
+  - name: dest
+    value: dir:///tmp/
+  pipelineRef:
+    name: %s
+  serviceAccountName: %s%d
+`, getName(pipelineRunName, suffix), namespace, getName(pipelineName, suffix), saName, suffix))
 }
 
 func getName(namespace string, suffix int) string {
@@ -818,32 +667,22 @@ func assertAnnotationsMatch(t *testing.T, expectedAnnotations, actualAnnotations
 	}
 }
 
-func getPipelineWithFailingCondition(suffix int) *v1alpha1.Pipeline {
-	return &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: getName(pipelineName, suffix),
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{
-				{
-					Name: task1Name,
-					TaskRef: &v1alpha1.TaskRef{
-						Name: getName(taskName, suffix),
-					},
-					Conditions: []v1alpha1.PipelineTaskCondition{{
-						ConditionRef: cond1Name,
-					}},
-				},
-				{
-					Name: "task2",
-					TaskRef: &v1alpha1.TaskRef{
-						Name: getName(taskName, suffix),
-					},
-					RunAfter: []string{task1Name},
-				},
-			},
-		},
-	}
+func getPipelineWithFailingCondition(t *testing.T, suffix int) *v1alpha1.Pipeline {
+	return parse.MustParseAlphaPipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  tasks:
+  - name: %s
+    taskRef:
+      name: %s
+    conditions:
+    - conditionRef: %s
+  - name: task2
+    taskRef:
+      name: %s
+    runAfter: ['%s']
+`, getName(pipelineName, suffix), task1Name, getName(taskName, suffix), cond1Name, getName(taskName, suffix), task1Name))
 }
 
 func getFailingCondition(namespace string) *v1alpha1.Condition {
@@ -864,19 +703,15 @@ func getFailingCondition(namespace string) *v1alpha1.Condition {
 	}
 }
 
-func getConditionalPipelineRun(suffix int, namespace string) *v1alpha1.PipelineRun {
-	return &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      getName(pipelineRunName, suffix),
-			Namespace: namespace,
-			Labels: map[string]string{
-				"hello-world-key": "hello-world-value",
-			},
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: &v1alpha1.PipelineRef{
-				Name: getName(pipelineName, suffix),
-			},
-		},
-	}
+func getConditionalPipelineRun(t *testing.T, suffix int, namespace string) *v1alpha1.PipelineRun {
+	return parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  labels:
+    hello-world-key: hello-world-vaule
+spec:
+  pipelineRef:
+    name: %s
+`, getName(pipelineRunName, suffix), namespace, getName(pipelineName, suffix)))
 }

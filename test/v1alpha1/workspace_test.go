@@ -20,12 +20,12 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/parse"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -44,47 +44,34 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: taskName,
-		},
-		Spec: v1alpha1.TaskSpec{
-			TaskSpec: v1beta1.TaskSpec{
-				Steps: []v1alpha1.Step{{
-					Container: corev1.Container{
-						Image: "alpine",
-					},
-					Script: "echo foo > /workspace/test/file",
-				}},
-				Workspaces: []v1alpha1.WorkspaceDeclaration{{
-					Name:        "test",
-					Description: "test workspace",
-					MountPath:   "/workspace/test",
-					ReadOnly:    true,
-				}},
-			},
-		},
-	}
+	task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'echo foo > /workspace/test/file'
+  workspaces:
+  - name: test
+    description: 'test workspace'
+    mountPath: /workspace/test
+    readOnly: true
+`, taskName))
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	taskRun := &v1alpha1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: taskRunName,
-		},
-		Spec: v1alpha1.TaskRunSpec{
-			TaskRef: &v1alpha1.TaskRef{
-				Name: taskName,
-			},
-			ServiceAccountName: "default",
-			Workspaces: []v1alpha1.WorkspaceBinding{{
-				Name:     "test",
-				SubPath:  "",
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			}},
-		},
-	}
+	taskRun := parse.MustParseAlphaTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  taskRef:
+    name: %s
+  serviceAccountName: default
+  workspaces:
+  - name: test
+    emptyDir: {}
+`, taskRunName, taskName))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
@@ -133,76 +120,53 @@ func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: taskName,
-		},
-		Spec: v1alpha1.TaskSpec{
-			TaskSpec: v1beta1.TaskSpec{
-				Steps: []v1alpha1.Step{{
-					Container: corev1.Container{
-						Image: "alpine",
-					},
-					Script: "cat /workspace/test/file",
-				}},
-				Workspaces: []v1alpha1.WorkspaceDeclaration{{
-					Name:        "test",
-					Description: "test workspace",
-					MountPath:   "/workspace/test/file",
-					ReadOnly:    true,
-				}},
-			},
-		},
-	}
+	task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'cat /workspace/test/file'
+  workspaces:
+  - name: test
+    description: 'test workspace'
+    mountPath: /workspace/test
+    readOnly: true
+`, taskName))
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	pipeline := &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: pipelineName,
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{{
-				TaskRef: &v1alpha1.TaskRef{
-					Name: taskName,
-				},
-				Name: taskName,
-				Workspaces: []v1alpha1.WorkspacePipelineTaskBinding{{
-					Name:      "test",
-					Workspace: "foo",
-					SubPath:   "",
-				}},
-			}},
-			Workspaces: []v1alpha1.PipelineWorkspaceDeclaration{{
-				Name: "foo",
-			}},
-		},
-	}
+	pipeline := parse.MustParseAlphaPipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  workspaces:
+  - name: foo
+  tasks:
+  - name: %s
+    taskRef:
+      name: %s
+    workspaces:
+    - name: test
+      workspace: foo
+`, pipelineName, taskName, taskName))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pipelineRun := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: pipelineRunName,
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: &v1alpha1.PipelineRef{
-				Name: pipelineName,
-			},
-			Workspaces: []v1alpha1.WorkspaceBinding{
-				{
-					Name:     "foo",
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-				{
-					Name:     "foo",
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-		},
-	}
+	pipelineRun := parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineRef:
+    name: %s
+  workspaces:
+  - name: foo
+    emptyDir: {}
+  - name: foo
+    emptyDir: {}
+`, pipelineRunName, pipelineName))
 	_, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 
 	if err == nil || !strings.Contains(err.Error(), "provided by pipelinerun more than once") {
@@ -223,66 +187,48 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	task := &v1alpha1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: taskName,
-		},
-		Spec: v1alpha1.TaskSpec{
-			TaskSpec: v1beta1.TaskSpec{
-				Steps: []v1alpha1.Step{{
-					Container: corev1.Container{
-						Image: "alpine",
-					},
-					Script: "cat /workspace/test/file",
-				}},
-				Workspaces: []v1alpha1.WorkspaceDeclaration{{
-					Name:        "test",
-					Description: "test workspace",
-					MountPath:   "/workspace/test/file",
-					ReadOnly:    true,
-				}},
-			},
-		},
-	}
+	task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  steps:
+  - image: alpine
+    script: 'cat /workspace/test/file'
+  workspaces:
+  - name: test
+    description: 'test workspace'
+    mountPath: /workspace/test/file
+    readOnly: true
+`, taskName))
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	pipeline := &v1alpha1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: pipelineName,
-		},
-		Spec: v1alpha1.PipelineSpec{
-			Tasks: []v1alpha1.PipelineTask{{
-				TaskRef: &v1alpha1.TaskRef{
-					Name: taskName,
-				},
-				Name: taskName,
-				Workspaces: []v1alpha1.WorkspacePipelineTaskBinding{{
-					Name:      "test",
-					Workspace: "foo",
-					SubPath:   "",
-				}},
-			}},
-			Workspaces: []v1alpha1.PipelineWorkspaceDeclaration{{
-				Name: "foo",
-			}},
-		},
-	}
+	pipeline := parse.MustParseAlphaPipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  workspaces:
+  - name: foo
+  tasks:
+  - name: %s
+    taskRef:
+      name: %s
+    workspaces:
+    - name: test
+      workspace: foo
+`, pipelineName, taskName, taskName))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pipelineRun := &v1alpha1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: pipelineRunName,
-		},
-		Spec: v1alpha1.PipelineRunSpec{
-			PipelineRef: &v1alpha1.PipelineRef{
-				Name: pipelineName,
-			},
-		},
-	}
+	pipelineRun := parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  pipelineRef:
+    name: %s
+`, pipelineRunName, pipelineName))
 	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
