@@ -86,7 +86,7 @@ func validateResultRef(ref *v1beta1.ResultRef, ptMap map[string]*ResolvedPipelin
 	return nil
 }
 
-// validateOptionalWorkspaces validates that any workspaces in the Pipeline that are
+// ValidateOptionalWorkspaces validates that any workspaces in the Pipeline that are
 // marked as optional are also marked optional in the Tasks that receive them. This
 // prevents a situation where a Task requires a workspace but a Pipeline does not offer
 // the same guarantee the workspace will be provided at runtime.

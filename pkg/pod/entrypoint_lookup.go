@@ -32,7 +32,7 @@ type EntrypointCache interface {
 	// not found in the cache, it will be fetched from the image registry,
 	// possibly using K8s service account imagePullSecrets.
 	Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (v1.Image, error)
-	// Update the cache with a new digest->Image mapping. This will avoid a
+	// Set updates the cache with a new digest->Image mapping. This will avoid a
 	// remote registry lookup next time Get is called.
 	Set(digest name.Digest, img v1.Image)
 }

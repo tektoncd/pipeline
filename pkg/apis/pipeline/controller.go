@@ -34,6 +34,6 @@ const (
 	// ClusterTaskControllerName holds the name of the Task controller
 	ClusterTaskControllerName = "ClusterTask"
 
-	// RuncControllerName holds the name of the Custom Task controller
+	// RunControllerName holds the name of the Custom Task controller
 	RunControllerName = "Run"
 )
