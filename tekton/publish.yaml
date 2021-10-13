@@ -85,6 +85,12 @@ spec:
       #!/bin/sh
       set -ex
 
+      # Setup docker-auth
+      DOCKER_CONFIG=~/.docker
+      mkdir -p ${DOCKER_CONFIG}
+      cp /workspace/docker-config.json ${DOCKER_CONFIG}/config.json
+
+      # Change to directory with vendor/
       cd ${PROJECT_ROOT}
 
       # Combine Distroless with a Windows base image, used for the entrypoint image.
