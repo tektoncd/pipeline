@@ -134,10 +134,11 @@ spec:
           value: $(params.imageRegistryPath)
         - name: releaseAsLatest
           value: $(params.releaseAsLatest)
-        - name: platforms
-          value: $(params.platforms)
         - name: serviceAccountPath
           value: $(params.serviceAccountPath)
+        # NOTE: We're purposefully *not* passing the pipeline's platforms to
+        # this task. We want to use the task's default platforms, which include
+        # windows.
       workspaces:
         - name: source
           workspace: workarea
