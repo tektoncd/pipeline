@@ -88,11 +88,11 @@ func Build(tasks Tasks, deps map[string][]string) (*Graph, error) {
 	return d, nil
 }
 
-// GetSchedulable returns a map of PipelineTask that can be scheduled (keyed
-// by the name of the PipelineTask) given a list of successfully finished doneTasks.
-// It returns tasks which have all dependencies marked as done, and thus can be scheduled. If the
-// specified doneTasks are invalid (i.e. if it is indicated that a Task is
-// done, but the previous Tasks are not done), an error is returned.
+// GetSchedulable returns a set of PipelineTask names that can be scheduled,
+// given a list of successfully finished doneTasks. It returns tasks which have
+// all dependencies marked as done, and thus can be scheduled. If the specified
+// doneTasks are invalid (i.e. if it is indicated that a Task is done, but the
+// previous Tasks are not done), an error is returned.
 func GetSchedulable(g *Graph, doneTasks ...string) (sets.String, error) {
 	roots := getRoots(g)
 	tm := sets.NewString(doneTasks...)
