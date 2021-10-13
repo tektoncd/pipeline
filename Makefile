@@ -61,8 +61,8 @@ s390x:
 ppc64le:
 	GOOS=linux GOARCH=ppc64le go build -mod=vendor $(LDFLAGS) ./cmd/...
 
-KO = $(BIN)/ko
-$(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
+KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
+$(BIN)/ko: PACKAGE=github.com/google/ko
 
 .PHONY: apply
 apply: | $(KO) ; $(info $(M) ko apply -f config/) @ ## Apply config to the current cluster
