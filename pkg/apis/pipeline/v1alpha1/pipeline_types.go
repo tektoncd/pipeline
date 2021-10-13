@@ -49,6 +49,7 @@ type PipelineSpec struct {
 type PipelineResult = v1beta1.PipelineResult
 
 // Check that Pipeline may be validated and defaulted.
+
 // TaskKind defines the type of Task used by the pipeline.
 type TaskKind = v1beta1.TaskKind
 

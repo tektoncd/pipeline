@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	// ReasonUnknown indicates that the execution status of a pipelineTask is unknown
+	// PipelineTaskStateNone indicates that the execution status of a pipelineTask is unknown
 	PipelineTaskStateNone = "None"
 	// PipelineTaskStatusPrefix is a prefix of the param representing execution state of pipelineTask
 	PipelineTaskStatusPrefix = "tasks."

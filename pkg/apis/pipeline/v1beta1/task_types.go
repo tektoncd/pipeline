@@ -181,8 +181,8 @@ type Sidecar struct {
 	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // TaskList contains a list of Task
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TaskList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -206,6 +206,7 @@ type TaskRef struct {
 }
 
 // Check that Pipeline may be validated and defaulted.
+
 // TaskKind defines the type of Task used by the pipeline.
 type TaskKind string
 

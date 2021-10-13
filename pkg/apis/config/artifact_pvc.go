@@ -63,7 +63,7 @@ func (cfg *ArtifactPVC) Equals(other *ArtifactPVC) bool {
 		other.StorageClassName == cfg.StorageClassName
 }
 
-// NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
+// NewArtifactPVCFromMap returns a Config given a map corresponding to a ConfigMap
 func NewArtifactPVCFromMap(cfgMap map[string]string) (*ArtifactPVC, error) {
 	tc := ArtifactPVC{
 		Size: DefaultPVCSize,
@@ -80,7 +80,7 @@ func NewArtifactPVCFromMap(cfgMap map[string]string) (*ArtifactPVC, error) {
 	return &tc, nil
 }
 
-// NewDefaultsFromConfigMap returns a Config for the given configmap
+// NewArtifactPVCFromConfigMap returns a Config for the given configmap
 func NewArtifactPVCFromConfigMap(config *corev1.ConfigMap) (*ArtifactPVC, error) {
 	return NewArtifactPVCFromMap(config.Data)
 }

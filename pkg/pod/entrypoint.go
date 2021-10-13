@@ -267,7 +267,7 @@ func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
 	return false
 }
 
-// isContainerStep returns true if the container name indicates that it
+// IsContainerStep returns true if the container name indicates that it
 // represents a step.
 func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
 

@@ -60,7 +60,7 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 	return nil
 }
 
-// Verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
+// ValidateVariableProhibited verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
@@ -92,7 +92,7 @@ func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.F
 	return nil
 }
 
-// Verifies that variables matching the relevant string expressions are completely isolated if present.
+// ValidateVariableIsolated verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		firstMatch, _ := extractExpressionFromString(value, prefix)
@@ -179,7 +179,7 @@ func ApplyReplacements(in string, replacements map[string]string) string {
 	return replacer.Replace(in)
 }
 
-// Take an input string, and output an array of strings related to possible arrayReplacements. If there aren't any
+// ApplyArrayReplacements takes an input string, and output an array of strings related to possible arrayReplacements. If there aren't any
 // areas where the input can be split up via arrayReplacements, then just return an array with a single element,
 // which is ApplyReplacements(in, replacements).
 func ApplyArrayReplacements(in string, stringReplacements map[string]string, arrayReplacements map[string][]string) []string {

@@ -89,6 +89,7 @@ const (
 	RunSpecStatusCancelled RunSpecStatus = "RunCancelled"
 )
 
+// GetParam gets the Param from the RunSpec with the given name
 // TODO(jasonhall): Move this to a Params type so other code can use it?
 func (rs RunSpec) GetParam(name string) *v1beta1.Param {
 	for _, p := range rs.Params {
