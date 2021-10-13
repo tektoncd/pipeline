@@ -60,6 +60,25 @@ spec:
   - name: IMAGES
   steps:
 
+  - name: container-registy-auth
+    image: gcr.io/go-containerregistry/crane:debug
+    script: |
+      #!/busybox/sh
+      set -ex
+
+      # Login to the container registry
+      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTY_CREDENTIALS} | \
+        crane auth login -u _json_key --password-stdin $(params.imageRegistry) 2>&1 | \
+        sed 's,^.*logged in via \(.*\)$,\1,g')
+
+      # Auth with account credentials for all regions.
+      for region in ${REGIONS}
+      do
+        HOSTNAME=${region}.$(params.imageRegistry)
+        cat ${CONTAINER_REGISTY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
+      done
+      cp ${DOCKER_CONFIG} /workspace/docker-config.json
+
   - name: create-ko-yaml
     image: golang:1.16
     script: |
@@ -87,25 +106,6 @@ spec:
       EOF
 
       cat ${PROJECT_ROOT}/.ko.yaml
-
-  - name: container-registy-auth
-    image: gcr.io/go-containerregistry/crane:debug
-    script: |
-      #!/busybox/sh
-      set -ex
-
-      # Login to the container registry
-      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTY_CREDENTIALS} | \
-        crane auth login -u _json_key --password-stdin $(params.imageRegistry) 2>&1 | \
-        sed 's,^.*logged in via \(.*\)$,\1,g')
-
-      # Auth with account credentials for all regions.
-      for region in ${REGIONS}
-      do
-        HOSTNAME=${region}.$(params.imageRegistry)
-        cat ${CONTAINER_REGISTY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
-      done
-      cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: run-ko
     image: gcr.io/tekton-releases/dogfooding/ko:latest
