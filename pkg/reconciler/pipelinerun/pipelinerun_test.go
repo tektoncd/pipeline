@@ -3230,9 +3230,8 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 
 	if val, ok := reconciledRun.GetLabels()[pipeline.PipelineLabelKey]; !ok {
 		t.Fatalf("expected pipeline label")
-		if d := cmp.Diff("test-pipelines", val); d != "" {
-			t.Errorf("expected to see pipeline label. Diff %s", diff.PrintWantGot(d))
-		}
+	} else if d := cmp.Diff("test-pipeline", val); d != "" {
+		t.Errorf("expected to see pipeline label. Diff %s", diff.PrintWantGot(d))
 	}
 
 	// The PipelineRun should not be cancelled b/c we couldn't cancel the TaskRun
