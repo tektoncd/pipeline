@@ -12,7 +12,7 @@ weight: 200
   - [Defining `Steps`](#defining-steps)
     - [Reserved directories](#reserved-directories)
     - [Running scripts within `Steps`](#running-scripts-within-steps)
-      - [Windows Scripts](#windows-scripts)
+      - [Windows scripts](#windows-scripts)
     - [Specifying a timeout](#specifying-a-timeout)
     - [Specifying `onError` for a `step`](#specifying-onerror-for-a-step)
     - [Accessing Step's `exitCode` in subsequent `Steps`](#accessing-steps-exitcode-in-subsequent-steps)
@@ -21,7 +21,7 @@ weight: 200
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
-  - [Emitting `results`](#emitting-results)
+  - [Emitting `Results`](#emitting-results)
   - [Specifying `Volumes`](#specifying-volumes)
   - [Specifying a `Step` template](#specifying-a-step-template)
   - [Specifying `Sidecars`](#specifying-sidecars)
@@ -34,13 +34,15 @@ weight: 200
     - [Substituting in `Script` blocks](#substituting-in-script-blocks)
 - [Code examples](#code-examples)
   - [Building and pushing a Docker image](#building-and-pushing-a-docker-image)
-  - [Mounting multiple `Volumes`](#mounting-multiple-volumes)
-  - [Mounting a `ConfigMap` as a `Volume` source](#mounting-a-configmap-as-a-volume-source)
-  - [Using a `Secret` as an environment source](#using-a-secret-as-an-environment-source)
-  - [Using a `Sidecar` in a `Task`](#using-a-sidecar-in-a-task)
+    - [Mounting multiple `Volumes`](#mounting-multiple-volumes)
+    - [Mounting a `ConfigMap` as a `Volume` source](#mounting-a-configmap-as-a-volume-source)
+    - [Using a `Secret` as an environment source](#using-a-secret-as-an-environment-source)
+    - [Using a `Sidecar` in a `Task`](#using-a-sidecar-in-a-task)
 - [Debugging](#debugging)
   - [Inspecting the file structure](#inspecting-the-file-structure)
   - [Inspecting the `Pod`](#inspecting-the-pod)
+  - [Running Step Containers as a Non Root User](#running-step-containers-as-a-non-root-user)
+- [`Task` Authoring Recommendations](#task-authoring-recommendations)
 
 ## Overview
 
@@ -588,7 +590,7 @@ spec:
 For more information, see [Using `Workspaces` in `Tasks`](workspaces.md#using-workspaces-in-tasks)
 and the [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml) example YAML file.
 
-### Emitting results
+### Emitting `Results`
 
 A Task is able to emit string results that can be viewed by users and passed to other Tasks in a Pipeline. These
 results have a wide variety of potential uses. To highlight just a few examples from the Tekton Catalog: the
@@ -1204,6 +1206,12 @@ specified at the pod level via the TaskRun `podTemplate`.
 More information about Pod and Container Security Contexts can be found via the [Kubernetes website](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
 
 The example Task/TaskRun above can be found as a [TaskRun example](../examples/v1beta1/taskruns/run-steps-as-non-root.yaml).
+
+## `Task` Authoring Recommendations
+
+Recommendations for authoring `Tasks` are available in the [Tekton Catalog][recommendations].
+
+[recommendations]: https://github.com/tektoncd/catalog/blob/main/recommendations.md
 
 ---
 
