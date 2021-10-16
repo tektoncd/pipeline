@@ -6,24 +6,28 @@ weight: 500
 -->
 # PipelineRuns
 
+<!-- toc -->
 - [PipelineRuns](#pipelineruns)
   - [Overview](#overview)
-  - [Configuring a `PipelineRun`](#configuring-a-pipelinerun)
-    - [Specifying the target `Pipeline`](#specifying-the-target-pipeline)
+  - [Configuring a <code>PipelineRun</code>](#configuring-a-pipelinerun)
+    - [Specifying the target <code>Pipeline</code>](#specifying-the-target-pipeline)
       - [Tekton Bundles](#tekton-bundles)
-  - [Specifying `Resources`](#specifying-resources)
-    - [Specifying `Parameters`](#specifying-parameters)
-    - [Specifying custom `ServiceAccount` credentials](#specifying-custom-serviceaccount-credentials)
-    - [Mapping `ServiceAccount` credentials to `Tasks`](#mapping-serviceaccount-credentials-to-tasks)
-    - [Specifying a `Pod` template](#specifying-a-pod-template)
+    - [Specifying <code>Resources</code>](#specifying-resources)
+    - [Specifying <code>Parameters</code>](#specifying-parameters)
+      - [Implicit Parameters](#implicit-parameters)
+    - [Specifying custom <code>ServiceAccount</code> credentials](#specifying-custom-serviceaccount-credentials)
+    - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
+    - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
     - [Specifying taskRunSpecs](#specifying-taskrunspecs)
-    - [Specifying `Workspaces`](#specifying-workspaces)
-    - [Specifying `LimitRange` values](#specifying-limitrange-values)
+    - [Specifying <code>Workspaces</code>](#specifying-workspaces)
+    - [Specifying <code>LimitRange</code> values](#specifying-limitrange-values)
     - [Configuring a failure timeout](#configuring-a-failure-timeout)
   - [Monitoring execution status](#monitoring-execution-status)
-  - [Cancelling a `PipelineRun`](#cancelling-a-pipelinerun)
-  - [Pending `PipelineRuns`](#pending-pipelineruns)
-
+  - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
+  - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
+  - [Gracefully stopping a <code>PipelineRun</code>](#gracefully-stopping-a-pipelinerun)
+  - [Pending <code>PipelineRuns</code>](#pending-pipelineruns)
+<!-- /toc -->
 
 
 ## Overview
@@ -161,7 +165,7 @@ in [Pipelines](pipelines.md#tekton-bundles) or [TaskRuns](taskruns.md#tekton-bun
 so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
 
 
-## Specifying `Resources`
+### Specifying `Resources`
 
 A `Pipeline` requires [`PipelineResources`](resources.md) to provide inputs and store outputs
 for the `Tasks` that comprise it. You must provision those resources in the `resources` field
