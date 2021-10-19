@@ -193,7 +193,7 @@ Here is an example of a directory layout for a simple Task with 2 script steps:
 | /tekton/termination | where the eventual [termination log message](https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/#writing-and-reading-a-termination-message) is written to [Sequencing step containers](#entrypoint-rewriting-and-step-ordering) |
 
 The following directories are covered by the
-[Tekton API Compatibility policy](../api_compatibility_policy.md), and can be
+[Tekton API Compatibility policy](../../api_compatibility_policy.md), and can be
 relied on for stability:
 
 - `/tekton/results`
