@@ -138,6 +138,10 @@ the pipelines repo, a terminal window and a text editor.
 
     1. Publish the GitHub release once all notes are correct and in order.
 
+1. Create a branch for the release named `release-<version number>x`, e.g. [`release-v0.28.x`](https://github.com/tektoncd/pipeline/tree/release-v0.28.x)
+   and push it to the repo https://github.com/tektoncd/pipeline.
+   Make sure to fetch the commit specified in `TEKTON_RELEASE_GIT_SHA` to create the released branch.
+
 1. Edit `README.md` on `main` branch, add entry to docs table with latest release links.
 
 1. Push & make PR for updated `README.md`
@@ -174,7 +178,7 @@ Congratulations, you're done!
    a short memorable name such as `dogfooding`:
 
    ```bash
-   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfoodin
+   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfooding
    ```
 
 1. **Important: Switch `kubectl` back to your own cluster by default.**
