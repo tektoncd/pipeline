@@ -151,7 +151,7 @@ func TestPodBuild(t *testing.T) {
 		desc: "simple with breakpoint onFailure enabled, alpha api fields disabled",
 		trs: v1beta1.TaskRunSpec{
 			Debug: &v1beta1.TaskRunDebug{
-				Breakpoint: []string{BreakpointOnFailure},
+				Breakpoint: []string{breakpointOnFailure},
 			},
 		},
 		ts: v1beta1.TaskSpec{
@@ -1526,7 +1526,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		desc: "simple with debug breakpoint onFailure",
 		trs: v1beta1.TaskRunSpec{
 			Debug: &v1beta1.TaskRunDebug{
-				Breakpoint: []string{BreakpointOnFailure},
+				Breakpoint: []string{breakpointOnFailure},
 			},
 		},
 		ts: v1beta1.TaskSpec{

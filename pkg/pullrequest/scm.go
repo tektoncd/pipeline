@@ -32,6 +32,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// NewSCMHandler returns a new Handler  for the given URL, provider and token
 func NewSCMHandler(logger *zap.SugaredLogger, raw, provider, token string, skipTLSVerify bool) (*Handler, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -180,6 +181,7 @@ type gitlabClient struct {
 	transport http.RoundTripper
 }
 
+// RoundTrip handles authentication for the gitlabClient
 func (g *gitlabClient) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.Header.Add("Private-Token", g.token)
 	return g.transport.RoundTrip(r)

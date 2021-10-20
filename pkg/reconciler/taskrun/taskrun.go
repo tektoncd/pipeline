@@ -720,8 +720,6 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	return pod, err
 }
 
-type DeletePod func(podName string, options *metav1.DeleteOptions) error
-
 func isExceededResourceQuotaError(err error) bool {
 	return err != nil && k8serrors.IsForbidden(err) && strings.Contains(err.Error(), "exceeded quota")
 }

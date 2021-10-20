@@ -24,10 +24,12 @@ import (
 
 var _ apis.Defaultable = (*Condition)(nil)
 
+// SetDefaults sets the Condition's Spec's default values.
 func (c *Condition) SetDefaults(ctx context.Context) {
 	c.Spec.SetDefaults(ctx)
 }
 
+// SetDefaults sets defaults for all params on the ConditionSpec.
 func (cs *ConditionSpec) SetDefaults(ctx context.Context) {
 	for i := range cs.Params {
 		cs.Params[i].SetDefaults(ctx)

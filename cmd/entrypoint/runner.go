@@ -38,6 +38,7 @@ type realRunner struct {
 
 var _ entrypoint.Runner = (*realRunner)(nil)
 
+// Run executes the entrypoint.
 func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	if len(args) == 0 {
 		return nil

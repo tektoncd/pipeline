@@ -80,6 +80,7 @@ type ConditionList struct {
 	Items           []Condition `json:"items"`
 }
 
+// NewConditionCheck creates a new ConditionCheck from a given TaskRun.
 func NewConditionCheck(tr *TaskRun) *ConditionCheck {
 	if tr == nil {
 		return nil

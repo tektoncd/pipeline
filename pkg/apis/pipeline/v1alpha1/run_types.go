@@ -218,6 +218,7 @@ func (r *Run) HasTimedOut() bool {
 	return runtime > timeout
 }
 
+// GetTimeout returns the timeout for this run, or the default if not configured
 func (r *Run) GetTimeout() time.Duration {
 	// Use the platform default if no timeout is set
 	if r.Spec.Timeout == nil {

@@ -81,6 +81,7 @@ var (
 		stats.UnitDimensionless)
 )
 
+// Recorder is used to actually record TaskRun metrics
 type Recorder struct {
 	mutex       sync.Mutex
 	initialized bool
@@ -232,6 +233,7 @@ func viewUnregister() {
 	)
 }
 
+// MetricsOnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
 func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
 	value interface{}) {
 	return func(name string, value interface{}) {

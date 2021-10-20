@@ -90,14 +90,17 @@ type Pipeline struct {
 type PipelineStatus struct {
 }
 
+// PipelineMetadata returns the Pipeline's ObjectMeta, implementing PipelineObject.
 func (p *Pipeline) PipelineMetadata() metav1.ObjectMeta {
 	return p.ObjectMeta
 }
 
+// PipelineSpec returns the Pipeline's Spec, implementing PipelineObject.
 func (p *Pipeline) PipelineSpec() PipelineSpec {
 	return p.Spec
 }
 
+// Copy returns a deep copy of the Pipeline, implementing PipelineObject.
 func (p *Pipeline) Copy() PipelineObject {
 	return p.DeepCopy()
 }
@@ -151,10 +154,12 @@ type PipelineTask struct {
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
+// HashKey is used as the key for this PipelineTask in the DAG
 func (pt PipelineTask) HashKey() string {
 	return pt.Name
 }
 
+// Deps returns all other PipelineTask dependencies of this PipelineTask, based on resource usage or ordering
 func (pt PipelineTask) Deps() []string {
 	deps := []string{}
 	deps = append(deps, pt.RunAfter...)
@@ -192,8 +197,10 @@ func (pt PipelineTask) Deps() []string {
 	return deps
 }
 
+// PipelineTaskList is a list of PipelineTasks
 type PipelineTaskList []PipelineTask
 
+// Items returns a slice of all tasks in the PipelineTaskList, converted to dag.Tasks
 func (l PipelineTaskList) Items() []dag.Task {
 	tasks := []dag.Task{}
 	for _, t := range l {
@@ -202,6 +209,7 @@ func (l PipelineTaskList) Items() []dag.Task {
 	return tasks
 }
 
+// Deps returns a map with key as name of a pipelineTask and value as a list of its dependencies
 func (l PipelineTaskList) Deps() map[string][]string {
 	deps := map[string][]string{}
 	for _, pt := range l {

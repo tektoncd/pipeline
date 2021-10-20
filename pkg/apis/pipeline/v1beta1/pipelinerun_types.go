@@ -52,6 +52,7 @@ type PipelineRun struct {
 	Status PipelineRunStatus `json:"status,omitempty"`
 }
 
+// GetName Returns the name of the PipelineRun
 func (pr *PipelineRun) GetName() string {
 	return pr.ObjectMeta.GetName()
 }
@@ -91,6 +92,7 @@ func (pr *PipelineRun) IsGracefullyStopped() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusStoppedRunFinally
 }
 
+// GetTimeout returns the the applicable timeout for the PipelineRun
 func (pr *PipelineRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default if no timeout is set
 	if pr.Spec.Timeout == nil && pr.Spec.Timeouts == nil {
@@ -206,6 +208,7 @@ type PipelineRunSpec struct {
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
 }
 
+// TimeoutFields allows granular specification of pipeline, task, and finally timeouts
 type TimeoutFields struct {
 	// Pipeline sets the maximum allowed duration for execution of the entire pipeline. The sum of individual timeouts for tasks and finally must not exceed this value.
 	Pipeline *metav1.Duration `json:"pipeline,omitempty"`
@@ -219,7 +222,7 @@ type TimeoutFields struct {
 type PipelineRunSpecStatus string
 
 const (
-	// Deprecated: "PipelineRunCancelled" indicates that the user wants to cancel the task,
+	// PipelineRunSpecStatusCancelledDeprecated Deprecated: indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated (replaced by "Cancelled")
 	PipelineRunSpecStatusCancelledDeprecated = "PipelineRunCancelled"
 

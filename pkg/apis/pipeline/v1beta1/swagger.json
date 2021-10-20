@@ -485,6 +485,7 @@
       }
     },
     "v1beta1.EmbeddedTask": {
+      "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
       "type": "object",
       "properties": {
         "apiVersion": {
@@ -1345,6 +1346,7 @@
       }
     },
     "v1beta1.PipelineTaskMetadata": {
+      "description": "PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask",
       "type": "object",
       "properties": {
         "annotations": {
@@ -2477,6 +2479,7 @@
       }
     },
     "v1beta1.TimeoutFields": {
+      "description": "TimeoutFields allows granular specification of pipeline, task, and finally timeouts",
       "type": "object",
       "properties": {
         "finally": {

@@ -24,8 +24,10 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+// MaxLength is the maximum length that an object's name can be
 const MaxLength = validation.DNS1123LabelMaxLength
 
+// ObjectMetadata validates that the given object's name is a valid DNS name and isn't longer than the max length
 func ObjectMetadata(meta metav1.Object) *apis.FieldError {
 	name := meta.GetName()
 

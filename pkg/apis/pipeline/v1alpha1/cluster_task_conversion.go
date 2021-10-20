@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// nolint: revive
 package v1alpha1
 
 import (
@@ -28,23 +27,23 @@ import (
 var _ apis.Convertible = (*ClusterTask)(nil)
 
 // ConvertTo implements api.Convertible
-func (source *ClusterTask) ConvertTo(ctx context.Context, obj apis.Convertible) error {
+func (ct *ClusterTask) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
 	case *v1beta1.ClusterTask:
-		sink.ObjectMeta = source.ObjectMeta
-		return source.Spec.ConvertTo(ctx, &sink.Spec)
+		sink.ObjectMeta = ct.ObjectMeta
+		return ct.Spec.ConvertTo(ctx, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
 // ConvertFrom implements api.Convertible
-func (sink *ClusterTask) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
+func (ct *ClusterTask) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
 	case *v1beta1.ClusterTask:
-		sink.ObjectMeta = source.ObjectMeta
-		return sink.Spec.ConvertFrom(ctx, &source.Spec)
+		ct.ObjectMeta = source.ObjectMeta
+		return ct.Spec.ConvertFrom(ctx, &source.Spec)
 	default:
-		return fmt.Errorf("unknown version, got: %T", sink)
+		return fmt.Errorf("unknown version, got: %T", ct)
 	}
 }

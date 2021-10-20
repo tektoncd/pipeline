@@ -112,6 +112,7 @@ type Assets struct {
 	Ctx        context.Context
 }
 
+// AddToInformer returns a function to add ktesting.Actions to the cache store
 func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool, runtime.Object, error) {
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		switch a := action.(type) {
@@ -274,10 +275,12 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	return c, i
 }
 
+// ResourceVersionReactor is an implementation of Reactor for our tests
 type ResourceVersionReactor struct {
 	count int64
 }
 
+// Handles returns whether our test reactor can handle a given ktesting.Action
 func (r *ResourceVersionReactor) Handles(action ktesting.Action) bool {
 	body := func(o runtime.Object) bool {
 		objMeta, err := meta.Accessor(o)

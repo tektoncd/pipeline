@@ -58,14 +58,17 @@ type Task struct {
 
 var _ kmeta.OwnerRefable = (*Task)(nil)
 
+// TaskSpec returns the task's spec
 func (t *Task) TaskSpec() TaskSpec {
 	return t.Spec
 }
 
+// TaskMetadata returns the task's ObjectMeta
 func (t *Task) TaskMetadata() metav1.ObjectMeta {
 	return t.ObjectMeta
 }
 
+// Copy returns a deep copy of the task
 func (t *Task) Copy() TaskObject {
 	return t.DeepCopy()
 }

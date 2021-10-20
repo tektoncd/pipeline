@@ -111,6 +111,7 @@ type Template struct {
 	HostNetwork bool `json:"hostNetwork,omitempty"`
 }
 
+// Equals checks if this Template is identical to the given Template.
 func (tpl *Template) Equals(other *Template) bool {
 	if tpl == nil && other == nil {
 		return true

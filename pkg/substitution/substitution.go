@@ -29,6 +29,7 @@ const parameterSubstitution = `[_a-zA-Z][_a-zA-Z0-9.-]*(\[\*\])?`
 
 const braceMatchingRegex = "(\\$(\\(%s\\.(?P<var>%s)\\)))"
 
+// ValidateVariable makes sure all variables in the provided string are known
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
@@ -44,6 +45,7 @@ func ValidateVariable(name, value, prefix, locationName, path string, vars sets.
 	return nil
 }
 
+// ValidateVariableP makes sure all variables for a parameter in the provided string are known
 func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
@@ -76,6 +78,7 @@ func ValidateVariableProhibited(name, value, prefix, locationName, path string, 
 	return nil
 }
 
+// ValidateVariableProhibitedP verifies that variables for a parameter matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
@@ -111,6 +114,7 @@ func ValidateVariableIsolated(name, value, prefix, locationName, path string, va
 	return nil
 }
 
+// ValidateVariableIsolatedP verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.FieldError {
 	if vs, present := extractVariablesFromString(value, prefix); present {
 		firstMatch, _ := extractExpressionFromString(value, prefix)
@@ -168,6 +172,7 @@ func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
 	return groups
 }
 
+// ApplyReplacements applies string replacements
 func ApplyReplacements(in string, replacements map[string]string) string {
 	replacementsList := []string{}
 	for k, v := range replacements {

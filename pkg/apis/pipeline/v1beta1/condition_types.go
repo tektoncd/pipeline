@@ -26,6 +26,7 @@ import (
 // ConditionCheck represents a single evaluation of a Condition step.
 type ConditionCheck TaskRun
 
+// NewConditionCheck creates a new ConditionCheck from a given TaskRun
 func NewConditionCheck(tr *TaskRun) *ConditionCheck {
 	if tr == nil {
 		return nil

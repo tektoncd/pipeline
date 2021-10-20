@@ -28,6 +28,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+// ParamsPrefix is the prefix used in $(...) expressions referring to parameters
 const ParamsPrefix = "params"
 
 // ParamSpec defines arbitrary parameters needed beyond typed inputs (such as

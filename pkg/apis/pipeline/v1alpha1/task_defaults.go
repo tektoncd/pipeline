@@ -24,6 +24,7 @@ import (
 
 var _ apis.Defaultable = (*Task)(nil)
 
+// SetDefaults implements apis.Defaultable
 func (t *Task) SetDefaults(ctx context.Context) {
 	t.Spec.SetDefaults(ctx)
 }
@@ -38,6 +39,7 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 	}
 }
 
+// SetDefaults implements apis.Defaultable
 func (inputs *Inputs) SetDefaults(ctx context.Context) {
 	for i := range inputs.Params {
 		inputs.Params[i].SetDefaults(ctx)

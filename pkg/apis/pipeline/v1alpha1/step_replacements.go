@@ -20,6 +20,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
+// ApplyStepReplacements applies variable interpolation on a Step.
 func ApplyStepReplacements(step *Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	step.Script = substitution.ApplyReplacements(step.Script, stringReplacements)
 	ApplyContainerReplacements(&step.Container, stringReplacements, arrayReplacements)

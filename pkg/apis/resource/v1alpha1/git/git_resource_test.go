@@ -521,7 +521,7 @@ func TestGitResource_Replacements(t *testing.T) {
 
 	want := map[string]string{
 		"name":       "git-resource",
-		"type":       string(resourcev1alpha1.PipelineResourceTypeGit),
+		"type":       resourcev1alpha1.PipelineResourceTypeGit,
 		"url":        "git@github.com:test/test.git",
 		"revision":   "master",
 		"refspec":    "",

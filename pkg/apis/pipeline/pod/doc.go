@@ -15,4 +15,6 @@ limitations under the License.
 */
 
 // +k8s:openapi-gen=true
+
+// Package pod contains non-versioned pod configuration
 package pod

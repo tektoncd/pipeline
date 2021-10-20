@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// NewTransformer returns a pod.Transformer that will pod affinity if needed
 func NewTransformer(_ context.Context, annotations map[string]string) pod.Transformer {
 	return func(p *corev1.Pod) (*corev1.Pod, error) {
 		// Using node affinity on taskRuns sharing PVC workspace, with an Affinity Assistant

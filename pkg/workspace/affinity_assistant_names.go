@@ -21,7 +21,8 @@ const (
 	LabelInstance = "app.kubernetes.io/instance"
 
 	// LabelComponent is used to configure PodAntiAffinity to other Affinity Assistants
-	LabelComponent                 = "app.kubernetes.io/component"
+	LabelComponent = "app.kubernetes.io/component"
+	// ComponentNameAffinityAssistant is the component name for an Affinity Assistant
 	ComponentNameAffinityAssistant = "affinity-assistant"
 
 	// AnnotationAffinityAssistantName is used to pass the instance name of an Affinity Assistant to TaskRun pods

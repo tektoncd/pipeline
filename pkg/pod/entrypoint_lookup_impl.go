@@ -50,6 +50,7 @@ func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error
 	}, nil
 }
 
+// Get gets the image from the cache for the given ref, namespace, and SA
 func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (v1.Image, error) {
 	// If image is specified by digest, check the local cache.
 	if digest, ok := ref.(name.Digest); ok {
@@ -96,4 +97,5 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 	return img, nil
 }
 
+// Set puts the image in the cache with the digest as the key.
 func (e *entrypointCache) Set(d name.Digest, img v1.Image) { e.lru.Add(d.String(), img) }

@@ -25,10 +25,6 @@ import (
 // additional metatdata should be provided for it.
 type PipelineResourceType = resource.PipelineResourceType
 
-var (
-	AllowedOutputResources = resource.AllowedOutputResources
-)
-
 const (
 	// PipelineResourceTypeGit indicates that this source is a Git repo.
 	PipelineResourceTypeGit PipelineResourceType = resource.PipelineResourceTypeGit

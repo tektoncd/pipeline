@@ -176,6 +176,7 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 	return nil
 }
 
+// ShowCommit calls "git show ..." to get the commit SHA for the given revision
 func ShowCommit(logger *zap.SugaredLogger, revision, path string) (string, error) {
 	output, err := run(logger, path, "show", "-q", "--pretty=format:%H", revision)
 	if err != nil {
@@ -262,7 +263,7 @@ func userHasKnownHostsFile(logger *zap.SugaredLogger) (bool, error) {
 		}
 		return false, err
 	}
-	f.Close()
+	defer f.Close()
 	return true, nil
 }
 
@@ -307,7 +308,7 @@ func configSparseCheckout(logger *zap.SugaredLogger, spec FetchSpec) error {
 		}
 		for _, pattern := range dirPatterns {
 			if _, err := file.WriteString(pattern + "\n"); err != nil {
-				file.Close()
+				defer file.Close()
 				logger.Errorf("failed to write to sparse-checkout file: %v", err)
 				return err
 			}

@@ -51,6 +51,8 @@ const (
 	maxGeneratedNameLength = maxNameLength - randomLength - 1
 )
 
+// RestrictLengthWithRandomSuffix takes a base name and returns a potentially shortened version of that name with
+// a random suffix, with the whole string no longer than 63 characters.
 func (simpleNameGenerator) RestrictLengthWithRandomSuffix(base string) string {
 	if len(base) > maxGeneratedNameLength {
 		base = base[:maxGeneratedNameLength]
@@ -60,6 +62,7 @@ func (simpleNameGenerator) RestrictLengthWithRandomSuffix(base string) string {
 
 var alphaNumericRE = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 
+// RestrictLength takes a base name and returns a potentially shortened version of that name, no longer than 63 characters.
 func (simpleNameGenerator) RestrictLength(base string) string {
 	if len(base) > maxNameLength {
 		base = base[:maxNameLength]

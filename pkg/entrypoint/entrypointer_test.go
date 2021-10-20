@@ -231,7 +231,7 @@ func TestEntrypointer(t *testing.T) {
 			fileContents, err := ioutil.ReadFile(terminationPath)
 			if err == nil {
 				var entries []v1alpha1.PipelineResourceResult
-				if err := json.Unmarshal([]byte(fileContents), &entries); err == nil {
+				if err := json.Unmarshal(fileContents, &entries); err == nil {
 					var found = false
 					for _, result := range entries {
 						if result.Key == "StartedAt" {

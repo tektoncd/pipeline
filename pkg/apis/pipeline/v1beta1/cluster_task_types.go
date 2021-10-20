@@ -54,14 +54,17 @@ type ClusterTaskList struct {
 	Items           []ClusterTask `json:"items"`
 }
 
+// TaskSpec returns the ClusterTask's Spec
 func (t *ClusterTask) TaskSpec() TaskSpec {
 	return t.Spec
 }
 
+// TaskMetadata returns the ObjectMeta for the ClusterTask
 func (t *ClusterTask) TaskMetadata() metav1.ObjectMeta {
 	return t.ObjectMeta
 }
 
+// Copy returns a DeepCopy of the ClusterTask
 func (t *ClusterTask) Copy() TaskObject {
 	return t.DeepCopy()
 }

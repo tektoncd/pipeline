@@ -33,6 +33,7 @@ import (
 
 var _ apis.Validatable = (*Task)(nil)
 
+// Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	if err := validate.ObjectMetadata(t.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
@@ -43,6 +44,7 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	return t.Spec.Validate(ctx)
 }
 
+// Validate implements apis.Validatable
 func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 
 	if len(ts.Steps) == 0 {
@@ -182,6 +184,7 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 	return nil
 }
 
+// ValidateVolumes validates a slice of volumes to make sure there are no duplicate names
 func ValidateVolumes(volumes []corev1.Volume) *apis.FieldError {
 	// Task must not have duplicate volume names.
 	vols := sets.NewString()
@@ -430,5 +433,5 @@ func validateResourceType(r TaskResource, path string) *apis.FieldError {
 			return nil
 		}
 	}
-	return apis.ErrInvalidValue(string(r.Type), path)
+	return apis.ErrInvalidValue(r.Type, path)
 }

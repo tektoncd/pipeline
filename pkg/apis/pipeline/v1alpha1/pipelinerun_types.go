@@ -49,6 +49,7 @@ type PipelineRun struct {
 	Status PipelineRunStatus `json:"status,omitempty"`
 }
 
+// GetName returns the PipelineRun's name
 func (pr *PipelineRun) GetName() string {
 	return pr.ObjectMeta.GetName()
 }
@@ -113,8 +114,6 @@ type PipelineRunStatusFields = v1beta1.PipelineRunStatusFields
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
 type PipelineRunTaskRunStatus = v1beta1.PipelineRunTaskRunStatus
-
-type PipelineRunConditionCheckStatus = v1beta1.PipelineRunConditionCheckStatus
 
 // PipelineRunSpecServiceAccountName can be used to configure specific
 // ServiceAccountName for a concrete Task

@@ -25,11 +25,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
+// Task is an interface for all types that could be in a DAG
 type Task interface {
 	HashKey() string
 	Deps() []string
 }
 
+// Tasks is an interface for lists of types that could be in a DAG
 type Tasks interface {
 	Items() []Task
 }

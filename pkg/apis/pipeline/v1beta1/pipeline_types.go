@@ -64,14 +64,17 @@ type Pipeline struct {
 
 var _ kmeta.OwnerRefable = (*Pipeline)(nil)
 
+// PipelineMetadata returns the Pipeline's ObjectMeta, implementing PipelineObject
 func (p *Pipeline) PipelineMetadata() metav1.ObjectMeta {
 	return p.ObjectMeta
 }
 
+// PipelineSpec returns the Pipeline's Spec, implementing PipelineObject
 func (p *Pipeline) PipelineSpec() PipelineSpec {
 	return p.Spec
 }
 
+// Copy returns a deep copy of the Pipeline, implementing PipelineObject
 func (p *Pipeline) Copy() PipelineObject {
 	return p.DeepCopy()
 }
@@ -121,6 +124,7 @@ type PipelineResult struct {
 	Value string `json:"value"`
 }
 
+// PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask
 type PipelineTaskMetadata struct {
 	// +optional
 	Labels map[string]string `json:"labels,omitempty"`
@@ -129,6 +133,7 @@ type PipelineTaskMetadata struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 
+// EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.
 type EmbeddedTask struct {
 	// +optional
 	runtime.TypeMeta `json:",inline,omitempty"`
@@ -280,14 +285,17 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 	return errs
 }
 
+// TaskSpecMetadata returns the metadata of the PipelineTask's EmbeddedTask spec.
 func (pt *PipelineTask) TaskSpecMetadata() PipelineTaskMetadata {
 	return pt.TaskSpec.Metadata
 }
 
+// HashKey is the name of the PipelineTask, and is used as the key for this PipelineTask in the DAG
 func (pt PipelineTask) HashKey() string {
 	return pt.Name
 }
 
+// ValidateName checks whether the PipelineTask's name is a valid DNS label
 func (pt PipelineTask) ValidateName() *apis.FieldError {
 	if err := validation.IsDNS1123Label(pt.Name); len(err) > 0 {
 		return &apis.FieldError{
@@ -321,6 +329,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return
 }
 
+// Deps returns all other PipelineTask dependencies of this PipelineTask, based on resource usage or ordering
 func (pt PipelineTask) Deps() []string {
 	deps := []string{}
 
@@ -369,6 +378,7 @@ func (pt PipelineTask) orderingDeps() []string {
 	return orderingDeps
 }
 
+// PipelineTaskList is a list of PipelineTasks
 type PipelineTaskList []PipelineTask
 
 // Deps returns a map with key as name of a pipelineTask and value as a list of its dependencies
@@ -385,6 +395,7 @@ func (l PipelineTaskList) Deps() map[string][]string {
 	return deps
 }
 
+// Items returns a slice of all tasks in the PipelineTaskList, converted to dag.Tasks
 func (l PipelineTaskList) Items() []dag.Task {
 	tasks := []dag.Task{}
 	for _, t := range l {
