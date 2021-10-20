@@ -12,6 +12,7 @@ linters:
   - gocritic
   - revive
   - misspell
+  - unconvert
 output:
   uniq-by-line: false
 issues:
@@ -22,6 +23,10 @@ issues:
     - gosec
   max-issues-per-linter: 0
   max-same-issues: 0
+  include:
+  # Enable off-by-default rules for revive requiring that all exported elements have a properly formatted comment.
+  - EXC0012
+  - EXC0014
 run:
   issues-exit-code: 1
   build-tags:

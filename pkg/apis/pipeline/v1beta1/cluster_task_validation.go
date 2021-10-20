@@ -25,6 +25,7 @@ import (
 
 var _ apis.Validatable = (*ClusterTask)(nil)
 
+// Validate performs validation of the metadata and spec of this ClusterTask.
 func (t *ClusterTask) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInDelete(ctx) {

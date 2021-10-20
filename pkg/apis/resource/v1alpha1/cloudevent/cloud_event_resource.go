@@ -75,7 +75,7 @@ func (s Resource) GetType() resource.PipelineResourceType {
 func (s *Resource) Replacements() map[string]string {
 	return map[string]string{
 		"name":       s.Name,
-		"type":       string(s.Type),
+		"type":       s.Type,
 		"target-uri": s.TargetURI,
 	}
 }

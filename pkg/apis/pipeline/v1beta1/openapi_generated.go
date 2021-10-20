@@ -658,7 +658,8 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback)
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"apiVersion": {
 						SchemaProps: spec.SchemaProps{
@@ -2187,7 +2188,8 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTaskMetadata(ref common.ReferenceC
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"labels": {
 						SchemaProps: spec.SchemaProps{
@@ -4204,7 +4206,8 @@ func schema_pkg_apis_pipeline_v1beta1_TimeoutFields(ref common.ReferenceCallback
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "TimeoutFields allows granular specification of pipeline, task, and finally timeouts",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"pipeline": {
 						SchemaProps: spec.SchemaProps{

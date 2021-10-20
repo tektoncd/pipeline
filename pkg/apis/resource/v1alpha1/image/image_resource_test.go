@@ -91,7 +91,7 @@ func TestImageResource_Replacements(t *testing.T) {
 
 	want := map[string]string{
 		"name":   "image-resource",
-		"type":   string(v1alpha1.PipelineResourceTypeImage),
+		"type":   v1alpha1.PipelineResourceTypeImage,
 		"url":    "https://test.com/test/test",
 		"digest": "test",
 	}

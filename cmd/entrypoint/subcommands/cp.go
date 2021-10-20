@@ -21,6 +21,7 @@ import (
 	"os"
 )
 
+// CopyCommand is the name of the copy command.
 const CopyCommand = "cp"
 
 // Owner has permission to write and execute, and anybody has

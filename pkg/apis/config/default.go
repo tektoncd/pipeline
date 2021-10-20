@@ -28,16 +28,22 @@ import (
 )
 
 const (
-	DefaultTimeoutMinutes          = 60
-	NoTimeoutDuration              = 0 * time.Minute
+	// DefaultTimeoutMinutes is used when no timeout is specified.
+	DefaultTimeoutMinutes = 60
+	// NoTimeoutDuration is used when a pipeline or task should never time out.
+	NoTimeoutDuration = 0 * time.Minute
+	// DefaultServiceAccountValue is the SA used when one is not specified.
+	DefaultServiceAccountValue = "default"
+	// DefaultManagedByLabelValue is the value for the managed-by label that is used by default.
+	DefaultManagedByLabelValue = "tekton-pipelines"
+	// DefaultCloudEventSinkValue is the default value for cloud event sinks.
+	DefaultCloudEventSinkValue = ""
+
 	defaultTimeoutMinutesKey       = "default-timeout-minutes"
 	defaultServiceAccountKey       = "default-service-account"
-	DefaultServiceAccountValue     = "default"
 	defaultManagedByLabelValueKey  = "default-managed-by-label-value"
-	DefaultManagedByLabelValue     = "tekton-pipelines"
 	defaultPodTemplateKey          = "default-pod-template"
 	defaultCloudEventsSinkKey      = "default-cloud-events-sink"
-	DefaultCloudEventSinkValue     = ""
 	defaultTaskRunWorkspaceBinding = "default-task-run-workspace-binding"
 )
 

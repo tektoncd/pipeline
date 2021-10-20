@@ -54,7 +54,7 @@ const (
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
 
-	BreakpointOnFailure = "onFailure"
+	breakpointOnFailure = "onFailure"
 )
 
 var (
@@ -160,7 +160,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			breakpoints := breakpointConfig.Breakpoint
 			for _, b := range breakpoints {
 				// TODO(TEP #0042): Add other breakpoints
-				if b == BreakpointOnFailure {
+				if b == breakpointOnFailure {
 					argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_on_failure")
 				}
 			}

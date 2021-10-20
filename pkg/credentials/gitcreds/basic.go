@@ -49,6 +49,7 @@ func (dc *basicGitConfig) String() string {
 	return strings.Join(urls, ",")
 }
 
+// Set sets a secret for a given URL from a "secret=url" value.
 func (dc *basicGitConfig) Set(value string) error {
 	parts := strings.Split(value, "=")
 	if len(parts) != 2 {

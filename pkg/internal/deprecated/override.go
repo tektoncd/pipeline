@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// NewOverrideWorkingDirTransformer returns a pod.Transformer that will override the workingDir on pods if needed.
 func NewOverrideWorkingDirTransformer(ctx context.Context) pod.Transformer {
 	return func(p *corev1.Pod) (*corev1.Pod, error) {
 		if shouldOverrideWorkingDir(ctx) {
@@ -50,6 +51,7 @@ func shouldOverrideWorkingDir(ctx context.Context) bool {
 	return !cfg.FeatureFlags.DisableWorkingDirOverwrite
 }
 
+// NewOverrideHomeTransformer returns a pod.Transformer that will override HOME if needed
 func NewOverrideHomeTransformer(ctx context.Context) pod.Transformer {
 	return func(p *corev1.Pod) (*corev1.Pod, error) {
 		if shouldOverrideHomeEnv(ctx) {

@@ -34,6 +34,7 @@ import (
 
 var _ apis.Validatable = (*Task)(nil)
 
+// Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInDelete(ctx) {
@@ -42,6 +43,7 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
+// Validate implements apis.Validatable
 func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
@@ -75,6 +77,7 @@ func validateResults(ctx context.Context, results []TaskResult) (errs *apis.Fiel
 	return errs
 }
 
+// Validate implements apis.Validatable
 func (tr TaskResult) Validate(_ context.Context) *apis.FieldError {
 	if !resultNameFormatRegex.MatchString(tr.Name) {
 		return apis.ErrInvalidKeyName(tr.Name, "name", fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
@@ -155,6 +158,7 @@ func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.Fiel
 	return errs
 }
 
+// ValidateVolumes validates a slice of volumes to make sure there are no dupilcate names
 func ValidateVolumes(volumes []corev1.Volume) (errs *apis.FieldError) {
 	// Task must not have duplicate volume names.
 	vols := sets.NewString()
@@ -240,6 +244,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	return errs
 }
 
+// ValidateParameterTypes validates all the types within a slice of ParamSpecs
 func ValidateParameterTypes(params []ParamSpec) (errs *apis.FieldError) {
 	for _, p := range params {
 		errs = errs.Also(p.ValidateType())
@@ -247,6 +252,7 @@ func ValidateParameterTypes(params []ParamSpec) (errs *apis.FieldError) {
 	return errs
 }
 
+// ValidateType checks that the type of a ParamSpec is allowed and its default value matches that type
 func (p ParamSpec) ValidateType() *apis.FieldError {
 	// Ensure param has a valid type.
 	validType := false
@@ -273,6 +279,7 @@ func (p ParamSpec) ValidateType() *apis.FieldError {
 	return nil
 }
 
+// ValidateParameterVariables validates all variables within a slice of ParamSpecs against a slice of Steps
 func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldError {
 	parameterNames := sets.NewString()
 	arrayParameterNames := sets.NewString()
@@ -302,6 +309,7 @@ func validateTaskContextVariables(steps []Step) *apis.FieldError {
 	return errs.Also(validateVariables(steps, "context\\.task", taskContextNames))
 }
 
+// ValidateResourcesVariables validates all variables within a TaskResources against a slice of Steps
 func ValidateResourcesVariables(steps []Step, resources *TaskResources) *apis.FieldError {
 	if resources == nil {
 		return nil

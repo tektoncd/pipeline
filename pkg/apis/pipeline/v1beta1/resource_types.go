@@ -32,6 +32,7 @@ import (
 type PipelineResourceType = resource.PipelineResourceType
 
 var (
+	// AllowedOutputResources are the resource types that can be used as outputs
 	AllowedOutputResources = resource.AllowedOutputResources
 )
 

@@ -235,7 +235,6 @@ func manifestFromDisk(path string) (Manifest, error) {
 		return nil, err
 	}
 	defer f.Close()
-
 	m := Manifest{}
 	dec := gob.NewDecoder(f)
 	if err := dec.Decode(&m); err != nil {

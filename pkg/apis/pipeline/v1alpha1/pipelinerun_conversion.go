@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// nolint: revive
 package v1alpha1
 
 import (
@@ -28,14 +27,14 @@ import (
 var _ apis.Convertible = (*PipelineRun)(nil)
 
 // ConvertTo implements api.Convertible
-func (source *PipelineRun) ConvertTo(ctx context.Context, obj apis.Convertible) error {
+func (pr *PipelineRun) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
 	case *v1beta1.PipelineRun:
-		sink.ObjectMeta = source.ObjectMeta
-		if err := source.Spec.ConvertTo(ctx, &sink.Spec); err != nil {
+		sink.ObjectMeta = pr.ObjectMeta
+		if err := pr.Spec.ConvertTo(ctx, &sink.Spec); err != nil {
 			return err
 		}
-		sink.Status = source.Status
+		sink.Status = pr.Status
 
 		spec := &v1beta1.PipelineSpec{}
 		if err := deserializeFinally(&sink.ObjectMeta, spec); err != nil {
@@ -54,62 +53,64 @@ func (source *PipelineRun) ConvertTo(ctx context.Context, obj apis.Convertible) 
 	}
 }
 
-func (source *PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.PipelineRunSpec) error {
-	sink.PipelineRef = source.PipelineRef
-	if source.PipelineSpec != nil {
+// ConvertTo implements api.Convertible
+func (prs *PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.PipelineRunSpec) error {
+	sink.PipelineRef = prs.PipelineRef
+	if prs.PipelineSpec != nil {
 		sink.PipelineSpec = &v1beta1.PipelineSpec{}
-		if err := source.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec); err != nil {
+		if err := prs.PipelineSpec.ConvertTo(ctx, sink.PipelineSpec); err != nil {
 			return err
 		}
 	}
-	sink.Resources = source.Resources
-	sink.Params = source.Params
-	sink.ServiceAccountName = source.ServiceAccountName
-	sink.ServiceAccountNames = source.ServiceAccountNames
-	sink.Status = source.Status
-	sink.Timeout = source.Timeout
-	sink.PodTemplate = source.PodTemplate
-	sink.Workspaces = source.Workspaces
+	sink.Resources = prs.Resources
+	sink.Params = prs.Params
+	sink.ServiceAccountName = prs.ServiceAccountName
+	sink.ServiceAccountNames = prs.ServiceAccountNames
+	sink.Status = prs.Status
+	sink.Timeout = prs.Timeout
+	sink.PodTemplate = prs.PodTemplate
+	sink.Workspaces = prs.Workspaces
 	return nil
 }
 
 // ConvertFrom implements api.Convertible
-func (sink *PipelineRun) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
+func (pr *PipelineRun) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
 	case *v1beta1.PipelineRun:
-		sink.ObjectMeta = source.ObjectMeta
-		if err := sink.Spec.ConvertFrom(ctx, &source.Spec); err != nil {
+		pr.ObjectMeta = source.ObjectMeta
+		if err := pr.Spec.ConvertFrom(ctx, &source.Spec); err != nil {
 			return err
 		}
-		sink.Status = source.Status
+		pr.Status = source.Status
 
 		ps := source.Spec.PipelineSpec
 		if ps != nil && ps.Finally != nil {
-			if err := serializeFinally(&sink.ObjectMeta, ps.Finally); err != nil {
+			if err := serializeFinally(&pr.ObjectMeta, ps.Finally); err != nil {
 				return err
 			}
 		}
 		return nil
 	default:
-		return fmt.Errorf("unknown version, got: %T", sink)
+		return fmt.Errorf("unknown version, got: %T", pr)
 	}
 }
 
-func (sink *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1beta1.PipelineRunSpec) error {
-	sink.PipelineRef = source.PipelineRef
+// ConvertFrom implements api.Convertible
+func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1beta1.PipelineRunSpec) error {
+	prs.PipelineRef = source.PipelineRef
 	if source.PipelineSpec != nil {
-		sink.PipelineSpec = &PipelineSpec{}
-		if err := sink.PipelineSpec.ConvertFrom(ctx, *source.PipelineSpec); err != nil {
+		prs.PipelineSpec = &PipelineSpec{}
+		if err := prs.PipelineSpec.ConvertFrom(ctx, *source.PipelineSpec); err != nil {
 			return err
 		}
 	}
-	sink.Resources = source.Resources
-	sink.Params = source.Params
-	sink.ServiceAccountName = source.ServiceAccountName
-	sink.ServiceAccountNames = source.ServiceAccountNames
-	sink.Status = source.Status
-	sink.Timeout = source.Timeout
-	sink.PodTemplate = source.PodTemplate
-	sink.Workspaces = source.Workspaces
+	prs.Resources = source.Resources
+	prs.Params = source.Params
+	prs.ServiceAccountName = source.ServiceAccountName
+	prs.ServiceAccountNames = source.ServiceAccountNames
+	prs.Status = source.Status
+	prs.Timeout = source.Timeout
+	prs.PodTemplate = source.PodTemplate
+	prs.Workspaces = source.Workspaces
 	return nil
 }

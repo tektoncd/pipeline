@@ -63,7 +63,7 @@ var (
 const (
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
 	ReasonCancelled = "Cancelled"
-	// Deprecated: "PipelineRunCancelled" indicates that a PipelineRun was cancelled.
+	// ReasonCancelledDeprecated Deprecated: "PipelineRunCancelled" indicates that a PipelineRun was cancelled.
 	ReasonCancelledDeprecated = "PipelineRunCancelled"
 )
 
@@ -173,6 +173,7 @@ func viewUnregister() {
 	view.Unregister(prDurationView, prCountView, runningPRsCountView)
 }
 
+// MetricsOnStore returns a function that checks if metrics are configured for a config.Store, and registers it if so
 func MetricsOnStore(logger *zap.SugaredLogger) func(name string,
 	value interface{}) {
 	return func(name string, value interface{}) {

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// nolint: revive
 package v1alpha1
 
 import (
@@ -28,57 +27,58 @@ import (
 var _ apis.Convertible = (*TaskRun)(nil)
 
 // ConvertTo implements api.Convertible
-func (source *TaskRun) ConvertTo(ctx context.Context, obj apis.Convertible) error {
+func (tr *TaskRun) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
 	case *v1beta1.TaskRun:
-		sink.ObjectMeta = source.ObjectMeta
-		if err := source.Spec.ConvertTo(ctx, &sink.Spec); err != nil {
+		sink.ObjectMeta = tr.ObjectMeta
+		if err := tr.Spec.ConvertTo(ctx, &sink.Spec); err != nil {
 			return err
 		}
-		sink.Status = source.Status
+		sink.Status = tr.Status
 		return nil
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
-func (source *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskRunSpec) error {
-	sink.ServiceAccountName = source.ServiceAccountName
-	sink.TaskRef = source.TaskRef
-	if source.TaskSpec != nil {
+// ConvertTo implements api.Convertible
+func (trs *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskRunSpec) error {
+	sink.ServiceAccountName = trs.ServiceAccountName
+	sink.TaskRef = trs.TaskRef
+	if trs.TaskSpec != nil {
 		sink.TaskSpec = &v1beta1.TaskSpec{}
-		if err := source.TaskSpec.ConvertTo(ctx, sink.TaskSpec); err != nil {
+		if err := trs.TaskSpec.ConvertTo(ctx, sink.TaskSpec); err != nil {
 			return err
 		}
 	}
-	sink.Status = source.Status
-	sink.Timeout = source.Timeout
-	sink.PodTemplate = source.PodTemplate
-	sink.Workspaces = source.Workspaces
-	sink.Params = source.Params
-	sink.Resources = source.Resources
+	sink.Status = trs.Status
+	sink.Timeout = trs.Timeout
+	sink.PodTemplate = trs.PodTemplate
+	sink.Workspaces = trs.Workspaces
+	sink.Params = trs.Params
+	sink.Resources = trs.Resources
 	// Deprecated fields
-	if source.Inputs != nil {
-		if len(source.Inputs.Params) > 0 && len(source.Params) > 0 {
+	if trs.Inputs != nil {
+		if len(trs.Inputs.Params) > 0 && len(trs.Params) > 0 {
 			// This shouldn't happen as it shouldn't pass validation
 			return apis.ErrMultipleOneOf("inputs.params", "params")
 		}
-		if len(source.Inputs.Params) > 0 {
-			sink.Params = make([]v1beta1.Param, len(source.Inputs.Params))
-			for i, param := range source.Inputs.Params {
+		if len(trs.Inputs.Params) > 0 {
+			sink.Params = make([]v1beta1.Param, len(trs.Inputs.Params))
+			for i, param := range trs.Inputs.Params {
 				sink.Params[i] = *param.DeepCopy()
 			}
 		}
-		if len(source.Inputs.Resources) > 0 {
+		if len(trs.Inputs.Resources) > 0 {
 			if sink.Resources == nil {
 				sink.Resources = &v1beta1.TaskRunResources{}
 			}
-			if len(source.Inputs.Resources) > 0 && source.Resources != nil && len(source.Resources.Inputs) > 0 {
+			if len(trs.Inputs.Resources) > 0 && trs.Resources != nil && len(trs.Resources.Inputs) > 0 {
 				// This shouldn't happen as it shouldn't pass validation but just in case
 				return apis.ErrMultipleOneOf("inputs.resources", "resources.inputs")
 			}
-			sink.Resources.Inputs = make([]v1beta1.TaskResourceBinding, len(source.Inputs.Resources))
-			for i, resource := range source.Inputs.Resources {
+			sink.Resources.Inputs = make([]v1beta1.TaskResourceBinding, len(trs.Inputs.Resources))
+			for i, resource := range trs.Inputs.Resources {
 				sink.Resources.Inputs[i] = v1beta1.TaskResourceBinding{
 					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 						Name:         resource.Name,
@@ -91,16 +91,16 @@ func (source *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskRunS
 		}
 	}
 
-	if source.Outputs != nil && len(source.Outputs.Resources) > 0 {
+	if trs.Outputs != nil && len(trs.Outputs.Resources) > 0 {
 		if sink.Resources == nil {
 			sink.Resources = &v1beta1.TaskRunResources{}
 		}
-		if len(source.Outputs.Resources) > 0 && source.Resources != nil && len(source.Resources.Outputs) > 0 {
+		if len(trs.Outputs.Resources) > 0 && trs.Resources != nil && len(trs.Resources.Outputs) > 0 {
 			// This shouldn't happen as it shouldn't pass validation but just in case
 			return apis.ErrMultipleOneOf("outputs.resources", "resources.outputs")
 		}
-		sink.Resources.Outputs = make([]v1beta1.TaskResourceBinding, len(source.Outputs.Resources))
-		for i, resource := range source.Outputs.Resources {
+		sink.Resources.Outputs = make([]v1beta1.TaskResourceBinding, len(trs.Outputs.Resources))
+		for i, resource := range trs.Outputs.Resources {
 			sink.Resources.Outputs[i] = v1beta1.TaskResourceBinding{
 				PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 					Name:         resource.Name,
@@ -115,34 +115,35 @@ func (source *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskRunS
 }
 
 // ConvertFrom implements api.Convertible
-func (sink *TaskRun) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
+func (tr *TaskRun) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
 	case *v1beta1.TaskRun:
-		sink.ObjectMeta = source.ObjectMeta
-		if err := sink.Spec.ConvertFrom(ctx, &source.Spec); err != nil {
+		tr.ObjectMeta = source.ObjectMeta
+		if err := tr.Spec.ConvertFrom(ctx, &source.Spec); err != nil {
 			return err
 		}
-		sink.Status = source.Status
+		tr.Status = source.Status
 		return nil
 	default:
-		return fmt.Errorf("unknown version, got: %T", sink)
+		return fmt.Errorf("unknown version, got: %T", tr)
 	}
 }
 
-func (sink *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskRunSpec) error {
-	sink.ServiceAccountName = source.ServiceAccountName
-	sink.TaskRef = source.TaskRef
+// ConvertFrom implements api.Convertible
+func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskRunSpec) error {
+	trs.ServiceAccountName = source.ServiceAccountName
+	trs.TaskRef = source.TaskRef
 	if source.TaskSpec != nil {
-		sink.TaskSpec = &TaskSpec{}
-		if err := sink.TaskSpec.ConvertFrom(ctx, source.TaskSpec); err != nil {
+		trs.TaskSpec = &TaskSpec{}
+		if err := trs.TaskSpec.ConvertFrom(ctx, source.TaskSpec); err != nil {
 			return err
 		}
 	}
-	sink.Status = source.Status
-	sink.Timeout = source.Timeout
-	sink.PodTemplate = source.PodTemplate
-	sink.Workspaces = source.Workspaces
-	sink.Params = source.Params
-	sink.Resources = source.Resources
+	trs.Status = source.Status
+	trs.Timeout = source.Timeout
+	trs.PodTemplate = source.PodTemplate
+	trs.Workspaces = source.Workspaces
+	trs.Params = source.Params
+	trs.Resources = source.Resources
 	return nil
 }

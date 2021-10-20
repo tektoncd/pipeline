@@ -25,6 +25,7 @@ import (
 	"os"
 )
 
+// DecodeScriptCommand is the command name for decoding scripts.
 const DecodeScriptCommand = "decode-script"
 
 // decodeScript rewrites a script file from base64 back into its original content from

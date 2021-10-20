@@ -41,6 +41,7 @@ func init() {
 // RecorderKey is used for associating the Recorder inside the context.Context.
 type RecorderKey struct{}
 
+// WithClient adds a metrics recorder to the given context
 func WithClient(ctx context.Context) context.Context {
 	rec, err := NewRecorder(ctx)
 	if err != nil {
@@ -61,6 +62,7 @@ func Get(ctx context.Context) *Recorder {
 // InformerKey is used for associating the Informer inside the context.Context.
 type InformerKey struct{}
 
+// WithInformer returns the given context, and a configured informer
 func WithInformer(ctx context.Context) (context.Context, controller.Informer) {
 	return ctx, &recorderInformer{
 		ctx:     ctx,
@@ -77,6 +79,7 @@ type recorderInformer struct {
 
 var _ controller.Informer = (*recorderInformer)(nil)
 
+// Run starts the recorder informer in a goroutine
 func (ri *recorderInformer) Run(stopCh <-chan struct{}) {
 	// Turn the stopCh into a context for reporting metrics.
 	ctx, cancel := context.WithCancel(ri.ctx)
@@ -88,6 +91,7 @@ func (ri *recorderInformer) Run(stopCh <-chan struct{}) {
 	go ri.metrics.ReportRunningPipelineRuns(ctx, ri.lister)
 }
 
+// HasSynced returns whether the informer has synced, which in this case will always be true.
 func (ri *recorderInformer) HasSynced() bool {
 	return true
 }

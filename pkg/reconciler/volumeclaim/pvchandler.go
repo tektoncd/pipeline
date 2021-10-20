@@ -36,6 +36,7 @@ const (
 	ReasonCouldntCreateWorkspacePVC = "CouldntCreateWorkspacePVC"
 )
 
+// PvcHandler is used to create PVCs for workspaces
 type PvcHandler interface {
 	CreatePersistentVolumeClaimsForWorkspaces(ctx context.Context, wb []v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReference, namespace string) error
 }
@@ -45,6 +46,7 @@ type defaultPVCHandler struct {
 	logger    *zap.SugaredLogger
 }
 
+// NewPVCHandler returns a new defaultPVCHandler
 func NewPVCHandler(clientset clientset.Interface, logger *zap.SugaredLogger) PvcHandler {
 	return &defaultPVCHandler{clientset, logger}
 }

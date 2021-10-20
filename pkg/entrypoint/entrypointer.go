@@ -235,6 +235,7 @@ func (e Entrypointer) readResultsFromDisk() error {
 	return nil
 }
 
+// BreakpointExitCode reads the post file and returns the exit code it contains
 func (e Entrypointer) BreakpointExitCode(breakpointExitPostFile string) (int, error) {
 	exitCode, err := ioutil.ReadFile(breakpointExitPostFile)
 	if os.IsNotExist(err) {

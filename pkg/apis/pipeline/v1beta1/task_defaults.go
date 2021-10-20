@@ -25,6 +25,7 @@ import (
 
 var _ apis.Defaultable = (*Task)(nil)
 
+// SetDefaults implements apis.Defaultable
 func (t *Task) SetDefaults(ctx context.Context) {
 	t.Spec.SetDefaults(ctx)
 }

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// nolint: revive
 package v1beta1
 
 import (
@@ -26,11 +25,12 @@ import (
 
 var _ apis.Convertible = (*Pipeline)(nil)
 
-func (source *Pipeline) ConvertTo(ctx context.Context, sink apis.Convertible) error {
+// ConvertTo implements api.Convertible
+func (p *Pipeline) ConvertTo(ctx context.Context, sink apis.Convertible) error {
 	return fmt.Errorf("v1beta1 is the highest known version, got: %T", sink)
 }
 
 // ConvertFrom implements api.Convertible
-func (sink *Pipeline) ConvertFrom(ctx context.Context, source apis.Convertible) error {
+func (p *Pipeline) ConvertFrom(ctx context.Context, source apis.Convertible) error {
 	return fmt.Errorf("v1beta1 is the highest know version, got: %T", source)
 }

@@ -28,6 +28,7 @@ import (
 
 var _ apis.Validatable = (*Condition)(nil)
 
+// Validate performs validation on the Condition's metadata and spec
 func (c Condition) Validate(ctx context.Context) *apis.FieldError {
 	if err := validate.ObjectMetadata(c.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
@@ -38,6 +39,8 @@ func (c Condition) Validate(ctx context.Context) *apis.FieldError {
 	return c.Spec.Validate(ctx).ViaField("Spec")
 }
 
+// Validate makes sure the ConditionSpec is actually configured and that its name is a valid DNS label,
+// and finally validates its steps.
 func (cs *ConditionSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(cs, ConditionSpec{}) {
 		return apis.ErrMissingField(apis.CurrentField)

@@ -20,6 +20,7 @@ import (
 	"fmt"
 )
 
+// SubcommandSuccessful is returned for successful subcommand executions.
 type SubcommandSuccessful struct {
 	message string
 }
@@ -28,6 +29,7 @@ func (err SubcommandSuccessful) Error() string {
 	return err.message
 }
 
+// SubcommandError is returned for failed subcommand executions.
 type SubcommandError struct {
 	subcommand string
 	message    string

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// nolint: revive
 package v1alpha1
 
 import (
@@ -28,47 +27,48 @@ import (
 var _ apis.Convertible = (*Task)(nil)
 
 // ConvertTo implements api.Convertible
-func (source *Task) ConvertTo(ctx context.Context, obj apis.Convertible) error {
+func (t *Task) ConvertTo(ctx context.Context, obj apis.Convertible) error {
 	switch sink := obj.(type) {
 	case *v1beta1.Task:
-		sink.ObjectMeta = source.ObjectMeta
-		return source.Spec.ConvertTo(ctx, &sink.Spec)
+		sink.ObjectMeta = t.ObjectMeta
+		return t.Spec.ConvertTo(ctx, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
 	}
 }
 
-func (source *TaskSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskSpec) error {
-	sink.Steps = source.Steps
-	sink.Volumes = source.Volumes
-	sink.StepTemplate = source.StepTemplate
-	sink.Sidecars = source.Sidecars
-	sink.Workspaces = source.Workspaces
-	sink.Results = source.Results
-	sink.Resources = source.Resources
-	sink.Params = source.Params
-	sink.Description = source.Description
-	if source.Inputs != nil {
-		if len(source.Inputs.Params) > 0 && len(source.Params) > 0 {
+// ConvertTo implements api.Convertible
+func (ts *TaskSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskSpec) error {
+	sink.Steps = ts.Steps
+	sink.Volumes = ts.Volumes
+	sink.StepTemplate = ts.StepTemplate
+	sink.Sidecars = ts.Sidecars
+	sink.Workspaces = ts.Workspaces
+	sink.Results = ts.Results
+	sink.Resources = ts.Resources
+	sink.Params = ts.Params
+	sink.Description = ts.Description
+	if ts.Inputs != nil {
+		if len(ts.Inputs.Params) > 0 && len(ts.Params) > 0 {
 			// This shouldn't happen as it shouldn't pass validation
 			return apis.ErrMultipleOneOf("inputs.params", "params")
 		}
-		if len(source.Inputs.Params) > 0 {
-			sink.Params = make([]v1beta1.ParamSpec, len(source.Inputs.Params))
-			for i, param := range source.Inputs.Params {
+		if len(ts.Inputs.Params) > 0 {
+			sink.Params = make([]v1beta1.ParamSpec, len(ts.Inputs.Params))
+			for i, param := range ts.Inputs.Params {
 				sink.Params[i] = *param.DeepCopy()
 			}
 		}
-		if len(source.Inputs.Resources) > 0 {
+		if len(ts.Inputs.Resources) > 0 {
 			if sink.Resources == nil {
 				sink.Resources = &v1beta1.TaskResources{}
 			}
-			if len(source.Inputs.Resources) > 0 && source.Resources != nil && len(source.Resources.Inputs) > 0 {
+			if len(ts.Inputs.Resources) > 0 && ts.Resources != nil && len(ts.Resources.Inputs) > 0 {
 				// This shouldn't happen as it shouldn't pass validation but just in case
 				return apis.ErrMultipleOneOf("inputs.resources", "resources.inputs")
 			}
-			sink.Resources.Inputs = make([]v1beta1.TaskResource, len(source.Inputs.Resources))
-			for i, resource := range source.Inputs.Resources {
+			sink.Resources.Inputs = make([]v1beta1.TaskResource, len(ts.Inputs.Resources))
+			for i, resource := range ts.Inputs.Resources {
 				sink.Resources.Inputs[i] = v1beta1.TaskResource{ResourceDeclaration: v1beta1.ResourceDeclaration{
 					Name:        resource.Name,
 					Type:        resource.Type,
@@ -79,16 +79,16 @@ func (source *TaskSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskSpec) e
 			}
 		}
 	}
-	if source.Outputs != nil && len(source.Outputs.Resources) > 0 {
+	if ts.Outputs != nil && len(ts.Outputs.Resources) > 0 {
 		if sink.Resources == nil {
 			sink.Resources = &v1beta1.TaskResources{}
 		}
-		if len(source.Outputs.Resources) > 0 && source.Resources != nil && len(source.Resources.Outputs) > 0 {
+		if len(ts.Outputs.Resources) > 0 && ts.Resources != nil && len(ts.Resources.Outputs) > 0 {
 			// This shouldn't happen as it shouldn't pass validation but just in case
 			return apis.ErrMultipleOneOf("outputs.resources", "resources.outputs")
 		}
-		sink.Resources.Outputs = make([]v1beta1.TaskResource, len(source.Outputs.Resources))
-		for i, resource := range source.Outputs.Resources {
+		sink.Resources.Outputs = make([]v1beta1.TaskResource, len(ts.Outputs.Resources))
+		for i, resource := range ts.Outputs.Resources {
 			sink.Resources.Outputs[i] = v1beta1.TaskResource{ResourceDeclaration: v1beta1.ResourceDeclaration{
 				Name:        resource.Name,
 				Type:        resource.Type,
@@ -102,25 +102,26 @@ func (source *TaskSpec) ConvertTo(ctx context.Context, sink *v1beta1.TaskSpec) e
 }
 
 // ConvertFrom implements api.Convertible
-func (sink *Task) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
+func (t *Task) ConvertFrom(ctx context.Context, obj apis.Convertible) error {
 	switch source := obj.(type) {
 	case *v1beta1.Task:
-		sink.ObjectMeta = source.ObjectMeta
-		return sink.Spec.ConvertFrom(ctx, &source.Spec)
+		t.ObjectMeta = source.ObjectMeta
+		return t.Spec.ConvertFrom(ctx, &source.Spec)
 	default:
-		return fmt.Errorf("unknown version, got: %T", sink)
+		return fmt.Errorf("unknown version, got: %T", t)
 	}
 }
 
-func (sink *TaskSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskSpec) error {
-	sink.Steps = source.Steps
-	sink.Volumes = source.Volumes
-	sink.StepTemplate = source.StepTemplate
-	sink.Sidecars = source.Sidecars
-	sink.Workspaces = source.Workspaces
-	sink.Results = source.Results
-	sink.Params = source.Params
-	sink.Resources = source.Resources
-	sink.Description = source.Description
+// ConvertFrom implements api.Convertible
+func (ts *TaskSpec) ConvertFrom(ctx context.Context, source *v1beta1.TaskSpec) error {
+	ts.Steps = source.Steps
+	ts.Volumes = source.Volumes
+	ts.StepTemplate = source.StepTemplate
+	ts.Sidecars = source.Sidecars
+	ts.Workspaces = source.Workspaces
+	ts.Results = source.Results
+	ts.Params = source.Params
+	ts.Resources = source.Resources
+	ts.Description = source.Description
 	return nil
 }

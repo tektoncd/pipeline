@@ -101,6 +101,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) *apis.FieldError {
 	return nil
 }
 
+// Validate implements apis.Validatable
 func (i TaskRunInputs) Validate(ctx context.Context, path string) *apis.FieldError {
 	if err := validatePipelineResources(ctx, i.Resources, fmt.Sprintf("%s.Resources.Name", path)); err != nil {
 		return err
@@ -108,6 +109,7 @@ func (i TaskRunInputs) Validate(ctx context.Context, path string) *apis.FieldErr
 	return validateParameters("spec.inputs.params", i.Params)
 }
 
+// Validate implements apis.Validatable
 func (o TaskRunOutputs) Validate(ctx context.Context, path string) *apis.FieldError {
 	return validatePipelineResources(ctx, o.Resources, fmt.Sprintf("%s.Resources.Name", path))
 }
