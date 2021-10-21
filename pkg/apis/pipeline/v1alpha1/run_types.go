@@ -59,6 +59,10 @@ type RunSpec struct {
 	// +optional
 	Status RunSpecStatus `json:"status,omitempty"`
 
+	// Used for propagating retries count to custom tasks
+	// +optional
+	Retries int `json:"retries,omitempty"`
+
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 
