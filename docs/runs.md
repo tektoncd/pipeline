@@ -196,6 +196,41 @@ Supporting timeouts is optional but recommended.
    `conditions` on the `Run`'s `status` of `Succeeded/False` with a `Reason`
    of `RunTimedOut`.
 
+### Specifying `Retries`
+
+A custom task specification can be created with `Retries` as follows:
+
+```yaml
+apiVersion: tekton.dev/v1alpha1
+kind: Run
+metadata:
+  generateName: simpleexample
+spec:
+  retries: 3 # set retries
+  params:
+    - name: searching
+      value: the purpose of my existence
+  ref:
+    apiVersion: custom.tekton.dev/v1alpha1
+    kind: Example
+    name: exampleName
+```
+
+Supporting retries is optional but recommended.
+
+#### Developer guide for custom controllers supporting `retries`
+
+1. Tekton controllers will use the entire `timeout` duration for exhausting
+    all the retries the custom task is configured to run with. In other words,
+    tekton does not discriminate, if the failure was due to a stuck up process or
+    exhausting all the retries. Custom task developers are recommended to use the
+    same strategy for implementing their timeout for the custom task.
+2. Those custom task who do not wish to support retry, can simply ignore it.
+3. It is recommended, that custom task should update the field `RetriesStatus`
+   of a `Run` on each retry performed by the custom task.
+4. Tekton controller does not validate that number of entries in `RetriesStatus`
+    is same as specified value of retries count.
+
 ### Specifying `Parameters`
 
 If a custom task supports [`parameters`](tasks.md#parameters), you can use the
