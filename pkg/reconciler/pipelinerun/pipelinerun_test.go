@@ -767,7 +767,8 @@ func TestReconcile_CustomTask(t *testing.T) {
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineSpec: &v1beta1.PipelineSpec{
 					Tasks: []v1beta1.PipelineTask{{
-						Name: pipelineTaskName,
+						Name:    pipelineTaskName,
+						Retries: 3,
 						Params: []v1beta1.Param{{
 							Name:  "param1",
 							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
@@ -800,6 +801,7 @@ func TestReconcile_CustomTask(t *testing.T) {
 				Annotations: map[string]string{},
 			},
 			Spec: v1alpha1.RunSpec{
+				Retries: 3,
 				Params: []v1beta1.Param{{
 					Name:  "param1",
 					Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
