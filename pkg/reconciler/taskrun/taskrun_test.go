@@ -90,7 +90,7 @@ var (
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
-	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
+	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
 	// Pods are created with a random 5-character suffix that we want to
 	// ignore in our diffs.
 	ignoreRandomPodNameSuffix = cmp.FilterPath(func(path cmp.Path) bool {

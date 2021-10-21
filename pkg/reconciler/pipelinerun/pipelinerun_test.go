@@ -68,7 +68,7 @@ import (
 )
 
 var (
-	ignoreLastTransitionTime = cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)
+	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
 	images                   = pipeline.Images{
 		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "override-with-nop:latest",

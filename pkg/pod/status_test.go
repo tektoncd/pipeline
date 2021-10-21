@@ -1198,7 +1198,7 @@ func TestMarkStatusRunning(t *testing.T) {
 		Message: "Not all Steps in the Task have finished executing",
 	}
 
-	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); d != "" {
+	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
 		t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 	}
 }
@@ -1214,7 +1214,7 @@ func TestMarkStatusFailure(t *testing.T) {
 		Message: "failure message",
 	}
 
-	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); d != "" {
+	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
 		t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 	}
 }
@@ -1230,7 +1230,7 @@ func TestMarkStatusSuccess(t *testing.T) {
 		Message: "All Steps have completed executing",
 	}
 
-	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreTypes(apis.Condition{}.LastTransitionTime.Inner.Time)); d != "" {
+	if d := cmp.Diff(expected, trs.GetCondition(apis.ConditionSucceeded), cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
 		t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 	}
 }
