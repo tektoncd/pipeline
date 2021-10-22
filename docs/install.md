@@ -429,6 +429,25 @@ to better fit specific usecases.
 
 Out-of-the-box, Tekton Pipelines Controller is configured for relatively small-scale deployments but there have several options for configuring Pipelines' performance are available. See the [Performance Configuration](tekton-controller-performance-configuration.md) document which describes how to change the default ThreadsPerController, QPS and Burst settings to meet your requirements.
 
+## Platform Support
+
+The Tekton project provides support for running on x86 Linux Kubernetes nodes.
+
+The project produces images capable of running on other architectures and operating systems, but may not be able to help debug issues specific to those platforms as readily as those that affect Linux on x86.
+
+The controller and webhook components are currently built for:
+
+- linux/amd64
+- linux/arm64
+- linux/arm (Arm v7)
+- linux/ppc64le (PowerPC)
+- linux/s390x (IBM Z)
+
+The entrypoint component is also built for Windows, which enables TaskRun workloads to execute on Windows nodes.
+See [Windows documentation](windows.md) for more information.
+
+Additional components to support PipelineResources may be available for other architectures as well.
+
 ## Creating a custom release of Tekton Pipelines
 
 You can create a custom release of Tekton Pipelines by following and customizing the steps in [Creating an official release](https://github.com/tektoncd/pipeline/blob/main/tekton/README.md#create-an-official-release). For example, you might want to customize the container images built and used by Tekton Pipelines.
