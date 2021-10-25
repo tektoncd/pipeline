@@ -45,10 +45,9 @@ const (
 // Entrypointer holds fields for running commands with redirected
 // entrypoints.
 type Entrypointer struct {
-	// Entrypoint is the original specified entrypoint, if any.
-	Entrypoint string
-	// Args are the original specified args, if any.
-	Args []string
+	// Command is the original specified command and args.
+	Command []string
+
 	// WaitFiles is the set of files to wait for. If empty, execution
 	// begins immediately.
 	WaitFiles []string
@@ -141,10 +140,6 @@ func (e Entrypointer) Go() error {
 		}
 	}
 
-	if e.Entrypoint != "" {
-		e.Args = append([]string{e.Entrypoint}, e.Args...)
-	}
-
 	output = append(output, v1beta1.PipelineResourceResult{
 		Key:        "StartedAt",
 		Value:      time.Now().Format(timeFormat),
@@ -163,7 +158,7 @@ func (e Entrypointer) Go() error {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
 			defer cancel()
 		}
-		err = e.Runner.Run(ctx, e.Args...)
+		err = e.Runner.Run(ctx, e.Command...)
 		if err == context.DeadlineExceeded {
 			output = append(output, v1beta1.PipelineResourceResult{
 				Key:        "Reason",

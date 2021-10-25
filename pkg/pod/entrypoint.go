@@ -147,15 +147,6 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
 		}
 
-		cmd, args := s.Command, s.Args
-		if len(cmd) == 0 {
-			return nil, fmt.Errorf("Step %d did not specify command", i)
-		}
-		if len(cmd) > 1 {
-			args = append(cmd[1:], args...)
-			cmd = []string{cmd[0]}
-		}
-
 		if breakpointConfig != nil && len(breakpointConfig.Breakpoint) > 0 {
 			breakpoints := breakpointConfig.Breakpoint
 			for _, b := range breakpoints {
@@ -166,7 +157,14 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			}
 		}
 
-		argsForEntrypoint = append(argsForEntrypoint, "-entrypoint", cmd[0], "--")
+		cmd, args := s.Command, s.Args
+		if len(cmd) > 0 {
+			argsForEntrypoint = append(argsForEntrypoint, "-entrypoint", cmd[0])
+		}
+		if len(cmd) > 1 {
+			args = append(cmd[1:], args...)
+		}
+		argsForEntrypoint = append(argsForEntrypoint, "--")
 		argsForEntrypoint = append(argsForEntrypoint, args...)
 
 		steps[i].Command = []string{entrypointBinary}

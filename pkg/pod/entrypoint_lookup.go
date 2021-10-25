@@ -18,7 +18,7 @@ package pod
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -31,10 +31,18 @@ type EntrypointCache interface {
 	// Get the Image data for the given image reference. If the value is
 	// not found in the cache, it will be fetched from the image registry,
 	// possibly using K8s service account imagePullSecrets.
-	Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (v1.Image, error)
-	// Set updates the cache with a new digest->Image mapping. This will avoid a
-	// remote registry lookup next time Get is called.
-	Set(digest name.Digest, img v1.Image)
+	//
+	// It also returns the digest associated with the given reference. If
+	// the reference referred to an index, the returned digest will be the
+	// index's digest, not any platform-specific image contained by the
+	// index.
+	Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error)
+}
+
+// imageData contains information looked up about an image or multi-platform image index.
+type imageData struct {
+	digest   v1.Hash
+	commands map[string][]string // map of platform -> []command
 }
 
 // resolveEntrypoints looks up container image ENTRYPOINTs for all steps that
@@ -43,70 +51,57 @@ type EntrypointCache interface {
 // Images that are not specified by digest will be specified by digest after
 // lookup in the resulting list of containers.
 func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, serviceAccountName string, steps []corev1.Container) ([]corev1.Container, error) {
-	// Keep a local cache of name->image lookups, just for the scope of
+	// Keep a local cache of name->imageData lookups, just for the scope of
 	// resolving this set of steps. If the image is pushed to before the
-	// next run, we need to resolve its digest and entrypoint again, but we
+	// next run, we need to resolve its digest and commands again, but we
 	// can skip lookups while resolving the same TaskRun.
-	localCache := map[name.Reference]v1.Image{}
+	localCache := map[name.Reference]imageData{}
 	for i, s := range steps {
-		if len(s.Command) != 0 {
-			// Nothing to resolve.
+
+		// If the command is already specified, there's nothing to resolve.
+		if len(s.Command) > 0 {
 			continue
 		}
 
-		origRef, err := name.ParseReference(s.Image, name.WeakValidation)
+		ref, err := name.ParseReference(s.Image, name.WeakValidation)
 		if err != nil {
 			return nil, err
 		}
-		var img v1.Image
-		if cimg, found := localCache[origRef]; found {
-			img = cimg
+		var id imageData
+		if cid, found := localCache[ref]; found {
+			id = cid
 		} else {
-			// Look it up in the cache. If it's not found in the
-			// cache, it will be resolved from the registry.
-			img, err = cache.Get(ctx, origRef, namespace, serviceAccountName)
+			// Look it up for real.
+			lid, err := cache.Get(ctx, ref, namespace, serviceAccountName)
 			if err != nil {
 				return nil, err
 			}
-			// Cache it locally in case another step specifies the same image.
-			localCache[origRef] = img
+			id = *lid
+
+			// Cache it locally in case another step in this task specifies the same image.
+			localCache[ref] = *lid
 		}
 
-		ep, digest, err := imageData(origRef, img)
-		if err != nil {
-			return nil, err
+		// Resolve the original reference to a reference by digest.
+		steps[i].Image = ref.Context().Digest(id.digest.String()).String()
+
+		if len(id.commands) == 1 {
+			// Promote the single found command to the step's command.
+			for _, v := range id.commands {
+				steps[i].Command = v
+				break
+			}
+		} else {
+			// Encode the map of platform->command to JSON and pass it via env var.
+			b, err := json.Marshal(id.commands)
+			if err != nil {
+				return nil, err
+			}
+			steps[i].Env = append(steps[i].Env, corev1.EnvVar{
+				Name:  "TEKTON_PLATFORM_COMMANDS",
+				Value: string(b),
+			})
 		}
-
-		cache.Set(digest, img) // Cache the lookup for next time this image is looked up by digest.
-
-		steps[i].Image = digest.String() // Specify image by digest, since we know it now.
-		steps[i].Command = ep            // Specify the command explicitly.
 	}
 	return steps, nil
-}
-
-// imageData pulls the entrypoint from the image, and returns the given
-// original reference, with image digest resolved.
-func imageData(ref name.Reference, img v1.Image) ([]string, name.Digest, error) {
-	digest, err := img.Digest()
-	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("error getting image digest: %v", err)
-	}
-	cfg, err := img.ConfigFile()
-	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("error getting image config: %v", err)
-	}
-
-	// Entrypoint can be specified in either .Config.Entrypoint or
-	// .Config.Cmd.
-	ep := cfg.Config.Entrypoint
-	if len(ep) == 0 {
-		ep = cfg.Config.Cmd
-	}
-
-	d, err := name.NewDigest(ref.Context().String()+"@"+digest.String(), name.WeakValidation)
-	if err != nil {
-		return nil, name.Digest{}, fmt.Errorf("error constructing resulting digest: %v", err)
-	}
-	return ep, d, nil
 }

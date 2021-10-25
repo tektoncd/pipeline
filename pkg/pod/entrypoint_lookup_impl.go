@@ -18,50 +18,38 @@ package pod
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"runtime"
 
+	"github.com/containerd/containerd/platforms"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	lru "github.com/hashicorp/golang-lru"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
-const cacheSize = 1024
-
 type entrypointCache struct {
 	kubeclient kubernetes.Interface
-	lru        *lru.Cache // cache of digest string -> image entrypoint []string
 }
 
 // NewEntrypointCache returns a new entrypoint cache implementation that uses
 // K8s credentials to pull image metadata from a container image registry.
 func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error) {
-	lru, err := lru.New(cacheSize)
-	if err != nil {
-		return nil, err
-	}
 	return &entrypointCache{
 		kubeclient: kubeclient,
-		lru:        lru,
 	}, nil
 }
 
-// Get gets the image from the cache for the given ref, namespace, and SA
-func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (v1.Image, error) {
-	// If image is specified by digest, check the local cache.
-	if digest, ok := ref.(name.Digest); ok {
-		if img, ok := e.lru.Get(digest.String()); ok {
-			return img.(v1.Image), nil
-		}
-	}
-
-	// If the image wasn't specified by digest, or if the entrypoint
-	// wasn't found, we have to consult the remote registry, using
-	// imagePullSecrets.
+// Get gets the image from the cache for the given ref, namespace, and SA.
+//
+// It also returns the digest associated with the given reference. If the
+// reference referred to an index, the returned digest will be the index's
+// digest, not any platform-specific image contained by the index.
+func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error) {
+	// Consult the remote registry, using imagePullSecrets.
 	kc, err := k8schain.New(ctx, e.kubeclient, k8schain.Options{
 		Namespace:          namespace,
 		ServiceAccountName: serviceAccountName,
@@ -70,32 +58,71 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 		return nil, fmt.Errorf("error creating k8schain: %v", err)
 	}
 	mkc := authn.NewMultiKeychain(kc)
-	// By default go-containerregistry pulls amd64 images.
-	// Setting correct image pull architecture based on the underlying platform
-	// _of the node that Tekton's controller is running on_. If the cluster
-	// is comprised of nodes of heterogeneous architectures, this might cause issues.
-	var pf = v1.Platform{
-		Architecture: runtime.GOARCH,
-		OS:           runtime.GOOS,
-	}
 
-	// Attempt to lookup the image's digest.
-	// - if HEAD request fails, proceed to GET with remote.Image below --
-	//   some registries don't support HEAD requests, but those with the
-	//   strictest rate limiting (DockerHub) do.
-	desc, err := remote.Head(ref, remote.WithAuthFromKeychain(mkc))
-	if err == nil {
-		if img, ok := e.lru.Get(desc.Digest.String()); ok {
-			return img.(v1.Image), nil
-		}
-	}
-
-	img, err := remote.Image(ref, remote.WithAuthFromKeychain(mkc), remote.WithPlatform(pf))
+	desc, err := remote.Get(ref, remote.WithAuthFromKeychain(mkc))
 	if err != nil {
-		return nil, fmt.Errorf("error getting image manifest: %v", err)
+		return nil, err
 	}
-	return img, nil
+	id := &imageData{
+		digest:   desc.Digest,
+		commands: map[string][]string{},
+	}
+	switch {
+	case desc.MediaType.IsImage():
+		img, err := desc.Image()
+		if err != nil {
+			return nil, err
+		}
+		ep, err := getCommand(img)
+		if err != nil {
+			return nil, err
+		}
+		id.commands["only-platform"] = ep
+	case desc.MediaType.IsIndex():
+		idx, err := desc.ImageIndex()
+		if err != nil {
+			return nil, err
+		}
+		mf, err := idx.IndexManifest()
+		if err != nil {
+			return nil, err
+		}
+		for _, desc := range mf.Manifests {
+			plat := platforms.Format(specs.Platform{
+				OS:           desc.Platform.OS,
+				Architecture: desc.Platform.Architecture,
+				Variant:      desc.Platform.Variant,
+				// TODO(jasonhall): Figure out how to determine
+				// osversion from the entrypoint binary, to
+				// select the right Windows image if multiple
+				// are provided (e.g., golang).
+			})
+			if _, found := id.commands[plat]; found {
+				return nil, fmt.Errorf("duplicate image found for platform: %s", plat)
+			}
+			img, err := idx.Image(desc.Digest)
+			if err != nil {
+				return nil, err
+			}
+			id.commands[plat], err = getCommand(img)
+			if err != nil {
+				return nil, err
+			}
+		}
+	default:
+		return nil, errors.New("unsupported media type for image reference")
+	}
+	return id, nil
 }
 
-// Set puts the image in the cache with the digest as the key.
-func (e *entrypointCache) Set(d name.Digest, img v1.Image) { e.lru.Add(d.String(), img) }
+func getCommand(img v1.Image) ([]string, error) {
+	cf, err := img.ConfigFile()
+	if err != nil {
+		return nil, err
+	}
+	ep := cf.Config.Entrypoint
+	if len(ep) == 0 {
+		ep = cf.Config.Cmd
+	}
+	return ep, nil
+}
