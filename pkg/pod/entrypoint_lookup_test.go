@@ -23,8 +23,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -40,22 +38,32 @@ func TestResolveEntrypoints(t *testing.T) {
 	if err != nil {
 		t.Fatalf("random.Image: %v", err)
 	}
-	img, err = mutate.Config(img, v1.Config{
-		Entrypoint: []string{"my", "entrypoint"},
-	})
-	if err != nil {
-		t.Fatalf("mutate.Config: %v", err)
-	}
 	dig, err := img.Digest()
 	if err != nil {
 		t.Fatalf("image.Digest: %v", err)
 	}
 	t.Logf("Random image digest is %s", dig.String())
 
+	id := &imageData{
+		digest: dig,
+		commands: map[string][]string{
+			"*": {"my", "entrypoint"},
+		},
+	}
+
+	multi := &imageData{
+		digest: dig,
+		commands: map[string][]string{
+			"plat-1": {"plat", "one"},
+			"plat-2": {"plat", "two"},
+		},
+	}
+
 	// Populate an EntrypointCache backed by a map.
 	cache := fakeCache{
-		"gcr.io/my/image@" + dig.String(): &data{img: img},
-		"gcr.io/my/image:latest":          &data{img: img},
+		"gcr.io/my/image@" + dig.String(): &data{id: id},
+		"gcr.io/my/image:latest":          &data{id: id},
+		"reg.io/multi/arch:latest":        &data{id: multi},
 	}
 
 	got, err := resolveEntrypoints(ctx, cache, "namespace", "serviceAccountName", []corev1.Container{{
@@ -77,6 +85,11 @@ func TestResolveEntrypoints(t *testing.T) {
 		// it up, so it's already in the local cache -- we don't need
 		// to look it up in the remote registry again.
 		Image: "gcr.io/my/image",
+	}, {
+		// This is a multi-arch image, so we'll pass each platform's
+		// commands to the Pod in an env var, to be interpreted by the
+		// entrypoint binary.
+		Image: "reg.io/multi/arch",
 	}})
 	if err != nil {
 		t.Fatalf("resolveEntrypoints: %v", err)
@@ -103,6 +116,12 @@ func TestResolveEntrypoints(t *testing.T) {
 		// registry again.
 		Image:   "gcr.io/my/image@" + dig.String(),
 		Command: []string{"my", "entrypoint"},
+	}, {
+		Image: "reg.io/multi/arch@" + dig.String(),
+		Env: []corev1.EnvVar{{
+			Name:  "TEKTON_PLATFORM_COMMANDS",
+			Value: `{"plat-1":["plat","one"],"plat-2":["plat","two"]}`,
+		}},
 	}}
 	if d := cmp.Diff(want, got); d != "" {
 		t.Fatalf("Diff %s", diff.PrintWantGot(d))
@@ -111,14 +130,14 @@ func TestResolveEntrypoints(t *testing.T) {
 
 type fakeCache map[string]*data
 type data struct {
-	img  v1.Image
+	id   *imageData
 	seen bool // Whether the image has been looked up before.
 }
 
-func (f fakeCache) Get(ctx context.Context, ref name.Reference, _, _ string) (v1.Image, error) {
+func (f fakeCache) Get(ctx context.Context, ref name.Reference, _, _ string) (*imageData, error) {
 	if d, ok := ref.(name.Digest); ok {
 		if data, found := f[d.String()]; found {
-			return data.img, nil
+			return data.id, nil
 		}
 	}
 
@@ -129,9 +148,5 @@ func (f fakeCache) Get(ctx context.Context, ref name.Reference, _, _ string) (v1
 	if d.seen {
 		return nil, fmt.Errorf("image %q was already looked up", ref)
 	}
-	return d.img, nil
-}
-
-func (f fakeCache) Set(d name.Digest, img v1.Image) {
-	f[d.String()] = &data{img: img}
+	return d.id, nil
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"log"
 	"os"
@@ -25,6 +26,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/containerd/containerd/platforms"
 	"github.com/tektoncd/pipeline/cmd/entrypoint/subcommands"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/credentials"
@@ -99,13 +101,30 @@ func main() {
 		}
 	}
 
+	var cmd []string
+	if *ep != "" {
+		cmd = []string{*ep}
+	} else {
+		env := os.Getenv("TEKTON_PLATFORM_COMMANDS")
+		var cmds map[string][]string
+		if err := json.Unmarshal([]byte(env), &cmds); err != nil {
+			log.Fatal(err)
+		}
+		plat := platforms.DefaultString()
+
+		var found bool
+		cmd, found = cmds[plat]
+		if !found {
+			log.Fatalf("could not find command for platform %q", plat)
+		}
+	}
+
 	e := entrypoint.Entrypointer{
-		Entrypoint:          *ep,
+		Command:             append(cmd, flag.Args()...),
 		WaitFiles:           strings.Split(*waitFiles, ","),
 		WaitFileContent:     *waitFileContent,
 		PostFile:            *postFile,
 		TerminationPath:     *terminationPath,
-		Args:                flag.Args(),
 		Waiter:              &realWaiter{waitPollingInterval: defaultWaitPollingInterval, breakpointOnFailure: *breakpointOnFailure},
 		Runner:              &realRunner{},
 		PostWriter:          &realPostWriter{},

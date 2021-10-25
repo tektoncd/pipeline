@@ -94,10 +94,9 @@ func TestEntrypointerFailures(t *testing.T) {
 				defer os.Remove(terminationFile.Name())
 			}
 			err := Entrypointer{
-				Entrypoint:      "echo",
+				Command:         []string{"echo", "some", "args"},
 				WaitFiles:       c.waitFiles,
 				PostFile:        c.postFile,
-				Args:            []string{"some", "args"},
 				Waiter:          fw,
 				Runner:          fr,
 				PostWriter:      fpw,
@@ -175,10 +174,9 @@ func TestEntrypointer(t *testing.T) {
 				defer os.Remove(terminationFile.Name())
 			}
 			err := Entrypointer{
-				Entrypoint:          c.entrypoint,
+				Command:             append([]string{c.entrypoint}, c.args...),
 				WaitFiles:           c.waitFiles,
 				PostFile:            c.postFile,
-				Args:                c.args,
 				Waiter:              fw,
 				Runner:              fr,
 				PostWriter:          fpw,
@@ -203,10 +201,7 @@ func TestEntrypointer(t *testing.T) {
 				t.Errorf("Waited for file when not required")
 			}
 
-			wantArgs := c.args
-			if c.entrypoint != "" {
-				wantArgs = append([]string{c.entrypoint}, c.args...)
-			}
+			wantArgs := append([]string{c.entrypoint}, c.args...)
 			if len(wantArgs) != 0 {
 				if fr.args == nil {
 					t.Error("Wanted command to be run, got nil")
@@ -324,10 +319,9 @@ func TestEntrypointer_OnError(t *testing.T) {
 				defer os.Remove(terminationFile.Name())
 			}
 			err := Entrypointer{
-				Entrypoint:      "echo",
+				Command:         []string{"echo", "some", "args"},
 				WaitFiles:       []string{},
 				PostFile:        c.postFile,
-				Args:            []string{"some", "args"},
 				Waiter:          &fakeWaiter{},
 				Runner:          c.runner,
 				PostWriter:      fpw,
