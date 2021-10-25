@@ -871,6 +871,20 @@ when:
 
 For an end-to-end example, see [`Task` `Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/task_results_example.yaml).
 
+Note that `when` expressions are whitespace-sensitive.  In particular, when producing results intended for inputs to `when` 
+expressions that may include newlines at their close (e.g. `cat`, `jq`), you may wish to truncate them.
+
+```yaml
+taskSpec:
+  params:
+  - name: jsonQuery-check
+  steps:
+  - image: ubuntu
+    name: store-name-in-results
+    script: |
+      curl -s https://my-json-server.typicode.com/typicode/demo/profile | jq -r .name | tr -d '\n' | tee $(results.name.path)
+```
+
 ### Emitting `Results` from a `Pipeline`
 
 A `Pipeline` can emit `Results` of its own for a variety of reasons - an external
