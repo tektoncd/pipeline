@@ -30,8 +30,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tektoncd/pipeline/test/parse"
-
 	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -39,8 +37,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/layout"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/tektoncd/pipeline/pkg/pod"
+	podstatus "github.com/tektoncd/pipeline/pkg/pod/status"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
+	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -266,7 +265,7 @@ spec:
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
 	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout,
 		Chain(
-			FailedWithReason(pod.ReasonCouldntGetTask, pipelineRunName),
+			FailedWithReason(podstatus.ReasonCouldntGetTask, pipelineRunName),
 			FailedWithMessage("does not contain a dev.tekton.image.apiVersion annotation", pipelineRunName),
 		), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)

@@ -25,6 +25,8 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/internal/sidecars"
+	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -71,31 +73,6 @@ const (
 
 const oomKilled = "OOMKilled"
 
-// SidecarsReady returns true if all of the Pod's sidecars are Ready or
-// Terminated.
-func SidecarsReady(podStatus corev1.PodStatus) bool {
-	if podStatus.Phase != corev1.PodRunning {
-		return false
-	}
-	for _, s := range podStatus.ContainerStatuses {
-		// If the step indicates that it's a step, skip it.
-		// An injected sidecar might not have the "sidecar-" prefix, so
-		// we can't just look for that prefix, we need to look at any
-		// non-step container.
-		if IsContainerStep(s.Name) {
-			continue
-		}
-		if s.State.Running != nil && s.Ready {
-			continue
-		}
-		if s.State.Terminated != nil {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
 func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod) (v1beta1.TaskRunStatus, error) {
 	trs := &tr.Status
@@ -121,9 +98,9 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	var stepStatuses []corev1.ContainerStatus
 	var sidecarStatuses []corev1.ContainerStatus
 	for _, s := range pod.Status.ContainerStatuses {
-		if IsContainerStep(s.Name) {
+		if podconvert.IsContainerStep(s.Name) {
 			stepStatuses = append(stepStatuses, s)
-		} else if isContainerSidecar(s.Name) {
+		} else if sidecars.IsContainerSidecar(s.Name) {
 			sidecarStatuses = append(sidecarStatuses, s)
 		}
 	}
@@ -185,7 +162,7 @@ func setTaskRunStatusBasedOnStepStatus(logger *zap.SugaredLogger, stepStatuses [
 		}
 		trs.Steps = append(trs.Steps, v1beta1.StepState{
 			ContainerState: *s.State.DeepCopy(),
-			Name:           trimStepPrefix(s.Name),
+			Name:           podconvert.TrimStepPrefix(s.Name),
 			ContainerName:  s.Name,
 			ImageID:        s.ImageID,
 		})
@@ -199,7 +176,7 @@ func setTaskRunStatusBasedOnSidecarStatus(sidecarStatuses []corev1.ContainerStat
 	for _, s := range sidecarStatuses {
 		trs.Sidecars = append(trs.Sidecars, v1beta1.SidecarState{
 			ContainerState: *s.State.DeepCopy(),
-			Name:           TrimSidecarPrefix(s.Name),
+			Name:           sidecars.TrimPrefix(s.Name),
 			ContainerName:  s.Name,
 			ImageID:        s.ImageID,
 		})
@@ -324,7 +301,7 @@ func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) 
 func DidTaskRunFail(pod *corev1.Pod) bool {
 	f := pod.Status.Phase == corev1.PodFailed
 	for _, s := range pod.Status.ContainerStatuses {
-		if IsContainerStep(s.Name) {
+		if podconvert.IsContainerStep(s.Name) {
 			if s.State.Terminated != nil {
 				f = f || s.State.Terminated.ExitCode != 0 || isOOMKilled(s)
 			}
@@ -336,7 +313,7 @@ func DidTaskRunFail(pod *corev1.Pod) bool {
 func areStepsComplete(pod *corev1.Pod) bool {
 	stepsComplete := len(pod.Status.ContainerStatuses) > 0 && pod.Status.Phase == corev1.PodRunning
 	for _, s := range pod.Status.ContainerStatuses {
-		if IsContainerStep(s.Name) {
+		if podconvert.IsContainerStep(s.Name) {
 			if s.State.Terminated == nil {
 				stepsComplete = false
 			}
@@ -374,7 +351,7 @@ func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
 	}
 
 	for _, s := range pod.Status.ContainerStatuses {
-		if IsContainerStep(s.Name) {
+		if podconvert.IsContainerStep(s.Name) {
 			if s.State.Terminated != nil {
 				if isOOMKilled(s) {
 					return oomKilled

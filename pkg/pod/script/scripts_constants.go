@@ -1,7 +1,9 @@
-package pod
+package script
 
 // TODO(#3972): Use text/template templating instead of %s based templating
 const (
+	BreakpointOnFailure = "onFailure"
+
 	debugContinueScriptTemplate = `
 numberOfSteps=%d
 debugInfo=%s

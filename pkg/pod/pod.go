@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/pod/script"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -134,18 +135,21 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
+	// TODO(vdemeester) get one list of steps, return 1 list of containers
+	// TODO(vdemeester) extract breakpoint from scripts
 	if alphaAPIEnabled {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, taskSpec.Sidecars, taskRun.Spec.Debug)
+		scriptsInit, stepContainers, sidecarContainers = script.Convert(b.Images, steps, taskSpec.Sidecars, taskRun.Spec.Debug)
 	} else {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, "", steps, taskSpec.Sidecars, nil)
+		scriptsInit, stepContainers, sidecarContainers = script.Convert(b.Images, steps, taskSpec.Sidecars, nil)
 	}
+	// scriptsInit, stepContainers = breakpoint.Transform(stepContainers, taskRun.Spec.Debug, scriptsInit)
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
-		volumes = append(volumes, scriptsVolume)
+		volumes = append(volumes, script.ScriptsVolume)
 	}
 
 	if alphaAPIEnabled && taskRun.Spec.Debug != nil {
-		volumes = append(volumes, debugScriptsVolume, debugInfoVolume)
+		volumes = append(volumes, script.DebugScriptsVolume, script.DebugInfoVolume)
 	}
 
 	// Initialize any workingDirs under /workspace.
@@ -159,7 +163,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		return nil, err
 	}
 
-	// Rewrite steps with entrypoint binary. Append the entrypoint init
+	// Rewrite steps with entrypoint binàary. Append the entrypoint init
 	// container to place the entrypoint binary. Also add timeout flags
 	// to entrypoint binary.
 	entrypointInit := corev1.Container{

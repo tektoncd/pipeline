@@ -41,7 +41,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/internal/deprecated"
 	"github.com/tektoncd/pipeline/pkg/internal/limitrange"
+	"github.com/tektoncd/pipeline/pkg/internal/sidecars"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
+	podstatus "github.com/tektoncd/pipeline/pkg/pod/status"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -234,11 +236,11 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 		}
 	}
 
-	pod, err := podconvert.StopSidecars(ctx, c.Images.NopImage, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
+	pod, err := sidecars.Stop(ctx, c.Images.NopImage, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
 	if err == nil {
 		// Check if any SidecarStatuses are still shown as Running after stopping
 		// Sidecars. If any Running, update SidecarStatuses based on Pod ContainerStatuses.
-		if podconvert.IsSidecarStatusRunning(tr) {
+		if sidecars.IsRunning(tr) {
 			err = updateStoppedSidecarStatus(ctx, pod, tr, c)
 		}
 	}
@@ -249,7 +251,7 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 		return nil, controller.NewPermanentError(err)
 	} else if err != nil {
 		logger.Errorf("Error stopping sidecars for TaskRun %q: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		tr.Status.MarkResourceFailed(podstatus.ReasonFailedResolution, err)
 	}
 	return pod, nil
 }
@@ -299,7 +301,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
-			Reason:  podconvert.ReasonFailedResolution,
+			Reason:  podstatus.ReasonFailedResolution,
 			Message: err.Error(),
 		})
 		return nil, nil, err
@@ -308,7 +310,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	if err != nil {
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		tr.Status.MarkResourceFailed(podstatus.ReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
@@ -353,37 +355,37 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 			// Instead return an (non-permanent) error, which will prompt the
 			// controller to requeue the key with backoff.
 			logger.Warnf("References for taskrun %s not found: %v", tr.Name, err)
-			tr.Status.MarkResourceOngoing(podconvert.ReasonFailedResolution,
+			tr.Status.MarkResourceOngoing(podstatus.ReasonFailedResolution,
 				fmt.Sprintf("Unable to resolve dependencies for %q: %v", tr.Name, err))
 			return nil, nil, err
 		}
 		logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		tr.Status.MarkResourceFailed(podstatus.ReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := ValidateResolvedTaskResources(ctx, tr.Spec.Params, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(podstatus.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
 		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+		tr.Status.MarkResourceFailed(podstatus.ReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if err := workspace.ValidateBindings(taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(podstatus.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
 	if _, usesAssistant := tr.Annotations[workspace.AnnotationAffinityAssistantName]; usesAssistant {
 		if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
 			logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
-			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+			tr.Status.MarkResourceFailed(podstatus.ReasonFailedValidation, err)
 			return nil, nil, controller.NewPermanentError(err)
 		}
 	}
@@ -435,7 +437,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 		for index := range pos.Items {
 			po := pos.Items[index]
-			if metav1.IsControlledBy(&po, tr) && !podconvert.DidTaskRunFail(&po) {
+			if metav1.IsControlledBy(&po, tr) && !podstatus.DidTaskRunFail(&po) {
 				pod = &po
 			}
 		}
@@ -464,18 +466,18 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 	}
 
-	if podconvert.IsPodExceedingNodeResources(pod) {
-		recorder.Eventf(tr, corev1.EventTypeWarning, podconvert.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
+	if podstatus.IsPodExceedingNodeResources(pod) {
+		recorder.Eventf(tr, corev1.EventTypeWarning, podstatus.ReasonExceededNodeResources, "Insufficient resources to schedule pod %q", pod.Name)
 	}
 
-	if podconvert.SidecarsReady(pod.Status) {
+	if sidecars.Ready(pod.Status) {
 		if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *pod); err != nil {
 			return err
 		}
 	}
 
 	// Convert the Pod's status to the equivalent TaskRun Status.
-	tr.Status, err = podconvert.MakeTaskRunStatus(logger, *tr, pod)
+	tr.Status, err = podstatus.MakeTaskRunStatus(logger, *tr, pod)
 	if err != nil {
 		return err
 	}
@@ -544,11 +546,11 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 		tr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,
-			Reason:  podconvert.ReasonExceededResourceQuota,
+			Reason:  podstatus.ReasonExceededResourceQuota,
 			Message: fmt.Sprint("TaskRun Pod exceeded available resources: ", err),
 		})
 	case isTaskRunValidationFailed(err):
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		tr.Status.MarkResourceFailed(podstatus.ReasonFailedValidation, err)
 	default:
 		// The pod creation failed with unknown reason. The most likely
 		// reason is that something is wrong with the spec of the Task, that we could
@@ -560,7 +562,7 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 			msg += "invalid TaskSpec"
 		}
 		err = controller.NewPermanentError(errors.New(msg))
-		tr.Status.MarkResourceFailed(podconvert.ReasonCouldntGetTask, err)
+		tr.Status.MarkResourceFailed(podstatus.ReasonCouldntGetTask, err)
 	}
 	return err
 }
@@ -768,7 +770,7 @@ func updateStoppedSidecarStatus(ctx context.Context, pod *corev1.Pod, tr *v1beta
 
 			tr.Status.Sidecars = append(tr.Status.Sidecars, v1beta1.SidecarState{
 				ContainerState: *sidecarState.DeepCopy(),
-				Name:           podconvert.TrimSidecarPrefix(s.Name),
+				Name:           sidecars.TrimPrefix(s.Name),
 				ContainerName:  s.Name,
 				ImageID:        s.ImageID,
 			})

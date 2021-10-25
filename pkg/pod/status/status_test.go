@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/internal/sidecars"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1176,7 +1177,7 @@ func TestSidecarsReady(t *testing.T) {
 		want: false,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			got := SidecarsReady(corev1.PodStatus{
+			got := sidecars.Ready(corev1.PodStatus{
 				Phase:             corev1.PodRunning,
 				ContainerStatuses: c.statuses,
 			})

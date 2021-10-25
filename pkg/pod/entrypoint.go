@@ -28,21 +28,21 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/pod/script"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 )
 
 const (
-	binVolumeName    = "tekton-internal-bin"
-	binDir           = "/tekton/bin"
+	binVolumeName    = "tekton-internal-bin" // FIXME(vdemeester) remove duplication with script package
+	binDir           = "/tekton/bin"         // FIXME(vdemeester) remove duplication with script package
 	entrypointBinary = binDir + "/entrypoint"
 
 	runVolumeName = "tekton-internal-run"
-	runDir        = "/tekton/run"
+	runDir        = "/tekton/run" // FIXME(vdemeester) remove duplication with script package
 
 	downwardVolumeName     = "tekton-internal-downward"
 	downwardMountPoint     = "/tekton/downward"
@@ -53,12 +53,11 @@ const (
 
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
-
-	breakpointOnFailure = "onFailure"
 )
 
 var (
 	// TODO(#1605): Generate volumeMount names, to avoid collisions.
+	// FIXME(vdemeester) remove duplication with script package
 	binMount = corev1.VolumeMount{
 		Name:      binVolumeName,
 		MountPath: binDir,
@@ -160,7 +159,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			breakpoints := breakpointConfig.Breakpoint
 			for _, b := range breakpoints {
 				// TODO(TEP #0042): Add other breakpoints
-				if b == breakpointOnFailure {
+				if b == script.BreakpointOnFailure {
 					argsForEntrypoint = append(argsForEntrypoint, "-breakpoint_on_failure")
 				}
 			}
@@ -219,68 +218,12 @@ func UpdateReady(ctx context.Context, kubeclient kubernetes.Interface, pod corev
 	return err
 }
 
-// StopSidecars updates sidecar containers in the Pod to a nop image, which
-// exits successfully immediately.
-func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.Interface, namespace, name string) (*corev1.Pod, error) {
-	newPod, err := kubeclient.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
-	if k8serrors.IsNotFound(err) {
-		// return NotFound as-is, since the K8s error checks don't handle wrapping.
-		return nil, err
-	} else if err != nil {
-		return nil, fmt.Errorf("error getting Pod %q when stopping sidecars: %w", name, err)
-	}
-
-	updated := false
-	if newPod.Status.Phase == corev1.PodRunning {
-		for _, s := range newPod.Status.ContainerStatuses {
-			// Stop any running container that isn't a step.
-			// An injected sidecar container might not have the
-			// "sidecar-" prefix, so we can't just look for that
-			// prefix.
-			if !IsContainerStep(s.Name) && s.State.Running != nil {
-				for j, c := range newPod.Spec.Containers {
-					if c.Name == s.Name && c.Image != nopImage {
-						updated = true
-						newPod.Spec.Containers[j].Image = nopImage
-					}
-				}
-			}
-		}
-	}
-	if updated {
-		if newPod, err = kubeclient.CoreV1().Pods(newPod.Namespace).Update(ctx, newPod, metav1.UpdateOptions{}); err != nil {
-			return nil, fmt.Errorf("error stopping sidecars of Pod %q: %w", name, err)
-		}
-	}
-	return newPod, nil
-}
-
-// IsSidecarStatusRunning determines if any SidecarStatus on a TaskRun
-// is still running.
-func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
-	for _, sidecar := range tr.Status.Sidecars {
-		if sidecar.Terminated == nil {
-			return true
-		}
-	}
-
-	return false
-}
-
-// IsContainerStep returns true if the container name indicates that it
+// isContainerStep returns true if the container name indicates that it
 // represents a step.
 func IsContainerStep(name string) bool { return strings.HasPrefix(name, stepPrefix) }
 
-// isContainerSidecar returns true if the container name indicates that it
-// represents a sidecar.
-func isContainerSidecar(name string) bool { return strings.HasPrefix(name, sidecarPrefix) }
-
 // trimStepPrefix returns the container name, stripped of its step prefix.
-func trimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
-
-// TrimSidecarPrefix returns the container name, stripped of its sidecar
-// prefix.
-func TrimSidecarPrefix(name string) string { return strings.TrimPrefix(name, sidecarPrefix) }
+func TrimStepPrefix(name string) string { return strings.TrimPrefix(name, stepPrefix) }
 
 // StepName returns the step name after adding "step-" prefix to the actual step name or
 // returns "step-unnamed-<step-index>" if not specified

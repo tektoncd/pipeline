@@ -14,20 +14,28 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pod
+package script
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 )
 
+var (
+	images = pipeline.Images{
+		EntrypointImage: "entrypoint-image",
+		ShellImage:      "busybox",
+	}
+)
+
 func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
-	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotScripts, gotSidecars := Convert(images, []v1beta1.Step{{
 		Container: corev1.Container{
 			Image: "step-1",
 		},
@@ -54,7 +62,7 @@ func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
 }
 
 func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
-	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotScripts, gotSidecars := Convert(images, []v1beta1.Step{{
 		Container: corev1.Container{
 			Image: "step-1",
 		},
@@ -81,7 +89,7 @@ func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
 }
 
 func TestConvertScripts_NothingToConvert_WithSidecar(t *testing.T) {
-	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotScripts, gotSidecars := Convert(images, []v1beta1.Step{{
 		Container: corev1.Container{
 			Image: "step-1",
 		},
@@ -130,7 +138,7 @@ func TestConvertScripts(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotSteps, gotSidecars := Convert(images, []v1beta1.Step{{
 		Script: `#!/bin/sh
 script-1`,
 		Container: corev1.Container{Image: "step-1"},
@@ -177,19 +185,19 @@ IyEvYmluL3NoCnNldCAteGUKbm8tc2hlYmFuZw==
 _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		VolumeMounts: []corev1.VolumeMount{WriteScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
 		Command:      []string{"/tekton/scripts/script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
 	}, {
 		Image: "step-2",
 	}, {
 		Image:        "step-3",
 		Command:      []string{"/tekton/scripts/script-2-mz4c7"},
 		Args:         []string{"my", "args"},
-		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount),
+		VolumeMounts: append(preExistingVolumeMounts, ScriptsVolumeMount),
 	}, {
 		Image:   "step-3",
 		Command: []string{"/tekton/scripts/script-3-mssqb"},
@@ -197,7 +205,7 @@ _EOF_
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
 			{Name: "another-one", MountPath: "/another/one"},
-			scriptsVolumeMount,
+			ScriptsVolumeMount,
 		},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
@@ -223,7 +231,7 @@ func TestConvertScripts_WithBreakpoint_OnFailure(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotSteps, gotSidecars := Convert(images, []v1beta1.Step{{
 		Script: `#!/bin/sh
 script-1`,
 		Container: corev1.Container{Image: "step-1"},
@@ -247,7 +255,7 @@ script-3`,
 			Args:         []string{"my", "args"},
 		},
 	}}, []v1beta1.Sidecar{}, &v1beta1.TaskRunDebug{
-		Breakpoint: []string{breakpointOnFailure},
+		Breakpoint: []string{BreakpointOnFailure},
 	})
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
@@ -316,12 +324,12 @@ else
 fi
 debug-fail-continue-heredoc-randomly-generated-6nl7g
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{WriteScriptsVolumeMount, binMount, DebugScriptsVolumeMount},
 	}
 	want := []corev1.Container{{
 		Image:   "step-1",
 		Command: []string{"/tekton/scripts/script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, debugScriptsVolumeMount,
+		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount, DebugScriptsVolumeMount,
 			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/0"}},
 	}, {
 		Image: "step-2",
@@ -329,7 +337,7 @@ debug-fail-continue-heredoc-randomly-generated-6nl7g
 		Image:   "step-3",
 		Command: []string{"/tekton/scripts/script-2-mz4c7"},
 		Args:    []string{"my", "args"},
-		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount, debugScriptsVolumeMount,
+		VolumeMounts: append(preExistingVolumeMounts, ScriptsVolumeMount, DebugScriptsVolumeMount,
 			corev1.VolumeMount{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/2"}),
 	}, {
 		Image:   "step-3",
@@ -338,7 +346,7 @@ debug-fail-continue-heredoc-randomly-generated-6nl7g
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
 			{Name: "another-one", MountPath: "/another/one"},
-			scriptsVolumeMount, debugScriptsVolumeMount,
+			ScriptsVolumeMount, DebugScriptsVolumeMount,
 			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/3"},
 		},
 	}}
@@ -365,7 +373,7 @@ func TestConvertScripts_WithSidecar(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotSteps, gotSidecars := Convert(images, []v1beta1.Step{{
 		Script: `#!/bin/sh
 script-1`,
 		Container: corev1.Container{Image: "step-1"},
@@ -408,12 +416,12 @@ IyEvYmluL3NoCnNpZGVjYXItMQ==
 _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		VolumeMounts: []corev1.VolumeMount{WriteScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
 		Command:      []string{"/tekton/scripts/script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
 	}, {
 		Image: "step-2",
 	}, {
@@ -423,14 +431,14 @@ _EOF_
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
 			{Name: "another-one", MountPath: "/another/one"},
-			scriptsVolumeMount,
+			ScriptsVolumeMount,
 		},
 	}}
 
 	wantSidecars := []corev1.Container{{
 		Image:        "sidecar-1",
 		Command:      []string{"/tekton/scripts/sidecar-script-0-mssqb"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
 		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
@@ -459,7 +467,7 @@ func TestConvertScripts_Windows(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotSteps, gotSidecars := Convert(images, []v1beta1.Step{{
 		Script: `#!win pwsh -File
 script-1`,
 		Container: corev1.Container{Image: "step-1"},
@@ -499,20 +507,20 @@ script-3
 no-shebang
 "@ | Out-File -FilePath /tekton/scripts/script-3-mssqb.cmd
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		VolumeMounts: []corev1.VolumeMount{WriteScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
 		Command:      []string{"pwsh"},
 		Args:         []string{"-File", "/tekton/scripts/script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
 	}, {
 		Image: "step-2",
 	}, {
 		Image:        "step-3",
 		Command:      []string{"powershell"},
 		Args:         []string{"-File", "/tekton/scripts/script-2-mz4c7.ps1", "my", "args"},
-		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount),
+		VolumeMounts: append(preExistingVolumeMounts, ScriptsVolumeMount),
 	}, {
 		Image:   "step-3",
 		Command: []string{"/tekton/scripts/script-3-mssqb.cmd"},
@@ -520,7 +528,7 @@ no-shebang
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
 			{Name: "another-one", MountPath: "/another/one"},
-			scriptsVolumeMount,
+			ScriptsVolumeMount,
 		},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
@@ -546,7 +554,7 @@ func TestConvertScripts_Windows_WithSidecar(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotSteps, gotSidecars := Convert(images, []v1beta1.Step{{
 		Script: `#!win pwsh -File
 script-1`,
 		Container: corev1.Container{Image: "step-1"},
@@ -583,13 +591,13 @@ script-3
 sidecar-1
 "@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-mssqb
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		VolumeMounts: []corev1.VolumeMount{WriteScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image:        "step-1",
 		Command:      []string{"pwsh"},
 		Args:         []string{"-File", "/tekton/scripts/script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
 	}, {
 		Image: "step-2",
 	}, {
@@ -599,7 +607,7 @@ sidecar-1
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
 			{Name: "another-one", MountPath: "/another/one"},
-			scriptsVolumeMount,
+			ScriptsVolumeMount,
 		},
 	}}
 
@@ -607,7 +615,7 @@ sidecar-1
 		Image:        "sidecar-1",
 		Command:      []string{"pwsh"},
 		Args:         []string{"-File", "/tekton/scripts/sidecar-script-0-mssqb"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
 		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
@@ -628,7 +636,7 @@ sidecar-1
 func TestConvertScripts_Windows_SidecarOnly(t *testing.T) {
 	names.TestingSeed()
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
+	gotInit, gotSteps, gotSidecars := Convert(images, []v1beta1.Step{{
 		// No script to convert here.:
 		Container: corev1.Container{Image: "step-1"},
 	}}, []v1beta1.Sidecar{{
@@ -645,7 +653,7 @@ sidecar-1`,
 sidecar-1
 "@ | Out-File -FilePath /tekton/scripts/sidecar-script-0-9l9zj
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		VolumeMounts: []corev1.VolumeMount{WriteScriptsVolumeMount, binMount},
 	}
 	want := []corev1.Container{{
 		Image: "step-1",
@@ -655,7 +663,7 @@ sidecar-1
 		Image:        "sidecar-1",
 		Command:      []string{"python"},
 		Args:         []string{"/tekton/scripts/sidecar-script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+		VolumeMounts: []corev1.VolumeMount{ScriptsVolumeMount},
 	}}
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
 		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))

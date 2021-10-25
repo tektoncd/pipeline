@@ -41,6 +41,7 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
+	podstatus "github.com/tektoncd/pipeline/pkg/pod/status"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -1679,7 +1680,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 	}{{
 		name:    "task run with no task",
 		taskRun: noTaskRun,
-		reason:  podconvert.ReasonFailedResolution,
+		reason:  podstatus.ReasonFailedResolution,
 		wantEvents: []string{
 			"Normal Started",
 			"Warning Failed",
@@ -1688,7 +1689,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 	}, {
 		name:    "task run with wrong ref",
 		taskRun: withWrongRef,
-		reason:  podconvert.ReasonFailedResolution,
+		reason:  podstatus.ReasonFailedResolution,
 		wantEvents: []string{
 			"Normal Started",
 			"Warning Failed",
@@ -1756,7 +1757,7 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 					apis.Condition{
 						Type:    apis.ConditionSucceeded,
 						Status:  corev1.ConditionFalse,
-						Reason:  podconvert.ReasonFailedResolution,
+						Reason:  podstatus.ReasonFailedResolution,
 						Message: "error when listing tasks for taskRun taskrun-failure: tasks.tekton.dev \"notask\" not found",
 					},
 				},
@@ -1803,8 +1804,8 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 	if condition == nil || condition.Status != corev1.ConditionFalse {
 		t.Errorf("Expected invalid TaskRun to have failed status, but had %v", condition)
 	}
-	if condition != nil && condition.Reason != podconvert.ReasonFailedResolution {
-		t.Errorf("Expected failure to be because of reason %q but was %s", podconvert.ReasonFailedResolution, condition.Reason)
+	if condition != nil && condition.Reason != podstatus.ReasonFailedResolution {
+		t.Errorf("Expected failure to be because of reason %q but was %s", podstatus.ReasonFailedResolution, condition.Reason)
 	}
 }
 
@@ -2533,19 +2534,19 @@ func TestHandlePodCreationError(t *testing.T) {
 		err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionUnknown,
-		expectedReason: podconvert.ReasonExceededResourceQuota,
+		expectedReason: podstatus.ReasonExceededResourceQuota,
 	}, {
 		description:    "taskrun validation failed",
 		err:            errors.New("TaskRun validation failed"),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonFailedValidation,
+		expectedReason: podstatus.ReasonFailedValidation,
 	}, {
 		description:    "errors other than exceeded quota fail the taskrun",
 		err:            errors.New("this is a fatal error"),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonCouldntGetTask,
+		expectedReason: podstatus.ReasonCouldntGetTask,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
@@ -3149,7 +3150,7 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 
 	failedCorrectly := false
 	for _, c := range tr.Status.Conditions {
-		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == podconvert.ReasonFailedValidation {
+		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == podstatus.ReasonFailedValidation {
 			failedCorrectly = true
 		}
 	}
@@ -3227,7 +3228,7 @@ func TestReconcileValidDefaultWorkspace(t *testing.T) {
 	}
 
 	for _, c := range tr.Status.Conditions {
-		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == podconvert.ReasonFailedValidation {
+		if c.Type == apis.ConditionSucceeded && c.Status == corev1.ConditionFalse && c.Reason == podstatus.ReasonFailedValidation {
 			t.Errorf("Expected TaskRun to pass Validation by using the default workspace but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
 		}
 	}
@@ -3432,7 +3433,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 			ClusterTasks:      nil,
 			PipelineResources: nil,
 		},
-		wantFailedReason: podconvert.ReasonFailedResolution,
+		wantFailedReason: podstatus.ReasonFailedResolution,
 		wantEvents: []string{
 			"Normal Started ",
 			"Warning Failed",        // Event about the TaskRun state changed
@@ -3466,7 +3467,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 			ClusterTasks:      nil,
 			PipelineResources: nil,
 		},
-		wantFailedReason: podconvert.ReasonFailedValidation,
+		wantFailedReason: podstatus.ReasonFailedValidation,
 		wantEvents: []string{
 			"Normal Started ",
 			"Warning Failed",        // Event about the TaskRun state changed
@@ -3600,8 +3601,8 @@ func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) 
 	}
 
 	for _, cond := range ttt.Status.Conditions {
-		if cond.Reason != podconvert.ReasonFailedValidation {
-			t.Errorf("unexpected Reason on the Condition, expected: %s, got: %s", podconvert.ReasonFailedValidation, cond.Reason)
+		if cond.Reason != podstatus.ReasonFailedValidation {
+			t.Errorf("unexpected Reason on the Condition, expected: %s, got: %s", podstatus.ReasonFailedValidation, cond.Reason)
 		}
 	}
 }

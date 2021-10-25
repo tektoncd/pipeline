@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/pod/script"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -151,7 +152,7 @@ func TestPodBuild(t *testing.T) {
 		desc: "simple with breakpoint onFailure enabled, alpha api fields disabled",
 		trs: v1beta1.TaskRunSpec{
 			Debug: &v1beta1.TaskRunDebug{
-				Breakpoint: []string{breakpointOnFailure},
+				Breakpoint: []string{script.BreakpointOnFailure},
 			},
 		},
 		ts: v1beta1.TaskSpec{
@@ -604,7 +605,7 @@ func TestPodBuild(t *testing.T) {
 					Name:         "place-scripts",
 					Image:        "busybox",
 					Command:      []string{"sh"},
-					VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+					VolumeMounts: []corev1.VolumeMount{script.WriteScriptsVolumeMount, binMount},
 					Args: []string{"-c", `scriptfile="/tekton/scripts/sidecar-script-0-9l9zj"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
@@ -643,9 +644,9 @@ _EOF_
 				Name:         "sidecar-sc-name",
 				Image:        "sidecar-image",
 				Command:      []string{"/tekton/scripts/sidecar-script-0-9l9zj"},
-				VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount},
+				VolumeMounts: []corev1.VolumeMount{script.ScriptsVolumeMount},
 			}},
-			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, script.ScriptsVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -855,7 +856,7 @@ IyEvdXNyL2Jpbi9lbnYgcHl0aG9uCnByaW50KCJIZWxsbyBmcm9tIFB5dGhvbiIp
 _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
-					VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+					VolumeMounts: []corev1.VolumeMount{script.WriteScriptsVolumeMount, binMount},
 				},
 			},
 			Containers: []corev1.Container{{
@@ -881,7 +882,7 @@ _EOF_
 					"args",
 				},
 				Env: []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
-				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, binROMount, runMount(0, false), runMount(1, true), runMount(2, true), downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{script.ScriptsVolumeMount, binROMount, runMount(0, false), runMount(1, true), runMount(2, true), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -908,7 +909,7 @@ _EOF_
 					"args",
 				},
 				Env: []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
-				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, scriptsVolumeMount, binROMount, runMount(0, true), runMount(1, false), runMount(2, true), {
+				VolumeMounts: append([]corev1.VolumeMount{{Name: "i-have-a-volume-mount"}, script.ScriptsVolumeMount, binROMount, runMount(0, true), runMount(1, false), runMount(2, true), {
 					Name:      "tekton-creds-init-home-1",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
@@ -942,7 +943,7 @@ _EOF_
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume(0), runVolume(1), runVolume(2), downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, script.ScriptsVolume, binVolume, runVolume(0), runVolume(1), runVolume(2), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}, corev1.Volume{
@@ -978,7 +979,7 @@ IyEvYmluL3NoCiQk
 _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
-				VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+				VolumeMounts: []corev1.VolumeMount{script.WriteScriptsVolumeMount, binMount},
 			}},
 			Containers: []corev1.Container{{
 				Name:    "step-one",
@@ -1000,13 +1001,13 @@ _EOF_
 					"/tekton/scripts/script-0-9l9zj",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{scriptsVolumeMount, binROMount, runMount(0, false), downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{script.ScriptsVolumeMount, binROMount, runMount(0, false), downwardMount, {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, scriptsVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, script.ScriptsVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -1526,7 +1527,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		desc: "simple with debug breakpoint onFailure",
 		trs: v1beta1.TaskRunSpec{
 			Debug: &v1beta1.TaskRunDebug{
-				Breakpoint: []string{breakpointOnFailure},
+				Breakpoint: []string{script.BreakpointOnFailure},
 			},
 		},
 		ts: v1beta1.TaskSpec{
@@ -1566,7 +1567,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, debugScriptsVolume, debugInfoVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, script.DebugScriptsVolume, script.DebugInfoVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),

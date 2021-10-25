@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pod
+package script
 
 import (
 	"encoding/base64"
@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -36,53 +37,67 @@ const (
 	debugScriptsDir        = "/tekton/debug/scripts"
 	defaultScriptPreamble  = "#!/bin/sh\nset -xe\n"
 	debugInfoDir           = "/tekton/debug/info"
+
+	binVolumeName = "tekton-internal-bin"
+	binDir        = "/tekton/bin"
+	runDir        = "/tekton/run"
 )
 
 var (
+	binMount = corev1.VolumeMount{
+		Name:      binVolumeName,
+		MountPath: binDir,
+	}
 	// Volume definition attached to Pods generated from TaskRuns that have
 	// steps that specify a Script.
-	scriptsVolume = corev1.Volume{
+	// FIXME(vdemeester) unexport
+	ScriptsVolume = corev1.Volume{
 		Name:         scriptsVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
-	scriptsVolumeMount = corev1.VolumeMount{
+	// FIXME(vdemeester) unexport
+	ScriptsVolumeMount = corev1.VolumeMount{
 		Name:      scriptsVolumeName,
 		MountPath: scriptsDir,
 		ReadOnly:  true,
 	}
-	writeScriptsVolumeMount = corev1.VolumeMount{
+	// FIXME(vdemeester): unexport
+	WriteScriptsVolumeMount = corev1.VolumeMount{
 		Name:      scriptsVolumeName,
 		MountPath: scriptsDir,
 		ReadOnly:  false,
 	}
-	debugScriptsVolume = corev1.Volume{
+	// FIXME(vdemeester) unexport
+	DebugScriptsVolume = corev1.Volume{
 		Name:         debugScriptsVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
-	debugScriptsVolumeMount = corev1.VolumeMount{
+	// FIXME(vdemeester) unexport
+	DebugScriptsVolumeMount = corev1.VolumeMount{
 		Name:      debugScriptsVolumeName,
 		MountPath: debugScriptsDir,
 	}
-	debugInfoVolume = corev1.Volume{
+	// FIXME(vdemeester) unexport
+	DebugInfoVolume = corev1.Volume{
 		Name:         debugInfoVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}
 )
 
-// convertScripts converts any steps and sidecars that specify a Script field into a normal Container.
-func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug) (*corev1.Container, []corev1.Container, []corev1.Container) {
+// Convert converts any steps and sidecars that specify a Script field into a normal Container.
+func Convert(images pipeline.Images, steps []v1beta1.Step, sidecars []v1beta1.Sidecar, debugConfig *v1beta1.TaskRunDebug) (*corev1.Container, []corev1.Container, []corev1.Container) {
 	placeScripts := false
 	// Place scripts is an init container used for creating scripts in the
 	// /tekton/scripts directory which would be later used by the step containers
 	// as a Command
 	requiresWindows := checkWindowsRequirement(steps, sidecars)
 
-	shellImage := shellImageLinux
+	shellImage := images.ShellImage
 	shellCommand := "sh"
 	shellArg := "-c"
 	// Set windows variants for Image, Command and Args
 	if requiresWindows {
-		shellImage = shellImageWin
+		shellImage = images.ShellImageWin
 		shellCommand = "pwsh"
 		shellArg = "-Command"
 	}
@@ -92,7 +107,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 		Image:        shellImage,
 		Command:      []string{shellCommand},
 		Args:         []string{shellArg, ""},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		VolumeMounts: []corev1.VolumeMount{WriteScriptsVolumeMount, binMount},
 	}
 
 	breakpoints := []string{}
@@ -109,7 +124,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 	// Add mounts for debug
 	if debugConfig != nil && len(debugConfig.Breakpoint) > 0 {
 		breakpoints = debugConfig.Breakpoint
-		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
+		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, DebugScriptsVolumeMount)
 	}
 
 	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, breakpoints, "script")
@@ -184,7 +199,7 @@ cat > ${scriptfile} << '%s'
 			// we'll clear out the Args and overwrite Command.
 			steps[i].Command = []string{scriptFile}
 		}
-		steps[i].VolumeMounts = append(steps[i].VolumeMounts, scriptsVolumeMount)
+		steps[i].VolumeMounts = append(steps[i].VolumeMounts, ScriptsVolumeMount)
 
 		// Add debug mounts if breakpoints are present
 		if len(breakpoints) > 0 {
@@ -192,7 +207,7 @@ cat > ${scriptfile} << '%s'
 				Name:      debugInfoVolumeName,
 				MountPath: filepath.Join(debugInfoDir, fmt.Sprintf("%d", i)),
 			}
-			steps[i].VolumeMounts = append(steps[i].VolumeMounts, debugScriptsVolumeMount, debugInfoVolumeMount)
+			steps[i].VolumeMounts = append(steps[i].VolumeMounts, DebugScriptsVolumeMount, debugInfoVolumeMount)
 		}
 		containers = append(containers, steps[i].Container)
 	}
