@@ -26,7 +26,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -111,7 +110,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 
 	for i, s := range steps {
 		var argsForEntrypoint []string
-		name := StepName(steps[i].Name, i)
+		idx := strconv.Itoa(i)
 		switch i {
 		case 0:
 			argsForEntrypoint = []string{
@@ -119,19 +118,17 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
 				"-wait_file_content", // Wait for file contents, not just an empty file.
 				// Start next step.
-				"-post_file", filepath.Join(runDir, strconv.Itoa(i), "out"),
+				"-post_file", filepath.Join(runDir, idx, "out"),
 				"-termination_path", terminationPath,
-				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
-				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
+				"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
 			}
 		default:
 			// All other steps wait for previous file, write next file.
 			argsForEntrypoint = []string{
 				"-wait_file", filepath.Join(runDir, strconv.Itoa(i-1), "out"),
-				"-post_file", filepath.Join(runDir, strconv.Itoa(i), "out"),
+				"-post_file", filepath.Join(runDir, idx, "out"),
 				"-termination_path", terminationPath,
-				"-step_metadata_dir", filepath.Join(pipeline.StepsDir, name),
-				"-step_metadata_dir_link", filepath.Join(pipeline.StepsDir, fmt.Sprintf("%d", i)),
+				"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
 			}
 		}
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)

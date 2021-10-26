@@ -73,6 +73,7 @@ var (
 	}, {
 		Name:      "tekton-internal-steps",
 		MountPath: pipeline.StepsDir,
+		ReadOnly:  true,
 	}}
 	implicitVolumes = []corev1.Volume{{
 		Name:         "tekton-internal-workspace",
@@ -187,7 +188,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 	// place the entrypoint first in case other init containers rely on its
 	// features (e.g. decode-script).
-	initContainers = append([]corev1.Container{entrypointInit}, initContainers...)
+	initContainers = append([]corev1.Container{
+		entrypointInit,
+		tektonDirInit(b.Images.EntrypointImage, steps),
+	}, initContainers...)
 	volumes = append(volumes, binVolume, downwardVolume)
 
 	// Add implicit env vars.
@@ -396,5 +400,24 @@ func runVolume(i int) corev1.Volume {
 	return corev1.Volume{
 		Name:         fmt.Sprintf("%s-%d", runVolumeName, i),
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+}
+
+func tektonDirInit(image string, steps []v1beta1.Step) corev1.Container {
+	cmd := make([]string, 0, len(steps)+2)
+	cmd = append(cmd, "/ko-app/entrypoint", "step-init")
+	for i, s := range steps {
+		cmd = append(cmd, StepName(s.Name, i))
+	}
+
+	return corev1.Container{
+		Name:       "step-init",
+		Image:      image,
+		WorkingDir: "/",
+		Command:    cmd,
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "tekton-internal-steps",
+			MountPath: pipeline.StepsDir,
+		}},
 	}
 }

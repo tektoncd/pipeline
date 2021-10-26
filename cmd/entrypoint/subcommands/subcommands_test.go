@@ -38,6 +38,21 @@ func TestProcessSuccessfulSubcommands(t *testing.T) {
 	if _, ok := returnValue.(SubcommandSuccessful); !ok {
 		t.Errorf("unexpected return value from decode-script command: %v", returnValue)
 	}
+
+	t.Run(StepInitCommand, func(t *testing.T) {
+		tektonRoot = tmp
+
+		returnValue := Process([]string{StepInitCommand})
+		if _, ok := returnValue.(SubcommandSuccessful); !ok {
+			t.Errorf("unexpected return value from step-init command: %v", returnValue)
+		}
+
+		returnValue = Process([]string{StepInitCommand, "foo", "bar"})
+		if _, ok := returnValue.(SubcommandSuccessful); !ok {
+			t.Errorf("unexpected return value from step-init command w/ params: %v", returnValue)
+		}
+	})
+
 }
 
 // TestProcessIgnoresNonSubcommands checks that any input to Process which

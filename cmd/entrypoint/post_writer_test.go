@@ -3,10 +3,16 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
 func TestRealPostWriter_WriteFileContent(t *testing.T) {
+	testdir, err := ioutil.TempDir("", "post-writer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(testdir)
 	tests := []struct {
 		name, file, content string
 	}{{
@@ -18,6 +24,9 @@ func TestRealPostWriter_WriteFileContent(t *testing.T) {
 	}, {
 		name: "create an empty file",
 		file: "sample.txt",
+	}, {
+		name: "create an empty file in new subdirectory",
+		file: filepath.Join(testdir, "dir", "sample.txt"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -34,42 +43,6 @@ func TestRealPostWriter_WriteFileContent(t *testing.T) {
 				}
 				if tt.content != string(b) {
 					t.Fatalf("Failed to write the desired content %q to the file %q", tt.content, tt.file)
-				}
-			}
-		})
-	}
-}
-
-func TestRealPostWriter_CreateStepPath(t *testing.T) {
-	tests := []struct {
-		name, source, link string
-	}{{
-		name:   "Create a path with a file",
-		source: "sample.txt",
-		link:   "0",
-	}, {
-		name: "Create a path without specifying any path",
-	}, {
-		name:   "Create a sym link without specifying any link path",
-		source: "sample.txt",
-	}, {
-		name: "Create a sym link without specifying any source",
-		link: "0.txt",
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rw := realPostWriter{}
-			rw.CreateDirWithSymlink(tt.source, tt.link)
-			if tt.source != "" {
-				defer os.Remove(tt.source)
-				if _, err := os.Stat(tt.source); err != nil {
-					t.Fatalf("Failed to create a file %q", tt.source)
-				}
-			}
-			if tt.source != "" && tt.link != "" {
-				defer os.Remove(tt.link)
-				if _, err := os.Stat(tt.link); err != nil {
-					t.Fatalf("Failed to create a sym link %q", tt.link)
 				}
 			}
 		})
