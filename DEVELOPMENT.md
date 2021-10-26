@@ -4,7 +4,7 @@
 
 First, you may want to [Ramp up](#ramp-up) on Kubernetes and Custom Resource Definitions (CRDs) as Tekton implements several Kubernetes resource controllers configured by Tekton CRDs. Then follow these steps to start developing and contributing project code:
 
-1. [Setting up a development environment](#setting-up-a-environment-setup)
+1. [Setting up a development environment](#setting-up-a-development-environment)
     1. [Setup a GitHub account accessible via SSH](#setup-a-github-account-accessible-via-ssh)
     1. [Install tools](#install-tools)
     1. [Configure environment](#configure-environment)
@@ -15,7 +15,7 @@ First, you may want to [Ramp up](#ramp-up) on Kubernetes and Custom Resource Def
     1. [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
     1. [Set up a docker repository 'ko' can push images to](https://github.com/knative/serving/blob/4a8c859741a4454bdd62c2b60069b7d05f5468e7/docs/setting-up-a-docker-registry.md)
 1. [Developing and testing](#developing-and-testing) Tekton pipelines
-    1. Learn how to [iterate](#iterating) on code changes
+    1. Learn how to [iterate](#iterating-on-code-changes) on code changes
     1. [Managing Tekton Objects using `ko`](#managing-tekton-objects-using-ko) in Kubernetes
     1. [Standing up a K8s cluster with Tekton using the kind tool](#standing-up-a-k8s-cluster-with-tekton-using-the-kind-tool)
     1. [Accessing logs](#accessing-logs)
@@ -184,7 +184,6 @@ Depending on your chosen container registry that you set in the `KO_DOCKER_REPO`
 Docker Desktop provides seamless integration with both a local (default) image registry as well as Docker Hub remote registries.  To use Docker Hub registries with `ko`, all you need do is to configure Docker Desktop with your Docker ID and password in its dashboard.
 
 #### Using Google Container Registry (GCR)
-
 If using GCR with `ko`, make sure to configure
 [authentication](https://cloud.google.com/container-registry/docs/advanced-authentication#standalone_docker_credential_helper)
 for your `KO_DOCKER_REPO` if required. To be able to push images to
@@ -193,31 +192,38 @@ for your `KO_DOCKER_REPO` if required. To be able to push images to
 ```shell
 gcloud auth configure-docker
 ```
+The [example GKE setup](#using-gke) in this guide grants service accounts permissions to push and pull GCR images in the same project.
+If you choose to use a different setup with fewer default permissions, or your GKE cluster that will run Tekton
+is in a different project than your GCR registry, you will need to provide the Tekton pipelines
+controller and webhook service accounts with GCR credentials.
+See documentation on [using GCR with GKE](https://cloud.google.com/container-registry/docs/using-with-google-cloud-platform#gke)
+for more information.
+To do this, create a secret for your docker credentials and reference this secret from the controller and webhook service accounts,
+as follows.
 
-Besides, if your registry `KO_DOCKER_REPO` is private, then you also should create a [secret](https://kubernetes.io/docs/concepts/configuration/secret/#docker-config-secrets)
-and add it to `tekton-pipelines-controller` and `tekton-pipelines-webhook` ServiceAccounts accordingly to pull images.
-
-1. Create a secret
+1. Create a secret, for example:
 
     ```yaml
-    kubectl create secret docker-registry ${SECRET_NAME} \
-    --docker-username=${USERNAME} \
-    --docker-password=${PASSWORD} \
-    --docker-email=me@here.com \
+    kubectl create secret generic ${SECRET_NAME} \
+    --from-file=.dockerconfigjson=<path/to/.docker/config.json> \
+    --type=kubernetes.io/dockerconfigjson
     --namespace=tekton-pipelines
     ```
+   See [Configuring authentication for Docker](./docs/auth.md#configuring-authentication-for-docker)
+   for more detailed information on creating secrets containing registry credentials.
 
-2. Add the `secret` to the K8s `ServiceAccount` configuration file
-
-    Before using `ko` to deploy `tekton-pipelines`, you need to change [the contents of the ServiceAccount](./config/200-serviceaccount.yaml) configuration file as shown below:
+2. Update the `tekton-pipelines-controller` and `tekton-pipelines-webhook` service accounts
+    to reference the newly created secret by modifying
+    the [definitions of these service accounts](./config/200-serviceaccount.yaml)
+    as shown below.
 
     ```yaml
     apiVersion: v1
     kind: ServiceAccount
     metadata:
-    name: tekton-pipelines-controller
-    namespace: tekton-pipelines
-    labels:
+      name: tekton-pipelines-controller
+      namespace: tekton-pipelines
+      labels:
         app.kubernetes.io/component: controller
         app.kubernetes.io/instance: default
         app.kubernetes.io/part-of: tekton-pipelines
@@ -227,9 +233,9 @@ and add it to `tekton-pipelines-controller` and `tekton-pipelines-webhook` Servi
     apiVersion: v1
     kind: ServiceAccount
     metadata:
-    name: tekton-pipelines-webhook
-    namespace: tekton-pipelines
-    labels:
+      name: tekton-pipelines-webhook
+      namespace: tekton-pipelines
+      labels:
         app.kubernetes.io/component: webhook
         app.kubernetes.io/instance: default
         app.kubernetes.io/part-of: tekton-pipelines
@@ -260,8 +266,8 @@ The recommended minimum development configuration is:
 
 #### Using GKE
 
-1. [Install required tools and setup GCP project](https://knative.dev/v0.12-docs/install/knative-with-gke/)
-    (You may find it useful to save the ID of the project in an environment
+1. [Set up a GCP Project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) and [enable the GKE API](https://cloud.google.com/kubernetes-engine/docs/quickstart#before-you-begin). 
+    You may find it useful to save the ID of the project in an environment
     variable (e.g. `PROJECT_ID`).
 
 <!-- TODO: Someone needs to validate the cluster-version-->
@@ -339,7 +345,7 @@ ko apply -f config/
 
 #### Verify installation
 
-You can verify your development installation using `ko` was successful by checking to see oif the Tekton pipeline pods are running in Kubernetes:
+You can verify your development installation using `ko` was successful by checking to see if the Tekton pipeline pods are running in Kubernetes:
 
 ```shell
 kubectl get pods -n tekton-pipelines
