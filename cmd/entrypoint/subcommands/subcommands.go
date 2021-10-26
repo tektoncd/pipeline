@@ -72,6 +72,11 @@ func Process(args []string) error {
 			}
 			return SubcommandSuccessful{message: fmt.Sprintf("Decoded script %s", src)}
 		}
+	case StepInitCommand:
+		if err := stepInit(args[1:]); err != nil {
+			return SubcommandError{subcommand: StepInitCommand, message: err.Error()}
+		}
+		return SubcommandSuccessful{message: "Setup /step directories"}
 	default:
 	}
 	return nil

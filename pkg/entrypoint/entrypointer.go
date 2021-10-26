@@ -80,10 +80,6 @@ type Entrypointer struct {
 	OnError string
 	// StepMetadataDir is the directory for a step where the step related metadata can be stored
 	StepMetadataDir string
-	// StepMetadataDirLink is the directory which needs to be linked to the StepMetadataDir
-	// the symlink is mainly created for providing easier access to the step metadata
-	// i.e. use `/tekton/steps/0/exitCode` instead of `/tekton/steps/my-awesome-step/exitCode`
-	StepMetadataDirLink string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -101,8 +97,6 @@ type Runner interface {
 type PostWriter interface {
 	// Write writes to the path when complete.
 	Write(file, content string)
-	// CreateDirWithSymlink creates directory and a symlink
-	CreateDirWithSymlink(source, link string)
 }
 
 // Go optionally waits for a file, runs the command, and writes a
@@ -118,10 +112,6 @@ func (e Entrypointer) Go() error {
 		}
 		_ = logger.Sync()
 	}()
-
-	// Create the directory where we will store the exit codes (and eventually other metadata) of Steps.
-	// Create a symlink to the directory for easier access by the index instead of a step name.
-	e.PostWriter.CreateDirWithSymlink(e.StepMetadataDir, e.StepMetadataDirLink)
 
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
@@ -185,7 +175,7 @@ func (e Entrypointer) Go() error {
 	case err == nil:
 		// if err is nil, write zero exit code and a post file
 		e.WritePostFile(e.PostFile, nil)
-		e.WriteExitCodeFile(e.StepMetadataDirLink, "0")
+		e.WriteExitCodeFile(e.StepMetadataDir, "0")
 	default:
 		// for a step without continue on error and any error, write a post file with .err
 		e.WritePostFile(e.PostFile, err)

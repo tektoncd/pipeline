@@ -122,7 +122,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -136,9 +136,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -171,7 +169,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -185,9 +183,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -218,7 +214,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -232,9 +228,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -269,7 +263,7 @@ func TestPodBuild(t *testing.T) {
 		want: &corev1.PodSpec{
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
-			InitContainers:     []corev1.Container{placeToolsInit},
+			InitContainers:     []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -283,9 +277,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-basic-docker=multi-creds=https://docker.io",
 					"-basic-docker=multi-creds=https://us.gcr.io",
 					"-basic-git=multi-creds=github.com",
@@ -338,7 +330,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -352,9 +344,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -397,7 +387,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "a-very-very-long-character-step-name-to-trigger-max-len----and-invalid-characters"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-a-very-very-long-character-step-name-to-trigger-max-len", // step name trimmed.
 				Image:   "image",
@@ -411,9 +401,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-a-very-very-long-character-step-name-to-trigger-max-len----and-invalid-characters",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -441,7 +429,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "ends-with-invalid-%%__$$"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-ends-with-invalid", // invalid suffix removed.
 				Image:   "image",
@@ -455,9 +443,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-ends-with-invalid-%%__$$",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -488,6 +474,7 @@ func TestPodBuild(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
 				placeToolsInit,
+				tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}}),
 				{
 					Name:         "working-dir-initializer",
 					Image:        images.ShellImage,
@@ -510,9 +497,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -548,7 +533,7 @@ func TestPodBuild(t *testing.T) {
 		wantAnnotations: map[string]string{},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "primary-name"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-primary-name",
 				Image:   "primary-image",
@@ -562,9 +547,7 @@ func TestPodBuild(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-primary-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -608,6 +591,7 @@ func TestPodBuild(t *testing.T) {
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
 				placeToolsInit,
+				tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "primary-name"}}}),
 				{
 					Name:         "place-scripts",
 					Image:        "busybox",
@@ -635,9 +619,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-primary-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -680,7 +662,7 @@ _EOF_
 		wantAnnotations: map[string]string{}, // no ready annotations on pod create since sidecars are present
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "primary-name"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-primary-name",
 				Image:   "primary-image",
@@ -694,9 +676,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-primary-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -740,8 +720,11 @@ _EOF_
 			}}},
 		},
 		want: &corev1.PodSpec{
-			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{
+				{Container: corev1.Container{Name: "unnamed-0"}},
+				{Container: corev1.Container{Name: "unnamed-1"}},
+			})},
 			Containers: []corev1.Container{{
 				Name:    "step-unnamed-0",
 				Image:   "image",
@@ -755,9 +738,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-unnamed-0",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -785,9 +766,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-unnamed-1",
-					"-step_metadata_dir_link",
-					"/tekton/steps/1",
+					"/tekton/run/1/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -846,6 +825,11 @@ print("Hello from Python")`,
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
 				placeToolsInit,
+				tektonDirInit(images.EntrypointImage, []v1beta1.Step{
+					{Container: corev1.Container{Name: "one"}},
+					{Container: corev1.Container{Name: "two"}},
+					{Container: corev1.Container{Name: "regular-step"}},
+				}),
 				{
 					Name:    "place-scripts",
 					Image:   images.ShellImage,
@@ -879,9 +863,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-one",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"/tekton/scripts/script-0-9l9zj",
 					"--",
@@ -906,9 +888,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-two",
-					"-step_metadata_dir_link",
-					"/tekton/steps/1",
+					"/tekton/run/1/status",
 					"-entrypoint",
 					"/tekton/scripts/script-1-mz4c7",
 					"--",
@@ -933,9 +913,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-regular-step",
-					"-step_metadata_dir_link",
-					"/tekton/steps/2",
+					"/tekton/run/2/status",
 					"-entrypoint",
 					"regular",
 					"--",
@@ -975,19 +953,22 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, {
-				Name:    "place-scripts",
-				Image:   images.ShellImage,
-				Command: []string{"sh"},
-				Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
+			InitContainers: []corev1.Container{placeToolsInit,
+				tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "one"}}}),
+				{
+					Name:    "place-scripts",
+					Image:   images.ShellImage,
+					Command: []string{"sh"},
+					Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCiQk
 _EOF_
 /tekton/bin/entrypoint decode-script "${scriptfile}"
 `},
-				VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
-			}},
+					VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+				},
+			},
 			Containers: []corev1.Container{{
 				Name:    "step-one",
 				Image:   "image",
@@ -1001,9 +982,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-one",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"/tekton/scripts/script-0-9l9zj",
 					"--",
@@ -1040,7 +1019,7 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "schedule-me"}}})},
 			SchedulerName:  "there-scheduler",
 			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
@@ -1059,9 +1038,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-schedule-me",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -1095,7 +1072,7 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "image-pull"}}})},
 			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1113,9 +1090,7 @@ _EOF_
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-image-pull",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-entrypoint",
 					"cmd",
 					"--",
@@ -1150,7 +1125,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit},
+				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "host-aliases"}}})},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1168,9 +1143,7 @@ _EOF_
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
-						"/tekton/steps/step-host-aliases",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
+						"/tekton/run/0/status",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1203,7 +1176,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit},
+				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "use-my-hostNetwork"}}})},
 				HostNetwork:    true,
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1222,9 +1195,7 @@ _EOF_
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
-						"/tekton/steps/step-use-my-hostNetwork",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
+						"/tekton/run/0/status",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1250,7 +1221,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit},
+				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1264,9 +1235,7 @@ _EOF_
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
-						"/tekton/steps/step-name",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
+						"/tekton/run/0/status",
 						"-timeout",
 						"1s",
 						"-entrypoint",
@@ -1299,7 +1268,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit},
+				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1313,9 +1282,7 @@ _EOF_
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
-						"/tekton/steps/step-name",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
+						"/tekton/run/0/status",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1341,7 +1308,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit},
+				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1355,9 +1322,7 @@ _EOF_
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
-						"/tekton/steps/step-name",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
+						"/tekton/run/0/status",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1393,7 +1358,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit},
+				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1407,9 +1372,7 @@ _EOF_
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
-						"/tekton/steps/step-name",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
+						"/tekton/run/0/status",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1461,7 +1424,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit},
+				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1475,9 +1438,7 @@ _EOF_
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
-						"/tekton/steps/step-name",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
+						"/tekton/run/0/status",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1508,7 +1469,7 @@ _EOF_
 			wantPodName: "task-run-0123456789-01234560d38957287bb0283c59440df14069f59-pod",
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit},
+				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1522,9 +1483,7 @@ _EOF_
 						"-termination_path",
 						"/tekton/termination",
 						"-step_metadata_dir",
-						"/tekton/steps/step-name",
-						"-step_metadata_dir_link",
-						"/tekton/steps/0",
+						"/tekton/run/0/status",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1664,7 +1623,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit},
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -1678,9 +1637,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 					"-termination_path",
 					"/tekton/termination",
 					"-step_metadata_dir",
-					"/tekton/steps/step-name",
-					"-step_metadata_dir_link",
-					"/tekton/steps/0",
+					"/tekton/run/0/status",
 					"-breakpoint_on_failure",
 					"-entrypoint",
 					"cmd",

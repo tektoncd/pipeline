@@ -47,8 +47,7 @@ var (
 	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
-	stepMetadataDir     = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
-	stepMetadataDirLink = flag.String("step_metadata_dir_link", "", "creates a symbolic link to the specified step_metadata_dir e.g. /tekton/steps/<step-index>/")
+	stepMetadataDir = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
 )
 
 const (
@@ -133,7 +132,6 @@ func main() {
 		BreakpointOnFailure: *breakpointOnFailure,
 		OnError:             *onError,
 		StepMetadataDir:     *stepMetadataDir,
-		StepMetadataDirLink: *stepMetadataDirLink,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current

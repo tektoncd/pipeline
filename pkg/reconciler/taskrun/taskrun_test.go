@@ -50,6 +50,7 @@ import (
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2308,7 +2309,7 @@ func TestExpandMountPath(t *testing.T) {
 		t.Fatalf("failed to find expanded Workspace mountpath %v", expectedMountPath)
 	}
 
-	if a := pod.Spec.Containers[0].Args[14]; a != expectedReplacedArgs {
+	if a := pod.Spec.Containers[0].Args; a[len(a)-1] != expectedReplacedArgs {
 		t.Fatalf("failed to replace Workspace mountpath variable, expected %s, actual: %s", expectedReplacedArgs, a)
 	}
 }
@@ -4490,6 +4491,7 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 	mnts = append(mnts, corev1.VolumeMount{
 		Name:      "tekton-internal-steps",
 		MountPath: "/tekton/steps",
+		ReadOnly:  true,
 	})
 
 	return mnts
@@ -4510,9 +4512,7 @@ func podArgs(stepName string, cmd string, additionalArgs []string, idx int) []st
 		"-termination_path",
 		"/tekton/termination",
 		"-step_metadata_dir",
-		fmt.Sprintf("/tekton/steps/step-%s", stepName),
-		"-step_metadata_dir_link",
-		fmt.Sprintf("/tekton/steps/%d", idx),
+		fmt.Sprintf("/tekton/run/%d/status", idx),
 		"-entrypoint",
 		cmd,
 		"--",
@@ -4583,6 +4583,18 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 			ServiceAccountName:    saName,
 		},
 	}
+
+	stepNames := make([]string, 0, len(steps))
+	for _, s := range steps {
+		stepNames = append(stepNames, fmt.Sprintf("step-%s", s.name))
+	}
+	p.Spec.InitContainers = []corev1.Container{placeToolsInitContainer, {
+		Name:         "step-init",
+		Image:        images.EntrypointImage,
+		Command:      append([]string{"/ko-app/entrypoint", "step-init"}, stepNames...),
+		WorkingDir:   "/",
+		VolumeMounts: []v1.VolumeMount{{Name: "tekton-internal-steps", MountPath: "/tekton/steps"}},
+	}}
 
 	for idx, s := range steps {
 		p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{

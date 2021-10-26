@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -146,22 +147,19 @@ func TestEntrypointer(t *testing.T) {
 	}, {
 		desc:     "post file",
 		postFile: "writeme",
+		stepDir:  ".",
 	}, {
 		desc:       "all together now",
 		entrypoint: "echo", args: []string{"some", "args"},
 		waitFiles: []string{"waitforme"},
 		postFile:  "writeme",
+		stepDir:   ".",
 	}, {
 		desc:      "multiple wait files",
 		waitFiles: []string{"waitforme", "metoo", "methree"},
 	}, {
 		desc:                "breakpointOnFailure to wait or not to wait ",
 		breakpointOnFailure: true,
-	}, {
-		desc:        "create a step path",
-		entrypoint:  "echo",
-		stepDir:     "step-one",
-		stepDirLink: "0",
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
@@ -184,7 +182,6 @@ func TestEntrypointer(t *testing.T) {
 				Timeout:             &timeout,
 				BreakpointOnFailure: c.breakpointOnFailure,
 				StepMetadataDir:     c.stepDir,
-				StepMetadataDirLink: c.stepDirLink,
 			}.Go()
 			if err != nil {
 				t.Fatalf("Entrypointer failed: %v", err)
@@ -219,6 +216,10 @@ func TestEntrypointer(t *testing.T) {
 				} else if *fpw.wrote != c.postFile {
 					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile)
 				}
+
+				if d := filepath.Dir(*fpw.wrote); d != c.stepDir {
+					t.Errorf("Post file written to wrong directory %q, want %q", d, c.stepDir)
+				}
 			}
 			if c.postFile == "" && fpw.wrote != nil {
 				t.Errorf("Wrote post file when not required")
@@ -243,18 +244,6 @@ func TestEntrypointer(t *testing.T) {
 			}
 			if err := os.Remove(terminationPath); err != nil {
 				t.Errorf("Could not remove termination path: %s", err)
-			}
-
-			if c.stepDir != "" {
-				if c.stepDir != *fpw.source {
-					t.Error("Wanted step path created, got nil")
-				}
-			}
-
-			if c.stepDirLink != "" {
-				if c.stepDirLink != *fpw.link {
-					t.Error("Wanted step path symbolic link created, got nil")
-				}
 			}
 		})
 	}
@@ -378,8 +367,6 @@ type fakePostWriter struct {
 	wrote        *string
 	exitCodeFile *string
 	exitCode     *string
-	source       *string
-	link         *string
 }
 
 func (f *fakePostWriter) Write(file, content string) {
@@ -389,11 +376,6 @@ func (f *fakePostWriter) Write(file, content string) {
 		f.exitCodeFile = &file
 		f.exitCode = &content
 	}
-}
-
-func (f *fakePostWriter) CreateDirWithSymlink(source, link string) {
-	f.source = &source
-	f.link = &link
 }
 
 type fakeErrorWaiter struct{ waited *string }

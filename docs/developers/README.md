@@ -172,15 +172,16 @@ Here is an example of a directory layout for a simple Task with 2 script steps:
 |-- run
     `-- 0
         `-- out
+        `-- status
+            `-- exitCode
 |-- scripts
 |   |-- script-0-t4jd8
 |   `-- script-1-4pjwp
 |-- steps
-|   |-- 0 -> /tekton/steps/step-unnamed-0
-|   |-- 1 -> /tekton/steps/step-foo
-|   |-- step-foo
-|   `-- step-unnamed-0
-|       `-- exitCode
+|   |-- 0 -> /tekton/run/0/status
+|   |-- 1 -> /tekton/run/1/status
+|   |-- step-foo -> /tekton/run/1/status
+|   `-- step-unnamed-0 -> /tekton/run/0/status
 `-- termination
 ```
 
@@ -541,14 +542,43 @@ integration tests run. When the flag in your cluster is `alpha` _all_
 integration tests are executed, both `stable` and `alpha`. Setting the feature
 flag to `stable` will exclude `alpha` tests.
 
-## What and Why of `/tekton/steps`
+## What and Why of `/tekton/run`
 
-`/tekton/steps/` is an implicit volume mounted on a pod and created for storing
-the step specific information/metadata. There is one more subdirectory created
-under `/tekton/steps/` for each step in a task.
+`/tekton/run` is a collection of implicit volumes mounted on a pod and created
+for storing the step specific information/metadata. Steps can only write
+metadata to their own `/run` directory - all other step volumes are mounted as
+`readonly`. The `/run` directories are considered internal implementation details
+of Tekton and are not bound by the API compatibility policy - the contents and
+structure can be safely changed so long as user behavior remains the same.
 
-Let's take an example of a task with three steps, each exiting with non-zero
-exit code:
+### `/tekton/steps`
+
+`/tekton/steps` are special subdirectories are created for each step in a task -
+each directory is actually a symlink to a directory in the Step's corresponding
+`/tekton/run` volume. This is done to ensure that step directories can only be
+modified by their own Step. To ensure that these symlinks are not modified, the
+entire `/tekton/steps` volume is initially populated by an initContainer, and
+mounted `readonly` on all user steps.
+
+These symlinks are created as a part of the `step-init` entrypoint subcommand
+initContainer on each Task Pod.
+
+### Entrypoint configuration
+
+The entrypoint is modified to include an additional flag representing the step
+specific directory where step metadata should be written:
+
+```
+step_metadata_dir - the dir specified in this flag is created to hold a step specific metadata
+```
+
+`step_metadata_dir` is set to `/tekton/run/<step #>/status` for the entrypoint
+of each step.
+
+### Example
+
+Let's take an example of a task with two steps, each exiting with non-zero exit
+code:
 
 ```yaml
 kind: TaskRun
@@ -562,121 +592,57 @@ spec:
         name: step0
         onError: continue
         script: |
-          echo "This is step 0"
-          ls -1R /tekton/steps/
           exit 1
       - image: alpine
         onError: continue
         script: |
-          echo "This is step 1"
-          ls -1R /tekton/steps/
           exit 2
-      - image: alpine
-        name: step2
-        onError: continue
-        script: |
-          echo "This is step 2"
-          ls -1R /tekton/steps/
-          exit 3
 ```
 
-The container `step-step0` for the first step `step0` shows three subdirectories
-(one for each step) under `/tekton/steps/` and all three of them are empty.
+During `step-step0`, the first container is actively running so none of the
+output files are populated yet. The `/tekton/steps` directories are symlinked to
+locations that do not yet exist, but will be populated during execution.
 
 ```
-kubectl logs pod/test-taskrun-2rb9k-pod-bphct -c step-step0
-+ echo 'This is step 0'
-+ ls -1R /tekton/steps/
-This is step 0
-/tekton/steps/:
-0
-1
-2
-step-step0
-step-step2
-step-unnamed-1
-
-/tekton/steps/step-step0:
-/tekton/steps/step-step2:
-/tekton/steps/step-unnamed-1:
-+ exit 1
+/tekton
+|-- run
+|   |-- 0
+|   `-- 1
+|-- steps
+    |-- 0 -> /tekton/run/0/status
+    |-- 1 -> /tekton/run/1/status
+    |-- step-step0 -> /tekton/run/0/status
+    `-- step-unnamed1 -> /tekton/run/1/status
 ```
 
-The container `step-unnamed-1` for the second step which has no name shows three
-subdirectories (one for each step) under `/tekton/steps/` along with the
-`exitCode` file under the first step directory which has finished executing:
+During `step-unnamed1`, the first container has now finished. The output files
+for the first step are now populated, and the folder pointed to by
+`/tekton/steps/0` now exists, and is populated with a file named `exitCode`
+which contains the exit code of the first step.
 
 ```
-kubectl logs pod/test-taskrun-2rb9k-pod-bphct -c step-unnamed-1
-This is step 1
-+ echo 'This is step 1'
-+ ls -1R /tekton/steps/
-/tekton/steps/:
-0
-1
-2
-step-step0
-step-step2
-step-unnamed-1
-
-/tekton/steps/step-step0:
-exitCode
-
-/tekton/steps/step-step2:
-
-/tekton/steps/step-unnamed-1:
-+ exit 2
+/tekton
+|-- run
+|   |-- 0
+|   |   |-- out
+|   |   `-- status
+|   |       `-- exitCode
+|   `-- 1
+|-- steps
+    |-- 0 -> /tekton/run/0/status
+    |-- 1 -> /tekton/run/1/status
+    |-- step-step0 -> /tekton/run/0/status
+    `-- step-unnamed1 -> /tekton/run/1/status
 ```
 
-The container `step-step2` for the third step `step2` shows three subdirectories
-(one for each step) under `/tekton/steps/` along with the `exitCode` file under
-the first and second step directory since both are done executing:
-
-```
-kubectl logs pod/test-taskrun-2rb9k-pod-bphct -c step-step2
-This is step 2
-+ echo 'This is step 2'
-+ ls -1R /tekton/steps/
-/tekton/steps/:
-0
-1
-2
-step-step0
-step-step2
-step-unnamed-1
-
-/tekton/steps/step-step0:
-exitCode
-
-/tekton/steps/step-step2:
-
-/tekton/steps/step-unnamed-1:
-exitCode
-+ exit 3
-```
-
-The entrypoint is modified to include an additional two flags representing the
-step specific directory and a symbolic link:
-
-```
-step_metadata_dir - the dir specified in this flag is created to hold a step specific metadata
-step_metadata_dir_link - the dir specified in this flag is created as a symbolic link to step_metadata_dir
-```
-
-`step_metadata_dir` is set to `/tekton/steps/step-step0` and
-`step_metadata_dir_link` is set to `/tekton/steps/0` for the entrypoint of the
-first step in the above example task.
-
-Notice an additional entries `0`, `1`, and `2` showing under `/tekton/steps/`.
-These are symbolic links created which are linked with their respective step
-directories, `step-step0`, `step-unnamed-1`, and `step-step2`. These symbolic
-links are created to provide simplified access to the step metadata directories
-i.e., instead of referring to a directory with the step name, access it via the
-step index. The step index becomes complex and hard to keep track of in a task
-with a long list of steps, for example, a task with 20 steps. Creating the step
-metadata directory using a step name and creating a symbolic link using the step
-index gives the user flexibility, and an option to choose whatever works best
-for them.
+Notice that there are multiple symlinks showing under `/tekton/steps/` pointing
+to the same `/tekton/run` location. These symbolic links are created to provide
+simplified access to the step metadata directories i.e., instead of referring to
+a directory with the step name, access it via the step index. The step index
+becomes complex and hard to keep track of in a task with a long list of steps,
+for example, a task with 20 steps. Creating the step metadata directory using a
+step name and creating a symbolic link using the step index gives the user
+flexibility, and an option to choose whatever works best for them.
 
 ## How to access the exit code of a step from any subsequent step in a task
 
