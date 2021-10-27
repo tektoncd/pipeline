@@ -115,7 +115,11 @@ func getDefaultRequest(limitRange *corev1.LimitRange, nbContainers int) corev1.R
 				if item.Min != nil {
 					min = item.Min[name]
 				}
-				r[name] = takeTheMax(request, *resource.NewMilliQuantity(defaultRequest.MilliValue()/int64(nbContainers), defaultRequest.Format), min)
+				if name == corev1.ResourceMemory || name == corev1.ResourceEphemeralStorage {
+					r[name] = takeTheMax(request, *resource.NewQuantity(defaultRequest.Value()/int64(nbContainers), defaultRequest.Format), min)
+				} else {
+					r[name] = takeTheMax(request, *resource.NewMilliQuantity(defaultRequest.MilliValue()/int64(nbContainers), defaultRequest.Format), min)
+				}
 			}
 		}
 	}
