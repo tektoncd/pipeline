@@ -153,7 +153,7 @@ func TestTransformerOneContainer(t *testing.T) {
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("500m"),
 						corev1.ResourceMemory:           resource.MustParse("50Mi"),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(536870912000, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
 					},
 				},
 			}},
@@ -162,7 +162,7 @@ func TestTransformerOneContainer(t *testing.T) {
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("500m"),
 						corev1.ResourceMemory:           resource.MustParse("50Mi"),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(536870912000, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
 					},
 				},
 			}},
@@ -203,7 +203,7 @@ func TestTransformerOneContainer(t *testing.T) {
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("500m"),
 						corev1.ResourceMemory:           resource.MustParse("50Mi"),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(536870912000, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
 					},
 				},
 			}},
@@ -217,7 +217,7 @@ func TestTransformerOneContainer(t *testing.T) {
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("500m"),
 						corev1.ResourceMemory:           resource.MustParse("50Mi"),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(536870912000, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
 					},
 				},
 			}},
@@ -573,8 +573,8 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewMilliQuantity(34952533333, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(357913941333, resource.BinarySI),
+						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
 					},
 				},
 			}},
@@ -582,16 +582,16 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewMilliQuantity(34952533333, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(357913941333, resource.BinarySI),
+						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
 					},
 				},
 			}, {
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewMilliQuantity(34952533333, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(357913941333, resource.BinarySI),
+						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
 					},
 				},
 			}},
@@ -634,8 +634,8 @@ func TestTransformerMultipleContainer(t *testing.T) {
 					},
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewMilliQuantity(34952533333, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(357913941333, resource.BinarySI),
+						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
 					},
 				},
 			}},
@@ -648,8 +648,8 @@ func TestTransformerMultipleContainer(t *testing.T) {
 					},
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewMilliQuantity(34952533333, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(357913941333, resource.BinarySI),
+						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
 					},
 				},
 			}, {
@@ -661,8 +661,8 @@ func TestTransformerMultipleContainer(t *testing.T) {
 					},
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewMilliQuantity(34952533333, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewMilliQuantity(357913941333, resource.BinarySI),
+						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
 					},
 				},
 			}},
