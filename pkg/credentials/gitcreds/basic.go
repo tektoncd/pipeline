@@ -111,7 +111,14 @@ type basicEntry struct {
 }
 
 func (be *basicEntry) configBlurb(u string) string {
-	return fmt.Sprintf("[credential %q]\n	username = %s\n", u, be.username)
+	return fmt.Sprintf("[credential %q]\n	username = %s\n", u, be.escapedUsername())
+}
+
+func (be *basicEntry) escapedUsername() string {
+	if strings.Contains(be.username, "\\") {
+		return strings.ReplaceAll(be.username, "\\", "\\\\")
+	}
+	return be.username
 }
 
 func newBasicEntry(u, secret string) (*basicEntry, error) {

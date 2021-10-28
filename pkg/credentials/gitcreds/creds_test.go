@@ -449,3 +449,56 @@ func TestMatchingAnnotations(t *testing.T) {
 		}
 	}
 }
+
+func TestBasicBackslashInUsername(t *testing.T) {
+	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	dir := credentials.VolumeName("foo")
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte(`foo\bar\banana`), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+		t.Fatalf("ioutil.WriteFile(password) = %v", err)
+	}
+
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	AddFlags(fs)
+	err := fs.Parse([]string{
+		"-basic-git=foo=https://github.com",
+	})
+	if err != nil {
+		t.Fatalf("flag.CommandLine.Parse() = %v", err)
+	}
+
+	os.Setenv("HOME", credentials.VolumePath)
+	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
+		t.Fatalf("Write() = %v", err)
+	}
+
+	b, err := ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".gitconfig"))
+	if err != nil {
+		t.Fatalf("ioutil.ReadFile(.gitconfig) = %v", err)
+	}
+
+	expectedGitConfig := `[credential]
+	helper = store
+[credential "https://github.com"]
+	username = foo\\bar\\banana
+`
+	if string(b) != expectedGitConfig {
+		t.Errorf("got: %v, wanted: %v", string(b), expectedGitConfig)
+	}
+
+	b, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".git-credentials"))
+	if err != nil {
+		t.Fatalf("ioutil.ReadFile(.git-credentials) = %v", err)
+	}
+
+	expectedGitCredentials := `https://foo%5Cbar%5Cbanana:baz@github.com
+`
+	if string(b) != expectedGitCredentials {
+		t.Errorf("got: %v, wanted: %v", string(b), expectedGitCredentials)
+	}
+}
