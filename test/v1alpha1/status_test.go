@@ -56,6 +56,7 @@ spec:
 metadata:
   name: apple
 spec:
+  timeout: 2s
   taskRef:
     name: banana
   serviceAccountName: inexistent`)
@@ -74,6 +75,7 @@ metadata:
 spec:
   tasks:
   - name: foo
+    timeout: 2s
     taskRef:
       name: banana`)
 	pipelineRun := parse.MustParseAlphaPipelineRun(t, `

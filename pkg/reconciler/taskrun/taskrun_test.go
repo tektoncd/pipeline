@@ -1607,6 +1607,47 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 	}
 }
 
+func TestReconcileMissingSA(t *testing.T) {
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+			ServiceAccountName: "test-sa",
+		},
+	}
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	clients := testAssets.Clients
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Error("Wanted a reconciliation error, but got nil.")
+	} else if !strings.Contains(err.Error(), `translating TaskSpec to Pod: serviceaccounts "test-sa" not found`) {
+		t.Errorf("Expected missing SA error reconciling TaskRun but got %v", err)
+	}
+
+	t.Logf("Creating SA %s in %s", "default", "foo")
+	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-sa",
+			Namespace: "foo",
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
+		t.Errorf("Expected no error reconciling valid TaskRun but got %v", err)
+	}
+}
+
 func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 	startTime := time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC)
 	taskRun := &v1beta1.TaskRun{

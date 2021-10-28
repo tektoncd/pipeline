@@ -549,6 +549,8 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 		})
 	case isTaskRunValidationFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+	case k8serrors.IsNotFound(err): // serviceaccount or a secret is missing
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, err.Error())
 	default:
 		// The pod creation failed with unknown reason. The most likely
 		// reason is that something is wrong with the spec of the Task, that we could
