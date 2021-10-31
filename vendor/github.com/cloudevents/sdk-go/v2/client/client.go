@@ -128,11 +128,10 @@ func (c *ceClient) Send(ctx context.Context, e event.Event) protocol.Result {
 		return err
 	}
 
-	// Event has been defaulted and validated, record we are going to preform send.
+	// Event has been defaulted and validated, record we are going to perform send.
 	ctx, cb := c.observabilityService.RecordSendingEvent(ctx, e)
-	defer cb(err)
-
 	err = c.sender.Send(ctx, (*binding.EventMessage)(&e))
+	defer cb(err)
 	return err
 }
 
@@ -160,7 +159,6 @@ func (c *ceClient) Request(ctx context.Context, e event.Event) (*event.Event, pr
 
 	// Event has been defaulted and validated, record we are going to perform request.
 	ctx, cb := c.observabilityService.RecordRequestEvent(ctx, e)
-	defer cb(err, resp)
 
 	// If provided a requester, use it to do request/response.
 	var msg binding.Message
@@ -186,7 +184,7 @@ func (c *ceClient) Request(ctx context.Context, e event.Event) (*event.Event, pr
 	} else {
 		resp = rs
 	}
-
+	defer cb(err, resp)
 	return resp, err
 }
 

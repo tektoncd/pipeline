@@ -66,3 +66,20 @@ func GetConfig(ctx context.Context) *rest.Config {
 	}
 	return value.(*rest.Config)
 }
+
+// rvKey is the key that the resource version is associated with.
+type rvKey struct{}
+
+// WithResourceVersion associates a resource version with the context.
+func WithResourceVersion(ctx context.Context, resourceVersion string) context.Context {
+	return context.WithValue(ctx, rvKey{}, resourceVersion)
+}
+
+// GetResourceVersion gets the resource version associated with the context.
+func GetResourceVersion(ctx context.Context) string {
+	value := ctx.Value(rvKey{})
+	if value == nil {
+		return ""
+	}
+	return value.(string)
+}

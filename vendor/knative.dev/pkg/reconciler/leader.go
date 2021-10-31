@@ -97,7 +97,7 @@ func (laf *LeaderAwareFuncs) Promote(b Bucket, enq func(Bucket, types.Namespaced
 		laf.buckets[b.Name()] = b
 	}()
 
-	if promote := laf.PromoteFunc; promote != nil {
+	if promote := laf.PromoteFunc; promote != nil && enq != nil {
 		return promote(b, enq)
 	}
 	return nil

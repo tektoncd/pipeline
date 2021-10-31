@@ -17,9 +17,7 @@ limitations under the License.
 package defaulting
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -47,6 +45,7 @@ import (
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
+	"knative.dev/pkg/webhook/json"
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
@@ -241,21 +240,15 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1.AdmissionRequ
 
 	if len(newBytes) != 0 {
 		newObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
-		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
-		if ac.disallowUnknownFields {
-			newDecoder.DisallowUnknownFields()
-		}
-		if err := newDecoder.Decode(&newObj); err != nil {
+		err := json.Decode(newBytes, newObj, ac.disallowUnknownFields)
+		if err != nil {
 			return nil, fmt.Errorf("cannot decode incoming new object: %w", err)
 		}
 	}
 	if len(oldBytes) != 0 {
 		oldObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
-		oldDecoder := json.NewDecoder(bytes.NewBuffer(oldBytes))
-		if ac.disallowUnknownFields {
-			oldDecoder.DisallowUnknownFields()
-		}
-		if err := oldDecoder.Decode(&oldObj); err != nil {
+		err := json.Decode(oldBytes, oldObj, ac.disallowUnknownFields)
+		if err != nil {
 			return nil, fmt.Errorf("cannot decode incoming old object: %w", err)
 		}
 	}

@@ -103,19 +103,3 @@ func IsOneOfStatusCodes(codes ...int) ResponseChecker {
 		return true, fmt.Errorf("status = %d %s, want one of: %v", resp.StatusCode, resp.Status, codes)
 	}
 }
-
-// Retrying modifies a ResponseChecker to retry certain response codes.
-func Retrying(rc ResponseChecker, codes ...int) ResponseChecker {
-	return func(resp *Response) (bool, error) {
-		for _, code := range codes {
-			if resp.StatusCode == code {
-				// Returning (false, nil) causes SpoofingClient.Poll to retry.
-				// sc.logger.Info("Retrying for code ", resp.StatusCode)
-				return false, nil
-			}
-		}
-
-		// If we didn't match any retryable codes, invoke the ResponseChecker that we wrapped.
-		return rc(resp)
-	}
-}

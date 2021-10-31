@@ -38,6 +38,8 @@ const (
 	// DoObserveKind is the function name for observing the resource (as a non leader).
 	DoObserveKind = "ObserveKind"
 	// DoObserveFinalizeKind is the function name for observing finalization of the resource (as a non leader).
+	//
+	// Deprecated: This will be deleted soon.
 	DoObserveFinalizeKind = "ObserveFinalizeKind"
 )
 

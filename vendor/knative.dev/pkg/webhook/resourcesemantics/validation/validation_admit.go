@@ -17,9 +17,7 @@ limitations under the License.
 package validation
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -31,6 +29,7 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/webhook"
+	"knative.dev/pkg/webhook/json"
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
@@ -110,11 +109,8 @@ func (ac *reconciler) decodeRequestAndPrepareContext(
 	var newObj resourcesemantics.GenericCRD
 	if len(newBytes) != 0 {
 		newObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
-		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
-		if ac.disallowUnknownFields {
-			newDecoder.DisallowUnknownFields()
-		}
-		if err := newDecoder.Decode(&newObj); err != nil {
+		err := json.Decode(newBytes, newObj, ac.disallowUnknownFields)
+		if err != nil {
 			return ctx, nil, fmt.Errorf("cannot decode incoming new object: %w", err)
 		}
 	}
@@ -122,11 +118,8 @@ func (ac *reconciler) decodeRequestAndPrepareContext(
 	var oldObj resourcesemantics.GenericCRD
 	if len(oldBytes) != 0 {
 		oldObj = handler.DeepCopyObject().(resourcesemantics.GenericCRD)
-		oldDecoder := json.NewDecoder(bytes.NewBuffer(oldBytes))
-		if ac.disallowUnknownFields {
-			oldDecoder.DisallowUnknownFields()
-		}
-		if err := oldDecoder.Decode(&oldObj); err != nil {
+		err := json.Decode(oldBytes, oldObj, ac.disallowUnknownFields)
+		if err != nil {
 			return ctx, nil, fmt.Errorf("cannot decode incoming old object: %w", err)
 		}
 	}

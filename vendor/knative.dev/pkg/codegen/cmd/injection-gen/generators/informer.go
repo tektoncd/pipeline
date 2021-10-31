@@ -143,6 +143,10 @@ func (g *injectionGenerator) GenerateType(c *generator.Context, t *types.Type, w
 			Name:    "NewSharedIndexInformer",
 		}),
 		"Namespaced": !tags.NonNamespaced,
+		"injectionGetResourceVersion": c.Universe.Function(types.Name{
+			Package: "knative.dev/pkg/injection",
+			Name:    "GetResourceVersion",
+		}),
 	}
 
 	sw.Do(injectionInformer, m)
@@ -166,7 +170,7 @@ func withInformer(ctx {{.contextContext|raw}}) ({{.contextContext|raw}}, {{.cont
 }
 
 func withDynamicInformer(ctx {{.contextContext|raw}}) {{.contextContext|raw}} {
-	inf := &wrapper{client: {{ .clientGet|raw }}(ctx)}
+	inf := &wrapper{client: {{ .clientGet|raw }}(ctx), resourceVersion: {{ .injectionGetResourceVersion|raw }}(ctx)}
 	return {{ .contextWithValue|raw }}(ctx, Key{}, inf)
 }
 
@@ -185,6 +189,7 @@ type wrapper struct {
 {{ if .Namespaced }}
 	namespace string
 {{ end }}
+    resourceVersion string
 }
 
 var _ {{.informersTypedInformer|raw}} = (*wrapper)(nil)
@@ -200,14 +205,22 @@ func (w *wrapper) Lister() {{ .resourceLister|raw }} {
 
 {{if .Namespaced}}
 func (w *wrapper) {{ .type|publicPlural }}(namespace string) {{ .resourceNamespaceLister|raw }} {
-	return &wrapper{client: w.client, namespace: namespace}
+	return &wrapper{client: w.client, namespace: namespace, resourceVersion: w.resourceVersion}
 }
 {{end}}
+
+// SetResourceVersion allows consumers to adjust the minimum resourceVersion
+// used by the underlying client.  It is not accessible via the standard
+// lister interface, but can be accessed through a user-defined interface and
+// an implementation check e.g. rvs, ok := foo.(ResourceVersionSetter)
+func (w *wrapper) SetResourceVersion(resourceVersion string) {
+	w.resourceVersion = resourceVersion
+}
 
 func (w *wrapper) List(selector {{ .labelsSelector|raw }}) (ret []*{{ .type|raw }}, err error) {
 	lo, err := w.client.{{.groupGoName}}{{.versionGoName}}().{{.type|publicPlural}}({{if .Namespaced}}w.namespace{{end}}).List({{ .contextTODO|raw }}(), {{ .metav1ListOptions|raw }}{
 		LabelSelector: selector.String(),
-		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+		ResourceVersion: w.resourceVersion,
 	})
 	if err != nil {
 		return nil, err
@@ -220,7 +233,7 @@ func (w *wrapper) List(selector {{ .labelsSelector|raw }}) (ret []*{{ .type|raw 
 
 func (w *wrapper) Get(name string) (*{{ .type|raw }}, error) {
 	return w.client.{{.groupGoName}}{{.versionGoName}}().{{.type|publicPlural}}({{if .Namespaced}}w.namespace{{end}}).Get({{ .contextTODO|raw }}(), name, {{ .metav1GetOptions|raw }}{
-		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+		ResourceVersion: w.resourceVersion,
 	})
 }
 
