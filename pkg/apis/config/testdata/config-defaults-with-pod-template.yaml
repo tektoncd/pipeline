@@ -22,4 +22,7 @@ data:
   default-service-account: "tekton"
   default-pod-template: |
     nodeSelector:
-      label: value
+      label: value1
+  default-affinity-assistant-pod-template: |
+    nodeSelector:
+      label: value2

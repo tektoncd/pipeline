@@ -85,7 +85,7 @@ func TestCreateAndDeleteOfAffinityAssistant(t *testing.T) {
 	}
 }
 
-func TestThatCustomTolerationsAndNodeSelectorArePropagatedToAffinityAssistant(t *testing.T) {
+func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 	prWithCustomPodTemplate := &v1beta1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
 		ObjectMeta: metav1.ObjectMeta{
@@ -106,7 +106,7 @@ func TestThatCustomTolerationsAndNodeSelectorArePropagatedToAffinityAssistant(t 
 		},
 	}
 
-	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx")
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", nil)
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
 		t.Errorf("expected Tolerations in the StatefulSet")
@@ -114,6 +114,105 @@ func TestThatCustomTolerationsAndNodeSelectorArePropagatedToAffinityAssistant(t 
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
 		t.Errorf("expected a NodeSelector in the StatefulSet")
+	}
+}
+
+func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
+	prWithCustomPodTemplate := &v1beta1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-with-custom-podtemplate",
+		},
+	}
+
+	defaultTpl := &pod.AffinityAssistantTemplate{
+		Tolerations: []corev1.Toleration{{
+			Key:      "key",
+			Operator: "Equal",
+			Value:    "value",
+			Effect:   "NoSchedule",
+		}},
+		NodeSelector: map[string]string{
+			"disktype": "ssd",
+		},
+	}
+
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", defaultTpl)
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
+		t.Errorf("expected Tolerations in the StatefulSet")
+	}
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
+		t.Errorf("expected a NodeSelector in the StatefulSet")
+	}
+}
+
+func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
+	prWithCustomPodTemplate := &v1beta1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-with-custom-podtemplate",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PodTemplate: &pod.Template{
+				Tolerations: []corev1.Toleration{{
+					Key:      "key",
+					Operator: "Equal",
+					Value:    "value",
+					Effect:   "NoSchedule",
+				}},
+			},
+		},
+	}
+
+	defaultTpl := &pod.AffinityAssistantTemplate{
+		NodeSelector: map[string]string{
+			"disktype": "ssd",
+		},
+	}
+
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", defaultTpl)
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
+		t.Errorf("expected Tolerations from spec in the StatefulSet")
+	}
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
+		t.Errorf("expected NodeSelector from defaults in the StatefulSet")
+	}
+}
+
+func TestOnlySelectPodTemplateFieldsArePropagatedToAffinityAssistant(t *testing.T) {
+	prWithCustomPodTemplate := &v1beta1.PipelineRun{
+		TypeMeta: metav1.TypeMeta{Kind: "PipelineRun"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun-with-custom-podtemplate",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PodTemplate: &pod.Template{
+				Tolerations: []corev1.Toleration{{
+					Key:      "key",
+					Operator: "Equal",
+					Value:    "value",
+					Effect:   "NoSchedule",
+				}},
+				HostAliases: []corev1.HostAlias{{
+					IP:        "1.2.3.4",
+					Hostnames: []string{"localhost"},
+				}},
+			},
+		},
+	}
+
+	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", nil)
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 1 {
+		t.Errorf("expected Tolerations from spec in the StatefulSet")
+	}
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.HostAliases) != 0 {
+		t.Errorf("expected HostAliases to not be passed from pod template")
 	}
 }
 
@@ -126,7 +225,7 @@ func TestThatTheAffinityAssistantIsWithoutNodeSelectorAndTolerations(t *testing.
 		Spec: v1beta1.PipelineRunSpec{},
 	}
 
-	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithoutCustomPodTemplate, "mypvc", "nginx")
+	stsWithoutTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithoutCustomPodTemplate, "mypvc", "nginx", nil)
 
 	if len(stsWithoutTolerationsAndNodeSelector.Spec.Template.Spec.Tolerations) != 0 {
 		t.Errorf("unexpected Tolerations in the StatefulSet")

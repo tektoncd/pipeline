@@ -49,7 +49,12 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultManagedByLabelValue: config.DefaultManagedByLabelValue,
 				DefaultPodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
-						"label": "value",
+						"label": "value1",
+					},
+				},
+				DefaultAAPodTemplate: &pod.AffinityAssistantTemplate{
+					NodeSelector: map[string]string{
+						"label": "value2",
 					},
 				},
 			},
@@ -166,6 +171,24 @@ func TestEquals(t *testing.T) {
 			},
 			right: &config.Defaults{
 				DefaultPodTemplate: &pod.Template{
+					NodeSelector: map[string]string{
+						"label": "value",
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "different default affinity assistant pod template",
+			left: &config.Defaults{
+				DefaultAAPodTemplate: &pod.AffinityAssistantTemplate{
+					NodeSelector: map[string]string{
+						"label": "value",
+					},
+				},
+			},
+			right: &config.Defaults{
+				DefaultAAPodTemplate: &pod.AffinityAssistantTemplate{
 					NodeSelector: map[string]string{
 						"label": "value",
 					},
