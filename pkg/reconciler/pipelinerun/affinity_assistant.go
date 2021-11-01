@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/workspace"
@@ -49,6 +50,7 @@ const (
 // share the workspace volume and make it possible for the tasks to execute parallel while sharing volume.
 func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.WorkspaceBinding, pr *v1beta1.PipelineRun, namespace string) error {
 	logger := logging.FromContext(ctx)
+	cfg := config.FromContextOrDefaults(ctx)
 
 	var errs []error
 	for _, w := range wb {
@@ -58,7 +60,7 @@ func (c *Reconciler) createAffinityAssistants(ctx context.Context, wb []v1beta1.
 			claimName := getClaimName(w, *kmeta.NewControllerRef(pr))
 			switch {
 			case apierrors.IsNotFound(err):
-				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.NopImage)
+				affinityAssistantStatefulSet := affinityAssistantStatefulSet(affinityAssistantName, pr, claimName, c.Images.NopImage, cfg.Defaults.DefaultAAPodTemplate)
 				_, err := c.KubeClientSet.AppsV1().StatefulSets(namespace).Create(ctx, affinityAssistantStatefulSet, metav1.CreateOptions{})
 				if err != nil {
 					errs = append(errs, fmt.Errorf("failed to create StatefulSet %s: %s", affinityAssistantName, err))
@@ -124,20 +126,14 @@ func getStatefulSetLabels(pr *v1beta1.PipelineRun, affinityAssistantName string)
 	return labels
 }
 
-func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimName string, affinityAssistantImage string) *appsv1.StatefulSet {
+func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimName string, affinityAssistantImage string, defaultAATpl *pod.AffinityAssistantTemplate) *appsv1.StatefulSet {
 	// We want a singleton pod
 	replicas := int32(1)
 
-	// use tolerations from default podTemplate if specified
-	var tolerations []corev1.Toleration
-	if pr.Spec.PodTemplate != nil {
-		tolerations = pr.Spec.PodTemplate.Tolerations
-	}
-
-	// use nodeSelector from default podTemplate if specified
-	var nodeSelector map[string]string
-	if pr.Spec.PodTemplate != nil {
-		nodeSelector = pr.Spec.PodTemplate.NodeSelector
+	tpl := &pod.AffinityAssistantTemplate{}
+	// merge pod template from spec and default if any of them are defined
+	if pr.Spec.PodTemplate != nil || defaultAATpl != nil {
+		tpl = v1beta1.MergeAAPodTemplateWithDefault(pr.Spec.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
 	}
 
 	containers := []corev1.Container{{
@@ -193,9 +189,11 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 					Labels: getStatefulSetLabels(pr, name),
 				},
 				Spec: corev1.PodSpec{
-					Containers:   containers,
-					Tolerations:  tolerations,
-					NodeSelector: nodeSelector,
+					Containers: containers,
+
+					Tolerations:  tpl.Tolerations,
+					NodeSelector: tpl.NodeSelector,
+
 					Affinity: &corev1.Affinity{
 						PodAntiAffinity: &corev1.PodAntiAffinity{
 							PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{repelOtherAffinityAssistantsPodAffinityTerm},

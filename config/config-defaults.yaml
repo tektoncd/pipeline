@@ -51,10 +51,16 @@ data:
     # label, the user's request supercedes.
     default-managed-by-label-value: "tekton-pipelines"
 
-    # default-pod-template contains the default pod template to use
-    # TaskRun and PipelineRun, if none is specified. If a pod template
-    # is specified, the default pod template is ignored.
+    # default-pod-template contains the default pod template to use for
+    # TaskRun and PipelineRun. If a pod template is specified on the
+    # PipelineRun, the default-pod-template is merged with that one.
     # default-pod-template:
+
+    # default-affinity-assistant-pod-template contains the default pod template
+    # to use for affinity assistant pods. If a pod template is specified on the
+    # PipelineRun, the default-affinity-assistant-pod-template is merged with
+    # that one.
+    # default-affinity-assistant-pod-template:
 
     # default-cloud-events-sink contains the default CloudEvents sink to be
     # used for TaskRun and PipelineRun, when no sink is specified.

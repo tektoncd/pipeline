@@ -43,6 +43,7 @@ const (
 	defaultServiceAccountKey       = "default-service-account"
 	defaultManagedByLabelValueKey  = "default-managed-by-label-value"
 	defaultPodTemplateKey          = "default-pod-template"
+	defaultAAPodTemplateKey        = "default-affinity-assistant-pod-template"
 	defaultCloudEventsSinkKey      = "default-cloud-events-sink"
 	defaultTaskRunWorkspaceBinding = "default-task-run-workspace-binding"
 )
@@ -54,6 +55,7 @@ type Defaults struct {
 	DefaultServiceAccount          string
 	DefaultManagedByLabelValue     string
 	DefaultPodTemplate             *pod.Template
+	DefaultAAPodTemplate           *pod.AffinityAssistantTemplate
 	DefaultCloudEventsSink         string
 	DefaultTaskRunWorkspaceBinding string
 }
@@ -81,6 +83,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		other.DefaultServiceAccount == cfg.DefaultServiceAccount &&
 		other.DefaultManagedByLabelValue == cfg.DefaultManagedByLabelValue &&
 		other.DefaultPodTemplate.Equals(cfg.DefaultPodTemplate) &&
+		other.DefaultAAPodTemplate.Equals(cfg.DefaultAAPodTemplate) &&
 		other.DefaultCloudEventsSink == cfg.DefaultCloudEventsSink &&
 		other.DefaultTaskRunWorkspaceBinding == cfg.DefaultTaskRunWorkspaceBinding
 }
@@ -116,6 +119,14 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed to unmarshal %v", defaultPodTemplate)
 		}
 		tc.DefaultPodTemplate = &podTemplate
+	}
+
+	if defaultAAPodTemplate, ok := cfgMap[defaultAAPodTemplateKey]; ok {
+		var podTemplate pod.AffinityAssistantTemplate
+		if err := yaml.Unmarshal([]byte(defaultAAPodTemplate), &podTemplate); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal %v", defaultAAPodTemplate)
+		}
+		tc.DefaultAAPodTemplate = &podTemplate
 	}
 
 	if defaultCloudEventsSink, ok := cfgMap[defaultCloudEventsSinkKey]; ok {

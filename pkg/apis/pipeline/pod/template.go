@@ -123,3 +123,15 @@ func (tpl *Template) Equals(other *Template) bool {
 
 	return reflect.DeepEqual(tpl, other)
 }
+
+// ToAffinityAssistantTemplate converts to a affinity assistant pod Template
+func (tpl *Template) ToAffinityAssistantTemplate() *AffinityAssistantTemplate {
+	if tpl == nil {
+		return nil
+	}
+
+	return &AffinityAssistantTemplate{
+		NodeSelector: tpl.NodeSelector,
+		Tolerations:  tpl.Tolerations,
+	}
+}

@@ -65,6 +65,11 @@ func (in *Defaults) DeepCopyInto(out *Defaults) {
 		*out = new(pod.Template)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DefaultAAPodTemplate != nil {
+		in, out := &in.DefaultAAPodTemplate, &out.DefaultAAPodTemplate
+		*out = new(pod.AffinityAssistantTemplate)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

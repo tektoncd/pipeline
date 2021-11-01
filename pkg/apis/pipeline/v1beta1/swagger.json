@@ -7,6 +7,28 @@
   },
   "paths": {},
   "definitions": {
+    "pod.AffinityAssistantTemplate": {
+      "description": "AAPodTemplate holds pod specific configuration for the affinity-assistant",
+      "type": "object",
+      "properties": {
+        "nodeSelector": {
+          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "tolerations": {
+          "description": "If specified, the pod's tolerations.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Toleration"
+          }
+        }
+      }
+    },
     "pod.Template": {
       "description": "PodTemplate holds pod specific configuration",
       "type": "object",
