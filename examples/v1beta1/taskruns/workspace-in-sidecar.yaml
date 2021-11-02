@@ -13,7 +13,8 @@ spec:
   timeout: 60s
   workspaces:
   - name: signals
-    emptyDir: {}
+    emptyDir:
+      sizeLimit: 1M
   taskSpec:
     workspaces:
     - name: signals
@@ -21,32 +22,36 @@ spec:
     - image: alpine:3.12.0
       resources:
         requests:
-          memory: "64Mi"
-          cpu: "250m"
+          memory: "16Mi"
+          cpu: "100m"
       script: |
         #!/usr/bin/env ash
-        echo "foo" > "$(workspaces.signals.path)"/bar
-        echo "Wrote bar file"
-        while [ ! -f "$(workspaces.signals.path)"/ready ] ; do
-          echo "Waiting for $(workspaces.signals.path)/ready"
-          sleep 1
-        done
-        echo "Saw ready file"
+        mkfifo "$(workspaces.signals.path)/channel"
+        echo "Greeting sidecar..."
+        echo "hello there" > "$(workspaces.signals.path)/channel"
+        echo "Awaiting response..."
+        read response < "$(workspaces.signals.path)/channel"
+        echo "Sidecar responded: ${response}"
+        echo "Step Done."
     sidecars:
     - image: alpine:3.12.0
       resources:
         requests:
-          memory: "64Mi"
-          cpu: "250m"
+          memory: "16Mi"
+          cpu: "100m"
       # Note: must explicitly add volumeMount to gain access to Workspace in sidecar
       volumeMounts:
       - name: $(workspaces.signals.volume)
         mountPath: $(workspaces.signals.path)
       script: |
         #!/usr/bin/env ash
-        while [ ! -f "$(workspaces.signals.path)"/bar ] ; do
-          echo "Waiting for $(workspaces.signals.path)/bar"
-          sleep 1
+        while [[ ! -p "$(workspaces.signals.path)/channel" ]] ; do
+          sleep 4
+          echo "Polling channel..."
         done
-        touch "$(workspaces.signals.path)"/ready
-        echo "Wrote ready file"
+        echo "Awaiting greeting..."
+        read message < "$(workspaces.signals.path)"/channel
+        echo "Step sent message: ${message}"
+        echo "Responding..."
+        echo "good day" > "$(workspaces.signals.path)"/channel
+        echo "Sidecar Done."
