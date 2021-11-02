@@ -74,7 +74,6 @@ func NewController(opts *pipeline.Options) func(context.Context, configmap.Watch
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           pipelinerunmetrics.Get(ctx),
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
-			disableResolution: opts.ExperimentalDisableResolution,
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{

@@ -74,7 +74,6 @@ func NewController(opts *pipeline.Options) func(context.Context, configmap.Watch
 			metrics:           taskrunmetrics.Get(ctx),
 			entrypointCache:   entrypointCache,
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
-			disableResolution: opts.ExperimentalDisableResolution,
 		}
 		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{
