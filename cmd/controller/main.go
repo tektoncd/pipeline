@@ -57,8 +57,6 @@ func main() {
 	flag.StringVar(&opts.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
 	flag.StringVar(&opts.Images.PRImage, "pr-image", "", "The container image containing our PR binary.")
 	flag.StringVar(&opts.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
-	flag.BoolVar(&opts.ExperimentalDisableResolution, "experimental-disable-in-tree-resolution", false,
-		"Disable resolution of taskrun and pipelinerun refs by the taskrun and pipelinerun reconcilers.")
 
 	// This parses flags.
 	cfg := injection.ParseAndGetRESTConfigOrDie()

@@ -81,9 +81,6 @@ spec:
           # for script mode to work with windows we need a powershell image
           # pinning to nanoserver tag as of July 15 2021
           "-shell-image-win", "mcr.microsoft.com/powershell:nanoserver@sha256:b6d5ff841b78bdf2dfed7550000fd4f3437385b8fa686ec0f010be24777654d6",
-          # Experimental. Uncomment below to disable TaskRun and PipelineRun
-          # reconcilers' built-in taskRef and pipelineRef resolution procedures.
-          # "-experimental-disable-in-tree-resolution",
         ]
         volumeMounts:
         - name: config-logging
