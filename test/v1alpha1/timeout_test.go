@@ -174,7 +174,9 @@ spec:
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
+	taskTimeout := 1 * time.Second
+	testTimeout := taskTimeout + (2 * time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 	c, namespace := setup(ctx, t)
 
@@ -203,7 +205,7 @@ spec:
   taskRef:
     name: %s
   timeout: %s
-`, helpers.ObjectNameForTest(t), namespace, task.Name, 30*time.Second))
+`, helpers.ObjectNameForTest(t), namespace, task.Name, taskTimeout))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", taskRun.Name, err)
 	}
