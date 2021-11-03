@@ -175,3 +175,4 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `Pipeline` | `spec.results[].value` |
 | `Pipeline` | `spec.tasks[].when[].input` |
 | `Pipeline` | `spec.tasks[].when[].values` |
+| `Pipeline` | `spec.tasks[].workspaces[].subPath` |
