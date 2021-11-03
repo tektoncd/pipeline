@@ -47,9 +47,11 @@ func TestSidecarTaskSupport(t *testing.T) {
 		stepCommand    []string
 		sidecarCommand []string
 	}{{
-		desc:           "A sidecar that runs forever is terminated when Steps complete",
-		stepCommand:    []string{"echo", "\"hello world\""},
-		sidecarCommand: []string{"sh", "-c", "while [[ true ]] ; do echo \"hello from sidecar\" ; done"},
+		desc:        "A sidecar that runs forever is terminated when Steps complete",
+		stepCommand: []string{"echo", "\"hello world\""},
+		// trapping the exit signals lets us stop the sidecar more
+		// rapidly than waiting for a force stop.
+		sidecarCommand: []string{"sh", "-c", "trap exit SIGTERM SIGINT; while [[ true ]] ; do echo \"hello from sidecar\"; sleep 3 ; done"},
 	}, {
 		desc:           "A sidecar that terminates early does not cause problems running Steps",
 		stepCommand:    []string{"echo", "\"hello world\""},
@@ -57,16 +59,20 @@ func TestSidecarTaskSupport(t *testing.T) {
 	}}
 
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	clients, namespace := setup(ctx, t)
 	t.Parallel()
 
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, clients, namespace) }, t.Logf)
-	defer tearDown(ctx, t, clients, namespace)
-
 	for i, test := range tests {
+		i := i
+		test := test
 		t.Run(test.desc, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			clients, namespace := setup(ctx, t)
+			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, clients, namespace) }, t.Logf)
+			defer tearDown(ctx, t, clients, namespace)
+
 			sidecarTaskName := fmt.Sprintf("%s-%d", sidecarTaskName, i)
 			sidecarTaskRunName := fmt.Sprintf("%s-%d", sidecarTaskRunName, i)
 			task := parse.MustParseTask(t, fmt.Sprintf(`
