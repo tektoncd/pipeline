@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -279,7 +280,7 @@ spec:
 // TestTaskRunTimeout is an integration test that will verify a TaskRun can be timed out.
 func TestTaskRunTimeout(t *testing.T) {
 	t.Parallel()
-	timeout := 30 * time.Second
+	timeout := 1 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
 	c, namespace := setup(ctx, t)
