@@ -136,6 +136,9 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `Task` | `spec.steps[].name` |
 | `Task` | `spec.steps[].image` |
 | `Task` | `spec.steps[].imagePullPolicy` |
+| `Task` | `spec.steps[].command` |
+| `Task` | `spec.steps[].args` |
+| `Task` | `spec.steps[].script` |
 | `Task` | `spec.steps[].env.value` |
 | `Task` | `spec.steps[].env.valuefrom.secretkeyref.name` |
 | `Task` | `spec.steps[].env.valuefrom.secretkeyref.key` |
@@ -168,6 +171,8 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `Task` | `spec.sidecars[].volumemounts.name` |
 | `Task` | `spec.sidecars[].volumemounts.mountpath` |
 | `Task` | `spec.sidecars[].volumemounts.subpath` |
+| `Task` | `spec.sidecars[].command` |
+| `Task` | `spec.sidecars[].args` |
 | `Task` | `spec.sidecars[].script` |
 | `Task` | `spec.workspaces[].mountPath` |
 | `Pipeline` | `spec.tasks[].params[].value` |
