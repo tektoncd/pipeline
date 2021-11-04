@@ -302,7 +302,11 @@ is used with duck types:
                 ...
         }
         logger := c.Logger.Named("Revisions")
-        impl := controller.NewImpl(c, logger, "Revisions")
+        impl := controller.NewContext(
+          ctx,
+          c,
+          controller.ControllerOptions{WorkQueueName: "Revisions", Logger: logger},
+        )
 
         // Calls to Track create a 30 minute lease before they must be renewed.
         // Coordinate this value with controller resync periods.

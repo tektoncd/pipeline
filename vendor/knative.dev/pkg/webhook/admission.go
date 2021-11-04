@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 	admissionv1 "k8s.io/api/admission/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/logging/logkey"
 )
@@ -104,6 +105,7 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 			logkey.UserInfo, fmt.Sprint(review.Request.UserInfo))
 
 		ctx := logging.WithLogger(r.Context(), logger)
+		ctx = apis.WithHTTPRequest(ctx, r)
 
 		response := admissionv1.AdmissionReview{
 			// Use the same type meta as the request - this is required by the K8s API

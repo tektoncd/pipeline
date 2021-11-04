@@ -41,10 +41,6 @@ type state struct {
 	roi ReadOnlyInterface
 	// isROI (Read Only Interface) the reconciler only observes reconciliation.
 	isROI bool
-	// rof is the read only finalizer cast of the reconciler.
-	rof ReadOnlyFinalizer
-	// isROF (Read Only Finalizer) the reconciler only observes finalize.
-	isROF bool
 	// isLeader the instance of the reconciler is the elected leader.
 	isLeader bool
 }
@@ -57,7 +53,6 @@ func newState(key string, r *reconcilerImpl) (*state, error) {
 	}
 
 	roi, isROI := r.reconciler.(ReadOnlyInterface)
-	rof, isROF := r.reconciler.(ReadOnlyFinalizer)
 
 	isLeader := r.IsLeaderFor(types.NamespacedName{
 		Namespace: namespace,
@@ -71,8 +66,6 @@ func newState(key string, r *reconcilerImpl) (*state, error) {
 		reconciler: r.reconciler,
 		roi:        roi,
 		isROI:      isROI,
-		rof:        rof,
-		isROF:      isROF,
 		isLeader:   isLeader,
 	}, nil
 }
@@ -82,8 +75,8 @@ func newState(key string, r *reconcilerImpl) (*state, error) {
 // isNotLeaderNorObserver returns true when there is no work possible for the
 // reconciler.
 func (s *state) isNotLeaderNorObserver() bool {
-	if !s.isLeader && !s.isROI && !s.isROF {
-		// If we are not the leader, and we don't implement either ReadOnly
+	if !s.isLeader && !s.isROI {
+		// If we are not the leader, and we don't implement the ReadOnly
 		// interface, then take a fast-path out.
 		return true
 	}
@@ -99,8 +92,6 @@ func (s *state) reconcileMethodFor(o *v1beta1.PipelineRun) (string, doReconcile)
 		}
 	} else if fin, ok := s.reconciler.(Finalizer); s.isLeader && ok {
 		return reconciler.DoFinalizeKind, fin.FinalizeKind
-	} else if !s.isLeader && s.isROF {
-		return reconciler.DoObserveFinalizeKind, s.rof.ObserveFinalizeKind
 	}
 	return "unknown", nil
 }

@@ -33,7 +33,7 @@ const (
 	// NOTE: If you are changing this line, please also update the minimum kubernetes
 	// version listed here:
 	// https://github.com/knative/docs/blob/mkdocs/docs/snippets/prerequisites.md
-	defaultMinimumVersion = "v1.19.0"
+	defaultMinimumVersion = "v1.20.0"
 )
 
 func getMinimumVersion() string {
@@ -66,8 +66,9 @@ func CheckMinimumVersion(versioner discovery.ServerVersionInterface) error {
 
 	// If no specific pre-release requirement is set, we default to "-0" to always allow
 	// pre-release versions of the same Major.Minor.Patch version.
+	// Set IsNum to true otherwise currentVersion.LT() below always returns true.
 	if len(minimumVersion.Pre) == 0 {
-		minimumVersion.Pre = []semver.PRVersion{{VersionNum: 0}}
+		minimumVersion.Pre = []semver.PRVersion{{VersionNum: 0, IsNum: true}}
 	}
 
 	// Return error if the current version is less than the minimum version required.

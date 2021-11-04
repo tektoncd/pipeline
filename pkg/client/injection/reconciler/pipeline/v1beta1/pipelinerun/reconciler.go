@@ -73,20 +73,6 @@ type ReadOnlyInterface interface {
 	ObserveKind(ctx context.Context, o *v1beta1.PipelineRun) reconciler.Event
 }
 
-// ReadOnlyFinalizer defines the strongly typed interfaces to be implemented by a
-// controller finalizing v1beta1.PipelineRun if they want to process tombstoned resources
-// even when they are not the leader.  Due to the nature of how finalizers are handled
-// there are no guarantees that this will be called.
-//
-// Deprecated: Use reconciler.OnDeletionInterface instead.
-type ReadOnlyFinalizer interface {
-	// ObserveFinalizeKind implements custom logic to observe the final state of v1beta1.PipelineRun.
-	// This method should not write to the API.
-	//
-	// Deprecated: Use reconciler.ObserveDeletion instead.
-	ObserveFinalizeKind(ctx context.Context, o *v1beta1.PipelineRun) reconciler.Event
-}
-
 type doReconcile func(ctx context.Context, o *v1beta1.PipelineRun) reconciler.Event
 
 // reconcilerImpl implements controller.Reconciler for v1beta1.PipelineRun resources.
@@ -257,7 +243,7 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 			return fmt.Errorf("failed to clear finalizers: %w", err)
 		}
 
-	case reconciler.DoObserveKind, reconciler.DoObserveFinalizeKind:
+	case reconciler.DoObserveKind:
 		// Observe any changes to this resource, since we are not the leader.
 		reconcileEvent = do(ctx, resource)
 
