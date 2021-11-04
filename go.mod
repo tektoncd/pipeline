@@ -23,8 +23,7 @@ require (
 	go.opencensus.io v0.23.0
 	go.uber.org/multierr v1.7.0 // indirect
 	go.uber.org/zap v1.19.1
-	golang.org/x/net v0.0.0-20210917221730-978cfadd31cf // indirect
-	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
+	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 	k8s.io/api v0.21.4
@@ -34,5 +33,5 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20210305001622-591a79e4bda7
 	k8s.io/utils v0.0.0-20210111153108-fddb29f9d009 // indirect
-	knative.dev/pkg v0.0.0-20210827184538-2bd91f75571c
+	knative.dev/pkg v0.0.0-20211101212339-96c0204a70dc
 )

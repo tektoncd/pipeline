@@ -52,18 +52,20 @@ type WithPodSpec struct {
 
 // Verify WithPod resources meet duck contracts.
 var (
+	_ apis.Validatable      = (*WithPod)(nil)
+	_ apis.Defaultable      = (*WithPod)(nil)
 	_ apis.Listable         = (*WithPod)(nil)
 	_ ducktypes.Populatable = (*WithPod)(nil)
 )
 
 // GetFullType implements duck.Implementable
-func (*PodSpecable) GetFullType() ducktypes.Populatable {
+func (wp *PodSpecable) GetFullType() ducktypes.Populatable {
 	return &WithPod{}
 }
 
 // Populate implements duck.Populatable
-func (t *WithPod) Populate() {
-	t.Spec.Template = PodSpecable{
+func (wp *WithPod) Populate() {
+	wp.Spec.Template = PodSpecable{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
 				"foo": "bar",
@@ -79,7 +81,7 @@ func (t *WithPod) Populate() {
 }
 
 // GetListType implements apis.Listable
-func (*WithPod) GetListType() runtime.Object {
+func (wp *WithPod) GetListType() runtime.Object {
 	return &WithPodList{}
 }
 
@@ -87,6 +89,55 @@ func (*WithPod) GetListType() runtime.Object {
 
 // WithPodList is a list of WithPod resources
 type WithPodList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []WithPod `json:"items"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Pod is a wrapper around Pod-like resource, which supports our interfaces
+// for webhooks
+type Pod struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec corev1.PodSpec `json:"spec,omitempty"`
+}
+
+// Verify Pod resources meet duck contracts.
+var (
+	_ apis.Validatable      = (*Pod)(nil)
+	_ apis.Defaultable      = (*Pod)(nil)
+	_ apis.Listable         = (*Pod)(nil)
+	_ ducktypes.Populatable = (*Pod)(nil)
+)
+
+// GetFullType implements duck.Implementable
+func (p *Pod) GetFullType() ducktypes.Populatable {
+	return &Pod{}
+}
+
+// Populate implements duck.Populatable
+func (p *Pod) Populate() {
+	p.Spec = corev1.PodSpec{
+		Containers: []corev1.Container{{
+			Name:  "container-name",
+			Image: "container-image:latest",
+		}},
+	}
+}
+
+// GetListType implements apis.Listable
+func (p *Pod) GetListType() runtime.Object {
+	return &PodList{}
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// PodList is a list of WithPod resources
+type PodList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 

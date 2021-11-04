@@ -95,7 +95,10 @@ func (i *impl) TrackReference(ref Reference, obj interface{}) error {
 	invalidFields := map[string][]string{
 		"APIVersion": validation.IsQualifiedName(ref.APIVersion),
 		"Kind":       validation.IsCIdentifier(ref.Kind),
-		"Namespace":  validation.IsDNS1123Label(ref.Namespace),
+	}
+	// Allow namespace to be empty for cluster-scoped references.
+	if ref.Namespace != "" {
+		invalidFields["Namespace"] = validation.IsDNS1123Label(ref.Namespace)
 	}
 	var selector labels.Selector
 	fieldErrors := []string{}

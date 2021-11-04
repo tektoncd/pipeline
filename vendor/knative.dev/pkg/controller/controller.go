@@ -233,19 +233,6 @@ type ControllerOptions struct { //nolint // for backcompat.
 	Concurrency   int
 }
 
-// NewImpl instantiates an instance of our controller that will feed work to the
-// provided Reconciler as it is enqueued.
-// Deprecated: use NewImplFull.
-func NewImpl(r Reconciler, logger *zap.SugaredLogger, workQueueName string) *Impl {
-	return NewImplFull(r, ControllerOptions{WorkQueueName: workQueueName, Logger: logger})
-}
-
-// NewImplFull accepts the full set of options available to all controllers.
-// Deprecated: use NewContext instead.
-func NewImplFull(r Reconciler, options ControllerOptions) *Impl {
-	return NewContext(context.TODO(), r, options)
-}
-
 // NewContext instantiates an instance of our controller that will feed work to the
 // provided Reconciler as it is enqueued.
 func NewContext(ctx context.Context, r Reconciler, options ControllerOptions) *Impl {
@@ -286,7 +273,7 @@ func (c *Impl) WorkQueue() workqueue.RateLimitingInterface {
 func (c *Impl) EnqueueAfter(obj interface{}, after time.Duration) {
 	object, err := kmeta.DeletionHandlingAccessor(obj)
 	if err != nil {
-		c.logger.Errorw("Enqueue", zap.Error(err))
+		c.logger.Errorw("EnqueueAfter", zap.Error(err))
 		return
 	}
 	c.EnqueueKeyAfter(types.NamespacedName{Namespace: object.GetNamespace(), Name: object.GetName()}, after)
@@ -553,7 +540,7 @@ func (c *Impl) processNextWorkItem() bool {
 	// Run Reconcile, passing it the namespace/name string of the
 	// resource to be synced.
 	if err = c.Reconciler.Reconcile(ctx, keyStr); err != nil {
-		c.handleErr(err, key, startTime)
+		c.handleErr(logger, err, key, startTime)
 		return true
 	}
 
@@ -565,18 +552,18 @@ func (c *Impl) processNextWorkItem() bool {
 	return true
 }
 
-func (c *Impl) handleErr(err error, key types.NamespacedName, startTime time.Time) {
+func (c *Impl) handleErr(logger *zap.SugaredLogger, err error, key types.NamespacedName, startTime time.Time) {
 	if IsSkipKey(err) {
 		c.workQueue.Forget(key)
 		return
 	}
 	if ok, delay := IsRequeueKey(err); ok {
 		c.workQueue.AddAfter(key, delay)
-		c.logger.Debugf("Requeuing key %s (by request) after %v (depth: %d)", safeKey(key), delay, c.workQueue.Len())
+		logger.Debugf("Requeuing key %s (by request) after %v (depth: %d)", safeKey(key), delay, c.workQueue.Len())
 		return
 	}
 
-	c.logger.Errorw("Reconcile error", zap.Duration("duration", time.Since(startTime)), zap.Error(err))
+	logger.Errorw("Reconcile error", zap.Duration("duration", time.Since(startTime)), zap.Error(err))
 
 	// Re-queue the key if it's a transient error.
 	// We want to check that the queue is shutting down here
@@ -584,7 +571,7 @@ func (c *Impl) handleErr(err error, key types.NamespacedName, startTime time.Tim
 	// being processed, queue.Len==0).
 	if !IsPermanentError(err) && !c.workQueue.ShuttingDown() {
 		c.workQueue.AddRateLimited(key)
-		c.logger.Debugf("Requeuing key %s due to non-permanent error (depth: %d)", safeKey(key), c.workQueue.Len())
+		logger.Debugf("Requeuing key %s due to non-permanent error (depth: %d)", safeKey(key), c.workQueue.Len())
 		return
 	}
 

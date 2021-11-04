@@ -50,7 +50,7 @@ func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 }
 
 func withDynamicInformer(ctx context.Context) context.Context {
-	inf := &wrapper{client: client.Get(ctx)}
+	inf := &wrapper{client: client.Get(ctx), resourceVersion: injection.GetResourceVersion(ctx)}
 	return context.WithValue(ctx, Key{}, inf)
 }
 
@@ -66,6 +66,8 @@ func Get(ctx context.Context) v1beta1.ClusterTaskInformer {
 
 type wrapper struct {
 	client versioned.Interface
+
+	resourceVersion string
 }
 
 var _ v1beta1.ClusterTaskInformer = (*wrapper)(nil)
@@ -79,10 +81,18 @@ func (w *wrapper) Lister() pipelinev1beta1.ClusterTaskLister {
 	return w
 }
 
+// SetResourceVersion allows consumers to adjust the minimum resourceVersion
+// used by the underlying client.  It is not accessible via the standard
+// lister interface, but can be accessed through a user-defined interface and
+// an implementation check e.g. rvs, ok := foo.(ResourceVersionSetter)
+func (w *wrapper) SetResourceVersion(resourceVersion string) {
+	w.resourceVersion = resourceVersion
+}
+
 func (w *wrapper) List(selector labels.Selector) (ret []*apispipelinev1beta1.ClusterTask, err error) {
 	lo, err := w.client.TektonV1beta1().ClusterTasks().List(context.TODO(), v1.ListOptions{
-		LabelSelector: selector.String(),
-		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+		LabelSelector:   selector.String(),
+		ResourceVersion: w.resourceVersion,
 	})
 	if err != nil {
 		return nil, err
@@ -95,6 +105,6 @@ func (w *wrapper) List(selector labels.Selector) (ret []*apispipelinev1beta1.Clu
 
 func (w *wrapper) Get(name string) (*apispipelinev1beta1.ClusterTask, error) {
 	return w.client.TektonV1beta1().ClusterTasks().Get(context.TODO(), name, v1.GetOptions{
-		// TODO(mattmoor): Incorporate resourceVersion bounds based on staleness criteria.
+		ResourceVersion: w.resourceVersion,
 	})
 }

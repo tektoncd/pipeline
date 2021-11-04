@@ -84,10 +84,6 @@ func (g *reconcilerStateGenerator) GenerateType(c *generator.Context, t *types.T
 			Package: "knative.dev/pkg/reconciler",
 			Name:    "DoFinalizeKind",
 		}),
-		"doObserveFinalizeKind": c.Universe.Type(types.Name{
-			Package: "knative.dev/pkg/reconciler",
-			Name:    "DoObserveFinalizeKind",
-		}),
 	}
 
 	sw.Do(reconcilerStateType, m)
@@ -111,10 +107,6 @@ type state struct {
 	roi ReadOnlyInterface
 	// isROI (Read Only Interface) the reconciler only observes reconciliation.
 	isROI bool
-	// rof is the read only finalizer cast of the reconciler.
-	rof ReadOnlyFinalizer
-	// isROF (Read Only Finalizer) the reconciler only observes finalize.
-	isROF bool
 	// isLeader the instance of the reconciler is the elected leader.
 	isLeader bool
 }
@@ -127,7 +119,6 @@ func newState(key string, r *reconcilerImpl) (*state, error) {
 	}
 
 	roi, isROI := r.reconciler.(ReadOnlyInterface)
-	rof, isROF := r.reconciler.(ReadOnlyFinalizer)
 
 	isLeader := r.IsLeaderFor({{.typesNamespacedName|raw}}{
 		Namespace: namespace,
@@ -141,8 +132,6 @@ func newState(key string, r *reconcilerImpl) (*state, error) {
 		reconciler: r.reconciler,
 		roi:        roi,
 		isROI:      isROI,
-		rof:        rof,
-		isROF:      isROF,
 		isLeader:   isLeader,
 	}, nil
 }
@@ -154,8 +143,8 @@ var reconcilerStateMethods = `
 // isNotLeaderNorObserver returns true when there is no work possible for the
 // reconciler.
 func (s *state) isNotLeaderNorObserver() bool {
-	if !s.isLeader && !s.isROI && !s.isROF {
-		// If we are not the leader, and we don't implement either ReadOnly
+	if !s.isLeader && !s.isROI {
+		// If we are not the leader, and we don't implement the ReadOnly
 		// interface, then take a fast-path out.
 		return true
 	}
@@ -171,8 +160,6 @@ func (s *state) reconcileMethodFor(o *{{.type|raw}}) (string, doReconcile) {
 		}
 	} else if fin, ok := s.reconciler.(Finalizer); s.isLeader && ok {
 		return {{.doFinalizeKind|raw}}, fin.FinalizeKind
-	} else if !s.isLeader && s.isROF {
-		return {{.doObserveFinalizeKind|raw}}, s.rof.ObserveFinalizeKind
 	}
 	return "unknown", nil
 }

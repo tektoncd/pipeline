@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	"context"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -169,4 +170,49 @@ type SourceList struct {
 	metav1.ListMeta `json:"metadata"`
 
 	Items []Source `json:"items"`
+}
+
+func (s *Source) Validate(ctx context.Context) *apis.FieldError {
+	if s == nil {
+		return nil
+	}
+	return s.Spec.Validate(ctx).ViaField("spec")
+}
+
+func (s *SourceSpec) Validate(ctx context.Context) *apis.FieldError {
+	if s.CloudEventOverrides == nil {
+		return nil
+	}
+	return s.CloudEventOverrides.Validate(ctx).ViaField("ceOverrides")
+}
+
+func (ceOverrides *CloudEventOverrides) Validate(ctx context.Context) *apis.FieldError {
+	for key := range ceOverrides.Extensions {
+		if err := validateExtensionName(key); err != nil {
+			return err.ViaField("extensions")
+		}
+	}
+	return nil
+}
+
+func validateExtensionName(key string) *apis.FieldError {
+	if key == "" {
+		return apis.ErrInvalidKeyName(
+			key,
+			"",
+			"keys MUST NOT be empty",
+		)
+	}
+
+	for _, c := range key {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+			return apis.ErrInvalidKeyName(
+				key,
+				"",
+				"keys are expected to be alphanumeric",
+			)
+		}
+	}
+
+	return nil
 }
