@@ -428,7 +428,7 @@ conditions:
     reason: Succeeded
     status: "True"
     type: Succeeded
-podName: status-taskrun-pod-6488ef
+podName: status-taskrun-pod
 startTime: "2019-08-12T18:22:51Z"
 steps:
   - container: step-hello
@@ -458,6 +458,21 @@ False|TaskRunCancelled|Yes|The TaskRun was cancelled successfully.
 False|TaskRunTimeout|Yes|The TaskRun timed out.
 
 When a `TaskRun` changes status, [events](events.md#taskruns) are triggered accordingly.
+
+The name of the `Pod` owned by a `TaskRun`  is univocally associated to the owning resource. 
+If a `TaskRun` resource is deleted and created with the same name, the child `Pod` will be created with the same name
+as before. The base format of the name is `<taskrun-name>-pod`. The name may vary according to the logic of
+[`kmeta.ChildName`](https://pkg.go.dev/github.com/knative/pkg/kmeta#ChildName). In case of retries of a `TaskRun`
+triggered by the `PipelineRun` controller, the base format of the name is `<taskrun-name>-pod-retry<N>` starting from
+the first retry.
+
+Some examples:
+
+| `TaskRun` Name       | `Pod` Name    |
+|----------------------|---------------|
+| task-run             | task-run-pod  |
+| task-run-0123456789-0123456789-0123456789-0123456789-0123456789-0123456789 | task-run-0123456789-01234560d38957287bb0283c59440df14069f59-pod |
+
 
 ### Monitoring `Steps`
 
@@ -535,7 +550,7 @@ change done by the user (running the debug-continue or debug-fail-continue scrip
 During this time, the user/client can get remote shell access to the step container with a command such as the following.
 
 ```bash
-kubectl exec -it print-date-d7tj5-pod-w5qrn -c step-print-date-human-readable
+kubectl exec -it print-date-d7tj5-pod -c step-print-date-human-readable
 ```
 
 ### Debug Environment

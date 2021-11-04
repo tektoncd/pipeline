@@ -546,9 +546,9 @@ Params
 No params
 
 Taskruns
-NAME                                               TASK NAME            STARTED       DURATION     STATUS
-tutorial-pipeline-run-1-deploy-web-jjf2l           deploy-web           4 hours ago   14 seconds   Succeeded
-tutorial-pipeline-run-1-build-skaffold-web-7jgjh   build-skaffold-web   4 hours ago   1 minute     Succeeded
+NAME                                         TASK NAME            STARTED       DURATION     STATUS
+tutorial-pipeline-run-1-deploy-web           deploy-web           4 hours ago   14 seconds   Succeeded
+tutorial-pipeline-run-1-build-skaffold-web   build-skaffold-web   4 hours ago   1 minute     Succeeded
 ```
 
 The `Succeeded` status indicates that your `PipelineRun` completed without errors.

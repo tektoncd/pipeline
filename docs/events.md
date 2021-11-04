@@ -143,7 +143,7 @@ of the event. Inside the root key, the whole `spec` and `status` of the resource
           "type": "Succeeded"
         }
       ],
-      "podName": "curl-run-6gplk-pod-rsgn2",
+      "podName": "curl-run-6gplk-pod",
       "startTime": "2021-01-29T14:47:57Z",
       "steps": [
         {

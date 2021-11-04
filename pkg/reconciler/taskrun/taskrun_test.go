@@ -710,7 +710,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	}{{
 		name:    "success",
 		taskRun: taskRunSuccess,
-		wantPod: expectedPod("test-taskrun-run-success-pod-abcde", "test-task", "test-taskrun-run-success", "foo", defaultSAName, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "foo", defaultSAName, false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -718,7 +718,7 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
-		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod-abcde", "test-with-sa", "test-taskrun-with-sa-run-success", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "foo", "test-sa", false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
@@ -834,7 +834,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 		name:        "disable-home-env-overwrite",
 		taskRun:     taskRunWithDisableHomeEnv,
 		featureFlag: "disable-home-env-overwrite",
-		wantPod: expectedPod("test-taskrun-run-home-env-pod-abcde", "test-task-with-env-var", "test-taskrun-run-home-env", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-home-env-pod", "test-task-with-env-var", "test-taskrun-run-home-env", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			image:   "foo",
 			name:    "simple-step",
 			cmd:     "/mycmd",
@@ -844,7 +844,7 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 		name:        "disable-working-dir-overwrite",
 		taskRun:     taskRunWithDisableWorkingDirOverwrite,
 		featureFlag: "disable-working-directory-overwrite",
-		wantPod: expectedPod("test-taskrun-run-working-dir-pod-abcde", "test-task", "test-taskrun-run-working-dir", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-working-dir-pod", "test-task", "test-taskrun-run-working-dir", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -1309,7 +1309,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-run-success-pod-abcde", "test-task", "test-taskrun-run-success", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-run-success-pod", "test-task", "test-taskrun-run-success", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
@@ -1321,7 +1321,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod-abcde", "test-with-sa", "test-taskrun-with-sa-run-success", "foo", "test-sa", false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-sa-run-success-pod", "test-with-sa", "test-taskrun-with-sa-run-success", "foo", "test-sa", false, nil, []stepForExpectedPod{{
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
@@ -1333,7 +1333,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-substitution-pod-abcde", "test-task-with-substitution", "test-taskrun-substitution", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
+		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
 			Name: "volume-configmap",
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -1397,7 +1397,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-taskspec-pod-abcde", "", "test-taskrun-with-taskspec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
+		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
 			{
 				name:  "git-source-workspace-9l9zj",
 				image: "override-with-git:latest",
@@ -1426,7 +1426,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-cluster-task-pod-abcde", "test-cluster-task", "test-taskrun-with-cluster-task", "foo", config.DefaultServiceAccountValue, true, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-cluster-task-pod", "test-cluster-task", "test-taskrun-with-cluster-task", "foo", config.DefaultServiceAccountValue, true, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -1438,7 +1438,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-resource-spec-pod-abcde", "", "test-taskrun-with-resource-spec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
+		wantPod: expectedPod("test-taskrun-with-resource-spec-pod", "", "test-taskrun-with-resource-spec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
 			{
 				name:  "git-source-workspace-9l9zj",
 				image: "override-with-git:latest",
@@ -1466,7 +1466,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-pod-pod-abcde", "test-task", "test-taskrun-with-pod", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-pod-pod", "test-task", "test-taskrun-with-pod", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
@@ -1478,7 +1478,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod-abcde", "", "test-taskrun-with-credentials-variable", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-with-credentials-variable-pod", "", "test-taskrun-with-credentials-variable", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			name:  "mycontainer",
 			image: "myimage",
 			cmd:   "/mycmd /tekton/creds",
@@ -1490,7 +1490,7 @@ func TestReconcile(t *testing.T) {
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-bundle-pod-abcde", "test-task", "test-taskrun-bundle", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+		wantPod: expectedPod("test-taskrun-bundle-pod", "test-task", "test-taskrun-bundle", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",

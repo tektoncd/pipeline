@@ -547,7 +547,7 @@ conditions:
     type: Succeeded
 startTime: "2020-05-04T02:00:11Z"
 taskRuns:
-  triggers-release-nightly-frwmw-build-ng2qk:
+  triggers-release-nightly-frwmw-build:
     pipelineTaskName: build
     status:
       completionTime: "2020-05-04T02:10:49Z"
@@ -557,7 +557,7 @@ taskRuns:
           reason: Succeeded
           status: "True"
           type: Succeeded
-      podName: triggers-release-nightly-frwmw-build-ng2qk-pod-8vj99
+      podName: triggers-release-nightly-frwmw-build-pod
       resourcesResult:
         - key: commit
           resourceRef:
@@ -616,7 +616,7 @@ Skipped Tasks:
     Values:
       foo
 Task Runs:
-  pipelinerun-to-skip-task-run-this-task-r2djj:
+  pipelinerun-to-skip-task-run-this-task:
     Pipeline Task Name:  run-this-task
     Status:
       ...
@@ -626,6 +626,20 @@ Task Runs:
       Values:
         foo
 ```
+
+The name of the `TaskRuns` and `Runs` owned by a `PipelineRun`  are univocally associated to the owning resource.
+If a `PipelineRun` resource is deleted and created with the same name, the child `TaskRuns` will be created with the
+same name as before. The base format of the name is `<pipelinerun-name>-<pipelinetask-name>`. The name may vary
+according the logic of [`kmeta.ChildName`](https://pkg.go.dev/github.com/knative/pkg/kmeta#ChildName).
+
+Some examples:
+
+| `PipelineRun` Name       | `PipelineTask` Name          | `TaskRun` Name     |
+|--------------------------|------------------------------|--------------------|
+| pipeline-run             | task1                        | pipeline-run-task1 |
+| pipeline-run             | task2-0123456789-0123456789-0123456789-0123456789-0123456789 | pipeline-runee4a397d6eab67777d4e6f9991cd19e6-task2-0123456789-0 |
+| pipeline-run-0123456789-0123456789-0123456789-0123456789 | task3 | pipeline-run-0123456789-0123456789-0123456789-0123456789-task3 |
+| pipeline-run-0123456789-0123456789-0123456789-0123456789 | task2-0123456789-0123456789-0123456789-0123456789-0123456789 | pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b5c |
 
 ## Cancelling a `PipelineRun`
 
