@@ -21,12 +21,13 @@ import (
 	"fmt"
 	"strconv"
 
+	"knative.dev/pkg/kmeta"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
-	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
@@ -550,7 +551,7 @@ func getConditionCheckName(taskRunStatus map[string]*v1beta1.PipelineRunTaskRunS
 			}
 		}
 	}
-	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", trName, conditionRegisterName))
+	return kmeta.ChildName(trName, fmt.Sprintf("-%s", conditionRegisterName))
 }
 
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
@@ -561,7 +562,7 @@ func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 		}
 	}
 
-	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", prName, ptName))
+	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 }
 
 // getRunName should return a unique name for a `Run` if one has not already
@@ -572,8 +573,7 @@ func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, ptName, prN
 			return k
 		}
 	}
-
-	return names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-%s", prName, ptName))
+	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 }
 
 func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus, taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition, providedResources map[string]*resourcev1alpha1.PipelineResource) ([]*ResolvedConditionCheck, error) {

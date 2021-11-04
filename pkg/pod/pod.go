@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"knative.dev/pkg/kmeta"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -296,16 +298,19 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 	activeDeadlineSeconds := int64(taskRun.GetTimeout(ctx).Seconds() * deadlineFactor)
 
-	pod := &corev1.Pod{
+	podNameSuffix := "-pod"
+	if taskRunRetries := len(taskRun.Status.RetriesStatus); taskRunRetries > 0 {
+		podNameSuffix = fmt.Sprintf("%s-retry%d", podNameSuffix, taskRunRetries)
+	}
+	newPod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			// We execute the build's pod in the same namespace as where the build was
 			// created so that it can access colocated resources.
 			Namespace: taskRun.Namespace,
 			// Generate a unique name based on the build's name.
-			// Add a unique suffix to avoid confusion when a build
-			// is deleted and re-created with the same name.
-			// We don't use RestrictLengthWithRandomSuffix here because k8s fakes don't support it.
-			Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("%s-pod", taskRun.Name)),
+			// The name is univocally generated so that in case of
+			// stale informer cache, we never create duplicate Pods
+			Name: kmeta.ChildName(taskRun.Name, podNameSuffix),
 			// If our parent TaskRun is deleted, then we should be as well.
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(taskRun, groupVersionKind),
@@ -338,13 +343,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	for _, f := range transformers {
-		pod, err = f(pod)
+		newPod, err = f(newPod)
 		if err != nil {
-			return pod, err
+			return newPod, err
 		}
 	}
 
-	return pod, nil
+	return newPod, nil
 }
 
 // makeLabels constructs the labels we will propagate from TaskRuns to Pods.

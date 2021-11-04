@@ -21,9 +21,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+
+	"knative.dev/pkg/kmeta"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -93,16 +97,20 @@ func TestPodBuild(t *testing.T) {
 	dnsPolicy := corev1.DNSNone
 	enableServiceLinks := false
 	priorityClassName := "system-cluster-critical"
+	taskRunName := "taskrun-name"
 
 	for _, c := range []struct {
 		desc            string
 		trs             v1beta1.TaskRunSpec
 		trAnnotation    map[string]string
+		trStatus        v1beta1.TaskRunStatus
+		trName          string
 		ts              v1beta1.TaskSpec
 		featureFlags    map[string]string
 		overrideHomeEnv *bool
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
+		wantPodName     string
 	}{{
 		desc: "simple",
 		ts: v1beta1.TaskSpec{
@@ -1423,6 +1431,116 @@ _EOF_
 				}),
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
+		}, {
+			desc: "pod for a taskRun with retries",
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}}},
+			},
+			trStatus: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					RetriesStatus: []v1beta1.TaskRunStatus{{
+						Status: duckv1beta1.Status{
+							Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionFalse,
+							}},
+						},
+					}, {
+						Status: duckv1beta1.Status{
+							Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionFalse,
+							}},
+						},
+					}},
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/steps/step-name",
+						"-step_metadata_dir_link",
+						"/tekton/steps/0",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+			wantPodName: fmt.Sprintf("%s-pod-retry2", taskRunName),
+		}, {
+			desc: "long-taskrun-name",
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{Container: corev1.Container{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}}},
+			},
+			trName:      "task-run-0123456789-0123456789-0123456789-0123456789-0123456789-0123456789",
+			wantPodName: "task-run-0123456789-01234560d38957287bb0283c59440df14069f59-pod",
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{placeToolsInit},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/steps/step-name",
+						"-step_metadata_dir_link",
+						"/tekton/steps/0",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}, runMount(0, false), binROMount}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				Volumes: append(implicitVolumes, binVolume, downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}, runVolume(0)),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
 		}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()
@@ -1466,13 +1584,18 @@ _EOF_
 				trAnnotations = c.trAnnotation
 				trAnnotations[ReleaseAnnotation] = fakeVersion
 			}
+			testTaskRunName := taskRunName
+			if c.trName != "" {
+				testTaskRunName = c.trName
+			}
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "taskrun-name",
+					Name:        testTaskRunName,
 					Namespace:   "default",
 					Annotations: trAnnotations,
 				},
-				Spec: c.trs,
+				Spec:   c.trs,
+				Status: c.trStatus,
 			}
 
 			// No entrypoints should be looked up.
@@ -1487,9 +1610,12 @@ _EOF_
 			if err != nil {
 				t.Fatalf("builder.Build: %v", err)
 			}
-
-			if !strings.HasPrefix(got.Name, "taskrun-name-pod-") {
-				t.Errorf("Pod name %q should have prefix 'taskrun-name-pod-'", got.Name)
+			expectedName := fmt.Sprintf("%s-pod", testTaskRunName)
+			if c.wantPodName != "" {
+				expectedName = c.wantPodName
+			}
+			if d := cmp.Diff(expectedName, got.Name); d != "" {
+				t.Errorf("Pod name does not match: %s", diff.PrintWantGot(d))
 			}
 
 			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp, volumeSort, volumeMountSort); d != "" {
@@ -1640,8 +1766,9 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 				t.Fatalf("builder.Build: %v", err)
 			}
 
-			if !strings.HasPrefix(got.Name, "taskrun-name-pod-") {
-				t.Errorf("Pod name %q should have prefix 'taskrun-name-pod-'", got.Name)
+			expectedName := kmeta.ChildName(tr.Name, "-pod")
+			if d := cmp.Diff(expectedName, got.Name); d != "" {
+				t.Errorf("Pod name does not match: %q", d)
 			}
 
 			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp, volumeSort, volumeMountSort); d != "" {

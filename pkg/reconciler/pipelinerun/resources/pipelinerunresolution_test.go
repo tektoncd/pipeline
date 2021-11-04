@@ -1808,7 +1808,7 @@ func TestResolvePipelineRun(t *testing.T) {
 	}
 	expectedState := PipelineRunState{{
 		PipelineTask: &p.Spec.Tasks[0],
-		TaskRunName:  "pipelinerun-mytask1-9l9zj",
+		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
@@ -1820,7 +1820,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		},
 	}, {
 		PipelineTask: &p.Spec.Tasks[1],
-		TaskRunName:  "pipelinerun-mytask2-mz4c7",
+		TaskRunName:  "pipelinerun-mytask2",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
@@ -1832,7 +1832,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		},
 	}, {
 		PipelineTask: &p.Spec.Tasks[2],
-		TaskRunName:  "pipelinerun-mytask3-mssqb",
+		TaskRunName:  "pipelinerun-mytask3",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
@@ -1844,7 +1844,7 @@ func TestResolvePipelineRun(t *testing.T) {
 		},
 	}, {
 		PipelineTask: &p.Spec.Tasks[3],
-		TaskRunName:  "pipelinerun-mytask4-78c5n",
+		TaskRunName:  "pipelinerun-mytask4",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: "",
@@ -1881,7 +1881,7 @@ func TestResolvePipelineRun_CustomTask(t *testing.T) {
 	}
 	run := &v1alpha1.Run{ObjectMeta: metav1.ObjectMeta{Name: "run-exists-abcde"}}
 	getRun := func(name string) (*v1alpha1.Run, error) {
-		if name == "pipelinerun-run-exists-mssqb" {
+		if name == "pipelinerun-run-exists" {
 			return run, nil
 		}
 		return nil, kerrors.NewNotFound(v1beta1.Resource("run"), name)
@@ -1908,17 +1908,17 @@ func TestResolvePipelineRun_CustomTask(t *testing.T) {
 	expectedState := PipelineRunState{{
 		PipelineTask: &pts[0],
 		CustomTask:   true,
-		RunName:      "pipelinerun-customtask-9l9zj",
+		RunName:      "pipelinerun-customtask",
 		Run:          nil,
 	}, {
 		PipelineTask: &pts[1],
 		CustomTask:   true,
-		RunName:      "pipelinerun-customtask-spec-mz4c7",
+		RunName:      "pipelinerun-customtask-spec",
 		Run:          nil,
 	}, {
 		PipelineTask: &pts[2],
 		CustomTask:   true,
-		RunName:      "pipelinerun-run-exists-mssqb",
+		RunName:      "pipelinerun-run-exists",
 		Run:          run,
 	}}
 	if d := cmp.Diff(expectedState, pipelineState); d != "" {
@@ -2105,7 +2105,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	}
 	providedResources := map[string]*resourcev1alpha1.PipelineResource{"git-resource": r}
 	taskrunStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{}
-	taskrunStatus["pipelinerun-mytask-with-a-really-long-name-to-trigger-tru-9l9zj"] = &v1beta1.PipelineRunTaskRunStatus{
+	taskrunStatus["pipelinerun-mytask-with-a-really-long-name-to-trigger-tru"] = &v1beta1.PipelineRunTaskRunStatus{
 		PipelineTaskName: "mytask-with-a-really-long-name-to-trigger-truncation",
 		Status:           &v1beta1.TaskRunStatus{},
 	}
@@ -2132,7 +2132,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	}
 	expectedTask := &ResolvedPipelineRunTask{
 		PipelineTask: &p.Spec.Tasks[0],
-		TaskRunName:  "pipelinerun-mytask-with-a-really-long-name-to-trigger-tru-9l9zj",
+		TaskRunName:  "pipelinerun-mytask-with-a-really-long-name-to-trigger-tru",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: task.Name,
@@ -2200,7 +2200,7 @@ func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 	}
 	expectedTask := &ResolvedPipelineRunTask{
 		PipelineTask: &p.Spec.Tasks[0],
-		TaskRunName:  "pipelinerun-mytask1-9l9zj",
+		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      nil,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskName: taskWithOptionalResources.Name,
@@ -2221,7 +2221,7 @@ func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 
 func TestResolveConditionChecks(t *testing.T) {
 	names.TestingSeed()
-	ccName := "pipelinerun-mytask1-9l9zj-always-true-mz4c7"
+	ccName := "pipelinerun-mytask1-always-true"
 
 	cc := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2256,9 +2256,9 @@ func TestResolveConditionChecks(t *testing.T) {
 		name: "conditionCheck exists",
 		getTaskRun: func(name string) (*v1beta1.TaskRun, error) {
 			switch name {
-			case "pipelinerun-mytask1-9l9zj-always-true-0-mz4c7":
+			case "pipelinerun-mytask1-always-true-0":
 				return cc, nil
-			case "pipelinerun-mytask1-9l9zj":
+			case "pipelinerun-mytask1":
 				return &trs[0], nil
 			default:
 				return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
@@ -2266,7 +2266,7 @@ func TestResolveConditionChecks(t *testing.T) {
 		},
 		expectedConditionCheck: TaskConditionCheckState{{
 			ConditionRegisterName: "always-true-0",
-			ConditionCheckName:    "pipelinerun-mytask1-9l9zj-always-true-0-mz4c7",
+			ConditionCheckName:    "pipelinerun-mytask1-always-true-0",
 			Condition:             &condition,
 			ConditionCheck:        v1beta1.NewConditionCheck(cc),
 			PipelineTaskCondition: &ptc,
@@ -2275,16 +2275,16 @@ func TestResolveConditionChecks(t *testing.T) {
 	}, {
 		name: "conditionCheck doesn't exist",
 		getTaskRun: func(name string) (*v1beta1.TaskRun, error) {
-			if name == "pipelinerun-mytask1-mssqb-always-true-0-78c5n" {
+			if name == "pipelinerun-mytask1-always-true-0" {
 				return nil, nil
-			} else if name == "pipelinerun-mytask1-mssqb" {
+			} else if name == "pipelinerun-mytask1" {
 				return &trs[0], nil
 			}
 			return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
 		},
 		expectedConditionCheck: TaskConditionCheckState{{
 			ConditionRegisterName: "always-true-0",
-			ConditionCheckName:    "pipelinerun-mytask1-mssqb-always-true-0-78c5n",
+			ConditionCheckName:    "pipelinerun-mytask1-always-true-0",
 			Condition:             &condition,
 			PipelineTaskCondition: &ptc,
 			ResolvedResources:     providedResources,
@@ -2306,8 +2306,8 @@ func TestResolveConditionChecks(t *testing.T) {
 
 func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 	names.TestingSeed()
-	ccName1 := "pipelinerun-mytask1-9l9zj-always-true-mz4c7"
-	ccName2 := "pipelinerun-mytask1-9l9zj-always-true-mssqb"
+	ccName1 := "pipelinerun-mytask1-always-true"
+	ccName2 := "pipelinerun-mytask1-always-true"
 
 	cc1 := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2356,25 +2356,25 @@ func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 
 	getTaskRun := func(name string) (*v1beta1.TaskRun, error) {
 		switch name {
-		case "pipelinerun-mytask1-9l9zj-always-true-0-mz4c7":
+		case "pipelinerun-mytask1-always-true-0":
 			return cc1, nil
-		case "pipelinerun-mytask1-9l9zj":
+		case "pipelinerun-mytask1":
 			return &trs[0], nil
-		case "pipelinerun-mytask1-9l9zj-always-true-1-mssqb":
+		case "pipelinerun-mytask1-always-true-1":
 			return cc2, nil
 		}
 		return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
 	}
 	expectedConditionCheck := TaskConditionCheckState{{
 		ConditionRegisterName: "always-true-0",
-		ConditionCheckName:    "pipelinerun-mytask1-9l9zj-always-true-0-mz4c7",
+		ConditionCheckName:    "pipelinerun-mytask1-always-true-0",
 		Condition:             &condition,
 		ConditionCheck:        v1beta1.NewConditionCheck(cc1),
 		PipelineTaskCondition: &ptc1,
 		ResolvedResources:     providedResources,
 	}, {
 		ConditionRegisterName: "always-true-1",
-		ConditionCheckName:    "pipelinerun-mytask1-9l9zj-always-true-1-mssqb",
+		ConditionCheckName:    "pipelinerun-mytask1-always-true-1",
 		Condition:             &condition,
 		ConditionCheck:        v1beta1.NewConditionCheck(cc2),
 		PipelineTaskCondition: &ptc2,
@@ -2393,8 +2393,8 @@ func TestResolveConditionChecks_MultipleConditions(t *testing.T) {
 }
 func TestResolveConditionChecks_ConditionDoesNotExist(t *testing.T) {
 	names.TestingSeed()
-	trName := "pipelinerun-mytask1-9l9zj"
-	ccName := "pipelinerun-mytask1-9l9zj-does-not-exist-mz4c7"
+	trName := "pipelinerun-mytask1"
+	ccName := "pipelinerun-mytask1-does-not-exist"
 
 	pt := v1beta1.PipelineTask{
 		Name:    "mytask1",
@@ -2438,7 +2438,7 @@ func TestResolveConditionChecks_ConditionDoesNotExist(t *testing.T) {
 func TestResolveConditionCheck_UseExistingConditionCheckName(t *testing.T) {
 	names.TestingSeed()
 
-	trName := "pipelinerun-mytask1-9l9zj"
+	trName := "pipelinerun-mytask1"
 	ccName := "some-random-name"
 
 	cc := &v1beta1.TaskRun{
@@ -2591,7 +2591,7 @@ func TestResolvedConditionCheck_WithResources(t *testing.T) {
 				pipelineState := PipelineRunState{ps}
 				expectedConditionChecks := TaskConditionCheckState{{
 					ConditionRegisterName: "always-true-0",
-					ConditionCheckName:    "pipelinerun-mytask1-9l9zj-always-true-0-mz4c7",
+					ConditionCheckName:    "pipelinerun-mytask1-always-true-0",
 					Condition:             condition,
 					PipelineTaskCondition: &ptc,
 					ResolvedResources:     tc.expected,
@@ -3034,7 +3034,7 @@ func TestValidateServiceaccountMapping(t *testing.T) {
 
 func TestResolvePipeline_WhenExpressions(t *testing.T) {
 	names.TestingSeed()
-	tName1 := "pipelinerun-mytask1-9l9zj-always-true-mz4c7"
+	tName1 := "pipelinerun-mytask1-always-true"
 
 	t1 := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3066,9 +3066,9 @@ func TestResolvePipeline_WhenExpressions(t *testing.T) {
 
 	getTaskRun := func(name string) (*v1beta1.TaskRun, error) {
 		switch name {
-		case "pipelinerun-mytask1-9l9zj-always-true-0-mz4c7":
+		case "pipelinerun-mytask1-always-true-0":
 			return t1, nil
-		case "pipelinerun-mytask1-9l9zj":
+		case "pipelinerun-mytask1":
 			return &trs[0], nil
 		}
 		return nil, fmt.Errorf("getTaskRun called with unexpected name %s", name)
@@ -3409,4 +3409,102 @@ func TestResolvedPipelineRunTask_IsFinalTask(t *testing.T) {
 		t.Fatalf("Didn't get expected isFinallySkipped from finally task %s: %s", finallyTaskName, diff.PrintWantGot(d))
 	}
 
+}
+
+func TestGetTaskRunName(t *testing.T) {
+	prName := "pipeline-run"
+	taskRunsStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{
+		"taskrun-for-task1": {
+			PipelineTaskName: "task1",
+		},
+	}
+
+	for _, tc := range []struct {
+		name       string
+		ptName     string
+		prName     string
+		wantTrName string
+	}{{
+		name:       "existing taskrun",
+		ptName:     "task1",
+		wantTrName: "taskrun-for-task1",
+	}, {
+		name:       "new taskrun",
+		ptName:     "task2",
+		wantTrName: "pipeline-run-task2",
+	}, {
+		name:       "new taskrun with long name",
+		ptName:     "task2-0123456789-0123456789-0123456789-0123456789-0123456789",
+		wantTrName: "pipeline-runee4a397d6eab67777d4e6f9991cd19e6-task2-0123456789-0",
+	}, {
+		name:       "new taskrun, pr with long name",
+		ptName:     "task3",
+		prName:     "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		wantTrName: "pipeline-run-0123456789-0123456789-0123456789-0123456789-task3",
+	}, {
+		name:       "new taskrun, taskrun and pr with long name",
+		ptName:     "task2-0123456789-0123456789-0123456789-0123456789-0123456789",
+		prName:     "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		wantTrName: "pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b5c",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testPrName := prName
+			if tc.prName != "" {
+				testPrName = tc.prName
+			}
+			gotTrName := GetTaskRunName(taskRunsStatus, tc.ptName, testPrName)
+			if d := cmp.Diff(tc.wantTrName, gotTrName); d != "" {
+				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestGetRunName(t *testing.T) {
+	prName := "pipeline-run"
+	runsStatus := map[string]*v1beta1.PipelineRunRunStatus{
+		"run-for-task1": {
+			PipelineTaskName: "task1",
+		},
+	}
+
+	for _, tc := range []struct {
+		name       string
+		ptName     string
+		prName     string
+		wantTrName string
+	}{{
+		name:       "existing run",
+		ptName:     "task1",
+		wantTrName: "run-for-task1",
+	}, {
+		name:       "new run",
+		ptName:     "task2",
+		wantTrName: "pipeline-run-task2",
+	}, {
+		name:       "new run with long name",
+		ptName:     "task2-12345678901234567890123456789012345678901234567890",
+		wantTrName: "pipeline-run155b61773fd25b1fbd46dba34cd7cbeb-task2-123456789012",
+	}, {
+		name:       "new run, pr with long name",
+		ptName:     "task2",
+		prName:     "pipeline-run-12345678901234567890123456789012345678901234567890",
+		wantTrName: "pipeline-run-123456789012f022e3ec9d06c5795de718d2f11bdd71-task2",
+	}, {
+		name:       "new run, run and pr with long name",
+		ptName:     "task2-12345678901234567890123456789012345678901234567890",
+		prName:     "pipeline-run-1234567890123456789012345678901234567890",
+		wantTrName: "pipeline-run-1234567890123456782725b0120d3afbb59a451b67da5eb51c",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testPrName := prName
+			if tc.prName != "" {
+				testPrName = tc.prName
+			}
+			gotTrName := getRunName(runsStatus, tc.ptName, testPrName)
+			if d := cmp.Diff(tc.wantTrName, gotTrName); d != "" {
+				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
 }
