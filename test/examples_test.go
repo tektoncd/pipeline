@@ -241,7 +241,7 @@ func TestYamls(t *testing.T) {
 
 func testYamls(t *testing.T, baseDir string, createFunc createFunc, filter pathFilter) {
 	t.Parallel()
-	batchSize := 20
+	batchSize := 40
 	batches := [][]string{}
 	allPaths := getExamplePaths(t, baseDir, filter)
 	for i := 0; i < len(allPaths); i += batchSize {
