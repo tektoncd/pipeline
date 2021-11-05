@@ -102,6 +102,12 @@ func kubectlCreate(input []byte, namespace string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+func kubectlDelete(input []byte, namespace string) ([]byte, error) {
+	cmd := exec.Command("kubectl", "delete", "-n", namespace, "-f", "-")
+	cmd.Stdin = bytes.NewReader(input)
+	return cmd.CombinedOutput()
+}
+
 // deleteClusterTask removes a single clustertask by name using provided
 // clientset. Test state is used for logging. deleteClusterTask does not wait
 // for the clustertask to be deleted, so it is still possible to have name
@@ -127,9 +133,6 @@ func exampleTest(path string, waitValidateFunc waitFunc, createFunc createFunc, 
 		// isolation
 		c, namespace := setup(ctx, t)
 
-		knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-		defer tearDown(ctx, t, c, namespace)
-
 		inputExample, err := ioutil.ReadFile(path)
 		if err != nil {
 			t.Fatalf("Error reading file: %v", err)
@@ -139,6 +142,39 @@ func exampleTest(path string, waitValidateFunc waitFunc, createFunc createFunc, 
 		if err != nil {
 			t.Skipf("Couldn't substitute environment: %v", err)
 		}
+
+		tearDown := tearDown
+
+		tearDown = func(ctx context.Context, t *testing.T, c *clients, namespace string) {
+			t.Helper()
+			if c.KubeClient == nil {
+				return
+			}
+			if t.Failed() {
+				header(t, fmt.Sprintf("Dumping objects from %s", namespace))
+				bs, err := getCRDYaml(ctx, c, namespace)
+				if err != nil {
+					t.Error(err)
+				} else {
+					t.Log(string(bs))
+				}
+				header(t, fmt.Sprintf("Dumping logs from Pods in the %s", namespace))
+				taskruns, err := c.TaskRunClient.List(ctx, metav1.ListOptions{})
+				if err != nil {
+					t.Errorf("Error getting TaskRun list %s", err)
+				}
+				for _, tr := range taskruns.Items {
+					if tr.Status.PodName != "" {
+						CollectPodLogs(ctx, c, tr.Status.PodName, namespace, t.Logf)
+					}
+				}
+			}
+			if _, err := kubectlDelete(subbedInput, namespace); err != nil {
+				t.Errorf("Error deleting kubernetes resources for %s: %v", path, err)
+			}
+		}
+		knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+		defer tearDown(ctx, t, c, namespace)
 
 		out, err := createFunc(subbedInput, namespace)
 		if err != nil {
