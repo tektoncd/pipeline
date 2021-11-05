@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -240,17 +241,34 @@ func TestYamls(t *testing.T) {
 
 func testYamls(t *testing.T, baseDir string, createFunc createFunc, filter pathFilter) {
 	t.Parallel()
-	for _, path := range getExamplePaths(t, baseDir, filter) {
-		path := path // capture range variable
-		testName := extractTestName(baseDir, path)
-		waitValidateFunc := waitValidatePipelineRunDone
-		kind := "pipelinerun"
-
-		if strings.Contains(path, "/taskruns/") {
-			waitValidateFunc = waitValidateTaskRunDone
-			kind = "taskrun"
+	batchSize := 20
+	batches := [][]string{}
+	allPaths := getExamplePaths(t, baseDir, filter)
+	for i := 0; i < len(allPaths); i += batchSize {
+		batch := []string{}
+		for j := 0; j < batchSize && i+j < len(allPaths); j++ {
+			batch = append(batch, allPaths[i+j])
 		}
+		batches = append(batches, batch)
+	}
 
-		t.Run(testName, exampleTest(path, waitValidateFunc, createFunc, kind))
+	t.Logf("Batch size %d", batchSize)
+	for i, batch := range batches {
+		// Don't run batches in parallel with each other.
+		batch := batch
+		testName := fmt.Sprintf("batch-%d-of-%d", i+1, len(batches))
+		t.Run(testName, func(t *testing.T) {
+			for _, path := range batch {
+				path := path // capture range variable
+				testName := extractTestName(baseDir, path)
+				waitValidateFunc := waitValidatePipelineRunDone
+				kind := "pipelinerun"
+				if strings.Contains(path, "/taskruns/") {
+					waitValidateFunc = waitValidateTaskRunDone
+					kind = "taskrun"
+				}
+				t.Run(testName, exampleTest(path, waitValidateFunc, createFunc, kind))
+			}
+		})
 	}
 }
