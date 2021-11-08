@@ -75,9 +75,15 @@ type FetchSpec struct {
 
 // Fetch fetches the specified git repository at the revision into path, using the refspec to fetch if provided.
 func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
-	if err := ensureHomeEnv(logger); err != nil {
+	homepath, err := homedir.Dir()
+	if err != nil {
+		logger.Errorf("Unexpected error getting the user home directory: %v", err)
 		return err
 	}
+	if os.Geteuid() == 0 {
+		homepath = "/root"
+	}
+	ensureHomeEnv(logger, homepath)
 	validateGitAuth(logger, pipeline.CredsDir, spec.URL)
 
 	if spec.Path != "" {
@@ -98,7 +104,7 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 		return err
 	}
 
-	hasKnownHosts, err := userHasKnownHostsFile(logger)
+	hasKnownHosts, err := userHasKnownHostsFile(homepath)
 	if err != nil {
 		return fmt.Errorf("error checking for known_hosts file: %w", err)
 	}
@@ -214,26 +220,17 @@ func submoduleFetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 // different from the user's detected home directory then symlink .ssh from the home directory to the HOME env
 // var. This way ssh will see the .ssh directory in the user's home directory even though it ignores
 // the HOME env var.
-func ensureHomeEnv(logger *zap.SugaredLogger) error {
-	homepath, err := homedir.Dir()
-	if err != nil {
-		logger.Errorf("Unexpected error: getting the user home directory: %v", err)
-		return err
-	}
+func ensureHomeEnv(logger *zap.SugaredLogger, homepath string) {
 	homeenv := os.Getenv("HOME")
-	euid := os.Geteuid()
 	if _, err := os.Stat(filepath.Join(homeenv, ".ssh")); err != nil {
 		// There's no $HOME/.ssh directory to access or the user doesn't have permissions
 		// to read it, or something else; in any event there's no need to try creating a
 		// symlink to it.
-		return nil
+		return
 	}
-	if euid == 0 {
-		ensureHomeEnvSSHLinkedFromPath(logger, homeenv, "/root")
-	} else if homeenv != "" {
+	if homeenv != "" {
 		ensureHomeEnvSSHLinkedFromPath(logger, homeenv, homepath)
 	}
-	return nil
 }
 
 func ensureHomeEnvSSHLinkedFromPath(logger *zap.SugaredLogger, homeenv string, homepath string) {
@@ -250,12 +247,7 @@ func ensureHomeEnvSSHLinkedFromPath(logger *zap.SugaredLogger, homeenv string, h
 	}
 }
 
-func userHasKnownHostsFile(logger *zap.SugaredLogger) (bool, error) {
-	homepath, err := homedir.Dir()
-	if err != nil {
-		logger.Errorf("Unexpected error: getting the user home directory: %v", err)
-		return false, err
-	}
+func userHasKnownHostsFile(homepath string) (bool, error) {
 	f, err := os.Open(filepath.Join(homepath, sshKnownHostsUserPath))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -269,7 +261,7 @@ func userHasKnownHostsFile(logger *zap.SugaredLogger) (bool, error) {
 
 func validateGitAuth(logger *zap.SugaredLogger, credsDir, url string) {
 	sshCred := true
-	if _, err := os.Stat(credsDir + "/.ssh"); os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(credsDir, ".ssh")); os.IsNotExist(err) {
 		sshCred = false
 	}
 	urlSSHFormat := validateGitSSHURLFormat(url)
@@ -282,10 +274,7 @@ func validateGitAuth(logger *zap.SugaredLogger, credsDir, url string) {
 
 // validateGitSSHURLFormat validates the given URL format is SSH or not
 func validateGitSSHURLFormat(url string) bool {
-	if sshURLRegexFormat.MatchString(url) {
-		return true
-	}
-	return false
+	return sshURLRegexFormat.MatchString(url)
 }
 
 func configSparseCheckout(logger *zap.SugaredLogger, spec FetchSpec) error {
