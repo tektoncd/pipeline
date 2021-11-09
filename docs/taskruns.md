@@ -398,6 +398,8 @@ If a `TaskRun` runs longer than its timeout value, the pod associated with the `
 means that the logs of the `TaskRun` are not preserved. The deletion of the `TaskRun` pod is necessary in order to
 stop `TaskRun` step containers from running.
 
+The above `timeout` is inclusive of the time used to execute the `TaskRun`'s `retries`.
+
 ### Specifying `ServiceAccount` credentials
 
 You can execute the `Task` in your `TaskRun` with a specific set of credentials by

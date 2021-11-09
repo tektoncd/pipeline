@@ -309,12 +309,78 @@ func TestHasTimedOut(t *testing.T) {
 			},
 		},
 		expectedStatus: true,
+	}, {
+		name: "TaskRun timed out with retries",
+		taskRun: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				Timeout: &metav1.Duration{
+					Duration: 10 * time.Second,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: &metav1.Time{Time: time.Now().Add(-5 * time.Second)},
+					RetriesStatus: []v1beta1.TaskRunStatus{{
+						Status: duckv1beta1.Status{
+							Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionFalse,
+							}},
+						},
+						TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+							StartTime:      &metav1.Time{Time: time.Now().Add(-11 * time.Second)},
+							CompletionTime: &metav1.Time{Time: time.Now().Add(-6 * time.Second)},
+						},
+					}},
+				},
+			},
+		},
+		expectedStatus: true,
+	}, {
+		name: "TaskRun timed out with retries but current execution start time is nil",
+		taskRun: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				Timeout: &metav1.Duration{
+					Duration: 10 * time.Second,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime: nil,
+					RetriesStatus: []v1beta1.TaskRunStatus{{
+						Status: duckv1beta1.Status{
+							Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionFalse,
+							}},
+						},
+						TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+							StartTime:      &metav1.Time{Time: time.Now().Add(-11 * time.Second)},
+							CompletionTime: &metav1.Time{Time: time.Now().Add(-6 * time.Second)},
+						},
+					}},
+				},
+			},
+		},
+		expectedStatus: true,
 	}}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := tc.taskRun.HasTimedOut(context.Background())
-			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
+			if d := cmp.Diff(tc.expectedStatus, result); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
 		})

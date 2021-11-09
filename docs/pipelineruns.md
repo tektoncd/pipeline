@@ -528,6 +528,8 @@ The `timeout` value is a `duration` conforming to Go's
 values are `1h30m`, `1h`, `1m`, and `60s`. If you set the global timeout to 0, all `PipelineRuns`
 that do not have an individual timeout set will fail immediately upon encountering an error.
 
+The above `timeouts` include the time used to execute `retries`. 
+
 ## Monitoring execution status
 
 As your `PipelineRun` executes, its `status` field accumulates information on the execution of each `TaskRun`

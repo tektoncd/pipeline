@@ -763,7 +763,7 @@ tasks:
 ### Configuring the failure timeout
 
 You can use the `Timeout` field in the `Task` spec within the `Pipeline` to set the timeout
-of the `TaskRun` that executes that `Task` within the `PipelineRun` that executes your `Pipeline.`
+of the `TaskRun` (and its `retries`) that executes that `Task` within the `PipelineRun` that executes your `Pipeline.`
 The `Timeout` value is a `duration` conforming to Go's [`ParseDuration`](https://golang.org/pkg/time/#ParseDuration)
 format. For example, valid values are `1h30m`, `1h`, `1m`, and `60s`.
 

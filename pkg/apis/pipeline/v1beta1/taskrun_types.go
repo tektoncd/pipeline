@@ -385,7 +385,8 @@ func (tr *TaskRun) IsCancelled() bool {
 
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
 func (tr *TaskRun) HasTimedOut(ctx context.Context) bool {
-	if tr.Status.StartTime.IsZero() {
+	startTime := tr.getStartTime()
+	if startTime.IsZero() {
 		return false
 	}
 	timeout := tr.GetTimeout(ctx)
@@ -393,8 +394,24 @@ func (tr *TaskRun) HasTimedOut(ctx context.Context) bool {
 	if timeout == apisconfig.NoTimeoutDuration {
 		return false
 	}
-	runtime := time.Since(tr.Status.StartTime.Time)
+	runtime := time.Since(startTime.Time)
 	return runtime > timeout
+}
+
+func (tr *TaskRun) getStartTime() *metav1.Time {
+	startTime := tr.Status.StartTime
+	if startTime.IsZero() {
+		if len(tr.Status.RetriesStatus) == 0 {
+			return startTime
+		}
+		startTime = &metav1.Time{Time: time.Now()}
+	}
+	for _, retry := range tr.Status.RetriesStatus {
+		if retry.StartTime.Time.Before(startTime.Time) {
+			startTime = retry.StartTime
+		}
+	}
+	return startTime
 }
 
 // GetTimeout returns the timeout for the TaskRun, or the default if not specified
