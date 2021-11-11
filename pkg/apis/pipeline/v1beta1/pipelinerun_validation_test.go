@@ -48,7 +48,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				ServiceAccountName: "foo",
 			},
 		},
-		want: apis.ErrMissingField("spec.pipelineref.name, spec.pipelinespec"),
+		want: apis.ErrMissingOneOf("spec.pipelineRef", "spec.pipelineSpec"),
 	}, {
 		name: "invalid pipelinerun metadata",
 		pr: v1beta1.PipelineRun{
@@ -135,7 +135,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				},
 			},
 		},
-		want: apis.ErrDisallowedFields("spec.pipelineref.bundle"),
+		want: apis.ErrDisallowedFields("spec.pipelineRef.bundle"),
 	}, {
 		name: "bundle missing name",
 		pr: v1beta1.PipelineRun{
@@ -146,10 +146,9 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{
 					Bundle: "docker.io/foo",
 				},
-				PipelineSpec: &v1beta1.PipelineSpec{Description: "foo"},
 			},
 		},
-		want: apis.ErrMissingField("spec.pipelineref.name"),
+		want: apis.ErrMissingField("spec.pipelineRef.name"),
 		wc:   enableTektonOCIBundles(t),
 	}, {
 		name: "invalid bundle reference",
@@ -164,7 +163,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				},
 			},
 		},
-		want: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: not a valid reference)", "spec.pipelineref.bundle"),
+		want: apis.ErrInvalidValue("invalid bundle reference", "spec.pipelineRef.bundle", "could not parse reference: not a valid reference"),
 		wc:   enableTektonOCIBundles(t),
 	}, {
 		name: "pipelinerun pending while running",
@@ -197,7 +196,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				ctx = tc.wc(ctx)
 			}
 			err := tc.pr.Validate(ctx)
-			if d := cmp.Diff(err.Error(), tc.want.Error()); d != "" {
+			if d := cmp.Diff(tc.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
@@ -379,7 +378,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{},
 		},
-		wantErr: apis.ErrMissingField("pipelineref.name", "pipelinespec"),
+		wantErr: apis.ErrMissingField("pipelineRef.name"),
 	}, {
 		name: "pipelineRef and pipelineSpec together",
 		spec: v1beta1.PipelineRunSpec{
@@ -394,7 +393,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 					},
 				}}},
 		},
-		wantErr: apis.ErrDisallowedFields("pipelinespec", "pipelineref"),
+		wantErr: apis.ErrMultipleOneOf("pipelineRef", "pipelineSpec"),
 	}, {
 		name: "workspaces may only appear once",
 		spec: v1beta1.PipelineRunSpec{

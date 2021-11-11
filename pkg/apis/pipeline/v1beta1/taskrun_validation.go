@@ -42,37 +42,40 @@ func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
 // Validate taskrun spec
 func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	cfg := config.FromContextOrDefaults(ctx)
-	// can't have both taskRef and taskSpec at the same time
-	if (ts.TaskRef != nil && ts.TaskRef.Name != "") && ts.TaskSpec != nil {
-		errs = errs.Also(apis.ErrDisallowedFields("taskref", "taskspec"))
+
+	// Must have exactly one of taskRef and taskSpec.
+	if ts.TaskRef == nil && ts.TaskSpec == nil {
+		errs = errs.Also(apis.ErrMissingOneOf("taskRef", "taskSpec"))
+	}
+	if ts.TaskRef != nil && ts.TaskSpec != nil {
+		errs = errs.Also(apis.ErrMultipleOneOf("taskRef", "taskSpec"))
 	}
 
-	// Check that one of TaskRef and TaskSpec is present
-	if (ts.TaskRef == nil || (ts.TaskRef != nil && ts.TaskRef.Name == "")) && ts.TaskSpec == nil {
-		errs = errs.Also(apis.ErrMissingField("taskref.name", "taskspec"))
+	// Validate that a taskRef has a name.
+	if ts.TaskRef != nil && ts.TaskRef.Name == "" {
+		errs = errs.Also(apis.ErrMissingField("taskRef.name"))
 	}
 
 	// If EnableTektonOCIBundles feature flag is on validate it.
 	// Otherwise, fail if it is present (as it won't be allowed nor used)
 	if cfg.FeatureFlags.EnableTektonOCIBundles {
-		// Check that if a bundle is specified, that a TaskRef is specified as well.
-		if (ts.TaskRef != nil && ts.TaskRef.Bundle != "") && ts.TaskRef.Name == "" {
-			errs = errs.Also(apis.ErrMissingField("taskref.name"))
+		// Check that if a taskRef.bundle is specified, that a taskRef.name is specified as well.
+		if ts.TaskRef != nil && ts.TaskRef.Bundle != "" && ts.TaskRef.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("taskRef.name"))
 		}
-
 		// If a bundle url is specified, ensure it is parseable.
 		if ts.TaskRef != nil && ts.TaskRef.Bundle != "" {
 			if _, err := name.ParseReference(ts.TaskRef.Bundle); err != nil {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "taskref.bundle"))
+				errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "taskRef.bundle", err.Error()))
 			}
 		}
 	} else if ts.TaskRef != nil && ts.TaskRef.Bundle != "" {
-		errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
+		errs = errs.Also(apis.ErrDisallowedFields("taskRef.bundle"))
 	}
 
-	// Validate TaskSpec if it's present
+	// Validate TaskSpec if it's present.
 	if ts.TaskSpec != nil {
-		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskspec"))
+		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 
 	errs = errs.Also(validateParameters(ts.Params).ViaField("params"))
