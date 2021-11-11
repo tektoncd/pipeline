@@ -38,13 +38,13 @@ func TestTaskRun_Invalidate(t *testing.T) {
 	}{{
 		name:    "invalid taskspec",
 		taskRun: &v1beta1.TaskRun{},
-		want: apis.ErrMissingField("spec.taskref.name", "spec.taskspec").Also(
+		want: apis.ErrMissingOneOf("spec.taskRef", "spec.taskSpec").Also(
 			apis.ErrGeneric(`invalid resource name "": must be a valid DNS label`, "metadata.name")),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			err := ts.taskRun.Validate(context.Background())
-			if d := cmp.Diff(err.Error(), ts.want.Error()); d != "" {
+			if d := cmp.Diff(ts.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
@@ -143,13 +143,13 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 	}{{
 		name:    "invalid taskspec",
 		spec:    v1beta1.TaskRunSpec{},
-		wantErr: apis.ErrMissingField("taskref.name", "taskspec"),
+		wantErr: apis.ErrMissingOneOf("taskRef", "taskSpec"),
 	}, {
-		name: "invalid taskref name",
+		name: "missing taskref name",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{},
 		},
-		wantErr: apis.ErrMissingField("taskref.name, taskspec"),
+		wantErr: apis.ErrMissingField("taskRef.name"),
 	}, {
 		name: "invalid taskref and taskspec together",
 		spec: v1beta1.TaskRunSpec{
@@ -163,7 +163,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				}}},
 			},
 		},
-		wantErr: apis.ErrDisallowedFields("taskspec", "taskref"),
+		wantErr: apis.ErrMultipleOneOf("taskRef", "taskSpec"),
 	}, {
 		name: "negative pipeline timeout",
 		spec: v1beta1.TaskRunSpec{
@@ -194,7 +194,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: &apis.FieldError{
 			Message: `invalid value "invalid-name-with-$weird-char/%"`,
-			Paths:   []string{"taskspec.steps[0].name"},
+			Paths:   []string{"taskSpec.steps[0].name"},
 			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}, {
@@ -218,16 +218,15 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Bundle: "docker.io/foo",
 			},
 		},
-		wantErr: apis.ErrDisallowedFields("taskref.bundle"),
+		wantErr: apis.ErrDisallowedFields("taskRef.bundle"),
 	}, {
 		name: "bundle missing name",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
 				Bundle: "docker.io/foo",
 			},
-			TaskSpec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{Container: corev1.Container{Image: "foo"}}}},
 		},
-		wantErr: apis.ErrMissingField("taskref.name"),
+		wantErr: apis.ErrMissingField("taskRef.name"),
 		wc:      enableTektonOCIBundles(t),
 	}, {
 		name: "invalid bundle reference",
@@ -237,7 +236,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Bundle: "invalid reference",
 			},
 		},
-		wantErr: apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "taskref.bundle"),
+		wantErr: apis.ErrInvalidValue("invalid bundle reference", "taskRef.bundle", "could not parse reference: invalid reference"),
 		wc:      enableTektonOCIBundles(t),
 	}, {
 		name: "using debug when apifields stable",
