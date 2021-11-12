@@ -17,6 +17,7 @@ spec:
           - sh
           - -c
           - sleep 5 && touch /shared/ready
+        timeoutSeconds: 10
       volumeMounts:
       - name: shared
         mountPath: /shared
