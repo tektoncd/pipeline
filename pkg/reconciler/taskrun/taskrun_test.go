@@ -4486,6 +4486,172 @@ func TestDisableResolutionFlag_ProceedsWithStatusTaskSpec(t *testing.T) {
 	}
 }
 
+func TestStopSidecars_ClientGetPodForTaskSpecWithSidecars(t *testing.T) {
+	startTime := time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC)
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "myimage",
+						Name:    "mycontainer",
+						Command: []string{"/mycmd"},
+					},
+				}},
+				Sidecars: []v1beta1.Sidecar{{
+					Container: corev1.Container{
+						Image:   "dummy",
+						Name:    "sidecar",
+						Command: []string{"some-command"},
+					},
+				}},
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:    apis.ConditionSucceeded,
+						Status:  corev1.ConditionTrue,
+						Reason:  v1beta1.TaskRunReasonSuccessful.String(),
+						Message: "",
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName:   "test-taskrun-pod",
+				StartTime: &metav1.Time{Time: startTime},
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Container: corev1.Container{
+							Image:   "myimage",
+							Name:    "mycontainer",
+							Command: []string{"/mycmd"},
+						},
+					}},
+					Sidecars: []v1beta1.Sidecar{{
+						Container: corev1.Container{
+							Image:   "dummy",
+							Name:    "sidecar",
+							Command: []string{"some-command"},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun-pod",
+			Namespace: "foo",
+		},
+	}
+
+	d := test.Data{
+		Pods:     []*corev1.Pod{pod},
+		TaskRuns: []*v1beta1.TaskRun{tr},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+
+	// We do not expect an error
+	if reconcileErr != nil {
+		t.Errorf("Expected no error to be returned by reconciler: %v", reconcileErr)
+	}
+
+	// Verify that the pod was retrieved
+	getPodFound := false
+	for _, action := range clients.Kube.Actions() {
+		if action.Matches("get", "pods") {
+			getPodFound = true
+			break
+		}
+	}
+	if !getPodFound {
+		t.Errorf("expected the pod to be retrieved to check if sidecars need to be stopped")
+	}
+}
+
+func TestStopSidecars_NoClientGetPodForTaskSpecWithoutSidecars(t *testing.T) {
+	startTime := time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC)
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-taskrun",
+			Namespace: "foo",
+			Labels:    map[string]string{"mylabel": "myvalue"},
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Container: corev1.Container{
+						Image:   "myimage",
+						Name:    "mycontainer",
+						Command: []string{"/mycmd"},
+					},
+				}},
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:    apis.ConditionSucceeded,
+						Status:  corev1.ConditionTrue,
+						Reason:  v1beta1.TaskRunReasonSuccessful.String(),
+						Message: "",
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName:   "test-taskrun-pod",
+				StartTime: &metav1.Time{Time: startTime},
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Container: corev1.Container{
+							Image:   "myimage",
+							Name:    "mycontainer",
+							Command: []string{"/mycmd"},
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	taskRuns := []*v1beta1.TaskRun{tr}
+
+	d := test.Data{
+		TaskRuns: taskRuns,
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+
+	// We do not expect an error
+	if reconcileErr != nil {
+		t.Errorf("Expected no error to be returned by reconciler: %v", reconcileErr)
+	}
+
+	// Verify that the pod was not retrieved
+	for _, action := range clients.Kube.Actions() {
+		if action.Matches("get", "pods") {
+			t.Errorf("expected the pod not to be retrieved because the TaskRun has no sidecars")
+		}
+	}
+}
+
 func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 	var mnts []corev1.VolumeMount
 	mnts = append(mnts, corev1.VolumeMount{
