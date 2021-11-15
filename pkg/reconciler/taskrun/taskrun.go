@@ -131,24 +131,15 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			return cloudEventErr
 		}
 
-		pod, err := c.stopSidecars(ctx, tr)
-		if err != nil {
+		if err := c.stopSidecars(ctx, tr); err != nil {
 			return err
 		}
 
 		go func(metrics *taskrunmetrics.Recorder) {
-			err := metrics.DurationAndCount(tr)
-			if err != nil {
+			if err := metrics.DurationAndCount(tr); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}
-			if pod != nil {
-				err = metrics.RecordPodLatency(pod, tr)
-				if err != nil {
-					logger.Warnf("Failed to log the metrics : %v", err)
-				}
-			}
-			err = metrics.CloudEvents(tr)
-			if err != nil {
+			if err := metrics.CloudEvents(tr); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}
 		}(c.metrics)
@@ -202,16 +193,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	}
 	return nil
 }
-func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*corev1.Pod, error) {
+func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) error {
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
 	if tr.Status.PodName == "" {
-		return nil, nil
+		return nil
 	}
 
 	// do not continue if the TaskSpec had no sidecars
 	if tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Sidecars) == 0 {
-		return nil, nil
+		return nil
 	}
 
 	// do not continue if the TaskRun was canceled or timed out as this caused the pod to be deleted in failTaskRun
@@ -219,8 +210,13 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 	if condition != nil {
 		reason := v1beta1.TaskRunReason(condition.Reason)
 		if reason == v1beta1.TaskRunReasonCancelled || reason == v1beta1.TaskRunReasonTimedOut {
-			return nil, nil
+			return nil
 		}
+	}
+
+	// do not continue if there are no Running sidecars.
+	if !podconvert.IsSidecarStatusRunning(tr) {
+		return nil
 	}
 
 	pod, err := podconvert.StopSidecars(ctx, c.Images.NopImage, c.KubeClientSet, tr.Namespace, tr.Status.PodName)
@@ -231,16 +227,15 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 			err = updateStoppedSidecarStatus(ctx, pod, tr, c)
 		}
 	}
-
 	if k8serrors.IsNotFound(err) {
 		// At this stage the TaskRun has been completed if the pod is not found, it won't come back,
 		// it has probably evicted. We can return the error, but we consider it a permanent one.
-		return nil, controller.NewPermanentError(err)
+		return controller.NewPermanentError(err)
 	} else if err != nil {
 		logger.Errorf("Error stopping sidecars for TaskRun %q: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 	}
-	return pod, nil
+	return nil
 }
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
@@ -457,6 +452,9 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	if podconvert.SidecarsReady(pod.Status) {
 		if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *pod); err != nil {
 			return err
+		}
+		if err := c.metrics.RecordPodLatency(pod, tr); err != nil {
+			logger.Warnf("Failed to log the metrics : %v", err)
 		}
 	}
 
