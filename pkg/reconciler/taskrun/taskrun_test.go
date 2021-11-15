@@ -4309,54 +4309,25 @@ func TestStopSidecars_ClientGetPodForTaskSpecWithSidecars(t *testing.T) {
 			Name:      "test-taskrun",
 			Namespace: "foo",
 		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Image:   "myimage",
-						Name:    "mycontainer",
-						Command: []string{"/mycmd"},
-					},
-				}},
-				Sidecars: []v1beta1.Sidecar{{
-					Container: corev1.Container{
-						Image:   "dummy",
-						Name:    "sidecar",
-						Command: []string{"some-command"},
-					},
-				}},
-			},
-		},
 		Status: v1beta1.TaskRunStatus{
 			Status: duckv1beta1.Status{
 				Conditions: duckv1beta1.Conditions{
 					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionTrue,
-						Reason:  v1beta1.TaskRunReasonSuccessful.String(),
-						Message: "",
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
 					},
 				},
 			},
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				PodName:   "test-taskrun-pod",
 				StartTime: &metav1.Time{Time: startTime},
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Container: corev1.Container{
-							Image:   "myimage",
-							Name:    "mycontainer",
-							Command: []string{"/mycmd"},
+				Sidecars: []v1beta1.SidecarState{{
+					ContainerState: corev1.ContainerState{
+						Running: &corev1.ContainerStateRunning{
+							StartedAt: metav1.Time{startTime},
 						},
-					}},
-					Sidecars: []v1beta1.Sidecar{{
-						Container: corev1.Container{
-							Image:   "dummy",
-							Name:    "sidecar",
-							Command: []string{"some-command"},
-						},
-					}},
-				},
+					},
+				}},
 			},
 		},
 	}
@@ -4384,7 +4355,7 @@ func TestStopSidecars_ClientGetPodForTaskSpecWithSidecars(t *testing.T) {
 		t.Errorf("Expected no error to be returned by reconciler: %v", reconcileErr)
 	}
 
-	// Verify that the pod was retrieved
+	// Verify that the pod was retrieved.
 	getPodFound := false
 	for _, action := range clients.Kube.Actions() {
 		if action.Matches("get", "pods") {
@@ -4397,74 +4368,85 @@ func TestStopSidecars_ClientGetPodForTaskSpecWithSidecars(t *testing.T) {
 	}
 }
 
-func TestStopSidecars_NoClientGetPodForTaskSpecWithoutSidecars(t *testing.T) {
+func TestStopSidecars_NoClientGetPodForTaskSpecWithoutRunningSidecars(t *testing.T) {
 	startTime := time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC)
-	tr := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun",
-			Namespace: "foo",
-			Labels:    map[string]string{"mylabel": "myvalue"},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Image:   "myimage",
-						Name:    "mycontainer",
-						Command: []string{"/mycmd"},
-					},
-				}},
+
+	for _, tc := range []struct {
+		desc string
+		tr   *v1beta1.TaskRun
+	}{{
+		desc: "no sidecars",
+		tr: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun",
+				Namespace: "foo",
 			},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionTrue,
-						Reason:  v1beta1.TaskRunReasonSuccessful.String(),
-						Message: "",
-					},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName:   "test-taskrun-pod",
+					StartTime: &metav1.Time{Time: startTime},
+					Sidecars:  []v1beta1.SidecarState{},
 				},
 			},
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				PodName:   "test-taskrun-pod",
-				StartTime: &metav1.Time{Time: startTime},
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Container: corev1.Container{
-							Image:   "myimage",
-							Name:    "mycontainer",
-							Command: []string{"/mycmd"},
+		},
+	}, {
+		desc: "sidecars are terminated",
+		tr: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-taskrun",
+				Namespace: "foo",
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName:   "test-taskrun-pod",
+					StartTime: &metav1.Time{Time: startTime},
+					Sidecars: []v1beta1.SidecarState{{
+						ContainerState: corev1.ContainerState{
+							Terminated: &corev1.ContainerStateTerminated{
+								StartedAt:  metav1.Time{startTime},
+								FinishedAt: metav1.Time{startTime},
+							},
 						},
 					}},
 				},
 			},
 		},
-	}
+	}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1beta1.TaskRun{tc.tr},
+			}
 
-	taskRuns := []*v1beta1.TaskRun{tr}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+			reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.tr))
 
-	d := test.Data{
-		TaskRuns: taskRuns,
-	}
+			// We do not expect an error
+			if reconcileErr != nil {
+				t.Errorf("Expected no error to be returned by reconciler: %v", reconcileErr)
+			}
 
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	c := testAssets.Controller
-	clients := testAssets.Clients
-	reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
-
-	// We do not expect an error
-	if reconcileErr != nil {
-		t.Errorf("Expected no error to be returned by reconciler: %v", reconcileErr)
-	}
-
-	// Verify that the pod was not retrieved
-	for _, action := range clients.Kube.Actions() {
-		if action.Matches("get", "pods") {
-			t.Errorf("expected the pod not to be retrieved because the TaskRun has no sidecars")
-		}
+			// Verify that the pod was not retrieved
+			for _, action := range clients.Kube.Actions() {
+				if action.Matches("get", "pods") {
+					t.Errorf("expected the pod not to be retrieved because the TaskRun has no sidecars")
+				}
+			}
+		})
 	}
 }
 
