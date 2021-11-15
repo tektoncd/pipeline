@@ -15,6 +15,12 @@ This tutorial consists of the following sections:
 This includes Docker registries, log output locations, and other configuration items
 specific to a given cloud computing service.
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table)**, but this tutorial uses them.
+>
+> Read more about the deprecation in [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+> This tutorial will be updated to use the replacement features instead - https://github.com/tektoncd/pipeline/issues/3705. 
+> 
+
 ## Before you begin
 
 Before you begin this tutorial, make sure you have [installed and configured](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)

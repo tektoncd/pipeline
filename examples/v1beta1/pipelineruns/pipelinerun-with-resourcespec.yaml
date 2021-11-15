@@ -78,7 +78,8 @@ spec:
           - name: pipeline-git
             resource: pipeline-git
 ---
-
+# `PipelineResources` are deprecated, consider using `Tasks` and other replacement features instead
+# https://github.com/tektoncd/pipeline/blob/main/docs/migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:

@@ -36,6 +36,11 @@ You must reconfigure any `image` resource definitions in your `PipelineResources
 - Set your applications (such as deployment definitions) to push to
   `localhost:5000/myregistry/<image name>`.
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 ### Reconfigure logging
 
 - You can keep your logs in memory only without sending them to a logging service
@@ -68,6 +73,11 @@ The `registry-aliases` addon will create several aliases for the minikube regist
   `example.com/<image name>`.
 
 If you wish to use a different image URL, you can add the appropriate line to minikube's `/etc/hosts`.
+
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ### Reconfigure logging
 

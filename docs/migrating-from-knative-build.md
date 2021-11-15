@@ -41,6 +41,11 @@ Follow the guidelines below when converting your Knative Build entities to Tekto
   can do so either by referencing an existing `PipelineResource` using the `resourceRef` field or by embedding
   a complete `PipelineResource` definition using the [`resourceSpec`](taskruns.md#specifying-resources) field.
 
+  > :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+  >
+  > Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+  > and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 * Containers that execute the `Steps` in your `Tasks` must now abide by Tekton's [container contract](container-contract.md)
   and are now serialized without relying on init containers. Because of this, we highly recommend
   that for each `Step` within your `Task` you specify a `command` value instead of an `entrypoint` and `args` pair.

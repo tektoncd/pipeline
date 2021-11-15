@@ -162,6 +162,11 @@ before executing any `Steps` in the `Run`, Tekton creates a `~/.gitconfig` file 
 specified in the `Secret`. When the `Steps` execute, Tekton uses those credentials to retrieve
 `PipelineResources` specified in the `Run`.
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 Note: Github deprecated basic authentication with username and password. You can still use basic authentication, but you wil need to use a personal access token instead of the cleartext password in the following example. You can find out how to create such a token on the [Github documentation site](https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token).
 
 1. In `secret.yaml`, define a `Secret` that specifies the username and password that you want Tekton
@@ -234,6 +239,11 @@ This section describes how to configure an `ssh-auth` type `Secret` for use with
 before executing any `Steps` in the `Run`, Tekton creates a `~/.ssh/config` file containing the SSH key
 specified in the `Secret`. When the `Steps` execute, Tekton uses this key to retrieve `PipelineResources`
 specified in the `Run`.
+
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 1. In `secret.yaml`, define a `Secret` that specifies your SSH private key:
 
@@ -314,6 +324,11 @@ You can specify a custom SSH port in your `Secret`. In the example below,
 any `PipelineResource` referencing a repository at `example.com` will connect
 to it on port 2222.
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 ```
 apiVersion: v1
 kind: Secret
@@ -353,6 +368,11 @@ This section describes how to configure the `basic-auth` (username/password pair
 In the example below, before executing any `Steps` in the `Run`, Tekton creates a `~/.docker/config.json` file containing
 the credentials specified in the `Secret`. When the `Steps` execute, Tekton uses those credentials when retrieving
 `PipelineResources` specified in the `Run`.
+
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 1. In `secret.yaml`, define a `Secret` that specifies the username and password that you want Tekton
    to use to access the target Docker registry:

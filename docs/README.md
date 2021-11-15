@@ -43,7 +43,7 @@ Tekton Pipelines defines the following entities:
     <td>Instantiates a <code>Pipeline</code> for execution with specific inputs, outputs, and execution parameters.</td>
   </tr>
   <tr>
-    <td><code>PipelineResource</code></td>
+    <td><code>PipelineResource (Deprecated)</code></td>
     <td>Defines locations for inputs ingested and outputs produced by the steps in <code>Tasks</code>.</td>
   </tr>
   <tr>

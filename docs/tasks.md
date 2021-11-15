@@ -510,6 +510,11 @@ spec:
 
 ### Specifying `Resources`
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 A `Task` definition can specify input and output resources supplied by
 a [`PipelineResources`](resources.md#using-resources) entity.
 

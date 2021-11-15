@@ -167,6 +167,11 @@ so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
 
 ### Specifying `Resources`
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 A `Pipeline` requires [`PipelineResources`](resources.md) to provide inputs and store outputs
 for the `Tasks` that comprise it. You must provision those resources in the `resources` field
 in the `spec` section of the `PipelineRun` definition.

@@ -236,6 +236,11 @@ go through the complexity of checking each `Task` and providing only the require
 
 ### Specifying `Resources`
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 If a `Task` requires [`Resources`](tasks.md#specifying-resources) (that is, `inputs` and `outputs`) you must
 specify them in your `TaskRun` definition. You can specify `Resources` by reference to existing
 [`PipelineResource` objects](resources.md) or embed their definitions directly in the `TaskRun`.
