@@ -225,6 +225,11 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) (*co
 		return nil, nil
 	}
 
+	// do not continue if the TaskSpec had no sidecars
+	if tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Sidecars) == 0 {
+		return nil, nil
+	}
+
 	// do not continue if the TaskRun was canceled or timed out as this caused the pod to be deleted in failTaskRun
 	condition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	if condition != nil {
