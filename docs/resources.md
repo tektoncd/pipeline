@@ -6,6 +6,11 @@ weight: 2000
 -->
 # PipelineResources
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 `PipelineResources` in a pipeline are the set of objects that are going to be
 used as inputs to a [`Task`](tasks.md) and can be output by a `Task`.
 
@@ -19,11 +24,9 @@ For example:
     deployed in a cluster.
 -   A `Task`'s output can be a jar file to be uploaded to a storage bucket.
 
-> **Note**: PipelineResources have not been promoted to Beta in tandem with Pipeline's
-> other CRDs. This means that the level of support for `PipelineResources`
-> remains Alpha and there are effectively no guarantees about the type's future.
-> There remain a lot of known issues with the type that have caused Tekton's
-> developers to reassess it.
+> **Note**: `PipelineResources` have not been promoted to Beta in tandem with Pipeline's other CRDs. 
+> This means that the level of support for `PipelineResources` remains Alpha.
+> `PipelineResources` are now [deprecated](deprecations.md#deprecation-table).** 
 >
 > For Beta-supported alternatives to PipelineResources see
 > [the v1alpha1 to v1beta1 migration guide](./migrating-v1alpha1-to-v1beta1.md#pipelineresources-and-catalog-tasks)
@@ -79,6 +82,11 @@ following fields:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
 ## Using Resources
+
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 Resources can be used in [Tasks](./tasks.md) and
 [Conditions](./conditions.md#resources).
@@ -1053,11 +1061,8 @@ So what are PipelineResources still good for?  We think we've identified some of
 3. Configuring CloudEvents to be emitted by the Tekton Pipelines controller.
     - Work is ongoing to get notifications support into the Pipelines controller which should hopefully be able to replace the `cloudEvents` `PipelineResource`.
 
-For each of these there is some amount of ongoing work or discussion. It may be that
-`PipelineResources` can be redesigned to fix all of their problems or it could be
-that the best features of `PipelineResources` can be extracted for use everywhere in
-Tekton Pipelines. So given this state of affairs `PipelineResources` are being kept
-out of beta until those questions are resolved.
+For each of these there is some amount of ongoing work or discussion. We have deprecated `PipelineResources` and are 
+actively working to cover the missing replacement features. Read more about the deprecation in [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 For Beta-supported alternatives to PipelineResources see
 [the v1alpha1 to v1beta1 migration guide](./migrating-v1alpha1-to-v1beta1.md#pipelineresources-and-catalog-tasks)

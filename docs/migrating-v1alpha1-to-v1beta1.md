@@ -73,14 +73,11 @@ spec:
       value: https://example.com/foo.json
 ```
 
-## Replacing `PipelineResources` with Tasks
+## Replacing `PipelineResources` with `Tasks`
 
-`PipelineResources` are remaining in alpha while the other resource kinds are
-promoted to beta.
-
-At some point this feature in its current form could be redesigned, replaced, deprecated or
-removed entirely, and until this has been resolved, we encourage people to use `Tasks` instead of
-`PipelineResources` when they can.
+`PipelineResources` remained in alpha while the other resource kinds were promoted to beta.
+Since then, **`PipelineResources` have been deprecated**. We encourage users to use `Tasks` and other replacement 
+features instead of `PipelineResources`. Read more about the deprecation in [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 _More on the reasoning and what's left to do in
 [Why aren't PipelineResources in Beta?](resources.md#why-arent-pipelineresources-in-beta)._

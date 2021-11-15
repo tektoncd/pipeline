@@ -97,6 +97,11 @@ A `Pipeline` definition supports the following fields:
 
 ## Specifying `Resources`
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 A `Pipeline` requires [`PipelineResources`](resources.md) to provide inputs and store outputs
 for the `Tasks` that comprise it. You can declare those in the `resources` field in the `spec`
 section of the `Pipeline` definition. Each entry requires a unique `name` and a `type`. For example:
@@ -251,6 +256,11 @@ spec:
             resource: my-image
 ```
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 You can also provide [`Parameters`](tasks.md#specifying-parameters):
 
 ```yaml
@@ -353,6 +363,11 @@ execute before the `deploy-app` `Task` regardless of the order in which those
           - build-app
 ```
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 ### Using the `runAfter` parameter
 
 If you need your `Tasks` to execute in a specific order within the `Pipeline`
@@ -383,6 +398,11 @@ they are referenced in the `Pipeline` definition.
       - name: workspace
         resource: my-repo
 ```
+
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ### Using the `retries` parameter
 
@@ -1023,6 +1043,11 @@ In particular:
 4. The entire `Pipeline` completes execution once both `lint-repo` and `deploy-all`
    complete execution.
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 ## Adding a description
 
 The `description` field is an optional field and can be used to provide description of the `Pipeline`.
@@ -1079,6 +1104,11 @@ spec:
         - name: shared-workspace
           workspace: shared-workspace
 ```
+
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ### Specifying `Parameters` in `finally` tasks
 
@@ -1388,6 +1418,11 @@ spec:
             from: #invalid
               - tests
 ```
+
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 #### Cannot configure the `finally` task execution order
 

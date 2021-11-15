@@ -147,15 +147,14 @@ should take a look at [Red Hat CodeReady Containers](https://github.com/code-rea
 
 ## Configuring PipelineResource storage
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> For storage, consider using [`Workspaces`](workspaces.md) with [`VolumeClaimTemplates`](https://github.com/tektoncd/pipeline/blob/main/docs/workspaces.md#volumeclaimtemplate)
+> to automatically provision and manage Persistent Volume Claims (PVCs). Read more in [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 PipelineResources are one of the ways that Tekton passes data between Tasks. If you intend to
 use PipelineResources in your Pipelines then you'll need to configure a storage location
 for that data to be put so that it can be shared between Tasks in the Pipeline.
-
-**Note:** Pipeline Resources are in alpha and are currently undergoing considerable redesign. Therefore
-this storage configuration is possibly going to change in future. Writing Tasks and Pipelines today that rely
-on this feature may mean you'll need to rewrite those Tasks and Pipelines when the redesign is complete. See
-the [explanation for the redesign in the PipelineResources doc](./resources.md#why-arent-pipelineresources-in-beta)
-and [issue 1673](https://github.com/tektoncd/pipeline/issues/1673) to follow along with the redesign work.
 
 The storage options available for sharing PipelineResources between Tasks in a Pipeline are:
 

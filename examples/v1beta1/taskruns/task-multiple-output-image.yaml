@@ -1,3 +1,5 @@
+# `PipelineResources` are deprecated, consider using `Tasks` and other replacement features instead
+# https://github.com/tektoncd/pipeline/blob/main/docs/migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
@@ -8,6 +10,8 @@ spec:
   - name: url
     value: gcr.io/dlorenc-vmtest2/leeroy-web  # Replace this URL with $KO_DOCKER_REPO
 ---
+# `PipelineResources` are deprecated, consider using `Tasks` and other replacement features instead
+# https://github.com/tektoncd/pipeline/blob/main/docs/migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
@@ -34,6 +38,8 @@ roleRef:
   name: cluster-admin
   apiGroup: rbac.authorization.k8s.io
 ---
+# `PipelineResources` are deprecated, consider using `Tasks` and other replacement features instead
+# https://github.com/tektoncd/pipeline/blob/main/docs/migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:

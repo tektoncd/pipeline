@@ -58,6 +58,11 @@ For instructions on using variable substitutions see the relevant section of [th
 
 ### `PipelineResource` variables available in a `Task`
 
+> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
+>
+> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
+> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
+
 Each supported type of `PipelineResource` specified within a `Task` exposes a unique set
 of variables. This section lists the variables exposed by each type. You can access a
 variable via `resources.inputs.<resourceName>.<variableName>` or

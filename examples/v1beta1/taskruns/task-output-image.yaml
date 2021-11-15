@@ -1,3 +1,5 @@
+# `PipelineResources` are deprecated, consider using `Tasks` and other replacement features instead
+# https://github.com/tektoncd/pipeline/blob/main/docs/migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
@@ -24,6 +26,8 @@ roleRef:
   name: cluster-admin
   apiGroup: rbac.authorization.k8s.io
 ---
+# `PipelineResources` are deprecated, consider using `Tasks` and other replacement features instead
+# https://github.com/tektoncd/pipeline/blob/main/docs/migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks
 apiVersion: tekton.dev/v1alpha1
 kind: PipelineResource
 metadata:
@@ -39,6 +43,9 @@ spec:
 # This task is currently hardcoding a index.json file instead of
 # building an image since kaniko and other easy to use tools don't
 # support exporting this file yet
+#
+# `PipelineResources` are deprecated, consider using `Tasks` and other replacement features instead
+# https://github.com/tektoncd/pipeline/blob/main/docs/migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
