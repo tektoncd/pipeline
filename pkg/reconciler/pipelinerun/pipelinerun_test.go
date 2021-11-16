@@ -19,6 +19,7 @@ package pipelinerun
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http/httptest"
 	"net/url"
@@ -2753,6 +2754,100 @@ func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
 		t.Errorf("Expected to cancel TaskRun successfully!")
 	}
 
+}
+
+func TestReconcileTaskResolutionError(t *testing.T) {
+	ts := []*v1beta1.Task{
+		simpleHelloWorldTask,
+	}
+	ptName := "hello-world-1"
+	prName := "test-pipeline-fails-task-resolution"
+	prs := []*v1beta1.PipelineRun{{
+		ObjectMeta: baseObjectMeta(prName, "foo"),
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
+			Status:      v1beta1.PipelineRunSpecStatusCancelledRunFinally,
+		},
+		Status: v1beta1.PipelineRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:    apis.ConditionSucceeded,
+						Status:  corev1.ConditionUnknown,
+						Reason:  v1beta1.PipelineRunReasonRunning.String(),
+						Message: "running...",
+					},
+				},
+			},
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+					prName + ptName: {
+						PipelineTaskName: ptName,
+						Status:           &v1beta1.TaskRunStatus{},
+					},
+				},
+				StartTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}}
+	trs := []*v1beta1.TaskRun{
+		getTaskRun(
+			"test-pipeline-fails-task-resolutionhello-world-1",
+			prName,
+			"test-pipeline",
+			"hello-world",
+			corev1.ConditionUnknown,
+		),
+	}
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    []*v1beta1.Pipeline{simpleHelloWorldPipeline},
+		Tasks:        ts,
+		TaskRuns:     trs,
+		ConfigMaps:   []*corev1.ConfigMap{},
+	}
+	testAssets, cancel := getPipelineRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	failingReactorActivated := true
+	// Create an error when the Pipeline client attempts to resolve the Task
+	clients.Pipeline.PrependReactor("*", "tasks", func(action ktesting.Action) (bool, runtime.Object, error) {
+		return failingReactorActivated, nil, errors.New("etcdserver: leader changed")
+	})
+	err := c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-task-resolution")
+	if err == nil {
+		t.Errorf("Expected error returned from reconcile after failing to cancel TaskRun but saw none!")
+	}
+
+	if controller.IsPermanentError(err) {
+		t.Errorf("Expected non-permanent error reconciling PipelineRun but got permanent error: %v", err)
+	}
+
+	// Check that the PipelineRun is still running with correct error message
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(testAssets.Ctx, "test-pipeline-fails-task-resolution", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	// The PipelineRun should not be cancelled since the error was retryable
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if !condition.IsUnknown() {
+		t.Errorf("Expected PipelineRun to still be running but succeeded condition is %v", condition.Status)
+	}
+
+	failingReactorActivated = false
+	err = c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-task-resolution")
+	if err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Errorf("unexpected error in PipelineRun reconciliation: %v", err)
+		}
+	}
+	condition = reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if !condition.IsUnknown() {
+		t.Errorf("Expected PipelineRun to still be running but succeeded condition is %v", condition.Status)
+	}
 }
 
 func TestReconcileOnStoppedRunFinallyPipelineRun(t *testing.T) {

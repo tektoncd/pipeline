@@ -171,8 +171,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	}
 
 	// prepare fetches all required resources, validates them together with the
-	// taskrun, runs API convertions. Errors that come out of prepare are
-	// permanent one, so in case of error we update, emit events and return
+	// taskrun, runs API conversions. In case of error we update, emit events and return.
 	_, rtr, err := c.prepare(ctx, tr)
 	if err != nil {
 		logger.Errorf("TaskRun prepare error: %v", err.Error())
@@ -269,9 +268,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // It may report errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
 // All errors returned by `prepare` are always handled by `Reconcile`, so they don't cause
-// the key to be re-queued directly. Once we start using `PermanentErrors` code in
-// `prepare` will be able to control which error is handled by `Reconcile` and which is not
-// See https://github.com/tektoncd/pipeline/issues/2474 for details.
+// the key to be re-queued directly.
 // `prepare` returns spec and resources. In future we might store
 // them in the TaskRun.Status so we don't need to re-run `prepare` at every
 // reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
@@ -294,6 +291,9 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	if err != nil {
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
+		if resources.IsGetTaskErrTransient(err) {
+			return nil, nil, err
+		}
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}

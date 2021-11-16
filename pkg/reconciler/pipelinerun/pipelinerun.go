@@ -294,6 +294,9 @@ func (c *Reconciler) resolvePipelineState(
 			task, providedResources,
 		)
 		if err != nil {
+			if tresources.IsGetTaskErrTransient(err) {
+				return nil, err
+			}
 			switch err := err.(type) {
 			case *resources.TaskNotFoundError:
 				pr.Status.MarkFailed(ReasonCouldntGetTask,
