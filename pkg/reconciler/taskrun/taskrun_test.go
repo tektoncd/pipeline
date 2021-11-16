@@ -1738,6 +1738,63 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 
 }
 
+func TestReconcileGetTaskError(t *testing.T) {
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-success", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+	}
+	d := test.Data{
+		TaskRuns:          []*v1beta1.TaskRun{tr},
+		Tasks:             []*v1beta1.Task{simpleTask},
+		ClusterTasks:      []*v1beta1.ClusterTask{},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if _, err := clients.Kube.CoreV1().ServiceAccounts(tr.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "default",
+			Namespace: tr.Namespace,
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	failingReactorActivated := true
+	clients.Pipeline.PrependReactor("*", "tasks", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		return failingReactorActivated, &v1beta1.Task{}, errors.New("etcdserver: leader changed")
+	})
+	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if err == nil {
+		t.Error("Wanted a wrapped error, but got nil.")
+	}
+	if controller.IsPermanentError(err) {
+		t.Errorf("Unexpected permanent error %v", err)
+	}
+
+	failingReactorActivated = false
+	err = c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Errorf("unexpected error in TaskRun reconciliation: %v", err)
+		}
+	}
+	reconciledRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if !condition.IsUnknown() {
+		t.Errorf("Expected TaskRun to still be running but succeeded condition is %v", condition.Status)
+	}
+}
+
 func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 	noTaskRun := &v1beta1.TaskRun{
 		ObjectMeta: objectMeta("notaskrun", "foo"),
@@ -1779,7 +1836,7 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 	// Such TaskRun enters Reconciler and from within the isDone block, marks the run success so that
 	// reconciler does not keep trying to reconcile
 	if reconcileErr != nil {
-		t.Fatalf("Expected to see error when reconciling TaskRun with Permanent Error but was not none")
+		t.Fatalf("Expected to see no error when reconciling TaskRun with Permanent Error but was not none")
 	}
 
 	// Check actions

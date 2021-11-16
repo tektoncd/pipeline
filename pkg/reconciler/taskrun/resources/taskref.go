@@ -31,6 +31,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+// This error is defined in etcd at
+// https://github.com/etcd-io/etcd/blob/5b226e0abf4100253c94bb71f47d6815877ed5a2/server/etcdserver/errors.go#L30
+// TODO: If/when https://github.com/kubernetes/kubernetes/issues/106491 is addressed,
+// we should stop relying on a hardcoded string.
+var errEtcdLeaderChange = "etcdserver: leader changed"
+
 // GetTaskKind returns the referenced Task kind (Task, ClusterTask, ...) if the TaskRun is using TaskRef.
 func GetTaskKind(taskrun *v1beta1.TaskRun) v1beta1.TaskKind {
 	kind := v1alpha1.NamespacedTaskKind
@@ -148,7 +154,12 @@ func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (v1beta
 
 	// If we are going to resolve this reference locally, we need a namespace scope.
 	if l.Namespace == "" {
-		return nil, fmt.Errorf("Must specify namespace to resolve reference to task %s", name)
+		return nil, fmt.Errorf("must specify namespace to resolve reference to task %s", name)
 	}
 	return l.Tektonclient.TektonV1beta1().Tasks(l.Namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
+// IsGetTaskErrTransient returns true if an error returned by GetTask is retryable.
+func IsGetTaskErrTransient(err error) bool {
+	return strings.Contains(err.Error(), errEtcdLeaderChange)
 }
