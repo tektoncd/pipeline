@@ -207,6 +207,10 @@ For examples of replacing an `image` resource, see the following Catalog `Tasks`
 
 You can replace a `cluster` resource with the [`kubeconfig-creator` Catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/kubeconfig-creator).
 
+### Replacing a `cloudEvent` resource
+
+You can replace a `cloudEvent` resource with the [`CloudEvent` Catalog `Task`](https://github.com/tektoncd/catalog/tree/main/task/cloudevent).
+
 ## Changes to PipelineResources
 
 In Tekton `v1beta1`, `PipelineResources` have been moved from `spec.input.resources`
