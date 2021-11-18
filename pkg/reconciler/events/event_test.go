@@ -18,8 +18,6 @@ package events
 
 import (
 	"errors"
-	"fmt"
-	"regexp"
 	"testing"
 	"time"
 
@@ -37,10 +35,10 @@ import (
 
 func TestSendKubernetesEvents(t *testing.T) {
 	testcases := []struct {
-		name      string
-		before    *apis.Condition
-		after     *apis.Condition
-		wantEvent string
+		name       string
+		before     *apis.Condition
+		after      *apis.Condition
+		wantEvents []string
 	}{{
 		name: "unknown to true with message",
 		before: &apis.Condition{
@@ -52,7 +50,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Status:  corev1.ConditionTrue,
 			Message: "all done",
 		},
-		wantEvent: "Normal Succeeded all done",
+		wantEvents: []string{"Normal Succeeded all done"},
 	}, {
 		name: "true to true",
 		before: &apis.Condition{
@@ -65,7 +63,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Status:             corev1.ConditionTrue,
 			LastTransitionTime: apis.VolatileTime{Inner: metav1.NewTime(time.Now().Add(5 * time.Minute))},
 		},
-		wantEvent: "",
+		wantEvents: []string{},
 	}, {
 		name: "false to false",
 		before: &apis.Condition{
@@ -76,7 +74,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 		},
-		wantEvent: "",
+		wantEvents: []string{},
 	}, {
 		name: "unknown to unknown",
 		before: &apis.Condition{
@@ -91,7 +89,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Reason:  "foo",
 			Message: "bar",
 		},
-		wantEvent: "Normal foo bar",
+		wantEvents: []string{"Normal foo bar"},
 	}, {
 		name:  "true to nil",
 		after: nil,
@@ -99,7 +97,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		},
-		wantEvent: "",
+		wantEvents: []string{},
 	}, {
 		name:   "nil to true",
 		before: nil,
@@ -107,7 +105,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
 		},
-		wantEvent: "Normal Succeeded ",
+		wantEvents: []string{"Normal Succeeded "},
 	}, {
 		name:   "nil to unknown with message",
 		before: nil,
@@ -116,7 +114,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Status:  corev1.ConditionUnknown,
 			Message: "just starting",
 		},
-		wantEvent: "Normal Started ",
+		wantEvents: []string{"Normal Started "},
 	}, {
 		name: "unknown to false with message",
 		before: &apis.Condition{
@@ -128,7 +126,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Status:  corev1.ConditionFalse,
 			Message: "really bad",
 		},
-		wantEvent: "Warning Failed really bad",
+		wantEvents: []string{"Warning Failed really bad"},
 	}, {
 		name:   "nil to false",
 		before: nil,
@@ -136,7 +134,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
 		},
-		wantEvent: "Warning Failed ",
+		wantEvents: []string{"Warning Failed "},
 	}}
 
 	for _, ts := range testcases {
@@ -144,7 +142,7 @@ func TestSendKubernetesEvents(t *testing.T) {
 		tr := &corev1.Pod{}
 		sendKubernetesEvents(fr, ts.before, ts.after, tr)
 
-		err := checkEvents(t, fr, ts.name, ts.wantEvent)
+		err := cloudevent.CheckEvents(t, fr, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -153,17 +151,17 @@ func TestSendKubernetesEvents(t *testing.T) {
 
 func TestEmitError(t *testing.T) {
 	testcases := []struct {
-		name      string
-		err       error
-		wantEvent string
+		name       string
+		err        error
+		wantEvents []string
 	}{{
-		name:      "with error",
-		err:       errors.New("something went wrong"),
-		wantEvent: "Warning Error something went wrong",
+		name:       "with error",
+		err:        errors.New("something went wrong"),
+		wantEvents: []string{"Warning Error something went wrong"},
 	}, {
-		name:      "without error",
-		err:       nil,
-		wantEvent: "",
+		name:       "without error",
+		err:        nil,
+		wantEvents: []string{},
 	}}
 
 	for _, ts := range testcases {
@@ -171,7 +169,7 @@ func TestEmitError(t *testing.T) {
 		tr := &corev1.Pod{}
 		EmitError(fr, ts.err, tr)
 
-		err := checkEvents(t, fr, ts.name, ts.wantEvent)
+		err := cloudevent.CheckEvents(t, fr, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -198,25 +196,25 @@ func TestEmit(t *testing.T) {
 		Message: "just starting",
 	}
 	testcases := []struct {
-		name           string
-		data           map[string]string
-		wantEvent      string
-		wantCloudEvent string
+		name            string
+		data            map[string]string
+		wantEvents      []string
+		wantCloudEvents []string
 	}{{
-		name:           "without sink",
-		data:           map[string]string{},
-		wantEvent:      "Normal Started",
-		wantCloudEvent: "",
+		name:            "without sink",
+		data:            map[string]string{},
+		wantEvents:      []string{"Normal Started"},
+		wantCloudEvents: []string{},
 	}, {
-		name:           "with empty string sink",
-		data:           map[string]string{"default-cloud-events-sink": ""},
-		wantEvent:      "Normal Started",
-		wantCloudEvent: "",
+		name:            "with empty string sink",
+		data:            map[string]string{"default-cloud-events-sink": ""},
+		wantEvents:      []string{"Normal Started"},
+		wantCloudEvents: []string{},
 	}, {
-		name:           "with sink",
-		data:           map[string]string{"default-cloud-events-sink": "http://mysink"},
-		wantEvent:      "Normal Started",
-		wantCloudEvent: `(?s)dev.tekton.event.pipelinerun.started.v1.*test1`,
+		name:            "with sink",
+		data:            map[string]string{"default-cloud-events-sink": "http://mysink"},
+		wantEvents:      []string{"Normal Started"},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`},
 	}}
 
 	for _, tc := range testcases {
@@ -236,42 +234,11 @@ func TestEmit(t *testing.T) {
 
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
 		Emit(ctx, nil, after, object)
-		if err := checkEvents(t, recorder, tc.name, tc.wantEvent); err != nil {
+		if err := cloudevent.CheckEvents(t, recorder, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
-		if err := checkCloudEvents(t, &fakeClient, tc.name, tc.wantCloudEvent); err != nil {
+		if err := cloudevent.CheckCloudEvents(t, &fakeClient, tc.name, tc.wantCloudEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
 	}
-}
-
-func eventFromChannel(c chan string, testName string, wantEvent string) error {
-	timer := time.NewTimer(10 * time.Millisecond)
-	select {
-	case event := <-c:
-		if wantEvent == "" {
-			return fmt.Errorf("received event \"%s\" for %s but none expected", event, testName)
-		}
-		matching, err := regexp.MatchString(wantEvent, event)
-		if err == nil {
-			if !matching {
-				return fmt.Errorf("expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
-			}
-		}
-	case <-timer.C:
-		if wantEvent != "" {
-			return fmt.Errorf("received no events for %s but %s expected", testName, wantEvent)
-		}
-	}
-	return nil
-}
-
-func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvent string) error {
-	t.Helper()
-	return eventFromChannel(fr.Events, testName, wantEvent)
-}
-
-func checkCloudEvents(t *testing.T, fce *cloudevent.FakeClient, testName string, wantEvent string) error {
-	t.Helper()
-	return eventFromChannel(fce.Events, testName, wantEvent)
 }

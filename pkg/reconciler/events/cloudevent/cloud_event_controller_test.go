@@ -18,10 +18,7 @@ package cloudevent
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -553,8 +550,8 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		name            string
 		clientBehaviour FakeClientBehaviour
 		object          objectWithCondition
-		wantCEvent      string
-		wantEvent       string
+		wantCEvents     []string
+		wantEvents      []string
 	}{{
 		name: "test-send-cloud-event-taskrun",
 		clientBehaviour: FakeClientBehaviour{
@@ -566,8 +563,8 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			},
 			Status: v1beta1.TaskRunStatus{Status: objectStatus},
 		},
-		wantCEvent: "Context Attributes,",
-		wantEvent:  "",
+		wantCEvents: []string{"Context Attributes,"},
+		wantEvents:  []string{},
 	}, {
 		name: "test-send-cloud-event-pipelinerun",
 		clientBehaviour: FakeClientBehaviour{
@@ -579,8 +576,8 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{Status: objectStatus},
 		},
-		wantCEvent: "Context Attributes,",
-		wantEvent:  "",
+		wantCEvents: []string{"Context Attributes,"},
+		wantEvents:  []string{},
 	}, {
 		name: "test-send-cloud-event-failed",
 		clientBehaviour: FakeClientBehaviour{
@@ -589,8 +586,8 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		object: &v1beta1.PipelineRun{
 			Status: v1beta1.PipelineRunStatus{Status: objectStatus},
 		},
-		wantCEvent: "",
-		wantEvent:  "Warning Cloud Event Failure",
+		wantCEvents: []string{},
+		wantEvents:  []string{"Warning Cloud Event Failure"},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -601,11 +598,11 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
 			ceClient := Get(ctx).(FakeClient)
-			if err := checkCloudEvents(t, &ceClient, tc.name, tc.wantCEvent); err != nil {
+			if err := CheckCloudEvents(t, &ceClient, tc.name, tc.wantCEvents); err != nil {
 				t.Fatalf(err.Error())
 			}
 			recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-			if err := checkEvents(t, recorder, tc.name, tc.wantEvent); err != nil {
+			if err := CheckEvents(t, recorder, tc.name, tc.wantEvents); err != nil {
 				t.Fatalf(err.Error())
 			}
 		})
@@ -668,32 +665,4 @@ func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bo
 		ctx = WithClient(ctx, &behaviour)
 	}
 	return ctx
-}
-
-func eventFromChannel(c chan string, testName string, wantEvent string) error {
-	timer := time.NewTimer(10 * time.Millisecond)
-	select {
-	case event := <-c:
-		if wantEvent == "" {
-			return fmt.Errorf("received event \"%s\" for %s but none expected", event, testName)
-		}
-		if !(strings.HasPrefix(event, wantEvent)) {
-			return fmt.Errorf("expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
-		}
-	case <-timer.C:
-		if wantEvent != "" {
-			return fmt.Errorf("received no events for %s but %s expected", testName, wantEvent)
-		}
-	}
-	return nil
-}
-
-func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvent string) error {
-	t.Helper()
-	return eventFromChannel(fr.Events, testName, wantEvent)
-}
-
-func checkCloudEvents(t *testing.T, fce *FakeClient, testName string, wantEvent string) error {
-	t.Helper()
-	return eventFromChannel(fce.Events, testName, wantEvent)
 }

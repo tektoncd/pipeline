@@ -196,52 +196,6 @@ func conditionCheckFromTaskRun(tr *v1beta1.TaskRun) *v1beta1.ConditionCheck {
 	return &cc
 }
 
-func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvents []string) error {
-	t.Helper()
-	return eventFromChannel(fr.Events, testName, wantEvents)
-}
-
-func checkCloudEvents(t *testing.T, fce *cloudevent.FakeClient, testName string, wantEvents []string) error {
-	t.Helper()
-	return eventFromChannel(fce.Events, testName, wantEvents)
-}
-
-func eventFromChannel(c chan string, testName string, wantEvents []string) error {
-	// We get events from a channel, so the timeout is here to avoid waiting
-	// on the channel forever if fewer than expected events are received.
-	// We only hit the timeout in case of failure of the test, so the actual value
-	// of the timeout is not so relevant, it's only used when tests are going to fail.
-	// on the channel forever if fewer than expected events are received
-	timer := time.NewTimer(10 * time.Millisecond)
-	foundEvents := []string{}
-	for ii := 0; ii < len(wantEvents)+1; ii++ {
-		// We loop over all the events that we expect. Once they are all received
-		// we exit the loop. If we never receive enough events, the timeout takes us
-		// out of the loop.
-		select {
-		case event := <-c:
-			foundEvents = append(foundEvents, event)
-			if ii > len(wantEvents)-1 {
-				return fmt.Errorf("received event \"%s\" for %s but not more expected", event, testName)
-			}
-			wantEvent := wantEvents[ii]
-			matching, err := regexp.MatchString(wantEvent, event)
-			if err == nil {
-				if !matching {
-					return fmt.Errorf("expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
-				}
-			} else {
-				return fmt.Errorf("something went wrong matching the event: %s", err)
-			}
-		case <-timer.C:
-			if len(foundEvents) > len(wantEvents) {
-				return fmt.Errorf("received %d events for %s but %d expected. Found events: %#v", len(foundEvents), testName, len(wantEvents), foundEvents)
-			}
-		}
-	}
-	return nil
-}
-
 // getTaskRunCreations will look through a set of actions to find all task run creation actions and return the set of
 // them. It will fatal the test if none are found.
 func getTaskRunCreations(t *testing.T, actions []ktesting.Action) []*v1beta1.TaskRun {
@@ -2739,7 +2693,7 @@ func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
 		"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
 		"Warning InternalError 1 error occurred",
 	}
-	err = checkEvents(t, testAssets.Recorder, prName, wantEvents)
+	err = cloudevent.CheckEvents(t, testAssets.Recorder, prName, wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -3338,7 +3292,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 		"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
 		"Warning InternalError 1 error occurred",
 	}
-	err = checkEvents(t, testAssets.Recorder, prName, wantEvents)
+	err = cloudevent.CheckEvents(t, testAssets.Recorder, prName, wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -7519,7 +7473,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	err := checkCloudEvents(t, &ceClient, "reconcile-cloud-events", wantCloudEvents)
+	err := cloudevent.CheckCloudEvents(t, &ceClient, "reconcile-cloud-events", wantCloudEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -8042,7 +7996,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 
 	// Check generated events match what's expected
 	if len(wantEvents) > 0 {
-		if err := checkEvents(prt.Test, prt.TestAssets.Recorder, pipelineRunName, wantEvents); err != nil {
+		if err := cloudevent.CheckEvents(prt.Test, prt.TestAssets.Recorder, pipelineRunName, wantEvents); err != nil {
 			prt.Test.Errorf(err.Error())
 		}
 	}
