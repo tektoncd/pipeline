@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -573,96 +572,6 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 	}, cancel
 }
 
-func checkEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvents []string) error {
-	t.Helper()
-	return eventFromChannel(fr.Events, testName, wantEvents)
-}
-
-func checkCloudEvents(t *testing.T, fce *cloudevent.FakeClient, testName string, wantEvents []string) error {
-	t.Helper()
-	return eventFromChannelUnordered(fce.Events, wantEvents)
-}
-
-// eventFromChannel takes a chan of string, a test name, and a list of events that a test
-// expects to receive. The events must be received in the same order they appear in the
-// wantEvents list. Any extra or too few received events are considered errors.
-func eventFromChannel(c chan string, testName string, wantEvents []string) error {
-	// We get events from a channel, so the timeout is here to avoid waiting
-	// on the channel forever if fewer than expected events are received.
-	// We only hit the timeout in case of failure of the test, so the actual value
-	// of the timeout is not so relevant, it's only used when tests are going to fail.
-	// on the channel forever if fewer than expected events are received
-	timer := time.NewTimer(10 * time.Millisecond)
-	foundEvents := []string{}
-	for ii := 0; ii < len(wantEvents)+1; ii++ {
-		// We loop over all the events that we expect. Once they are all received
-		// we exit the loop. If we never receive enough events, the timeout takes us
-		// out of the loop.
-		select {
-		case event := <-c:
-			foundEvents = append(foundEvents, event)
-			if ii > len(wantEvents)-1 {
-				return fmt.Errorf("received event \"%s\" for %s but not more expected", event, testName)
-			}
-			wantEvent := wantEvents[ii]
-			matching, err := regexp.MatchString(wantEvent, event)
-			if err == nil {
-				if !matching {
-					return fmt.Errorf("expected event \"%s\" but got \"%s\" instead for %s", wantEvent, event, testName)
-				}
-			} else {
-				return fmt.Errorf("something went wrong matching the event: %s", err)
-			}
-		case <-timer.C:
-			if len(foundEvents) > len(wantEvents) {
-				return fmt.Errorf("received %d events for %s but %d expected. Found events: %#v", len(foundEvents), testName, len(wantEvents), foundEvents)
-			}
-		}
-	}
-	return nil
-}
-
-// eventFromChannelUnordered takes a chan of string and a list of events that a test
-// expects to receive. The events can be received in any order. Any extra or too few
-// events are both considered errors.
-func eventFromChannelUnordered(c chan string, wantEvents []string) error {
-	timer := time.NewTimer(10 * time.Millisecond)
-	expected := append([]string{}, wantEvents...)
-	// loop len(expected) + 1 times to catch extra erroneous events received that the test is not expecting
-	maxEvents := len(expected) + 1
-	for eventCount := 0; eventCount < maxEvents; eventCount++ {
-		select {
-		case event := <-c:
-			if len(expected) == 0 {
-				return fmt.Errorf("extra event received: %q", event)
-			}
-			found := false
-			for wantIdx, want := range expected {
-				matching, err := regexp.MatchString(want, event)
-				if err != nil {
-					return fmt.Errorf("something went wrong matching an event: %s", err)
-				}
-				if matching {
-					found = true
-					// Remove event from list of those we expect to receive
-					expected[wantIdx] = expected[len(expected)-1]
-					expected = expected[:len(expected)-1]
-					break
-				}
-			}
-			if !found {
-				return fmt.Errorf("unexpected event received: %q", event)
-			}
-		case <-timer.C:
-			if len(expected) != 0 {
-				return fmt.Errorf("timed out waiting for %d more events: %#v", len(expected), expected)
-			}
-			return nil
-		}
-	}
-	return fmt.Errorf("too many events received")
-}
-
 func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 	taskRunSuccess := &v1beta1.TaskRun{
 		ObjectMeta: objectMeta("test-taskrun-run-success", "foo"),
@@ -998,7 +907,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		"Normal Start",
 		"Normal Running",
 	}
-	err = checkEvents(t, testAssets.Recorder, "reconcile-cloud-events", wantEvents)
+	err = cloudevent.CheckEvents(t, testAssets.Recorder, "reconcile-cloud-events", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1008,7 +917,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		`(?s)dev.tekton.event.taskrun.running.v1.*test-taskrun-not-started`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	err = checkCloudEvents(t, &ceClient, "reconcile-cloud-events", wantCloudEvents)
+	err = cloudevent.CheckCloudEvents(t, &ceClient, "reconcile-cloud-events", wantCloudEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1553,7 +1462,7 @@ func TestReconcile(t *testing.T) {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			err = checkEvents(t, testAssets.Recorder, tc.name, tc.wantEvents)
+			err = cloudevent.CheckEvents(t, testAssets.Recorder, tc.name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1716,7 +1625,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 				t.Errorf("expected 2 actions, got %d. Actions: %#v", len(actions), actions)
 			}
 
-			err := checkEvents(t, testAssets.Recorder, tc.name, tc.wantEvents)
+			err := cloudevent.CheckEvents(t, testAssets.Recorder, tc.name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1958,7 +1867,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		"Normal Running Not all Steps",
 		"Normal Succeeded",
 	}
-	err = checkEvents(t, testAssets.Recorder, "test-reconcile-pod-updateStatus", wantEvents)
+	err = cloudevent.CheckEvents(t, testAssets.Recorder, "test-reconcile-pod-updateStatus", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -2068,7 +1977,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 		"Normal Started",
 		"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled",
 	}
-	err = checkEvents(t, testAssets.Recorder, "test-reconcile-on-cancelled-taskrun", wantEvents)
+	err = cloudevent.CheckEvents(t, testAssets.Recorder, "test-reconcile-on-cancelled-taskrun", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -2222,7 +2131,7 @@ func TestReconcileTimeouts(t *testing.T) {
 			if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
 				t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 			}
-			err = checkEvents(t, testAssets.Recorder, tc.taskRun.Name, tc.wantEvents)
+			err = cloudevent.CheckEvents(t, testAssets.Recorder, tc.taskRun.Name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -3499,7 +3408,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 				}
 			}
 
-			err = checkEvents(t, testAssets.Recorder, tt.desc, tt.wantEvents)
+			err = cloudevent.CheckEvents(t, testAssets.Recorder, tt.desc, tt.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
