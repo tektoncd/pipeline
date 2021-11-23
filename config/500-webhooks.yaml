@@ -83,6 +83,7 @@ webhooks:
   failurePolicy: Fail
   sideEffects: None
   name: config.webhook.pipeline.tekton.dev
-  objectSelector:
-    matchLabels:
-      app.kubernetes.io/part-of: tekton-pipelines
+  namespaceSelector:
+    matchExpressions:
+    - key: pipeline.tekton.dev/release
+      operator: Exists
