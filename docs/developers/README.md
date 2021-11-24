@@ -202,7 +202,6 @@ The following directories are covered by the
 relied on for stability:
 
 - `/tekton/results`
-- `/tekton/steps`
 
 All other files/directories are internal implementation details of Tekton -
 **users should not rely on specific paths or behaviors as it may change in the
