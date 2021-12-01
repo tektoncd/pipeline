@@ -22,24 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"testing"
 )
-
-var (
-	// Wether missing KO_DOCKER_REPO environment variable should be fatal or not
-	missingKoFatal = "true"
-)
-
-func ensureDockerRepo(t *testing.T, name string) string {
-	repo, err := getDockerRepo(name)
-	if err != nil {
-		if missingKoFatal == "false" {
-			t.Skip(fmt.Sprintf("KO_DOCKER_REPO env variable is required for %s", name))
-		}
-		t.Fatal(fmt.Sprintf("KO_DOCKER_REPO env variable is required for %s", name))
-	}
-	return repo
-}
 
 func getDockerRepo(name string) (string, error) {
 	// according to knative/test-infra readme (https://github.com/knative/test-infra/blob/13055d769cc5e1756e605fcb3bcc1c25376699f1/scripts/README.md)

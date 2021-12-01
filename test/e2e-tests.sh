@@ -19,15 +19,23 @@
 
 source $(git rev-parse --show-toplevel)/test/e2e-common.sh
 
-# Script entry point.
+function test_setup() {
+  # Setup a service account for kaniko and gcs / storage artifact tests
+  gcloud config set project "${E2E_PROJECT_ID}"
 
-initialize $@
+  # create the service account
+  ACCOUNT_NAME=${E2E_PROJECT_ID}
+  gcloud iam service-accounts create $ACCOUNT_NAME --display-name $ACCOUNT_NAME
+  EMAIL=$(gcloud iam service-accounts list | grep $ACCOUNT_NAME | awk '{print $2}')
 
-header "Setting up environment"
+  # add the storage.admin policy to the account so it can push containers
+  gcloud projects add-iam-policy-binding ${E2E_PROJECT_ID} --member serviceAccount:$EMAIL --role roles/storage.admin
 
-install_pipeline_crd
+  # create the JSON key
+  gcloud iam service-accounts keys create config.json --iam-account $EMAIL
 
-failed=0
+  export GCP_SERVICE_ACCOUNT_KEY_PATH="$PWD/config.json"
+}
 
 function set_feature_gate() {
   local gate="$1"
@@ -52,6 +60,16 @@ function run_e2e() {
   go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
 }
 
+# Script entry point.
+
+initialize $@
+
+header "Setting up environment"
+
+install_pipeline_crd
+
+failed=0
+
 if [ "$PIPELINE_FEATURE_GATE" == "" ]; then
   set_feature_gate "stable"
   run_e2e
@@ -59,7 +77,6 @@ else
   set_feature_gate "$PIPELINE_FEATURE_GATE"
   run_e2e
 fi
-
 
 (( failed )) && fail_test
 success

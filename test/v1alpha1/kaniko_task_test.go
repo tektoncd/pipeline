@@ -43,17 +43,37 @@ const (
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
-	if skipRootUserTests {
-		t.Skip("Skip test as skipRootUserTests set to true")
-	}
+	var (
+		namespace, repo string
+		c               *clients
+		err             error
+	)
+	hasSecretConfig := false
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t, withRegistry)
-	t.Parallel()
 
-	repo := fmt.Sprintf("registry.%s:5000/kanikotasktest", namespace)
+	if skipRootUserTests {
+		t.Skip("Skip test as skipRootUserTests set to true")
+	}
+
+	repo, err = getDockerRepo("kanikotasktest")
+	if err != nil {
+		// No KO_DOCKER_REPO set, use a sidecar registry instead
+		c, namespace = setup(ctx, t, withRegistry)
+		repo = fmt.Sprintf("registry.%s.svc.cluster.local:5000/kanikotasktest", namespace)
+	} else {
+		c, namespace = setup(ctx, t)
+		// When KO_DOCKER_REPO is set, we might need a secret attached to the service account
+		// If CreateGCPServiceAccountSecret no secret has been requested
+		// If CreateGCPServiceAccountSecret returns an error, a secret was requested, but failed
+		hasSecretConfig, err = CreateGCPServiceAccountSecret(t, c.KubeClient, namespace, "kaniko-secret")
+		if err != nil {
+			t.Fatalf("Failed to create kaniko creds: %v", err)
+		}
+	}
+	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -69,7 +89,7 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 
 	t.Logf("Creating Task %s", kanikoTaskName)
-	if _, err := c.TaskClient.Create(ctx, getTask(t, repo, namespace), metav1.CreateOptions{}); err != nil {
+	if _, err := c.TaskClient.Create(ctx, getTask(t, repo, namespace, hasSecretConfig), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", kanikoTaskName, err)
 	}
 
@@ -152,8 +172,8 @@ spec:
 `, kanikoImageResourceName, repo))
 }
 
-func getTask(t *testing.T, repo, namespace string) *v1alpha1.Task {
-	return parse.MustParseAlphaTask(t, fmt.Sprintf(`
+func getTask(t *testing.T, repo, namespace string, withSecretConfig bool) *v1alpha1.Task {
+	task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -171,16 +191,39 @@ spec:
     args: ['--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label',
            '--destination=%s',
 		   '--context=/workspace/gitsource',
-		   '--oci-layout-path=/workspace/output/builtImage',
-		   '--insecure',
-		   '--insecure-pull',
-		   '--insecure-registry=registry.%s:5000/']
+		   '--oci-layout-path=/workspace/output/builtImage']
     securityContext:
       runAsUser: 0
   sidecars:
   - name: registry
     image: registry
-`, kanikoTaskName, repo, namespace))
+`, kanikoTaskName, repo))
+	if withSecretConfig {
+		// Mount an extra volume to the kaniko step and set the GOOGLE_APPLICATION_CREDENTIALS env
+		task.Spec.Volumes = []corev1.Volume{{
+			Name: "kaniko-secret",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "kaniko-secret",
+				},
+			},
+		}}
+		task.Spec.Steps[0].Env = append(
+			task.Spec.Steps[0].Env,
+			corev1.EnvVar{
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+				Value: "/secrets/config.json",
+			},
+		)
+		task.Spec.Steps[0].VolumeMounts = append(
+			task.Spec.Steps[0].VolumeMounts,
+			corev1.VolumeMount{
+				Name:      "kaniko-secret",
+				MountPath: "/secrets",
+			},
+		)
+	}
+	return task
 }
 
 func getTaskRun(t *testing.T, namespace string) *v1alpha1.TaskRun {

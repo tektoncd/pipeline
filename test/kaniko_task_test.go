@@ -24,11 +24,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tektoncd/pipeline/test/parse"
-
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -45,6 +44,13 @@ const (
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
+	var (
+		namespace, repo string
+		c               *clients
+		err             error
+	)
+	hasSecretConfig := false
+
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -53,10 +59,22 @@ func TestKanikoTaskRun(t *testing.T) {
 		t.Skip("Skip test as skipRootUserTests set to true")
 	}
 
-	c, namespace := setup(ctx, t, withRegistry)
+	repo, err = getDockerRepo("kanikotasktest")
+	if err != nil {
+		// No KO_DOCKER_REPO set, use a sidecar registry instead
+		c, namespace = setup(ctx, t, withRegistry)
+		repo = fmt.Sprintf("registry.%s.svc.cluster.local:5000/kanikotasktest", namespace)
+	} else {
+		c, namespace = setup(ctx, t)
+		// When KO_DOCKER_REPO is set, we might need a secret attached to the service account
+		// If CreateGCPServiceAccountSecret no secret has been requested
+		// If CreateGCPServiceAccountSecret returns an error, a secret was requested, but failed
+		hasSecretConfig, err = CreateGCPServiceAccountSecret(t, c.KubeClient, namespace, "kaniko-secret")
+		if err != nil {
+			t.Fatalf("Failed to create kaniko creds: %v", err)
+		}
+	}
 	t.Parallel()
-
-	repo := fmt.Sprintf("registry.%s:5000/kanikotasktest", namespace)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -72,7 +90,7 @@ func TestKanikoTaskRun(t *testing.T) {
 	}
 
 	t.Logf("Creating Task %s", kanikoTaskName)
-	if _, err := c.TaskClient.Create(ctx, getTask(t, repo, namespace), metav1.CreateOptions{}); err != nil {
+	if _, err := c.TaskClient.Create(ctx, getTask(t, repo, namespace, hasSecretConfig), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", kanikoTaskName, err)
 	}
 
@@ -158,8 +176,8 @@ spec:
 `, kanikoImageResourceName, repo))
 }
 
-func getTask(t *testing.T, repo, namespace string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+func getTask(t *testing.T, repo, namespace string, withSecretConfig bool) *v1beta1.Task {
+	task := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -177,16 +195,39 @@ spec:
     args: ['--dockerfile=/workspace/gitsource/integration/dockerfiles/Dockerfile_test_label',
            '--destination=%s',
 		   '--context=/workspace/gitsource',
-		   '--oci-layout-path=/workspace/output/builtImage',
-		   '--insecure',
-		   '--insecure-pull',
-		   '--insecure-registry=registry.%s:5000/']
+		   '--oci-layout-path=/workspace/output/builtImage']
     securityContext:
       runAsUser: 0
   sidecars:
   - name: registry
     image: %s
-`, kanikoTaskName, namespace, getTestImage(kanikoImage), repo, namespace, getTestImage(registryImage)))
+`, kanikoTaskName, namespace, getTestImage(kanikoImage), repo, getTestImage(registryImage)))
+	if withSecretConfig {
+		// Mount an extra volume to the kaniko step and set the GOOGLE_APPLICATION_CREDENTIALS env
+		task.Spec.Volumes = []corev1.Volume{{
+			Name: "kaniko-secret",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "kaniko-secret",
+				},
+			},
+		}}
+		task.Spec.Steps[0].Env = append(
+			task.Spec.Steps[0].Env,
+			corev1.EnvVar{
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+				Value: "/secrets/config.json",
+			},
+		)
+		task.Spec.Steps[0].VolumeMounts = append(
+			task.Spec.Steps[0].VolumeMounts,
+			corev1.VolumeMount{
+				Name:      "kaniko-secret",
+				MountPath: "/secrets",
+			},
+		)
+	}
+	return task
 }
 
 func getTaskRun(t *testing.T, namespace string) *v1beta1.TaskRun {
