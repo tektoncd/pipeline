@@ -43,6 +43,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
@@ -2693,7 +2694,7 @@ func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
 		"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
 		"Warning InternalError 1 error occurred",
 	}
-	err = cloudevent.CheckEvents(t, testAssets.Recorder, prName, wantEvents)
+	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -3292,7 +3293,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 		"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
 		"Warning InternalError 1 error occurred",
 	}
-	err = cloudevent.CheckEvents(t, testAssets.Recorder, prName, wantEvents)
+	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -7473,7 +7474,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	err := cloudevent.CheckCloudEvents(t, &ceClient, "reconcile-cloud-events", wantCloudEvents)
+	err := eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -7996,7 +7997,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 
 	// Check generated events match what's expected
 	if len(wantEvents) > 0 {
-		if err := cloudevent.CheckEvents(prt.Test, prt.TestAssets.Recorder, pipelineRunName, wantEvents); err != nil {
+		if err := eventstest.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, pipelineRunName, wantEvents); err != nil {
 			prt.Test.Errorf(err.Error())
 		}
 	}

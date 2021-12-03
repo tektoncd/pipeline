@@ -13,33 +13,31 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package cloudevent
+package events
 
 import (
 	"fmt"
 	"regexp"
 	"testing"
 	"time"
-
-	"k8s.io/client-go/tools/record"
 )
 
-// CheckEvents checks that the events received by the FakeRecorder are the same as wantEvents,
+// CheckEventsOrdered checks that the events received via the given chan are the same as wantEvents,
 // in the same order.
-func CheckEvents(t *testing.T, fr *record.FakeRecorder, testName string, wantEvents []string) error {
+func CheckEventsOrdered(t *testing.T, eventChan chan string, testName string, wantEvents []string) error {
 	t.Helper()
-	err := eventsFromChannel(fr.Events, wantEvents)
+	err := eventsFromChannel(eventChan, wantEvents)
 	if err != nil {
 		return fmt.Errorf("error in test %s: %v", testName, err)
 	}
 	return nil
 }
 
-// CheckCloudEvents checks that all events in wantEvents, and no others, were received by the FakeClient
-// in any order.
-func CheckCloudEvents(t *testing.T, fce *FakeClient, testName string, wantEvents []string) error {
+// CheckEventsUnordered checks that all events in wantEvents, and no others,
+// were received via the given chan, in any order.
+func CheckEventsUnordered(t *testing.T, eventChan chan string, testName string, wantEvents []string) error {
 	t.Helper()
-	err := eventsFromChannelUnordered(fce.Events, wantEvents)
+	err := eventsFromChannelUnordered(eventChan, wantEvents)
 	if err != nil {
 		return fmt.Errorf("error in test %s: %v", testName, err)
 	}

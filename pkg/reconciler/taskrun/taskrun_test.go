@@ -47,6 +47,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -907,7 +908,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		"Normal Start",
 		"Normal Running",
 	}
-	err = cloudevent.CheckEvents(t, testAssets.Recorder, "reconcile-cloud-events", wantEvents)
+	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-cloud-events", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -917,7 +918,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		`(?s)dev.tekton.event.taskrun.running.v1.*test-taskrun-not-started`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	err = cloudevent.CheckCloudEvents(t, &ceClient, "reconcile-cloud-events", wantCloudEvents)
+	err = eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1462,7 +1463,7 @@ func TestReconcile(t *testing.T) {
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			err = cloudevent.CheckEvents(t, testAssets.Recorder, tc.name, tc.wantEvents)
+			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1625,7 +1626,7 @@ func TestReconcileInvalidTaskRuns(t *testing.T) {
 				t.Errorf("expected 2 actions, got %d. Actions: %#v", len(actions), actions)
 			}
 
-			err := cloudevent.CheckEvents(t, testAssets.Recorder, tc.name, tc.wantEvents)
+			err := eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1924,7 +1925,7 @@ func TestReconcilePodUpdateStatus(t *testing.T) {
 		"Normal Running Not all Steps",
 		"Normal Succeeded",
 	}
-	err = cloudevent.CheckEvents(t, testAssets.Recorder, "test-reconcile-pod-updateStatus", wantEvents)
+	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-pod-updateStatus", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -2034,7 +2035,7 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 		"Normal Started",
 		"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled",
 	}
-	err = cloudevent.CheckEvents(t, testAssets.Recorder, "test-reconcile-on-cancelled-taskrun", wantEvents)
+	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-cancelled-taskrun", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -2188,7 +2189,7 @@ func TestReconcileTimeouts(t *testing.T) {
 			if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
 				t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 			}
-			err = cloudevent.CheckEvents(t, testAssets.Recorder, tc.taskRun.Name, tc.wantEvents)
+			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.taskRun.Name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -3465,7 +3466,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 				}
 			}
 
-			err = cloudevent.CheckEvents(t, testAssets.Recorder, tt.desc, tt.wantEvents)
+			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tt.desc, tt.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
