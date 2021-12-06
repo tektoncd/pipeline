@@ -16,7 +16,7 @@ spec:
   type: git
   params:
   - name: revision
-    value: v0.32.0
+    value: v1.32.0
   - name: url
     value: https://github.com/GoogleContainerTools/skaffold
 ---
@@ -37,6 +37,9 @@ spec:
     - name: pathToContext
       description: The build context used by Kaniko (https://github.com/GoogleContainerTools/kaniko#kaniko-build-contexts)
       default: /workspace/workspace
+    - name: baseImage
+      description: Base image for GoogleContainerTools/skaffold microservice apps
+      default: BASE=alpine:3.9
   outputs:
     resources:
     - name: builtImage
@@ -53,6 +56,7 @@ spec:
     - --destination=$(outputs.resources.builtImage.url)
     - --context=$(inputs.params.pathToContext)
     - --oci-layout-path=$(inputs.resources.builtImage.path)
+    - --build-arg=$(inputs.params.baseImage)
     securityContext:
       runAsUser: 0
   sidecars:

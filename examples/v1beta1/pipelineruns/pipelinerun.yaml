@@ -141,6 +141,9 @@ spec:
   - name: BUILDER_IMAGE
     description: The image on which builds will run
     default: gcr.io/kaniko-project/executor:v1.3.0
+  - name: baseImage
+    description: Base image for GoogleContainerTools/skaffold microservice apps
+    default: BASE=alpine:3.9
   results:
   - name: IMAGE_DIGEST
     description: Digest of the image just built.
@@ -160,6 +163,7 @@ spec:
     - --context=$(workspaces.source.path)/$(params.CONTEXT)  # The user does not need to care the workspace and the source.
     - --destination=$(params.IMAGE)
     - --oci-layout-path=$(workspaces.source.path)/$(params.CONTEXT)/image-digest
+    - --build-arg=$(inputs.params.baseImage)
     # kaniko assumes it is running as root, which means this example fails on platforms
     # that default to run containers as random uid (like OpenShift). Adding this securityContext
     # makes it explicit that it needs to run as root.
@@ -237,7 +241,7 @@ spec:
     - name: url
       value: https://github.com/GoogleContainerTools/skaffold
     - name: revision
-      value: v0.32.0
+      value: v1.32.0
     workspaces:
     - name: output
       workspace: git-source
@@ -300,7 +304,7 @@ spec:
     - name: path
       value: $(workspaces.source.path)/examples/microservices/leeroy-web/kubernetes/deployment.yaml
     - name: yqArg
-      value: "-d1"
+      value: "-d0"
     - name: yamlPathToImage
       value: "spec.template.spec.containers[0].image"
     workspaces:
