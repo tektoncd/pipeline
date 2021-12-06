@@ -90,6 +90,9 @@ func mergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		if tpl.Tolerations == nil {
 			tpl.Tolerations = defaultTpl.Tolerations
 		}
+		if tpl.Affinity == nil {
+			tpl.Affinity = defaultTpl.Affinity
+		}
 		if tpl.SecurityContext == nil {
 			tpl.SecurityContext = defaultTpl.SecurityContext
 		}
