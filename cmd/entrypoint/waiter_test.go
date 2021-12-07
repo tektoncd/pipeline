@@ -34,6 +34,7 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 	if err != nil {
 		t.Errorf("error creating temp file: %v", err)
 	}
+	fmt.Println("test!")
 	os.Remove(tmp.Name())
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
