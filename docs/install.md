@@ -32,7 +32,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 
 ## Before you begin
 
-1. You must have a Kubernetes cluster running version 1.19 or later.
+1. You must have a Kubernetes cluster running version 1.20 or later.
 
    If you don't already have a cluster, you can create one for testing with `kind`.
    [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and create a cluster by running [`kind create cluster`](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster). This
