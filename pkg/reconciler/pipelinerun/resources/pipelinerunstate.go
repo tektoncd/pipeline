@@ -307,7 +307,7 @@ func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 	finalCandidates := sets.NewString()
 	// check either pipeline has finished executing all DAG pipelineTasks
 	// or any one of the DAG pipelineTask has failed
-	if facts.checkDAGTasksDone() {
+	if facts.checkDAGTasksDone() || (!facts.IsGracefullyStopped() || !facts.IsGracefullyCancelled()) {
 		// return list of tasks with all final tasks
 		for _, t := range facts.State {
 			if facts.isFinalTask(t.PipelineTask.Name) && !t.IsSuccessful() {
@@ -394,6 +394,8 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 		// for a pipeline with final tasks, single dag task failure does not transition to interim stopping state
 		// pipeline stays in running state until all final tasks are done before transitioning to failed state
 		reason = v1beta1.PipelineRunReasonStopping.String()
+	case (s.Failed > 0 && !facts.checkFinalTasksDone()):
+		reason = v1beta1.PipelineRunReasonStoppedRunningFinally.String()
 	}
 
 	// return the status
