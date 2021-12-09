@@ -6,7 +6,7 @@ weight: 1400
 -->
 # Pod templates
 
-A Pod template defines a portion of a [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pod-v1-core)
+A Pod template defines a portion of a [`PodSpec`](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#pod-v1-core)
 configuration that Tekton can use as "boilerplate" for a Pod that runs your `Tasks` and `Pipelines`.
 
 You can specify a Pod template for `TaskRuns` and `PipelineRuns`. In the template, you can specify custom values for fields governing

@@ -42,7 +42,7 @@ This document makes reference in a few places to different profiles for Tekton i
 
 The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “NOT RECOMMENDED”, “MAY”, and “OPTIONAL” are to be interpreted as described in [RFC 2119](https://tools.ietf.org/html/rfc2119).
 
-There is no formal specification of the Kubernetes API and Resource Model. This document assumes Kubernetes 1.18 behavior; this behavior will typically be supported by many future Kubernetes versions. Additionally, this document may reference specific core Kubernetes resources; these references may be illustrative (i.e. an implementation on Kubernetes) or descriptive (i.e. this Kubernetes resource MUST be exposed). References to these core Kubernetes resources will be annotated as either illustrative or descriptive.
+There is no formal specification of the Kubernetes API and Resource Model. This document assumes Kubernetes 1.20 behavior; this behavior will typically be supported by many future Kubernetes versions. Additionally, this document may reference specific core Kubernetes resources; these references may be illustrative (i.e. an implementation on Kubernetes) or descriptive (i.e. this Kubernetes resource MUST be exposed). References to these core Kubernetes resources will be annotated as either illustrative or descriptive.
 
 ## Modifying This Specification
 
