@@ -164,7 +164,7 @@ errcheck: | $(ERRCHECK) ; $(info $(M) running errcheck…) ## Run errcheck
 
 GOLANGCILINT = $(BIN)/golangci-lint
 $(BIN)/golangci-lint: ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION)
+	cd tools; GOBIN=$(BIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_VERSION)
 
 .PHONY: golangci-lint
 golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint
@@ -196,4 +196,5 @@ help:
 
 .PHONY: version
 version:
+
 	@echo $(VERSION)
