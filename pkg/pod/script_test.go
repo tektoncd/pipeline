@@ -279,14 +279,14 @@ set -xe
 
 numberOfSteps=4
 debugInfo=/tekton/debug/info
-tektonTools=/tekton/run
+tektonRun=/tekton/run
 
 postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
 stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
 
 if [ $stepNumber -lt $numberOfSteps ]; then
-	touch ${tektonTools}/${stepNumber} # Mark step as success
-	echo "0" > ${tektonTools}/${stepNumber}.breakpointexit
+	touch ${tektonRun}/${stepNumber}/out # Mark step as success
+	echo "0" > ${tektonRun}/${stepNumber}/out.breakpointexit
 	echo "Executing step $stepNumber..."
 else
 	echo "Last step (no. $stepNumber) has already been executed, breakpoint exiting !"
@@ -301,14 +301,14 @@ set -xe
 
 numberOfSteps=4
 debugInfo=/tekton/debug/info
-tektonTools=/tekton/run
+tektonRun=/tekton/run
 
 postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
 stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
 
 if [ $stepNumber -lt $numberOfSteps ]; then
-	touch ${tektonTools}/${stepNumber}.err # Mark step as a failure
-	echo "1" > ${tektonTools}/${stepNumber}.breakpointexit
+	touch ${tektonRun}/${stepNumber}/out.err # Mark step as a failure
+	echo "1" > ${tektonRun}/${stepNumber}/out.breakpointexit
 	echo "Executing step $stepNumber..."
 else
 	echo "Last step (no. $stepNumber) has already been executed, breakpoint exiting !"
