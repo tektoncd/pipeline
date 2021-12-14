@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -33,6 +34,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
+
+const sleepDuration = 30 * time.Second
 
 // TestDAGPipelineRun creates a graph of arbitrary Tasks, then looks at the corresponding
 // TaskRun start times to ensure they were run in the order intended, which is:
@@ -76,8 +79,12 @@ spec:
   - image: busybox
     script: 'echo $(params["text"])'
   - image: busybox
+    # Sleep for N seconds so that we can check that tasks that
+    # should be run in parallel have overlap.
+    script: 'sleep %d'
+  - image: busybox
     script: 'ln -s $(resources.inputs.repo.path) $(resources.outputs.repo.path)'
-`, namespace))
+`, namespace, int(sleepDuration.Seconds())))
 	if _, err := c.TaskClient.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)
 	}
@@ -244,7 +251,7 @@ func verifyExpectedOrder(ctx context.Context, t *testing.T, c clientset.TaskRunI
 	s1 := taskRuns[1].Status.StartTime.Time
 	s2 := taskRuns[2].Status.StartTime.Time
 	absDiff := time.Duration(math.Abs(float64(s2.Sub(s1))))
-	if absDiff > (time.Second * 5) {
+	if absDiff > sleepDuration {
 		t.Errorf("Expected parallel tasks to execute more or less at the same time, but they were %v apart", absDiff)
 	}
 }
