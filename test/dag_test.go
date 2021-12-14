@@ -34,7 +34,7 @@ import (
 	knativetest "knative.dev/pkg/test"
 )
 
-const sleepDuration = 30 * time.Second
+const sleepDuration = 15 * time.Second
 
 // TestDAGPipelineRun creates a graph of arbitrary Tasks, then looks at the corresponding
 // TaskRun start times to ensure they were run in the order intended, which is:
