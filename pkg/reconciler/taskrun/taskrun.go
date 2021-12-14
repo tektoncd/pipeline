@@ -56,6 +56,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corev1Listers "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/changeset"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
@@ -506,6 +507,16 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 }
 
 func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
+	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
+	version, err := changeset.Get()
+	if err != nil {
+		return nil, err
+	}
+	if tr.Annotations == nil {
+		tr.Annotations = make(map[string]string, 1)
+	}
+	tr.Annotations[podconvert.ReleaseAnnotation] = version
+
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
