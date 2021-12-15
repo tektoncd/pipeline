@@ -47,10 +47,14 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
-  # Read-write access to create Pods, K8s Events and PVCs (for Workspaces)
+  # Read-write access to create Pods and PVCs (for Workspaces)
   - apiGroups: [""]
-    resources: ["pods", "pods/log", "events", "persistentvolumeclaims"]
+    resources: ["pods", "persistentvolumeclaims"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  # Write permissions to publish events.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "update", "patch"]
   # Read-only access to these.
   - apiGroups: [""]
     resources: ["configmaps", "limitranges", "secrets", "serviceaccounts"]
@@ -69,11 +73,24 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
-  # The webhook needs to be able to list and update customresourcedefinitions,
+  # The webhook needs to be able to get and update customresourcedefinitions,
   # mainly to update the webhook certificates.
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions", "customresourcedefinitions/status"]
-    verbs: ["get", "list", "update", "patch", "watch"]
+    verbs: ["get", "update", "patch"]
+    resourceNames:
+      - pipelines.tekton.dev
+      - pipelineruns.tekton.dev
+      - runs.tekton.dev
+      - tasks.tekton.dev
+      - clustertasks.tekton.dev
+      - taskruns.tekton.dev
+      - pipelineresources.tekton.dev
+      - conditions.tekton.dev
+  # knative.dev/pkg needs list/watch permissions to set up informers for the webhook.
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["list", "watch"]
   - apiGroups: ["admissionregistration.k8s.io"]
     # The webhook performs a reconciliation on these two resources and continuously
     # updates configuration.
