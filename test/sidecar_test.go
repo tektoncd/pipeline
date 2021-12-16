@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -102,21 +103,21 @@ spec:
 
 			t.Logf("Creating Task %q", sidecarTaskName)
 			if _, err := clients.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
-				t.Errorf("Failed to create Task %q: %v", sidecarTaskName, err)
+				t.Fatalf("Failed to create Task %q: %v", sidecarTaskName, err)
 			}
 
 			t.Logf("Creating TaskRun %q", sidecarTaskRunName)
 			if _, err := clients.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
-				t.Errorf("Failed to create TaskRun %q: %v", sidecarTaskRunName, err)
+				t.Fatalf("Failed to create TaskRun %q: %v", sidecarTaskRunName, err)
 			}
 
 			if err := WaitForTaskRunState(ctx, clients, sidecarTaskRunName, Succeed(sidecarTaskRunName), "TaskRunSucceed"); err != nil {
-				t.Errorf("Error waiting for TaskRun %q to finish: %v", sidecarTaskRunName, err)
+				t.Fatalf("Error waiting for TaskRun %q to finish: %v", sidecarTaskRunName, err)
 			}
 
 			tr, err := clients.TaskRunClient.Get(ctx, sidecarTaskRunName, metav1.GetOptions{})
 			if err != nil {
-				t.Errorf("Error getting Taskrun: %v", err)
+				t.Fatalf("Error getting Taskrun: %v", err)
 			}
 			podName := tr.Status.PodName
 
@@ -129,12 +130,12 @@ spec:
 				}
 				return terminatedCount == 2, nil
 			}, "PodContainersTerminated"); err != nil {
-				t.Errorf("Error waiting for Pod %q to terminate both the primary and sidecar containers: %v", podName, err)
+				t.Fatalf("Error waiting for Pod %q to terminate both the primary and sidecar containers: %v", podName, err)
 			}
 
 			pod, err := clients.KubeClient.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 			if err != nil {
-				t.Errorf("Error getting TaskRun pod: %v", err)
+				t.Fatalf("Error getting TaskRun pod: %v", err)
 			}
 
 			primaryTerminated := false
@@ -163,7 +164,7 @@ spec:
 
 			trCheckSidecarStatus, err := clients.TaskRunClient.Get(ctx, sidecarTaskRunName, metav1.GetOptions{})
 			if err != nil {
-				t.Errorf("Error getting TaskRun: %v", err)
+				t.Fatalf("Error getting TaskRun: %v", err)
 			}
 
 			sidecarFromStatus := trCheckSidecarStatus.Status.Sidecars[0]
