@@ -29,14 +29,25 @@ func TestProcessSuccessfulSubcommands(t *testing.T) {
 		t.Fatalf("error writing source file: %v", err)
 	}
 
-	returnValue := Process([]string{CopyCommand, src, dst})
-	if _, ok := returnValue.(SubcommandSuccessful); !ok {
-		t.Errorf("unexpected return value from cp command: %v", returnValue)
-	}
-
-	returnValue = Process([]string{DecodeScriptCommand, src})
-	if _, ok := returnValue.(SubcommandSuccessful); !ok {
-		t.Errorf("unexpected return value from decode-script command: %v", returnValue)
+	for _, tc := range []struct {
+		command string
+		args    []string
+	}{
+		{
+			command: CopyCommand,
+			args:    []string{src, dst},
+		},
+		{
+			command: DecodeScriptCommand,
+			args:    []string{src},
+		},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			returnValue := Process(append([]string{tc.command}, tc.args...))
+			if _, ok := returnValue.(SubcommandSuccessful); !ok {
+				t.Errorf("unexpected return value from command: %v", returnValue)
+			}
+		})
 	}
 }
 
@@ -52,19 +63,24 @@ func TestProcessIgnoresNonSubcommands(t *testing.T) {
 		t.Errorf("unexpected error processing 0 args: %v", err)
 	}
 
-	if err := Process([]string{CopyCommand}); err != nil {
-		t.Errorf("unexpected error processing decode-script command with 0 additional args: %v", err)
-	}
+	t.Run(CopyCommand, func(t *testing.T) {
+		if err := Process([]string{CopyCommand}); err != nil {
+			t.Errorf("unexpected error processing command with 0 additional args: %v", err)
+		}
 
-	if err := Process([]string{CopyCommand, "foo.txt", "bar.txt", "baz.txt"}); err != nil {
-		t.Errorf("unexpected error processing cp command with invalid number of args: %v", err)
-	}
+		if err := Process([]string{CopyCommand, "foo.txt", "bar.txt", "baz.txt"}); err != nil {
+			t.Errorf("unexpected error processing command with invalid number of args: %v", err)
+		}
+	})
 
-	if err := Process([]string{DecodeScriptCommand}); err != nil {
-		t.Errorf("unexpected error processing decode-script command with 0 additional args: %v", err)
-	}
+	t.Run(DecodeScriptCommand, func(t *testing.T) {
 
-	if err := Process([]string{DecodeScriptCommand, "foo.txt", "bar.txt"}); err != nil {
-		t.Errorf("unexpected error processing decode-script command with invalid number of args: %v", err)
-	}
+		if err := Process([]string{DecodeScriptCommand}); err != nil {
+			t.Errorf("unexpected error processing command with 0 additional args: %v", err)
+		}
+
+		if err := Process([]string{DecodeScriptCommand, "foo.txt", "bar.txt"}); err != nil {
+			t.Errorf("unexpected error processing command with invalid number of args: %v", err)
+		}
+	})
 }
