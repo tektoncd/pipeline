@@ -27,19 +27,28 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	lru "github.com/hashicorp/golang-lru"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
+const cacheSize = 1024
+
 type entrypointCache struct {
 	kubeclient kubernetes.Interface
+	lru        *lru.Cache // cache of digest->map[string][]string commands
 }
 
 // NewEntrypointCache returns a new entrypoint cache implementation that uses
 // K8s credentials to pull image metadata from a container image registry.
 func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error) {
+	lru, err := lru.New(cacheSize)
+	if err != nil {
+		return nil, err
+	}
 	return &entrypointCache{
 		kubeclient: kubeclient,
+		lru:        lru,
 	}, nil
 }
 
@@ -49,6 +58,13 @@ func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error
 // reference referred to an index, the returned digest will be the index's
 // digest, not any platform-specific image contained by the index.
 func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error) {
+	// If image is specified by digest, check the local cache.
+	if digest, ok := ref.(name.Digest); ok {
+		if id, ok := e.lru.Get(digest.String()); ok {
+			return id.(*imageData), nil
+		}
+	}
+
 	// Consult the remote registry, using imagePullSecrets.
 	kc, err := k8schain.New(ctx, e.kubeclient, k8schain.Options{
 		Namespace:          namespace,
@@ -63,6 +79,15 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 	if err != nil {
 		return nil, err
 	}
+
+	// Check the cache for this ref@digest, in case we've seen it before.
+	// This saves looking up each continuent image's commands if we've seen
+	// the multi-platform image before.
+	refByDigest := ref.Context().Digest(desc.Digest.String()).String()
+	if id, ok := e.lru.Get(refByDigest); ok {
+		return id.(*imageData), nil
+	}
+
 	id := &imageData{
 		digest:   desc.Digest,
 		commands: map[string][]string{},
@@ -112,6 +137,10 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 	default:
 		return nil, errors.New("unsupported media type for image reference")
 	}
+
+	// Cache the digest->commands for future lookup.
+	e.lru.Add(refByDigest, id)
+
 	return id, nil
 }
 
