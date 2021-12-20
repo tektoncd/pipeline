@@ -22,7 +22,6 @@ import (
 	"fmt"
 
 	"github.com/containerd/containerd/platforms"
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -57,7 +56,7 @@ func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error
 // It also returns the digest associated with the given reference. If the
 // reference referred to an index, the returned digest will be the index's
 // digest, not any platform-specific image contained by the index.
-func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error) {
+func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error) {
 	// If image is specified by digest, check the local cache.
 	if digest, ok := ref.(name.Digest); ok {
 		if id, ok := e.lru.Get(digest.String()); ok {
@@ -73,15 +72,14 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 	if err != nil {
 		return nil, fmt.Errorf("error creating k8schain: %v", err)
 	}
-	mkc := authn.NewMultiKeychain(kc)
 
-	desc, err := remote.Get(ref, remote.WithAuthFromKeychain(mkc))
+	desc, err := remote.Get(ref, remote.WithAuthFromKeychain(kc))
 	if err != nil {
 		return nil, err
 	}
 
 	// Check the cache for this ref@digest, in case we've seen it before.
-	// This saves looking up each continuent image's commands if we've seen
+	// This saves looking up each constinuent image's commands if we've seen
 	// the multi-platform image before.
 	refByDigest := ref.Context().Digest(desc.Digest.String()).String()
 	if id, ok := e.lru.Get(refByDigest); ok {
@@ -98,11 +96,11 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 		if err != nil {
 			return nil, err
 		}
-		ep, err := getCommand(img)
+		ep, plat, err := imageInfo(img)
 		if err != nil {
 			return nil, err
 		}
-		id.commands["only-platform"] = ep
+		id.commands[plat] = ep
 	case desc.MediaType.IsIndex():
 		idx, err := desc.ImageIndex()
 		if err != nil {
@@ -129,7 +127,7 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 			if err != nil {
 				return nil, err
 			}
-			id.commands[plat], err = getCommand(img)
+			id.commands[plat], _, err = imageInfo(img)
 			if err != nil {
 				return nil, err
 			}
@@ -144,14 +142,26 @@ func (e *entrypointCache) Get(ctx context.Context, ref name.Reference, namespace
 	return id, nil
 }
 
-func getCommand(img v1.Image) ([]string, error) {
+func imageInfo(img v1.Image) (cmd []string, platform string, err error) {
 	cf, err := img.ConfigFile()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	ep := cf.Config.Entrypoint
 	if len(ep) == 0 {
 		ep = cf.Config.Cmd
 	}
-	return ep, nil
+
+	plat := platforms.Format(specs.Platform{
+		OS:           cf.OS,
+		Architecture: cf.Architecture,
+		// A single image's config metadata doesn't include the CPU
+		// architecture variant, but we'll assume this is okay since
+		// the runtime node's image selection will also select the same
+		// image. This will only be a problem if the image is a
+		// single-platform image that happens to specify a variant, and
+		// the runtime node it gets assigned to has a value for
+		// runtime.GOARM.
+	})
+	return ep, plat, nil
 }
