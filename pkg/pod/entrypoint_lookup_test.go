@@ -47,7 +47,7 @@ func TestResolveEntrypoints(t *testing.T) {
 	id := &imageData{
 		digest: dig,
 		commands: map[string][]string{
-			"*": {"my", "entrypoint"},
+			"only-plat": {"my", "entrypoint"},
 		},
 	}
 
@@ -103,19 +103,28 @@ func TestResolveEntrypoints(t *testing.T) {
 	}, {
 		// The step that didn't specify a command had its digest and
 		// entrypoint looked up in the registry, and cached.
-		Image:   "gcr.io/my/image@" + dig.String(),
-		Command: []string{"my", "entrypoint"},
+		Image: "gcr.io/my/image@" + dig.String(),
+		Env: []corev1.EnvVar{{
+			Name:  "TEKTON_PLATFORM_COMMANDS",
+			Value: `{"only-plat":["my","entrypoint"]}`,
+		}},
 	}, {
 		// The step that didn't specify command was looked up in the
 		// registry (by digest), and cached.
-		Image:   "gcr.io/my/image@" + dig.String(),
-		Command: []string{"my", "entrypoint"},
+		Image: "gcr.io/my/image@" + dig.String(),
+		Env: []corev1.EnvVar{{
+			Name:  "TEKTON_PLATFORM_COMMANDS",
+			Value: `{"only-plat":["my","entrypoint"]}`,
+		}},
 	}, {
 		// The other step that didn't specify command or digest was
 		// resolved from the *local* cache, without hitting the remote
 		// registry again.
-		Image:   "gcr.io/my/image@" + dig.String(),
-		Command: []string{"my", "entrypoint"},
+		Image: "gcr.io/my/image@" + dig.String(),
+		Env: []corev1.EnvVar{{
+			Name:  "TEKTON_PLATFORM_COMMANDS",
+			Value: `{"only-plat":["my","entrypoint"]}`,
+		}},
 	}, {
 		Image: "reg.io/multi/arch@" + dig.String(),
 		Env: []corev1.EnvVar{{
@@ -134,7 +143,7 @@ type data struct {
 	seen bool // Whether the image has been looked up before.
 }
 
-func (f fakeCache) Get(ctx context.Context, ref name.Reference, _, _ string) (*imageData, error) {
+func (f fakeCache) get(ctx context.Context, ref name.Reference, _, _ string) (*imageData, error) {
 	if d, ok := ref.(name.Digest); ok {
 		if data, found := f[d.String()]; found {
 			return data.id, nil

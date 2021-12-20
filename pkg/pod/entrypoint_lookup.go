@@ -28,7 +28,7 @@ import (
 // EntrypointCache looks up an image's entrypoint (command) in a container
 // image registry, possibly using the given service account's credentials.
 type EntrypointCache interface {
-	// Get the Image data for the given image reference. If the value is
+	// get the Image data for the given image reference. If the value is
 	// not found in the cache, it will be fetched from the image registry,
 	// possibly using K8s service account imagePullSecrets.
 	//
@@ -36,7 +36,7 @@ type EntrypointCache interface {
 	// the reference referred to an index, the returned digest will be the
 	// index's digest, not any platform-specific image contained by the
 	// index.
-	Get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error)
+	get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error)
 }
 
 // imageData contains information looked up about an image or multi-platform image index.
@@ -72,7 +72,7 @@ func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, s
 			id = cid
 		} else {
 			// Look it up for real.
-			lid, err := cache.Get(ctx, ref, namespace, serviceAccountName)
+			lid, err := cache.get(ctx, ref, namespace, serviceAccountName)
 			if err != nil {
 				return nil, err
 			}
@@ -85,23 +85,15 @@ func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, s
 		// Resolve the original reference to a reference by digest.
 		steps[i].Image = ref.Context().Digest(id.digest.String()).String()
 
-		if len(id.commands) == 1 {
-			// Promote the single found command to the step's command.
-			for _, v := range id.commands {
-				steps[i].Command = v
-				break
-			}
-		} else {
-			// Encode the map of platform->command to JSON and pass it via env var.
-			b, err := json.Marshal(id.commands)
-			if err != nil {
-				return nil, err
-			}
-			steps[i].Env = append(steps[i].Env, corev1.EnvVar{
-				Name:  "TEKTON_PLATFORM_COMMANDS",
-				Value: string(b),
-			})
+		// Encode the map of platform->command to JSON and pass it via env var.
+		b, err := json.Marshal(id.commands)
+		if err != nil {
+			return nil, err
 		}
+		steps[i].Env = append(steps[i].Env, corev1.EnvVar{
+			Name:  "TEKTON_PLATFORM_COMMANDS",
+			Value: string(b),
+		})
 	}
 	return steps, nil
 }
