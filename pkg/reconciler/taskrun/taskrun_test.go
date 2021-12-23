@@ -478,6 +478,18 @@ func runVolume(i int) corev1.Volume {
 	}
 }
 
+func createServiceAccount(t *testing.T, assets test.Assets, name string, namespace string) {
+	t.Helper()
+	if _, err := assets.Clients.Kube.CoreV1().ServiceAccounts(namespace).Create(assets.Ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func init() {
 	os.Setenv("KO_DATA_PATH", "./testdata/")
 	commit, err := changeset.Get()
@@ -545,6 +557,8 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 // getTaskRunController returns an instance of the TaskRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
+	t.Helper()
+	names.TestingSeed()
 	return initializeTaskRunControllerAssets(t, d, pipeline.Options{Images: images})
 }
 
@@ -641,7 +655,6 @@ func TestReconcile_ExplicitDefaultSA(t *testing.T) {
 					Namespace: tc.taskRun.Namespace,
 				},
 			})
-			names.TestingSeed()
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
@@ -757,7 +770,6 @@ func TestReconcile_FeatureFlags(t *testing.T) {
 		}}),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			names.TestingSeed()
 			d.ConfigMaps = []*corev1.ConfigMap{
 				{
 					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
@@ -859,7 +871,6 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 	}
 
-	names.TestingSeed()
 	d.ConfigMaps = []*corev1.ConfigMap{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
@@ -1403,7 +1414,6 @@ func TestReconcile(t *testing.T) {
 		}}),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			names.TestingSeed()
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
@@ -1412,14 +1422,7 @@ func TestReconcile(t *testing.T) {
 			if saName == "" {
 				saName = "default"
 			}
-			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      saName,
-					Namespace: tc.taskRun.Namespace,
-				},
-			}, metav1.CreateOptions{}); err != nil {
-				t.Fatal(err)
-			}
+			createServiceAccount(t, testAssets, saName, tc.taskRun.Namespace)
 
 			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
 				t.Error("Wanted a wrapped requeue error, but got nil.")
@@ -1464,7 +1467,7 @@ func TestReconcile(t *testing.T) {
 			}
 
 			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
-			if !(err == nil) {
+			if err != nil {
 				t.Errorf(err.Error())
 			}
 		})
@@ -1486,17 +1489,7 @@ func TestReconcile_SetsStartTime(t *testing.T) {
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
-	clients := testAssets.Clients
-
-	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
-			Namespace: "foo",
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
+	createServiceAccount(t, testAssets, "default", "foo")
 
 	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
 		t.Error("Wanted a wrapped requeue error, but got nil.")
@@ -1667,15 +1660,8 @@ func TestReconcileGetTaskError(t *testing.T) {
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
 
-	if _, err := clients.Kube.CoreV1().ServiceAccounts(tr.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
-			Namespace: tr.Namespace,
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
 	failingReactorActivated := true
 	clients.Pipeline.PrependReactor("*", "tasks", func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
 		return failingReactorActivated, &v1beta1.Task{}, errors.New("etcdserver: leader changed")
@@ -1731,7 +1717,6 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 	}
 
 	taskRuns := []*v1beta1.TaskRun{noTaskRun}
-
 	d := test.Data{
 		TaskRuns: taskRuns,
 	}
@@ -2049,7 +2034,6 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	testAssets, cancel = getTaskRunController(t, d)
 	defer cancel()
 	c = testAssets.Controller
-	clients = testAssets.Clients
 
 	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(newTr)); err != nil {
 		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
@@ -2251,8 +2235,6 @@ func TestExpandMountPath(t *testing.T) {
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 		Tasks:    []*v1beta1.Task{simpleTask},
 	}
-
-	names.TestingSeed()
 	d.ConfigMaps = []*corev1.ConfigMap{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
@@ -2264,18 +2246,7 @@ func TestExpandMountPath(t *testing.T) {
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
-
-	// c := testAssets.Controller
-	clients := testAssets.Clients
-	saName := "default"
-	if _, err := clients.Kube.CoreV1().ServiceAccounts(taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      saName,
-			Namespace: taskRun.Namespace,
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
 
 	// Use the test assets to create a *Reconciler directly for focused testing.
 	r := &Reconciler{
@@ -2391,7 +2362,6 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 		Tasks:    []*v1beta1.Task{simpleTask},
 	}
 
-	names.TestingSeed()
 	d.ConfigMaps = []*corev1.ConfigMap{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
@@ -2403,16 +2373,7 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
-	clients := testAssets.Clients
-	saName := "default"
-	if _, err := clients.Kube.CoreV1().ServiceAccounts(taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      saName,
-			Namespace: taskRun.Namespace,
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
 
 	r := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
@@ -2893,7 +2854,6 @@ func TestReconcileCloudEvents(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			names.TestingSeed()
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller
@@ -3092,7 +3052,6 @@ func TestReconcileWorkspaceMissing(t *testing.T) {
 		ClusterTasks:      nil,
 		PipelineResources: nil,
 	}
-	names.TestingSeed()
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
@@ -3163,20 +3122,11 @@ func TestReconcileValidDefaultWorkspace(t *testing.T) {
 			"default-task-run-workspace-binding": "emptyDir: {}",
 		},
 	})
-	names.TestingSeed()
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
 
-	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
-			Namespace: "foo",
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
+	createServiceAccount(t, testAssets, "default", "foo")
 
 	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
 		// No error is ok.
@@ -3239,7 +3189,6 @@ func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
 			"default-task-run-workspace-binding": "emptyDir == {}",
 		},
 	})
-	names.TestingSeed()
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
@@ -3306,20 +3255,11 @@ func TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace(t *testing.T) {
 			"default-task-run-workspace-binding": "emptyDir: {}",
 		},
 	})
-	names.TestingSeed()
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
 
-	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("default").Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
-			Namespace: "default",
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
+	createServiceAccount(t, testAssets, "default", "default")
 
 	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRunOmittingWorkspace)); err == nil {
 		t.Error("Wanted a wrapped requeue error, but got nil.")
@@ -3437,7 +3377,6 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 		},
 	}} {
 		t.Run(tt.desc, func(t *testing.T) {
-			names.TestingSeed()
 			testAssets, cancel := getTaskRunController(t, tt.d)
 			defer cancel()
 			clients := testAssets.Clients
@@ -3531,21 +3470,10 @@ func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) 
 		ClusterTasks:      nil,
 		PipelineResources: nil,
 	}
-	names.TestingSeed()
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
-
-	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
-			Namespace: "foo",
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
-
+	createServiceAccount(t, testAssets, "default", "foo")
 	_ = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun))
 
 	_, err := clients.Pipeline.TektonV1beta1().Tasks(taskRun.Namespace).Get(testAssets.Ctx, taskWithTwoWorkspaces.Name, metav1.GetOptions{})
@@ -3617,20 +3545,10 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 		ClusterTasks:      nil,
 		PipelineResources: nil,
 	}
-	names.TestingSeed()
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	clients := testAssets.Clients
-
-	t.Logf("Creating SA %s in %s", "default", "foo")
-	if _, err := clients.Kube.CoreV1().ServiceAccounts("foo").Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "default",
-			Namespace: "foo",
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
+	createServiceAccount(t, testAssets, "default", "foo")
 
 	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
 		t.Error("Wanted a wrapped requeue error, but got nil.")
@@ -4212,7 +4130,6 @@ func TestWillOverwritePodAffinity(t *testing.T) {
 }
 
 func TestPodAdoption(t *testing.T) {
-
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: objectMeta("test-taskrun", "foo"),
 		Spec: v1beta1.TaskRunSpec{
@@ -4232,20 +4149,11 @@ func TestPodAdoption(t *testing.T) {
 	d := test.Data{
 		TaskRuns: []*v1beta1.TaskRun{tr},
 	}
-
-	names.TestingSeed()
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
 	clients := testAssets.Clients
-
-	if _, err := clients.Kube.CoreV1().ServiceAccounts(tr.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "default",
-		},
-	}, metav1.CreateOptions{}); err != nil {
-		t.Fatal(err)
-	}
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
 
 	// Reconcile the TaskRun.  This creates a Pod.
 	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err == nil {
@@ -4579,7 +4487,6 @@ type stepForExpectedPod struct {
 	cmd        string
 	args       []string
 	envVars    map[string]string
-	volumes    []corev1.Volume
 	workingDir string
 }
 
