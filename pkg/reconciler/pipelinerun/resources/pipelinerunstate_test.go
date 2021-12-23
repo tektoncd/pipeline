@@ -17,6 +17,7 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -1143,7 +1144,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: dfinally,
 			}
-			c := facts.GetPipelineConditionStatus(pr, zap.NewNop().Sugar())
+			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar())
 			wantCondition := &apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: tc.expectedStatus,
@@ -1285,7 +1286,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: df,
 			}
-			c := facts.GetPipelineConditionStatus(pr, zap.NewNop().Sugar())
+			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar())
 			wantCondition := &apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: tc.expectedStatus,
@@ -1322,7 +1323,7 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 		TasksGraph:      d,
 		FinalTasksGraph: &dag.Graph{},
 	}
-	c := facts.GetPipelineConditionStatus(pr, zap.NewNop().Sugar())
+	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar())
 	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
 		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
 	}

@@ -570,7 +570,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Reset the skipped status to trigger recalculation
 	pipelineRunFacts.ResetSkippedCache()
 
-	after := pipelineRunFacts.GetPipelineConditionStatus(pr, logger)
+	after := pipelineRunFacts.GetPipelineConditionStatus(ctx, pr, logger)
 	switch after.Status {
 	case corev1.ConditionTrue:
 		pr.Status.MarkSucceeded(after.Reason, after.Message)
@@ -603,7 +603,7 @@ func (c *Reconciler) processRunTimeouts(ctx context.Context, pr *v1beta1.Pipelin
 	}
 	for _, rprt := range pipelineState {
 		if rprt.IsCustomTask() {
-			if rprt.Run != nil && !rprt.Run.IsCancelled() && (pr.HasTimedOut() || (rprt.Run.HasTimedOut() && !rprt.Run.IsDone())) {
+			if rprt.Run != nil && !rprt.Run.IsCancelled() && (pr.HasTimedOut(ctx) || (rprt.Run.HasTimedOut() && !rprt.Run.IsDone())) {
 				logger.Infof("Cancelling run task: %s due to timeout.", rprt.RunName)
 				err := cancelRun(ctx, rprt.RunName, pr.Namespace, c.PipelineClientSet)
 				if err != nil {

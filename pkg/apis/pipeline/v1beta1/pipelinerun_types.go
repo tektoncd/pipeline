@@ -153,12 +153,11 @@ func (pr *PipelineRun) GetNamespacedName() types.NamespacedName {
 }
 
 // HasTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
-func (pr *PipelineRun) HasTimedOut() bool {
-	pipelineTimeout := pr.Spec.Timeout
+func (pr *PipelineRun) HasTimedOut(ctx context.Context) bool {
+	timeout := pr.PipelineTimeout(ctx)
 	startTime := pr.Status.StartTime
 
-	if !startTime.IsZero() && pipelineTimeout != nil {
-		timeout := pipelineTimeout.Duration
+	if !startTime.IsZero() {
 		if timeout == config.NoTimeoutDuration {
 			return false
 		}
