@@ -2157,102 +2157,117 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 	// PipelineRun that has timed out.
 	// It verifies that reconcile is successful, and the custom task has also timed
 	// out and patched as cancelled.
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "test"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "hello-world-1",
-				TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-			}},
-		},
-	}}
+	for _, tc := range []struct {
+		name     string
+		timeout  *metav1.Duration
+		timeouts *v1beta1.TimeoutFields
+	}{{
+		name:    "spec.Timeout",
+		timeout: &metav1.Duration{Duration: 12 * time.Hour},
+	}, {
+		name:     "spec.Timeouts.Pipeline",
+		timeouts: &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: 12 * time.Hour}},
+	}} {
+		t.Run(tc.name, func(*testing.T) {
+			ps := []*v1beta1.Pipeline{{
+				ObjectMeta: baseObjectMeta("test-pipeline", "test"),
+				Spec: v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name:    "hello-world-1",
+						TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
+					}},
+				},
+			}}
 
-	prName := "test-pipeline-run-custom-task"
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(prName, "test"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Timeout:            &metav1.Duration{Duration: 12 * time.Hour},
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now().AddDate(0, 0, -1)},
-			},
-		},
-	}}
+			prName := "test-pipeline-run-custom-task"
+			prs := []*v1beta1.PipelineRun{{
+				ObjectMeta: baseObjectMeta(prName, "test"),
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
+					ServiceAccountName: "test-sa",
+					Timeout:            tc.timeout,
+					Timeouts:           tc.timeouts,
+				},
+				Status: v1beta1.PipelineRunStatus{
+					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+						StartTime: &metav1.Time{Time: time.Now().AddDate(0, 0, -1)},
+					},
+				},
+			}}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		fmt.Sprintf("Warning Failed PipelineRun \"%s\" failed to finish within \"12h0m0s\"", prName),
-	}
-	runName := "test-pipeline-run-custom-task-hello-world-1"
-
-	reconciledRun, clients := prt.reconcileRun("test", prName, wantEvents, false)
-
-	postReconcileRun, err := clients.Pipeline.TektonV1alpha1().Runs("test").Get(prt.TestAssets.Ctx, runName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Run get request failed, %v", err)
-	}
-
-	gotTimeoutValue := postReconcileRun.GetTimeout()
-	expectedTimeoutValue := time.Second
-
-	if d := cmp.Diff(gotTimeoutValue, expectedTimeoutValue); d != "" {
-		t.Fatalf("Expected timeout for created Run, but got a mismatch %s", diff.PrintWantGot(d))
-	}
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on already timedout PipelineRun but was nil")
-	}
-
-	// The PipelineRun should be timed out.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
-		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s",
-			reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
-
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
-
-	// The patch operation to cancel the run must be executed.
-	got := []jsonpatch.Operation{}
-	for _, a := range actions {
-		if action, ok := a.(ktesting.PatchAction); ok {
-			if a.(ktesting.PatchAction).Matches("patch", "runs") {
-				err := json.Unmarshal(action.GetPatch(), &got)
-				if err != nil {
-					t.Fatalf("Expected to get a patch operation for cancel,"+
-						" but got error: %v\n", err)
-				}
-				break
+			cms := []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"enable-custom-tasks": "true",
+					},
+				},
 			}
-		}
-	}
-	want := []jsonpatch.JsonPatchOperation{{
-		Operation: "add",
-		Path:      "/spec/status",
-		Value:     "RunCancelled",
-	}}
-	if d := cmp.Diff(got, want); d != "" {
-		t.Fatalf("Expected RunCancelled patch operation, but got a mismatch %s", diff.PrintWantGot(d))
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				ConfigMaps:   cms,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			wantEvents := []string{
+				fmt.Sprintf("Warning Failed PipelineRun \"%s\" failed to finish within \"12h0m0s\"", prName),
+			}
+			runName := "test-pipeline-run-custom-task-hello-world-1"
+
+			reconciledRun, clients := prt.reconcileRun("test", prName, wantEvents, false)
+
+			postReconcileRun, err := clients.Pipeline.TektonV1alpha1().Runs("test").Get(prt.TestAssets.Ctx, runName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Run get request failed, %v", err)
+			}
+
+			gotTimeoutValue := postReconcileRun.GetTimeout()
+			expectedTimeoutValue := time.Second
+
+			if d := cmp.Diff(gotTimeoutValue, expectedTimeoutValue); d != "" {
+				t.Fatalf("Expected timeout for created Run, but got a mismatch %s", diff.PrintWantGot(d))
+			}
+
+			if reconciledRun.Status.CompletionTime == nil {
+				t.Errorf("Expected a CompletionTime on already timedout PipelineRun but was nil")
+			}
+
+			// The PipelineRun should be timed out.
+			if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
+				t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s",
+					reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+			}
+
+			actions := clients.Pipeline.Actions()
+			if len(actions) < 2 {
+				t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
+			}
+
+			// The patch operation to cancel the run must be executed.
+			got := []jsonpatch.Operation{}
+			for _, a := range actions {
+				if action, ok := a.(ktesting.PatchAction); ok {
+					if a.(ktesting.PatchAction).Matches("patch", "runs") {
+						err := json.Unmarshal(action.GetPatch(), &got)
+						if err != nil {
+							t.Fatalf("Expected to get a patch operation for cancel,"+
+								" but got error: %v\n", err)
+						}
+						break
+					}
+				}
+			}
+			want := []jsonpatch.JsonPatchOperation{{
+				Operation: "add",
+				Path:      "/spec/status",
+				Value:     "RunCancelled",
+			}}
+			if d := cmp.Diff(got, want); d != "" {
+				t.Fatalf("Expected RunCancelled patch operation, but got a mismatch %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
