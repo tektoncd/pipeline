@@ -139,6 +139,7 @@ func initExcludedTests() sets.String {
 			// examples
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
+			"TestExamples/v1beta1/taskruns/creds-init-only-mounts-provided-credentials",
 		)
 	case "ppc64le":
 		return sets.NewString(
