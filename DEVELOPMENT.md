@@ -283,7 +283,6 @@ The recommended minimum development configuration is:
      --min-nodes=1 \
      --max-nodes=3 \
      --scopes=cloud-platform \
-     --enable-basic-auth \
      --no-issue-client-certificate \
      --project=$PROJECT_ID \
      --region=us-central1 \
