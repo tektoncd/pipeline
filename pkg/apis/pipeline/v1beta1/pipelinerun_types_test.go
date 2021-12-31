@@ -270,6 +270,67 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 	}
 }
 
+func TestPipelineRunTimeouts(t *testing.T) {
+	tcs := []struct {
+		name                   string
+		timeouts               *v1beta1.TimeoutFields
+		expectedTasksTimeout   *metav1.Duration
+		expectedFinallyTimeout *metav1.Duration
+	}{{
+		name: "no timeouts",
+	}, {
+		name:     "pipeline timeout set",
+		timeouts: &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: time.Minute}},
+	}, {
+		name:                   "pipeline and tasks timeout set",
+		timeouts:               &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: time.Hour}, Tasks: &metav1.Duration{Duration: 10 * time.Minute}},
+		expectedTasksTimeout:   &metav1.Duration{Duration: 10 * time.Minute},
+		expectedFinallyTimeout: &metav1.Duration{Duration: 50 * time.Minute},
+	}, {
+
+		name:                   "pipeline and finally timeout set",
+		timeouts:               &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: time.Hour}, Finally: &metav1.Duration{Duration: 10 * time.Minute}},
+		expectedTasksTimeout:   &metav1.Duration{Duration: 50 * time.Minute},
+		expectedFinallyTimeout: &metav1.Duration{Duration: 10 * time.Minute},
+	}, {
+		name:                 "tasks timeout set",
+		timeouts:             &v1beta1.TimeoutFields{Tasks: &metav1.Duration{Duration: 10 * time.Minute}},
+		expectedTasksTimeout: &metav1.Duration{Duration: 10 * time.Minute},
+	}, {
+		name:                   "finally timeout set",
+		timeouts:               &v1beta1.TimeoutFields{Finally: &metav1.Duration{Duration: 10 * time.Minute}},
+		expectedFinallyTimeout: &metav1.Duration{Duration: 10 * time.Minute},
+	}, {
+		name:                 "no tasks timeout",
+		timeouts:             &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: 0}, Tasks: &metav1.Duration{Duration: 0}},
+		expectedTasksTimeout: &metav1.Duration{Duration: 0},
+	}, {
+		name:                   "no finally timeout",
+		timeouts:               &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: 0}, Finally: &metav1.Duration{Duration: 0}},
+		expectedFinallyTimeout: &metav1.Duration{Duration: 0},
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.PipelineRunSpec{
+					Timeouts: tc.timeouts,
+				},
+			}
+
+			tasksTimeout := pr.TasksTimeout()
+			if ok := cmp.Equal(tc.expectedTasksTimeout, pr.TasksTimeout()); !ok {
+				t.Errorf("Unexpected tasks timeout %v, expected %v", tasksTimeout, tc.expectedTasksTimeout)
+			}
+			finallyTimeout := pr.FinallyTimeout()
+			if ok := cmp.Equal(tc.expectedFinallyTimeout, pr.FinallyTimeout()); !ok {
+				t.Errorf("Unexpected finally timeout %v, expected %v", finallyTimeout, tc.expectedFinallyTimeout)
+			}
+		})
+	}
+}
+
 func TestPipelineRunGetServiceAccountName(t *testing.T) {
 	for _, tt := range []struct {
 		name    string

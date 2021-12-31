@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,19 +93,53 @@ func (pr *PipelineRun) IsGracefullyStopped() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusStoppedRunFinally
 }
 
-// GetTimeout returns the the applicable timeout for the PipelineRun
-func (pr *PipelineRun) GetTimeout(ctx context.Context) time.Duration {
-	// Use the platform default if no timeout is set
-	if pr.Spec.Timeout == nil && pr.Spec.Timeouts == nil {
-		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
-		return defaultTimeout * time.Minute
-	}
-
+// PipelineTimeout returns the the applicable timeout for the PipelineRun
+func (pr *PipelineRun) PipelineTimeout(ctx context.Context) time.Duration {
 	if pr.Spec.Timeout != nil {
 		return pr.Spec.Timeout.Duration
 	}
+	if pr.Spec.Timeouts != nil && pr.Spec.Timeouts.Pipeline != nil {
+		return pr.Spec.Timeouts.Pipeline.Duration
+	}
+	return time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
+}
 
-	return pr.Spec.Timeouts.Pipeline.Duration
+// TasksTimeout returns the the tasks timeout for the PipelineRun, if set,
+// or the tasks timeout computed from the Pipeline and Finally timeouts, if those are set.
+func (pr *PipelineRun) TasksTimeout() *metav1.Duration {
+	t := pr.Spec.Timeouts
+	if t == nil {
+		return nil
+	}
+	if t.Tasks != nil {
+		return t.Tasks
+	}
+	if t.Pipeline != nil && t.Finally != nil {
+		if t.Pipeline.Duration == apisconfig.NoTimeoutDuration || t.Finally.Duration == apisconfig.NoTimeoutDuration {
+			return nil
+		}
+		return &metav1.Duration{Duration: (t.Pipeline.Duration - t.Finally.Duration)}
+	}
+	return nil
+}
+
+// FinallyTimeout returns the the finally timeout for the PipelineRun, if set,
+// or the finally timeout computed from the Pipeline and Tasks timeouts, if those are set.
+func (pr *PipelineRun) FinallyTimeout() *metav1.Duration {
+	t := pr.Spec.Timeouts
+	if t == nil {
+		return nil
+	}
+	if t.Finally != nil {
+		return t.Finally
+	}
+	if t.Pipeline != nil && t.Tasks != nil {
+		if t.Pipeline.Duration == apisconfig.NoTimeoutDuration || t.Tasks.Duration == apisconfig.NoTimeoutDuration {
+			return nil
+		}
+		return &metav1.Duration{Duration: (t.Pipeline.Duration - t.Tasks.Duration)}
+	}
+	return nil
 }
 
 // IsPending returns true if the PipelineRun's spec status is set to Pending state

@@ -237,7 +237,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		// Compute the time since the task started.
 		elapsed := time.Since(pr.Status.StartTime.Time)
 		// Snooze this resource until the timeout has elapsed.
-		return controller.NewRequeueAfter(pr.GetTimeout(ctx) - elapsed)
+		return controller.NewRequeueAfter(pr.PipelineTimeout(ctx) - elapsed)
 	}
 	return nil
 }
@@ -1029,111 +1029,59 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 	return annotations
 }
 
+// getFinallyTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask, which is a finally Task.
+// If there is no timeout for the finally TaskRun, returns 0.
+// If pipeline level timeouts have already been exceeded, returns 1 second.
 func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
-	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
-
-	var timeout, tasksTimeout time.Duration
-	defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
-
-	switch {
-	case pr.Spec.Timeout != nil:
-		timeout = pr.Spec.Timeout.Duration
-	case pr.Spec.Timeouts != nil:
-		// Take into account the elapsed time in order to check if we still have enough time to run
-		// If task timeout is defined, add it to finally timeout
-		// Else consider pipeline timeout as finally timeout
-		switch {
-		case pr.Spec.Timeouts.Finally != nil:
-			if pr.Spec.Timeouts.Tasks != nil {
-				tasksTimeout = pr.Spec.Timeouts.Tasks.Duration
-				timeout = tasksTimeout + pr.Spec.Timeouts.Finally.Duration
-			} else if pr.Spec.Timeouts.Pipeline != nil {
-				tasksTimeout = pr.Spec.Timeouts.Pipeline.Duration - pr.Spec.Timeouts.Finally.Duration
-				timeout = pr.Spec.Timeouts.Pipeline.Duration
-			}
-		case pr.Spec.Timeouts.Pipeline != nil:
-			timeout = pr.Spec.Timeouts.Pipeline.Duration
-			if pr.Spec.Timeouts.Tasks != nil {
-				tasksTimeout = pr.Spec.Timeouts.Tasks.Duration
-			}
-		default:
-			timeout = defaultTimeout * time.Minute
-			if pr.Spec.Timeouts.Tasks != nil {
-				tasksTimeout = pr.Spec.Timeouts.Tasks.Duration
-			}
-		}
-	default:
-		timeout = defaultTimeout * time.Minute
+	taskRunTimeout := calculateTaskRunTimeout(pr.PipelineTimeout(ctx), pr, rprt)
+	finallyTimeout := pr.FinallyTimeout()
+	// Return the smaller of taskRunTimeout and finallyTimeout
+	// This works because all finally tasks run in parallel, so there is no need to consider time spent by other finally tasks
+	if finallyTimeout == nil || finallyTimeout.Duration == apisconfig.NoTimeoutDuration {
+		return taskRunTimeout
 	}
-
-	// If the value of the timeout is 0 for any resource, there is no timeout.
-	// It is impossible for pr.Spec.Timeout to be nil, since SetDefault always assigns it with a value.
-	taskRunTimeout = taskRunTimeoutHelper(timeout, pr, taskRunTimeout, rprt)
-
-	// Now that we know if we still have time to run the final task, subtract tasksTimeout if needed
-	if taskRunTimeout.Duration > time.Second {
-		taskRunTimeout.Duration -= tasksTimeout
+	if finallyTimeout.Duration < taskRunTimeout.Duration {
+		return finallyTimeout
 	}
-
 	return taskRunTimeout
 }
 
+// getTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask.
+// If there is no timeout for the TaskRun, returns 0.
+// If pipeline level timeouts have already been exceeded, returns 1 second.
 func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
-	var taskRunTimeout = &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
-
 	var timeout time.Duration
-
-	switch {
-	case pr.Spec.Timeout != nil:
-		timeout = pr.Spec.Timeout.Duration
-	case pr.Spec.Timeouts != nil:
-		if pr.Spec.Timeouts.Tasks != nil {
-			timeout = pr.Spec.Timeouts.Tasks.Duration
-			break
-		}
-
-		if pr.Spec.Timeouts.Pipeline != nil {
-			timeout = pr.Spec.Timeouts.Pipeline.Duration
-		}
-
-		if pr.Spec.Timeouts.Finally != nil {
-			timeout -= pr.Spec.Timeouts.Finally.Duration
-		}
-	default:
-		defaultTimeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes)
-		timeout = defaultTimeout * time.Minute
+	if pr.TasksTimeout() != nil {
+		timeout = pr.TasksTimeout().Duration
+	} else {
+		timeout = pr.PipelineTimeout(ctx)
 	}
-
-	// If the value of the timeout is 0 for any resource, there is no timeout.
-	// It is impossible for pr.Spec.Timeout to be nil, since SetDefault always assigns it with a value.
-	taskRunTimeout = taskRunTimeoutHelper(timeout, pr, taskRunTimeout, rprt)
-
-	return taskRunTimeout
+	return calculateTaskRunTimeout(timeout, pr, rprt)
 }
 
-func taskRunTimeoutHelper(timeout time.Duration, pr *v1beta1.PipelineRun, taskRunTimeout *metav1.Duration, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
+// calculateTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask.
+// `timeout` is:
+// - If ResolvedPipelineRunTask is a Task, `timeout` is the minimum of Tasks Timeout and Pipeline Timeout
+// - If ResolvedPipelineRunTask is a Finally Task, `timeout` is the Pipeline Timeout
+// If there is no timeout for the TaskRun, returns 0.
+// If pipeline level timeouts have already been exceeded, returns 1 second.
+func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
 	if timeout != apisconfig.NoTimeoutDuration {
 		pTimeoutTime := pr.Status.StartTime.Add(timeout)
 		if time.Now().After(pTimeoutTime) {
-
-			taskRunTimeout = &metav1.Duration{Duration: time.Until(pTimeoutTime)}
-			if taskRunTimeout.Duration < 0 {
-				taskRunTimeout = &metav1.Duration{Duration: 1 * time.Second}
-			}
-		} else {
-
-			if rprt.PipelineTask.Timeout != nil {
-				taskRunTimeout = &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
-			} else {
-				taskRunTimeout = &metav1.Duration{Duration: timeout}
-			}
+			return &metav1.Duration{Duration: 1 * time.Second}
 		}
+		// Return the smaller of timeout and rprt.pipelineTask.timeout
+		if rprt.PipelineTask.Timeout != nil && rprt.PipelineTask.Timeout.Duration < timeout {
+			return &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
+		}
+		return &metav1.Duration{Duration: timeout}
 	}
 
 	if timeout == apisconfig.NoTimeoutDuration && rprt.PipelineTask.Timeout != nil {
-		taskRunTimeout = &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
+		return &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
 	}
-	return taskRunTimeout
+	return &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
 }
 
 func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1beta1.PipelineRun) (*v1beta1.PipelineRun, error) {
