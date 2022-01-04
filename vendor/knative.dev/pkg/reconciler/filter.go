@@ -77,6 +77,18 @@ func Not(f func(interface{}) bool) func(interface{}) bool {
 	}
 }
 
+// Or creates a FilterFunc which performs an OR of the passed in FilterFuncs
+func Or(funcs ...func(interface{}) bool) func(interface{}) bool {
+	return func(obj interface{}) bool {
+		for _, f := range funcs {
+			if f(obj) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // ChainFilterFuncs creates a FilterFunc which performs an AND of the passed FilterFuncs.
 func ChainFilterFuncs(funcs ...func(interface{}) bool) func(interface{}) bool {
 	return func(obj interface{}) bool {

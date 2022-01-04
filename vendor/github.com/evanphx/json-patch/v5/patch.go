@@ -766,9 +766,9 @@ func ensurePathExists(pd *container, path string, options *ApplyOptions) error {
 				}
 			}
 
-			// Check if the next part is a numeric index.
+			// Check if the next part is a numeric index or "-".
 			// If yes, then create an array, otherwise, create an object.
-			if arrIndex, err = strconv.Atoi(parts[pi+1]); err == nil {
+			if arrIndex, err = strconv.Atoi(parts[pi+1]); err == nil || parts[pi+1] == "-" {
 				if arrIndex < 0 {
 
 					if !options.SupportNegativeIndices {
@@ -845,6 +845,29 @@ func (p Patch) replace(doc *container, op Operation, options *ApplyOptions) erro
 		return errors.Wrapf(err, "replace operation failed to decode path")
 	}
 
+	if path == "" {
+		val := op.value()
+
+		if val.which == eRaw {
+			if !val.tryDoc() {
+				if !val.tryAry() {
+					return errors.Wrapf(err, "replace operation value must be object or array")
+				}
+			}
+		}
+
+		switch val.which {
+		case eAry:
+			*doc = &val.ary
+		case eDoc:
+			*doc = val.doc
+		case eRaw:
+			return errors.Wrapf(err, "replace operation hit impossible case")
+		}
+
+		return nil
+	}
+
 	con, key := findObject(doc, path, options)
 
 	if con == nil {
@@ -909,6 +932,25 @@ func (p Patch) test(doc *container, op Operation, options *ApplyOptions) error {
 	path, err := op.Path()
 	if err != nil {
 		return errors.Wrapf(err, "test operation failed to decode path")
+	}
+
+	if path == "" {
+		var self lazyNode
+
+		switch sv := (*doc).(type) {
+		case *partialDoc:
+			self.doc = sv
+			self.which = eDoc
+		case *partialArray:
+			self.ary = *sv
+			self.which = eAry
+		}
+
+		if self.equal(op.value()) {
+			return nil
+		}
+
+		return errors.Wrapf(ErrTestFailed, "testing value %s failed", path)
 	}
 
 	con, key := findObject(doc, path, options)

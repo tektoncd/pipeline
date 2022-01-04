@@ -35,7 +35,7 @@ type reconcilerControllerStubGenerator struct {
 
 	reconcilerPkg       string
 	informerPackagePath string
-	reconcilerClass     string
+	reconcilerClasses   []string
 	hasReconcilerClass  bool
 }
 
@@ -64,7 +64,7 @@ func (g *reconcilerControllerStubGenerator) GenerateType(c *generator.Context, t
 
 	m := map[string]interface{}{
 		"type":     t,
-		"class":    g.reconcilerClass,
+		"classes":  g.reconcilerClasses,
 		"hasClass": g.hasReconcilerClass,
 		"informerGet": c.Universe.Function(types.Name{
 			Package: g.informerPackagePath,
@@ -91,9 +91,17 @@ func (g *reconcilerControllerStubGenerator) GenerateType(c *generator.Context, t
 			Package: g.reconcilerPkg,
 			Name:    "ClassAnnotationKey",
 		}),
+		"classAnnotationKeys": c.Universe.Variable(types.Name{
+			Package: g.reconcilerPkg,
+			Name:    "ClassAnnotationKeys",
+		}),
 		"annotationFilterFunc": c.Universe.Function(types.Name{
 			Package: "knative.dev/pkg/reconciler",
 			Name:    "AnnotationFilterFunc",
+		}),
+		"orFilterFunc": c.Universe.Function(types.Name{
+			Package: "knative.dev/pkg/reconciler",
+			Name:    "Or",
 		}),
 		"filterHandler": c.Universe.Type(types.Name{
 			Package: "k8s.io/client-go/tools/cache",
@@ -120,7 +128,17 @@ func NewController(
 
 	{{if .hasClass}}
 	classValue := "default" // TODO: update this to the appropriate value.
+	{{if len .classes | eq 1 }}
 	classFilter := {{.annotationFilterFunc|raw}}({{.classAnnotationKey|raw}}, classValue, false /*allowUnset*/)
+	{{else if gt (len .classes) 1 }}
+	filterFuncs := make([]func(interface{}) bool, 0, len({{.classAnnotationKeys|raw}}))
+
+	for _, key := range {{.classAnnotationKeys|raw}} {
+		filterFuncs = append(filterFuncs, {{.annotationFilterFunc|raw}}(key, classValue, false /*allowUnset*/))
+	}
+
+	classFilter := {{.orFilterFunc|raw}}(filterFuncs...)
+	{{end}}
 	{{end}}
 
 	// TODO: setup additional informers here.

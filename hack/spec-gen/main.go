@@ -24,9 +24,9 @@ import (
 
 	tekton "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 
-	"github.com/go-openapi/spec"
 	"k8s.io/klog"
 	"k8s.io/kube-openapi/pkg/common"
+	spec "k8s.io/kube-openapi/pkg/validation/spec"
 )
 
 func main() {

@@ -53,6 +53,20 @@ func AsBool(key string, target *bool) ParseFunc {
 	}
 }
 
+// AsInt16 parses the value at key as an int16 into the target, if it exists.
+func AsInt16(key string, target *int16) ParseFunc {
+	return func(data map[string]string) error {
+		if raw, ok := data[key]; ok {
+			val, err := strconv.ParseInt(raw, 10, 16)
+			if err != nil {
+				return fmt.Errorf("failed to parse %q: %w", key, err)
+			}
+			*target = int16(val)
+		}
+		return nil
+	}
+}
+
 // AsInt32 parses the value at key as an int32 into the target, if it exists.
 func AsInt32(key string, target *int32) ParseFunc {
 	return func(data map[string]string) error {
@@ -90,6 +104,20 @@ func AsInt(key string, target *int) ParseFunc {
 				return fmt.Errorf("failed to parse %q: %w", key, err)
 			}
 			*target = val
+		}
+		return nil
+	}
+}
+
+// AsUint16 parses the value at key as an uint16 into the target, if it exists.
+func AsUint16(key string, target *uint16) ParseFunc {
+	return func(data map[string]string) error {
+		if raw, ok := data[key]; ok {
+			val, err := strconv.ParseUint(raw, 10, 16)
+			if err != nil {
+				return fmt.Errorf("failed to parse %q: %w", key, err)
+			}
+			*target = uint16(val)
 		}
 		return nil
 	}

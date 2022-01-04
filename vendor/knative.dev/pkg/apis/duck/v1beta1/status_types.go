@@ -26,7 +26,7 @@ import (
 
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/apis/duck/ducktypes"
-	"knative.dev/pkg/kmeta"
+	"knative.dev/pkg/kmap"
 )
 
 // +genduck
@@ -109,8 +109,7 @@ func (s *Status) GetCondition(t apis.ConditionType) *apis.Condition {
 func (s *Status) ConvertTo(ctx context.Context, sink *Status) {
 	sink.ObservedGeneration = s.ObservedGeneration
 	if s.Annotations != nil {
-		// This will deep copy the map.
-		sink.Annotations = kmeta.UnionMaps(s.Annotations)
+		sink.Annotations = kmap.Copy(s.Annotations)
 	}
 	for _, c := range s.Conditions {
 		switch c.Type {

@@ -19,25 +19,41 @@ import "strings"
 
 // Adapted from the k8s.io comment parser https://github.com/kubernetes/gengo/blob/master/types/comments.go
 
+// CommentsTags maps marker prefixes to a set of tags containing keys and values
+type CommentTags map[string]CommentTag
+
+// CommentTags maps keys to a list of values
+type CommentTag map[string][]string
+
 // ExtractCommentTags parses comments for lines of the form:
 //
-//   'marker' + ':' "key=value,key2=value2".
+//   "marker" + "prefix" + ':' + "key=value,key2=value2".
 //
-// Values are optional; empty map is the default.  A tag can be specified more than
+//  In the following example the marker is '+' and the prefix is 'foo':
+//   +foo:key=value1,key2=value2,key=value3
+//
+// Values are optional; empty map is the default. A tag can be specified more than
 // one time and all values are returned.  If the resulting map has an entry for
 // a key, the value (a slice) is guaranteed to have at least 1 element.
 //
 // Example: if you pass "+" for 'marker', and the following lines are in
 // the comments:
-//   +foo:key=value1,key2=value2
+//   +foo:key=value1,key2=value2,key=value3
 //   +bar
 //
 // Then this function will return:
-//   map[string]map[string]string{"foo":{"key":value1","key2":"value2"}, "bar": nil}
+//   map[string]map[string]string{
+//     "foo":{
+//      "key":  []string{"value1", "value3"},
+//      "key2": []string{"value2"}
+//     },
+//     "bar": {},
+//  }
 //
 // Users are not expected to repeat values.
-func ExtractCommentTags(marker string, lines []string) map[string]map[string]string {
-	out := map[string]map[string]string{}
+func ExtractCommentTags(marker string, lines []string) CommentTags {
+	out := CommentTags{}
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if len(line) == 0 || !strings.HasPrefix(line, marker) {
@@ -45,29 +61,32 @@ func ExtractCommentTags(marker string, lines []string) map[string]map[string]str
 		}
 
 		options := strings.SplitN(line[len(marker):], ":", 2)
+		prefix := options[0]
+
 		if len(options) == 2 {
 			vals := strings.Split(options[1], ",")
 
-			opts := out[options[0]]
+			opts := out[prefix]
 			if opts == nil {
-				opts = make(map[string]string, len(vals))
+				opts = make(CommentTag, len(vals))
+				out[prefix] = opts
 			}
 
 			for _, pair := range vals {
-				if kv := strings.SplitN(pair, "=", 2); len(kv) == 2 {
-					opts[kv[0]] = kv[1]
-				} else if kv[0] != "" {
-					opts[kv[0]] = ""
+				kv := strings.SplitN(pair, "=", 2)
+				if len(kv) == 1 && kv[0] == "" {
+					continue
+				}
+				if _, ok := opts[kv[0]]; !ok {
+					opts[kv[0]] = []string{}
+				}
+				if len(kv) == 2 {
+					opts[kv[0]] = append(opts[kv[0]], kv[1])
 				}
 			}
-			if len(opts) == 0 {
-				out[options[0]] = nil
-			} else {
-				out[options[0]] = opts
-			}
 		} else if len(options) == 1 && options[0] != "" {
-			if _, has := out[options[0]]; !has {
-				out[options[0]] = nil
+			if _, has := out[prefix]; !has {
+				out[prefix] = CommentTag{}
 			}
 		}
 	}
