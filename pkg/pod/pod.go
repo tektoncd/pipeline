@@ -19,6 +19,7 @@ package pod
 import (
 	"context"
 	"fmt"
+	"math"
 	"path/filepath"
 	"strconv"
 
@@ -88,6 +89,9 @@ var (
 		Name:         "tekton-internal-steps",
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
 	}}
+
+	// MaxActiveDeadlineSeconds is a maximum permitted value to be used for a task with no timeout
+	MaxActiveDeadlineSeconds = int64(math.MaxInt32)
 )
 
 // Builder exposes options to configure Pod construction from TaskSpecs/Runs.
@@ -300,7 +304,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if shouldAddReadyAnnotationOnPodCreate(ctx, taskSpec.Sidecars) {
 		podAnnotations[readyAnnotation] = readyAnnotationValue
 	}
+
+	// calculate the activeDeadlineSeconds based on the specified timeout (uses default timeout if it's not specified)
 	activeDeadlineSeconds := int64(taskRun.GetTimeout(ctx).Seconds() * deadlineFactor)
+	// set activeDeadlineSeconds to the max. allowed value i.e. max int32 when timeout is explicitly set to 0
+	if taskRun.GetTimeout(ctx) == config.NoTimeoutDuration {
+		activeDeadlineSeconds = MaxActiveDeadlineSeconds
+	}
 
 	podNameSuffix := "-pod"
 	if taskRunRetries := len(taskRun.Status.RetriesStatus); taskRunRetries > 0 {
