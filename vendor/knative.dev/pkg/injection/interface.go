@@ -103,6 +103,14 @@ type DynamicInterface interface {
 
 type ControllerConstructor func(context.Context, configmap.Watcher) *controller.Impl
 
+// NamedControllerConstructor is a ControllerConstructor with an associated name.
+type NamedControllerConstructor struct {
+	// Name is the name associated with the controller returned by ControllerConstructor.
+	Name string
+	// ControllerConstructor is a constructor for a controller.
+	ControllerConstructor ControllerConstructor
+}
+
 var (
 	// Check that impl implements Interface
 	_ Interface = (*impl)(nil)

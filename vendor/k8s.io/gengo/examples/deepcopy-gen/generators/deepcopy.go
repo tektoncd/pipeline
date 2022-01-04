@@ -133,7 +133,7 @@ func Packages(context *generator.Context, arguments *args.GeneratorArgs) generat
 
 	inputs := sets.NewString(context.Inputs...)
 	packages := generator.Packages{}
-	header := append([]byte(fmt.Sprintf("// +build !%s\n\n", arguments.GeneratedBuildTag)), boilerplate...)
+	header := append([]byte(fmt.Sprintf("//go:build !%s\n// +build !%s\n\n", arguments.GeneratedBuildTag, arguments.GeneratedBuildTag)), boilerplate...)
 
 	boundingDirs := []string{}
 	if customArgs, ok := arguments.CustomArgs.(*CustomArgs); ok {

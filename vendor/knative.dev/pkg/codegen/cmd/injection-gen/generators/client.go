@@ -318,6 +318,13 @@ func (g *clientGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 								resultType.Name.Name = e.ResultTypeOverride
 							}
 						}
+						// TODO: Total hacks to get this to run at all.
+						if v == "apply" {
+							inputType = *(c.Universe.Type(types.Name{
+								Package: "k8s.io/client-go/applyconfigurations/" + strings.ReplaceAll(inputType.Name.Package, "k8s.io/api/", ""),
+								Name:    inputType.Name.Name + "ApplyConfiguration",
+							}))
+						}
 						opts["InputType"] = &inputType
 						opts["ResultType"] = &resultType
 						if e.IsSubresource() {
@@ -579,6 +586,11 @@ func (w *wrap{{.GroupGoName}}{{.Version}}{{ .Type.Name.Name }}Impl) ApplyStatus(
 
 var extensionVerbs = sets.NewString( /* Populated from extensionVerbMap during init */ )
 var extensionVerbMap = map[string]string{
+	"apply": `
+func (w *wrap{{.GroupGoName}}{{.Version}}{{ .Type.Name.Name }}Impl) Apply(ctx {{ .contextContext|raw }}, name string, in *{{ .InputType|raw }}, opts {{ .metav1ApplyOptions|raw }}) (*{{ .ResultType|raw }}, error) {
+	panic("NYI")
+}
+`,
 	"create": `
 func (w *wrap{{.GroupGoName}}{{.Version}}{{ .Type.Name.Name }}Impl) Create(ctx {{ .contextContext|raw }}, {{ if .Subresource }}_ string, {{ end }}in *{{ .InputType|raw }}, opts {{ .metav1CreateOptions|raw }}) (*{{ .ResultType|raw }}, error) {
 	panic("NYI")

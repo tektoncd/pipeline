@@ -24,6 +24,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	eventsv1beta1 "k8s.io/api/events/v1beta1"
 	extensionsv1beta1 "k8s.io/api/extensions/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -123,6 +124,18 @@ func (*wrapCoreV1PodImpl) Bind(context.Context, *corev1.Binding, metav1.CreateOp
 }
 
 func (*wrapCoreV1PodImpl) Evict(context.Context, *policyv1beta1.Eviction) error {
+	panic("NYI")
+}
+
+func (*wrapCoreV1PodImpl) EvictV1(context.Context, *policyv1.Eviction) error {
+	panic("NYI")
+}
+
+func (*wrapCoreV1PodImpl) EvictV1beta1(context.Context, *policyv1beta1.Eviction) error {
+	panic("NYI")
+}
+
+func (c *wrapPolicyV1EvictionImpl) Evict(ctx context.Context, eviction *policyv1.Eviction) error {
 	panic("NYI")
 }
 

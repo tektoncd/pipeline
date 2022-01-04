@@ -84,10 +84,6 @@ type metricsConfig struct {
 	// If duration is less than or equal to zero, it enables the default behavior.
 	reportingPeriod time.Duration
 
-	// recorder provides a hook for performing custom transformations before
-	// writing the metrics to the stats.RecordWithOptions interface.
-	recorder func(context.Context, []stats.Measurement, ...stats.Options) error
-
 	// secret contains credentials for an exporter to use for authentication.
 	secret *corev1.Secret
 
@@ -117,16 +113,13 @@ func (mc *metricsConfig) record(ctx context.Context, mss []stats.Measurement, ro
 		return nil
 	}
 
-	if mc.recorder == nil {
-		opt, err := optionForResource(metricskey.GetResource(ctx))
-		if err != nil {
-			return err
-		}
-		ros = append(ros, opt)
-
-		return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(mss...))...)
+	opt, err := optionForResource(metricskey.GetResource(ctx))
+	if err != nil {
+		return err
 	}
-	return mc.recorder(ctx, mss, ros...)
+	ros = append(ros, opt)
+
+	return stats.RecordWithOptions(ctx, append(ros, stats.WithMeasurements(mss...))...)
 }
 
 func createMetricsConfig(_ context.Context, ops ExporterOptions) (*metricsConfig, error) {

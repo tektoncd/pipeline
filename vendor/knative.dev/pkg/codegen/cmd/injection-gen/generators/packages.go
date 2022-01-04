@@ -193,29 +193,36 @@ func MustParseClientGenTags(lines []string) Tags {
 	return ret
 }
 
-func extractCommentTags(t *types.Type) map[string]map[string]string {
+func extractCommentTags(t *types.Type) CommentTags {
 	comments := append(append([]string{}, t.SecondClosestCommentLines...), t.CommentLines...)
 	return ExtractCommentTags("+", comments)
 }
 
-func extractReconcilerClassTag(tags map[string]map[string]string) (string, bool) {
+func extractReconcilerClassesTag(tags CommentTags) ([]string, bool) {
 	vals, ok := tags["genreconciler"]
 	if !ok {
-		return "", false
+		return nil, false
 	}
-	classname, has := vals["class"]
-	return classname, has
+	classnames, has := vals["class"]
+	if has && len(classnames) == 0 {
+		return nil, false
+	}
+	return classnames, has
 }
 
-func isKRShaped(tags map[string]map[string]string) bool {
+func isKRShaped(tags CommentTags) bool {
 	vals, has := tags["genreconciler"]
 	if !has {
 		return false
 	}
-	return vals["krshapedlogic"] != "false"
+	stringVals, has := vals["krshapedlogic"]
+	if !has || len(vals) == 0 {
+		return true // Default is true
+	}
+	return stringVals[0] != "false"
 }
 
-func isNonNamespaced(tags map[string]map[string]string) bool {
+func isNonNamespaced(tags CommentTags) bool {
 	vals, has := tags["genclient"]
 	if !has {
 		return false
@@ -224,7 +231,7 @@ func isNonNamespaced(tags map[string]map[string]string) bool {
 	return has
 }
 
-func stubs(tags map[string]map[string]string) bool {
+func stubs(tags CommentTags) bool {
 	vals, has := tags["genreconciler"]
 	if !has {
 		return false
@@ -545,7 +552,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 		// Fix for golang iterator bug.
 		t := t
 		extracted := extractCommentTags(t)
-		reconcilerClass, hasReconcilerClass := extractReconcilerClassTag(extracted)
+		reconcilerClasses, hasReconcilerClass := extractReconcilerClassesTag(extracted)
 		nonNamespaced := isNonNamespaced(extracted)
 		isKRShaped := isKRShaped(extracted)
 		stubs := stubs(extracted)
@@ -573,7 +580,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					clientPkg:           clientPackagePath,
 					informerPackagePath: informerPackagePath,
 					schemePkg:           filepath.Join(customArgs.VersionedClientSetPackage, "scheme"),
-					reconcilerClass:     reconcilerClass,
+					reconcilerClasses:   reconcilerClasses,
 					hasReconcilerClass:  hasReconcilerClass,
 					hasStatus:           hasStatus(t),
 				})
@@ -602,7 +609,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 						outputPackage:       filepath.Join(packagePath, "stub"),
 						imports:             generator.NewImportTracker(),
 						informerPackagePath: informerPackagePath,
-						reconcilerClass:     reconcilerClass,
+						reconcilerClasses:   reconcilerClasses,
 						hasReconcilerClass:  hasReconcilerClass,
 					})
 					return generators
@@ -633,7 +640,7 @@ func reconcilerPackages(basePackage string, groupPkgName string, gv clientgentyp
 					listerPkg:          listerPackagePath,
 					groupGoName:        groupGoName,
 					groupVersion:       gv,
-					reconcilerClass:    reconcilerClass,
+					reconcilerClasses:  reconcilerClasses,
 					hasReconcilerClass: hasReconcilerClass,
 					nonNamespaced:      nonNamespaced,
 					isKRShaped:         isKRShaped,

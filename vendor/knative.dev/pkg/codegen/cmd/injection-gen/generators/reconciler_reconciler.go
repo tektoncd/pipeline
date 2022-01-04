@@ -37,7 +37,7 @@ type reconcilerReconcilerGenerator struct {
 	listerName     string
 	listerPkg      string
 
-	reconcilerClass    string
+	reconcilerClasses  []string
 	hasReconcilerClass bool
 	nonNamespaced      bool
 	isKRShaped         bool
@@ -74,7 +74,7 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 		"type":          t,
 		"group":         namer.IC(g.groupGoName),
 		"version":       namer.IC(g.groupVersion.Version.String()),
-		"class":         g.reconcilerClass,
+		"classes":       g.reconcilerClasses,
 		"hasClass":      g.hasReconcilerClass,
 		"isKRShaped":    g.isKRShaped,
 		"hasStatus":     g.hasStatus,
@@ -219,6 +219,9 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 	sw.Do(reconcilerInterfaceFactory, m)
 	sw.Do(reconcilerNewReconciler, m)
 	sw.Do(reconcilerImplFactory, m)
+	if len(g.reconcilerClasses) > 1 {
+		sw.Do(reconcilerLookupClass, m)
+	}
 	if g.hasStatus {
 		sw.Do(reconcilerStatusFactory, m)
 	}
@@ -226,6 +229,17 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 
 	return sw.Error()
 }
+
+var reconcilerLookupClass = `
+func lookupClass(annotations map[string]string) (string, bool) {
+	for _, key := range ClassAnnotationKeys {
+		 if val, ok := annotations[key]; ok {
+		   return val, true
+		 }
+	}
+	return "", false
+}
+`
 
 var reconcilerInterfaceFactory = `
 // Interface defines the strongly typed interfaces to be implemented by a
@@ -293,8 +307,15 @@ type reconcilerImpl struct {
 	skipStatusUpdates bool
 	{{end}}
 
-	{{if .hasClass}}
-	// classValue is the resource annotation[{{ .class }}] instance value this reconciler instance filters on.
+	{{if len .classes | eq 1 }}
+	// classValue is the resource annotation[{{ index .classes 0 }}] instance value this reconciler instance filters on.
+	classValue string
+	{{else if gt (len .classes) 1 }}
+	// classValue is the resource annotation instance value this reconciler instance filters on.
+	// The annotations key are:
+	{{- range $class := .classes}}
+	//   {{$class}}
+	{{- end}}
 	classValue string
 	{{end}}
 }
@@ -416,14 +437,22 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 	} else if err != nil {
 		return err
 	}
-	{{if .hasClass}}
+
+{{if len .classes | eq 1 }}
 	if classValue, found := original.GetAnnotations()[ClassAnnotationKey]; !found || classValue != r.classValue {
 		logger.Debugw("Skip reconciling resource, class annotation value does not match reconciler instance value.",
 			zap.String("classKey", ClassAnnotationKey),
 			zap.String("issue", classValue+"!="+r.classValue))
 		return nil
 	}
-	{{end}}
+{{else if gt (len .classes) 1 }}
+	if classValue, found := lookupClass(original.GetAnnotations()); !found || classValue != r.classValue {
+		logger.Debugw("Skip reconciling resource, class annotation value does not match reconciler instance value.",
+			zap.Strings("classKeys", ClassAnnotationKeys),
+			zap.String("issue", classValue+"!="+r.classValue))
+		return nil
+	}
+{{end}}
 
 	// Don't modify the informers copy.
 	resource := original.DeepCopy()

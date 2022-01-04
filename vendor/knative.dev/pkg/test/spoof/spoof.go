@@ -164,7 +164,7 @@ func (sc *SpoofingClient) Do(req *http.Request, errorRetryCheckers ...interface{
 // If no retry checkers are specified `DefaultErrorRetryChecker` will be used.
 func (sc *SpoofingClient) Poll(req *http.Request, inState ResponseChecker, checkers ...interface{}) (*Response, error) {
 	if len(checkers) == 0 {
-		checkers = []interface{}{ErrorRetryChecker(DefaultErrorRetryChecker)}
+		checkers = []interface{}{ErrorRetryChecker(DefaultErrorRetryChecker), ResponseRetryChecker(DefaultResponseRetryChecker)}
 	}
 
 	var resp *Response
@@ -253,6 +253,14 @@ func DefaultErrorRetryChecker(err error) (bool, error) {
 		return true, fmt.Errorf("retrying for 'no route to host' error: %w", err)
 	}
 	return false, err
+}
+
+// DefaultResponseRetryChecker implements the defaults for retrying on response.
+func DefaultResponseRetryChecker(resp *Response) (bool, error) {
+	if isResponseDNSError(resp) {
+		return true, fmt.Errorf("retrying for DNS related failure response: %v", resp)
+	}
+	return false, nil
 }
 
 // logZipkinTrace provides support to log Zipkin Trace for param: spoofResponse

@@ -19,6 +19,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -74,6 +75,10 @@ type Drainer struct {
 
 	// timer is used to orchestrate the drain.
 	timer timer
+
+	// HealthCheckUAPrefixes are the additional user agent prefixes that trigger the
+	// drainer's health check
+	HealthCheckUAPrefixes []string
 }
 
 // Ensure Drainer implements http.Handler
@@ -81,7 +86,8 @@ var _ http.Handler = (*Drainer)(nil)
 
 // ServeHTTP implements http.Handler
 func (d *Drainer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if network.IsKubeletProbe(r) { // Respond to probes regardless of path.
+	// Respond to probes regardless of path.
+	if d.isHealthCheckRequest(r) {
 		if d.draining() {
 			http.Error(w, "shutting down", http.StatusServiceUnavailable)
 		} else if d.HealthCheck != nil {
@@ -122,6 +128,21 @@ func (d *Drainer) Drain() {
 
 		<-t.tickChan()
 	})
+}
+
+// isHealthcheckRequest validates if the request has a user agent that is for healthcheck
+func (d *Drainer) isHealthCheckRequest(r *http.Request) bool {
+	if network.IsKubeletProbe(r) {
+		return true
+	}
+
+	for _, ua := range d.HealthCheckUAPrefixes {
+		if strings.HasPrefix(r.Header.Get(network.UserAgentKey), ua) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // reset resets the drain timer to the full amount of time.

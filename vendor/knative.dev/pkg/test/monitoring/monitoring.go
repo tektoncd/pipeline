@@ -22,7 +22,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -75,25 +74,11 @@ func Cleanup(pid int) error {
 // PortForward sets up local port forward to the pod specified by the "app" label in the given namespace
 func PortForward(logf logging.FormatLogger, podList *v1.PodList, localPort, remotePort int, namespace string) (int, error) {
 	podName := podList.Items[0].Name
-	portFwdCmd := fmt.Sprintf("kubectl port-forward %s %d:%d -n %s", podName, localPort, remotePort, namespace)
-	portFwdProcess, err := executeCmdBackground(logf, portFwdCmd)
-
-	if err != nil {
+	cmd := exec.Command("kubectl", "port-forward", podName, fmt.Sprintf("%d:%d", localPort, remotePort), "-n", namespace)
+	if err := cmd.Start(); err != nil {
 		return 0, fmt.Errorf("failed to port forward: %w", err)
 	}
 
-	logf("Running %s port-forward in background, pid = %d", podName, portFwdProcess.Pid)
-	return portFwdProcess.Pid, nil
-}
-
-// RunBackground starts a background process and returns the Process if succeed
-func executeCmdBackground(logf logging.FormatLogger, format string, args ...interface{}) (*os.Process, error) {
-	cmd := fmt.Sprintf(format, args...)
-	logf("Executing command: %s", cmd)
-	parts := strings.Split(cmd, " ")
-	c := exec.Command(parts[0], parts[1:]...) // #nosec
-	if err := c.Start(); err != nil {
-		return nil, fmt.Errorf("%s command failed: %w", cmd, err)
-	}
-	return c.Process, nil
+	logf("Running %s port-forward in background, pid = %d", podName, cmd.Process.Pid)
+	return cmd.Process.Pid, nil
 }

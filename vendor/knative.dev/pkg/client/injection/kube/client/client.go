@@ -1379,6 +1379,10 @@ func (w *wrapAppsV1DeploymentImpl) UpdateScale(ctx context.Context, _ string, in
 	panic("NYI")
 }
 
+func (w *wrapAppsV1DeploymentImpl) ApplyScale(ctx context.Context, name string, in *applyconfigurationsautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (*autoscalingv1.Scale, error) {
+	panic("NYI")
+}
+
 func (w *wrapAppsV1) ReplicaSets(namespace string) typedappsv1.ReplicaSetInterface {
 	return &wrapAppsV1ReplicaSetImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{
@@ -1526,6 +1530,10 @@ func (w *wrapAppsV1ReplicaSetImpl) UpdateScale(ctx context.Context, _ string, in
 	panic("NYI")
 }
 
+func (w *wrapAppsV1ReplicaSetImpl) ApplyScale(ctx context.Context, name string, in *applyconfigurationsautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (*autoscalingv1.Scale, error) {
+	panic("NYI")
+}
+
 func (w *wrapAppsV1) StatefulSets(namespace string) typedappsv1.StatefulSetInterface {
 	return &wrapAppsV1StatefulSetImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{
@@ -1670,6 +1678,10 @@ func (w *wrapAppsV1StatefulSetImpl) GetScale(ctx context.Context, name string, o
 }
 
 func (w *wrapAppsV1StatefulSetImpl) UpdateScale(ctx context.Context, _ string, in *autoscalingv1.Scale, opts metav1.UpdateOptions) (*autoscalingv1.Scale, error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1StatefulSetImpl) ApplyScale(ctx context.Context, name string, in *applyconfigurationsautoscalingv1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (*autoscalingv1.Scale, error) {
 	panic("NYI")
 }
 
@@ -2820,6 +2832,10 @@ func (w *wrapAppsV1beta2StatefulSetImpl) GetScale(ctx context.Context, name stri
 }
 
 func (w *wrapAppsV1beta2StatefulSetImpl) UpdateScale(ctx context.Context, _ string, in *appsv1beta2.Scale, opts metav1.UpdateOptions) (*appsv1beta2.Scale, error) {
+	panic("NYI")
+}
+
+func (w *wrapAppsV1beta2StatefulSetImpl) ApplyScale(ctx context.Context, name string, in *v1beta2.ScaleApplyConfiguration, opts metav1.ApplyOptions) (*appsv1beta2.Scale, error) {
 	panic("NYI")
 }
 
@@ -6167,11 +6183,7 @@ func (w *wrapCoreV1PodImpl) Watch(ctx context.Context, opts metav1.ListOptions) 
 	return nil, errors.New("NYI: Watch")
 }
 
-func (w *wrapCoreV1PodImpl) GetEphemeralContainers(ctx context.Context, name string, opts metav1.GetOptions) (*apicorev1.EphemeralContainers, error) {
-	panic("NYI")
-}
-
-func (w *wrapCoreV1PodImpl) UpdateEphemeralContainers(ctx context.Context, _ string, in *apicorev1.EphemeralContainers, opts metav1.UpdateOptions) (*apicorev1.EphemeralContainers, error) {
+func (w *wrapCoreV1PodImpl) UpdateEphemeralContainers(ctx context.Context, _ string, in *apicorev1.Pod, opts metav1.UpdateOptions) (*apicorev1.Pod, error) {
 	panic("NYI")
 }
 
@@ -7934,6 +7946,10 @@ func (w *wrapExtensionsV1beta1DeploymentImpl) UpdateScale(ctx context.Context, _
 	panic("NYI")
 }
 
+func (w *wrapExtensionsV1beta1DeploymentImpl) ApplyScale(ctx context.Context, name string, in *extensionsv1beta1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (*apiextensionsv1beta1.Scale, error) {
+	panic("NYI")
+}
+
 func (w *wrapExtensionsV1beta1) Ingresses(namespace string) typedextensionsv1beta1.IngressInterface {
 	return &wrapExtensionsV1beta1IngressImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{
@@ -8491,6 +8507,10 @@ func (w *wrapExtensionsV1beta1ReplicaSetImpl) GetScale(ctx context.Context, name
 }
 
 func (w *wrapExtensionsV1beta1ReplicaSetImpl) UpdateScale(ctx context.Context, _ string, in *apiextensionsv1beta1.Scale, opts metav1.UpdateOptions) (*apiextensionsv1beta1.Scale, error) {
+	panic("NYI")
+}
+
+func (w *wrapExtensionsV1beta1ReplicaSetImpl) ApplyScale(ctx context.Context, name string, in *extensionsv1beta1.ScaleApplyConfiguration, opts metav1.ApplyOptions) (*apiextensionsv1beta1.Scale, error) {
 	panic("NYI")
 }
 
@@ -10245,6 +10265,26 @@ type wrapPolicyV1 struct {
 func (w *wrapPolicyV1) RESTClient() rest.Interface {
 	panic("RESTClient called on dynamic client!")
 }
+
+func (w *wrapPolicyV1) Evictions(namespace string) typedpolicyv1.EvictionInterface {
+	return &wrapPolicyV1EvictionImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "policy",
+			Version:  "v1",
+			Resource: "evictions",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapPolicyV1EvictionImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedpolicyv1.EvictionInterface = (*wrapPolicyV1EvictionImpl)(nil)
 
 func (w *wrapPolicyV1) PodDisruptionBudgets(namespace string) typedpolicyv1.PodDisruptionBudgetInterface {
 	return &wrapPolicyV1PodDisruptionBudgetImpl{
