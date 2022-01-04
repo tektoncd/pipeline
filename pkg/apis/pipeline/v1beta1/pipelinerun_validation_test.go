@@ -352,6 +352,34 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 		wc: enableAlphaAPIFields,
+	}, {
+		name: "alpha feature: valid resolver",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
+			},
+		},
+		wc: enableAlphaAPIFields,
+	}, {
+		name: "alpha feature: valid resolver with resource parameters",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Resource: []v1beta1.ResolverParam{{
+					Name:  "repo",
+					Value: "https://github.com/tektoncd/pipeline.git",
+				}, {
+					Name:  "branch",
+					Value: "baz",
+				}}}},
+			},
+		},
+		wc: enableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {
@@ -369,9 +397,10 @@ func TestPipelineRun_Validate(t *testing.T) {
 
 func TestPipelineRunSpec_Invalidate(t *testing.T) {
 	tests := []struct {
-		name    string
-		spec    v1beta1.PipelineRunSpec
-		wantErr *apis.FieldError
+		name        string
+		spec        v1beta1.PipelineRunSpec
+		wantErr     *apis.FieldError
+		withContext func(context.Context) context.Context
 	}{{
 		name: "pipelineRef without Pipeline Name",
 		spec: v1beta1.PipelineRunSpec{
@@ -431,10 +460,71 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				"workspaces[0].volumeclaimtemplate",
 			},
 		},
+	}, {
+		name: "pipelineref resolver disallowed without alpha feature gate",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "foo",
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "foo",
+				},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("resolver").ViaField("pipelineRef"),
+	}, {
+		name: "pipelineref resource disallowed without alpha feature gate",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "foo",
+				ResolverRef: v1beta1.ResolverRef{
+					Resource: []v1beta1.ResolverParam{},
+				},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("resource").ViaField("pipelineRef"),
+	}, {
+		name: "pipelineref resource disallowed without resolver",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				ResolverRef: v1beta1.ResolverRef{
+					Resource: []v1beta1.ResolverParam{},
+				},
+			},
+		},
+		wantErr:     apis.ErrMissingField("resolver").ViaField("pipelineRef"),
+		withContext: enableAlphaAPIFields,
+	}, {
+		name: "pipelineref resolver disallowed in conjunction with pipelineref name",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "foo",
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "bar",
+				},
+			},
+		},
+		wantErr:     apis.ErrMultipleOneOf("name", "resolver").ViaField("pipelineRef"),
+		withContext: enableAlphaAPIFields,
+	}, {
+		name: "pipelineref resolver disallowed in conjunction with pipelineref bundle",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Bundle: "foo",
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "baz",
+				},
+			},
+		},
+		wantErr:     apis.ErrMultipleOneOf("bundle", "resolver").ViaField("pipelineRef"),
+		withContext: enableAlphaAPIFields,
 	}}
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
-			err := ps.spec.Validate(context.Background())
+			ctx := context.Background()
+			if ps.withContext != nil {
+				ctx = ps.withContext(ctx)
+			}
+			err := ps.spec.Validate(ctx)
 			if d := cmp.Diff(ps.wantErr.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}

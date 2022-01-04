@@ -1471,6 +1471,44 @@
         }
       }
     },
+    "v1beta1.ResolverParam": {
+      "description": "ResolverParam is a single parameter passed to a resolver.",
+      "type": "object",
+      "required": [
+        "Name",
+        "Value"
+      ],
+      "properties": {
+        "Name": {
+          "description": "Name is the name of the parameter that will be passed to the resolver.",
+          "type": "string",
+          "default": ""
+        },
+        "Value": {
+          "description": "Value is the string value of the parameter that will be passed to the resolver.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
+    "v1beta1.ResolverRef": {
+      "description": "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
+      "type": "object",
+      "properties": {
+        "resolver": {
+          "description": "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+          "type": "string"
+        },
+        "resource": {
+          "description": "Resource contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.ResolverParam"
+          }
+        }
+      }
+    },
     "v1beta1.ResultRef": {
       "description": "ResultRef is a type that represents a reference to a task run result",
       "type": "object",

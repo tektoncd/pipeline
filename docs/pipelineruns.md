@@ -12,6 +12,7 @@ weight: 500
   - [Configuring a <code>PipelineRun</code>](#configuring-a-pipelinerun)
     - [Specifying the target <code>Pipeline</code>](#specifying-the-target-pipeline)
       - [Tekton Bundles](#tekton-bundles)
+      - [Remote Pipelines](#remote-pipelines)
     - [Specifying <code>Resources</code>](#specifying-resources)
     - [Specifying <code>Parameters</code>](#specifying-parameters)
       - [Implicit Parameters](#implicit-parameters)
@@ -164,6 +165,29 @@ in [Pipelines](pipelines.md#tekton-bundles) or [TaskRuns](taskruns.md#tekton-bun
 `Tekton Bundles` may be constructed with any toolsets that produce valid OCI image artifacts
 so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
 
+#### Remote Pipelines
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+**Warning: This feature is still in very early stage of development and is not yet functional. Do not use it.**
+
+A `pipelineRef` field may specify a Pipeline in a remote location such as git.
+Support for specific types of remote will depend on the Resolvers your
+cluster's operator has installed. The below example demonstrates
+referencing a Pipeline in git:
+
+```yaml
+spec:
+  pipelineRef:
+    resolver: git
+    resource:
+    - name: repo
+      value: https://github.com/tektoncd/catalog.git
+    - name: commit
+      value: abc123
+    - name: path
+      value: /pipeline/buildpacks/0.1/buildpacks.yaml
+```
 
 ### Specifying `Resources`
 

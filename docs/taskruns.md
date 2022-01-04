@@ -12,6 +12,7 @@ weight: 300
 - [Configuring a `TaskRun`](#configuring-a-taskrun)
   - [Specifying the target `Task`](#specifying-the-target-task)
   - [Tekton Bundles](#tekton-bundles)
+  - [Remote Tasks](#remote-tasks)
   - [Specifying `Parameters`](#specifying-parameters)
     - [Implicit Parameters](#implicit-parameters)
     - [Extra Parameters](#extra-parameters)
@@ -157,6 +158,30 @@ of the same named `Task` to be run at once.
 `Tekton Bundles` may be constructed with any toolsets that produces valid OCI image artifacts so long as
 the artifact adheres to the [contract](tekton-bundle-contracts.md). Additionally, you may also use the `tkn`
 cli *(coming soon)*.
+
+### Remote Tasks
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+**Warning: This feature is still in very early stage of development and is not yet functional. Do not use it.**
+
+A `taskRef` field may specify a Task in a remote location such as git.
+Support for specific types of remote will depend on the Resolvers your
+cluster's operator has installed. The below example demonstrates
+referencing a Task in git:
+
+```yaml
+spec:
+  taskRef:
+    resolver: git
+    resource:
+    - name: repo
+      value: https://github.com/tektoncd/catalog.git
+    - name: commit
+      value: abc123
+    - name: path
+      value: /task/golang-build/0.3/golang-build.yaml
+```
 
 ### Specifying `Parameters`
 

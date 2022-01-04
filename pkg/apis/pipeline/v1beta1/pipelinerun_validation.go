@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
@@ -48,8 +47,6 @@ func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate pipelinerun spec
 func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
-	cfg := config.FromContextOrDefaults(ctx)
-
 	// Must have exactly one of pipelineRef and pipelineSpec.
 	if ps.PipelineRef == nil && ps.PipelineSpec == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("pipelineRef", "pipelineSpec"))
@@ -58,26 +55,9 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		errs = errs.Also(apis.ErrMultipleOneOf("pipelineRef", "pipelineSpec"))
 	}
 
-	// Validate that a pipelineRef has a name; this may be refactored elsewhere later.
-	if ps.PipelineRef != nil && ps.PipelineRef.Name == "" {
-		errs = errs.Also(apis.ErrMissingField("pipelineRef.name"))
-	}
-
-	// If EnableTektonOCIBundles feature flag is on validate it.
-	// Otherwise, fail if it is present (as it won't be allowed nor used)
-	if cfg.FeatureFlags.EnableTektonOCIBundles {
-		// Check that if a pipelineRef.bundle is specified, that a pipelineRef.name is specified as well.
-		if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" && ps.PipelineRef.Name == "" {
-			errs = errs.Also(apis.ErrMissingField("pipelineRef.name"))
-		}
-		// If a bundle url is specified, ensure it is parseable.
-		if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" {
-			if _, err := name.ParseReference(ps.PipelineRef.Bundle); err != nil {
-				errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "pipelineRef.bundle", err.Error()))
-			}
-		}
-	} else if ps.PipelineRef != nil && ps.PipelineRef.Bundle != "" {
-		errs = errs.Also(apis.ErrDisallowedFields("pipelineRef.bundle"))
+	// Validate PipelineRef if it's present
+	if ps.PipelineRef != nil {
+		errs = errs.Also(ps.PipelineRef.Validate(ctx).ViaField("pipelineRef"))
 	}
 
 	// Validate PipelineSpec if it's present

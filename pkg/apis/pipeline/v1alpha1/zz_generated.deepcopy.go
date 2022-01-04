@@ -403,7 +403,7 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 	if in.PipelineRef != nil {
 		in, out := &in.PipelineRef, &out.PipelineRef
 		*out = new(v1beta1.PipelineRef)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.PipelineSpec != nil {
 		in, out := &in.PipelineSpec, &out.PipelineSpec
@@ -533,7 +533,7 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 	if in.TaskRef != nil {
 		in, out := &in.TaskRef, &out.TaskRef
 		*out = new(v1beta1.TaskRef)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.TaskSpec != nil {
 		in, out := &in.TaskSpec, &out.TaskSpec
@@ -697,7 +697,7 @@ func (in *RunSpec) DeepCopyInto(out *RunSpec) {
 	if in.Ref != nil {
 		in, out := &in.Ref, &out.Ref
 		*out = new(v1beta1.TaskRef)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.Spec != nil {
 		in, out := &in.Spec, &out.Spec
@@ -921,7 +921,7 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 	if in.TaskRef != nil {
 		in, out := &in.TaskRef, &out.TaskRef
 		*out = new(v1beta1.TaskRef)
-		**out = **in
+		(*in).DeepCopyInto(*out)
 	}
 	if in.TaskSpec != nil {
 		in, out := &in.TaskSpec, &out.TaskSpec
