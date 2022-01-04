@@ -10,7 +10,7 @@ spec:
     # the right command at runtime based on the node's runtime platform.
     - image: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/cmd/nop
 
-    # Single-platform image with no command defined, but with args. We'll look
+    # Multi-arch image with no command defined, but with args. We'll look
     # up the commands and pass it to the entrypoint binary via env var, then
     # append the specified args.
     - image: ubuntu
