@@ -71,6 +71,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRun":                   schema_pkg_apis_pipeline_v1beta1_PipelineTaskRun(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec":               schema_pkg_apis_pipeline_v1beta1_PipelineTaskRunSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration":      schema_pkg_apis_pipeline_v1beta1_PipelineWorkspaceDeclaration(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResolverParam":                     schema_pkg_apis_pipeline_v1beta1_ResolverParam(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResolverRef":                       schema_pkg_apis_pipeline_v1beta1_ResolverRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResultRef":                         schema_pkg_apis_pipeline_v1beta1_ResultRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar":                           schema_pkg_apis_pipeline_v1beta1_Sidecar(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SidecarState":                      schema_pkg_apis_pipeline_v1beta1_SidecarState(ref),
@@ -2412,6 +2414,72 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineWorkspaceDeclaration(ref common.Re
 				Required: []string{"name"},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1beta1_ResolverParam(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolverParam is a single parameter passed to a resolver.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"Name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the parameter that will be passed to the resolver.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"Value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Value is the string value of the parameter that will be passed to the resolver.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"Name", "Value"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1beta1_ResolverRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"resolver": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resource contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResolverParam"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResolverParam"},
 	}
 }
 

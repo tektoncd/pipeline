@@ -72,6 +72,34 @@ func TestTaskRun_Validate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "taskrname"},
 		},
 		wc: apis.WithinDelete,
+	}, {
+		name: "alpha feature: valid resolver",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "tr",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
+			},
+		},
+		wc: enableAlphaAPIFields,
+	}, {
+		name: "alpha feature: valid resolver with resource parameters",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "tr",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Resource: []v1beta1.ResolverParam{{
+					Name:  "repo",
+					Value: "https://github.com/tektoncd/pipeline.git",
+				}, {
+					Name:  "branch",
+					Value: "baz",
+				}}}},
+			},
+		},
+		wc: enableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -260,6 +288,63 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrInvalidValue("breakito is not a valid breakpoint. Available valid breakpoints include [onFailure]", "debug.breakpoint"),
+		wc:      enableAlphaAPIFields,
+	}, {
+		name: "taskref resolver disallowed without alpha feature gate",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "foo",
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "git",
+				},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("resolver").ViaField("taskRef"),
+	}, {
+		name: "taskref resource disallowed without alpha feature gate",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "foo",
+				ResolverRef: v1beta1.ResolverRef{
+					Resource: []v1beta1.ResolverParam{},
+				},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("resource").ViaField("taskRef"),
+	}, {
+		name: "taskref resource disallowed without resolver",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				ResolverRef: v1beta1.ResolverRef{
+					Resource: []v1beta1.ResolverParam{},
+				},
+			},
+		},
+		wantErr: apis.ErrMissingField("resolver").ViaField("taskRef"),
+		wc:      enableAlphaAPIFields,
+	}, {
+		name: "taskref resolver disallowed in conjunction with taskref name",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "foo",
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "git",
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("name", "resolver").ViaField("taskRef"),
+		wc:      enableAlphaAPIFields,
+	}, {
+		name: "taskref resolver disallowed in conjunction with taskref bundle",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Bundle: "bar",
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "git",
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("bundle", "resolver").ViaField("taskRef"),
 		wc:      enableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
