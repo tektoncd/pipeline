@@ -184,7 +184,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Error getting pod logs for pod `%s` and container `%s` in namespace `%s`", tr.Status.PodName, stat.Name, namespace)
 			}
-			if !strings.Contains(string(logContent), "echo Hello") {
+			if !strings.Contains(string(logContent), "Hello") {
 				t.Fatalf("Expected logs to say hello but received %v", logContent)
 			}
 		}

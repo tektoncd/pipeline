@@ -34,7 +34,7 @@ const (
 	debugInfoVolumeName    = "tekton-internal-debug-info"
 	scriptsDir             = "/tekton/scripts"
 	debugScriptsDir        = "/tekton/debug/scripts"
-	defaultScriptPreamble  = "#!/bin/sh\nset -xe\n"
+	defaultScriptPreamble  = "#!/bin/sh\nset -e\n"
 	debugInfoDir           = "/tekton/debug/info"
 )
 
