@@ -213,7 +213,7 @@ line will have the following default preamble prepended:
 
 ```bash
 #!/bin/sh
-set -xe
+set -e
 ```
 
 You can override this default preamble by prepending a shebang that specifies the desired parser.
