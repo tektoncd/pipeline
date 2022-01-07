@@ -111,6 +111,7 @@ func imageNamesMapping() map[string]string {
 			"docker":                                "docker:18.06.3",
 			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
 			"stedolan/jq":                           "ibmcom/jq-s390x:latest",
+			"amd64/ubuntu":                          "s390x/ubuntu",
 			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
 		}
 	case "ppc64le":
