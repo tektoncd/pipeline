@@ -119,12 +119,6 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 		logger.Warnf("Failed to set http.sslVerify in git config: %s", err)
 		return err
 	}
-	if spec.Revision == "" {
-		spec.Revision = "HEAD"
-		if _, err := run(logger, "", "symbolic-ref", spec.Revision, "refs/remotes/origin/HEAD"); err != nil {
-			return err
-		}
-	}
 
 	fetchArgs := []string{"fetch"}
 	if spec.Submodules {
