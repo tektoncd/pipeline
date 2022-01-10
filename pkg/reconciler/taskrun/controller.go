@@ -23,8 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	clustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask"
-	taskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/task"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
 	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
@@ -48,8 +46,6 @@ func NewController(opts *pipeline.Options) func(context.Context, configmap.Watch
 		kubeclientset := kubeclient.Get(ctx)
 		pipelineclientset := pipelineclient.Get(ctx)
 		taskRunInformer := taskruninformer.Get(ctx)
-		taskInformer := taskinformer.Get(ctx)
-		clusterTaskInformer := clustertaskinformer.Get(ctx)
 		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
 		resourceInformer := resourceinformer.Get(ctx)
 		limitrangeInformer := limitrangeinformer.Get(ctx)
@@ -66,8 +62,6 @@ func NewController(opts *pipeline.Options) func(context.Context, configmap.Watch
 			PipelineClientSet: pipelineclientset,
 			Images:            opts.Images,
 			taskRunLister:     taskRunInformer.Lister(),
-			taskLister:        taskInformer.Lister(),
-			clusterTaskLister: clusterTaskInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
 			limitrangeLister:  limitrangeInformer.Lister(),
 			cloudEventClient:  cloudeventclient.Get(ctx),

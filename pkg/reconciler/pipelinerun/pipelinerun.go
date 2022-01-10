@@ -121,11 +121,8 @@ type Reconciler struct {
 
 	// listers index properties about resources
 	pipelineRunLister listers.PipelineRunLister
-	pipelineLister    listers.PipelineLister
 	taskRunLister     listers.TaskRunLister
 	runLister         listersv1alpha1.RunLister
-	taskLister        listers.TaskLister
-	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    resourcelisters.PipelineResourceLister
 	conditionLister   listersv1alpha1.ConditionLister
 	cloudEventClient  cloudevent.CEClient
