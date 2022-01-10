@@ -70,15 +70,13 @@ type Reconciler struct {
 	Images            pipeline.Images
 
 	// listers index properties about resources
-	taskRunLister     listers.TaskRunLister
-	taskLister        listers.TaskLister
-	clusterTaskLister listers.ClusterTaskLister
-	resourceLister    resourcelisters.PipelineResourceLister
-	limitrangeLister  corev1Listers.LimitRangeLister
-	cloudEventClient  cloudevent.CEClient
-	entrypointCache   podconvert.EntrypointCache
-	metrics           *taskrunmetrics.Recorder
-	pvcHandler        volumeclaim.PvcHandler
+	taskRunLister    listers.TaskRunLister
+	resourceLister   resourcelisters.PipelineResourceLister
+	limitrangeLister corev1Listers.LimitRangeLister
+	cloudEventClient cloudevent.CEClient
+	entrypointCache  podconvert.EntrypointCache
+	metrics          *taskrunmetrics.Recorder
+	pvcHandler       volumeclaim.PvcHandler
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
