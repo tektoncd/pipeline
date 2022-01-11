@@ -17,6 +17,10 @@
 set -o errexit
 set -o nounset
 
+source $(git rev-parse --show-toplevel)/hack/setup-temporary-gopath.sh
+shim_gopath
+trap shim_gopath_clean EXIT
+
 echo "Generating OpenAPI specification ..."
 go run k8s.io/kube-openapi/cmd/openapi-gen \
     --input-dirs ./pkg/apis/pipeline/v1beta1,./pkg/apis/pipeline/pod,./pkg/apis/resource/v1alpha1,knative.dev/pkg/apis,knative.dev/pkg/apis/duck/v1beta1 \
@@ -25,4 +29,3 @@ go run k8s.io/kube-openapi/cmd/openapi-gen \
 
 echo "Generating swagger file ..."
 go run hack/spec-gen/main.go v0.17.2 > pkg/apis/pipeline/v1beta1/swagger.json
-

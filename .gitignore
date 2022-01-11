@@ -53,3 +53,7 @@ cmd/*/kodata/source.tar.gz
 test/pullrequest/pullrequest-init
 /.bin/
 /bin/
+
+# Temporary GOPATH used during code gen if user's Tekton checkout is
+# not already in GOPATH.
+.gopath
