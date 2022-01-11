@@ -256,6 +256,27 @@ The recommended minimum development configuration is:
   - 8 GB of (actual or virtualized) platform memory
 - Node autoscaling, up to 3 nodes
 
+#### Using [KinD](https://kind.sigs.k8s.io/)
+
+[KinD](https://kind.sigs.k8s.io/) is a great tool for working with Kubernetes clusters locally. It is particularly useful to quickly test code against different cluster [configurations](https://kind.sigs.k8s.io/docs/user/quick-start/#advanced).
+
+1. Install [required tools](./DEVELOPMENT.md#install-tools) (note: may require a newer version of Go).
+2. Install [Docker](https://www.docker.com/get-started).
+3. Create cluster:
+   
+   ```sh
+   $ kind create cluster
+   ```
+
+4. Configure [ko](https://kind.sigs.k8s.io/):
+   
+   ```sh
+   $ export KO_DOCKER_REPO="kind.local"
+   $ export KIND_CLUSTER_NAME="kind"  # only needed if you used a custom name in the previous step
+   ```
+
+optional: As a convenience, the [Tekton plumbing project](https://github.com/tektoncd/plumbing) provides a script named ['tekton_in_kind.sh'](https://github.com/tektoncd/plumbing/tree/main/hack#tekton_in_kindsh) that leverages `kind` to create a cluster and install Tekton Pipeline, [Tekton Triggers](https://github.com/tektoncd/triggers) and [Tekton Dashboard](https://github.com/tektoncd/dashboard) components into it.
+
 #### Using MiniKube
 
 - Follow the instructions for [running locally with Minikube](docs/developers/local-setup.md#using-minikube)
@@ -393,59 +414,6 @@ This script will cause `ko` to:
 
 It will also update the default system namespace used for K8s `deployments` to the new value for all subsequent `kubectl` commands.
 
----
-
-### Standing up a K8s cluster with Tekton using the `kind` tool
-
-An alternative to standing up your own K8s cluster and installing Tekton using `ko` is by using the [kind](https://kind.sigs.k8s.io/) tool. It was designed to help create and run local Kubernetes clusters in Docker to assist in local development and testing.
-
-The [Tekton "plumbing" project](https://github.com/tektoncd/plumbing) provides a convenience script, named ['tekton_in_kind.sh'](https://github.com/tektoncd/plumbing/blob/main/hack/tekton_in_kind.sh), that leverages `kind` to create a cluster and then deploy Tekton Pipeline, [Tekton Triggers](https://github.com/tektoncd/triggers) and [Tekton Dashboard](https://github.com/tektoncd/dashboard) components into it.
-
-See Tekton Plumbing's [DEVELOPMENT.md](https://github.com/tektoncd/plumbing/blob/main/DEVELOPMENT.md) for more details on this and other helpful scripts and tools.
-
-#### Installation and prerequisites
-
-- Clone the [Tekton Plumbing](https://github.com/tektoncd/plumbing) repository which has the ['tekton_in_kind.sh'](https://github.com/tektoncd/plumbing/blob/main/hack/tekton_in_kind.sh) and other helpful scripts.
-- `kind`: Install using its ["quick start"](https://kind.sigs.k8s.io/docs/user/quick-start/) documentation.
-- `Docker`: `kind` also requires Docker to be installed and running locally. Use the [Get Docker](https://docs.docker.com/get-docker/) instructions.
-
-#### Create a cluster with Tekton components
-
-Change into the Tekton plumbing repository you cloned and invoke the script:
-
-```shell
-cd plumbing
-./hack/tekton_in_kind.sh
-```
-
-The script, after using `kind` to create the K8s cluster, uses `kubectl` to install the `latest` released versions of Tekton components. After successful completion, the script will have:
-
-- Created a K8s cluster named `tekton`
-- Created a `cluster-context` for `kubectl` named `'kind-tekton'` and set it as the `current-context`
-- Deployed the latest Tekton Pipeline, Trigger and Dashboard components
-- Made Tekton Dashboard available at `http://localhost:9097`
-
-After the Tekton components are installed using this script, you can than use the `ko` tool to build and apply your development changes to the cluster for testing.
-
-##### Using a different cluster name and Tekton versions
-
-You can also specify a different cluster name and released versions of components you want installed:
-
-```shell
-# Script usage:
-tekton_in_kind.sh [-c cluster-name -p pipeline-version -t triggers-version -d dashboard-version]"
-```
-
-#### Delete the cluster
-
-If you wish to delete the cluster that the script created, use the following command:
-
-```shell
-# Delete the cluster using the default name
-kind delete cluster --name tekton
-```
-
-> **Note**: Be sure to set a `kubectl` context, as its unset as a side-effect of the delete (i.e., `kubectl config use-context`*`<context-name>`*).
 
 ---
 
