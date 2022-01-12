@@ -59,7 +59,12 @@ func getConfigContext() context.Context {
 func TestUninitializedMetrics(t *testing.T) {
 	metrics := Recorder{}
 
-	if err := metrics.DurationAndCount(&v1beta1.TaskRun{}); err == nil {
+	beforeCondition := &apis.Condition{
+		Type:   apis.ConditionReady,
+		Status: corev1.ConditionUnknown,
+	}
+
+	if err := metrics.DurationAndCount(&v1beta1.TaskRun{}, beforeCondition); err == nil {
 		t.Error("DurationCount recording expected to return error but got nil")
 	}
 	if err := metrics.RunningTaskRuns(nil); err == nil {
@@ -125,15 +130,16 @@ func TestMetricsOnStore(t *testing.T) {
 
 func TestRecordTaskRunDurationCount(t *testing.T) {
 	for _, c := range []struct {
-		name              string
-		taskRun           *v1beta1.TaskRun
-		metricName        string // "taskrun_duration_seconds" or "pipelinerun_taskrun_duration_seconds"
-		expectedTags      map[string]string
-		expectedCountTags map[string]string
-		expectedDuration  float64
-		expectedCount     int64
+		name                 string
+		taskRun              *v1beta1.TaskRun
+		metricName           string // "taskrun_duration_seconds" or "pipelinerun_taskrun_duration_seconds"
+		expectedDurationTags map[string]string
+		expectedCountTags    map[string]string
+		expectedDuration     float64
+		expectedCount        int64
+		beforeCondition      *apis.Condition
 	}{{
-		name: "for succeeded task",
+		name: "for succeeded taskrun",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
 			Spec: v1beta1.TaskRunSpec{
@@ -153,7 +159,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			},
 		},
 		metricName: "taskrun_duration_seconds",
-		expectedTags: map[string]string{
+		expectedDurationTags: map[string]string{
 			"task":      "task-1",
 			"taskrun":   "taskrun-1",
 			"namespace": "ns",
@@ -164,8 +170,74 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
+		beforeCondition:  nil,
 	}, {
-		name: "for failed task",
+		name: "for succeeded taskrun with before condition",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "task-1"},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		metricName: "taskrun_duration_seconds",
+		expectedDurationTags: map[string]string{
+			"task":      "task-1",
+			"taskrun":   "taskrun-1",
+			"namespace": "ns",
+			"status":    "success",
+		},
+		expectedCountTags: map[string]string{
+			"status": "success",
+		},
+		expectedDuration: 60,
+		expectedCount:    1,
+		beforeCondition: &apis.Condition{
+			Type:   apis.ConditionReady,
+			Status: corev1.ConditionUnknown,
+		},
+	}, {
+		name: "for succeeded taskrun recount",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "task-1"},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime:      &startTime,
+					CompletionTime: &completionTime,
+				},
+			},
+		},
+		metricName:           "taskrun_duration_seconds",
+		expectedDurationTags: nil,
+		expectedCountTags:    nil,
+		expectedDuration:     0,
+		expectedCount:        0,
+		beforeCondition: &apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+		},
+	}, {
+		name: "for failed taskrun",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "taskrun-1", Namespace: "ns"},
 			Spec: v1beta1.TaskRunSpec{
@@ -185,7 +257,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			},
 		},
 		metricName: "taskrun_duration_seconds",
-		expectedTags: map[string]string{
+		expectedDurationTags: map[string]string{
 			"task":      "task-1",
 			"taskrun":   "taskrun-1",
 			"namespace": "ns",
@@ -196,6 +268,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
+		beforeCondition:  nil,
 	}, {
 		name: "for succeeded taskrun in pipelinerun",
 		taskRun: &v1beta1.TaskRun{
@@ -223,7 +296,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			},
 		},
 		metricName: "pipelinerun_taskrun_duration_seconds",
-		expectedTags: map[string]string{
+		expectedDurationTags: map[string]string{
 			"pipeline":    "pipeline-1",
 			"pipelinerun": "pipelinerun-1",
 			"task":        "task-1",
@@ -236,6 +309,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
+		beforeCondition:  nil,
 	}, {
 		name: "for failed taskrun in pipelinerun",
 		taskRun: &v1beta1.TaskRun{
@@ -263,7 +337,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 			},
 		},
 		metricName: "pipelinerun_taskrun_duration_seconds",
-		expectedTags: map[string]string{
+		expectedDurationTags: map[string]string{
 			"pipeline":    "pipeline-1",
 			"pipelinerun": "pipelinerun-1",
 			"task":        "task-1",
@@ -276,6 +350,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 		},
 		expectedDuration: 60,
 		expectedCount:    1,
+		beforeCondition:  nil,
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			unregisterMetrics()
@@ -286,11 +361,20 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				t.Fatalf("NewRecorder: %v", err)
 			}
 
-			if err := metrics.DurationAndCount(c.taskRun); err != nil {
+			if err := metrics.DurationAndCount(c.taskRun, c.beforeCondition); err != nil {
 				t.Errorf("DurationAndCount: %v", err)
 			}
-			metricstest.CheckLastValueData(t, c.metricName, c.expectedTags, c.expectedDuration)
-			metricstest.CheckCountData(t, "taskrun_count", c.expectedCountTags, c.expectedCount)
+			if c.expectedCountTags != nil {
+				metricstest.CheckCountData(t, "taskrun_count", c.expectedCountTags, c.expectedCount)
+			} else {
+				metricstest.CheckStatsNotReported(t, "taskrun_count")
+			}
+			if c.expectedDurationTags != nil {
+				metricstest.CheckLastValueData(t, c.metricName, c.expectedDurationTags, c.expectedDuration)
+			} else {
+				metricstest.CheckStatsNotReported(t, c.metricName)
+
+			}
 		})
 	}
 }

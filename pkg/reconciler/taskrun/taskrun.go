@@ -136,14 +136,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			return err
 		}
 
-		go func(metrics *taskrunmetrics.Recorder) {
-			if err := metrics.DurationAndCount(tr); err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-			if err := metrics.CloudEvents(tr); err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}(c.metrics)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
 	}
 
@@ -194,6 +186,26 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	}
 	return nil
 }
+
+func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.TaskRun) {
+	logger := logging.FromContext(ctx)
+	if tr.IsDone() {
+		newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
+		if err != nil {
+			logger.Errorf("Error getting TaskRun %s when updating metrics: %w", tr.Name, err)
+		}
+		before := newTr.Status.GetCondition(apis.ConditionSucceeded)
+		go func(metrics *taskrunmetrics.Recorder) {
+			if err := metrics.DurationAndCount(tr, before); err != nil {
+				logger.Warnf("Failed to log the metrics : %v", err)
+			}
+			if err := metrics.CloudEvents(tr); err != nil {
+				logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
+	}
+}
+
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) error {
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
@@ -386,6 +398,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) error {
+	defer c.durationAndCountMetrics(ctx, tr)
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
