@@ -57,6 +57,7 @@ func main() {
 	flag.StringVar(&opts.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
 	flag.StringVar(&opts.Images.PRImage, "pr-image", "", "The container image containing our PR binary.")
 	flag.StringVar(&opts.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
+	flag.StringVar(&opts.Images.WorkingDirInitImage, "workingdirinit-image", "", "The container image containing our working dir init binary.")
 
 	// This parses flags.
 	cfg := injection.ParseAndGetRESTConfigOrDie()

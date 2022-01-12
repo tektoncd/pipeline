@@ -57,15 +57,15 @@ func TestWorkingDirInit(t *testing.T) {
 		}},
 		want: &corev1.Container{
 			Name:         "working-dir-initializer",
-			Image:        images.ShellImage,
-			Command:      []string{"sh"},
-			Args:         []string{"-c", "mkdir -p /workspace/bbb aaa zzz"},
+			Image:        images.WorkingDirInitImage,
+			Command:      []string{"/ko-app/workingdirinit"},
+			Args:         []string{"/workspace/bbb", "aaa", "zzz"},
 			WorkingDir:   pipeline.WorkspaceDir,
 			VolumeMounts: implicitVolumeMounts,
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			got := workingDirInit(images.ShellImage, c.stepContainers)
+			got := workingDirInit(images.WorkingDirInitImage, c.stepContainers)
 			if d := cmp.Diff(c.want, got); d != "" {
 				t.Fatalf("Diff %s", diff.PrintWantGot(d))
 			}

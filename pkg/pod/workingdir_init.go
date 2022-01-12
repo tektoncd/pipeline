@@ -31,7 +31,7 @@ import (
 //
 // If no such directories need to be created (i.e., no relative workingDirs
 // are specified), this method returns nil, as no init container is necessary.
-func workingDirInit(shellImage string, stepContainers []corev1.Container) *corev1.Container {
+func workingDirInit(workingdirinitImage string, stepContainers []corev1.Container) *corev1.Container {
 	// Gather all unique workingDirs.
 	workingDirs := sets.NewString()
 	for _, step := range stepContainers {
@@ -59,9 +59,9 @@ func workingDirInit(shellImage string, stepContainers []corev1.Container) *corev
 
 	return &corev1.Container{
 		Name:         "working-dir-initializer",
-		Image:        shellImage,
-		Command:      []string{"sh"},
-		Args:         []string{"-c", "mkdir -p " + strings.Join(relativeDirs, " ")},
+		Image:        workingdirinitImage,
+		Command:      []string{"/ko-app/workingdirinit"},
+		Args:         relativeDirs,
 		WorkingDir:   pipeline.WorkspaceDir,
 		VolumeMounts: implicitVolumeMounts,
 	}

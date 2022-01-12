@@ -477,9 +477,9 @@ func TestPodBuild(t *testing.T) {
 				tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "name"}}}),
 				{
 					Name:         "working-dir-initializer",
-					Image:        images.ShellImage,
-					Command:      []string{"sh"},
-					Args:         []string{"-c", fmt.Sprintf("mkdir -p %s", filepath.Join(pipeline.WorkspaceDir, "test"))},
+					Image:        images.WorkingDirInitImage,
+					Command:      []string{"/ko-app/workingdirinit"},
+					Args:         []string{filepath.Join(pipeline.WorkspaceDir, "test")},
 					WorkingDir:   pipeline.WorkspaceDir,
 					VolumeMounts: implicitVolumeMounts,
 				},
