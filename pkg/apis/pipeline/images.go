@@ -42,6 +42,8 @@ type Images struct {
 	PRImage string
 	// ImageDigestExporterImage is the container image containing our image digest exporter binary.
 	ImageDigestExporterImage string
+	// WorkingDirInitImage is the container image containing our working dir init binary.
+	WorkingDirInitImage string
 
 	// NOTE: Make sure to add any new images to Validate below!
 }
@@ -61,6 +63,7 @@ func (i Images) Validate() error {
 		{i.GsutilImage, "gsutil-image"},
 		{i.PRImage, "pr-image"},
 		{i.ImageDigestExporterImage, "imagedigest-exporter-image"},
+		{i.WorkingDirInitImage, "workingdirinit-image"},
 	} {
 		if f.v == "" {
 			unset = append(unset, f.name)

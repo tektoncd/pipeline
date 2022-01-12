@@ -11,7 +11,7 @@ spec:
       default: github.com/tektoncd/pipeline
     - name: images
       description: List of cmd/* paths to be published as images
-      default: "controller webhook entrypoint nop kubeconfigwriter git-init imagedigestexporter pullrequest-init"
+      default: "controller webhook entrypoint nop kubeconfigwriter git-init imagedigestexporter pullrequest-init workingdirinit"
     - name: versionTag
       description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
     - name: imageRegistry
@@ -103,9 +103,10 @@ spec:
       # This matches the value configured in .ko.yaml
       defaultBaseImage: gcr.io/distroless/static:nonroot
       baseImageOverrides:
-        # Use the combined base image for entrypoint and nop images.
+        # Use the combined base image for images that should include Windows support.
         $(params.package)/cmd/entrypoint: ${COMBINED_BASE_IMAGE}
         $(params.package)/cmd/nop: ${COMBINED_BASE_IMAGE}
+        $(params.package)/cmd/workingdirinit: ${COMBINED_BASE_IMAGE}
 
         $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/git-init-build-base:latest
         # These match values configured in .ko.yaml
