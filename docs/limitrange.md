@@ -35,20 +35,21 @@ Resource types for both are:
 The next question is : how pods with resource and limits are run/scheduled ?
 The scheduler *computes* the amount of CPU and memory requests (using **Requests**) and tries to find a node to schedule it.
 
-Requests and limits can be applied to both Containers and Init Containers.
-- For init containers, the max of each type is taken
-- For containers, it sums all requests/limits for each containers
+A pod's [effective resource requests and limits](https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources) are the higher of:
+- the sum of all app containers request/limit for a resource
+- the effective init request/limit for a resource
 
-This means, if you got the following:
--   initContainer1 : 1 CPU, 100m memory
--   initContainer2 : 2 CPU, 200m memory
--   container1 : 1 CPU, 50m memory
--   container2 : 2 CPU, 250m memory
--   container3 : 3 CPU, 500m memory
+For example, if you have the following requests:
+-   initContainer1 : 1 CPU, 100Mi memory
+-   initContainer2 : 2 CPU, 200Mi memory
+-   container1 : 1 CPU, 50Mi memory
+-   container2 : 2 CPU, 250Mi memory
+-   container3 : 3 CPU, 500Mi memory
 
 The computation will be:
--   CPU : 2 (max init containers) + 6 (sum of containers) = 8 CPU
--   Memory: 200m (max init containers) + 800m (sum of containers) = 1000m (1G)
+-   CPU : the max init container CPU is 2, and the sum of the container CPUs is 6. The resulting pod will use 6 CPUs, the max of the init container and container CPU values.
+-   Memory: the max init container memory is 200Mi, and the sum of the container memory requests is 800Mi.
+  The resulting pod will use 800Mi, the max of the init container and container memory values.
 
 ## Tekton support
 
