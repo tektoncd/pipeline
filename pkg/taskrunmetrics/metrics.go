@@ -31,6 +31,7 @@ import (
 	"go.opencensus.io/tag"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"knative.dev/pkg/apis"
@@ -278,13 +279,19 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 // DurationAndCount logs the duration of TaskRun execution and
 // count for number of TaskRuns succeed or failed
 // returns an error if its failed to log the metrics
-func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
+func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun, beforeCondition *apis.Condition) error {
 
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
 	}
+
+	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
+	if equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
+		return nil
+	}
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	duration := time.Since(tr.Status.StartTime.Time)
 	if tr.Status.CompletionTime != nil {
