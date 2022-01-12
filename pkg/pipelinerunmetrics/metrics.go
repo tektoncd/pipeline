@@ -31,6 +31,7 @@ import (
 	"go.opencensus.io/tag"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/labels"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
@@ -209,13 +210,20 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 // DurationAndCount logs the duration of PipelineRun execution and
 // count for number of PipelineRuns succeed or failed
 // returns an error if its failed to log the metrics
-func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
+func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun, beforeCondition *apis.Condition) error {
 
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", pr.Name)
 	}
+
+	afterCondition := pr.Status.GetCondition(apis.ConditionSucceeded)
+	// To avoid recount
+	if equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
+		return nil
+	}
+
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	duration := time.Duration(0)
 	if pr.Status.StartTime != nil {

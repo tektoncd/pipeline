@@ -201,12 +201,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 			logger.Errorf("Failed to update Run status for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
-		go func(metrics *pipelinerunmetrics.Recorder) {
-			err := metrics.DurationAndCount(pr)
-			if err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}(c.metrics)
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil)
 	}
 
@@ -246,6 +240,24 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		return controller.NewRequeueAfter(pr.PipelineTimeout(ctx) - elapsed)
 	}
 	return nil
+}
+
+func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1beta1.PipelineRun) {
+	logger := logging.FromContext(ctx)
+	if pr.IsDone() {
+		// We get latest pipelinerun cr already to avoid recount
+		newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
+		if err != nil {
+			logger.Errorf("Error getting PipelineRun %s when updating metrics: %w", pr.Name, err)
+		}
+		before := newPr.Status.GetCondition(apis.ConditionSucceeded)
+		go func(metrics *pipelinerunmetrics.Recorder) {
+			err := metrics.DurationAndCount(pr, before)
+			if err != nil {
+				logger.Warnf("Failed to log the metrics : %v", err)
+			}
+		}(c.metrics)
+	}
 }
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, pr *v1beta1.PipelineRun, beforeCondition *apis.Condition, previousError error) error {
@@ -331,6 +343,7 @@ func (c *Reconciler) resolvePipelineState(
 }
 
 func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc resources.GetPipeline) error {
+	defer c.durationAndCountMetrics(ctx, pr)
 	logger := logging.FromContext(ctx)
 	cfg := config.FromContextOrDefaults(ctx)
 	pr.SetDefaults(ctx)
