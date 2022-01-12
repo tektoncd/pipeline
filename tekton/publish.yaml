@@ -103,8 +103,9 @@ spec:
       # This matches the value configured in .ko.yaml
       defaultBaseImage: gcr.io/distroless/static:nonroot
       baseImageOverrides:
-        # Use the combined base image for entrypoint.
+        # Use the combined base image for entrypoint and nop images.
         $(params.package)/cmd/entrypoint: ${COMBINED_BASE_IMAGE}
+        $(params.package)/cmd/nop: ${COMBINED_BASE_IMAGE}
 
         $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/git-init-build-base:latest
         # These match values configured in .ko.yaml
