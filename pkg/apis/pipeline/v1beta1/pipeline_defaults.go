@@ -39,32 +39,35 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 	}
 	for i, pt := range ps.Tasks {
 		ctx := ctx // Ensure local scoping per Task
-		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
-			ctx = addContextParams(ctx, pt.Params)
-			ps.Tasks[i].Params = getContextParams(ctx, pt.Params...)
-		}
+
 		if pt.TaskRef != nil {
 			if pt.TaskRef.Kind == "" {
 				pt.TaskRef.Kind = NamespacedTaskKind
 			}
 		}
 		if pt.TaskSpec != nil {
+			// Only propagate param context to the spec - ref params should
+			// still be explicitly set.
+			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+				ctx = addContextParams(ctx, pt.Params)
+				ps.Tasks[i].Params = getContextParams(ctx, pt.Params...)
+			}
 			pt.TaskSpec.SetDefaults(ctx)
 		}
 	}
 
 	for i, ft := range ps.Finally {
 		ctx := ctx // Ensure local scoping per Task
-		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
-			ctx = addContextParams(ctx, ft.Params)
-			ps.Finally[i].Params = getContextParams(ctx, ft.Params...)
-		}
 		if ft.TaskRef != nil {
 			if ft.TaskRef.Kind == "" {
 				ft.TaskRef.Kind = NamespacedTaskKind
 			}
 		}
 		if ft.TaskSpec != nil {
+			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+				ctx = addContextParams(ctx, ft.Params)
+				ps.Finally[i].Params = getContextParams(ctx, ft.Params...)
+			}
 			ft.TaskSpec.SetDefaults(ctx)
 		}
 	}
