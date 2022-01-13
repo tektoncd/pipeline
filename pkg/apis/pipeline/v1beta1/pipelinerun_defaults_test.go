@@ -108,11 +108,30 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 					},
 				},
 				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						TaskSpec: &v1beta1.EmbeddedTask{
-							TaskSpec: v1beta1.TaskSpec{},
+					Tasks: []v1beta1.PipelineTask{
+						{
+							TaskSpec: &v1beta1.EmbeddedTask{
+								TaskSpec: v1beta1.TaskSpec{},
+							},
 						},
-					}},
+						{
+							TaskRef: &v1beta1.TaskRef{
+								Name: "baz",
+							},
+						},
+					},
+					Finally: []v1beta1.PipelineTask{
+						{
+							TaskSpec: &v1beta1.EmbeddedTask{
+								TaskSpec: v1beta1.TaskSpec{},
+							},
+						},
+						{
+							TaskRef: &v1beta1.TaskRef{
+								Name: "baz",
+							},
+						},
+					},
 				},
 			},
 			want: &v1beta1.PipelineRunSpec{
@@ -133,38 +152,86 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 					},
 				},
 				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						TaskSpec: &v1beta1.EmbeddedTask{
-							TaskSpec: v1beta1.TaskSpec{
-								Params: []v1beta1.ParamSpec{
-									{
-										Name: "foo",
-										Type: v1beta1.ParamTypeString,
+					Tasks: []v1beta1.PipelineTask{
+						{
+							TaskSpec: &v1beta1.EmbeddedTask{
+								TaskSpec: v1beta1.TaskSpec{
+									Params: []v1beta1.ParamSpec{
+										{
+											Name: "foo",
+											Type: v1beta1.ParamTypeString,
+										},
+										{
+											Name: "bar",
+											Type: v1beta1.ParamTypeArray,
+										},
 									},
-									{
-										Name: "bar",
-										Type: v1beta1.ParamTypeArray,
+								},
+							},
+							Params: []v1beta1.Param{
+								{
+									Name: "foo",
+									Value: v1beta1.ArrayOrString{
+										Type:      v1beta1.ParamTypeString,
+										StringVal: "$(params.foo)",
+									},
+								},
+								{
+									Name: "bar",
+									Value: v1beta1.ArrayOrString{
+										Type:     v1beta1.ParamTypeArray,
+										ArrayVal: []string{"$(params.bar[*])"},
 									},
 								},
 							},
 						},
-						Params: []v1beta1.Param{
-							{
-								Name: "foo",
-								Value: v1beta1.ArrayOrString{
-									Type:      v1beta1.ParamTypeString,
-									StringVal: "$(params.foo)",
+						{
+							TaskRef: &v1beta1.TaskRef{
+								Name: "baz",
+								Kind: v1beta1.NamespacedTaskKind,
+							},
+						},
+					},
+					Finally: []v1beta1.PipelineTask{
+						{
+							TaskSpec: &v1beta1.EmbeddedTask{
+								TaskSpec: v1beta1.TaskSpec{
+									Params: []v1beta1.ParamSpec{
+										{
+											Name: "foo",
+											Type: v1beta1.ParamTypeString,
+										},
+										{
+											Name: "bar",
+											Type: v1beta1.ParamTypeArray,
+										},
+									},
 								},
 							},
-							{
-								Name: "bar",
-								Value: v1beta1.ArrayOrString{
-									Type:     v1beta1.ParamTypeArray,
-									ArrayVal: []string{"$(params.bar[*])"},
+							Params: []v1beta1.Param{
+								{
+									Name: "foo",
+									Value: v1beta1.ArrayOrString{
+										Type:      v1beta1.ParamTypeString,
+										StringVal: "$(params.foo)",
+									},
+								},
+								{
+									Name: "bar",
+									Value: v1beta1.ArrayOrString{
+										Type:     v1beta1.ParamTypeArray,
+										ArrayVal: []string{"$(params.bar[*])"},
+									},
 								},
 							},
 						},
-					}},
+						{
+							TaskRef: &v1beta1.TaskRef{
+								Name: "baz",
+								Kind: v1beta1.NamespacedTaskKind,
+							},
+						},
+					},
 					Params: []v1beta1.ParamSpec{
 						{
 							Name: "foo",
@@ -187,13 +254,16 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 			}
 			tc.prs.SetDefaults(ctx)
 
-			sortPS := func(x, y v1beta1.ParamSpec) bool {
+			sortParamSpecs := func(x, y v1beta1.ParamSpec) bool {
 				return x.Name < y.Name
 			}
-			sortP := func(x, y v1beta1.Param) bool {
+			sortParams := func(x, y v1beta1.Param) bool {
 				return x.Name < y.Name
 			}
-			if d := cmp.Diff(tc.want, tc.prs, cmpopts.SortSlices(sortPS), cmpopts.SortSlices(sortP)); d != "" {
+			sortTasks := func(x, y v1beta1.PipelineTask) bool {
+				return x.Name < y.Name
+			}
+			if d := cmp.Diff(tc.want, tc.prs, cmpopts.SortSlices(sortParamSpecs), cmpopts.SortSlices(sortParams), cmpopts.SortSlices(sortTasks)); d != "" {
 				t.Errorf("Mismatch of PipelineRunSpec %s", diff.PrintWantGot(d))
 			}
 		})
