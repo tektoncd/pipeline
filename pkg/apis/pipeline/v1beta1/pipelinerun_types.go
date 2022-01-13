@@ -152,11 +152,6 @@ func (pr *PipelineRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}
 }
 
-// IsTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
-func (pr *PipelineRun) IsTimedOut() bool {
-	return pr.HasTimedOut()
-}
-
 // HasTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
 func (pr *PipelineRun) HasTimedOut() bool {
 	pipelineTimeout := pr.Spec.Timeout

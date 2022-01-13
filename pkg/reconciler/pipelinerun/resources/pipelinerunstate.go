@@ -327,7 +327,7 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(pr *v1beta1.PipelineRu
 	// 2. All tasks are done and at least one has failed or has been cancelled -> Failed
 	// 3. All tasks are done or are skipped (i.e. condition check failed).-> Success
 	// 4. A Task or Condition is running right now or there are things left to run -> Running
-	if pr.IsTimedOut() {
+	if pr.HasTimedOut() {
 		return &apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
