@@ -132,7 +132,7 @@ func (trs *TaskRunStatus) GetStartedReason() string {
 }
 
 // GetRunningReason returns the reason set to the "Succeeded" condition when
-// the RunsToCompletion starts running. This is used indicate that the resource
+// the TaskRun starts running. This is used indicate that the resource
 // could be validated is starting to perform its job.
 func (trs *TaskRunStatus) GetRunningReason() string {
 	return TaskRunReasonRunning.String()

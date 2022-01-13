@@ -263,8 +263,8 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				}},
 			}
 
-			if pr.IsTimedOut() != tc.expected {
-				t.Fatalf("Expected isTimedOut to be %t", tc.expected)
+			if pr.HasTimedOut() != tc.expected {
+				t.Fatalf("Expected HasTimedOut to be %t", tc.expected)
 			}
 		})
 	}
