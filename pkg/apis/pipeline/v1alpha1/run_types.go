@@ -78,10 +78,6 @@ type RunSpec struct {
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
 	Workspaces []v1beta1.WorkspaceBinding `json:"workspaces,omitempty"`
-
-	// TODO(https://github.com/tektoncd/community/pull/128)
-	// - timeout
-	// - inline task spec
 }
 
 // RunSpecStatus defines the taskrun spec status the user can provide
