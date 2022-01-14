@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -205,7 +206,7 @@ func (r *Run) GetRunKey() string {
 }
 
 // HasTimedOut returns true if the Run's running time is beyond the allowed timeout
-func (r *Run) HasTimedOut() bool {
+func (r *Run) HasTimedOut(c clock.Clock) bool {
 	if r.Status.StartTime == nil || r.Status.StartTime.IsZero() {
 		return false
 	}
@@ -214,7 +215,7 @@ func (r *Run) HasTimedOut() bool {
 	if timeout == apisconfig.NoTimeoutDuration {
 		return false
 	}
-	runtime := time.Since(r.Status.StartTime.Time)
+	runtime := c.Since(r.Status.StartTime.Time)
 	return runtime > timeout
 }
 

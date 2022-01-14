@@ -19,6 +19,7 @@ package cloudevent
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -34,6 +35,13 @@ import (
 	"knative.dev/pkg/logging"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
+
+var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+type testClock struct{}
+
+func (testClock) Now() time.Time                  { return now }
+func (testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
 
 func TestCloudEventDeliveryFromTargets(t *testing.T) {
 	tests := []struct {
@@ -228,7 +236,7 @@ func TestSendCloudEvents(t *testing.T) {
 			successfulBehaviour := FakeClientBehaviour{
 				SendSuccessfully: true,
 			}
-			err := SendCloudEvents(tc.taskRun, newFakeClient(&successfulBehaviour), logger)
+			err := SendCloudEvents(tc.taskRun, newFakeClient(&successfulBehaviour), logger, testClock{})
 			if err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
@@ -329,7 +337,7 @@ func TestSendCloudEventsErrors(t *testing.T) {
 			unsuccessfulBehaviour := FakeClientBehaviour{
 				SendSuccessfully: false,
 			}
-			err := SendCloudEvents(tc.taskRun, newFakeClient(&unsuccessfulBehaviour), logger)
+			err := SendCloudEvents(tc.taskRun, newFakeClient(&unsuccessfulBehaviour), logger, testClock{})
 			if err == nil {
 				t.Fatalf("Unexpected success sending cloud events: %v", err)
 			}

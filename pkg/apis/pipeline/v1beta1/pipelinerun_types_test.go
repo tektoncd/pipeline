@@ -30,6 +30,13 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+type testClock struct{}
+
+func (tc testClock) Now() time.Time                  { return now }
+func (tc testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
+
 func TestPipelineRunStatusConditions(t *testing.T) {
 	p := &v1beta1.PipelineRun{}
 	foo := &apis.Condition{
@@ -70,7 +77,7 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 			Namespace: "test-ns",
 		},
 	}
-	p.Status.InitializeConditions()
+	p.Status.InitializeConditions(testClock{})
 
 	if p.Status.TaskRuns == nil {
 		t.Fatalf("PipelineRun TaskRun status not initialized correctly")
@@ -99,7 +106,7 @@ func TestInitializePipelineRunConditions(t *testing.T) {
 		Message: "hello",
 	})
 
-	p.Status.InitializeConditions()
+	p.Status.InitializeConditions(testClock{})
 	if len(p.Status.TaskRuns) != 1 {
 		t.Fatalf("PipelineRun TaskRun status getting reset")
 	}
@@ -199,7 +206,7 @@ func TestPipelineRunHasStarted(t *testing.T) {
 		name: "prWithStartTime",
 		prStatus: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 		expectedValue: true,
@@ -237,17 +244,17 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 	}{{
 		name:      "timedout",
 		timeout:   1 * time.Second,
-		starttime: time.Now().AddDate(0, 0, -1),
+		starttime: now.AddDate(0, 0, -1),
 		expected:  true,
 	}, {
 		name:      "nottimedout",
 		timeout:   25 * time.Hour,
-		starttime: time.Now().AddDate(0, 0, -1),
+		starttime: now.AddDate(0, 0, -1),
 		expected:  false,
 	}, {
 		name:      "notimeoutspecified",
 		timeout:   0 * time.Second,
-		starttime: time.Now().AddDate(0, 0, -1),
+		starttime: now.AddDate(0, 0, -1),
 		expected:  false,
 	},
 	}
@@ -263,7 +270,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 					StartTime: &metav1.Time{Time: tc.starttime},
 				}},
 			}
-			if pr.HasTimedOut(context.Background()) != tc.expected {
+			if pr.HasTimedOut(context.Background(), testClock{}) != tc.expected {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeout", tc.expected)
 			}
 		})
@@ -278,7 +285,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				}},
 			}
 
-			if pr.HasTimedOut(context.Background()) != tc.expected {
+			if pr.HasTimedOut(context.Background(), testClock{}) != tc.expected {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
 			}
 		})
