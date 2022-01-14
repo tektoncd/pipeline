@@ -1019,6 +1019,7 @@ func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt
 	finallyTimeout := pr.FinallyTimeout()
 	// Return the smaller of taskRunTimeout and finallyTimeout
 	// This works because all finally tasks run in parallel, so there is no need to consider time spent by other finally tasks
+	// TODO(#4071): Account for time spent since finally task was first started (i.e. retries)
 	if finallyTimeout == nil || finallyTimeout.Duration == apisconfig.NoTimeoutDuration {
 		return taskRunTimeout
 	}
@@ -1049,15 +1050,15 @@ func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resou
 // If pipeline level timeouts have already been exceeded, returns 1 second.
 func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
 	if timeout != apisconfig.NoTimeoutDuration {
-		pTimeoutTime := pr.Status.StartTime.Add(timeout)
-		if c.Now().After(pTimeoutTime) {
+		pElapsedTime := c.Since(pr.Status.StartTime.Time)
+		if pElapsedTime > timeout {
 			return &metav1.Duration{Duration: 1 * time.Second}
 		}
 		// Return the smaller of timeout and rprt.pipelineTask.timeout
 		if rprt.PipelineTask.Timeout != nil && rprt.PipelineTask.Timeout.Duration < timeout {
 			return &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
 		}
-		return &metav1.Duration{Duration: timeout}
+		return &metav1.Duration{Duration: (timeout - pElapsedTime)}
 	}
 
 	if timeout == apisconfig.NoTimeoutDuration && rprt.PipelineTask.Timeout != nil {
