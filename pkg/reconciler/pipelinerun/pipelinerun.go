@@ -343,25 +343,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	// Store the fetched PipelineSpec on the PipelineRun for auditing
-	if err := storePipelineSpec(ctx, pr, pipelineSpec); err != nil {
+	if err := storePipelineSpecAndMergeMeta(pr, pipelineSpec, pipelineMeta); err != nil {
 		logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
-	}
-
-	// Propagate labels from Pipeline to PipelineRun.
-	if pr.ObjectMeta.Labels == nil {
-		pr.ObjectMeta.Labels = make(map[string]string, len(pipelineMeta.Labels)+1)
-	}
-	for key, value := range pipelineMeta.Labels {
-		pr.ObjectMeta.Labels[key] = value
-	}
-	pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pipelineMeta.Name
-
-	// Propagate annotations from Pipeline to PipelineRun.
-	if pr.ObjectMeta.Annotations == nil {
-		pr.ObjectMeta.Annotations = make(map[string]string, len(pipelineMeta.Annotations))
-	}
-	for key, value := range pipelineMeta.Annotations {
-		pr.ObjectMeta.Annotations[key] = value
 	}
 
 	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks), v1beta1.PipelineTaskList(pipelineSpec.Tasks).Deps())
@@ -1146,10 +1129,28 @@ func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *reso
 	return &cc, err
 }
 
-func storePipelineSpec(ctx context.Context, pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec) error {
+func storePipelineSpecAndMergeMeta(pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec, meta *metav1.ObjectMeta) error {
 	// Only store the PipelineSpec once, if it has never been set before.
 	if pr.Status.PipelineSpec == nil {
 		pr.Status.PipelineSpec = ps
+
+		// Propagate labels from Pipeline to PipelineRun.
+		if pr.ObjectMeta.Labels == nil {
+			pr.ObjectMeta.Labels = make(map[string]string, len(meta.Labels)+1)
+		}
+		for key, value := range meta.Labels {
+			pr.ObjectMeta.Labels[key] = value
+		}
+		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
+
+		// Propagate annotations from Pipeline to PipelineRun.
+		if pr.ObjectMeta.Annotations == nil {
+			pr.ObjectMeta.Annotations = make(map[string]string, len(meta.Annotations))
+		}
+		for key, value := range meta.Annotations {
+			pr.ObjectMeta.Annotations[key] = value
+		}
+
 	}
 	return nil
 }
