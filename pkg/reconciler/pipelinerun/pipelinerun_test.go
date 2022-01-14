@@ -6032,26 +6032,40 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 }
 
 func Test_storePipelineSpec(t *testing.T) {
-	ctx := context.Background()
-	pr := &v1beta1.PipelineRun{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}
+	labels := map[string]string{"lbl": "value"}
+	annotations := map[string]string{"io.annotation": "value"}
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "foo",
+			Labels:      labels,
+			Annotations: annotations,
+		},
+	}
 
 	ps := v1beta1.PipelineSpec{Description: "foo-pipeline"}
 	ps1 := v1beta1.PipelineSpec{Description: "bar-pipeline"}
-	want := ps.DeepCopy()
+
+	want := pr.DeepCopy()
+	want.Status = v1beta1.PipelineRunStatus{
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			PipelineSpec: ps.DeepCopy(),
+		},
+	}
+	want.ObjectMeta.Labels["tekton.dev/pipeline"] = pr.ObjectMeta.Name
 
 	// The first time we set it, it should get copied.
-	if err := storePipelineSpec(ctx, pr, &ps); err != nil {
+	if err := storePipelineSpecAndMergeMeta(pr, &ps, &pr.ObjectMeta); err != nil {
 		t.Errorf("storePipelineSpec() error = %v", err)
 	}
-	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
+	if d := cmp.Diff(pr, want); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
 
 	// The next time, it should not get overwritten
-	if err := storePipelineSpec(ctx, pr, &ps1); err != nil {
+	if err := storePipelineSpecAndMergeMeta(pr, &ps1, &metav1.ObjectMeta{}); err != nil {
 		t.Errorf("storePipelineSpec() error = %v", err)
 	}
-	if d := cmp.Diff(pr.Status.PipelineSpec, want); d != "" {
+	if d := cmp.Diff(pr, want); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
 }
