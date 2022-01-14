@@ -4110,10 +4110,14 @@ func TestFailTaskRun(t *testing.T) {
 }
 
 func Test_storeTaskSpec(t *testing.T) {
-
-	ctx, _ := ttesting.SetupFakeContext(t)
+	labels := map[string]string{"lbl": "value"}
+	annotations := map[string]string{"io.annotation": "value"}
 	tr := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "foo",
+			Labels:      labels,
+			Annotations: annotations,
+		},
 		Spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
 				Name: "foo-task",
@@ -4125,23 +4129,29 @@ func Test_storeTaskSpec(t *testing.T) {
 		Description: "foo-task",
 	}
 	ts1 := v1beta1.TaskSpec{
-		Description: "foo-task",
+		Description: "bar-task",
 	}
-	want := ts.DeepCopy()
+	want := tr.DeepCopy()
+	want.Status = v1beta1.TaskRunStatus{
+		TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+			TaskSpec: ts.DeepCopy(),
+		},
+	}
+	want.ObjectMeta.Labels["tekton.dev/task"] = tr.ObjectMeta.Name
 
 	// The first time we set it, it should get copied.
-	if err := storeTaskSpec(ctx, tr, &ts); err != nil {
+	if err := storeTaskSpecAndMergeMeta(tr, &ts, &tr.ObjectMeta); err != nil {
 		t.Errorf("storeTaskSpec() error = %v", err)
 	}
-	if d := cmp.Diff(tr.Status.TaskSpec, want); d != "" {
+	if d := cmp.Diff(tr, want); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
 
 	// The next time, it should not get overwritten
-	if err := storeTaskSpec(ctx, tr, &ts1); err != nil {
+	if err := storeTaskSpecAndMergeMeta(tr, &ts1, &metav1.ObjectMeta{}); err != nil {
 		t.Errorf("storeTaskSpec() error = %v", err)
 	}
-	if d := cmp.Diff(tr.Status.TaskSpec, want); d != "" {
+	if d := cmp.Diff(tr, want); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
 }

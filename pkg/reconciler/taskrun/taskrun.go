@@ -300,31 +300,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	}
 
 	// Store the fetched TaskSpec on the TaskRun for auditing
-	if err := storeTaskSpec(ctx, tr, taskSpec); err != nil {
+	if err := storeTaskSpecAndMergeMeta(tr, taskSpec, taskMeta); err != nil {
 		logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
-	}
-
-	// Propagate labels from Task to TaskRun.
-	if tr.ObjectMeta.Labels == nil {
-		tr.ObjectMeta.Labels = make(map[string]string, len(taskMeta.Labels)+1)
-	}
-	for key, value := range taskMeta.Labels {
-		tr.ObjectMeta.Labels[key] = value
-	}
-	if tr.Spec.TaskRef != nil {
-		if tr.Spec.TaskRef.Kind == "ClusterTask" {
-			tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = taskMeta.Name
-		} else {
-			tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = taskMeta.Name
-		}
-	}
-
-	// Propagate annotations from Task to TaskRun.
-	if tr.ObjectMeta.Annotations == nil {
-		tr.ObjectMeta.Annotations = make(map[string]string, len(taskMeta.Annotations))
-	}
-	for key, value := range taskMeta.Annotations {
-		tr.ObjectMeta.Annotations[key] = value
 	}
 
 	inputs := []v1beta1.TaskResourceBinding{}
@@ -796,10 +773,31 @@ func applyVolumeClaimTemplates(workspaceBindings []v1beta1.WorkspaceBinding, own
 	return taskRunWorkspaceBindings
 }
 
-func storeTaskSpec(ctx context.Context, tr *v1beta1.TaskRun, ts *v1beta1.TaskSpec) error {
+func storeTaskSpecAndMergeMeta(tr *v1beta1.TaskRun, ts *v1beta1.TaskSpec, meta *metav1.ObjectMeta) error {
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
 		tr.Status.TaskSpec = ts
+		// Propagate annotations from Task to TaskRun.
+		if tr.ObjectMeta.Annotations == nil {
+			tr.ObjectMeta.Annotations = make(map[string]string, len(meta.Annotations))
+		}
+		for key, value := range meta.Annotations {
+			tr.ObjectMeta.Annotations[key] = value
+		}
+		// Propagate labels from Task to TaskRun.
+		if tr.ObjectMeta.Labels == nil {
+			tr.ObjectMeta.Labels = make(map[string]string, len(meta.Labels)+1)
+		}
+		for key, value := range meta.Labels {
+			tr.ObjectMeta.Labels[key] = value
+		}
+		if tr.Spec.TaskRef != nil {
+			if tr.Spec.TaskRef.Kind == "ClusterTask" {
+				tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = meta.Name
+			} else {
+				tr.ObjectMeta.Labels[pipeline.TaskLabelKey] = meta.Name
+			}
+		}
 	}
 	return nil
 }
