@@ -24,6 +24,7 @@ import (
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -153,7 +154,7 @@ func (pr *PipelineRun) GetNamespacedName() types.NamespacedName {
 }
 
 // HasTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
-func (pr *PipelineRun) HasTimedOut(ctx context.Context) bool {
+func (pr *PipelineRun) HasTimedOut(ctx context.Context, c clock.Clock) bool {
 	timeout := pr.PipelineTimeout(ctx)
 	startTime := pr.Status.StartTime
 
@@ -161,7 +162,7 @@ func (pr *PipelineRun) HasTimedOut(ctx context.Context) bool {
 		if timeout == config.NoTimeoutDuration {
 			return false
 		}
-		runtime := time.Since(startTime.Time)
+		runtime := c.Since(startTime.Time)
 		if runtime > timeout {
 			return true
 		}
@@ -340,7 +341,7 @@ func (pr *PipelineRunStatus) GetCondition(t apis.ConditionType) *apis.Condition 
 
 // InitializeConditions will set all conditions in pipelineRunCondSet to unknown for the PipelineRun
 // and set the started time to the current time
-func (pr *PipelineRunStatus) InitializeConditions() {
+func (pr *PipelineRunStatus) InitializeConditions(c clock.Clock) {
 	started := false
 	if pr.TaskRuns == nil {
 		pr.TaskRuns = make(map[string]*PipelineRunTaskRunStatus)
@@ -349,7 +350,7 @@ func (pr *PipelineRunStatus) InitializeConditions() {
 		pr.Runs = make(map[string]*PipelineRunRunStatus)
 	}
 	if pr.StartTime.IsZero() {
-		pr.StartTime = &metav1.Time{Time: time.Now()}
+		pr.StartTime = &metav1.Time{Time: c.Now()}
 		started = true
 	}
 	conditionManager := pipelineRunCondSet.Manage(pr)

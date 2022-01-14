@@ -18,11 +18,11 @@ package v1alpha1
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
@@ -161,7 +161,7 @@ func (pr *PipelineRun) GetRunKey() string {
 }
 
 // IsTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
-func (pr *PipelineRun) IsTimedOut() bool {
+func (pr *PipelineRun) IsTimedOut(c clock.Clock) bool {
 	pipelineTimeout := pr.Spec.Timeout
 	startTime := pr.Status.StartTime
 
@@ -170,7 +170,7 @@ func (pr *PipelineRun) IsTimedOut() bool {
 		if timeout == config.NoTimeoutDuration {
 			return false
 		}
-		runtime := time.Since(startTime.Time)
+		runtime := c.Since(startTime.Time)
 		if runtime > timeout {
 			return true
 		}

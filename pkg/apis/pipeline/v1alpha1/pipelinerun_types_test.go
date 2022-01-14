@@ -29,6 +29,13 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+type testClock struct{}
+
+func (tc testClock) Now() time.Time                  { return now }
+func (tc testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
+
 func TestPipelineRunStatusConditions(t *testing.T) {
 	p := &v1alpha1.PipelineRun{}
 	foo := &apis.Condition{
@@ -69,7 +76,7 @@ func TestInitializeConditions(t *testing.T) {
 			Namespace: "test-ns",
 		},
 	}
-	p.Status.InitializeConditions()
+	p.Status.InitializeConditions(testClock{})
 
 	if p.Status.TaskRuns == nil {
 		t.Fatalf("PipelineRun status not initialized correctly")
@@ -81,7 +88,7 @@ func TestInitializeConditions(t *testing.T) {
 
 	p.Status.TaskRuns["fooTask"] = &v1alpha1.PipelineRunTaskRunStatus{}
 
-	p.Status.InitializeConditions()
+	p.Status.InitializeConditions(testClock{})
 	if len(p.Status.TaskRuns) != 1 {
 		t.Fatalf("PipelineRun status getting reset")
 	}
@@ -154,7 +161,7 @@ func TestPipelineRunHasStarted(t *testing.T) {
 		name: "prWithStartTime",
 		prStatus: v1alpha1.PipelineRunStatus{
 			PipelineRunStatusFields: v1alpha1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 		expectedValue: true,
@@ -192,17 +199,17 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 	}{{
 		name:      "timedout",
 		timeout:   1 * time.Second,
-		starttime: time.Now().AddDate(0, 0, -1),
+		starttime: now.AddDate(0, 0, -1),
 		expected:  true,
 	}, {
 		name:      "nottimedout",
 		timeout:   25 * time.Hour,
-		starttime: time.Now().AddDate(0, 0, -1),
+		starttime: now.AddDate(0, 0, -1),
 		expected:  false,
 	}, {
 		name:      "notimeoutspecified",
 		timeout:   0 * time.Second,
-		starttime: time.Now().AddDate(0, 0, -1),
+		starttime: now.AddDate(0, 0, -1),
 		expected:  false,
 	},
 	}
@@ -226,7 +233,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				},
 			}
 
-			if pr.IsTimedOut() != tc.expected {
+			if pr.IsTimedOut(testClock{}) != tc.expected {
 				t.Fatalf("Expected isTimedOut to be %t", tc.expected)
 			}
 		})

@@ -37,6 +37,13 @@ import (
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
+var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+type testClock struct{}
+
+func (testClock) Now() time.Time                  { return now }
+func (testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
+
 func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 	var taskCancelledByStatusState = PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
@@ -1144,7 +1151,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: dfinally,
 			}
-			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar())
+			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock{})
 			wantCondition := &apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: tc.expectedStatus,
@@ -1286,7 +1293,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: df,
 			}
-			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar())
+			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock{})
 			wantCondition := &apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: tc.expectedStatus,
@@ -1314,7 +1321,7 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now().Add(-2 * time.Minute)},
+				StartTime: &metav1.Time{Time: now.Add(-2 * time.Minute)},
 			},
 		},
 	}
@@ -1323,14 +1330,14 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 		TasksGraph:      d,
 		FinalTasksGraph: &dag.Graph{},
 	}
-	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar())
+	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock{})
 	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
 		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
 	}
 }
 
 func TestAdjustStartTime(t *testing.T) {
-	baseline := metav1.Time{Time: time.Now()}
+	baseline := metav1.Time{Time: now}
 
 	tests := []struct {
 		name string

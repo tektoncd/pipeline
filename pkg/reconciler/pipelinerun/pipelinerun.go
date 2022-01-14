@@ -38,6 +38,7 @@ import (
 	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
@@ -118,6 +119,7 @@ type Reconciler struct {
 	KubeClientSet     kubernetes.Interface
 	PipelineClientSet clientset.Interface
 	Images            pipeline.Images
+	Clock             clock.Clock
 
 	// listers index properties about resources
 	pipelineRunLister listers.PipelineRunLister
@@ -146,7 +148,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 
 	if !pr.HasStarted() && !pr.IsPending() {
-		pr.Status.InitializeConditions()
+		pr.Status.InitializeConditions(c.Clock)
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
 		if pr.Status.StartTime.Sub(pr.CreationTimestamp.Time) < 0 {
 			logger.Warnf("PipelineRun %s createTimestamp %s is after the pipelineRun started %s", pr.GetNamespacedName().String(), pr.CreationTimestamp, pr.Status.StartTime)
@@ -232,7 +234,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 
 	if pr.Status.StartTime != nil {
 		// Compute the time since the task started.
-		elapsed := time.Since(pr.Status.StartTime.Time)
+		elapsed := c.Clock.Since(pr.Status.StartTime.Time)
 		// Snooze this resource until the timeout has elapsed.
 		return controller.NewRequeueAfter(pr.PipelineTimeout(ctx) - elapsed)
 	}
@@ -570,7 +572,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Reset the skipped status to trigger recalculation
 	pipelineRunFacts.ResetSkippedCache()
 
-	after := pipelineRunFacts.GetPipelineConditionStatus(ctx, pr, logger)
+	after := pipelineRunFacts.GetPipelineConditionStatus(ctx, pr, logger, c.Clock)
 	switch after.Status {
 	case corev1.ConditionTrue:
 		pr.Status.MarkSucceeded(after.Reason, after.Message)
@@ -603,7 +605,7 @@ func (c *Reconciler) processRunTimeouts(ctx context.Context, pr *v1beta1.Pipelin
 	}
 	for _, rprt := range pipelineState {
 		if rprt.IsCustomTask() {
-			if rprt.Run != nil && !rprt.Run.IsCancelled() && (pr.HasTimedOut(ctx) || (rprt.Run.HasTimedOut() && !rprt.Run.IsDone())) {
+			if rprt.Run != nil && !rprt.Run.IsCancelled() && (pr.HasTimedOut(ctx, c.Clock) || (rprt.Run.HasTimedOut(c.Clock) && !rprt.Run.IsDone())) {
 				logger.Infof("Cancelling run task: %s due to timeout.", rprt.RunName)
 				err := cancelRun(ctx, rprt.RunName, pr.Namespace, c.PipelineClientSet)
 				if err != nil {
@@ -737,7 +739,7 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 	return nil
 }
 
-type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration
+type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration
 
 func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) (*v1beta1.TaskRun, error) {
 	logger := logging.FromContext(ctx)
@@ -770,7 +772,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		Spec: v1beta1.TaskRunSpec{
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
-			Timeout:            getTimeoutFunc(ctx, pr, rprt),
+			Timeout:            getTimeoutFunc(ctx, pr, rprt, c.Clock),
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		}}
 
@@ -813,7 +815,7 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 			Ref:                rprt.PipelineTask.TaskRef,
 			Params:             rprt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
-			Timeout:            getTimeoutFunc(ctx, pr, rprt),
+			Timeout:            getTimeoutFunc(ctx, pr, rprt, c.Clock),
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		},
 	}
@@ -1029,8 +1031,8 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 // getFinallyTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask, which is a finally Task.
 // If there is no timeout for the finally TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
-	taskRunTimeout := calculateTaskRunTimeout(pr.PipelineTimeout(ctx), pr, rprt)
+func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
+	taskRunTimeout := calculateTaskRunTimeout(pr.PipelineTimeout(ctx), pr, rprt, c)
 	finallyTimeout := pr.FinallyTimeout()
 	// Return the smaller of taskRunTimeout and finallyTimeout
 	// This works because all finally tasks run in parallel, so there is no need to consider time spent by other finally tasks
@@ -1046,14 +1048,14 @@ func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt
 // getTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask.
 // If there is no timeout for the TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
+func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
 	var timeout time.Duration
 	if pr.TasksTimeout() != nil {
 		timeout = pr.TasksTimeout().Duration
 	} else {
 		timeout = pr.PipelineTimeout(ctx)
 	}
-	return calculateTaskRunTimeout(timeout, pr, rprt)
+	return calculateTaskRunTimeout(timeout, pr, rprt, c)
 }
 
 // calculateTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask.
@@ -1062,10 +1064,10 @@ func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resou
 // - If ResolvedPipelineRunTask is a Finally Task, `timeout` is the Pipeline Timeout
 // If there is no timeout for the TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) *metav1.Duration {
+func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
 	if timeout != apisconfig.NoTimeoutDuration {
 		pTimeoutTime := pr.Status.StartTime.Add(timeout)
-		if time.Now().After(pTimeoutTime) {
+		if c.Now().After(pTimeoutTime) {
 			return &metav1.Duration{Duration: 1 * time.Second}
 		}
 		// Return the smaller of timeout and rprt.pipelineTask.timeout
@@ -1135,7 +1137,7 @@ func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *reso
 			Resources: &v1beta1.TaskRunResources{
 				Inputs: rcc.ToTaskResourceBindings(),
 			},
-			Timeout:     getTaskRunTimeout(ctx, pr, rprt),
+			Timeout:     getTaskRunTimeout(ctx, pr, rprt, c.Clock),
 			PodTemplate: taskRunSpec.TaskPodTemplate,
 		}}
 

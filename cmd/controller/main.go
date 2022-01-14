@@ -24,6 +24,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	corev1 "k8s.io/api/core/v1"
@@ -101,8 +102,8 @@ func main() {
 
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
-		taskrun.NewController(opts),
-		pipelinerun.NewController(opts),
+		taskrun.NewController(opts, clock.RealClock{}),
+		pipelinerun.NewController(opts, clock.RealClock{}),
 	)
 }
 

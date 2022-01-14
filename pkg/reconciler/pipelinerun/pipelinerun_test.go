@@ -96,6 +96,8 @@ var (
 			}},
 		},
 	}
+
+	now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 )
 
 const (
@@ -108,6 +110,11 @@ type PipelineRunTest struct {
 	TestAssets test.Assets
 	Cancel     func()
 }
+
+type testClock struct{}
+
+func (testClock) Now() time.Time                  { return now }
+func (testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
 
 func ensureConfigurationConfigMapsExist(d *test.Data) {
 	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists, metricsExists bool
@@ -174,7 +181,7 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts)(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock{})(ctx, configMapWatcher)
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
 		la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {})
 	}
@@ -1591,7 +1598,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 			TaskSpec: &task.Spec,
 		},
 	}}
-	pr.Status.InitializeConditions()
+	pr.Status.InitializeConditions(testClock{})
 	status := state.GetTaskRunsStatus(pr)
 	if d := cmp.Diff(expectedPipelineRunStatus.TaskRuns, status); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
@@ -1669,7 +1676,7 @@ func TestUpdateRunsState(t *testing.T) {
 		RunName:      "test-pipeline-run-success-unit-test-1",
 		Run:          &run,
 	}}
-	pr.Status.InitializeConditions()
+	pr.Status.InitializeConditions(testClock{})
 	status := state.GetRunsStatus(pr)
 	if d := cmp.Diff(expectedPipelineRunStatus.Runs, status); d != "" {
 		t.Fatalf("Expected PipelineRun status to match Run(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
@@ -1845,7 +1852,7 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 				TaskRunName:             taskrunName,
 				ResolvedConditionChecks: tc.rcc,
 			}}
-			pr.Status.InitializeConditions()
+			pr.Status.InitializeConditions(testClock{})
 			status := state.GetTaskRunsStatus(pr)
 			expected := map[string]*v1beta1.PipelineRunTaskRunStatus{
 				taskrunName: &tc.expectedStatus,
@@ -2086,7 +2093,7 @@ func TestReconcileForCustomTaskWithPipelineTaskTimedOut(t *testing.T) {
 		},
 		Status: v1alpha1.RunStatus{
 			RunStatusFields: v1alpha1.RunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now().Add(-1 * time.Minute)},
+				StartTime: &metav1.Time{Time: now.Add(-61 * time.Second)},
 			},
 			Status: duckv1.Status{
 				Conditions: []apis.Condition{
@@ -2190,7 +2197,7 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 				},
 				Status: v1beta1.PipelineRunStatus{
 					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-						StartTime: &metav1.Time{Time: time.Now().AddDate(0, 0, -1)},
+						StartTime: &metav1.Time{Time: now.AddDate(0, 0, -1)},
 					},
 				},
 			}}
@@ -2425,7 +2432,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask(t *testin
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
 					"test-pipeline-run-cancelled-run-finally-hello-world": {
 						PipelineTaskName: "hello-world-1",
@@ -2645,7 +2652,7 @@ func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
 						Status:           &v1beta1.TaskRunStatus{},
 					},
 				},
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 	}}
@@ -2756,7 +2763,7 @@ func TestReconcileTaskResolutionError(t *testing.T) {
 						Status:           &v1beta1.TaskRunStatus{},
 					},
 				},
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 	}}
@@ -2833,7 +2840,7 @@ func TestReconcileOnStoppedRunFinallyPipelineRun(t *testing.T) {
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 	}}
@@ -2891,7 +2898,7 @@ func TestReconcileOnStoppedRunFinallyPipelineRunWithRunningTask(t *testing.T) {
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
 					"test-pipeline-run-stopped-run-finally-hello-world": {
 						PipelineTaskName: "hello-world-1",
@@ -2967,7 +2974,7 @@ func TestReconcileOnStoppedPipelineRunWithCompletedTask(t *testing.T) {
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
 					"test-pipeline-run-stopped-hello-world": {
 						PipelineTaskName: "hello-world-1",
@@ -3107,7 +3114,7 @@ func TestReconcileWithTimeout(t *testing.T) {
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now().AddDate(0, 0, -1)},
+				StartTime: &metav1.Time{Time: now.AddDate(0, 0, -1)},
 			},
 		},
 	}}
@@ -3237,7 +3244,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 						Status:           &v1beta1.TaskRunStatus{},
 					},
 				},
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 	}}
@@ -3338,7 +3345,7 @@ func TestReconcileCancelledPipelineRun(t *testing.T) {
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 	}}
@@ -3711,7 +3718,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 				},
 				Status: v1beta1.PipelineRunStatus{
 					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-						StartTime: &metav1.Time{Time: time.Now().AddDate(0, 0, -1)},
+						StartTime: &metav1.Time{Time: now.AddDate(0, 0, -1)},
 					},
 				},
 			}}
@@ -3845,7 +3852,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -3865,7 +3872,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -3885,7 +3892,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -3905,7 +3912,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now().Add(-2 * time.Minute)},
+					StartTime: &metav1.Time{Time: now.Add(-2 * time.Minute)},
 				},
 			},
 		},
@@ -3925,7 +3932,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -3945,7 +3952,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -3967,7 +3974,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -3990,7 +3997,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4012,7 +4019,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4034,7 +4041,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4049,7 +4056,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), tc.pr, tc.rprt), tc.expected); d != "" {
+			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), tc.pr, tc.rprt, testClock{}), tc.expected); d != "" {
 				t.Errorf("Unexpected task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -4076,7 +4083,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4094,7 +4101,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4112,7 +4119,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now().Add(-2 * time.Minute)},
+					StartTime: &metav1.Time{Time: now.Add(-2 * time.Minute)},
 				},
 			},
 		},
@@ -4133,7 +4140,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4153,7 +4160,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4175,7 +4182,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4192,7 +4199,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4215,7 +4222,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now()},
+					StartTime: &metav1.Time{Time: now},
 				},
 			},
 		},
@@ -4230,7 +4237,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), tc.pr, tc.rprt)); d != "" {
+			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), tc.pr, tc.rprt, testClock{})); d != "" {
 				t.Errorf("Unexpected finally task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -6146,8 +6153,8 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 						Status:           &trs[0].Status,
 					},
 				},
-				StartTime:      &metav1.Time{Time: time.Now().AddDate(0, 0, -1)},
-				CompletionTime: &metav1.Time{Time: time.Now()},
+				StartTime:      &metav1.Time{Time: now.AddDate(0, 0, -1)},
+				CompletionTime: &metav1.Time{Time: now},
 			},
 		},
 	}}
@@ -8616,7 +8623,7 @@ func createCancelledPipelineRun(prName string, specStatus v1beta1.PipelineRunSpe
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -384,7 +385,7 @@ func (tr *TaskRun) IsCancelled() bool {
 }
 
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
-func (tr *TaskRun) HasTimedOut(ctx context.Context) bool {
+func (tr *TaskRun) HasTimedOut(ctx context.Context, c clock.Clock) bool {
 	if tr.Status.StartTime.IsZero() {
 		return false
 	}
@@ -393,7 +394,7 @@ func (tr *TaskRun) HasTimedOut(ctx context.Context) bool {
 	if timeout == apisconfig.NoTimeoutDuration {
 		return false
 	}
-	runtime := time.Since(tr.Status.StartTime.Time)
+	runtime := c.Since(tr.Status.StartTime.Time)
 	return runtime > timeout
 }
 

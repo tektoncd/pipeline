@@ -91,6 +91,7 @@ var (
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
+	now                      = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
 	// Pods are created with a random 5-character suffix that we want to
 	// ignore in our diffs.
@@ -470,6 +471,11 @@ var (
 	fakeVersion string
 )
 
+type testClock struct{}
+
+func (testClock) Now() time.Time                  { return now }
+func (testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
+
 func runVolume(i int) corev1.Volume {
 	return corev1.Volume{
 		Name: fmt.Sprintf("tekton-internal-run-%d", i),
@@ -569,7 +575,7 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts)(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock{})(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
@@ -1712,7 +1718,7 @@ func TestReconcileTaskRunWithPermanentError(t *testing.T) {
 				},
 			},
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 	}
@@ -2070,7 +2076,7 @@ func TestReconcileTimeouts(t *testing.T) {
 						},
 					},
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						StartTime: &metav1.Time{Time: time.Now().Add(-15 * time.Second)},
+						StartTime: &metav1.Time{Time: now.Add(-15 * time.Second)},
 					},
 				},
 			},
@@ -2103,7 +2109,7 @@ func TestReconcileTimeouts(t *testing.T) {
 						},
 					},
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						StartTime: &metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+						StartTime: &metav1.Time{Time: now.Add(-61 * time.Minute)},
 					},
 				},
 			},
@@ -2136,7 +2142,7 @@ func TestReconcileTimeouts(t *testing.T) {
 						},
 					},
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						StartTime: &metav1.Time{Time: time.Now().Add(-61 * time.Minute)},
+						StartTime: &metav1.Time{Time: now.Add(-61 * time.Minute)},
 					},
 				},
 			},
@@ -2253,6 +2259,7 @@ func TestExpandMountPath(t *testing.T) {
 	r := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
 		PipelineClientSet: testAssets.Clients.Pipeline,
+		Clock:             testClock{},
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
@@ -2377,6 +2384,7 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 	r := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
 		PipelineClientSet: testAssets.Clients.Pipeline,
+		Clock:             testClock{},
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
@@ -2417,7 +2425,7 @@ func TestHandlePodCreationError(t *testing.T) {
 				},
 			},
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 	}
@@ -2432,6 +2440,7 @@ func TestHandlePodCreationError(t *testing.T) {
 	c := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
 		PipelineClientSet: testAssets.Clients.Pipeline,
+		Clock:             testClock{},
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
@@ -2887,7 +2896,7 @@ func TestReconcileCloudEvents(t *testing.T) {
 }
 
 func TestReconcile_Single_SidecarState(t *testing.T) {
-	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
+	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
 	taskRun := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun-sidecars"},
 		Spec: v1beta1.TaskRunSpec{
@@ -2942,7 +2951,7 @@ func TestReconcile_Single_SidecarState(t *testing.T) {
 }
 
 func TestReconcile_Multiple_SidecarStates(t *testing.T) {
-	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
+	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
 	waitingState := corev1.ContainerStateWaiting{Reason: "PodInitializing"}
 	taskRun := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun-sidecars"},
@@ -3573,9 +3582,9 @@ func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
 }
 
 func TestFailTaskRun(t *testing.T) {
-	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: time.Now()}}
-	terminatedState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: time.Now()}, FinishedAt: metav1.Time{Time: time.Now()}, Reason: "Completed"}
-	terminatedWithErrorState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: time.Now()}, FinishedAt: metav1.Time{Time: time.Now()}, Reason: "Completed", ExitCode: 12}
+	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
+	terminatedState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: now}, FinishedAt: metav1.Time{Time: now}, Reason: "Completed"}
+	terminatedWithErrorState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: now}, FinishedAt: metav1.Time{Time: now}, Reason: "Completed", ExitCode: 12}
 	waitingState := corev1.ContainerStateWaiting{Reason: "PodInitializing"}
 	testCases := []struct {
 		name               string
@@ -3993,6 +4002,7 @@ func TestFailTaskRun(t *testing.T) {
 			c := &Reconciler{
 				KubeClientSet:     testAssets.Clients.Kube,
 				PipelineClientSet: testAssets.Clients.Pipeline,
+				Clock:             testClock{},
 				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),

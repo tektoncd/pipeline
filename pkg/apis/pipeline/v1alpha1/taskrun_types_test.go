@@ -186,7 +186,7 @@ func TestTaskRunHasStarted(t *testing.T) {
 		name: "trWithStartTime",
 		trStatus: v1alpha1.TaskRunStatus{
 			TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
+				StartTime: &metav1.Time{Time: now},
 			},
 		},
 		expectedValue: true,
@@ -312,7 +312,7 @@ func TestHasTimedOut(t *testing.T) {
 					},
 				},
 				TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now().Add(-15 * time.Hour)},
+					StartTime: &metav1.Time{Time: now.Add(-15 * time.Hour)},
 				},
 			},
 		},
@@ -336,7 +336,7 @@ func TestHasTimedOut(t *testing.T) {
 					},
 				},
 				TaskRunStatusFields: v1alpha1.TaskRunStatusFields{
-					StartTime: &metav1.Time{Time: time.Now().Add(-15 * time.Second)},
+					StartTime: &metav1.Time{Time: now.Add(-15 * time.Second)},
 				},
 			},
 		},
@@ -345,7 +345,7 @@ func TestHasTimedOut(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := tc.taskRun.HasTimedOut()
+			result := tc.taskRun.HasTimedOut(testClock{})
 			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}
