@@ -109,7 +109,6 @@ for more information.
    uses the default `system:admin` user:
 
    ```bash
-   # For MiniShift: oc login -u admin:admin
    oc login -u system:admin
    ```
 
