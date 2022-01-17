@@ -89,7 +89,8 @@ func (m *manifests) handle(resp http.ResponseWriter, req *http.Request) *regErro
 	target := elem[len(elem)-1]
 	repo := strings.Join(elem[1:len(elem)-2], "/")
 
-	if req.Method == "GET" {
+	switch req.Method {
+	case http.MethodGet:
 		m.lock.Lock()
 		defer m.lock.Unlock()
 
@@ -117,9 +118,8 @@ func (m *manifests) handle(resp http.ResponseWriter, req *http.Request) *regErro
 		resp.WriteHeader(http.StatusOK)
 		io.Copy(resp, bytes.NewReader(m.blob))
 		return nil
-	}
 
-	if req.Method == "HEAD" {
+	case http.MethodHead:
 		m.lock.Lock()
 		defer m.lock.Unlock()
 		if _, ok := m.manifests[repo]; !ok {
@@ -144,9 +144,8 @@ func (m *manifests) handle(resp http.ResponseWriter, req *http.Request) *regErro
 		resp.Header().Set("Content-Length", fmt.Sprint(len(m.blob)))
 		resp.WriteHeader(http.StatusOK)
 		return nil
-	}
 
-	if req.Method == "PUT" {
+	case http.MethodPut:
 		m.lock.Lock()
 		defer m.lock.Unlock()
 		if _, ok := m.manifests[repo]; !ok {
@@ -200,9 +199,8 @@ func (m *manifests) handle(resp http.ResponseWriter, req *http.Request) *regErro
 		resp.Header().Set("Docker-Content-Digest", digest)
 		resp.WriteHeader(http.StatusCreated)
 		return nil
-	}
 
-	if req.Method == "DELETE" {
+	case http.MethodDelete:
 		m.lock.Lock()
 		defer m.lock.Unlock()
 		if _, ok := m.manifests[repo]; !ok {
@@ -225,12 +223,13 @@ func (m *manifests) handle(resp http.ResponseWriter, req *http.Request) *regErro
 		delete(m.manifests[repo], target)
 		resp.WriteHeader(http.StatusAccepted)
 		return nil
-	}
 
-	return &regError{
-		Status:  http.StatusBadRequest,
-		Code:    "METHOD_UNKNOWN",
-		Message: "We don't understand your method + url",
+	default:
+		return &regError{
+			Status:  http.StatusBadRequest,
+			Code:    "METHOD_UNKNOWN",
+			Message: "We don't understand your method + url",
+		}
 	}
 }
 

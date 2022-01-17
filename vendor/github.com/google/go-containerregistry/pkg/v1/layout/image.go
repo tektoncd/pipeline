@@ -93,17 +93,10 @@ func (li *layoutImage) LayerByDigest(h v1.Hash) (partial.CompressedLayer, error)
 
 	for _, desc := range manifest.Layers {
 		if h == desc.Digest {
-			switch desc.MediaType {
-			case types.OCILayer, types.DockerLayer:
-				return &compressedBlob{
-					path: li.path,
-					desc: desc,
-				}, nil
-			default:
-				// TODO: We assume everything is a compressed blob, but that might not be true.
-				// TODO: Handle foreign layers.
-				return nil, fmt.Errorf("unexpected media type: %v for layer: %v", desc.MediaType, desc.Digest)
-			}
+			return &compressedBlob{
+				path: li.path,
+				desc: desc,
+			}, nil
 		}
 	}
 
@@ -129,6 +122,11 @@ func (b *compressedBlob) Size() (int64, error) {
 
 func (b *compressedBlob) MediaType() (types.MediaType, error) {
 	return b.desc.MediaType, nil
+}
+
+// Descriptor implements partial.withDescriptor.
+func (b *compressedBlob) Descriptor() (*v1.Descriptor, error) {
+	return &b.desc, nil
 }
 
 // See partial.Exists.
