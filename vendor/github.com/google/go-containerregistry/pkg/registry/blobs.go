@@ -16,15 +16,20 @@ package registry
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
+	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"math/rand"
 	"net/http"
 	"path"
 	"strings"
 	"sync"
+
+	"github.com/google/go-containerregistry/internal/verify"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 )
 
 // Returns whether this url should be handled by the blob handler
@@ -44,10 +49,91 @@ func isBlob(req *http.Request) bool {
 		elem[len(elem)-2] == "uploads")
 }
 
+// blobHandler represents a minimal blob storage backend, capable of serving
+// blob contents.
+type blobHandler interface {
+	// Get gets the blob contents, or errNotFound if the blob wasn't found.
+	Get(ctx context.Context, repo string, h v1.Hash) (io.ReadCloser, error)
+}
+
+// blobStatHandler is an extension interface representing a blob storage
+// backend that can serve metadata about blobs.
+type blobStatHandler interface {
+	// Stat returns the size of the blob, or errNotFound if the blob wasn't
+	// found, or redirectError if the blob can be found elsewhere.
+	Stat(ctx context.Context, repo string, h v1.Hash) (int64, error)
+}
+
+// blobPutHandler is an extension interface representing a blob storage backend
+// that can write blob contents.
+type blobPutHandler interface {
+	// Put puts the blob contents.
+	//
+	// The contents will be verified against the expected size and digest
+	// as the contents are read, and an error will be returned if these
+	// don't match. Implementations should return that error, or a wrapper
+	// around that error, to return the correct error when these don't match.
+	Put(ctx context.Context, repo string, h v1.Hash, rc io.ReadCloser) error
+}
+
+// redirectError represents a signal that the blob handler doesn't have the blob
+// contents, but that those contents are at another location which registry
+// clients should redirect to.
+type redirectError struct {
+	// Location is the location to find the contents.
+	Location string
+
+	// Code is the HTTP redirect status code to return to clients.
+	Code int
+}
+
+func (e redirectError) Error() string { return fmt.Sprintf("redirecting (%d): %s", e.Code, e.Location) }
+
+// errNotFound represents an error locating the blob.
+var errNotFound = errors.New("not found")
+
+type memHandler struct {
+	m    map[string][]byte
+	lock sync.Mutex
+}
+
+func (m *memHandler) Stat(_ context.Context, _ string, h v1.Hash) (int64, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	b, found := m.m[h.String()]
+	if !found {
+		return 0, errNotFound
+	}
+	return int64(len(b)), nil
+}
+func (m *memHandler) Get(_ context.Context, _ string, h v1.Hash) (io.ReadCloser, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	b, found := m.m[h.String()]
+	if !found {
+		return nil, errNotFound
+	}
+	return ioutil.NopCloser(bytes.NewReader(b)), nil
+}
+func (m *memHandler) Put(_ context.Context, _ string, h v1.Hash, rc io.ReadCloser) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	defer rc.Close()
+	all, err := ioutil.ReadAll(rc)
+	if err != nil {
+		return err
+	}
+	m.m[h.String()] = all
+	return nil
+}
+
 // blobs
 type blobs struct {
-	// Blobs are content addresses. we store them globally underneath their sha and make no distinctions per image.
-	contents map[string][]byte
+	blobHandler blobHandler
+
 	// Each upload gets a unique id that writes occur to until finalized.
 	uploads map[string][]byte
 	lock    sync.Mutex
@@ -72,100 +158,203 @@ func (b *blobs) handle(resp http.ResponseWriter, req *http.Request) *regError {
 	digest := req.URL.Query().Get("digest")
 	contentRange := req.Header.Get("Content-Range")
 
-	if req.Method == "HEAD" {
-		b.lock.Lock()
-		defer b.lock.Unlock()
-		b, ok := b.contents[target]
-		if !ok {
-			return &regError{
-				Status:  http.StatusNotFound,
-				Code:    "BLOB_UNKNOWN",
-				Message: "Unknown blob",
-			}
-		}
+	repo := req.URL.Host + path.Join(elem[1:len(elem)-2]...)
 
-		resp.Header().Set("Content-Length", fmt.Sprint(len(b)))
-		resp.Header().Set("Docker-Content-Digest", target)
-		resp.WriteHeader(http.StatusOK)
-		return nil
-	}
-
-	if req.Method == "GET" {
-		b.lock.Lock()
-		defer b.lock.Unlock()
-		b, ok := b.contents[target]
-		if !ok {
-			return &regError{
-				Status:  http.StatusNotFound,
-				Code:    "BLOB_UNKNOWN",
-				Message: "Unknown blob",
-			}
-		}
-
-		resp.Header().Set("Content-Length", fmt.Sprint(len(b)))
-		resp.Header().Set("Docker-Content-Digest", target)
-		resp.WriteHeader(http.StatusOK)
-		io.Copy(resp, bytes.NewReader(b))
-		return nil
-	}
-
-	if req.Method == "POST" && target == "uploads" && digest != "" {
-		l := &bytes.Buffer{}
-		io.Copy(l, req.Body)
-		rd := sha256.Sum256(l.Bytes())
-		d := "sha256:" + hex.EncodeToString(rd[:])
-		if d != digest {
+	switch req.Method {
+	case http.MethodHead:
+		h, err := v1.NewHash(target)
+		if err != nil {
 			return &regError{
 				Status:  http.StatusBadRequest,
-				Code:    "DIGEST_INVALID",
-				Message: "digest does not match contents",
+				Code:    "NAME_INVALID",
+				Message: "invalid digest",
 			}
 		}
 
-		b.lock.Lock()
-		defer b.lock.Unlock()
-		b.contents[d] = l.Bytes()
-		resp.Header().Set("Docker-Content-Digest", d)
-		resp.WriteHeader(http.StatusCreated)
-		return nil
-	}
+		var size int64
+		if bsh, ok := b.blobHandler.(blobStatHandler); ok {
+			size, err = bsh.Stat(req.Context(), repo, h)
+			if errors.Is(err, errNotFound) {
+				return regErrBlobUnknown
+			} else if err != nil {
+				var rerr redirectError
+				if errors.As(err, &rerr) {
+					http.Redirect(resp, req, rerr.Location, rerr.Code)
+					return nil
+				}
+				return regErrInternal(err)
+			}
+		} else {
+			rc, err := b.blobHandler.Get(req.Context(), repo, h)
+			if errors.Is(err, errNotFound) {
+				return regErrBlobUnknown
+			} else if err != nil {
+				var rerr redirectError
+				if errors.As(err, &rerr) {
+					http.Redirect(resp, req, rerr.Location, rerr.Code)
+					return nil
+				}
+				return regErrInternal(err)
+			}
+			defer rc.Close()
+			size, err = io.Copy(ioutil.Discard, rc)
+			if err != nil {
+				return regErrInternal(err)
+			}
+		}
 
-	if req.Method == "POST" && target == "uploads" && digest == "" {
+		resp.Header().Set("Content-Length", fmt.Sprint(size))
+		resp.Header().Set("Docker-Content-Digest", h.String())
+		resp.WriteHeader(http.StatusOK)
+		return nil
+
+	case http.MethodGet:
+		h, err := v1.NewHash(target)
+		if err != nil {
+			return &regError{
+				Status:  http.StatusBadRequest,
+				Code:    "NAME_INVALID",
+				Message: "invalid digest",
+			}
+		}
+
+		var size int64
+		var r io.Reader
+		if bsh, ok := b.blobHandler.(blobStatHandler); ok {
+			size, err = bsh.Stat(req.Context(), repo, h)
+			if errors.Is(err, errNotFound) {
+				return regErrBlobUnknown
+			} else if err != nil {
+				var rerr redirectError
+				if errors.As(err, &rerr) {
+					http.Redirect(resp, req, rerr.Location, rerr.Code)
+					return nil
+				}
+				return regErrInternal(err)
+			}
+
+			rc, err := b.blobHandler.Get(req.Context(), repo, h)
+			if errors.Is(err, errNotFound) {
+				return regErrBlobUnknown
+			} else if err != nil {
+				var rerr redirectError
+				if errors.As(err, &rerr) {
+					http.Redirect(resp, req, rerr.Location, rerr.Code)
+					return nil
+				}
+
+				return regErrInternal(err)
+			}
+			defer rc.Close()
+			r = rc
+		} else {
+			tmp, err := b.blobHandler.Get(req.Context(), repo, h)
+			if errors.Is(err, errNotFound) {
+				return regErrBlobUnknown
+			} else if err != nil {
+				var rerr redirectError
+				if errors.As(err, &rerr) {
+					http.Redirect(resp, req, rerr.Location, rerr.Code)
+					return nil
+				}
+
+				return regErrInternal(err)
+			}
+			defer tmp.Close()
+			var buf bytes.Buffer
+			io.Copy(&buf, tmp)
+			size = int64(buf.Len())
+			r = &buf
+		}
+
+		resp.Header().Set("Content-Length", fmt.Sprint(size))
+		resp.Header().Set("Docker-Content-Digest", h.String())
+		resp.WriteHeader(http.StatusOK)
+		io.Copy(resp, r)
+		return nil
+
+	case http.MethodPost:
+		bph, ok := b.blobHandler.(blobPutHandler)
+		if !ok {
+			return regErrUnsupported
+		}
+
+		// It is weird that this is "target" instead of "service", but
+		// that's how the index math works out above.
+		if target != "uploads" {
+			return &regError{
+				Status:  http.StatusBadRequest,
+				Code:    "METHOD_UNKNOWN",
+				Message: fmt.Sprintf("POST to /blobs must be followed by /uploads, got %s", target),
+			}
+		}
+
+		if digest != "" {
+			h, err := v1.NewHash(digest)
+			if err != nil {
+				return regErrDigestInvalid
+			}
+
+			vrc, err := verify.ReadCloser(req.Body, req.ContentLength, h)
+			if err != nil {
+				return regErrInternal(err)
+			}
+			defer vrc.Close()
+
+			if err = bph.Put(req.Context(), repo, h, vrc); err != nil {
+				if errors.As(err, &verify.Error{}) {
+					log.Printf("Digest mismatch: %v", err)
+					return regErrDigestMismatch
+				}
+				return regErrInternal(err)
+			}
+			resp.Header().Set("Docker-Content-Digest", h.String())
+			resp.WriteHeader(http.StatusCreated)
+			return nil
+		}
+
 		id := fmt.Sprint(rand.Int63())
 		resp.Header().Set("Location", "/"+path.Join("v2", path.Join(elem[1:len(elem)-2]...), "blobs/uploads", id))
 		resp.Header().Set("Range", "0-0")
 		resp.WriteHeader(http.StatusAccepted)
 		return nil
-	}
 
-	if req.Method == "PATCH" && service == "uploads" && contentRange != "" {
-		start, end := 0, 0
-		if _, err := fmt.Sscanf(contentRange, "%d-%d", &start, &end); err != nil {
+	case http.MethodPatch:
+		if service != "uploads" {
 			return &regError{
-				Status:  http.StatusRequestedRangeNotSatisfiable,
-				Code:    "BLOB_UPLOAD_UNKNOWN",
-				Message: "We don't understand your Content-Range",
+				Status:  http.StatusBadRequest,
+				Code:    "METHOD_UNKNOWN",
+				Message: fmt.Sprintf("PATCH to /blobs must be followed by /uploads, got %s", service),
 			}
 		}
-		b.lock.Lock()
-		defer b.lock.Unlock()
-		if start != len(b.uploads[target]) {
-			return &regError{
-				Status:  http.StatusRequestedRangeNotSatisfiable,
-				Code:    "BLOB_UPLOAD_UNKNOWN",
-				Message: "Your content range doesn't match what we have",
-			}
-		}
-		l := bytes.NewBuffer(b.uploads[target])
-		io.Copy(l, req.Body)
-		b.uploads[target] = l.Bytes()
-		resp.Header().Set("Location", "/"+path.Join("v2", path.Join(elem[1:len(elem)-3]...), "blobs/uploads", target))
-		resp.Header().Set("Range", fmt.Sprintf("0-%d", len(l.Bytes())-1))
-		resp.WriteHeader(http.StatusNoContent)
-		return nil
-	}
 
-	if req.Method == "PATCH" && service == "uploads" && contentRange == "" {
+		if contentRange != "" {
+			start, end := 0, 0
+			if _, err := fmt.Sscanf(contentRange, "%d-%d", &start, &end); err != nil {
+				return &regError{
+					Status:  http.StatusRequestedRangeNotSatisfiable,
+					Code:    "BLOB_UPLOAD_UNKNOWN",
+					Message: "We don't understand your Content-Range",
+				}
+			}
+			b.lock.Lock()
+			defer b.lock.Unlock()
+			if start != len(b.uploads[target]) {
+				return &regError{
+					Status:  http.StatusRequestedRangeNotSatisfiable,
+					Code:    "BLOB_UPLOAD_UNKNOWN",
+					Message: "Your content range doesn't match what we have",
+				}
+			}
+			l := bytes.NewBuffer(b.uploads[target])
+			io.Copy(l, req.Body)
+			b.uploads[target] = l.Bytes()
+			resp.Header().Set("Location", "/"+path.Join("v2", path.Join(elem[1:len(elem)-3]...), "blobs/uploads", target))
+			resp.Header().Set("Range", fmt.Sprintf("0-%d", len(l.Bytes())-1))
+			resp.WriteHeader(http.StatusNoContent)
+			return nil
+		}
+
 		b.lock.Lock()
 		defer b.lock.Unlock()
 		if _, ok := b.uploads[target]; ok {
@@ -184,41 +373,73 @@ func (b *blobs) handle(resp http.ResponseWriter, req *http.Request) *regError {
 		resp.Header().Set("Range", fmt.Sprintf("0-%d", len(l.Bytes())-1))
 		resp.WriteHeader(http.StatusNoContent)
 		return nil
-	}
 
-	if req.Method == "PUT" && service == "uploads" && digest == "" {
-		return &regError{
-			Status:  http.StatusBadRequest,
-			Code:    "DIGEST_INVALID",
-			Message: "digest not specified",
+	case http.MethodPut:
+		bph, ok := b.blobHandler.(blobPutHandler)
+		if !ok {
+			return regErrUnsupported
 		}
-	}
 
-	if req.Method == "PUT" && service == "uploads" && digest != "" {
-		b.lock.Lock()
-		defer b.lock.Unlock()
-		l := bytes.NewBuffer(b.uploads[target])
-		io.Copy(l, req.Body)
-		rd := sha256.Sum256(l.Bytes())
-		d := "sha256:" + hex.EncodeToString(rd[:])
-		if d != digest {
+		if service != "uploads" {
 			return &regError{
 				Status:  http.StatusBadRequest,
-				Code:    "DIGEST_INVALID",
-				Message: "digest does not match contents",
+				Code:    "METHOD_UNKNOWN",
+				Message: fmt.Sprintf("PUT to /blobs must be followed by /uploads, got %s", service),
 			}
 		}
 
-		b.contents[d] = l.Bytes()
+		if digest == "" {
+			return &regError{
+				Status:  http.StatusBadRequest,
+				Code:    "DIGEST_INVALID",
+				Message: "digest not specified",
+			}
+		}
+
+		b.lock.Lock()
+		defer b.lock.Unlock()
+
+		h, err := v1.NewHash(digest)
+		if err != nil {
+			return &regError{
+				Status:  http.StatusBadRequest,
+				Code:    "NAME_INVALID",
+				Message: "invalid digest",
+			}
+		}
+
+		defer req.Body.Close()
+		in := ioutil.NopCloser(io.MultiReader(bytes.NewBuffer(b.uploads[target]), req.Body))
+
+		size := int64(verify.SizeUnknown)
+		if req.ContentLength > 0 {
+			size = int64(len(b.uploads[target])) + req.ContentLength
+		}
+
+		vrc, err := verify.ReadCloser(in, size, h)
+		if err != nil {
+			return regErrInternal(err)
+		}
+		defer vrc.Close()
+
+		if err := bph.Put(req.Context(), repo, h, vrc); err != nil {
+			if errors.As(err, &verify.Error{}) {
+				log.Printf("Digest mismatch: %v", err)
+				return regErrDigestMismatch
+			}
+			return regErrInternal(err)
+		}
+
 		delete(b.uploads, target)
-		resp.Header().Set("Docker-Content-Digest", d)
+		resp.Header().Set("Docker-Content-Digest", h.String())
 		resp.WriteHeader(http.StatusCreated)
 		return nil
-	}
 
-	return &regError{
-		Status:  http.StatusBadRequest,
-		Code:    "METHOD_UNKNOWN",
-		Message: "We don't understand your method + url",
+	default:
+		return &regError{
+			Status:  http.StatusBadRequest,
+			Code:    "METHOD_UNKNOWN",
+			Message: "We don't understand your method + url",
+		}
 	}
 }
