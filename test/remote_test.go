@@ -47,28 +47,28 @@ metadata:
 
 	ref, err := CreateImage(u.Host+"/task/test-create-image", task)
 	if err != nil {
-		t.Errorf("uploading image failed unexpectedly with an error: %w", err)
+		t.Errorf("uploading image failed unexpectedly with an error: %v", err)
 	}
 
 	// Pull the image and ensure the layers are composed correctly.
 	imgRef, err := name.ParseReference(ref)
 	if err != nil {
-		t.Errorf("digest %s is not a valid reference: %w", ref, err)
+		t.Errorf("digest %s is not a valid reference: %v", ref, err)
 	}
 
 	img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(authn.DefaultKeychain))
 	if err != nil {
-		t.Errorf("could not fetch created image: %w", err)
+		t.Errorf("could not fetch created image: %v", err)
 	}
 
 	m, err := img.Manifest()
 	if err != nil {
-		t.Errorf("failed to fetch img manifest: %w", err)
+		t.Errorf("failed to fetch img manifest: %v", err)
 	}
 
 	layers, err := img.Layers()
 	if err != nil || len(layers) != 1 {
-		t.Errorf("img layers were incorrect. Num Layers: %d. Err: %w", len(layers), err)
+		t.Errorf("img layers were incorrect. Num Layers: %d. Err: %v", len(layers), err)
 	}
 
 	if diff := cmp.Diff(m.Layers[0].Annotations[tkremote.TitleAnnotation], "test-create-image"); diff != "" {
@@ -84,19 +84,19 @@ metadata:
 	// Read the layer's contents and ensure it matches the task we uploaded.
 	rc, err := layers[0].Uncompressed()
 	if err != nil {
-		t.Errorf("layer contents were corrupted: %w", err)
+		t.Errorf("layer contents were corrupted: %v", err)
 	}
 	defer rc.Close()
 
 	reader := tar.NewReader(rc)
 	header, err := reader.Next()
 	if err != nil {
-		t.Errorf("failed to load tar bundle: %w", err)
+		t.Errorf("failed to load tar bundle: %v", err)
 	}
 
 	actual := make([]byte, header.Size)
 	if _, err := reader.Read(actual); err != nil && err != io.EOF {
-		t.Errorf("failed to read contents of tar bundle: %w", err)
+		t.Errorf("failed to read contents of tar bundle: %v", err)
 	}
 
 	raw, err := yaml.Marshal(task)
