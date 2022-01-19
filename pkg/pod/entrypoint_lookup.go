@@ -36,7 +36,7 @@ type EntrypointCache interface {
 	// the reference referred to an index, the returned digest will be the
 	// index's digest, not any platform-specific image contained by the
 	// index.
-	get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error)
+	get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string, imagePullSecrets []corev1.LocalObjectReference) (*imageData, error)
 }
 
 // imageData contains information looked up about an image or multi-platform image index.
@@ -50,7 +50,7 @@ type imageData struct {
 //
 // Images that are not specified by digest will be specified by digest after
 // lookup in the resulting list of containers.
-func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, serviceAccountName string, steps []corev1.Container) ([]corev1.Container, error) {
+func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, serviceAccountName string, imagePullSecrets []corev1.LocalObjectReference, steps []corev1.Container) ([]corev1.Container, error) {
 	// Keep a local cache of name->imageData lookups, just for the scope of
 	// resolving this set of steps. If the image is pushed to before the
 	// next run, we need to resolve its digest and commands again, but we
@@ -72,7 +72,7 @@ func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, s
 			id = cid
 		} else {
 			// Look it up for real.
-			lid, err := cache.get(ctx, ref, namespace, serviceAccountName)
+			lid, err := cache.get(ctx, ref, namespace, serviceAccountName, imagePullSecrets)
 			if err != nil {
 				return nil, err
 			}

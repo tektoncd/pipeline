@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	lru "github.com/hashicorp/golang-lru"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -56,7 +57,7 @@ func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error
 // It also returns the digest associated with the given reference. If the
 // reference referred to an index, the returned digest will be the index's
 // digest, not any platform-specific image contained by the index.
-func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string) (*imageData, error) {
+func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string, imagePullSecrets []corev1.LocalObjectReference) (*imageData, error) {
 	// If image is specified by digest, check the local cache.
 	if digest, ok := ref.(name.Digest); ok {
 		if id, ok := e.lru.Get(digest.String()); ok {
@@ -64,10 +65,15 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 		}
 	}
 
+	pullSecretsNames := make([]string, 0, len(imagePullSecrets))
+	for _, ps := range imagePullSecrets {
+		pullSecretsNames = append(pullSecretsNames, ps.Name)
+	}
 	// Consult the remote registry, using imagePullSecrets.
 	kc, err := k8schain.New(ctx, e.kubeclient, k8schain.Options{
 		Namespace:          namespace,
 		ServiceAccountName: serviceAccountName,
+		ImagePullSecrets:   pullSecretsNames,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error creating k8schain: %v", err)
