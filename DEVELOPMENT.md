@@ -93,6 +93,10 @@ You must install these tools:
     --user="${USER}"
     ```
 
+1. [`bash`](https://www.gnu.org/software/bash/) v4 or higher: For scripts used to
+   generate code and update dependencies. On MacOS the default bash is too old,
+   you can use [Homebrew](https://brew.sh) to install a later version.
+
 ### Configure environment
 
 To [build, deploy and run your Tekton Objects with `ko`](#install-pipeline), you'll need to set these environment variables:
