@@ -55,6 +55,7 @@ import (
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	listercorev1 "k8s.io/client-go/listers/core/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -128,6 +129,7 @@ type Reconciler struct {
 	clusterTaskLister listers.ClusterTaskLister
 	resourceLister    resourcelisters.PipelineResourceLister
 	conditionLister   listersv1alpha1.ConditionLister
+	configmapLister   listercorev1.ConfigMapLister
 	cloudEventClient  cloudevent.CEClient
 	metrics           *pipelinerunmetrics.Recorder
 	pvcHandler        volumeclaim.PvcHandler
@@ -482,6 +484,11 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return err
 	}
 
+	pipelinerunFeatureFlags, err := c.pipelinerunFeatureFlags(ctx, pr)
+	if err != nil {
+		return err
+	}
+
 	// Build PipelineRunFacts with a list of resolved pipeline tasks,
 	// dag tasks graph and final tasks graph
 	pipelineRunFacts := &resources.PipelineRunFacts{
@@ -489,7 +496,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		SpecStatus:                 pr.Spec.Status,
 		TasksGraph:                 d,
 		FinalTasksGraph:            dfinally,
-		ScopeWhenExpressionsToTask: config.FromContextOrDefaults(ctx).FeatureFlags.ScopeWhenExpressionsToTask,
+		ScopeWhenExpressionsToTask: pipelinerunFeatureFlags.ScopeWhenExpressionsToTask,
 	}
 
 	for _, rprt := range pipelineRunFacts.State {
@@ -1347,4 +1354,26 @@ func updatePipelineRunStatusFromRuns(logger *zap.SugaredLogger, pr *v1beta1.Pipe
 			}
 		}
 	}
+}
+
+func (c *Reconciler) pipelinerunFeatureFlags(ctx context.Context, pr *v1beta1.PipelineRun) (*config.FeatureFlags, error) {
+	var featureFlags *config.FeatureFlags
+	if cfg := config.FromContext(ctx); cfg != nil {
+		featureFlags = cfg.FeatureFlags
+	} else {
+		featureFlags, _ = config.NewFeatureFlagsFromMap(map[string]string{})
+	}
+	if config.FeatureFlagsCustomizationAllowed(pr.Namespace) {
+		cm, err := c.configmapLister.ConfigMaps(pr.Namespace).Get(config.GetFeatureFlagsConfigName())
+		// skip if customization ConfigMap doesn't exist in the namespace
+		if errors.IsNotFound(err) {
+			return featureFlags, nil
+		} else {
+			err = config.OverrideFeatureFlagsFromMap(cm.Data, featureFlags)
+			if err != nil {
+				return featureFlags, err
+			}
+		}
+	}
+	return featureFlags, nil
 }

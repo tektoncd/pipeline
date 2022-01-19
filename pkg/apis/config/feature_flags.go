@@ -148,6 +148,59 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	return &tc, nil
 }
 
+// OverrideFeatureFlagsFromMap overrides a Config given a map corresponding to a ConfigMap
+func OverrideFeatureFlagsFromMap(cfgMap map[string]string, featureFlags *FeatureFlags) error {
+	overrideFeature := func(key string, feature *bool) error {
+		if cfg, ok := cfgMap[key]; ok {
+			value, err := strconv.ParseBool(cfg)
+			if err != nil {
+				return fmt.Errorf("failed parsing feature flags config %q: %v", cfg, err)
+			}
+			*feature = value
+			return nil
+		}
+		return nil
+	}
+
+	if err := overrideFeature(disableHomeEnvOverwriteKey, &featureFlags.DisableHomeEnvOverwrite); err != nil {
+		return err
+	}
+	if err := overrideFeature(disableWorkingDirOverwriteKey, &featureFlags.DisableWorkingDirOverwrite); err != nil {
+		return err
+	}
+	if err := overrideFeature(disableAffinityAssistantKey, &featureFlags.DisableAffinityAssistant); err != nil {
+		return err
+	}
+	if err := overrideFeature(disableCredsInitKey, &featureFlags.DisableCredsInit); err != nil {
+		return err
+	}
+	if err := overrideFeature(runningInEnvWithInjectedSidecarsKey, &featureFlags.RunningInEnvWithInjectedSidecars); err != nil {
+		return err
+	}
+	if err := overrideFeature(requireGitSSHSecretKnownHostsKey, &featureFlags.RequireGitSSHSecretKnownHosts); err != nil {
+		return err
+	}
+	if err := overrideFeature(scopeWhenExpressionsToTask, &featureFlags.ScopeWhenExpressionsToTask); err != nil {
+		return err
+	}
+	if err := overrideEnabledAPIFields(cfgMap, &featureFlags.EnableAPIFields); err != nil {
+		return err
+	}
+
+	if featureFlags.EnableAPIFields == AlphaAPIFields {
+		featureFlags.EnableTektonOCIBundles = true
+		featureFlags.EnableCustomTasks = true
+	} else {
+		if err := overrideFeature(enableTektonOCIBundles, &featureFlags.EnableTektonOCIBundles); err != nil {
+			return err
+		}
+		if err := overrideFeature(enableCustomTasks, &featureFlags.EnableCustomTasks); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // setEnabledAPIFields sets the "enable-api-fields" flag based on the content of a given map.
 // If the feature gate is invalid or missing then an error is returned.
 func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature *string) error {
@@ -164,7 +217,32 @@ func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature 
 	return nil
 }
 
+func overrideEnabledAPIFields(cfgMap map[string]string, feature *string) error {
+	if cfg, ok := cfgMap[enableAPIFields]; ok {
+		value := strings.ToLower(cfg)
+		switch value {
+		case AlphaAPIFields, StableAPIFields:
+			*feature = value
+		default:
+			return fmt.Errorf("invalid value for feature flag %q: %q", enableAPIFields, value)
+		}
+	}
+	return nil
+}
+
 // NewFeatureFlagsFromConfigMap returns a Config for the given configmap
 func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, error) {
 	return NewFeatureFlagsFromMap(config.Data)
+}
+
+func FeatureFlagsCustomizationAllowed(namespace string) bool {
+	if e := os.Getenv("CONFIG_FEATURE_FLAGS_CUSTOMIZATION_NAMESPACES"); e != "" {
+		namespaces := strings.Split(e, ",")
+		for _, ns := range namespaces {
+			if ns == namespace {
+				return true
+			}
+		}
+	}
+	return false
 }

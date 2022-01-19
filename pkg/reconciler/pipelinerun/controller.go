@@ -37,6 +37,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	configmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap"
+
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -56,6 +58,7 @@ func NewController(opts *pipeline.Options) func(context.Context, configmap.Watch
 		pipelineInformer := pipelineinformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
 		conditionInformer := conditioninformer.Get(ctx)
+		configmapInformer := configmapinformer.Get(ctx)
 		configStore := config.NewStore(logger.Named("config-store"), pipelinerunmetrics.MetricsOnStore(logger))
 		configStore.WatchConfigs(cmw)
 
@@ -71,6 +74,7 @@ func NewController(opts *pipeline.Options) func(context.Context, configmap.Watch
 			runLister:         runInformer.Lister(),
 			resourceLister:    resourceInformer.Lister(),
 			conditionLister:   conditionInformer.Lister(),
+			configmapLister:   configmapInformer.Lister(),
 			cloudEventClient:  cloudeventclient.Get(ctx),
 			metrics:           pipelinerunmetrics.Get(ctx),
 			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
