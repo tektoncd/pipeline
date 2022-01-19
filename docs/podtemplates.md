@@ -95,6 +95,40 @@ Pod templates support fields listed in the table below.
 	</tbody>
 </table>
 
+## Use `imagePullSecrets` to lookup entrypoint
+
+If no command is configured in `task` and `imagePullSecrets` is configured in `podTemplate`, the Tekton Controller will look up the entrypoint of image with `imagePullSecrets`. The Tekton controller's service account is given access to secrets by default. See [this](https://github.com/tektoncd/pipeline/blob/main/config/200-clusterrole.yaml) for reference. If the Tekton controller's service account is not granted the access to secrets in different namespace, you need to grant the access via `RoleBinding`:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: creds-getter
+  namespace: my-ns
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["creds"]
+  verbs: ["get"]
+```
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: creds-getter-binding
+  namespace: my-ns
+subjects:
+- kind: ServiceAccount
+  name: tekton-pipelines-controller
+  namespace: tekton-pipelines
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: creds-getter
+  apiGroup: rbac.authorization.k8s.io
+```
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the

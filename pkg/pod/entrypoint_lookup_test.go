@@ -66,7 +66,7 @@ func TestResolveEntrypoints(t *testing.T) {
 		"reg.io/multi/arch:latest":        &data{id: multi},
 	}
 
-	got, err := resolveEntrypoints(ctx, cache, "namespace", "serviceAccountName", []corev1.Container{{
+	got, err := resolveEntrypoints(ctx, cache, "namespace", "serviceAccountName", []corev1.LocalObjectReference{{Name: "imageSecret"}}, []corev1.Container{{
 		// This step specifies its command, so there's nothing to
 		// resolve.
 		Image:   "fully-specified",
@@ -143,7 +143,7 @@ type data struct {
 	seen bool // Whether the image has been looked up before.
 }
 
-func (f fakeCache) get(ctx context.Context, ref name.Reference, _, _ string) (*imageData, error) {
+func (f fakeCache) get(ctx context.Context, ref name.Reference, _, _ string, _ []corev1.LocalObjectReference) (*imageData, error) {
 	if d, ok := ref.(name.Digest); ok {
 		if data, found := f[d.String()]; found {
 			return data.id, nil
