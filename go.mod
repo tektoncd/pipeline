@@ -1,6 +1,6 @@
 module github.com/tektoncd/pipeline
 
-go 1.13
+go 1.16
 
 require (
 	github.com/cloudevents/sdk-go/v2 v2.5.0

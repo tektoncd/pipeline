@@ -82,6 +82,7 @@ github.com/census-instrumentation/opencensus-proto/gen-go/trace/v1
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
 # github.com/cloudevents/sdk-go/v2 v2.5.0
+## explicit
 github.com/cloudevents/sdk-go/v2
 github.com/cloudevents/sdk-go/v2/binding
 github.com/cloudevents/sdk-go/v2/binding/format
@@ -97,6 +98,7 @@ github.com/cloudevents/sdk-go/v2/protocol
 github.com/cloudevents/sdk-go/v2/protocol/http
 github.com/cloudevents/sdk-go/v2/types
 # github.com/containerd/containerd v1.5.2
+## explicit
 github.com/containerd/containerd/errdefs
 github.com/containerd/containerd/log
 github.com/containerd/containerd/platforms
@@ -106,6 +108,7 @@ github.com/containerd/stargz-snapshotter/estargz/errorutil
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/docker/cli v20.10.8+incompatible
+## explicit
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
@@ -113,11 +116,13 @@ github.com/docker/cli/cli/config/types
 # github.com/docker/distribution v2.7.1+incompatible
 github.com/docker/distribution/registry/client/auth/challenge
 # github.com/docker/docker v20.10.8+incompatible
+## explicit
 github.com/docker/docker/pkg/homedir
 # github.com/docker/docker-credential-helpers v0.6.3
 github.com/docker/docker-credential-helpers/client
 github.com/docker/docker-credential-helpers/credentials
 # github.com/emicklei/go-restful v2.15.0+incompatible
+## explicit
 github.com/emicklei/go-restful
 github.com/emicklei/go-restful/log
 # github.com/evanphx/json-patch v4.11.0+incompatible
@@ -127,6 +132,7 @@ github.com/evanphx/json-patch/v5
 # github.com/form3tech-oss/jwt-go v3.2.3+incompatible
 github.com/form3tech-oss/jwt-go
 # github.com/ghodss/yaml v1.0.0
+## explicit
 github.com/ghodss/yaml
 # github.com/go-kit/log v0.1.0
 github.com/go-kit/log
@@ -159,6 +165,7 @@ github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
 # github.com/google/go-cmp v0.5.6
+## explicit
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/cmpopts
 github.com/google/go-cmp/cmp/internal/diff
@@ -166,6 +173,7 @@ github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
 # github.com/google/go-containerregistry v0.6.0
+## explicit
 github.com/google/go-containerregistry/internal/and
 github.com/google/go-containerregistry/internal/estargz
 github.com/google/go-containerregistry/internal/gzip
@@ -191,11 +199,13 @@ github.com/google/go-containerregistry/pkg/v1/stream
 github.com/google/go-containerregistry/pkg/v1/tarball
 github.com/google/go-containerregistry/pkg/v1/types
 # github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20210918223331-0e8b581974dd
+## explicit
 github.com/google/go-containerregistry/pkg/authn/k8schain
 # github.com/google/gofuzz v1.2.0
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
 # github.com/google/uuid v1.3.0
+## explicit
 github.com/google/uuid
 # github.com/googleapis/gnostic v0.5.5
 github.com/googleapis/gnostic/compiler
@@ -209,13 +219,16 @@ github.com/grpc-ecosystem/grpc-gateway/utilities
 # github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
+## explicit
 github.com/hashicorp/go-multierror
 # github.com/hashicorp/golang-lru v0.5.4
+## explicit
 github.com/hashicorp/golang-lru
 github.com/hashicorp/golang-lru/simplelru
 # github.com/imdario/mergo v0.3.11
 github.com/imdario/mergo
 # github.com/jenkins-x/go-scm v1.10.10
+## explicit
 github.com/jenkins-x/go-scm/pkg/hmac
 github.com/jenkins-x/go-scm/scm
 github.com/jenkins-x/go-scm/scm/driver/fake
@@ -246,6 +259,7 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mitchellh/copystructure v1.0.0
 github.com/mitchellh/copystructure
 # github.com/mitchellh/go-homedir v1.1.0
+## explicit
 github.com/mitchellh/go-homedir
 # github.com/mitchellh/reflectwalk v1.0.1
 github.com/mitchellh/reflectwalk
@@ -256,11 +270,13 @@ github.com/modern-go/reflect2
 # github.com/opencontainers/go-digest v1.0.0
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.3-0.20211202222133-eacdcc10569b
+## explicit
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
 # github.com/openzipkin/zipkin-go v0.3.0
 github.com/openzipkin/zipkin-go/model
 # github.com/pkg/errors v0.9.1
+## explicit
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
@@ -295,6 +311,7 @@ github.com/spf13/pflag
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
 # github.com/tektoncd/plumbing v0.0.0-20211012143332-c7cc43d9bc0c
+## explicit
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/cmd/combine
 github.com/tektoncd/plumbing/scripts
@@ -305,6 +322,7 @@ github.com/vdemeester/k8s-pkg-credentialprovider/azure
 github.com/vdemeester/k8s-pkg-credentialprovider/gcp
 github.com/vdemeester/k8s-pkg-credentialprovider/secrets
 # go.opencensus.io v0.23.0
+## explicit
 go.opencensus.io
 go.opencensus.io/internal
 go.opencensus.io/internal/tagencoding
@@ -331,8 +349,10 @@ go.uber.org/automaxprocs/internal/cgroups
 go.uber.org/automaxprocs/internal/runtime
 go.uber.org/automaxprocs/maxprocs
 # go.uber.org/multierr v1.7.0
+## explicit
 go.uber.org/multierr
 # go.uber.org/zap v1.19.1
+## explicit
 go.uber.org/zap
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
@@ -360,6 +380,7 @@ golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
+## explicit
 golang.org/x/oauth2
 golang.org/x/oauth2/authhandler
 golang.org/x/oauth2/google
@@ -402,6 +423,7 @@ golang.org/x/tools/internal/typeparams
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
 # gomodules.xyz/jsonpatch/v2 v2.2.0
+## explicit
 gomodules.xyz/jsonpatch/v2
 # google.golang.org/api v0.61.0
 google.golang.org/api/support/bundler
@@ -508,6 +530,7 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 gopkg.in/yaml.v3
 # k8s.io/api v0.22.5
+## explicit
 k8s.io/api/admission/v1
 k8s.io/api/admissionregistration/v1
 k8s.io/api/admissionregistration/v1beta1
@@ -568,6 +591,7 @@ k8s.io/apiextensions-apiserver/pkg/client/informers/externalversions/internalint
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/listers/apiextensions/v1beta1
 # k8s.io/apimachinery v0.22.5
+## explicit
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
 k8s.io/apimachinery/pkg/api/meta
@@ -617,6 +641,7 @@ k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
 # k8s.io/client-go v0.22.5
+## explicit
 k8s.io/client-go/applyconfigurations/admissionregistration/v1
 k8s.io/client-go/applyconfigurations/admissionregistration/v1beta1
 k8s.io/client-go/applyconfigurations/apiserverinternal/v1alpha1
@@ -887,6 +912,7 @@ k8s.io/client-go/util/workqueue
 # k8s.io/cloud-provider v0.21.0
 k8s.io/cloud-provider/credentialconfig
 # k8s.io/code-generator v0.22.5
+## explicit
 k8s.io/code-generator/cmd/client-gen
 k8s.io/code-generator/cmd/client-gen/args
 k8s.io/code-generator/cmd/client-gen/generators
@@ -919,10 +945,12 @@ k8s.io/gengo/namer
 k8s.io/gengo/parser
 k8s.io/gengo/types
 # k8s.io/klog v1.0.0
+## explicit
 k8s.io/klog
 # k8s.io/klog/v2 v2.9.0
 k8s.io/klog/v2
 # k8s.io/kube-openapi v0.0.0-20211109043538-20434351676c
+## explicit
 k8s.io/kube-openapi/cmd/openapi-gen
 k8s.io/kube-openapi/cmd/openapi-gen/args
 k8s.io/kube-openapi/pkg/common
@@ -940,6 +968,7 @@ k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
 # knative.dev/pkg v0.0.0-20220104185830-52e42b760b54
+## explicit
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
 knative.dev/pkg/apis/duck/ducktypes
