@@ -72,10 +72,16 @@ const (
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
 )
 
-// TaskRunDebug defines the breakpoint config for a particular TaskRun
+// TaskRunDebug defines the debug config for a particular TaskRun
 type TaskRunDebug struct {
 	// +optional
-	Breakpoint []string `json:"breakpoint,omitempty"`
+	Breakpoint *TaskRunBreakpoint `json:"breakpoint,omitempty"`
+}
+
+// TaskRunBreakpoint defines the breakpoint config for a particular TaskRun
+type TaskRunBreakpoint struct {
+	// +optional
+	OnFailure bool `json:"onFailure"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.

@@ -85,6 +85,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResources":                     schema_pkg_apis_pipeline_v1beta1_TaskResources(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResult":                        schema_pkg_apis_pipeline_v1beta1_TaskResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRun":                           schema_pkg_apis_pipeline_v1beta1_TaskRun(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunBreakpoint":                 schema_pkg_apis_pipeline_v1beta1_TaskRunBreakpoint(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunDebug":                      schema_pkg_apis_pipeline_v1beta1_TaskRunDebug(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunInputs":                     schema_pkg_apis_pipeline_v1beta1_TaskRunInputs(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunList":                       schema_pkg_apis_pipeline_v1beta1_TaskRunList(ref),
@@ -3482,30 +3483,43 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRun(ref common.ReferenceCallback) comm
 	}
 }
 
-func schema_pkg_apis_pipeline_v1beta1_TaskRunDebug(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_pipeline_v1beta1_TaskRunBreakpoint(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TaskRunDebug defines the breakpoint config for a particular TaskRun",
+				Description: "TaskRunBreakpoint defines the breakpoint config for a particular TaskRun",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"breakpoint": {
+					"onFailure": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
+							Default: false,
+							Type:    []string{"boolean"},
+							Format:  "",
 						},
 					},
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1beta1_TaskRunDebug(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TaskRunDebug defines the debug config for a particular TaskRun",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"breakpoint": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunBreakpoint"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunBreakpoint"},
 	}
 }
 

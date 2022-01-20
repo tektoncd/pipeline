@@ -247,7 +247,7 @@ script-3`,
 			Args:         []string{"my", "args"},
 		},
 	}}, []v1beta1.Sidecar{}, &v1beta1.TaskRunDebug{
-		Breakpoint: []string{breakpointOnFailure},
+		Breakpoint: &v1beta1.TaskRunBreakpoint{OnFailure: true},
 	})
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",

@@ -2075,16 +2075,22 @@
         }
       }
     },
+    "v1beta1.TaskRunBreakpoint": {
+      "description": "TaskRunBreakpoint defines the breakpoint config for a particular TaskRun",
+      "type": "object",
+      "properties": {
+        "onFailure": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
     "v1beta1.TaskRunDebug": {
-      "description": "TaskRunDebug defines the breakpoint config for a particular TaskRun",
+      "description": "TaskRunDebug defines the debug config for a particular TaskRun",
       "type": "object",
       "properties": {
         "breakpoint": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          }
+          "$ref": "#/definitions/v1beta1.TaskRunBreakpoint"
         }
       }
     },

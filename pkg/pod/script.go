@@ -95,7 +95,8 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 	}
 
-	breakpoints := []string{}
+	breakpointOnFailure := false
+	// TODO: init before and after breakpoints here
 	sideCarSteps := []v1beta1.Step{}
 	for _, step := range sidecars {
 		sidecarStep := v1beta1.Step{
@@ -107,15 +108,16 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 	}
 
 	// Add mounts for debug
-	if debugConfig != nil && len(debugConfig.Breakpoint) > 0 {
-		breakpoints = debugConfig.Breakpoint
+	if debugConfig != nil && debugConfig.Breakpoint != nil {
+		breakpointOnFailure = debugConfig.Breakpoint.OnFailure
+		// TODO: set before and after breakpoints here
 		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
 	}
 
-	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, breakpoints, "script")
+	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, breakpointOnFailure, "script")
 
-	// Pass empty breakpoint list in "sidecar step to container" converter to not rewrite the scripts and add breakpoints to sidecar
-	sidecarContainers := convertListOfSteps(sideCarSteps, &placeScriptsInit, &placeScripts, []string{}, "sidecar-script")
+	// Pass false value for breakpointOnFailure in "sidecar step to container" converter to not rewrite the scripts and add breakpoints to sidecar
+	sidecarContainers := convertListOfSteps(sideCarSteps, &placeScriptsInit, &placeScripts, false, "sidecar-script")
 	if placeScripts {
 		return &placeScriptsInit, convertedStepContainers, sidecarContainers
 	}
@@ -126,7 +128,7 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 //
 // It iterates through the list of steps (or sidecars), generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, placeScripts *bool, breakpoints []string, namePrefix string) []corev1.Container {
+func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, placeScripts *bool, breakpointOnFailure bool, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i, s := range steps {
 		if s.Script == "" {
@@ -186,8 +188,9 @@ cat > ${scriptfile} << '%s'
 		}
 		steps[i].VolumeMounts = append(steps[i].VolumeMounts, scriptsVolumeMount)
 
-		// Add debug mounts if breakpoints are present
-		if len(breakpoints) > 0 {
+		// Add debug mounts if breakpointOnFailure is present
+		// TODO: change this to factor in changes to
+		if breakpointOnFailure {
 			debugInfoVolumeMount := corev1.VolumeMount{
 				Name:      debugInfoVolumeName,
 				MountPath: filepath.Join(debugInfoDir, fmt.Sprintf("%d", i)),
@@ -197,8 +200,8 @@ cat > ${scriptfile} << '%s'
 		containers = append(containers, steps[i].Container)
 	}
 
-	// Place debug scripts if breakpoints are enabled
-	if len(breakpoints) > 0 {
+	// Place debug scripts if breakpointOnFailure are enabled
+	if breakpointOnFailure {
 		type script struct {
 			name    string
 			content string

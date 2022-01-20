@@ -104,17 +104,12 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return errs
 }
 
-// validateDebug
+// validateDebug checks if the given debug options provided for the TaskRun make sense.
 func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
-	breakpointOnFailure := "onFailure"
-	validBreakpoints := sets.NewString()
-	validBreakpoints.Insert(breakpointOnFailure)
+	// TODO: Add breakpoints validation for beforeStep and afterStep
+	// validBreakpoints := sets.NewString()
+	// validBreakpoints.Insert()
 
-	for _, b := range db.Breakpoint {
-		if !validBreakpoints.Has(b) {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid breakpoint. Available valid breakpoints include %s", b, validBreakpoints.List()), "breakpoint"))
-		}
-	}
 	return errs
 }
 
