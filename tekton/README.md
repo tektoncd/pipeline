@@ -92,7 +92,17 @@ Install Task from plumbing too:
 # Apply the Tasks we are using from the catalog
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/golang-build/0.3/golang-build.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/golang-test/0.2/golang-test.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/main/tekton/resources/release/
+
+# Apply Tasks and other resources from Plumbing.
+#
+# If you want to install everything, including tekton-nightly components,
+# run this command from the root of the plumbing repo (this requires
+# "tekton-nightly" namespace to already be created in your cluster):
+kubectl kustomize ./tekton/resources/release | kubectl apply -f -
+
+# If you don't want the tekton-nightly components then run the following
+# command from the root of the plumbing repo:
+kubectl kustomize ./tekton/resources/release/overlay/default | kubectl apply -f -
 ```
 
 Apply the tasks from the `pipeline` repo:
