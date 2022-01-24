@@ -20,13 +20,12 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 )
 
 func TestAddContextParams(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("no-alpha", func(t *testing.T) {
+	t.Run("not-enabled", func(t *testing.T) {
 		ctx := addContextParams(ctx, []Param{{Name: "a"}})
 		if v := ctx.Value(paramCtxKey); v != nil {
 			t.Errorf("expected no param context values, got %v", v)
@@ -34,9 +33,7 @@ func TestAddContextParams(t *testing.T) {
 	})
 
 	// Enable Alpha features.
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags = &config.FeatureFlags{EnableAPIFields: "alpha"}
-	ctx = config.ToContext(ctx, cfg)
+	ctx = WithImplicitParamsEnabled(ctx, true)
 
 	// These test cases should run sequentially. Each step will modify the
 	// above context.
@@ -120,7 +117,7 @@ func TestAddContextParams(t *testing.T) {
 func TestAddContextParamSpec(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("no-alpha", func(t *testing.T) {
+	t.Run("not-enabled", func(t *testing.T) {
 		ctx := addContextParamSpec(ctx, []ParamSpec{{Name: "a"}})
 		if v := ctx.Value(paramCtxKey); v != nil {
 			t.Errorf("expected no param context values, got %v", v)
@@ -128,9 +125,7 @@ func TestAddContextParamSpec(t *testing.T) {
 	})
 
 	// Enable Alpha features.
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags = &config.FeatureFlags{EnableAPIFields: "alpha"}
-	ctx = config.ToContext(ctx, cfg)
+	ctx = WithImplicitParamsEnabled(ctx, true)
 
 	// These test cases should run sequentially. Each step will modify the
 	// above context.
@@ -213,7 +208,7 @@ func TestGetContextParams(t *testing.T) {
 			Description: "racecar",
 		},
 	}
-	t.Run("no-alpha", func(t *testing.T) {
+	t.Run("not-enabled", func(t *testing.T) {
 		ctx := addContextParamSpec(ctx, want)
 		if v := getContextParamSpecs(ctx); v != nil {
 			t.Errorf("expected no param context values, got %v", v)
@@ -221,9 +216,7 @@ func TestGetContextParams(t *testing.T) {
 	})
 
 	// Enable Alpha features.
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags = &config.FeatureFlags{EnableAPIFields: "alpha"}
-	ctx = config.ToContext(ctx, cfg)
+	ctx = WithImplicitParamsEnabled(ctx, true)
 
 	ctx = addContextParamSpec(ctx, want)
 
@@ -294,7 +287,7 @@ func TestGetContextParamSpecs(t *testing.T) {
 			Description: "racecar",
 		},
 	}
-	t.Run("no-alpha", func(t *testing.T) {
+	t.Run("not-enabled", func(t *testing.T) {
 		ctx := addContextParamSpec(ctx, want)
 		if v := getContextParamSpecs(ctx); v != nil {
 			t.Errorf("expected no param context values, got %v", v)
@@ -302,9 +295,7 @@ func TestGetContextParamSpecs(t *testing.T) {
 	})
 
 	// Enable Alpha features.
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags = &config.FeatureFlags{EnableAPIFields: "alpha"}
-	ctx = config.ToContext(ctx, cfg)
+	ctx = WithImplicitParamsEnabled(ctx, true)
 
 	ctx = addContextParamSpec(ctx, want)
 	got := getContextParamSpecs(ctx)

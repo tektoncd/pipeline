@@ -19,7 +19,6 @@ package v1beta1
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -35,7 +34,7 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 	for i := range ts.Params {
 		ts.Params[i].SetDefaults(ctx)
 	}
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+	if GetImplicitParamsEnabled(ctx) {
 		ctx = addContextParamSpec(ctx, ts.Params)
 		ts.Params = getContextParamSpecs(ctx)
 	}
