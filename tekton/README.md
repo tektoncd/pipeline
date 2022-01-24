@@ -90,8 +90,8 @@ Install Task from plumbing too:
 
 ```bash
 # Apply the Tasks we are using from the catalog
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/build.yaml
-kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/master/golang/tests.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/golang-build/0.3/golang-build.yaml
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/catalog/main/task/golang-test/0.2/golang-test.yaml
 kubectl apply -f https://raw.githubusercontent.com/tektoncd/plumbing/main/tekton/resources/release/
 ```
 
