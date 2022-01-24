@@ -19,7 +19,6 @@ package v1beta1
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -33,7 +32,7 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 	for i := range ps.Params {
 		ps.Params[i].SetDefaults(ctx)
 	}
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+	if GetImplicitParamsEnabled(ctx) {
 		ctx = AddContextParamSpec(ctx, ps.Params)
 		ps.Params = GetContextParamSpecs(ctx)
 	}
@@ -47,9 +46,9 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 		if pt.TaskSpec != nil {
 			// Only propagate param context to the spec - ref params should
 			// still be explicitly set.
-			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
-				ctx = addContextParams(ctx, pt.Params)
-				ps.Tasks[i].Params = getContextParams(ctx, pt.Params...)
+			if GetImplicitParamsEnabled(ctx) {
+				ctx = AddContextParams(ctx, pt.Params)
+				ps.Tasks[i].Params = GetContextParams(ctx, pt.Params...)
 			}
 			pt.TaskSpec.SetDefaults(ctx)
 		}
@@ -63,9 +62,9 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 			}
 		}
 		if ft.TaskSpec != nil {
-			if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
-				ctx = addContextParams(ctx, ft.Params)
-				ps.Finally[i].Params = getContextParams(ctx, ft.Params...)
+			if GetImplicitParamsEnabled(ctx) {
+				ctx = AddContextParams(ctx, ft.Params)
+				ps.Finally[i].Params = GetContextParams(ctx, ft.Params...)
 			}
 			ft.TaskSpec.SetDefaults(ctx)
 		}
