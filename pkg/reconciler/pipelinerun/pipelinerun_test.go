@@ -4136,6 +4136,39 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 		},
 		expected: &metav1.Duration{Duration: 10 * time.Minute},
+	}, {
+		name: "taskrun with retries",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: baseObjectMeta(prName, ns),
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: p},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
+					Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
+				},
+			},
+		},
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{},
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+						RetriesStatus: []v1beta1.TaskRunStatus{{
+							TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+								StartTime: &metav1.Time{Time: now.Add(-5 * time.Minute)},
+							},
+						}},
+					},
+				},
+			},
+		},
+		expected: &metav1.Duration{Duration: 10 * time.Minute},
 	},
 	}
 
@@ -4403,6 +4436,39 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 		},
 		expected: &metav1.Duration{Duration: 11 * time.Minute},
+	}, {
+		name: "finally taskrun with retries",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: baseObjectMeta(prName, ns),
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: p},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
+					Finally:  &metav1.Duration{Duration: 20 * time.Minute},
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
+				},
+			},
+		},
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{},
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+						RetriesStatus: []v1beta1.TaskRunStatus{{
+							TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+								StartTime: &metav1.Time{Time: now.Add(-5 * time.Minute)},
+							},
+						}},
+					},
+				},
+			},
+		},
+		expected: &metav1.Duration{Duration: 15 * time.Minute},
 	},
 	}
 

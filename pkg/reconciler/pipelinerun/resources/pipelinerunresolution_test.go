@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -3504,6 +3505,194 @@ func TestGetRunName(t *testing.T) {
 			gotTrName := getRunName(runsStatus, tc.ptName, testPrName)
 			if d := cmp.Diff(tc.wantTrName, gotTrName); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestResolvedPipelineRunTask_FirstAttemptStartTime(t *testing.T) {
+	tcs := []struct {
+		name string
+		rprt *ResolvedPipelineRunTask
+		want *metav1.Time
+	}{{
+		name: "TaskRun not started",
+		rprt: &ResolvedPipelineRunTask{
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+					},
+				},
+			},
+		},
+		want: nil,
+	}, {
+		name: "TaskRun on first attempt",
+		rprt: &ResolvedPipelineRunTask{
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: &metav1.Time{Time: now},
+					},
+				},
+			},
+		},
+		want: &metav1.Time{Time: now},
+	}, {
+		name: "TaskRun completed first attempt",
+		rprt: &ResolvedPipelineRunTask{
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+						RetriesStatus: []v1beta1.TaskRunStatus{{
+							TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+								StartTime:      &metav1.Time{Time: now.Add(-10 * time.Second)},
+								CompletionTime: &metav1.Time{Time: now},
+							},
+						}},
+					},
+				},
+			},
+		},
+		want: &metav1.Time{Time: now.Add(-10 * time.Second)},
+	}, {
+		name: "TaskRun on second attempt",
+		rprt: &ResolvedPipelineRunTask{
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: &metav1.Time{Time: now},
+						RetriesStatus: []v1beta1.TaskRunStatus{{
+							TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+								StartTime:      &metav1.Time{Time: now.Add(-10 * time.Second)},
+								CompletionTime: &metav1.Time{Time: now.Add(-6 * time.Second)},
+							},
+						}},
+					},
+				},
+			},
+		},
+		want: &metav1.Time{Time: now.Add(-10 * time.Second)},
+	}, {
+		name: "TaskRun on third attempt (multiple retries)",
+		rprt: &ResolvedPipelineRunTask{
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: &metav1.Time{Time: now},
+						RetriesStatus: []v1beta1.TaskRunStatus{{
+							TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+								StartTime:      &metav1.Time{Time: now.Add(-11 * time.Second)},
+								CompletionTime: &metav1.Time{Time: now.Add(-6 * time.Second)},
+							},
+						}, {
+							TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+								StartTime:      &metav1.Time{Time: now.Add(-20 * time.Second)},
+								CompletionTime: &metav1.Time{Time: now.Add(-12 * time.Second)},
+							},
+						}},
+					},
+				},
+			},
+		},
+		want: &metav1.Time{Time: now.Add(-20 * time.Second)},
+	}, {
+		name: "Run not started",
+		rprt: &ResolvedPipelineRunTask{
+			CustomTask: true,
+			Run: &v1alpha1.Run{
+				Status: v1alpha1.RunStatus{
+					RunStatusFields: v1alpha1.RunStatusFields{
+						StartTime: nil,
+					},
+				},
+			},
+		},
+		want: nil,
+	}, {
+		name: "Run on first attempt",
+		rprt: &ResolvedPipelineRunTask{
+			CustomTask: true,
+			Run: &v1alpha1.Run{
+				Status: v1alpha1.RunStatus{
+					RunStatusFields: v1alpha1.RunStatusFields{
+						StartTime: &metav1.Time{Time: now},
+					},
+				},
+			},
+		},
+		want: &metav1.Time{Time: now},
+	}, {
+		name: "Run completed first attempt",
+		rprt: &ResolvedPipelineRunTask{
+			CustomTask: true,
+			Run: &v1alpha1.Run{
+				Status: v1alpha1.RunStatus{
+					RunStatusFields: v1alpha1.RunStatusFields{
+						StartTime: nil,
+						RetriesStatus: []v1alpha1.RunStatus{{
+							RunStatusFields: v1alpha1.RunStatusFields{
+								StartTime:      &metav1.Time{Time: now.Add(-10 * time.Second)},
+								CompletionTime: &metav1.Time{Time: now},
+							},
+						}},
+					},
+				},
+			},
+		},
+		want: &metav1.Time{Time: now.Add(-10 * time.Second)},
+	}, {
+		name: "Run on second attempt",
+		rprt: &ResolvedPipelineRunTask{
+			CustomTask: true,
+			Run: &v1alpha1.Run{
+				Status: v1alpha1.RunStatus{
+					RunStatusFields: v1alpha1.RunStatusFields{
+						StartTime: &metav1.Time{Time: now},
+						RetriesStatus: []v1alpha1.RunStatus{{
+							RunStatusFields: v1alpha1.RunStatusFields{
+								StartTime:      &metav1.Time{Time: now.Add(-10 * time.Second)},
+								CompletionTime: &metav1.Time{Time: now.Add(-6 * time.Second)},
+							},
+						}},
+					},
+				},
+			},
+		},
+		want: &metav1.Time{Time: now.Add(-10 * time.Second)},
+	}, {
+		name: "Run on third attempt (multiple retries)",
+		rprt: &ResolvedPipelineRunTask{
+			CustomTask: true,
+			Run: &v1alpha1.Run{
+				Status: v1alpha1.RunStatus{
+					RunStatusFields: v1alpha1.RunStatusFields{
+						StartTime: &metav1.Time{Time: now},
+						RetriesStatus: []v1alpha1.RunStatus{{
+							RunStatusFields: v1alpha1.RunStatusFields{
+								StartTime:      &metav1.Time{Time: now.Add(-11 * time.Second)},
+								CompletionTime: &metav1.Time{Time: now.Add(-6 * time.Second)},
+							},
+						}, {
+							RunStatusFields: v1alpha1.RunStatusFields{
+
+								StartTime:      &metav1.Time{Time: now.Add(-20 * time.Second)},
+								CompletionTime: &metav1.Time{Time: now.Add(-12 * time.Second)},
+							},
+						}},
+					},
+				},
+			},
+		},
+		want: &metav1.Time{Time: now.Add(-20 * time.Second)},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.rprt.FirstAttemptStartTime(testClock{})
+			if cmp.Diff(tc.want, got) != "" {
+				t.Errorf("Unexpected value for FirstAttemptStartTime: want %v, got %v", tc.want, got)
 			}
 		})
 	}

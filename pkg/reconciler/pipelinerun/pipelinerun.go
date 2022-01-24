@@ -1017,14 +1017,21 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
 	taskRunTimeout := calculateTaskRunTimeout(pr.PipelineTimeout(ctx), pr, rprt, c)
 	finallyTimeout := pr.FinallyTimeout()
-	// Return the smaller of taskRunTimeout and finallyTimeout
-	// This works because all finally tasks run in parallel, so there is no need to consider time spent by other finally tasks
-	// TODO(#4071): Account for time spent since finally task was first started (i.e. retries)
 	if finallyTimeout == nil || finallyTimeout.Duration == apisconfig.NoTimeoutDuration {
 		return taskRunTimeout
 	}
-	if finallyTimeout.Duration < taskRunTimeout.Duration {
-		return finallyTimeout
+	// Return the smaller of taskRunTimeout and finallyTimeRemaining.
+	// This takes into account the time elapsed during retries of the finally TaskRun, but does not take into account
+	// time spent by other finally TaskRuns since they are executed in parallel.
+	finallyTimeRemaining := finallyTimeout.Duration
+	firstAttemptStartTime := rprt.FirstAttemptStartTime(c)
+	if firstAttemptStartTime != nil {
+		elapsed := c.Since(firstAttemptStartTime.Time)
+		finallyTimeRemaining -= elapsed
+	}
+
+	if finallyTimeRemaining < taskRunTimeout.Duration {
+		return &metav1.Duration{Duration: finallyTimeRemaining}
 	}
 	return taskRunTimeout
 }

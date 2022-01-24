@@ -27,9 +27,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -172,6 +174,49 @@ func (t ResolvedPipelineRunTask) IsStarted() bool {
 
 	}
 	return t.TaskRun != nil && t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
+}
+
+// FirstAttemptStartTime returns the start time of the first time the ResolvedPipelineRunTask was attempted.
+// Returns nil if no attempt has been started.
+func (t *ResolvedPipelineRunTask) FirstAttemptStartTime(c clock.Clock) *metav1.Time {
+	var startTime *metav1.Time
+
+	if t.IsCustomTask() {
+		r := t.Run
+		if r == nil {
+			return nil
+		}
+		startTime = r.Status.StartTime
+		if startTime.IsZero() {
+			if len(r.Status.RetriesStatus) == 0 {
+				return startTime
+			}
+			startTime = &metav1.Time{Time: c.Now()}
+		}
+		for _, retry := range r.Status.RetriesStatus {
+			if retry.StartTime.Time.Before(startTime.Time) {
+				startTime = retry.StartTime
+			}
+		}
+		return startTime
+	}
+	tr := t.TaskRun
+	if tr == nil {
+		return nil
+	}
+	startTime = tr.Status.StartTime
+	if startTime.IsZero() {
+		if len(tr.Status.RetriesStatus) == 0 {
+			return startTime
+		}
+		startTime = &metav1.Time{Time: c.Now()}
+	}
+	for _, retry := range tr.Status.RetriesStatus {
+		if retry.StartTime.Time.Before(startTime.Time) {
+			startTime = retry.StartTime
+		}
+	}
+	return startTime
 }
 
 // IsConditionStatusFalse returns true when a task has succeeded condition with status set to false

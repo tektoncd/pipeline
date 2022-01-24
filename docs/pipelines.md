@@ -799,6 +799,8 @@ spec:
         name: build-push
       timeout: "0h1m30s"
 ```
+If a `Task` within a `Pipeline` declares [`Retries`](#using-the-retries-and-retry-count-variable-substitutions),
+the same `Timeout` will be used for each `Retry`; that is, each time the `Task` is retried, the `Timeout` resets.
 
 ## Using variable substitution
 
