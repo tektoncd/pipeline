@@ -32,6 +32,10 @@ func (pr *PipelineRun) SetDefaults(ctx context.Context) {
 }
 
 func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+		ctx = WithImplicitParamsEnabled(ctx, true)
+	}
+
 	cfg := config.FromContextOrDefaults(ctx)
 	if prs.Timeout == nil && prs.Timeouts == nil {
 		prs.Timeout = &metav1.Duration{Duration: time.Duration(cfg.Defaults.DefaultTimeoutMinutes) * time.Minute}
@@ -50,7 +54,7 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	prs.PodTemplate = mergePodTemplateWithDefault(prs.PodTemplate, defaultPodTemplate)
 
 	if prs.PipelineSpec != nil {
-		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+		if GetImplicitParamsEnabled(ctx) {
 			ctx = addContextParams(ctx, prs.Params)
 		}
 		prs.PipelineSpec.SetDefaults(ctx)
