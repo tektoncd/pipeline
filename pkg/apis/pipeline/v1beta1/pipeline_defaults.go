@@ -34,30 +34,19 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 	for i := range ps.Params {
 		ps.Params[i].SetDefaults(ctx)
 	}
-	if GetImplicitParamsEnabled(ctx) {
-		ctx = addContextParamSpec(ctx, ps.Params)
-		ps.Params = getContextParamSpecs(ctx)
-	}
-	for i, pt := range ps.Tasks {
-		ctx := ctx // Ensure local scoping per Task
 
+	for _, pt := range ps.Tasks {
 		if pt.TaskRef != nil {
 			if pt.TaskRef.Kind == "" {
 				pt.TaskRef.Kind = NamespacedTaskKind
 			}
 		}
 		if pt.TaskSpec != nil {
-			// Only propagate param context to the spec - ref params should
-			// still be explicitly set.
-			if GetImplicitParamsEnabled(ctx) {
-				ctx = addContextParams(ctx, pt.Params)
-				ps.Tasks[i].Params = getContextParams(ctx, pt.Params...)
-			}
 			pt.TaskSpec.SetDefaults(ctx)
 		}
 	}
 
-	for i, ft := range ps.Finally {
+	for _, ft := range ps.Finally {
 		ctx := ctx // Ensure local scoping per Task
 		if ft.TaskRef != nil {
 			if ft.TaskRef.Kind == "" {
@@ -65,11 +54,36 @@ func (ps *PipelineSpec) SetDefaults(ctx context.Context) {
 			}
 		}
 		if ft.TaskSpec != nil {
-			if GetImplicitParamsEnabled(ctx) {
-				ctx = addContextParams(ctx, ft.Params)
-				ps.Finally[i].Params = getContextParams(ctx, ft.Params...)
-			}
 			ft.TaskSpec.SetDefaults(ctx)
+		}
+	}
+}
+
+// applyImplicitParams propagates implicit params from the parent context
+// through the Pipeline and underlying specs.
+func (ps *PipelineSpec) applyImplicitParams(ctx context.Context) {
+	ctx = addContextParamSpec(ctx, ps.Params)
+	ps.Params = getContextParamSpecs(ctx)
+
+	for i, pt := range ps.Tasks {
+		ctx := ctx // Ensure local scoping per Task
+
+		// Only propagate param context to the spec - ref params should
+		// still be explicitly set.
+		if pt.TaskSpec != nil {
+			ctx = addContextParams(ctx, pt.Params)
+			ps.Tasks[i].Params = getContextParams(ctx, pt.Params...)
+			pt.TaskSpec.applyImplicitParams(ctx)
+		}
+	}
+
+	for i, ft := range ps.Finally {
+		ctx := ctx // Ensure local scoping per Task
+
+		if ft.TaskSpec != nil {
+			ctx = addContextParams(ctx, ft.Params)
+			ps.Finally[i].Params = getContextParams(ctx, ft.Params...)
+			ft.TaskSpec.applyImplicitParams(ctx)
 		}
 	}
 }

@@ -25,16 +25,6 @@ import (
 func TestAddContextParams(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("not-enabled", func(t *testing.T) {
-		ctx := addContextParams(ctx, []Param{{Name: "a"}})
-		if v := ctx.Value(paramCtxKey); v != nil {
-			t.Errorf("expected no param context values, got %v", v)
-		}
-	})
-
-	// Enable Alpha features.
-	ctx = WithImplicitParamsEnabled(ctx, true)
-
 	// These test cases should run sequentially. Each step will modify the
 	// above context.
 	for _, tc := range []struct {
@@ -117,16 +107,6 @@ func TestAddContextParams(t *testing.T) {
 func TestAddContextParamSpec(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("not-enabled", func(t *testing.T) {
-		ctx := addContextParamSpec(ctx, []ParamSpec{{Name: "a"}})
-		if v := ctx.Value(paramCtxKey); v != nil {
-			t.Errorf("expected no param context values, got %v", v)
-		}
-	})
-
-	// Enable Alpha features.
-	ctx = WithImplicitParamsEnabled(ctx, true)
-
 	// These test cases should run sequentially. Each step will modify the
 	// above context.
 	for _, tc := range []struct {
@@ -208,15 +188,6 @@ func TestGetContextParams(t *testing.T) {
 			Description: "racecar",
 		},
 	}
-	t.Run("not-enabled", func(t *testing.T) {
-		ctx := addContextParamSpec(ctx, want)
-		if v := getContextParamSpecs(ctx); v != nil {
-			t.Errorf("expected no param context values, got %v", v)
-		}
-	})
-
-	// Enable Alpha features.
-	ctx = WithImplicitParamsEnabled(ctx, true)
 
 	ctx = addContextParamSpec(ctx, want)
 
@@ -287,15 +258,6 @@ func TestGetContextParamSpecs(t *testing.T) {
 			Description: "racecar",
 		},
 	}
-	t.Run("not-enabled", func(t *testing.T) {
-		ctx := addContextParamSpec(ctx, want)
-		if v := getContextParamSpecs(ctx); v != nil {
-			t.Errorf("expected no param context values, got %v", v)
-		}
-	})
-
-	// Enable Alpha features.
-	ctx = WithImplicitParamsEnabled(ctx, true)
 
 	ctx = addContextParamSpec(ctx, want)
 	got := getContextParamSpecs(ctx)
