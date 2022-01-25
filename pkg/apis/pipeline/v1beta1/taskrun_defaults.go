@@ -48,10 +48,6 @@ func (tr *TaskRun) SetDefaults(ctx context.Context) {
 
 // SetDefaults implements apis.Defaultable
 func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
-		ctx = WithImplicitParamsEnabled(ctx, true)
-	}
-
 	cfg := config.FromContextOrDefaults(ctx)
 	if trs.TaskRef != nil && trs.TaskRef.Kind == "" {
 		trs.TaskRef.Kind = NamespacedTaskKind
@@ -71,10 +67,11 @@ func (trs *TaskRunSpec) SetDefaults(ctx context.Context) {
 
 	// If this taskrun has an embedded task, apply the usual task defaults
 	if trs.TaskSpec != nil {
-		if GetImplicitParamsEnabled(ctx) {
-			ctx = addContextParams(ctx, trs.Params)
-		}
 		trs.TaskSpec.SetDefaults(ctx)
+
+		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+			trs.TaskSpec.applyImplicitParams(addContextParams(ctx, trs.Params))
+		}
 	}
 }
 

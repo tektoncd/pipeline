@@ -19,13 +19,6 @@ import (
 	"fmt"
 )
 
-// enableImplicitParamContextKeyType is the unique type for referencing whether
-// Implicit Param behavior is enabled for the given request context.
-// See [TEP-0023](https://github.com/tektoncd/community/blob/main/teps/0023-implicit-mapping.md).
-//
-// +k8s:openapi-gen=false
-type enableImplicitParamContextKeyType struct{}
-
 // paramCtxKey is the unique type for referencing param information from
 // a context.Context. See [context.Context.Value](https://pkg.go.dev/context#Context)
 // for more details.
@@ -34,8 +27,7 @@ type enableImplicitParamContextKeyType struct{}
 type paramCtxKeyType struct{}
 
 var (
-	enableImplicitParamContextKey = enableImplicitParamContextKeyType{}
-	paramCtxKey                   = paramCtxKeyType{}
+	paramCtxKey = paramCtxKeyType{}
 )
 
 // paramCtxVal is the data type stored in the param context.
@@ -46,10 +38,6 @@ type paramCtxVal map[string]ParamSpec
 // preserves the fields included in ParamSpec - Name and Type.
 func addContextParams(ctx context.Context, in []Param) context.Context {
 	if in == nil {
-		return ctx
-	}
-
-	if !GetImplicitParamsEnabled(ctx) {
 		return ctx
 	}
 
@@ -82,10 +70,6 @@ func addContextParams(ctx context.Context, in []Param) context.Context {
 // addContextParamSpec adds the given ParamSpecs to the param context.
 func addContextParamSpec(ctx context.Context, in []ParamSpec) context.Context {
 	if in == nil {
-		return ctx
-	}
-
-	if !GetImplicitParamsEnabled(ctx) {
 		return ctx
 	}
 
@@ -181,22 +165,4 @@ func getContextParamSpecs(ctx context.Context) []ParamSpec {
 		})
 	}
 	return out
-}
-
-// WithImplicitParamsEnabled enables implicit parameter behavior for the
-// request context. If enabled, parameters will propagate down embedded request
-// objects (e.g. PipelineRun -> Pipeline -> Task, Pipeline -> Task,
-// TaskRun -> Task) during defaulting.
-func WithImplicitParamsEnabled(ctx context.Context, v bool) context.Context {
-	return context.WithValue(ctx, enableImplicitParamContextKey, v)
-}
-
-// GetImplicitParamsEnabled returns whether implicit parameters are enabled for
-// the given context.
-func GetImplicitParamsEnabled(ctx context.Context) bool {
-	v := ctx.Value(enableImplicitParamContextKey)
-	if v == nil {
-		return false
-	}
-	return v.(bool)
 }
