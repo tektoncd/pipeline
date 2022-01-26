@@ -502,6 +502,26 @@ spec:
       value: "http://google.com"
 ```
 
+Parameter declarations (within Tasks and Pipelines) can include default values which will be used if the parameter is
+not specified, for example to specify defaults for both string params and array params
+([full example](../examples/v1beta1/taskruns/array-default.yaml)) :
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: task-with-array-default
+spec:
+  params:
+    - name: flags
+      type: array
+      default:
+        - "--set"
+        - "arg1=foo"
+        - "--randomflag"
+        - "--someotherflag"
+```
+
 ### Specifying `Resources`
 
 > :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**

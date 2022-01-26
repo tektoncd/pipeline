@@ -149,6 +149,8 @@ For more information, see:
 
 ## Specifying `Parameters`
 
+(See also [Specifying Parameters in Tasks](tasks.md#specifying-parameters))
+
 You can specify global parameters, such as compilation flags or artifact names, that you want to supply
 to the `Pipeline` at execution time. `Parameters` are passed to the `Pipeline` from its corresponding
 `PipelineRun` and can replace template values specified within each `Task` in the `Pipeline`.
