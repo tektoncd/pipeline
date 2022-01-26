@@ -84,6 +84,9 @@ To install Tekton Pipelines on a Kubernetes cluster:
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
    ```
 
+1. **Note**: Some cloud providers (such as [GKE](https://github.com/tektoncd/pipeline/issues/3317#issuecomment-708066087))
+   may also require you to allow port 8443 in your firewall rules so that the Tekton Pipelines webhook is reachable.
+
 1. Monitor the installation using the following command until all components show a `Running` status:
 
    ```bash
