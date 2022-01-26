@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=mcr.microsoft.com/windows/nanoserver:1809
 
-FROM golang:1.16.4 AS builder
+FROM golang:1.16.13 AS builder
 
 COPY . c:/gopath/src/github.com/tektoncd/pipeline
 
