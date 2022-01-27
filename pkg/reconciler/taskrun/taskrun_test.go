@@ -4445,9 +4445,10 @@ func TestDisableResolutionFlag_PreventsResolution(t *testing.T) {
 func TestDisableResolutionFlag_ProceedsWithStatusTaskSpec(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-taskrun",
-			Namespace: "foo",
-			Labels:    map[string]string{"mylabel": "myvalue"},
+			Name:        "test-taskrun",
+			Namespace:   "foo",
+			Labels:      map[string]string{"mylabel": "myvalue"},
+			Annotations: map[string]string{},
 		},
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
