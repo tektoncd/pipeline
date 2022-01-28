@@ -44,6 +44,12 @@ func (r *registry) v2(resp http.ResponseWriter, req *http.Request) *regError {
 	if isManifest(req) {
 		return r.manifests.handle(resp, req)
 	}
+	if isTags(req) {
+		return r.manifests.handleTags(resp, req)
+	}
+	if isCatalog(req) {
+		return r.manifests.handleCatalog(resp, req)
+	}
 	resp.Header().Set("Docker-Distribution-API-Version", "registry/2.0")
 	if req.URL.Path != "/v2/" && req.URL.Path != "/v2" {
 		return &regError{
@@ -76,6 +82,7 @@ func New(opts ...Option) http.Handler {
 		},
 		manifests: manifests{
 			manifests: map[string]map[string]manifest{},
+			log:       log.New(os.Stderr, "", log.LstdFlags),
 		},
 	}
 	for _, o := range opts {
@@ -92,5 +99,6 @@ type Option func(r *registry)
 func Logger(l *log.Logger) Option {
 	return func(r *registry) {
 		r.log = l
+		r.manifests.log = l
 	}
 }
