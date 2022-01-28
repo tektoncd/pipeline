@@ -1054,11 +1054,12 @@ func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rpr
 		if pElapsedTime > timeout {
 			return &metav1.Duration{Duration: 1 * time.Second}
 		}
-		// Return the smaller of timeout and rprt.pipelineTask.timeout
-		if rprt.PipelineTask.Timeout != nil && rprt.PipelineTask.Timeout.Duration < timeout {
+		timeRemaining := (timeout - pElapsedTime)
+		// Return the smaller of timeRemaining and rprt.pipelineTask.timeout
+		if rprt.PipelineTask.Timeout != nil && rprt.PipelineTask.Timeout.Duration < timeRemaining {
 			return &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
 		}
-		return &metav1.Duration{Duration: (timeout - pElapsedTime)}
+		return &metav1.Duration{Duration: timeRemaining}
 	}
 
 	if timeout == apisconfig.NoTimeoutDuration && rprt.PipelineTask.Timeout != nil {
