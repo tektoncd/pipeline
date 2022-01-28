@@ -4052,7 +4052,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		},
 		expected: &metav1.Duration{Duration: 1 * time.Minute},
 	}, {
-		name: "taskrun with elapsed time",
+		name: "taskrun with elapsed time; timeouts.tasks applies",
 		pr: &v1beta1.PipelineRun{
 			ObjectMeta: baseObjectMeta(prName, ns),
 			Spec: v1beta1.PipelineRunSpec{
@@ -4069,6 +4069,64 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		},
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+					},
+				},
+			},
+		},
+		expected: &metav1.Duration{Duration: 10 * time.Minute},
+	}, {
+		name: "taskrun with elapsed time; task.timeout applies",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: baseObjectMeta(prName, ns),
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: p},
+				Timeouts: &v1beta1.TimeoutFields{
+					Tasks: &metav1.Duration{Duration: 20 * time.Minute},
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
+				},
+			},
+		},
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
+			},
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+					},
+				},
+			},
+		},
+		expected: &metav1.Duration{Duration: 10 * time.Minute},
+	}, {
+		name: "taskrun with elapsed time; timeouts.pipeline applies",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: baseObjectMeta(prName, ns),
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: p},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 20 * time.Minute},
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
+				},
+			},
+		},
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
+			},
 			TaskRun: &v1beta1.TaskRun{
 				Status: v1beta1.TaskRunStatus{
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
@@ -4260,7 +4318,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		},
 		expected: &metav1.Duration{Duration: 1 * time.Minute},
 	}, {
-		name: "finally taskrun with elapsed time",
+		name: "finally taskrun with elapsed time; tasks.finally applies",
 		pr: &v1beta1.PipelineRun{
 			ObjectMeta: baseObjectMeta(prName, ns),
 			Spec: v1beta1.PipelineRunSpec{
@@ -4286,6 +4344,65 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
+	}, {
+		name: "finally taskrun with elapsed time; task.timeout applies",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: baseObjectMeta(prName, ns),
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: p},
+				Timeouts: &v1beta1.TimeoutFields{
+					Finally: &metav1.Duration{Duration: 20 * time.Minute},
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
+				},
+			},
+		},
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
+			},
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+					},
+				},
+			},
+		},
+		expected: &metav1.Duration{Duration: 15 * time.Minute},
+	}, {
+		name: "finally taskrun with elapsed time; timeouts.pipeline applies",
+		pr: &v1beta1.PipelineRun{
+			ObjectMeta: baseObjectMeta(prName, ns),
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: p},
+				Timeouts: &v1beta1.TimeoutFields{
+					Finally:  &metav1.Duration{Duration: 20 * time.Minute},
+					Pipeline: &metav1.Duration{Duration: 21 * time.Minute},
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
+				},
+			},
+		},
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
+			},
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+					},
+				},
+			},
+		},
+		expected: &metav1.Duration{Duration: 11 * time.Minute},
 	},
 	}
 
