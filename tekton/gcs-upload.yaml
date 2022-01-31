@@ -1,0 +1,56 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  labels:
+    app.kubernetes.io/version: "0.1"
+    hub.tekton.dev/catalog: tekton
+  name: gcs-upload
+  namespace: pipelines-0-28-3-release
+spec:
+  description: |-
+    A Task that uploads a GCS bucket.
+    This task uploads files or directories from a Workspace to a GCS bucket.
+  params:
+  - description: The path to files or directories relative to the source workspace
+      that you'd like to upload.
+    name: path
+    type: string
+  - description: The address (including "gs://") where you'd like to upload files
+      to.
+    name: location
+    type: string
+  - default: service_account.json
+    description: The path inside the credentials workspace to the GOOGLE_APPLICATION_CREDENTIALS
+      key file.
+    name: serviceAccountPath
+    type: string
+  steps:
+  - image: gcr.io/google.com/cloudsdktool/cloud-sdk:310.0.0@sha256:cb03669fcdb9191d55a6200f2911fff3baec0b8c39b156d95b68aabe975ac506
+    name: upload
+    resources: {}
+    script: |
+      #!/usr/bin/env bash
+      set -xe
+
+      CRED_PATH="$(workspaces.credentials.path)/$(params.serviceAccountPath)"
+      SOURCE="$(workspaces.source.path)/$(params.path)"
+
+      if [[ -f "$CRED_PATH" ]]; then
+        GOOGLE_APPLICATION_CREDENTIALS="$CRED_PATH"
+      fi
+
+      if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
+        echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
+        gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
+      fi
+
+      if [[ -d "$SOURCE" ]]; then
+        gsutil -m rsync -d -r "$SOURCE" "$(params.location)"
+      else
+        gsutil cp "$SOURCE" "$(params.location)"
+      fi
+  workspaces:
+  - description: A secret with a service account key to use as GOOGLE_APPLICATION_CREDENTIALS.
+    name: credentials
+  - description: A workspace where files will be uploaded from.
+    name: source

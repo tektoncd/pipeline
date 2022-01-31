@@ -3,6 +3,7 @@ apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: pipeline-release
+  namespace: pipelines-0-28-3-release
 spec:
   params:
   - name: package

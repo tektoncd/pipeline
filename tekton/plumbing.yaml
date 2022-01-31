@@ -1,0 +1,1017 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-logs
+  namespace: pipelines-0-28-3-release
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-logs-reader
+  namespace: pipelines-0-28-3-release
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - pods/log
+  - namespaces
+  verbs:
+  - get
+  - list
+- apiGroups:
+  - tekton.dev
+  resources:
+  - pipelines
+  - tasks
+  - pipelineruns
+  - pipelineresources
+  - taskruns
+  - conditions
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-logs-tekton-logs-reader-binding
+  namespace: pipelines-0-28-3-release
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-logs-reader
+subjects:
+- kind: ServiceAccount
+  name: tekton-logs
+  namespace: pipelines-0-28-3-release
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: verify-deploy-test-tekton-release
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - default: pipeline
+    description: Name of the Tekton project to install e.g. pipeline, trigger, dashboard,
+      experimental
+    name: projectName
+  - default: github.com/tektoncd/pipeline
+    description: Name of the Tekton package
+    name: package
+  - description: The vX.Y.Z version that we want to install (including `v`)
+    name: version
+  - description: Namespace where the Tekton project is installed by the release
+    name: namespace
+  - description: space separated list of resources to be deleted
+    name: resources
+  - description: Container registry where to upload images during tests
+    name: container-registry
+  - description: Service account to be setup as default in Tekton configmap
+    name: default-service-account
+  resources:
+  - name: bucket
+    type: storage
+  - name: test-cluster
+    type: cluster
+  - name: plumbing
+    type: git
+  - name: tests
+    type: git
+  - name: results-bucket
+    type: storage
+  tasks:
+  - name: verify
+    params:
+    - name: projectName
+      value: $(params.projectName)
+    - name: version
+      value: $(params.version)
+    resources:
+      inputs:
+      - name: release-bucket
+        resource: bucket
+    taskRef:
+      name: verify-tekton-release-github
+  - name: deploy
+    params:
+    - name: projectName
+      value: $(params.projectName)
+    - name: version
+      value: $(params.version)
+    - name: namespace
+      value: $(params.namespace)
+    resources:
+      inputs:
+      - name: release-bucket
+        resource: bucket
+      - name: k8s-cluster
+        resource: test-cluster
+      - name: plumbing-library
+        resource: plumbing
+    runAfter:
+    - verify
+    taskRef:
+      name: install-tekton-release
+  - name: log
+    resources:
+      inputs:
+      - name: plumbing-library
+        resource: plumbing
+    runAfter:
+    - deploy
+    taskRef:
+      name: log-test-image-tools
+  - name: e2e-test
+    params:
+    - name: package
+      value: $(params.package)
+    - name: container-registry
+      value: $(params.container-registry)
+    resources:
+      inputs:
+      - name: plumbing-library
+        resource: plumbing
+      - name: tests
+        resource: tests
+      - name: test-cluster
+        resource: test-cluster
+      outputs:
+      - name: results-bucket
+        resource: results-bucket
+    runAfter:
+    - log
+    taskRef:
+      name: e2e-tests
+  - name: cleanup
+    params:
+    - name: projectName
+      value: $(params.projectName)
+    - name: namespace
+      value: $(params.namespace)
+    - name: resources
+      value: $(params.resources)
+    - name: version
+      value: $(params.version)
+    resources:
+      inputs:
+      - name: plumbing-library
+        resource: plumbing
+      - name: k8s-cluster
+        resource: test-cluster
+    runAfter:
+    - e2e-test
+    taskRef:
+      name: cleanup-tekton-release
+  - name: deploy2
+    params:
+    - name: projectName
+      value: $(params.projectName)
+    - name: version
+      value: $(params.version)
+    - name: namespace
+      value: $(params.namespace)
+    resources:
+      inputs:
+      - name: release-bucket
+        resource: bucket
+      - name: k8s-cluster
+        resource: test-cluster
+      - name: plumbing-library
+        resource: plumbing
+    runAfter:
+    - cleanup
+    taskRef:
+      name: install-tekton-release
+  - name: log2
+    resources:
+      inputs:
+      - name: plumbing-library
+        resource: plumbing
+    runAfter:
+    - deploy2
+    taskRef:
+      name: log-test-image-tools
+  - name: e2e-yaml-test
+    params:
+    - name: container-registry
+      value: $(params.container-registry)
+    resources:
+      inputs:
+      - name: plumbing-library
+        resource: plumbing
+      - name: tests
+        resource: tests
+      - name: test-cluster
+        resource: test-cluster
+      outputs:
+      - name: results-bucket
+        resource: results-bucket
+    runAfter:
+    - log2
+    taskRef:
+      name: e2e-yaml-tests
+  - name: cleanup2
+    params:
+    - name: projectName
+      value: $(params.projectName)
+    - name: namespace
+      value: $(params.namespace)
+    - name: resources
+      value: $(params.resources)
+    - name: version
+      value: $(params.version)
+    resources:
+      inputs:
+      - name: plumbing-library
+        resource: plumbing
+      - name: k8s-cluster
+        resource: test-cluster
+    runAfter:
+    - e2e-yaml-test
+    taskRef:
+      name: cleanup-tekton-release
+  - name: test-results
+    resources:
+      inputs:
+      - name: results-bucket
+        resource: results-bucket
+    runAfter:
+    - cleanup2
+    taskRef:
+      name: test-results
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: cleanup-tekton-release
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - default: pipeline
+    description: Name of the Tekton project to install e.g. pipeline, trigger, dashboard,
+      experimental
+    name: projectName
+  - default: tekton-pipelines
+    description: The namespace specified in the release. This does not enforce a namespace,
+      it's used to verify that all pods are running in the specified namespace
+    name: namespace
+  - description: The vX.Y.Z version that we want to install (including `v`)
+    name: version
+  - description: space separated list of resources to be deleted
+    name: resources
+  resources:
+    inputs:
+    - name: k8s-cluster
+      type: cluster
+    - name: plumbing-library
+      type: git
+  stepTemplate:
+    env:
+    - name: PROJECT_NAME
+      value: $(params.projectName)
+    - name: NAMESPACE
+      value: $(params.namespace)
+    - name: VERSION
+      value: $(params.version)
+    - name: RESOURCES
+      value: $(params.resources)
+  steps:
+  - args:
+    - -ce
+    - |
+      # Make sure that everything is cleaned up in the current namespace.
+      for res in ${RESOURCES}; do
+        kubectl delete --ignore-not-found=true ${res}.tekton.dev --all \
+        --kubeconfig /workspace/$(resources.inputs.k8s-cluster.name)/kubeconfig
+      done
+    command:
+    - /bin/bash
+    image: gcr.io/tekton-releases/tests/test-runner
+    name: cleanup-resources
+  - args:
+    - -ce
+    - |
+      source $(resources.inputs.plumbing-library.path)/scripts/library.sh
+
+      kubectl delete --ignore-not-found=true -f "https://github.com/tektoncd/${PROJECT_NAME}/releases/download/${VERSION}/release.yaml" \
+      --kubeconfig /workspace/$(resources.inputs.k8s-cluster.name)/kubeconfig
+
+      wait_until_object_does_not_exist namespace ${NAMESPACE}
+    command:
+    - /bin/bash
+    env:
+    - name: KUBECONFIG
+      value: /workspace/$(resources.inputs.k8s-cluster.name)/kubeconfig
+    image: gcr.io/tekton-releases/tests/test-runner
+    name: uninstall-tekton-project
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: create-draft-release
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - description: package (and its children) under test
+    name: package
+  - description: The name of the release (e.g. Cat + Robot for pipeline)
+    name: release-name
+  - description: Release number and git tag to be applied (e.g. v0.888.1, with 'v')
+    name: release-tag
+  - description: Previous release number - for author and PR list calculation
+    name: previous-release-tag
+  resources:
+    inputs:
+    - name: source
+      type: git
+    - name: release-bucket
+      type: storage
+  stepTemplate:
+    env:
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          key: GITHUB_TOKEN
+          name: github-token
+    - name: HOME
+      value: /tekton/home
+    - name: VERSION
+      value: $(params.release-tag)
+    - name: PROJECT
+      value: $(params.package)
+    - name: OLD_VERSION
+      value: $(params.previous-release-tag)
+    - name: RELEASE_NAME
+      value: $(params.release-name)
+  steps:
+  - image: gcr.io/tekton-releases/dogfooding/hub
+    name: header
+    script: "#!/bin/bash\nset -ex\nTEKTON_PROJECT=$(basename $PROJECT)\n\ncat <<EOF
+      | tee $HOME/release.md\nTekton ${TEKTON_PROJECT^} release ${VERSION} \"${RELEASE_NAME}\"\n\n#
+      \U0001F389 [Tag Line - to be done] \U0001F389\n\n-[Docs @ ${VERSION}](https://github.com/${PROJECT}/tree/${VERSION}/docs)\n-[Examples
+      @ ${VERSION}](https://github.com/${PROJECT}/tree/${VERSION}/examples)\n\n##
+      Installation one-liner\n\n\\`\\`\\`\nkubectl apply -f https://storage.googleapis.com/tekton-releases/${TEKTON_PROJECT}/previous/${VERSION}/release.yaml\n\\`\\`\\`\n\n##
+      Upgrade Notices\n\n[TBD]\n\n## Changes\nEOF\n"
+  - image: gcr.io/tekton-releases/dogfooding/hub
+    name: filter-data
+    script: |
+      #!/usr/bin/env bash
+      set -ex
+
+      # Restore full git history
+      git fetch --unshallow
+
+      # UPPER_THRESHOLD is the newest sha we are interested in
+      UPPER_THRESHOLD=$(inputs.resources.source.revision)
+      # COMMON_ANCESTOR is the common ancestor between the OLD_VERSION and UPPER_THRESHOLD
+      COMMON_ANCESTOR=$(git merge-base ${OLD_VERSION} ${UPPER_THRESHOLD})
+      # OLD_RELEASE_SUBJECTS is the list of commit subjects cherry-picked (probably?) from main
+      OLD_RELEASE_SUBJECTS=$HOME/old_subjects.txt
+      echo "Cherry-picked commits:"
+      git log --format="%s" $COMMON_ANCESTOR..$OLD_VERSION | sort -u | tee $OLD_RELEASE_SUBJECTS
+      echo "OLD_VERSION: $OLD_VERSION"
+      echo "COMMON_ANCESTOR: $COMMON_ANCESTOR"
+      echo "UPPER_THRESHOLD: $UPPER_THRESHOLD"
+
+      # Save the PR data in CSV. Only consider PRs whose sha verifies the condition
+      # COMMON_ANCESTOR is ancestor of SHA is ancestor of UPPER_THRESHOLD
+      # And title no in the OLD_VERSION branch.
+      # Working Assumptions:
+      #   - there are no duplicate titles in commits
+      #   - we always cherry-pick full PRs, never commits out of a multi-commit PR
+      # Format of output data:
+      # "author;number;title"
+      hub pr list --state merged -L 300 -f "%sm;%au;%i;%t;%L%n" | \
+        while read pr; do
+          SHA=$(echo $pr | cut -d';' -f1)
+          # Skip the common ancestor has it has already been released
+          if [ "$SHA" == "$COMMON_ANCESTOR" ]; then
+            continue
+          fi
+          SUBJECT=$(git log -1 --format="%s" $SHA || echo "__NOT_FOUND__")
+          git merge-base --is-ancestor $SHA $UPPER_THRESHOLD && \
+          git merge-base --is-ancestor $COMMON_ANCESTOR $SHA && \
+          ! $(egrep "^${SUBJECT}$" $OLD_RELEASE_SUBJECTS &> /dev/null) &&
+          echo $pr | cut -d';' -f2-
+        done > $HOME/pr.csv || true  # We do not want to fail is the last of the loop is not a match
+
+      echo "$(wc -l $HOME/pr.csv | awk '{ print $1}') PRs in the new release."
+      cat $HOME/pr.csv
+    workingdir: $(resources.inputs.source.path)
+  - image: stedolan/jq
+    name: release-notes
+    script: |
+      #!/bin/bash
+      set -e
+
+      # First process pull requests that have release notes
+      # Extract the release notes but drop lines that match an unmodified PR template
+      # || true in case all PRs are "release-note-none"
+      grep -v "release-note-none" $HOME/pr.csv > $HOME/pr-notes-tmp.csv || true
+      cat $HOME/pr-notes-tmp.csv | while read pr; do
+        PR_NUM=$(echo $pr | cut -d';' -f2)
+        PR_RELEASE_NOTES_B64=$(wget -O- https://api.github.com/repos/${PROJECT}/issues/${PR_NUM:1} | \
+          jq .body -r | grep -oPz '(?s)(?<=```release-note..)(.+?)(?=```)' | \
+          grep -avP '\W*(Your release note here|action required: your release note here|NONE)\W*' | base64 -w0)
+        echo "$pr;$PR_RELEASE_NOTES_B64" >> $HOME/pr-notes.csv
+        # Avoid rate limiting
+        sleep 0.2
+      done
+
+      # Copy pull requests without release notes to a dedicated file
+      # || true in case no PRs have "release-note-none"
+      grep "release-note-none" $HOME/pr.csv > $HOME/pr-no-notes.csv || true
+  - image: busybox
+    name: body
+    script: |
+      #!/bin/sh
+      set -e
+      cat <<EOF | tee -a $HOME/release.md
+
+      # Features
+
+      $(awk -F";" '/kind\/feature/{ print "echo -e \"* :sparkles: "$3" ("$2")\n\n$(echo "$5" | base64 -d)\n\"" }' $HOME/pr-notes.csv | sh)
+      $(awk -F";" '/kind\/feature/{ print "* :sparkles: "$3" ("$2")" }' $HOME/pr-no-notes.csv)
+
+      # Deprecation Notices
+
+      * :rotating_light: [Deprecation Notice Title]
+
+      [Detailed deprecation notice description] (#Number).
+
+      [Fill list here]
+
+      # Backwards incompatible changes
+
+      In current release:
+
+      * :rotating_light: [Change Title]
+
+      [Detailed change description] (#Number).
+
+      [Fill list here]
+
+      # Fixes
+
+      $(awk -F";" '/kind\/bug/{ print "echo -e \"* :bug: "$3" ("$2")\n\n$(echo "$5" | base64 -d)\n\"" }' $HOME/pr-notes.csv | sh)
+      $(awk -F";" '/kind\/flake/{ print "echo -e \"* :bug: "$3" ("$2")\n\n$(echo "$5" | base64 -d)\n\"" }' $HOME/pr-notes.csv | sh)
+      $(awk -F";" '/kind\/bug/{ print "* :bug: "$3" ("$2")" }' $HOME/pr-no-notes.csv)
+      $(awk -F";" '/kind\/flake/{ print "* :bug: "$3" ("$2")" }' $HOME/pr-no-notes.csv)
+
+      # Misc
+
+      $(awk -F";" '/kind\/cleanup/{ print "echo -e \"* :hammer: "$3" ("$2")\n\n$(echo "$5" | base64 -d)\n\"" }' $HOME/pr-notes.csv | sh)
+      $(awk -F";" '/kind\/misc/{ print "echo -e \"* :hammer: "$3" ("$2")\n\n$(echo "$5" | base64 -d)\n\"" }' $HOME/pr-notes.csv | sh)
+      $(awk -F";" '/kind\/cleanup/{ print "* :hammer: "$3" ("$2")" }' $HOME/pr-no-notes.csv)
+      $(awk -F";" '/kind\/misc/{ print "* :hammer: "$3" ("$2")" }' $HOME/pr-no-notes.csv)
+
+      # Docs
+
+      $(awk -F";" '/kind\/documentation/{ print "echo -e \"* :book: "$3" ("$2")\n\n$(echo "$5" | base64 -d)\n\"" }' $HOME/pr-notes.csv | sh)
+      $(awk -F";" '/kind\/documentation/{ print "* :book: "$3" ("$2")" }' $HOME/pr-no-notes.csv)
+
+      EOF
+  - image: gcr.io/tekton-releases/dogfooding/hub
+    name: authors
+    script: |
+      #!/usr/bin/env bash
+      set -ex
+      cat <<EOF | tee -a $HOME/release.md
+      ## Thanks
+
+      Thanks to these contributors who contributed to ${VERSION}!
+      $(awk -F";" '{ print "* :heart: @"$1 }' $HOME/pr.csv | sort -u)
+
+      Extra shout-out for awesome release notes:
+      $(awk -F";" '{ print "* :heart_eyes: @"$1 }' $HOME/pr-notes.csv | sort -u)
+      EOF
+    workingdir: $(resources.inputs.source.path)
+  - image: gcr.io/tekton-releases/dogfooding/hub
+    name: pr-data
+    script: |
+      #!/usr/bin/env bash
+      set -ex
+
+      cat <<EOF | tee -a $HOME/release.md
+
+      ## Unsorted PR List
+      $(egrep -v 'kind/(feature|documentation|cleanup|flake|bug|misc)' $HOME/pr.csv | awk -F";" '{ print "- "$3" ("$2")" }')
+
+      To Be Done: Deprecation Notices, Backward Incompatible Changes
+
+      EOF
+    workingdir: $(inputs.resources.source.path)
+  - image: gcr.io/tekton-releases/dogfooding/hub
+    name: create-draft
+    script: |
+      #!/usr/bin/env bash
+      set -ex
+
+      hub release create --draft --prerelease \
+        --commitish $(inputs.resources.source.revision) \
+        -a $(inputs.resources.release-bucket.path)/previous/${VERSION}/release.yaml \
+        -a $(inputs.resources.release-bucket.path)/previous/${VERSION}/release.notags.yaml \
+        --file $HOME/release.md ${VERSION}
+    workingdir: $(resources.inputs.source.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: e2e-tests
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - description: package (and its children) under test
+    name: package
+  - default: ./test
+    description: path to the tests within "tests" git resource
+    name: tests-path
+  - default: 20m
+    description: timeout for the go test runner
+    name: timeout
+  - description: container registry used to push images during tests e.g. gcr.io/tekton-e2e-tests
+      or icr.io/tekton-e2e-tests
+    name: container-registry
+  resources:
+    inputs:
+    - name: plumbing-library
+      type: git
+    - name: tests
+      targetPath: src/$(params.package)
+      type: git
+    - name: test-cluster
+      type: cluster
+    outputs:
+    - name: results-bucket
+      type: storage
+  steps:
+  - args:
+    - -ce
+    - |
+      # Setup
+      source $(resources.inputs.plumbing-library.path)/scripts/library.sh
+      e2e_failed=0
+
+      header "Running Go e2e tests"
+      report_go_test -v -count=1 -tags=e2e -timeout=$(params.timeout) $(params.tests-path) -kubeconfig /workspace/$(resources.inputs.test-cluster.name)/kubeconfig || e2e_failed=1
+      echo ${e2e_failed} > ${ARTIFACTS}/e2e.result
+    command:
+    - /bin/bash
+    env:
+    - name: REPO_ROOT_DIR
+      value: $(resources.inputs.tests.path)
+    - name: ARTIFACTS
+      value: $(resources.outputs.results-bucket.path)
+    - name: GOPATH
+      value: /workspace
+    - name: KO_DOCKER_REPO
+      value: $(params.container-registry)
+    image: gcr.io/tekton-releases/tests/test-runner@sha256:a4a64b2b70f85a618bbbcc6c0b713b313b2e410504dee24c9f90ec6fe3ebf63f
+    name: run-e2e-tests
+    workingdir: /workspace/src/$(params.package)
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: e2e-yaml-tests
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - default: ./examples
+    description: path to the tests within "tests" git resource
+    name: yamls-path
+  - default: 20m
+    description: timeout for the go test runner
+    name: timeout
+  - description: container registry used to push images during tests e.g. gcr.io/tekton-e2e-tests
+      or icr.io/tekton-e2e-tests
+    name: container-registry
+  resources:
+    inputs:
+    - name: plumbing-library
+      type: git
+    - name: tests
+      type: git
+    - name: test-cluster
+      type: cluster
+    outputs:
+    - name: results-bucket
+      type: storage
+  steps:
+  - args:
+    - -ce
+    - |
+      # Setup
+      source library.sh
+      e2e_failed=0
+
+      header "Running YAML e2e tests"
+      for test in taskrun pipelinerun; do
+        header "Running YAML e2e tests for ${test}s"
+        if ! run_yaml_tests ${test}; then
+          echo "ERROR: one or more YAML tests failed"
+          output_yaml_test_results ${test}
+          output_pods_logs ${test}
+          e2e_failed=1
+        fi
+      done
+      echo ${e2e_failed} > ${ARTIFACTS}/e2e-yaml.result
+    command:
+    - /bin/bash
+    env:
+    - name: REPO_ROOT_DIR
+      value: $(resources.inputs.tests.path)
+    - name: ARTIFACTS
+      value: $(resources.outputs.results-bucket.path)
+    - name: KO_DOCKER_REPO
+      value: $(params.container-registry)
+    - name: KUBECONFIG
+      value: /workspace/$(resources.inputs.test-cluster.name)/kubeconfig
+    image: gcr.io/tekton-releases/tests/test-runner@sha256:a4a64b2b70f85a618bbbcc6c0b713b313b2e410504dee24c9f90ec6fe3ebf63f
+    name: run-e2e-yaml-tests
+    workingDir: $(resources.inputs.plumbing-library.path)/scripts
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: install-tekton-release
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - default: pipeline
+    description: Name of the Tekton project to install e.g. pipeline, trigger, dashboard,
+      experimental
+    name: projectName
+  - default: tekton-pipelines
+    description: The namespace specified in the release. This does not enforce a namespace,
+      it's used to verify that all pods are running in the specified namespace
+    name: namespace
+  - default: latest
+    description: The vX.Y.Z version that we want to install (including `v`)
+    name: version
+  - default: dogfooding
+    description: Name of the target environment. Used to apply relevant overalys
+    name: environment
+  - default: release.yaml
+    description: Name of the release file
+    name: release-file
+  - default: ""
+    description: Name of the release file
+    name: post-release-file
+  resources:
+    inputs:
+    - name: release-bucket
+      type: storage
+    - name: k8s-cluster
+      type: cluster
+    - name: plumbing-library
+      type: git
+  stepTemplate:
+    env:
+    - name: KUBECONFIG
+      value: /workspace/$(resources.inputs.k8s-cluster.name)/kubeconfig
+    - name: PROJECT_NAME
+      value: $(params.projectName)
+    - name: NAMESPACE
+      value: $(params.namespace)
+    - name: VERSION
+      value: $(params.version)
+    - name: ENVIRONMENT
+      value: $(params.environment)
+    - name: RELEASE_FILE
+      value: $(params.release-file)
+    - name: POST_RELEASE_FILE
+      value: $(params.post-release-file)
+  steps:
+  - image: gcr.io/tekton-releases/dogfooding/ko-gcloud:latest
+    name: deploy-tekton-project
+    script: |
+      #!/usr/bin/env bash
+      set -exo pipefail
+
+      # Export KUBECONFIG so that it's available to pre-scripts too
+      export KUBECONFIG
+      # Set up RELEASE_ROOT
+      if [[ "${VERSION}" == "latest" ]]; then
+        RELEASE_ROOT=$(resources.inputs.release-bucket.path)/${VERSION}
+      else
+        RELEASE_ROOT=$(resources.inputs.release-bucket.path)/previous/${VERSION}
+      fi
+
+      # Handle Overlays
+      OVERLAY_FOLDER=${PROJECT_NAME}/overlays/${ENVIRONMENT}
+      APPLY_MODE="-k $OVERLAY_FOLDER"
+
+      cd $(resources.inputs.plumbing-library.path)/tekton/cd
+
+      if [ ! -d ${PROJECT_NAME} ]; then
+        # There are is not base or project for ${PROJECT_NAME}
+        # Apply the release as is
+        APPLY_MODE="--filename $RELEASE_ROOT/${RELEASE_FILE}"
+      else
+        # If the base exists, an overlay for the specified environment must exist
+        if [ ! -d  "$OVERLAY_FOLDER" ]; then
+          echo "Environment ${ENVIRONMENT} not found for project ${PARAM.PROJECT_NAME}"
+          exit 1
+        fi
+        cp $RELEASE_ROOT/${RELEASE_FILE} ${PROJECT_NAME}/base/release.yaml
+        find .
+
+        # Execute pre-deploy scripts if any
+        scripts=$(find ${OVERLAY_FOLDER}/pre -name '*.sh' 2> /dev/null || true)
+        for script in $scripts; do $script; done
+      fi
+      kubectl apply --kubeconfig $KUBECONFIG $APPLY_MODE
+  - image: gcr.io/tekton-releases/dogfooding/ko-gcloud:latest
+    name: wait-until-pods-and-crds
+    script: |
+      #!/usr/bin/env bash
+      set -exo pipefail
+      APPLICATION="tekton-${PROJECT_NAME}"
+      if [ "${PROJECT_NAME}" == "pipeline" ]; then
+        APPLICATION="${APPLICATION}s"
+      fi
+      # Wait for pods to be ready and CRDs to be established
+      kubectl wait --for condition=ready --timeout=120s pods -l app.kubernetes.io/part-of=$APPLICATION -n ${NAMESPACE}
+      kubectl wait --for condition=established --timeout=60s crd -l app.kubernetes.io/part-of=$APPLICATION
+  - image: gcr.io/tekton-releases/dogfooding/ko-gcloud:latest
+    name: deploy-extra-manifest
+    script: |
+      #!/usr/bin/env bash
+      set -exo pipefail
+      if [ "${POST_RELEASE_FILE}" != "" ]; then
+          # Set up RELEASE_ROOT
+          if [[ "${VERSION}" == "latest" ]]; then
+            RELEASE_ROOT=$(resources.inputs.release-bucket.path)/${VERSION}
+          else
+            RELEASE_ROOT=$(resources.inputs.release-bucket.path)/previous/${VERSION}
+          fi
+          kubectl apply --kubeconfig $KUBECONFIG -f $RELEASE_ROOT/${POST_RELEASE_FILE}
+      fi
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: log-test-image-tools
+  namespace: pipelines-0-28-3-release
+spec:
+  resources:
+    inputs:
+    - name: plumbing-library
+      type: git
+  steps:
+  - args:
+    - -ce
+    - |
+      source $(resources.inputs.plumbing-library.path)/scripts/library.sh
+
+      # Disable gcloud update notifications
+      gcloud config set component_manager/disable_update_check true
+      header "Current test setup"
+      echo ">> gcloud SDK version"
+      gcloud version
+      echo ">> kubectl version"
+      kubectl version --client
+      echo ">> go version"
+      go version
+      echo ">> git version"
+      git version
+      echo ">> bazel version"
+      bazel version 2> /dev/null
+    command:
+    - /bin/bash
+    image: gcr.io/tekton-releases/tests/test-runner@sha256:a4a64b2b70f85a618bbbcc6c0b713b313b2e410504dee24c9f90ec6fe3ebf63f
+    name: log-test-runner-tools-setup
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: prerelease-checks
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - default: github.com/tektoncd/pipeline
+    description: package to release
+    name: package
+  - description: The X.Y.Z version that the artifacts would be tagged with
+    name: versionTag
+  - description: The bucket where to look for the release, in the format gs://<bucket-name>/<project-name>
+    name: releaseBucket
+  stepTemplate:
+    env:
+    - name: PACKAGE
+      value: $(params.package)
+    - name: VERSION_TAG
+      value: $(params.versionTag)
+    - name: RELEASE_BUCKET
+      value: $(params.releaseBucket)
+  steps:
+  - image: alpine/git
+    name: check-git-tag
+    script: |
+      echo "Checking git tag"
+      # Look for the tag in the list of tags
+      git ls-remote --tags https://$(params.package) | \
+        grep "${VERSION_TAG}$" || exit 0
+      # If the version was found fail
+      echo "Version ${VERSION_TAG} already tagged for ${PACKAGE}"
+      exit 1
+  - image: gcr.io/google.com/cloudsdktool/cloud-sdk:310.0.0@sha256:cb03669fcdb9191d55a6200f2911fff3baec0b8c39b156d95b68aabe975ac506
+    name: check-release-file
+    script: |
+      echo "Checking release file"
+      # Check if the release file already exists
+      # gsutil retuns 1 if the object was not found
+      if gsutil stat ${RELEASE_BUCKET}/previous/${VERSION_TAG}/release.yaml; then
+        echo "Release file already exists for $(params.versionTag) in the release bucket,"
+        echo "but no git tag was found. To continue remove the release file first."
+        exit 1
+      fi
+  - image: python:3.6-alpine3.9
+    name: check-github-release
+    script: |
+      echo "Checking GitHub release"
+      PACKAGE=$(echo ${PACKAGE} | cut -d/ -f2,3)
+      # Check if the release exists on GitHub
+      wget -q -O- --header 'Accept: application/vnd.github.v3+json' \
+        https://api.github.com/repos/${PACKAGE}/releases | \
+        python -c 'import sys; import json; print("\n".join([x["tag_name"] for x in json.load(sys.stdin)]))' | \
+        grep "${VERSION_TAG}$" || exit 0
+      echo "Release ${VERSION_TAG} already exists for ${PACKAGE}"
+      exit 1
+  - image: alpine
+    name: success-confirmation
+    script: "echo \"All pre-release checks for ${PACKAGE} @ ${VERSION_TAG} where successful\"\necho
+      \"Happy releasing \U0001F63A\"\n"
+  workspaces:
+  - description: The workspace where the repo has been cloned
+    name: source-to-release
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: save-release-logs
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - description: The name of the taskrun whose log we need to save
+    name: pipelinerun
+  - description: The namespace of the taskrun
+    name: namespace
+  - description: The version tag to use within the bucket to store the logs
+    name: versionTag
+  resources:
+    inputs:
+    - name: release-bucket
+      type: storage
+    outputs:
+    - name: release-bucket
+      type: storage
+  steps:
+  - args:
+    - -ce
+    - |
+      cp -r $(resources.inputs.release-bucket.path)/* \
+        $(resources.outputs.release-bucket.path)/
+    command:
+    - /bin/sh
+    image: alpine:3.10
+    name: prepare-the-output-folder
+  - args:
+    - -ce
+    - |
+      # This works with in cluster config. The service account used in the run must
+      # have read access to the pipelinerun, taskrun and pod logs APIs
+      tkn -n $(params.namespace) pr logs $(params.pipelinerun) --all > \
+        $(resources.outputs.release-bucket.path)/previous/$(params.versionTag)/$(params.pipelinerun).log
+    command:
+    - /bin/sh
+    image: gcr.io/tekton-releases/dogfooding/tkn
+    name: fetch-release-pipeline-logs
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: test-results
+  namespace: pipelines-0-28-3-release
+spec:
+  resources:
+    inputs:
+    - name: results-bucket
+      type: storage
+  steps:
+  - args:
+    - -ce
+    - |
+      cat $(resources.inputs.results-bucket.path)/*.result | paste -s -d+ - | bc | egrep '^0$'
+    command:
+    - /bin/sh
+    image: alpine
+    name: aggregate-test-results
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: verify-tekton-release-github
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - default: pipeline
+    description: Name of the Tekton project to install e.g. pipeline, trigger, dashboard,
+      experimental
+    name: projectName
+  - description: The vX.Y.Z version that we want to install (including `v`)
+    name: version
+  resources:
+    inputs:
+    - name: release-bucket
+      type: storage
+  steps:
+  - args:
+    - -ce
+    - |
+      curl -L https://github.com/tektoncd/${PROJECT_NAME}/releases/download/${VERSION}/release.yaml > /workspace/release-github.yaml
+      diff \
+        /workspace/release-github.yaml \
+        $(resources.inputs.release-bucket.path)/${PROJECT_NAME}/previous/${VERSION}/release.yaml # Diff exists with 0 only if there is no difference
+    command:
+    - /bin/sh
+    env:
+    - name: PROJECT_NAME
+      value: $(params.projectName)
+    - name: VERSION
+      value: $(params.version)
+    image: gcr.io/tekton-releases/tests/test-runner
+    name: compare-github-vs-bucket
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: pipeline-release-post-processing
+  namespace: pipelines-0-28-3-release
+spec:
+  serviceAccountName: release-right-meow
+  triggers:
+  - bindings:
+    - ref: publish-images-taskrun-to-release-logs
+    name: log-collection
+    template:
+      ref: release-logs
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: publish-images-taskrun-to-release-logs
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - name: pipelineRun
+    value: $(body.taskRun.metadata.labels.tekton\.dev/pipelineRun)
+  - name: namespace
+    value: $(body.taskRun.metadata.namespace)
+  - name: bucket
+    value: $(body.taskRun.spec.outputs.resources[?(@.name == 'bucket')].resourceRef.name)
+  - name: versionTag
+    value: $(body.taskRun.spec.inputs.params[?(@.name == 'versionTag')].value)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: release-logs
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - description: The name of the taskrun whose log we need to save
+    name: pipelineRun
+  - description: The namespace of the taskrun
+    name: namespace
+  - description: The name of the bucket pipelineresource where to store the logs
+    name: bucket
+  - description: The version tag to use within the bucket to store the logs
+    name: versionTag
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    metadata:
+      generateName: save-release-logs-
+    spec:
+      params:
+      - name: pipelinerun
+        value: $(tt.params.pipelineRun)
+      - name: namespace
+        value: $(tt.params.namespace)
+      - name: versionTag
+        resources:
+        - name: release-bucket
+          resourceRef:
+            name: $(tt.params.bucket)
+        value: $(tt.params.versionTag)
+      resources:
+        outputs:
+        - name: release-bucket
+          resourceRef:
+            name: $(tt.params.bucket)
+      serviceAccountName: tekton-logs
+      taskRef:
+        name: save-release-logs

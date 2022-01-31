@@ -1,0 +1,72 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: prerelease-checks
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - default: github.com/tektoncd/pipeline
+    description: package to release
+    name: package
+    type: string
+  - description: The X.Y.Z version that the artifacts would be tagged with
+    name: versionTag
+    type: string
+  - description: The bucket where to look for the release, in the format gs://<bucket-name>/<project-name>
+    name: releaseBucket
+    type: string
+  stepTemplate:
+    env:
+    - name: PACKAGE
+      value: $(params.package)
+    - name: VERSION_TAG
+      value: $(params.versionTag)
+    - name: RELEASE_BUCKET
+      value: $(params.releaseBucket)
+    name: ""
+    resources: {}
+  steps:
+  - image: alpine/git
+    name: check-git-tag
+    resources: {}
+    script: |
+      echo "Checking git tag"
+      # Look for the tag in the list of tags
+      git ls-remote --tags https://$(params.package) | \
+        grep "${VERSION_TAG}$" || exit 0
+      # If the version was found fail
+      echo "Version ${VERSION_TAG} already tagged for ${PACKAGE}"
+      exit 1
+  - image: gcr.io/google.com/cloudsdktool/cloud-sdk:310.0.0@sha256:cb03669fcdb9191d55a6200f2911fff3baec0b8c39b156d95b68aabe975ac506
+    name: check-release-file
+    resources: {}
+    script: |
+      echo "Checking release file"
+      # Check if the release file already exists
+      # gsutil retuns 1 if the object was not found
+      if gsutil stat ${RELEASE_BUCKET}/previous/${VERSION_TAG}/release.yaml; then
+        echo "Release file already exists for $(params.versionTag) in the release bucket,"
+        echo "but no git tag was found. To continue remove the release file first."
+        exit 1
+      fi
+  - image: python:3.6-alpine3.9
+    name: check-github-release
+    resources: {}
+    script: |
+      echo "Checking GitHub release"
+      PACKAGE=$(echo ${PACKAGE} | cut -d/ -f2,3)
+      # Check if the release exists on GitHub
+      wget -q -O- --header 'Accept: application/vnd.github.v3+json' \
+        https://api.github.com/repos/${PACKAGE}/releases | \
+        python -c 'import sys; import json; print("\n".join([x["tag_name"] for x in json.load(sys.stdin)]))' | \
+        grep "${VERSION_TAG}$" || exit 0
+      echo "Release ${VERSION_TAG} already exists for ${PACKAGE}"
+      exit 1
+  - image: alpine
+    name: success-confirmation
+    resources: {}
+    script: "echo \"All pre-release checks for ${PACKAGE} @ ${VERSION_TAG} where successful\"\necho
+      \"Happy releasing \U0001F63A\"\n"
+  workspaces:
+  - description: The workspace where the repo has been cloned
+    name: source-to-release

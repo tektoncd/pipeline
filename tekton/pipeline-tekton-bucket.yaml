@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: pipeline-tekton-bucket
+  namespace: pipelines-0-28-3-release
+spec:
+  params:
+  - name: type
+    value: gcs
+  - name: location
+    value: gs://tekton-releases/pipeline
+  - name: dir
+    value: "y"
+  type: storage
