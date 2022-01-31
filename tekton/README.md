@@ -102,7 +102,7 @@ kubectl kustomize ./tekton/resources/release | kubectl apply -f -
 
 # If you don't want the tekton-nightly components then run the following
 # command from the root of the plumbing repo:
-kubectl kustomize ./tekton/resources/release/overlay/default | kubectl apply -f -
+kubectl kustomize ./tekton/resources/release/overlays/default | kubectl apply -f -
 ```
 
 Apply the tasks from the `pipeline` repo:
