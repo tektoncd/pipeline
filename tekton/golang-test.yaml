@@ -1,0 +1,61 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  labels:
+    app.kubernetes.io/version: "0.1"
+    hub.tekton.dev/catalog: tekton
+  name: golang-test
+  namespace: pipelines-0-28-3-release
+spec:
+  description: This Task is Golang task to test Go projects.
+  params:
+  - description: package (and its children) under test
+    name: package
+    type: string
+  - default: ./...
+    description: 'packages to test (default: ./...)'
+    name: packages
+    type: string
+  - default: .
+    description: path to the directory to use as context.
+    name: context
+    type: string
+  - default: latest
+    description: golang version to use for tests
+    name: version
+    type: string
+  - default: -race -cover -v
+    description: flags to use for the test command
+    name: flags
+    type: string
+  - default: linux
+    description: running program's operating system target
+    name: GOOS
+    type: string
+  - default: amd64
+    description: running program's architecture target
+    name: GOARCH
+    type: string
+  - default: auto
+    description: value of module support
+    name: GO111MODULE
+    type: string
+  steps:
+  - env:
+    - name: GOOS
+      value: $(params.GOOS)
+    - name: GOARCH
+      value: $(params.GOARCH)
+    - name: GO111MODULE
+      value: $(params.GO111MODULE)
+    image: docker.io/library/golang:$(params.version)
+    name: unit-test
+    resources: {}
+    script: |
+      SRC_PATH="$GOPATH/src/$(params.package)/$(params.context)"
+      mkdir -p $SRC_PATH
+      cp -R "$(workspaces.source.path)"/"$(params.context)"/* $SRC_PATH
+      cd $SRC_PATH
+      go test $(params.flags) $(params.packages)
+  workspaces:
+  - name: source

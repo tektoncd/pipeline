@@ -2,6 +2,7 @@ apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: publish-release
+  namespace: pipelines-0-28-3-release
   annotations:
     chains.tekton.dev/transparency-upload: "true"
 spec:
@@ -201,7 +202,9 @@ spec:
           else
             TAG="$(params.versionTag)"
             crane cp ${IMAGE_WITH_SHA} ${REGION}.${IMAGE_WITHOUT_SHA_AND_TAG}:$TAG
-            echo ${REGION}.$IMAGE_WITH_SHA, >> $(results.IMAGES.path)
+            # Until we are able to store larger results, we cannot include the
+            # regional copies of the images in the result - see https://github.com/tektoncd/pipeline/issues/4282
+            # echo ${REGION}.$IMAGE_WITH_SHA, >> $(results.IMAGES.path)
           fi
         done
       done

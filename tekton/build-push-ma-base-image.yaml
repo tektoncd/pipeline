@@ -2,6 +2,7 @@ apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: build-multiarch-base-image
+  namespace: pipelines-0-28-3-release
 spec:
   params:
   - name: package
