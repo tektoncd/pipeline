@@ -18,7 +18,6 @@ package v1beta1_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -598,7 +597,77 @@ func TestPipelineRunWithAlphaFields_Invalid(t *testing.T) {
 				},
 			},
 		},
-		want: apis.ErrGeneric(fmt.Sprintf(`timeouts requires "enable-api-fields" feature gate to be "alpha" but it is "stable"`)),
+		want: apis.ErrGeneric(`timeouts requires "enable-api-fields" feature gate to be "alpha" but it is "stable"`),
+	}, {
+		name: "Tasks timeout = 0 but Pipeline timeout not set",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Tasks: &metav1.Duration{Duration: 0 * time.Minute},
+				},
+			},
+		},
+		wc:   enableAlphaAPIFields,
+		want: apis.ErrInvalidValue(`0s (no timeout) should be <= default timeout duration`, "spec.timeouts.tasks"),
+	}, {
+		name: "Tasks timeout = 0 but Pipeline timeout is not 0",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 10 * time.Minute},
+					Tasks:    &metav1.Duration{Duration: 0 * time.Minute},
+				},
+			},
+		},
+		wc:   enableAlphaAPIFields,
+		want: apis.ErrInvalidValue(`0s (no timeout) should be <= pipeline duration`, "spec.timeouts.tasks"),
+	}, {
+		name: "Finally timeout = 0 but Pipeline timeout not set",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Finally: &metav1.Duration{Duration: 0 * time.Minute},
+				},
+			},
+		},
+		wc:   enableAlphaAPIFields,
+		want: apis.ErrInvalidValue(`0s (no timeout) should be <= default timeout duration`, "spec.timeouts.finally"),
+	}, {
+		name: "Finally timeout = 0 but Pipeline timeout is not 0",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 10 * time.Minute},
+					Finally:  &metav1.Duration{Duration: 0 * time.Minute},
+				},
+			},
+		},
+		wc:   enableAlphaAPIFields,
+		want: apis.ErrInvalidValue(`0s (no timeout) should be <= pipeline duration`, "spec.timeouts.finally"),
 	}}
 
 	for _, tc := range tests {

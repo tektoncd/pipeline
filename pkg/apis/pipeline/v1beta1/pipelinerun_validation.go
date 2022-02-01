@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -169,12 +170,34 @@ func validateTimeoutDuration(field string, d *metav1.Duration) (errs *apis.Field
 }
 
 func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorMsg string) (errs *apis.FieldError) {
-	if ps.Timeouts.Tasks != nil && ps.Timeouts.Tasks.Duration > timeout {
-		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s %s", ps.Timeouts.Tasks.Duration.String(), errorMsg), "timeouts.tasks"))
+	if ps.Timeouts.Tasks != nil {
+		tasksTimeoutErr := false
+		tasksTimeoutStr := ps.Timeouts.Tasks.Duration.String()
+		if ps.Timeouts.Tasks.Duration > timeout {
+			tasksTimeoutErr = true
+		}
+		if ps.Timeouts.Tasks.Duration == apisconfig.NoTimeoutDuration && timeout != apisconfig.NoTimeoutDuration {
+			tasksTimeoutErr = true
+			tasksTimeoutStr += " (no timeout)"
+		}
+		if tasksTimeoutErr {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s %s", tasksTimeoutStr, errorMsg), "timeouts.tasks"))
+		}
 	}
 
-	if ps.Timeouts.Finally != nil && ps.Timeouts.Finally.Duration > timeout {
-		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s %s", ps.Timeouts.Finally.Duration.String(), errorMsg), "timeouts.finally"))
+	if ps.Timeouts.Finally != nil {
+		finallyTimeoutErr := false
+		finallyTimeoutStr := ps.Timeouts.Finally.Duration.String()
+		if ps.Timeouts.Finally.Duration > timeout {
+			finallyTimeoutErr = true
+		}
+		if ps.Timeouts.Finally.Duration == apisconfig.NoTimeoutDuration && timeout != apisconfig.NoTimeoutDuration {
+			finallyTimeoutErr = true
+			finallyTimeoutStr += " (no timeout)"
+		}
+		if finallyTimeoutErr {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s %s", finallyTimeoutStr, errorMsg), "timeouts.finally"))
+		}
 	}
 
 	if ps.Timeouts.Tasks != nil && ps.Timeouts.Finally != nil {
