@@ -523,6 +523,7 @@ spec:
 
 If you do not specify the `timeout` value or `timeouts.pipeline` in the `PipelineRun`, the global default timeout value applies.
 If you set the `timeout` value or `timeouts.pipeline` to 0, the `PipelineRun` fails immediately upon encountering an error.
+If `timeouts.tasks` or `timeouts.finally` is set to 0, `timeouts.pipeline` must also be set to 0.
 
 The global default timeout is set to 60 minutes when you first install Tekton. You can set
 a different global default timeout value using the `default-timeout-minutes` field in
