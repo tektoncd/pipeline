@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/code-generator/pkg/util"
 	"k8s.io/gengo/args"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	"github.com/spf13/pflag"
 	generatorargs "knative.dev/pkg/codegen/cmd/injection-gen/args"

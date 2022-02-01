@@ -181,9 +181,10 @@ func (s *Source) Validate(ctx context.Context) *apis.FieldError {
 
 func (s *SourceSpec) Validate(ctx context.Context) *apis.FieldError {
 	if s == nil {
-		return nil
+		return apis.ErrMissingField("spec")
 	}
-	return s.CloudEventOverrides.Validate(ctx).ViaField("ceOverrides")
+	return s.Sink.Validate(ctx).ViaField("sink").
+		Also(s.CloudEventOverrides.Validate(ctx).ViaField("ceOverrides"))
 }
 
 func (ceOverrides *CloudEventOverrides) Validate(ctx context.Context) *apis.FieldError {
