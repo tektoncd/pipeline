@@ -25,16 +25,18 @@ import (
 
 	"github.com/gobuffalo/flect"
 	"go.uber.org/zap"
-	jsonpatch "gomodules.xyz/jsonpatch/v2"
+	"gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	admissionlisters "k8s.io/client-go/listers/admissionregistration/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/apis/duck"
 	"knative.dev/pkg/controller"
@@ -56,9 +58,10 @@ type reconciler struct {
 	webhook.StatelessAdmissionImpl
 	pkgreconciler.LeaderAwareFuncs
 
-	key      types.NamespacedName
-	path     string
-	handlers map[schema.GroupVersionKind]resourcesemantics.GenericCRD
+	key       types.NamespacedName
+	path      string
+	handlers  map[schema.GroupVersionKind]resourcesemantics.GenericCRD
+	callbacks map[schema.GroupVersionKind]Callback
 
 	withContext func(context.Context) context.Context
 
@@ -68,6 +71,37 @@ type reconciler struct {
 
 	disallowUnknownFields bool
 	secretName            string
+}
+
+// CallbackFunc is the function to be invoked.
+type CallbackFunc func(ctx context.Context, unstructured *unstructured.Unstructured) error
+
+// Callback is a generic function to be called by a consumer of defaulting.
+type Callback struct {
+	// function is the callback to be invoked.
+	function CallbackFunc
+
+	// supportedVerbs are the verbs supported for the callback.
+	// The function will only be called on these actions.
+	supportedVerbs map[webhook.Operation]struct{}
+}
+
+// NewCallback creates a new callback function to be invoked on supported verbs.
+func NewCallback(function func(context.Context, *unstructured.Unstructured) error, supportedVerbs ...webhook.Operation) Callback {
+	if function == nil {
+		panic("expected function, got nil")
+	}
+	m := make(map[webhook.Operation]struct{})
+	for _, op := range supportedVerbs {
+		if op == webhook.Delete {
+			panic("Verb " + webhook.Delete + " not allowed")
+		}
+		if _, has := m[op]; has {
+			panic("duplicate verbs not allowed")
+		}
+		m[op] = struct{}{}
+	}
+	return Callback{function: function, supportedVerbs: m}
 }
 
 var _ controller.Reconciler = (*reconciler)(nil)
@@ -137,7 +171,17 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 	logger := logging.FromContext(ctx)
 
 	rules := make([]admissionregistrationv1.RuleWithOperations, 0, len(ac.handlers))
+	gvks := make(map[schema.GroupVersionKind]struct{}, len(ac.handlers)+len(ac.callbacks))
 	for gvk := range ac.handlers {
+		gvks[gvk] = struct{}{}
+	}
+	for gvk := range ac.callbacks {
+		if _, ok := gvks[gvk]; !ok {
+			gvks[gvk] = struct{}{}
+		}
+	}
+
+	for gvk := range gvks {
 		plural := strings.ToLower(flect.Pluralize(gvk.Kind))
 
 		rules = append(rules, admissionregistrationv1.RuleWithOperations{
@@ -231,8 +275,18 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1.AdmissionRequ
 	logger := logging.FromContext(ctx)
 	handler, ok := ac.handlers[gvk]
 	if !ok {
-		logger.Error("Unhandled kind: ", gvk)
-		return nil, fmt.Errorf("unhandled kind: %v", gvk)
+		if _, ok := ac.callbacks[gvk]; !ok {
+			logger.Error("Unhandled kind: ", gvk)
+			return nil, fmt.Errorf("unhandled kind: %v", gvk)
+		}
+		patches, err := ac.callback(ctx, gvk, req, true /* shouldSetUserInfo */, duck.JSONPatch{})
+		if err != nil {
+			logger.Errorw("Failed the callback defaulter", zap.Error(err))
+			// Return the error message as-is to give the defaulter callback
+			// discretion over (our portion of) the message that the user sees.
+			return nil, err
+		}
+		return json.Marshal(patches)
 	}
 
 	// nil values denote absence of `old` (create) or `new` (delete) objects.
@@ -302,6 +356,13 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1.AdmissionRequ
 		return nil, err
 	}
 
+	if patches, err = ac.callback(ctx, gvk, req, false /* shouldSetUserInfo */, patches); err != nil {
+		logger.Errorw("Failed the callback defaulter", zap.Error(err))
+		// Return the error message as-is to give the defaulter callback
+		// discretion over (our portion of) the message that the user sees.
+		return nil, err
+	}
+
 	// None of the validators will accept a nil value for newObj.
 	if newObj == nil {
 		return nil, errMissingNewObject
@@ -327,6 +388,57 @@ func (ac *reconciler) setUserInfoAnnotations(ctx context.Context, patches duck.J
 		return nil, err
 	}
 	return append(patches, patch...), nil
+}
+
+func (ac *reconciler) callback(ctx context.Context, gvk schema.GroupVersionKind, req *admissionv1.AdmissionRequest, shouldSetUserInfo bool, patches duck.JSONPatch) (duck.JSONPatch, error) {
+	// Get callback.
+	callback, ok := ac.callbacks[gvk]
+	if !ok {
+		return patches, nil
+	}
+
+	// Check if request operation is a supported webhook operation.
+	if _, isSupported := callback.supportedVerbs[req.Operation]; !isSupported {
+		return patches, nil
+	}
+
+	oldBytes := req.OldObject.Raw
+	newBytes := req.Object.Raw
+
+	before := &unstructured.Unstructured{}
+	after := &unstructured.Unstructured{}
+
+	// Get unstructured object.
+	if err := json.Unmarshal(newBytes, before); err != nil {
+		return nil, fmt.Errorf("cannot decode object: %w", err)
+	}
+	// Copy before in after unstructured objects.
+	before.DeepCopyInto(after)
+
+	// Setup context.
+	if len(oldBytes) != 0 {
+		if req.SubResource == "" {
+			ctx = apis.WithinUpdate(ctx, before)
+		} else {
+			ctx = apis.WithinSubResourceUpdate(ctx, before, req.SubResource)
+		}
+	} else {
+		ctx = apis.WithinCreate(ctx)
+	}
+	ctx = apis.WithUserInfo(ctx, &req.UserInfo)
+
+	// Call callback passing after.
+	if err := callback.function(ctx, after); err != nil {
+		return patches, err
+	}
+
+	if shouldSetUserInfo {
+		setUserInfoAnnotations(adaptUnstructuredHasSpecCtx(ctx, req), unstructuredHasSpec{after}, req.Resource.Group)
+	}
+
+	// Create patches.
+	patch, err := duck.CreatePatch(before.Object, after.Object)
+	return append(patches, patch...), err
 }
 
 // roundTripPatch generates the JSONPatch that corresponds to round tripping the given bytes through

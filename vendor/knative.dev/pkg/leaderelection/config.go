@@ -98,9 +98,9 @@ func (c *Config) GetComponentConfig(name string) ComponentConfig {
 func defaultConfig() *Config {
 	return &Config{
 		Buckets:       1,
-		LeaseDuration: 15 * time.Second,
-		RenewDeadline: 10 * time.Second,
-		RetryPeriod:   2 * time.Second,
+		LeaseDuration: 60 * time.Second,
+		RenewDeadline: 40 * time.Second,
+		RetryPeriod:   10 * time.Second,
 	}
 }
 
