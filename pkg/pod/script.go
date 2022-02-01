@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -93,6 +94,16 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 		Command:      []string{shellCommand},
 		Args:         []string{shellArg, ""},
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("30Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("300Mi"),
+				corev1.ResourceCPU:    resource.MustParse("300m"),
+			},
+		},
 	}
 
 	breakpoints := []string{}

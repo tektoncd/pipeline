@@ -431,6 +431,7 @@ func TestTransformerOneContainer(t *testing.T) {
 }
 
 func TestTransformerMultipleContainer(t *testing.T) {
+	// TODO: Add tests for multiple init containers
 	for _, tc := range []struct {
 		description string
 		limitranges []corev1.LimitRangeItem

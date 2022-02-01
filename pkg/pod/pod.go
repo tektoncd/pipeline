@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
@@ -180,6 +181,16 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		// into the correct location for later steps.
 		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
 		VolumeMounts: []corev1.VolumeMount{binMount},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("40Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("150Mi"),
+				corev1.ResourceCPU:    resource.MustParse("300m"),
+			},
+		},
 	}
 
 	if alphaAPIEnabled {
@@ -413,6 +424,7 @@ func runVolume(i int) corev1.Volume {
 	}
 }
 
+// tektonDirInit returns an init container definition that sets up the /tekton/steps directory for the pod
 func tektonDirInit(image string, steps []v1beta1.Step) corev1.Container {
 	cmd := make([]string, 0, len(steps)+2)
 	cmd = append(cmd, "/ko-app/entrypoint", "step-init")
@@ -429,5 +441,15 @@ func tektonDirInit(image string, steps []v1beta1.Step) corev1.Container {
 			Name:      "tekton-internal-steps",
 			MountPath: pipeline.StepsDir,
 		}},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("10Mi"),
+				corev1.ResourceCPU:    resource.MustParse("10m"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse("30Mi"),
+				corev1.ResourceCPU:    resource.MustParse("100m"),
+			},
+		},
 	}
 }
