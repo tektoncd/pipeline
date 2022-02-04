@@ -142,3 +142,29 @@ func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, 
 
 	return nil
 }
+
+func validateTaskSpecRequestResources(ctx context.Context, taskSpec *v1beta1.TaskSpec) error {
+	if taskSpec != nil {
+		for _, step := range taskSpec.Steps {
+			for k, request := range step.Resources.Requests {
+				// First validate the limit in step
+				if limit, ok := step.Resources.Limits[k]; ok {
+					if (&limit).Cmp(request) == -1 {
+						return fmt.Errorf("Invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
+					}
+				} else if taskSpec.StepTemplate != nil {
+					// If step doesn't configure the limit, validate the limit in stepTemplate
+					if limit, ok := taskSpec.StepTemplate.Resources.Limits[k]; ok {
+						if (&limit).Cmp(request) == -1 {
+							return fmt.Errorf("Invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
+						}
+					}
+
+				}
+
+			}
+		}
+	}
+
+	return nil
+}
