@@ -104,6 +104,9 @@ func MergeAAPodTemplateWithDefault(tpl, defaultTpl *AAPodTemplate) *AAPodTemplat
 		if tpl.Tolerations == nil {
 			tpl.Tolerations = defaultTpl.Tolerations
 		}
+		if tpl.ImagePullSecrets == nil {
+			tpl.ImagePullSecrets = defaultTpl.ImagePullSecrets
+		}
 		return tpl
 	}
 }

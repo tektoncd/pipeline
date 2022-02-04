@@ -131,7 +131,8 @@ func (tpl *Template) ToAffinityAssistantTemplate() *AffinityAssistantTemplate {
 	}
 
 	return &AffinityAssistantTemplate{
-		NodeSelector: tpl.NodeSelector,
-		Tolerations:  tpl.Tolerations,
+		NodeSelector:     tpl.NodeSelector,
+		Tolerations:      tpl.Tolerations,
+		ImagePullSecrets: tpl.ImagePullSecrets,
 	}
 }
