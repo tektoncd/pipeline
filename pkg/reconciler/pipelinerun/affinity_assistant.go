@@ -191,8 +191,9 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 				Spec: corev1.PodSpec{
 					Containers: containers,
 
-					Tolerations:  tpl.Tolerations,
-					NodeSelector: tpl.NodeSelector,
+					Tolerations:      tpl.Tolerations,
+					NodeSelector:     tpl.NodeSelector,
+					ImagePullSecrets: tpl.ImagePullSecrets,
 
 					Affinity: &corev1.Affinity{
 						PodAntiAffinity: &corev1.PodAntiAffinity{

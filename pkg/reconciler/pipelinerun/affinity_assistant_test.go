@@ -102,6 +102,9 @@ func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 				NodeSelector: map[string]string{
 					"disktype": "ssd",
 				},
+				ImagePullSecrets: []corev1.LocalObjectReference{{
+					Name: "reg-creds",
+				}},
 			},
 		},
 	}
@@ -114,6 +117,10 @@ func TestPipelineRunPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
 		t.Errorf("expected a NodeSelector in the StatefulSet")
+	}
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.ImagePullSecrets) != 1 {
+		t.Errorf("expected ImagePullSecrets in the StatefulSet")
 	}
 }
 
@@ -135,6 +142,9 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		NodeSelector: map[string]string{
 			"disktype": "ssd",
 		},
+		ImagePullSecrets: []corev1.LocalObjectReference{{
+			Name: "reg-creds",
+		}},
 	}
 
 	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", defaultTpl)
@@ -145,6 +155,10 @@ func TestDefaultPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
 		t.Errorf("expected a NodeSelector in the StatefulSet")
+	}
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.ImagePullSecrets) != 1 {
+		t.Errorf("expected ImagePullSecrets in the StatefulSet")
 	}
 }
 
@@ -162,6 +176,10 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 					Value:    "value",
 					Effect:   "NoSchedule",
 				}},
+				ImagePullSecrets: []corev1.LocalObjectReference{
+					{Name: "reg-creds"},
+					{Name: "alt-creds"},
+				},
 			},
 		},
 	}
@@ -170,6 +188,9 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 		NodeSelector: map[string]string{
 			"disktype": "ssd",
 		},
+		ImagePullSecrets: []corev1.LocalObjectReference{{
+			Name: "reg-creds",
+		}},
 	}
 
 	stsWithTolerationsAndNodeSelector := affinityAssistantStatefulSet("test-assistant", prWithCustomPodTemplate, "mypvc", "nginx", defaultTpl)
@@ -180,6 +201,10 @@ func TestMergedPodTemplatesArePropagatedToAffinityAssistant(t *testing.T) {
 
 	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.NodeSelector) != 1 {
 		t.Errorf("expected NodeSelector from defaults in the StatefulSet")
+	}
+
+	if len(stsWithTolerationsAndNodeSelector.Spec.Template.Spec.ImagePullSecrets) != 2 {
+		t.Errorf("expected ImagePullSecrets from spec to overwrite default in the StatefulSet")
 	}
 }
 
