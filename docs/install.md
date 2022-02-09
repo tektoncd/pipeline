@@ -378,7 +378,7 @@ most stable features to be used. Set it to "alpha" to allow [alpha
 features](#alpha-features) to be used.
 
 - `scope-when-expressions-to-task`: set this flag to "true" to scope `when` expressions to guard a `Task` only. Set it
-  to "false" to guard a `Task` and its dependent `Tasks`. It defaults to "false". For more information, see [guarding
+  to "false" to guard a `Task` and its dependent `Tasks`. It defaults to "true". For more information, see [guarding
   `Task` execution using `when` expressions](pipelines.md#guard-task-execution-using-whenexpressions).
 
 For example:

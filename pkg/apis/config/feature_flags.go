@@ -47,7 +47,7 @@ const (
 	// DefaultEnableCustomTasks is the default value for "enable-custom-tasks".
 	DefaultEnableCustomTasks = false
 	// DefaultScopeWhenExpressionsToTask is the default value for "scope-when-expressions-to-task".
-	DefaultScopeWhenExpressionsToTask = false
+	DefaultScopeWhenExpressionsToTask = true
 	// DefaultEnableAPIFields is the default value for "enable-api-fields".
 	DefaultEnableAPIFields = StableAPIFields
 

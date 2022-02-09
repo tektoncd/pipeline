@@ -5153,7 +5153,7 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 
 	wantEvents := []string{
 		"Normal Started",
-		"Normal Running Tasks Completed: 1 \\(Failed: 0, Cancelled 0\\), Incomplete: 1, Skipped: 2",
+		"Normal Running Tasks Completed: 1 \\(Failed: 0, Cancelled 0\\), Incomplete: 2, Skipped: 1",
 	}
 	pipelineRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", wantEvents, false)
 
@@ -5206,14 +5206,12 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 			Operator: "in",
 			Values:   []string{"missing"},
 		}},
-	}, {
-		Name: "d-task",
 	}}
 	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
 		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
 	}
 
-	skippedTasks := []string{"c-task", "d-task"}
+	skippedTasks := []string{"c-task"}
 	for _, skippedTask := range skippedTasks {
 		labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs", skippedTask)
 		actualSkippedTask, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
