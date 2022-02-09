@@ -84,4 +84,4 @@ data:
   enable-api-fields: "stable"
   # Setting this flag to "true" scopes when expressions to guard a Task only
   # instead of a Task and its dependent Tasks.
-  scope-when-expressions-to-task: "false"
+  scope-when-expressions-to-task: "true"
