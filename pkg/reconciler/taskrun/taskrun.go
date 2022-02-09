@@ -274,12 +274,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
 	if err != nil {
 		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
-		tr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  podconvert.ReasonFailedResolution,
-			Message: err.Error(),
-		})
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 		return nil, nil, err
 	}
 
@@ -518,12 +513,7 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 	case isExceededResourceQuotaError(err):
 		// If we are struggling to create the pod, then it hasn't started.
 		tr.Status.StartTime = nil
-		tr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  podconvert.ReasonExceededResourceQuota,
-			Message: fmt.Sprint("TaskRun Pod exceeded available resources: ", err),
-		})
+		tr.Status.MarkResourceOngoing(podconvert.ReasonExceededResourceQuota, fmt.Sprint("TaskRun Pod exceeded available resources: ", err))
 	case isTaskRunValidationFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 	default:
