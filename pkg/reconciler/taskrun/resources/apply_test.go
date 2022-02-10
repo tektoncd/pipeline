@@ -876,16 +876,14 @@ func TestApplyWorkspaces_IsolatedWorkspaces(t *testing.T) {
 func TestContext(t *testing.T) {
 	for _, tc := range []struct {
 		description string
-		rtr         resources.ResolvedTaskResources
+		taskName    string
 		tr          v1beta1.TaskRun
 		spec        v1beta1.TaskSpec
 		want        v1beta1.TaskSpec
 	}{{
 		description: "context taskName replacement without taskRun in spec container",
-		rtr: resources.ResolvedTaskResources{
-			TaskName: "Task1",
-		},
-		tr: v1beta1.TaskRun{},
+		taskName:    "Task1",
+		tr:          v1beta1.TaskRun{},
 		spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
 				Container: corev1.Container{
@@ -904,9 +902,7 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context taskName replacement with taskRun in spec container",
-		rtr: resources.ResolvedTaskResources{
-			TaskName: "Task1",
-		},
+		taskName:    "Task1",
 		tr: v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "taskrunName",
@@ -930,9 +926,7 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context taskRunName replacement with defined taskRun in spec container",
-		rtr: resources.ResolvedTaskResources{
-			TaskName: "Task1",
-		},
+		taskName:    "Task1",
 		tr: v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "taskrunName",
@@ -956,10 +950,8 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context taskRunName replacement with no defined taskRun name in spec container",
-		rtr: resources.ResolvedTaskResources{
-			TaskName: "Task1",
-		},
-		tr: v1beta1.TaskRun{},
+		taskName:    "Task1",
+		tr:          v1beta1.TaskRun{},
 		spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
 				Container: corev1.Container{
@@ -978,10 +970,8 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context taskRun namespace replacement with no defined namepsace in spec container",
-		rtr: resources.ResolvedTaskResources{
-			TaskName: "Task1",
-		},
-		tr: v1beta1.TaskRun{},
+		taskName:    "Task1",
+		tr:          v1beta1.TaskRun{},
 		spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
 				Container: corev1.Container{
@@ -1000,9 +990,7 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context taskRun namespace replacement with defined namepsace in spec container",
-		rtr: resources.ResolvedTaskResources{
-			TaskName: "Task1",
-		},
+		taskName:    "Task1",
 		tr: v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "taskrunName",
@@ -1027,7 +1015,6 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context taskRunName replacement with no defined taskName in spec container",
-		rtr:         resources.ResolvedTaskResources{},
 		tr:          v1beta1.TaskRun{},
 		spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
@@ -1047,9 +1034,7 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context UID replacement",
-		rtr: resources.ResolvedTaskResources{
-			TaskName: "Task1",
-		},
+		taskName:    "Task1",
 		tr: v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
 				UID: "UID-1",
@@ -1073,7 +1058,6 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context retry count replacement",
-		rtr:         resources.ResolvedTaskResources{},
 		tr: v1beta1.TaskRun{
 			Status: v1beta1.TaskRunStatus{
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
@@ -1113,7 +1097,6 @@ func TestContext(t *testing.T) {
 		},
 	}, {
 		description: "context retry count replacement with task that never retries",
-		rtr:         resources.ResolvedTaskResources{},
 		tr:          v1beta1.TaskRun{},
 		spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
@@ -1133,7 +1116,7 @@ func TestContext(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			got := resources.ApplyContexts(&tc.spec, &tc.rtr, &tc.tr)
+			got := resources.ApplyContexts(&tc.spec, tc.taskName, &tc.tr)
 			if d := cmp.Diff(&tc.want, got); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
