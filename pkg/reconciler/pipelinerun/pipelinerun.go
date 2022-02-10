@@ -324,12 +324,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 
 	// When pipeline run is pending, return to avoid creating the task
 	if pr.IsPending() {
-		pr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionUnknown,
-			Reason:  ReasonPending,
-			Message: fmt.Sprintf("PipelineRun %q is pending", pr.Name),
-		})
+		pr.Status.MarkRunning(ReasonPending, fmt.Sprintf("PipelineRun %q is pending", pr.Name))
 		return nil
 	}
 
@@ -734,10 +729,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 		// is a retry
 		addRetryHistory(tr)
 		clearStatus(tr)
-		tr.Status.SetCondition(&apis.Condition{
-			Type:   apis.ConditionSucceeded,
-			Status: corev1.ConditionUnknown,
-		})
+		tr.Status.MarkResourceOngoing("", "")
 		logger.Infof("Updating taskrun %s with cleared status and retry history (length: %d).", tr.GetName(), len(tr.Status.RetriesStatus))
 		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(ctx, tr, metav1.UpdateOptions{})
 	}
