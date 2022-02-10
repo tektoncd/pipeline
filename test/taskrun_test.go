@@ -208,3 +208,93 @@ spec:
 		t.Fatalf("-got, +want: %v", d)
 	}
 }
+
+// TestTaskRunStatusSpecificationsAltered tests that a running TaskRun doesn't fail with a validation error
+// when its status is altered/corrupted.
+func TestTaskRunStatusSpecificationsAltered(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t)
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	trName := "taskrun-with-status-corrupted-while-running"
+	tName := "valid-task"
+	t.Logf("Creating Task and TaskRun %s in namespace %s", trName, namespace)
+
+	task := parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  params:
+  - name: foo
+  steps:
+  - name: echo
+    image: ubuntu
+    script: |
+      #!/usr/bin/env bash
+      # Sleep for 10s
+      sleep 10
+      echo $(params.foo)
+`, tName))
+	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
+	}
+
+	taskrun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  params:
+  - name: foo
+    value: bar
+  taskRef:
+    name: %s
+`, trName, tName))
+
+	_, err := c.TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create taskRun `%s`: %s", trName, err)
+	}
+
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", trName, namespace)
+	if err := WaitForTaskRunState(ctx, c, trName, Running(trName), "TaskRunRunning"); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to finish: %s", trName, err)
+	}
+
+	// Get the updated TaskRun
+	reconciledRun, err := c.TaskRunClient.Get(ctx, trName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting updated TaskRun: %v", err)
+	}
+
+	// interjecting taskSpec in the status and set it to something invalid to verify that the validation does not catch it
+	// in real world, the status is considered as a source of truth and not expected to have altered in anyways
+	// this is to test no validation done on the specifications after from the status
+	invalidSpecs := &v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{
+			Script: "invalidSpec without any container image",
+		}},
+	}
+	reconciledRun.Status.TaskSpec = invalidSpecs
+
+	if _, err := c.TaskRunClient.UpdateStatus(ctx, reconciledRun, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("Failed to update taskRun `%s`: %s", trName, err)
+	}
+
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", trName, namespace)
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to finish: %s", trName, err)
+	}
+
+	r, err := c.TaskRunClient.Get(ctx, trName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Error getting updated TaskRun: %v", err)
+	}
+
+	if d := cmp.Diff(r.Status.TaskSpec, invalidSpecs); d != "" {
+		t.Fatalf("the specifications in the status does not match, -got, +want: %v", d)
+	}
+}

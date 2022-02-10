@@ -264,14 +264,12 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // error but it does not sync updates back to etcd. It does not emit events.
 // All errors returned by `prepare` are always handled by `Reconcile`, so they don't cause
 // the key to be re-queued directly.
-// `prepare` returns spec and resources. In future we might store
-// them in the TaskRun.Status so we don't need to re-run `prepare` at every
-// reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
+// `prepare` returns spec and resources.
 func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskSpec, *resources.ResolvedTaskResources, error) {
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
 
-	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
+	getTaskfunc, specInStatus, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
 	if err != nil {
 		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
 		tr.Status.SetCondition(&apis.Condition{
@@ -320,38 +318,41 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := validateTaskSpecRequestResources(ctx, taskSpec); err != nil {
-		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
-	}
-
-	if err := ValidateResolvedTaskResources(ctx, tr.Spec.Params, rtr); err != nil {
-		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
-	}
-
-	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
-		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
-		return nil, nil, controller.NewPermanentError(err)
-	}
-
-	if err := workspace.ValidateBindings(taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
-		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
-	}
-
-	if _, usesAssistant := tr.Annotations[workspace.AnnotationAffinityAssistantName]; usesAssistant {
-		if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
-			logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
+	// avoid validating specifications every reconcile if the specifications are coming from the taskRun.Status
+	// specifications in the status is a source of truth and have been validated once before adding them into the status
+	if !specInStatus {
+		if err := validateTaskSpecRequestResources(ctx, taskSpec); err != nil {
+			logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 			return nil, nil, controller.NewPermanentError(err)
 		}
-	}
 
+		if err := ValidateResolvedTaskResources(ctx, tr.Spec.Params, rtr); err != nil {
+			logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
+			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+			return nil, nil, controller.NewPermanentError(err)
+		}
+
+		if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
+			logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
+			tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
+			return nil, nil, controller.NewPermanentError(err)
+		}
+
+		if err := workspace.ValidateBindings(taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
+			logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
+			tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+			return nil, nil, controller.NewPermanentError(err)
+		}
+
+		if _, usesAssistant := tr.Annotations[workspace.AnnotationAffinityAssistantName]; usesAssistant {
+			if err := workspace.ValidateOnlyOnePVCIsUsed(tr.Spec.Workspaces); err != nil {
+				logger.Errorf("TaskRun %q workspaces incompatible with Affinity Assistant: %v", tr.Name, err)
+				tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+				return nil, nil, controller.NewPermanentError(err)
+			}
+		}
+	}
 	// Initialize the cloud events if at least a CloudEventResource is defined
 	// and they have not been initialized yet.
 	// FIXME(afrittoli) This resource specific logic will have to be replaced

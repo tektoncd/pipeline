@@ -491,7 +491,7 @@ echo hello
 		Spec: TaskSpec,
 	}
 
-	fn, err := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, TaskRun)
+	fn, specInStatus, err := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, TaskRun)
 	if err != nil {
 		t.Fatalf("failed to get Task fn: %s", err.Error())
 	}
@@ -502,5 +502,49 @@ echo hello
 
 	if diff := cmp.Diff(actualTask, expectedTask); expectedTask != nil && diff != "" {
 		t.Error(diff)
+	}
+	if !specInStatus {
+		t.Fatalf("Task specifications should have been read from the status")
+	}
+}
+
+// TestGetTaskFuncFromTaskRunWithoutTaskSpecInStatus validates that the specifications are read from the cluster
+// in case the status does not have the specifications yet and return false for the specInStatus to signify the same
+func TestGetTaskFuncFromTaskRunWithoutTaskSpecInStatus(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	tektonclient := fake.NewSimpleClientset(simpleNamespacedTask)
+	kubeclient := fakek8s.NewSimpleClientset(&v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "default",
+		},
+	})
+
+	TaskRun := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleNamespacedTask.Name,
+			},
+			ServiceAccountName: "default",
+		},
+	}
+
+	fn, specInStatus, err := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, TaskRun)
+	if err != nil {
+		t.Fatalf("failed to get Task fn: %s", err.Error())
+	}
+	actualTask, err := fn(ctx, simpleNamespacedTask.Name)
+	if err != nil {
+		t.Fatalf("failed to call Taskfn: %s", err.Error())
+	}
+
+	if diff := cmp.Diff(actualTask, simpleNamespacedTask); diff != "" {
+		t.Errorf("the specifications in the status does not match, -got, +want: %v", diff)
+	}
+	if specInStatus {
+		t.Fatalf("Task specifications should have been fetched from the cluster since the status does not have any specifications.")
 	}
 }

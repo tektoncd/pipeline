@@ -50,8 +50,9 @@ func GetTaskKind(taskrun *v1beta1.TaskRun) v1beta1.TaskKind {
 // also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
-func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, taskrun *v1beta1.TaskRun) (GetTask, error) {
+func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, taskrun *v1beta1.TaskRun) (GetTask, bool, error) {
 	// if the spec is already in the status, do not try to fetch it again, just use it as source of truth
+	// return true to indicate that the specifications are read from the status
 	if taskrun.Status.TaskSpec != nil {
 		return func(_ context.Context, name string) (v1beta1.TaskObject, error) {
 			return &v1beta1.Task{
@@ -61,9 +62,11 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 				},
 				Spec: *taskrun.Status.TaskSpec,
 			}, nil
-		}, nil
+		}, true, nil
 	}
-	return GetTaskFunc(ctx, k8s, tekton, taskrun.Spec.TaskRef, taskrun.Namespace, taskrun.Spec.ServiceAccountName)
+	// fetch the specifications and return false indicating that the status does not have specifications yet
+	t, err := GetTaskFunc(ctx, k8s, tekton, taskrun.Spec.TaskRef, taskrun.Namespace, taskrun.Spec.ServiceAccountName)
+	return t, false, err
 }
 
 // GetTaskFunc is a factory function that will use the given TaskRef as context to return a valid GetTask function. It
