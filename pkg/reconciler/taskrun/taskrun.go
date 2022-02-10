@@ -631,7 +631,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	ts = resources.ApplyParameters(ts, tr, defaults...)
 
 	// Apply context substitution from the taskrun
-	ts = resources.ApplyContexts(ts, rtr, tr)
+	ts = resources.ApplyContexts(ts, rtr.TaskName, tr)
 
 	// Apply bound resource substitution from the taskrun.
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
