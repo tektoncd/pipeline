@@ -112,31 +112,9 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 		if err != nil {
 			return nil, err
 		}
-		mf, err := idx.IndexManifest()
+		id.commands, err = buildCommandMap(idx)
 		if err != nil {
 			return nil, err
-		}
-		for _, desc := range mf.Manifests {
-			plat := platforms.Format(specs.Platform{
-				OS:           desc.Platform.OS,
-				Architecture: desc.Platform.Architecture,
-				Variant:      desc.Platform.Variant,
-				// TODO(jasonhall): Figure out how to determine
-				// osversion from the entrypoint binary, to
-				// select the right Windows image if multiple
-				// are provided (e.g., golang).
-			})
-			if _, found := id.commands[plat]; found {
-				return nil, fmt.Errorf("duplicate image found for platform: %s", plat)
-			}
-			img, err := idx.Image(desc.Digest)
-			if err != nil {
-				return nil, err
-			}
-			id.commands[plat], _, err = imageInfo(img)
-			if err != nil {
-				return nil, err
-			}
 		}
 	default:
 		return nil, errors.New("unsupported media type for image reference")
@@ -146,6 +124,35 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 	e.lru.Add(refByDigest, id)
 
 	return id, nil
+}
+
+func buildCommandMap(idx v1.ImageIndex) (map[string][]string, error) {
+	// Map platform strings to digest, to handle some ~malformed images
+	// that specify the same manifest multiple times.
+	platToDigest := map[string]v1.Hash{}
+
+	cmds := map[string][]string{}
+
+	mf, err := idx.IndexManifest()
+	if err != nil {
+		return nil, err
+	}
+	for _, desc := range mf.Manifests {
+		plat := desc.Platform.String()
+		if got, found := platToDigest[plat]; found && got != desc.Digest {
+			return nil, fmt.Errorf("duplicate unique image found for platform: %s: found %s and %s", plat, got, desc.Digest)
+		}
+		platToDigest[plat] = desc.Digest
+		img, err := idx.Image(desc.Digest)
+		if err != nil {
+			return nil, err
+		}
+		cmds[plat], _, err = imageInfo(img)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return cmds, nil
 }
 
 func imageInfo(img v1.Image) (cmd []string, platform string, err error) {

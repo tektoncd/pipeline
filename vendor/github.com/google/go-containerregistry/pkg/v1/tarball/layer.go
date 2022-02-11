@@ -39,6 +39,7 @@ type layer struct {
 	compression        int
 	annotations        map[string]string
 	estgzopts          []estargz.Option
+	mediaType          types.MediaType
 }
 
 // Descriptor implements partial.withDescriptor.
@@ -51,7 +52,7 @@ func (l *layer) Descriptor() (*v1.Descriptor, error) {
 		Size:        l.size,
 		Digest:      digest,
 		Annotations: l.annotations,
-		MediaType:   types.DockerLayer,
+		MediaType:   l.mediaType,
 	}, nil
 }
 
@@ -82,7 +83,7 @@ func (l *layer) Size() (int64, error) {
 
 // MediaType implements v1.Layer
 func (l *layer) MediaType() (types.MediaType, error) {
-	return types.DockerLayer, nil
+	return l.mediaType, nil
 }
 
 // LayerOption applies options to layer
@@ -93,6 +94,13 @@ type LayerOption func(*layer)
 func WithCompressionLevel(level int) LayerOption {
 	return func(l *layer) {
 		l.compression = level
+	}
+}
+
+// WithMediaType is a functional option for overriding the layer's media type.
+func WithMediaType(mt types.MediaType) LayerOption {
+	return func(l *layer) {
+		l.mediaType = mt
 	}
 }
 
@@ -204,6 +212,7 @@ func LayerFromOpener(opener Opener, opts ...LayerOption) (v1.Layer, error) {
 	layer := &layer{
 		compression: gzip.BestSpeed,
 		annotations: make(map[string]string, 1),
+		mediaType:   types.DockerLayer,
 	}
 
 	if estgz := os.Getenv("GGCR_EXPERIMENT_ESTARGZ"); estgz == "1" {
