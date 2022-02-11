@@ -84,6 +84,6 @@ func TestMaxSizeFile(t *testing.T) {
 	}}
 
 	if err := WriteMessage(tmpFile.Name(), output); !errors.Is(err, aboveMax) {
-		t.Fatalf("Expected MessageLengthError, receved: %v", err)
+		t.Fatalf("Expected MessageLengthError, received: %v", err)
 	}
 }
