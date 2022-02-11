@@ -110,6 +110,10 @@ func main() {
 		if err := json.Unmarshal([]byte(env), &cmds); err != nil {
 			log.Fatal(err)
 		}
+		// NB: This value contains OS/architecture and maybe variant.
+		// It doesn't include osversion, which is necessary to
+		// disambiguate two images both for e.g., Windows, that only
+		// differ by osversion.
 		plat := platforms.DefaultString()
 		var err error
 		cmd, err = selectCommandForPlatform(cmds, plat)

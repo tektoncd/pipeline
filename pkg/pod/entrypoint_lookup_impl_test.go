@@ -28,6 +28,10 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	remotetest "github.com/tektoncd/pipeline/test"
 	corev1 "k8s.io/api/core/v1"
@@ -175,5 +179,86 @@ func TestGetImageWithImagePullSecrets(t *testing.T) {
 		})
 
 	}
+}
 
+func mustRandomImage(t *testing.T) v1.Image {
+	img, err := random.Image(10, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return img
+}
+
+func TestBuildCommandMap(t *testing.T) {
+	img := mustRandomImage(t)
+
+	for _, c := range []struct {
+		desc    string
+		idx     v1.ImageIndex
+		wantErr bool
+	}{{
+		// Valid multi-platform image even though some platforms only differ by variant or osversion.
+		desc: "valid index",
+		idx: mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
+			Add: mustRandomImage(t),
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "linux", Architecture: "amd64"},
+			},
+		}, mutate.IndexAddendum{
+			Add: mustRandomImage(t),
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "linux", Architecture: "arm64", Variant: "7"},
+			},
+		}, mutate.IndexAddendum{
+			Add: mustRandomImage(t),
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "linux", Architecture: "arm64", Variant: "8"},
+			},
+		}, mutate.IndexAddendum{
+			Add: mustRandomImage(t),
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "windows", Architecture: "amd64", OSVersion: "1.2.3"},
+			},
+		}, mutate.IndexAddendum{
+			Add: mustRandomImage(t),
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "windows", Architecture: "amd64", OSVersion: "4.5.6"},
+			},
+		}),
+	}, {
+		desc: "valid index, with dupes",
+		idx: mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
+			Add: img,
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "linux", Architecture: "amd64"},
+			},
+		}, mutate.IndexAddendum{
+			Add: img,
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "linux", Architecture: "amd64"},
+			},
+		}),
+	}, {
+		desc: "invalid index, dupes with different digests",
+		idx: mutate.AppendManifests(empty.Index, mutate.IndexAddendum{
+			Add: mustRandomImage(t),
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "linux", Architecture: "amd64"},
+			},
+		}, mutate.IndexAddendum{
+			Add: mustRandomImage(t),
+			Descriptor: v1.Descriptor{
+				Platform: &v1.Platform{OS: "linux", Architecture: "amd64"},
+			},
+		}),
+		wantErr: true,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			_, err := buildCommandMap(c.idx)
+			gotErr := (err != nil)
+			if gotErr != c.wantErr {
+				t.Fatalf("got err: %v, want err: %t", err, c.wantErr)
+			}
+		})
+	}
 }

@@ -228,7 +228,7 @@ func (l Path) WriteBlob(hash v1.Hash, r io.ReadCloser) error {
 	return l.writeBlob(hash, -1, r, nil)
 }
 
-func (l Path) writeBlob(hash v1.Hash, size int64, r io.Reader, renamer func() (v1.Hash, error)) error {
+func (l Path) writeBlob(hash v1.Hash, size int64, rc io.ReadCloser, renamer func() (v1.Hash, error)) error {
 	if hash.Hex == "" && renamer == nil {
 		panic("writeBlob called an invalid hash and no renamer")
 	}
@@ -264,10 +264,19 @@ func (l Path) writeBlob(hash v1.Hash, size int64, r io.Reader, renamer func() (v
 	defer w.Close()
 
 	// Write to file and exit if not renaming
-	if n, err := io.Copy(w, r); err != nil || renamer == nil {
+	if n, err := io.Copy(w, rc); err != nil || renamer == nil {
 		return err
 	} else if size != -1 && n != size {
 		return fmt.Errorf("expected blob size %d, but only wrote %d", size, n)
+	}
+
+	// Always close reader before renaming, since Close computes the digest in
+	// the case of streaming layers. If Close is not called explicitly, it will
+	// occur in a goroutine that is not guaranteed to succeed before renamer is
+	// called. When renamer is the layer's Digest method, it can return
+	// ErrNotComputed.
+	if err := rc.Close(); err != nil {
+		return err
 	}
 
 	// Always close file before renaming
