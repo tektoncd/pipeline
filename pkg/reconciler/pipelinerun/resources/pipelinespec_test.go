@@ -21,7 +21,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -114,6 +117,57 @@ func TestGetPipelineSpec_Invalid(t *testing.T) {
 	}
 }
 
+func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mypipelinerun",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "foo",
+					Resource: []v1beta1.ResolverParam{{
+						Name:  "bar",
+						Value: "baz",
+					}},
+				},
+			},
+		},
+	}
+	sourceMeta := metav1.ObjectMeta{
+		Name: "pipeline",
+	}
+	sourceSpec := v1beta1.PipelineSpec{
+		Tasks: []v1beta1.PipelineTask{{
+			Name: "pt1",
+			TaskRef: &v1beta1.TaskRef{
+				Name: "tref",
+			},
+		}},
+	}
+	getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, error) {
+		return &v1beta1.Pipeline{
+			ObjectMeta: *sourceMeta.DeepCopy(),
+			Spec:       *sourceSpec.DeepCopy(),
+		}, nil
+	}
+	// Enable alpha fields for remote resolution
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	resolvedMeta, resolvedSpec, err := GetPipelineData(ctx, pr, getPipeline)
+	if err != nil {
+		t.Fatalf("Unexpected error getting mocked data: %v", err)
+	}
+	if sourceMeta.Name != resolvedMeta.Name {
+		t.Errorf("Expected name %q but resolved to %q", sourceMeta.Name, resolvedMeta.Name)
+	}
+	if d := cmp.Diff(sourceSpec, *resolvedSpec); d != "" {
+		t.Errorf(diff.PrintWantGot(d))
+	}
+}
+
 func TestGetPipelineSpec_Error(t *testing.T) {
 	tr := &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -129,6 +183,60 @@ func TestGetPipelineSpec_Error(t *testing.T) {
 		return nil, errors.New("something went wrong")
 	}
 	_, _, err := GetPipelineData(context.Background(), tr, gt)
+	if err == nil {
+		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
+	}
+}
+
+func TestGetPipelineData_ResolutionError(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mypipelinerun",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "git",
+				},
+			},
+		},
+	}
+	getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, error) {
+		return nil, errors.New("something went wrong")
+	}
+	// Enable alpha fields for remote resolution
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	_, _, err := GetPipelineData(ctx, pr, getPipeline)
+	if err == nil {
+		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
+	}
+}
+
+func TestGetPipelineData_ResolvedNilPipeline(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mypipelinerun",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: "git",
+				},
+			},
+		},
+	}
+	getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, error) {
+		return nil, nil
+	}
+	// Enable alpha fields for remote resolution
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	_, _, err := GetPipelineData(ctx, pr, getPipeline)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
 	}

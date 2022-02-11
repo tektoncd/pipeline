@@ -19,6 +19,7 @@ package pipelinerun
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -47,10 +48,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/workspace"
+	resolution "github.com/tektoncd/resolution/pkg/resource"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -112,6 +115,9 @@ const (
 	// ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
 	// has been passed to a Task that is expecting a non-optional workspace
 	ReasonRequiredWorkspaceMarkedOptional = "RequiredWorkspaceMarkedOptional"
+	// ReasonResolvingPipelineRef indicates that the PipelineRun is waiting for
+	// its pipelineRef to be asynchronously resolved.
+	ReasonResolvingPipelineRef = "ResolvingPipelineRef"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -122,14 +128,15 @@ type Reconciler struct {
 	Clock             clock.PassiveClock
 
 	// listers index properties about resources
-	pipelineRunLister listers.PipelineRunLister
-	taskRunLister     listers.TaskRunLister
-	runLister         listersv1alpha1.RunLister
-	resourceLister    resourcelisters.PipelineResourceLister
-	conditionLister   listersv1alpha1.ConditionLister
-	cloudEventClient  cloudevent.CEClient
-	metrics           *pipelinerunmetrics.Recorder
-	pvcHandler        volumeclaim.PvcHandler
+	pipelineRunLister   listers.PipelineRunLister
+	taskRunLister       listers.TaskRunLister
+	runLister           listersv1alpha1.RunLister
+	resourceLister      resourcelisters.PipelineResourceLister
+	conditionLister     listersv1alpha1.ConditionLister
+	cloudEventClient    cloudevent.CEClient
+	metrics             *pipelinerunmetrics.Recorder
+	pvcHandler          volumeclaim.PvcHandler
+	resolutionRequester resolution.Requester
 }
 
 var (
@@ -167,7 +174,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
-	getPipelineFunc, err := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, pr)
+	getPipelineFunc, err := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr)
 	if err != nil {
 		logger.Errorf("Failed to fetch pipeline func for pipeline %s: %w", pr.Spec.PipelineRef.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline, "Error retrieving pipeline for pipelinerun %s/%s: %s",
@@ -329,17 +336,22 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	pipelineMeta, pipelineSpec, err := resources.GetPipelineData(ctx, pr, getPipelineFunc)
-	if err != nil {
+	switch {
+	case errors.Is(err, remote.ErrorRequestInProgress):
+		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
+		pr.Status.MarkRunning(ReasonResolvingPipelineRef, message)
+		return nil
+	case err != nil:
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
 			"Error retrieving pipeline for pipelinerun %s/%s: %s",
 			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
-	}
-
-	// Store the fetched PipelineSpec on the PipelineRun for auditing
-	if err := storePipelineSpecAndMergeMeta(pr, pipelineSpec, pipelineMeta); err != nil {
-		logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
+	default:
+		// Store the fetched PipelineSpec on the PipelineRun for auditing
+		if err := storePipelineSpecAndMergeMeta(pr, pipelineSpec, pipelineMeta); err != nil {
+			logger.Errorf("Failed to store PipelineSpec on PipelineRun.Status for pipelinerun %s: %v", pr.Name, err)
+		}
 	}
 
 	d, err := dag.Build(v1beta1.PipelineTaskList(pipelineSpec.Tasks), v1beta1.PipelineTaskList(pipelineSpec.Tasks).Deps())
@@ -381,7 +393,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 	providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
 	if err != nil {
-		if errors.IsNotFound(err) && tknreconciler.IsYoungResource(pr) {
+		if kerrors.IsNotFound(err) && tknreconciler.IsYoungResource(pr) {
 			// For newly created resources, don't fail immediately.
 			// Instead return an (non-permanent) error, which will prompt the
 			// controller to requeue the key with backoff.
@@ -691,7 +703,7 @@ func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error
 		tr, err := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
 		if err != nil {
 			// If the TaskRun isn't found, it just means it won't be run
-			if !errors.IsNotFound(err) {
+			if !kerrors.IsNotFound(err) {
 				return fmt.Errorf("error retrieving TaskRun %s: %w", taskRunName, err)
 			}
 		} else {
@@ -706,7 +718,7 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 		prRunStatus := pr.Status.Runs[runName]
 		run, err := c.runLister.Runs(pr.Namespace).Get(runName)
 		if err != nil {
-			if !errors.IsNotFound(err) {
+			if !kerrors.IsNotFound(err) {
 				return fmt.Errorf("error retrieving Run %s: %w", runName, err)
 			}
 		} else {
@@ -922,6 +934,8 @@ func propagatePipelineNameLabelToPipelineRun(pr *v1beta1.PipelineRun) error {
 	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Name != "":
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Spec.PipelineRef.Name
 	case pr.Spec.PipelineSpec != nil:
+		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
+	case pr.Spec.PipelineRef != nil && pr.Spec.PipelineRef.Resolver != "":
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = pr.Name
 	default:
 		return fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pr.Name)

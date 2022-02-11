@@ -173,8 +173,6 @@ so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
 
 **([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
 
-**Warning: This feature is still in very early stage of development and is not yet functional. Do not use it.**
-
 A `pipelineRef` field may specify a Pipeline in a remote location such as git.
 Support for specific types of remote will depend on the Resolvers your
 cluster's operator has installed. The below example demonstrates
@@ -185,7 +183,7 @@ spec:
   pipelineRef:
     resolver: git
     resource:
-    - name: repo
+    - name: url
       value: https://github.com/tektoncd/catalog.git
     - name: commit
       value: abc123

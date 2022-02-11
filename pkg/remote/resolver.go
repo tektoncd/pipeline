@@ -14,6 +14,8 @@ limitations under the License.
 package remote
 
 import (
+	"context"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -28,6 +30,6 @@ type ResolvedObject struct {
 //   - List:     retrieve a flat set of Tekton objects in this remote location
 //   - Get:      retrieves a specific object with the given Kind and name.
 type Resolver interface {
-	List() ([]ResolvedObject, error)
-	Get(kind, name string) (runtime.Object, error)
+	List(ctx context.Context) ([]ResolvedObject, error)
+	Get(ctx context.Context, kind, name string) (runtime.Object, error)
 }
