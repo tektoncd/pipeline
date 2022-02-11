@@ -283,6 +283,15 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 		if pt.TaskRef.Bundle != "" {
 			errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
 		}
+		// fail if resolver or resource are present regardless
+		// of enabled api fields because remote resolution is
+		// not implemented yet for PipelineTasks.
+		if pt.TaskRef.Resolver != "" {
+			errs = errs.Also(apis.ErrDisallowedFields("taskref.resolver"))
+		}
+		if len(pt.TaskRef.Resource) > 0 {
+			errs = errs.Also(apis.ErrDisallowedFields("taskref.resource"))
+		}
 	}
 	return errs
 }

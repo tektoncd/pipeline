@@ -18,6 +18,7 @@ package pipelinerun
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8353,6 +8354,101 @@ func TestReconcile_DependencyValidationsImmediatelyFailPipelineRun(t *testing.T)
 
 	if cond3.Reason != ReasonRequiredWorkspaceMarkedOptional {
 		t.Errorf("expected optional workspace not supported condition but saw: %v", cond3)
+	}
+}
+
+// TestReconcileWithResolver checks that a PipelineRun with a populated Resolver
+// field creates a ResolutionRequest object for that Resolver's type, and
+// that when the request is successfully resolved the PipelineRun begins running.
+func TestReconcileWithResolver(t *testing.T) {
+	resolverName := "foobar"
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pr",
+			Namespace: "default",
+		},
+		Spec: v1beta1.PipelineRunSpec{
+			ServiceAccountName: "default",
+			PipelineRef: &v1beta1.PipelineRef{
+				ResolverRef: v1beta1.ResolverRef{
+					Resolver: v1beta1.ResolverName(resolverName),
+				},
+			},
+		},
+	}
+
+	cms := []*corev1.ConfigMap{{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+		Data: map[string]string{
+			"enable-api-fields": "alpha",
+		},
+	}}
+
+	d := test.Data{
+		ConfigMaps:   cms,
+		PipelineRuns: []*v1beta1.PipelineRun{pr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string(nil)
+	permanentError := false
+	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, permanentError)
+	cond := pipelinerun.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil || cond.Status != corev1.ConditionUnknown || cond.Reason != ReasonResolvingPipelineRef {
+		t.Fatalf("unexpected condition: %#v", cond)
+	}
+
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error listing resource requests: %v", err)
+	}
+	numResolutionRequests := len(resolutionrequests.Items)
+	if numResolutionRequests != 1 {
+		t.Fatalf("expected exactly 1 resource request but found %d", numResolutionRequests)
+	}
+
+	resreq := &resolutionrequests.Items[0]
+	resolutionRequestType := resreq.ObjectMeta.Labels["resolution.tekton.dev/type"]
+	if resolutionRequestType != resolverName {
+		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
+	}
+
+	// Mock a successful resolution
+	var pipelineBytes = []byte(`
+          kind: Pipeline
+          apiVersion: tekton.dev/v1beta1
+          metadata:
+            name: foo
+          spec:
+            tasks:
+            - name: task1
+              taskSpec:
+                steps:
+                - name: step1
+                  image: ubuntu
+                  script: |
+                    echo "hello world!"
+        `)
+	resreq.Status.ResolutionRequestStatusFields.Data = base64.StdEncoding.Strict().EncodeToString(pipelineBytes)
+	resreq.Status.MarkSucceeded()
+	resreq, err = client.UpdateStatus(prt.TestAssets.Ctx, resreq, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error updating resource request with resolved pipeline data: %v", err)
+	}
+
+	// Check that the resolved pipeline was recognized by the
+	// PipelineRun reconciler and that the PipelineRun has now
+	// started executing.
+	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, false)
+	cond = updatedPipelineRun.Status.GetCondition(apis.ConditionSucceeded)
+	if cond == nil || cond.Status != corev1.ConditionUnknown || cond.Reason != string(v1beta1.PipelineRunReasonRunning) {
+		t.Fatalf("expected pipelinerun to be running but found condition: %#v", cond)
 	}
 }
 

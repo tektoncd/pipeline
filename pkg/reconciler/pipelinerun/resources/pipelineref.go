@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
@@ -25,15 +26,19 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/oci"
+	"github.com/tektoncd/pipeline/pkg/remote/resolution"
+	remoteresource "github.com/tektoncd/resolution/pkg/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 )
 
 // GetPipelineFunc is a factory function that will use the given PipelineRef to return a valid GetPipeline function that
 // looks up the pipeline. It uses as context a k8s client, tekton client, namespace, and service account name to return
-// the pipeline. It knows whether it needs to look in the cluster or in a remote image to fetch the reference.
-func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, pipelineRun *v1beta1.PipelineRun) (GetPipeline, error) {
+// the pipeline. It knows whether it needs to look in the cluster or in a remote location to fetch the reference.
+func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun) (GetPipeline, error) {
 	cfg := config.FromContextOrDefaults(ctx)
 	pr := pipelineRun.Spec.PipelineRef
 	namespace := pipelineRun.Namespace
@@ -63,24 +68,16 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 				return nil, fmt.Errorf("failed to get keychain: %w", err)
 			}
 			resolver := oci.NewResolver(pr.Bundle, kc)
-
-			obj, err := resolver.Get("pipeline", name)
-			if err != nil {
-				return nil, err
+			return resolvePipeline(ctx, resolver, name)
+		}, nil
+	case cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields && pr != nil && pr.Resolver != "" && requester != nil:
+		return func(ctx context.Context, name string) (v1beta1.PipelineObject, error) {
+			params := map[string]string{}
+			for _, p := range pr.Resource {
+				params[p.Name] = p.Value
 			}
-			if pipeline, ok := obj.(v1beta1.PipelineObject); ok {
-				pipeline.SetDefaults(ctx)
-				return pipeline, nil
-			}
-
-			if pipeline, ok := obj.(*v1alpha1.Pipeline); ok {
-				betaPipeline := &v1beta1.Pipeline{}
-				err := pipeline.ConvertTo(ctx, betaPipeline)
-				betaPipeline.SetDefaults(ctx)
-				return betaPipeline, err
-			}
-
-			return nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
+			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), params)
+			return resolvePipeline(ctx, resolver, name)
 		}, nil
 	default:
 		// Even if there is no task ref, we should try to return a local resolver.
@@ -106,4 +103,41 @@ func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string)
 		return nil, fmt.Errorf("Must specify namespace to resolve reference to pipeline %s", name)
 	}
 	return l.Tektonclient.TektonV1beta1().Pipelines(l.Namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
+// resolvePipeline accepts an impl of remote.Resolver and attempts to
+// fetch a pipeline with given name. An error is returned if the
+// resolution doesn't work or the returned data isn't a valid
+// v1beta1.PipelineObject.
+func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string) (v1beta1.PipelineObject, error) {
+	obj, err := resolver.Get(ctx, "pipeline", name)
+	if err != nil {
+		return nil, err
+	}
+	pipelineObj, err := readRuntimeObjectAsPipeline(ctx, obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
+	}
+	return pipelineObj, nil
+}
+
+// readRuntimeObjectAsPipeline tries to convert a generic runtime.Object
+// into a v1beta1.PipelineObject type so that its meta and spec fields
+// can be read. An error is returned if the given object is not a
+// PipelineObject or if there is an error validating or upgrading an
+// older PipelineObject into its v1beta1 equivalent.
+func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object) (v1beta1.PipelineObject, error) {
+	if pipeline, ok := obj.(v1beta1.PipelineObject); ok {
+		pipeline.SetDefaults(ctx)
+		return pipeline, nil
+	}
+
+	if pipeline, ok := obj.(*v1alpha1.Pipeline); ok {
+		betaPipeline := &v1beta1.Pipeline{}
+		err := pipeline.ConvertTo(ctx, betaPipeline)
+		betaPipeline.SetDefaults(ctx)
+		return betaPipeline, err
+	}
+
+	return nil, errors.New("resource is not a pipeline")
 }

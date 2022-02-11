@@ -369,6 +369,38 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf("bundle", "resolver").ViaField("taskRef"),
 		wc:      enableAlphaAPIFields,
 	}, {
+		name: "taskref resource disallowed in conjunction with taskref name",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "bar",
+				ResolverRef: v1beta1.ResolverRef{
+					Resource: []v1beta1.ResolverParam{{
+						Name:  "foo",
+						Value: "bar",
+					}},
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("name", "resource").ViaField("taskRef").Also(
+			apis.ErrMissingField("resolver").ViaField("taskRef")),
+		wc: enableAlphaAPIFields,
+	}, {
+		name: "taskref resource disallowed in conjunction with taskref bundle",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Bundle: "bar",
+				ResolverRef: v1beta1.ResolverRef{
+					Resource: []v1beta1.ResolverParam{{
+						Name:  "foo",
+						Value: "bar",
+					}},
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("bundle", "resource").ViaField("taskRef").Also(
+			apis.ErrMissingField("resolver").ViaField("taskRef")),
+		wc: enableAlphaAPIFields,
+	}, {
 		name: "stepOverride disallowed without alpha feature gate",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{

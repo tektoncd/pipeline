@@ -59,8 +59,8 @@ func NewResolver(ref string, keychain authn.Keychain) remote.Resolver {
 }
 
 // List retrieves a flat set of Tekton objects
-func (o *Resolver) List() ([]remote.ResolvedObject, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), o.timeout)
+func (o *Resolver) List(ctx context.Context) ([]remote.ResolvedObject, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
 	img, err := o.retrieveImage(timeoutCtx)
 	if err != nil {
@@ -89,8 +89,8 @@ func (o *Resolver) List() ([]remote.ResolvedObject, error) {
 }
 
 // Get retrieves a specific object with the given Kind and name
-func (o *Resolver) Get(kind, name string) (runtime.Object, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), o.timeout)
+func (o *Resolver) Get(ctx context.Context, kind, name string) (runtime.Object, error) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
 	img, err := o.retrieveImage(timeoutCtx)
 	if err != nil {

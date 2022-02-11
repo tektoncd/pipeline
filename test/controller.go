@@ -41,6 +41,10 @@ import (
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	fakeresolutionclientset "github.com/tektoncd/resolution/pkg/client/clientset/versioned/fake"
+	resolutioninformersv1alpha1 "github.com/tektoncd/resolution/pkg/client/informers/externalversions/resolution/v1alpha1"
+	fakeresolutionrequestclient "github.com/tektoncd/resolution/pkg/client/injection/client/fake"
+	fakeresolutionrequestinformer "github.com/tektoncd/resolution/pkg/client/injection/informers/resolution/v1alpha1/resolutionrequest/fake"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -80,26 +84,28 @@ type Data struct {
 
 // Clients holds references to clients which are useful for reconciler tests.
 type Clients struct {
-	Pipeline    *fakepipelineclientset.Clientset
-	Resource    *fakeresourceclientset.Clientset
-	Kube        *fakekubeclientset.Clientset
-	CloudEvents cloudeventclient.CEClient
+	Pipeline           *fakepipelineclientset.Clientset
+	Resource           *fakeresourceclientset.Clientset
+	Kube               *fakekubeclientset.Clientset
+	CloudEvents        cloudeventclient.CEClient
+	ResolutionRequests *fakeresolutionclientset.Clientset
 }
 
 // Informers holds references to informers which are useful for reconciler tests.
 type Informers struct {
-	PipelineRun      informersv1beta1.PipelineRunInformer
-	Pipeline         informersv1beta1.PipelineInformer
-	TaskRun          informersv1beta1.TaskRunInformer
-	Run              informersv1alpha1.RunInformer
-	Task             informersv1beta1.TaskInformer
-	ClusterTask      informersv1beta1.ClusterTaskInformer
-	PipelineResource resourceinformersv1alpha1.PipelineResourceInformer
-	Condition        informersv1alpha1.ConditionInformer
-	Pod              coreinformers.PodInformer
-	ConfigMap        coreinformers.ConfigMapInformer
-	ServiceAccount   coreinformers.ServiceAccountInformer
-	LimitRange       coreinformers.LimitRangeInformer
+	PipelineRun       informersv1beta1.PipelineRunInformer
+	Pipeline          informersv1beta1.PipelineInformer
+	TaskRun           informersv1beta1.TaskRunInformer
+	Run               informersv1alpha1.RunInformer
+	Task              informersv1beta1.TaskInformer
+	ClusterTask       informersv1beta1.ClusterTaskInformer
+	PipelineResource  resourceinformersv1alpha1.PipelineResourceInformer
+	Condition         informersv1alpha1.ConditionInformer
+	Pod               coreinformers.PodInformer
+	ConfigMap         coreinformers.ConfigMapInformer
+	ServiceAccount    coreinformers.ServiceAccountInformer
+	LimitRange        coreinformers.LimitRangeInformer
+	ResolutionRequest resolutioninformersv1alpha1.ResolutionRequestInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -161,27 +167,29 @@ func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool,
 // nolint: revive
 func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers) {
 	c := Clients{
-		Kube:        fakekubeclient.Get(ctx),
-		Pipeline:    fakepipelineclient.Get(ctx),
-		Resource:    fakeresourceclient.Get(ctx),
-		CloudEvents: cloudeventclient.Get(ctx),
+		Kube:               fakekubeclient.Get(ctx),
+		Pipeline:           fakepipelineclient.Get(ctx),
+		Resource:           fakeresourceclient.Get(ctx),
+		CloudEvents:        cloudeventclient.Get(ctx),
+		ResolutionRequests: fakeresolutionrequestclient.Get(ctx),
 	}
 	// Every time a resource is modified, change the metadata.resourceVersion.
 	PrependResourceVersionReactor(&c.Pipeline.Fake)
 
 	i := Informers{
-		PipelineRun:      fakepipelineruninformer.Get(ctx),
-		Pipeline:         fakepipelineinformer.Get(ctx),
-		TaskRun:          faketaskruninformer.Get(ctx),
-		Run:              fakeruninformer.Get(ctx),
-		Task:             faketaskinformer.Get(ctx),
-		ClusterTask:      fakeclustertaskinformer.Get(ctx),
-		PipelineResource: fakeresourceinformer.Get(ctx),
-		Condition:        fakeconditioninformer.Get(ctx),
-		Pod:              fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
-		ConfigMap:        fakeconfigmapinformer.Get(ctx),
-		ServiceAccount:   fakeserviceaccountinformer.Get(ctx),
-		LimitRange:       fakelimitrangeinformer.Get(ctx),
+		PipelineRun:       fakepipelineruninformer.Get(ctx),
+		Pipeline:          fakepipelineinformer.Get(ctx),
+		TaskRun:           faketaskruninformer.Get(ctx),
+		Run:               fakeruninformer.Get(ctx),
+		Task:              faketaskinformer.Get(ctx),
+		ClusterTask:       fakeclustertaskinformer.Get(ctx),
+		PipelineResource:  fakeresourceinformer.Get(ctx),
+		Condition:         fakeconditioninformer.Get(ctx),
+		Pod:               fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
+		ConfigMap:         fakeconfigmapinformer.Get(ctx),
+		ServiceAccount:    fakeserviceaccountinformer.Get(ctx),
+		LimitRange:        fakelimitrangeinformer.Get(ctx),
+		ResolutionRequest: fakeresolutionrequestinformer.Get(ctx),
 	}
 
 	// Attach reactors that add resource mutations to the appropriate
@@ -270,8 +278,10 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 			t.Fatal(err)
 		}
 	}
+	c.ResolutionRequests.PrependReactor("*", "resolutionrequests", AddToInformer(t, i.ResolutionRequest.Informer().GetIndexer()))
 	c.Pipeline.ClearActions()
 	c.Kube.ClearActions()
+	c.ResolutionRequests.ClearActions()
 	return c, i
 }
 
