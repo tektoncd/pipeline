@@ -13,13 +13,16 @@ function shim_gopath() {
   local TEMP_PIPELINE="${TEMP_TEKTONCD}/pipeline"
   local NEEDS_MOVE=1
 
+  # Checks if GOPATH exists without triggering nounset panic.
+  EXISTING_GOPATH=${GOPATH:-}
+
   # Check if repo is in GOPATH already and return early if so.
   # Unfortunately this doesn't respect a repo that's symlinked into
   # GOPATH and will create a temporary anyway. I couldn't figure out
   # a way to get the absolute path to the symlinked repo root.
-  if [ ! -z $GOPATH ] ; then
+  if [ ! -z $EXISTING_GOPATH ] ; then
     case $REPO_DIR/ in
-      $GOPATH/*) NEEDS_MOVE=0;;
+      $EXISTING_GOPATH/*) NEEDS_MOVE=0;;
       *) NEEDS_MOVE=1;;
     esac
   fi
