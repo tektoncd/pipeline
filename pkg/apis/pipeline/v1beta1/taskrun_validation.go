@@ -63,6 +63,14 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
 		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
 	}
+	if ts.StepOverrides != nil {
+		errs = errs.Also(ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
+		errs = errs.Also(validateStepOverrides(ts.StepOverrides).ViaField("stepOverrides"))
+	}
+	if ts.SidecarOverrides != nil {
+		errs = errs.Also(ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
+		errs = errs.Also(validateSidecarOverrides(ts.SidecarOverrides).ViaField("sidecarOverrides"))
+	}
 
 	if ts.Status != "" {
 		if ts.Status != TaskRunSpecStatusCancelled {
@@ -95,27 +103,63 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 
 // validateWorkspaceBindings makes sure the volumes provided for the Task's declared workspaces make sense.
 func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs *apis.FieldError) {
-	seen := sets.NewString()
+	var names []string
 	for idx, w := range wb {
-		if seen.Has(w.Name) {
-			errs = errs.Also(apis.ErrMultipleOneOf("name").ViaIndex(idx))
-		}
-		seen.Insert(w.Name)
-
+		names = append(names, w.Name)
 		errs = errs.Also(w.Validate(ctx).ViaIndex(idx))
 	}
-
+	errs = errs.Also(validateNoDuplicateNames(names, true))
 	return errs
 }
 
 func validateParameters(params []Param) (errs *apis.FieldError) {
-	// Template must not duplicate parameter names.
-	seen := sets.NewString()
+	var names []string
 	for _, p := range params {
-		if seen.Has(strings.ToLower(p.Name)) {
-			errs = errs.Also(apis.ErrMultipleOneOf("name").ViaKey(p.Name))
+		names = append(names, p.Name)
+	}
+	return validateNoDuplicateNames(names, false)
+}
+
+func validateStepOverrides(overrides []TaskRunStepOverride) (errs *apis.FieldError) {
+	var names []string
+	for i, o := range overrides {
+		if o.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("name").ViaIndex(i))
+		} else {
+			names = append(names, o.Name)
 		}
-		seen.Insert(p.Name)
+	}
+	errs = errs.Also(validateNoDuplicateNames(names, true))
+	return errs
+}
+
+func validateSidecarOverrides(overrides []TaskRunSidecarOverride) (errs *apis.FieldError) {
+	var names []string
+	for i, o := range overrides {
+		if o.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("name").ViaIndex(i))
+		} else {
+			names = append(names, o.Name)
+		}
+	}
+	errs = errs.Also(validateNoDuplicateNames(names, true))
+	return errs
+}
+
+// validateNoDuplicateNames returns an error for each name that is repeated in names.
+// Case insensitive.
+// If byIndex is true, the error will be reported by index instead of by key.
+func validateNoDuplicateNames(names []string, byIndex bool) (errs *apis.FieldError) {
+	seen := sets.NewString()
+	for i, n := range names {
+		if seen.Has(strings.ToLower(n)) {
+			if byIndex {
+				errs = errs.Also(apis.ErrMultipleOneOf("name").ViaIndex(i))
+			} else {
+				errs = errs.Also(apis.ErrMultipleOneOf("name").ViaKey(n))
+			}
+		}
+		seen.Insert(n)
 	}
 	return errs
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	corev1resources "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	logtesting "knative.dev/pkg/logging/testing"
@@ -380,6 +381,34 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 		wc: enableAlphaAPIFields,
+	}, {
+		name: "alpha feature: sidecar and step overrides",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{Name: "pr"},
+				TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+					{
+						PipelineTaskName: "bar",
+						StepOverrides: []v1beta1.TaskRunStepOverride{{
+							Name: "task-1",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+							}},
+						},
+						SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+							Name: "task-1",
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+							}},
+						},
+					},
+				},
+			},
+		},
+		wc: enableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {
@@ -516,6 +545,104 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMultipleOneOf("bundle", "resolver").ViaField("pipelineRef"),
+		withContext: enableAlphaAPIFields,
+	}, {
+		name: "duplicate stepOverride names",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "bar",
+					StepOverrides: []v1beta1.TaskRunStepOverride{
+						{Name: "baz"}, {Name: "baz"},
+					},
+				},
+			},
+		},
+		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].stepOverrides[1].name"),
+		withContext: enableAlphaAPIFields,
+	}, {
+		name: "stepOverride disallowed without alpha feature gate",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "bar",
+					StepOverrides: []v1beta1.TaskRunStepOverride{{
+						Name: "task-1",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+						}},
+					},
+				},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("stepOverrides").ViaIndex(0).ViaField("taskRunSpecs"),
+	}, {
+		name: "sidecarOverride disallowed without alpha feature gate",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "bar",
+					SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+						Name: "task-1",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+						}},
+					},
+				},
+			},
+		},
+		wantErr: apis.ErrDisallowedFields("sidecarOverrides").ViaIndex(0).ViaField("taskRunSpecs"),
+	}, {
+		name: "missing stepOverride name",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "bar",
+					StepOverrides: []v1beta1.TaskRunStepOverride{{
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+						}},
+					},
+				},
+			},
+		},
+		wantErr:     apis.ErrMissingField("taskRunSpecs[0].stepOverrides[0].name"),
+		withContext: enableAlphaAPIFields,
+	}, {
+		name: "duplicate sidecarOverride names",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "bar",
+					SidecarOverrides: []v1beta1.TaskRunSidecarOverride{
+						{Name: "baz"}, {Name: "baz"},
+					},
+				},
+			},
+		},
+		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].sidecarOverrides[1].name"),
+		withContext: enableAlphaAPIFields,
+	}, {
+		name: "missing sidecarOverride name",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "bar",
+					SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+						}},
+					},
+				},
+			},
+		},
+		wantErr:     apis.ErrMissingField("taskRunSpecs[0].sidecarOverrides[0].name"),
 		withContext: enableAlphaAPIFields,
 	}}
 	for _, ps := range tests {
