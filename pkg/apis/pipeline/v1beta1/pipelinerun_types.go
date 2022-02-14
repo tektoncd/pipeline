@@ -511,9 +511,11 @@ type PipelineTaskRun struct {
 // PipelineTaskRunSpec  can be used to configure specific
 // specs for a concrete Task
 type PipelineTaskRunSpec struct {
-	PipelineTaskName       string       `json:"pipelineTaskName,omitempty"`
-	TaskServiceAccountName string       `json:"taskServiceAccountName,omitempty"`
-	TaskPodTemplate        *PodTemplate `json:"taskPodTemplate,omitempty"`
+	PipelineTaskName       string                   `json:"pipelineTaskName,omitempty"`
+	TaskServiceAccountName string                   `json:"taskServiceAccountName,omitempty"`
+	TaskPodTemplate        *PodTemplate             `json:"taskPodTemplate,omitempty"`
+	StepOverrides          []TaskRunStepOverride    `json:"stepOverrides,omitempty"`
+	SidecarOverrides       []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given

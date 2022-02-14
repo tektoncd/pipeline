@@ -21,6 +21,7 @@ weight: 300
   - [Specifying a `Pod` template](#specifying-a-pod-template)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Sidecars`](#specifying-sidecars)
+  - [Overriding `Task` `Steps` and `Sidecars`](#overriding-task-steps-and-sidecars)
   - [Specifying `LimitRange` values](#specifying-limitrange-values)
   - [Configuring the failure timeout](#configuring-the-failure-timeout)
   - [Specifying `ServiceAccount` credentials](#specifying-serviceaccount-credentials)
@@ -306,7 +307,8 @@ spec:
 ### Specifying `Resource` limits
 
 Each Step in a Task can specify its resource requirements. See
-[Defining `Steps`](tasks.md#defining-steps)
+[Defining `Steps`](tasks.md#defining-steps). Resource requirements defined in Steps and Sidecars
+may be overridden by a TaskRun's StepOverrides and SidecarOverrides.
 
 ### Specifying a `Pod` template
 
@@ -398,6 +400,56 @@ disregarding the exit codes of the container images that actually executed the `
 inside the `Pod`. Only the above command is affected. The `Pod's` description correctly
 denotes a "Failed" status and the container statuses correctly denote their exit codes
 and reasons.
+
+### Overriding Task Steps and Sidecars
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+**Warning: This feature is still under development and is not yet functional. Do not use it.**
+
+A TaskRun can specify `StepOverrides` or `SidecarOverrides` to override Step or Sidecar
+configuration specified in a Task.
+
+For example, given the following Task definition:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: image-build-task
+spec:
+  steps:
+    - name: build
+      image: gcr.io/kaniko-project/executor:latest
+  sidecars:
+    - name: logging
+      image: my-logging-image
+```
+
+An example TaskRun definition could look like:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: image-build-taskrun
+spec:
+  taskRef:
+    name: image-build-task
+  stepOverrides:
+    - name: build
+      resources:
+        requests:
+          memory: 1Gi
+  sidecarOverrides:
+    - name: logging
+      resources:
+        requests:
+          cpu: 100m
+        limits:
+          cpu: 500m
+```
+`StepOverrides` and `SidecarOverrides` must include the `name` field and may include `resources`.
+No other fields can be overridden.
 
 ### Specifying `LimitRange` values
 

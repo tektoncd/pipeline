@@ -26,6 +26,7 @@ import (
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	corev1resources "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -97,6 +98,27 @@ func TestTaskRun_Validate(t *testing.T) {
 					Name:  "branch",
 					Value: "baz",
 				}}}},
+			},
+		},
+		wc: enableAlphaAPIFields,
+	}, {
+		name: "alpha feature: valid step and sidecar overrides",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{Name: "task"},
+				StepOverrides: []v1beta1.TaskRunStepOverride{{
+					Name: "foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+					},
+				}},
+				SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+					Name: "bar",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+					},
+				}},
 			},
 		},
 		wc: enableAlphaAPIFields,
@@ -345,6 +367,94 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("bundle", "resolver").ViaField("taskRef"),
+		wc:      enableAlphaAPIFields,
+	}, {
+		name: "stepOverride disallowed without alpha feature gate",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "foo",
+			},
+			StepOverrides: []v1beta1.TaskRunStepOverride{{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wantErr: apis.ErrGeneric("stepOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+	}, {
+		name: "sidecarOverride disallowed without alpha feature gate",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "foo",
+			},
+			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wantErr: apis.ErrGeneric("sidecarOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+	}, {
+		name: "duplicate stepOverride names",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			StepOverrides: []v1beta1.TaskRunStepOverride{{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}, {
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wantErr: apis.ErrMultipleOneOf("stepOverrides[1].name"),
+		wc:      enableAlphaAPIFields,
+	}, {
+		name: "missing stepOverride names",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			StepOverrides: []v1beta1.TaskRunStepOverride{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wantErr: apis.ErrMissingField("stepOverrides[0].name"),
+		wc:      enableAlphaAPIFields,
+	}, {
+		name: "duplicate sidecarOverride names",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+				Name: "bar",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}, {
+				Name: "bar",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wantErr: apis.ErrMultipleOneOf("sidecarOverrides[1].name"),
+		wc:      enableAlphaAPIFields,
+	}, {
+		name: "missing sidecarOverride names",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+				},
+			}},
+		},
+		wantErr: apis.ErrMissingField("sidecarOverrides[0].name"),
 		wc:      enableAlphaAPIFields,
 	}}
 	for _, ts := range tests {

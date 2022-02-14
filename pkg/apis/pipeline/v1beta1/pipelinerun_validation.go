@@ -112,6 +112,10 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
+	for idx, trs := range ps.TaskRunSpecs {
+		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
+	}
+
 	return errs
 }
 
@@ -184,6 +188,26 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 		if ps.Timeouts.Tasks.Duration+ps.Timeouts.Finally.Duration > timeout {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s %s", ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String(), errorMsg), "timeouts.tasks"))
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s + %s %s", ps.Timeouts.Tasks.Duration.String(), ps.Timeouts.Finally.Duration.String(), errorMsg), "timeouts.finally"))
+		}
+	}
+	return errs
+}
+
+func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+		if trs.StepOverrides != nil {
+			errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
+		}
+		if trs.SidecarOverrides != nil {
+			errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
+		}
+	} else {
+		if trs.StepOverrides != nil {
+			errs = errs.Also(apis.ErrDisallowedFields("stepOverrides"))
+		}
+		if trs.SidecarOverrides != nil {
+			errs = errs.Also(apis.ErrDisallowedFields("sidecarOverrides"))
 		}
 	}
 	return errs

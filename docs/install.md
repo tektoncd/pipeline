@@ -414,6 +414,7 @@ Features currently in "alpha" are:
 | [Windows Scripts](./tasks.md#windows-scripts)                                                         | [TEP-0057](https://github.com/tektoncd/community/blob/main/teps/0057-windows-support.md)                    | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                             |
 | [Remote Tasks](./taskruns.md#remote-tasks) and [Remote Pipelines](./pipelineruns.md#remote-pipelines) | [TEP-0060](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resolutiond.md)                 |                                                                      |                             |
 | [Debug](./debug.md) | [TEP-0042](https://github.com/tektoncd/community/blob/main/teps/0042-taskrun-breakpoint-on-failure.md) | [v0.26.0](https://github.com/tektoncd/pipeline/releases/tag/v0.26.0) | |
+| [Step and Sidecar Overrides](./taskruns.md#overriding-task-steps-and-sidecars)| [TEP-0094](https://github.com/tektoncd/community/blob/main/teps/0094-specifying-resource-requirements-at-runtime.md)                 |                                                                      |                             |
 
 ## Configuring High Availability
 
