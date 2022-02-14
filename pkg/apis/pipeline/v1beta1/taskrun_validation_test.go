@@ -273,10 +273,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Name: "my-task",
 			},
 			Debug: &v1beta1.TaskRunDebug{
-				Breakpoint: []string{"bReaKdAnCe"},
+				Breakpoint: []string{"onFailure"},
 			},
 		},
-		wantErr: apis.ErrDisallowedFields("debug"),
+		wantErr: apis.ErrGeneric("debug requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "invalid breakpoint",
 		spec: v1beta1.TaskRunSpec{
