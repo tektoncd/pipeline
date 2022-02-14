@@ -40,8 +40,6 @@ func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate taskrun spec
 func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
-	cfg := config.FromContextOrDefaults(ctx)
-
 	// Must have exactly one of taskRef and taskSpec.
 	if ts.TaskRef == nil && ts.TaskSpec == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("taskRef", "taskSpec"))
@@ -61,12 +59,9 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateParameters(ts.Params).ViaField("params"))
 	errs = errs.Also(validateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
-	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
-		if ts.Debug != nil {
-			errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
-		}
-	} else if ts.Debug != nil {
-		errs = errs.Also(apis.ErrDisallowedFields("debug"))
+	if ts.Debug != nil {
+		errs = errs.Also(ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
+		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
 	}
 
 	if ts.Status != "" {

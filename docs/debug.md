@@ -23,6 +23,9 @@ weight: 11
 `Debug` spec is used for troubleshooting and breakpointing runtime resources. This doc helps understand the inner 
 workings of debug in Tekton. Currently only the `TaskRun` resource is supported. 
 
+This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+to specify `debug` in a `taskRun`.
+
 ## Debugging TaskRuns
 
 The following provides explanation on how Debugging TaskRuns is possible through Tekton. To understand how to use 
