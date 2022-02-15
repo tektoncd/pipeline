@@ -83,7 +83,7 @@ removed entirely, and until this has been resolved, we encourage people to use `
 `PipelineResources` when they can.
 
 _More on the reasoning and what's left to do in
-[Why aren't PipelineResources in Beta?](resources.md#why-arent-pipelineresources-in-beta)._
+[Why aren't PipelineResources in Beta?](resources.md#why-aren-t-pipelineresources-in-beta)._
 
 To ease migration away from `PipelineResources`
 [some types have an equivalent `Task` in the Catalog](#replacing-pipelineresources-with-tasks).

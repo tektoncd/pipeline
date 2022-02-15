@@ -144,7 +144,7 @@ for that data to be put so that it can be shared between Tasks in the Pipeline.
 **Note:** Pipeline Resources are in alpha and are currently undergoing considerable redesign. Therefore
 this storage configuration is possibly going to change in future. Writing Tasks and Pipelines today that rely
 on this feature may mean you'll need to rewrite those Tasks and Pipelines when the redesign is complete. See
-the [explanation for the redesign in the PipelineResources doc](./resources.md#why-arent-pipelineresources-in-beta)
+the [explanation for the redesign in the PipelineResources doc](./resources.md#why-aren-t-pipelineresources-in-beta)
 and [issue 1673](https://github.com/tektoncd/pipeline/issues/1673) to follow along with the redesign work.
 
 The storage options available for sharing PipelineResources between Tasks in a Pipeline are:
