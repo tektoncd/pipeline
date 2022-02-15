@@ -33,7 +33,7 @@ For example:
 > which lists each PipelineResource type and a suggested option for replacing it.
 >
 > For more information on why PipelineResources are remaining alpha [see the description
-> of their problems, along with next steps, below](#why-arent-pipelineresources-in-beta).
+> of their problems, along with next steps, below](#why-aren-t-pipelineresources-in-beta).
 
 --------------------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ For example:
     -   [Storage Resource](#storage-resource)
         -   [GCS Storage Resource](#gcs-storage-resource)
     -   [Cloud Event Resource](#cloud-event-resource)
--   [Why Aren't PipelineResources in Beta?](#why-arent-pipelineresources-in-beta)
+-   [Why Aren't PipelineResources in Beta?](#why-aren-t-pipelineresources-in-beta)
 
 ## Syntax
 
