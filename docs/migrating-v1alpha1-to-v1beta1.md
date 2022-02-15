@@ -80,7 +80,7 @@ Since then, **`PipelineResources` have been deprecated**. We encourage users to 
 features instead of `PipelineResources`. Read more about the deprecation in [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 _More on the reasoning and what's left to do in
-[Why aren't PipelineResources in Beta?](resources.md#why-arent-pipelineresources-in-beta)._
+[Why aren't PipelineResources in Beta?](resources.md#why-aren-t-pipelineresources-in-beta)._
 
 To ease migration away from `PipelineResources`
 [some types have an equivalent `Task` in the Catalog](#replacing-pipelineresources-with-tasks).
