@@ -64,7 +64,7 @@ func TestHermeticTaskRun(t *testing.T) {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRunName, err)
 			}
 			if err := WaitForTaskRunState(ctx, c, regularTaskRunName, Succeed(regularTaskRunName), "TaskRunCompleted"); err != nil {
-				t.Fatalf("Error waiting for TaskRun %s to finish: %s", regularTaskRunName, err)
+				t.Errorf("Error waiting for TaskRun %s to finish: %s", regularTaskRunName, err)
 			}
 
 			// now, run the task mode with hermetic mode
@@ -76,7 +76,7 @@ func TestHermeticTaskRun(t *testing.T) {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRun.Name, err)
 			}
 			if err := WaitForTaskRunState(ctx, c, hermeticTaskRunName, Failed(hermeticTaskRunName), "Failed"); err != nil {
-				t.Fatalf("Error waiting for TaskRun %s to fail: %s", hermeticTaskRunName, err)
+				t.Errorf("Error waiting for TaskRun %s to fail: %s", hermeticTaskRunName, err)
 			}
 		})
 	}
@@ -92,14 +92,15 @@ metadata:
 spec:
   taskSpec:
     steps:
-    - image: ubuntu
+    - image: gcr.io/cloud-builders/curl
       name: access-network
       resources: {}
       script: |-
         #!/bin/bash
         set -ex
-        apt-get update
-        apt-get install -y curl
+
+        # do something that requires network access
+        curl google.com
   timeout: 1m0s
 `, executionMode, name, namespace))
 }
