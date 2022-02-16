@@ -30,10 +30,6 @@ const (
 	StableAPIFields = "stable"
 	// AlphaAPIFields is the value used for "enable-api-fields" when alpha APIs should be usable as well.
 	AlphaAPIFields = "alpha"
-	// DefaultDisableHomeEnvOverwrite is the default value for "disable-home-env-overwrite".
-	DefaultDisableHomeEnvOverwrite = true
-	// DefaultDisableWorkingDirOverwrite is the default value for "disable-working-directory-overwrite".
-	DefaultDisableWorkingDirOverwrite = true
 	// DefaultDisableAffinityAssistant is the default value for "disable-affinity-assistant".
 	DefaultDisableAffinityAssistant = false
 	// DefaultDisableCredsInit is the default value for "disable-creds-init".
@@ -51,8 +47,6 @@ const (
 	// DefaultEnableAPIFields is the default value for "enable-api-fields".
 	DefaultEnableAPIFields = StableAPIFields
 
-	disableHomeEnvOverwriteKey          = "disable-home-env-overwrite"
-	disableWorkingDirOverwriteKey       = "disable-working-directory-overwrite"
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
 	runningInEnvWithInjectedSidecarsKey = "running-in-environment-with-injected-sidecars"
@@ -66,8 +60,6 @@ const (
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
 type FeatureFlags struct {
-	DisableHomeEnvOverwrite          bool
-	DisableWorkingDirOverwrite       bool
 	DisableAffinityAssistant         bool
 	DisableCredsInit                 bool
 	RunningInEnvWithInjectedSidecars bool
@@ -103,12 +95,6 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	}
 
 	tc := FeatureFlags{}
-	if err := setFeature(disableHomeEnvOverwriteKey, DefaultDisableHomeEnvOverwrite, &tc.DisableHomeEnvOverwrite); err != nil {
-		return nil, err
-	}
-	if err := setFeature(disableWorkingDirOverwriteKey, DefaultDisableWorkingDirOverwrite, &tc.DisableWorkingDirOverwrite); err != nil {
-		return nil, err
-	}
 	if err := setFeature(disableAffinityAssistantKey, DefaultDisableAffinityAssistant, &tc.DisableAffinityAssistant); err != nil {
 		return nil, err
 	}

@@ -35,8 +35,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &config.FeatureFlags{
-				DisableHomeEnvOverwrite:          false,
-				DisableWorkingDirOverwrite:       false,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 				EnableAPIFields:                  "stable",
@@ -45,8 +43,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				DisableHomeEnvOverwrite:          true,
-				DisableWorkingDirOverwrite:       true,
 				DisableAffinityAssistant:         true,
 				RunningInEnvWithInjectedSidecars: false,
 				RequireGitSSHSecretKnownHosts:    true,
@@ -65,8 +61,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTektonOCIBundles: true,
 				EnableCustomTasks:      true,
 
-				DisableHomeEnvOverwrite:          true,
-				DisableWorkingDirOverwrite:       true,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 			},
@@ -78,8 +72,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTektonOCIBundles: true,
 				EnableCustomTasks:      true,
 
-				DisableHomeEnvOverwrite:          true,
-				DisableWorkingDirOverwrite:       true,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 			},
@@ -99,8 +91,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
-		DisableHomeEnvOverwrite:          true,
-		DisableWorkingDirOverwrite:       true,
 		RunningInEnvWithInjectedSidecars: true,
 		ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 		EnableAPIFields:                  "stable",
