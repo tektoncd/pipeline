@@ -107,7 +107,6 @@ func TestPodBuild(t *testing.T) {
 		trName          string
 		ts              v1beta1.TaskSpec
 		featureFlags    map[string]string
-		overrideHomeEnv *bool
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
 		wantPodName     string
@@ -1653,7 +1652,6 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		trs             v1beta1.TaskRunSpec
 		trAnnotation    map[string]string
 		ts              v1beta1.TaskSpec
-		overrideHomeEnv *bool
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
 	}{{

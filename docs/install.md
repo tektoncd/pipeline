@@ -338,14 +338,6 @@ To customize the behavior of the Pipelines Controller, modify the ConfigMap `fea
   node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
   are missing the specified `topologyKey` label, it can lead to unintended behavior.
 
-- `disable-home-env-overwrite` - set this flag to `false` to allow Tekton
-to override the `$HOME` environment variable for the containers executing your `Steps`.
-The default is `true`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/2013).
-
-- `disable-working-directory-overwrite` - set this flag to `false` to allow Tekton
-to override the working directory for the containers executing your `Steps`.
-The default value is `true`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/1836).
-
 - `running-in-environment-with-injected-sidecars`: set this flag to `"true"` to allow the
 Tekton controller to set the `tekton.dev/ready` annotation at pod creation time for
 TaskRuns with no Sidecars specified. Enabling this option should decrease the time it takes for a TaskRun to
@@ -389,8 +381,6 @@ kind: ConfigMap
 metadata:
   name: feature-flags
 data:
-  disable-home-env-overwrite: "true" # Tekton will not override the $HOME variable for individual Steps.
-  disable-working-directory-overwrite: "true" # Tekton will not override the working directory for individual Steps.
   enable-api-fields: "alpha" # Allow alpha fields to be used in Tasks and Pipelines.
 ```
 
