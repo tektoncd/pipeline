@@ -171,7 +171,7 @@ func setTaskRunStatusBasedOnStepStatus(logger *zap.SugaredLogger, stepStatuses [
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {
 					logger.Errorf("%v", err)
-					err = multierror.Append(merr, err)
+					merr = multierror.Append(merr, err)
 				} else {
 					s.State.Terminated.Message = msg
 				}

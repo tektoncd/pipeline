@@ -967,11 +967,9 @@ func combineTaskRunAndTaskSpecLabels(pr *v1beta1.PipelineRun, pipelineTask *v1be
 		tsLabels = pipelineTask.TaskSpecMetadata().Labels
 	}
 
-	labels := make(map[string]string, len(trLabels)+len(tsLabels))
-
 	// labels from TaskRun takes higher precedence over the ones specified in Pipeline through TaskSpec
 	// initialize labels with TaskRun labels
-	labels = trLabels
+	labels := trLabels
 	for key, value := range tsLabels {
 		// add labels from TaskSpec if the label does not exist
 		if _, ok := labels[key]; !ok {
@@ -989,11 +987,9 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 		tsAnnotations = pipelineTask.TaskSpecMetadata().Annotations
 	}
 
-	annotations := make(map[string]string, len(trAnnotations)+len(tsAnnotations))
-
 	// annotations from TaskRun takes higher precedence over the ones specified in Pipeline through TaskSpec
 	// initialize annotations with TaskRun annotations
-	annotations = trAnnotations
+	annotations := trAnnotations
 	for key, value := range tsAnnotations {
 		// add annotations from TaskSpec if the annotation does not exist
 		if _, ok := annotations[key]; !ok {
@@ -1119,6 +1115,9 @@ func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *reso
 		}}
 
 	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
 	cc := v1beta1.ConditionCheck(*cctr)
 	return &cc, err
 }
