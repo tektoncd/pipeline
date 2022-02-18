@@ -82,6 +82,21 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 			}},
 		},
 	}, {
+		desc: "param type - param type must be derived based on the default value " + string(v1beta1.ParamTypeString),
+		ps: &v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "string-param",
+				Default: &v1beta1.ArrayOrString{
+					StringVal: "foo",
+				},
+			}},
+		},
+		want: &v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "string-param", Type: v1beta1.ParamTypeString, Default: &v1beta1.ArrayOrString{StringVal: "foo"},
+			}},
+		},
+	}, {
 		desc: "pipeline task with taskSpec - default param type must be " + string(v1beta1.ParamTypeString),
 		ps: &v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{

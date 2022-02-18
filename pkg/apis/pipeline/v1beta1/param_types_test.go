@@ -42,15 +42,34 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Type: v1beta1.ParamTypeString,
 		},
 	}, {
-		name: "inferred type from default value",
+		name: "inferred type from default value - array",
 		before: &v1beta1.ParamSpec{
-			Name:    "parametername",
-			Default: v1beta1.NewArrayOrString("an", "array"),
+			Name: "parametername",
+			Default: &v1beta1.ArrayOrString{
+				ArrayVal: []string{"array"},
+			},
 		},
 		defaultsApplied: &v1beta1.ParamSpec{
-			Name:    "parametername",
-			Type:    v1beta1.ParamTypeArray,
-			Default: v1beta1.NewArrayOrString("an", "array"),
+			Name: "parametername",
+			Type: v1beta1.ParamTypeArray,
+			Default: &v1beta1.ArrayOrString{
+				ArrayVal: []string{"array"},
+			},
+		},
+	}, {
+		name: "inferred type from default value - string",
+		before: &v1beta1.ParamSpec{
+			Name: "parametername",
+			Default: &v1beta1.ArrayOrString{
+				StringVal: "an",
+			},
+		},
+		defaultsApplied: &v1beta1.ParamSpec{
+			Name: "parametername",
+			Type: v1beta1.ParamTypeString,
+			Default: &v1beta1.ArrayOrString{
+				StringVal: "an",
+			},
 		},
 	}, {
 		name: "fully defined ParamSpec",
@@ -58,13 +77,17 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Name:        "parametername",
 			Type:        v1beta1.ParamTypeArray,
 			Description: "a description",
-			Default:     v1beta1.NewArrayOrString("an", "array"),
+			Default: &v1beta1.ArrayOrString{
+				ArrayVal: []string{"array"},
+			},
 		},
 		defaultsApplied: &v1beta1.ParamSpec{
 			Name:        "parametername",
 			Type:        v1beta1.ParamTypeArray,
 			Description: "a description",
-			Default:     v1beta1.NewArrayOrString("an", "array"),
+			Default: &v1beta1.ArrayOrString{
+				ArrayVal: []string{"array"},
+			},
 		},
 	}}
 	for _, tc := range tests {
