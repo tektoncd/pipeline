@@ -17,7 +17,6 @@ First, you may want to [Ramp up](#ramp-up) on Kubernetes and Custom Resource Def
 1. [Developing and testing](#developing-and-testing) Tekton pipelines
     1. Learn how to [iterate](#iterating-on-code-changes) on code changes
     1. [Managing Tekton Objects using `ko`](#managing-tekton-objects-using-ko) in Kubernetes
-    1. [Standing up a K8s cluster with Tekton using the kind tool](#standing-up-a-k8s-cluster-with-tekton-using-the-kind-tool)
     1. [Accessing logs](#accessing-logs)
     1. [Adding new CRD types](#adding-new-crd-types)
 
@@ -267,13 +266,13 @@ The recommended minimum development configuration is:
 1. Install [required tools](./DEVELOPMENT.md#install-tools) (note: may require a newer version of Go).
 2. Install [Docker](https://www.docker.com/get-started).
 3. Create cluster:
-   
+
    ```sh
    $ kind create cluster
    ```
 
 4. Configure [ko](https://kind.sigs.k8s.io/):
-   
+
    ```sh
    $ export KO_DOCKER_REPO="kind.local"
    $ export KIND_CLUSTER_NAME="kind"  # only needed if you used a custom name in the previous step
@@ -291,7 +290,7 @@ optional: As a convenience, the [Tekton plumbing project](https://github.com/tek
 
 #### Using GKE
 
-1. [Set up a GCP Project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) and [enable the GKE API](https://cloud.google.com/kubernetes-engine/docs/quickstart#before-you-begin). 
+1. [Set up a GCP Project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) and [enable the GKE API](https://cloud.google.com/kubernetes-engine/docs/quickstart#before-you-begin).
     You may find it useful to save the ID of the project in an environment
     variable (e.g. `PROJECT_ID`).
 
