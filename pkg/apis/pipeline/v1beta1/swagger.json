@@ -1228,6 +1228,14 @@
             "$ref": "#/definitions/v1beta1.PipelineTaskCondition"
           }
         },
+        "matrix": {
+          "description": "Matrix declares parameters used to fan out this task.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Param"
+          }
+        },
         "name": {
           "description": "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",
           "type": "string"

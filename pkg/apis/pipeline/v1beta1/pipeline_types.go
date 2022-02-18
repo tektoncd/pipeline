@@ -188,9 +188,14 @@ type PipelineTask struct {
 	// outputs.
 	// +optional
 	Resources *PipelineTaskResources `json:"resources,omitempty"`
+
 	// Parameters declares parameters passed to this task.
 	// +optional
 	Params []Param `json:"params,omitempty"`
+
+	// Matrix declares parameters used to fan out this task.
+	// +optional
+	Matrix []Param `json:"matrix,omitempty"`
 
 	// Workspaces maps workspaces from the pipeline spec to the workspaces
 	// declared in the Task.
@@ -278,6 +283,15 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 		if pt.TaskRef.Bundle != "" {
 			errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
 		}
+	}
+	return errs
+}
+
+func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
+	if len(pt.Matrix) != 0 {
+		// This is an alpha feature and will fail validation if it's used in a pipeline spec
+		// when the enable-api-fields feature gate is anything but "alpha".
+		errs = errs.Also(ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
 	}
 	return errs
 }

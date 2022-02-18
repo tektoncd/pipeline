@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -2568,6 +2569,72 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestMatrixIncompatibleAPIVersions exercises validation of matrix
+// that requires alpha feature gate version in order to work.
+func TestMatrixIncompatibleAPIVersions(t *testing.T) {
+	tests := []struct {
+		name            string
+		requiredVersion string
+		spec            PipelineSpec
+	}{{
+		name:            "matrix requires alpha - check tasks",
+		requiredVersion: "alpha",
+		spec: PipelineSpec{
+			Tasks: PipelineTaskList{{
+				Name:    "a-task",
+				TaskRef: &TaskRef{Name: "a-task"},
+				Matrix: []Param{{
+					Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}},
+			}},
+		},
+	}, {
+		name:            "matrix requires alpha - check finally tasks",
+		requiredVersion: "alpha",
+		spec: PipelineSpec{
+			Tasks: PipelineTaskList{{
+				Name:    "a-task",
+				TaskRef: &TaskRef{Name: "a-task"},
+			}},
+			Finally: PipelineTaskList{{
+				Name:    "b-task",
+				TaskRef: &TaskRef{Name: "b-task"},
+				Matrix: []Param{{
+					Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}},
+			}},
+		},
+	}}
+	versions := []string{"alpha", "stable"}
+	for _, tt := range tests {
+		for _, version := range versions {
+			testName := fmt.Sprintf("(using %s) %s", version, tt.name)
+			t.Run(testName, func(t *testing.T) {
+				ps := tt.spec
+				featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+					"enable-api-fields": version,
+				})
+				cfg := &config.Config{
+					FeatureFlags: featureFlags,
+				}
+
+				ctx := config.ToContext(context.Background(), cfg)
+
+				ps.SetDefaults(ctx)
+				err := ps.Validate(ctx)
+
+				if tt.requiredVersion != version && err == nil {
+					t.Fatalf("no error received even though version required is %q while feature gate is %q", tt.requiredVersion, version)
+				}
+
+				if tt.requiredVersion == version && err != nil {
+					t.Fatalf("error received despite required version and feature gate matching %q: %v", version, err)
+				}
+			})
+		}
 	}
 }
 
