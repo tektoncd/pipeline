@@ -45,6 +45,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
+	"github.com/tektoncd/pipeline/test/parse"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -82,6 +83,7 @@ var (
 	}
 
 	ignoreResourceVersion    = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
+	ignoreTypeMeta           = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
 	trueb                    = true
 	simpleHelloWorldTask     = &v1beta1.Task{ObjectMeta: baseObjectMeta("hello-world", "foo")}
 	simpleSomeTask           = &v1beta1.Task{ObjectMeta: baseObjectMeta("some-task", "foo")}
@@ -250,324 +252,219 @@ func TestReconcile(t *testing.T) {
 	// It verifies that the TaskRun is created, it checks the resulting API actions, status and events.
 	names.TestingSeed()
 	const pipelineRunName = "test-pipeline-run-success"
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(pipelineRunName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name: "test-pipeline",
-			},
-			ServiceAccountName: "test-sa",
-			Resources: []v1beta1.PipelineResourceBinding{
-				{
-					Name: "git-repo",
-					ResourceRef: &v1beta1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-				},
-				{
-					Name: "best-image",
-					ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
-						Type: resourcev1alpha1.PipelineResourceTypeImage,
-						Params: []resourcev1alpha1.ResourceParam{{
-							Name:  "url",
-							Value: "gcr.io/sven",
-						}},
-					},
-				},
-			},
-			Params: []v1beta1.Param{{
-				Name:  "bar",
-				Value: *v1beta1.NewArrayOrString("somethingmorefun"),
-			}},
-		},
-	}}
-	funParam := v1beta1.Param{
-		Name:  "foo",
-		Value: *v1beta1.NewArrayOrString("somethingfun"),
-	}
-	moreFunParam := v1beta1.Param{
-		Name:  "bar",
-		Value: *v1beta1.NewArrayOrString("$(params.bar)"),
-	}
-	templatedParam := v1beta1.Param{
-		Name:  "templatedparam",
-		Value: *v1beta1.NewArrayOrString("$(inputs.workspace.$(params.rev-param))"),
-	}
-	contextRunParam := v1beta1.Param{
-		Name:  "contextRunParam",
-		Value: *v1beta1.NewArrayOrString("$(context.pipelineRun.name)"),
-	}
-	contextPipelineParam := v1beta1.Param{
-		Name:  "contextPipelineParam",
-		Value: *v1beta1.NewArrayOrString("$(context.pipeline.name)"),
-	}
-	retriesParam := v1beta1.Param{
-		Name:  "contextRetriesParam",
-		Value: *v1beta1.NewArrayOrString("$(context.pipelineTask.retries)"),
-	}
 	const pipelineName = "test-pipeline"
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta(pipelineName, "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{
-				{
-					Name: "git-repo",
-					Type: resourcev1alpha1.PipelineResourceTypeGit,
-				},
-				{
-					Name: "best-image",
-					Type: resourcev1alpha1.PipelineResourceTypeImage,
-				},
-			},
-			Params: []v1beta1.ParamSpec{
-				{
-					Name:    "pipeline-param",
-					Type:    v1beta1.ParamTypeString,
-					Default: v1beta1.NewArrayOrString("somethingdifferent"),
-				},
-				{
-					Name:    "rev-param",
-					Type:    v1beta1.ParamTypeString,
-					Default: v1beta1.NewArrayOrString("revision"),
-				},
-				{
-					Name: "bar",
-					Type: v1beta1.ParamTypeString,
-				},
-			},
-			Tasks: []v1beta1.PipelineTask{
-				{
-					// unit-test-3 uses runAfter to indicate it should run last
-					Name: "unit-test-3",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "unit-test-task",
-					},
-					Params: []v1beta1.Param{funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam, retriesParam},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-						}},
-						Outputs: []v1beta1.PipelineTaskOutputResource{
-							{
-								Name:     "image-to-use",
-								Resource: "best-image",
-							},
-							{
-								Name:     "workspace",
-								Resource: "git-repo",
-							},
-						},
-					},
-					RunAfter: []string{"unit-test-2"},
-				},
-				{
-					// unit-test-1 can run right away because it has no dependencies
-					Name: "unit-test-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "unit-test-task",
-					},
-					Params: []v1beta1.Param{funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam, retriesParam},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-						}},
-						Outputs: []v1beta1.PipelineTaskOutputResource{
-							{
-								Name:     "image-to-use",
-								Resource: "best-image",
-							},
-							{
-								Name:     "workspace",
-								Resource: "git-repo",
-							},
-						},
-					},
-					Retries: 5,
-				},
-				{
-					Name: "unit-test-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "unit-test-followup-task",
-					},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-							From:     []string{"unit-test-1"},
-						}},
-					},
-				},
-				{
-					Name: "unit-test-cluster-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "unit-test-cluster-task",
-						Kind: v1beta1.ClusterTaskKind,
-					},
-					Params: []v1beta1.Param{funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-						}},
-						Outputs: []v1beta1.PipelineTaskOutputResource{
-							{
-								Name:     "image-to-use",
-								Resource: "best-image",
-							},
-							{
-								Name:     "workspace",
-								Resource: "git-repo",
-							},
-						},
-					},
-				},
-			},
-		},
-	}}
-	ts := []*v1beta1.Task{
-		{
-			ObjectMeta: baseObjectMeta("unit-test-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{
-					{
-						Name: "foo",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "bar",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "templatedparam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextRunParam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextPipelineParam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextRetriesParam",
-						Type: v1beta1.ParamTypeString,
-					},
-				},
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: v1beta1.PipelineResourceTypeGit,
-						},
-					}},
-					Outputs: []v1beta1.TaskResource{
-						{
-							ResourceDeclaration: v1beta1.ResourceDeclaration{
-								Name: "image-to-use",
-								Type: v1beta1.PipelineResourceTypeImage,
-							},
-						},
-						{
-							ResourceDeclaration: v1beta1.ResourceDeclaration{
-								Name: "workspace",
-								Type: v1beta1.PipelineResourceTypeGit,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("unit-test-followup-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: v1beta1.PipelineResourceTypeGit,
-						},
-					}},
-				},
-			},
-		},
+
+	prs := []*v1beta1.PipelineRun{
+		parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  resources:
+    - name: git-repo
+      resourceRef:
+        name: some-repo
+    - name: best-image
+      resourceSpec:
+        type: %s
+        params:
+          - name: url
+            value: gcr.io/sven
+  params:
+    - name: bar
+      value: somethingmorefun
+`, pipelineRunName, resourcev1alpha1.PipelineResourceTypeImage)),
 	}
-	clusterTasks := []*v1beta1.ClusterTask{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: "unit-test-cluster-task"},
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{
-					{
-						Name: "foo",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "bar",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "templatedparam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextRunParam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextPipelineParam",
-						Type: v1beta1.ParamTypeString,
-					},
-				},
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: v1beta1.PipelineResourceTypeGit,
-						},
-					}},
-					Outputs: []v1beta1.TaskResource{
-						{
-							ResourceDeclaration: v1beta1.ResourceDeclaration{
-								Name: "image-to-use",
-								Type: v1beta1.PipelineResourceTypeImage,
-							},
-						},
-						{
-							ResourceDeclaration: v1beta1.ResourceDeclaration{
-								Name: "workspace",
-								Type: v1beta1.PipelineResourceTypeGit,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: "unit-test-followup-task"},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: v1beta1.PipelineResourceTypeGit,
-						},
-					}},
-				},
-			},
-		},
+
+	ps := []*v1beta1.Pipeline{
+		parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  resources:
+    - name: git-repo
+      type: %s
+    - name: best-image
+      type: %s
+  params:
+    - name: pipeline-param
+      default: somethingdifferent
+      type: %s
+    - name: rev-param
+      default: revision
+      type: %s
+    - name: bar
+      type: %s
+  tasks:
+    # unit-test-1 can run right away because it has no dependencies
+    - name: unit-test-1
+      taskRef:
+        name: unit-test-task
+      params:
+        - name: foo
+          value: somethingfun
+        - name: bar
+          value: $(params.bar)
+        - name: templatedparam
+          value: $(inputs.workspace.$(params.rev-param))
+        - name: contextRunParam
+          value: $(context.pipelineRun.name)
+        - name: contextPipelineParam
+          value: $(context.pipeline.name)
+        - name: contextRetriesParam
+          value: $(context.pipelineTask.retries)
+      resources:
+        inputs:
+          - name: workspace
+            resource: git-repo
+        outputs:
+          - name: image-to-use
+            resource: best-image
+          - name: workspace
+            resource: git-repo
+      retries: 5
+    # this is a cluster task - can run right away because it has no dependencies
+    - name: unit-test-cluster-task
+      taskRef:
+        name: unit-test-cluster-task
+        kind: ClusterTask
+      params:
+        - name: foo
+          value: somethingfun
+        - name: bar
+          value: $(params.bar)
+        - name: templatedparam
+          value: $(inputs.workspace.$(params.rev-param))
+        - name: contextRunParam
+          value: $(context.pipelineRun.name)
+        - name: contextPipelineParam
+          value: $(context.pipeline.name)
+      resources:
+        inputs:
+          - name: workspace
+            resource: git-repo
+        outputs:
+          - name: image-to-use
+            resource: best-image
+          - name: workspace
+            resource: git-repo
+    # unit-test-2 uses pipelineresource from to indicate the order - run after unit-test-1
+    - name: unit-test-2
+      taskRef:
+        name: unit-test-followup-task
+      resources:
+        inputs:
+          - name: workspace
+            resource: git-repo
+            from: [unit-test-1]
+    # unit-test-3 uses runAfter to indicate it should run last
+    - name: unit-test-3
+      taskRef:
+        name: unit-test-task
+      params:
+        - name: foo
+          value: somethingfun
+        - name: bar
+          value: $(params.bar)
+        - name: templatedparam
+          value: $(inputs.workspace.$(params.rev-param))
+        - name: contextRunParam
+          value: $(context.pipelineRun.name)
+        - name: contextPipelineParam
+          value: $(context.pipeline.name)
+        - name: contextRetriesParam
+          value: $(context.pipelineTask.retries)
+      resources:
+        inputs:
+          - name: workspace
+            resource: git-repo
+        outputs:
+          - name: image-to-use
+            resource: best-image
+          - name: workspace
+            resource: git-repo
+      runAfter: [unit-test-2]
+`, pipelineName, resourcev1alpha1.PipelineResourceTypeGit, resourcev1alpha1.PipelineResourceTypeImage,
+			v1beta1.ParamTypeString, v1beta1.ParamTypeString, v1beta1.ParamTypeString)),
 	}
-	rs := []*resourcev1alpha1.PipelineResource{{
-		ObjectMeta: baseObjectMeta("some-repo", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "url",
-				Value: "https://github.com/kristoff/reindeer",
-			}},
-		},
-	}}
+
+	ts := []*v1beta1.Task{parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: unit-test-task
+  namespace: foo
+spec:
+  params:
+    - name: foo
+    - name: bar
+    - name: templatedparam
+    - name: contextRunParam
+    - name: contextPipelineParam
+    - name: contextRetriesParam
+  resources:
+    inputs:
+      - name: workspace
+        type: %s
+    outputs:
+      - name: image-to-use
+        type: %s
+      - name: workspace
+        type: %s
+`, v1beta1.PipelineResourceTypeGit, v1beta1.PipelineResourceTypeImage, v1beta1.PipelineResourceTypeGit)),
+		parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: unit-test-followup-task
+  namespace: foo
+spec:
+  resources:
+    inputs:
+      - name: workspace
+        type: %s
+`, v1beta1.PipelineResourceTypeGit))}
+
+	clusterTasks := []*v1beta1.ClusterTask{parse.MustParseClusterTask(t, fmt.Sprintf(`
+metadata:
+  name: unit-test-cluster-task
+spec:
+  params:
+    - name: foo
+    - name: bar
+    - name: templatedparam
+    - name: contextRunParam
+    - name: contextPipelineParam
+  resources:
+    inputs:
+      - name: workspace
+        type: %s
+    outputs:
+      - name: image-to-use
+        type: %s
+      - name: workspace
+        type: %s
+`, v1beta1.PipelineResourceTypeGit, v1beta1.PipelineResourceTypeImage, v1beta1.PipelineResourceTypeGit)),
+		parse.MustParseClusterTask(t, fmt.Sprintf(`
+metadata:
+  name: unit-test-followup-task
+spec:
+  resources:
+    inputs:
+      - name: workspace
+        type: %s
+`, v1beta1.PipelineResourceTypeGit))}
+
+	rs := []*resourcev1alpha1.PipelineResource{parse.MustParsePipelineResource(t, fmt.Sprintf(`
+metadata:
+  name: some-repo
+  namespace: foo
+spec:
+  type: %s
+  params:
+    - name: url
+      value: https://github.com/kristoff/reindeer 
+`, resourcev1alpha1.PipelineResourceTypeGit))}
 
 	// When PipelineResources are created in the cluster, Kubernetes will add a SelfLink. We
 	// are using this to differentiate between Resources that we are referencing by Spec or by Ref
@@ -588,7 +485,7 @@ func TestReconcile(t *testing.T) {
 		"Normal Started",
 		"Normal Running Tasks Completed: 0",
 	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
+	reconciledRun, clients := prt.reconcileRun("foo", pipelineRunName, wantEvents, false)
 
 	actions := clients.Pipeline.Actions()
 	if len(actions) < 2 {
@@ -597,79 +494,51 @@ func TestReconcile(t *testing.T) {
 
 	// Check that the expected TaskRun was created
 	actual := getTaskRunCreations(t, actions)[0]
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success", "test-pipeline", "unit-test-1", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "unit-test-task",
-			},
-			ServiceAccountName: "test-sa",
-			Params: []v1beta1.Param{
-				{
-					Name:  "foo",
-					Value: *v1beta1.NewArrayOrString("somethingfun"),
-				},
-				{
-					Name:  "bar",
-					Value: *v1beta1.NewArrayOrString("somethingmorefun"),
-				},
-				{
-					Name:  "templatedparam",
-					Value: *v1beta1.NewArrayOrString("$(inputs.workspace.revision)"),
-				},
-				{
-					Name:  "contextRunParam",
-					Value: *v1beta1.NewArrayOrString(pipelineRunName),
-				},
-				{
-					Name:  "contextPipelineParam",
-					Value: *v1beta1.NewArrayOrString(pipelineName),
-				},
-				{
-					Name:  "contextRetriesParam",
-					Value: *v1beta1.NewArrayOrString("5"),
-				},
-			},
-			Resources: &v1beta1.TaskRunResources{
-				Inputs: []v1beta1.TaskResourceBinding{{
-					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-						Name: "workspace",
-						ResourceRef: &v1beta1.PipelineResourceRef{
-							Name: "some-repo",
-						},
-					},
-				}},
-				Outputs: []v1beta1.TaskResourceBinding{
-					{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "image-to-use",
-							ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
-								Type: resourcev1alpha1.PipelineResourceTypeImage,
-								Params: []resourcev1alpha1.ResourceParam{{
-									Name:  "url",
-									Value: "gcr.io/sven",
-								}},
-							},
-						},
-						Paths: []string{"/pvc/unit-test-1/image-to-use"},
-					},
-					{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "some-repo",
-							},
-						},
-						Paths: []string{"/pvc/unit-test-1/workspace"},
-					},
-				},
-			},
-			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
+	expectedTaskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+spec:
+  taskRef:
+    name: unit-test-task
+  serviceAccountName: test-sa
+  params:
+    - name: foo
+      value: somethingfun
+    - name: bar
+      value: somethingmorefun
+    - name: templatedparam
+      value: $(inputs.workspace.revision)
+    - name: contextRunParam
+      value: %s
+    - name: contextPipelineParam
+      value: %s
+    - name: contextRetriesParam
+      value: "5"
+  resources:
+    inputs:
+      - name: workspace
+        resourceRef:
+          name: some-repo
+          apiVersion: tekton.dev/v1alpha1
+    outputs:
+      - name: image-to-use
+        resourceSpec:
+          type: %s
+          params:
+            - name: url
+              value: gcr.io/sven
+        paths: [/pvc/unit-test-1/image-to-use]
+      - name: workspace
+        resourceRef:
+          name: some-repo
+          apiVersion: tekton.dev/v1alpha1
+        paths: [/pvc/unit-test-1/workspace]
+  timeout: 1h0m0s
+`, pipelineRunName, pipelineName, resourcev1alpha1.PipelineResourceTypeImage))
+
+	// set the metadata for the expectedTaskRun
+	expectedTaskRun.ObjectMeta = taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", pipelineRunName, pipelineName, "unit-test-1", false)
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
