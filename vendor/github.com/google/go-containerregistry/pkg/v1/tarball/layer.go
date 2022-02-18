@@ -17,6 +17,7 @@ package tarball
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -258,15 +259,19 @@ func LayerFromOpener(opener Opener, opts ...LayerOption) (v1.Layer, error) {
 }
 
 // LayerFromReader returns a v1.Layer given a io.Reader.
+//
+// The reader's contents are read and buffered to a temp file in the process.
+//
+// Deprecated: Use LayerFromOpener or stream.NewLayer instead, if possible.
 func LayerFromReader(reader io.Reader, opts ...LayerOption) (v1.Layer, error) {
-	// Buffering due to Opener requiring multiple calls.
-	a, err := ioutil.ReadAll(reader)
+	tmp, err := ioutil.TempFile("", "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating temp file to buffer reader: %w", err)
 	}
-	return LayerFromOpener(func() (io.ReadCloser, error) {
-		return ioutil.NopCloser(bytes.NewReader(a)), nil
-	}, opts...)
+	if _, err := io.Copy(tmp, reader); err != nil {
+		return nil, fmt.Errorf("writing temp file to buffer reader: %w", err)
+	}
+	return LayerFromFile(tmp.Name(), opts...)
 }
 
 func computeDigest(opener Opener) (v1.Hash, int64, error) {
