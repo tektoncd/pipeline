@@ -71,6 +71,8 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
+	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
+	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	return errs
 }
 
@@ -545,4 +547,11 @@ func validateGraph(tasks []PipelineTask) *apis.FieldError {
 		return apis.ErrInvalidValue(err.Error(), "tasks")
 	}
 	return nil
+}
+
+func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.FieldError) {
+	for idx, task := range tasks {
+		errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
+	}
+	return errs
 }

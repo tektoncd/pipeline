@@ -2063,6 +2063,20 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"matrix": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Matrix declares parameters used to fan out this task.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"),
+									},
+								},
+							},
+						},
+					},
 					"workspaces": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Workspaces maps workspaces from the pipeline spec to the workspaces declared in the Task.",

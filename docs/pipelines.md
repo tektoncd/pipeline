@@ -14,6 +14,7 @@ weight: 400
   - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
     - [Specifying `Resources` in `PipelineTasks`](#specifying-resources-in-pipelinetasks)
     - [Specifying `Parameters` in `PipelineTasks`](#specifying-parameters-in-pipelinetasks)
+    - [Specifying `Matrix` in `PipelineTasks`](#specifying-matrix-in-pipelinetasks)
     - [Specifying `Workspaces` in `PipelineTasks`](#specifying-workspaces-in-pipelinetasks)
     - [Tekton Bundles](#tekton-bundles)
     - [Using the `from` field](#using-the-from-field)
@@ -36,6 +37,7 @@ weight: 400
   - [Adding `Finally` to the `Pipeline`](#adding-finally-to-the-pipeline)
     - [Specifying `Workspaces` in `finally` tasks](#specifying-workspaces-in-finally-tasks)
     - [Specifying `Parameters` in `finally` tasks](#specifying-parameters-in-finally-tasks)
+    - [Specifying `matrix` in `finally` tasks](#specifying-matrix-in-finally-tasks)
     - [Consuming `Task` execution results in `finally`](#consuming-task-execution-results-in-finally)
     - [`PipelineRun` Status with `finally`](#pipelinerun-status-with-finally)
     - [Using Execution `Status` of `pipelineTask`](#using-execution-status-of-pipelinetask)
@@ -54,6 +56,7 @@ weight: 400
     - [Specifying the target Custom Task](#specifying-the-target-custom-task)
     - [Specifying a Custom Task Spec in-line (or embedded)](#specifying-a-custom-task-spec-in-line-or-embedded)
     - [Specifying parameters](#specifying-parameters-1)
+    - [Specifying matrix](#specifying-matrix)
     - [Specifying workspaces](#specifying-workspaces-1)
     - [Using `Results`](#using-results-1)
     - [Limitations](#limitations)
@@ -104,6 +107,8 @@ A `Pipeline` definition supports the following fields:
       - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails.
       - [`params`](#specifying-parameters-in-pipelinetasks) - Specifies the `Parameters` that a `Task` requires.
       - [`workspaces`](#specifying-workspaces-in-pipelinetasks) - Specifies the `Workspaces` that a `Task` requires.
+      - [`matrix`](#specifying-matrix-in-pipelinetasks) - Specifies the `Parameters` used to fan out a `Task` into
+        multiple `TaskRuns` or `Runs`.
   - [`results`](#emitting-results-from-a-pipeline) - Specifies the location to which the `Pipeline` emits its execution
     results.
   - [`description`](#adding-a-description) - Holds an informative description of the `Pipeline` object.
@@ -119,6 +124,8 @@ A `Pipeline` definition supports the following fields:
     - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails.
     - [`params`](#specifying-parameters-in-finally-tasks) - Specifies the `Parameters` that a `Task` requires.
     - [`workspaces`](#specifying-workspaces-in-finally-tasks) - Specifies the `Workspaces` that a `Task` requires.
+    - [`matrix`](#specifying-matrix-in-finally-tasks) - Specifies the `Parameters` used to fan out a `Task` into
+      multiple `TaskRuns` or `Runs`.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -307,6 +314,32 @@ spec:
         - name: pathToContext
           value: /workspace/examples/microservices/leeroy-web
 ```
+
+### Specifying `Matrix` in `PipelineTasks`
+
+> :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
+> The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
+>
+> :warning: This feature is in a preview mode.
+> It is still in a very early stage of development and is not yet fully functional.
+
+You can also provide [`Parameters`](tasks.md#specifying-parameters) through the `matrix` field:
+
+```yaml
+spec:
+  tasks:
+    - name: browser-test
+      taskRef:
+        name: browser-test
+      matrix:
+        - name: browser
+          value:
+          - chrome
+          - safari
+          - firefox
+```
+
+For further information, read [`Matrix`](./matrix.md).
 
 ### Specifying `Workspaces` in `PipelineTasks`
 
@@ -1186,6 +1219,39 @@ spec:
           value: "someURL"
 ```
 
+### Specifying `matrix` in `finally` tasks
+
+> :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
+> The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
+>
+> :warning: This feature is in a preview mode.
+> It is still in a very early stage of development and is not yet fully functional.
+
+Similar to `tasks`, you can also provide [`Parameters`](tasks.md#specifying-parameters) through `matrix`
+in `finally` tasks:
+
+```yaml
+spec:
+  tasks:
+    - name: tests
+      taskRef:
+        name: integration-test
+  finally:
+    - name: report-results
+      taskRef:
+        name: report-results
+      params:
+        - name: url
+          value: "someURL"
+      matrix:
+        - name: slack-channel
+          value: 
+          - "foo"
+          - "bar"
+```
+
+For further information, read [`Matrix`](./matrix.md).
+
 ### Consuming `Task` execution results in `finally`
 
 `finally` tasks can be configured to consume `Results` of `PipelineTask` from the `tasks` section:
@@ -1601,6 +1667,37 @@ spec:
         - name: foo
           value: bah
 ```
+
+### Specifying matrix
+
+> :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
+> The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
+>
+> :warning: This feature is in a preview mode.
+> It is still in a very early stage of development and is not yet fully functional.
+
+If a custom task supports [`parameters`](tasks.md#specifying-parameters), you can use the
+`matrix` field to specify their values, if you want to fan:
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+      params:
+        - name: foo
+          value: bah
+      matrix:
+        - name: bar
+          value:
+            - qux
+            - thud
+```
+
+For further information, read [`Matrix`](./matrix.md).
 
 ### Specifying workspaces
 

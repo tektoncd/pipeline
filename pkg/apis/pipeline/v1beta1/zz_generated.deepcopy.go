@@ -922,6 +922,13 @@ func (in *PipelineTask) DeepCopyInto(out *PipelineTask) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Matrix != nil {
+		in, out := &in.Matrix, &out.Matrix
+		*out = make([]Param, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.Workspaces != nil {
 		in, out := &in.Workspaces, &out.Workspaces
 		*out = make([]WorkspacePipelineTaskBinding, len(*in))
