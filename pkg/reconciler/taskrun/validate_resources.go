@@ -25,6 +25,9 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 func validateResources(requiredResources []v1beta1.TaskResource, providedResources map[string]*resourcev1alpha1.PipelineResource) error {
@@ -167,4 +170,39 @@ func validateTaskSpecRequestResources(ctx context.Context, taskSpec *v1beta1.Tas
 	}
 
 	return nil
+}
+
+// validateOverrides validates that all stepOverrides map to valid steps, and likewise for sidecarOverrides
+func validateOverrides(ctx context.Context, ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
+	stepErr := validateStepOverrides(ctx, ts, trs)
+	sidecarErr := validateSidecarOverrides(ctx, ts, trs)
+	return multierror.Append(stepErr, sidecarErr).ErrorOrNil()
+}
+
+func validateStepOverrides(ctx context.Context, ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
+	var err error
+	stepNames := sets.NewString()
+	for _, step := range ts.Steps {
+		stepNames.Insert(step.Name)
+	}
+	for _, stepOverride := range trs.StepOverrides {
+		if !stepNames.Has(stepOverride.Name) {
+			err = multierror.Append(err, fmt.Errorf("invalid StepOverride: No Step named %s", stepOverride.Name))
+		}
+	}
+	return err
+}
+
+func validateSidecarOverrides(ctx context.Context, ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
+	var err error
+	sidecarNames := sets.NewString()
+	for _, sidecar := range ts.Sidecars {
+		sidecarNames.Insert(sidecar.Name)
+	}
+	for _, sidecarOverride := range trs.SidecarOverrides {
+		if !sidecarNames.Has(sidecarOverride.Name) {
+			err = multierror.Append(err, fmt.Errorf("invalid SidecarOverride: No Sidecar named %s", sidecarOverride.Name))
+		}
+	}
+	return err
 }

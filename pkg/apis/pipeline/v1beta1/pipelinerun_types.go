@@ -534,6 +534,8 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			if task.TaskServiceAccountName != "" {
 				s.TaskServiceAccountName = task.TaskServiceAccountName
 			}
+			s.StepOverrides = task.StepOverrides
+			s.SidecarOverrides = task.SidecarOverrides
 		}
 	}
 	return s

@@ -358,6 +358,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		}
 	}
 
+	if err := validateOverrides(ctx, taskSpec, &tr.Spec); err != nil {
+		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
 	// Initialize the cloud events if at least a CloudEventResource is defined
 	// and they have not been initialized yet.
 	// FIXME(afrittoli) This resource specific logic will have to be replaced

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package taskrun_test
+package taskrun
 
 import (
 	"context"
@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
@@ -119,7 +118,7 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 			},
 		},
 	}
-	if err := taskrun.ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating valid resolved TaskRun but saw %v", err)
 	}
 }
@@ -157,7 +156,7 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 		Name:  "bar",
 		Value: *v1beta1.NewArrayOrString("somethinggood"),
 	}}
-	if err := taskrun.ValidateResolvedTaskResources(ctx, p, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(ctx, p, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 	}
 
@@ -167,7 +166,7 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 			Name:  "extra",
 			Value: *v1beta1.NewArrayOrString("i am an extra param"),
 		}
-		if err := taskrun.ValidateResolvedTaskResources(ctx, append(p, extra), rtr); err != nil {
+		if err := ValidateResolvedTaskResources(ctx, append(p, extra), rtr); err != nil {
 			t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 		}
 	})
@@ -208,7 +207,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := taskrun.ValidateResolvedTaskResources(ctx, tc.params, tc.rtr); err == nil {
+			if err := ValidateResolvedTaskResources(ctx, tc.params, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
 			}
 		})
@@ -416,8 +415,79 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := taskrun.ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, tc.rtr); err == nil {
+			if err := ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun but saw none")
+			}
+		})
+	}
+}
+
+func TestValidateOverrides(t *testing.T) {
+	tcs := []struct {
+		name    string
+		ts      *v1beta1.TaskSpec
+		trs     *v1beta1.TaskRunSpec
+		wantErr bool
+	}{{
+		name: "valid stepOverrides",
+		ts: &v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Name: "step1",
+				},
+			}, {
+				Container: corev1.Container{
+					Name: "step2",
+				},
+			}},
+		},
+		trs: &v1beta1.TaskRunSpec{
+			StepOverrides: []v1beta1.TaskRunStepOverride{{
+				Name: "step1",
+			}},
+		},
+	}, {
+		name: "valid sidecarOverrides",
+		ts: &v1beta1.TaskSpec{
+			Sidecars: []v1beta1.Sidecar{{
+				Container: corev1.Container{
+					Name: "step1",
+				},
+			}, {
+				Container: corev1.Container{
+					Name: "step2",
+				},
+			}},
+		},
+		trs: &v1beta1.TaskRunSpec{
+			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+				Name: "step1",
+			}},
+		},
+	}, {
+		name: "invalid stepOverrides",
+		ts:   &v1beta1.TaskSpec{},
+		trs: &v1beta1.TaskRunSpec{
+			StepOverrides: []v1beta1.TaskRunStepOverride{{
+				Name: "step1",
+			}},
+		},
+		wantErr: true,
+	}, {
+		name: "invalid sidecarOverrides",
+		ts:   &v1beta1.TaskSpec{},
+		trs: &v1beta1.TaskRunSpec{
+			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+				Name: "step1",
+			}},
+		},
+		wantErr: true,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateOverrides(context.Background(), tc.ts, tc.trs)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("expected err: %t, but got err %s", tc.wantErr, err)
 			}
 		})
 	}

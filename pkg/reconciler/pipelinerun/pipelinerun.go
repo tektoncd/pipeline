@@ -749,6 +749,8 @@ func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.Resolved
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			Timeout:            getTimeoutFunc(ctx, pr, rprt, c.Clock),
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
+			StepOverrides:      taskRunSpec.StepOverrides,
+			SidecarOverrides:   taskRunSpec.SidecarOverrides,
 		}}
 
 	if rprt.ResolvedTaskResources.TaskName != "" {

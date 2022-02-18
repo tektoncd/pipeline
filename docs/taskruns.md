@@ -404,10 +404,9 @@ and reasons.
 ### Overriding Task Steps and Sidecars
 
 **([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
-**Warning: This feature is still under development and is not yet functional. Do not use it.**
 
 A TaskRun can specify `StepOverrides` or `SidecarOverrides` to override Step or Sidecar
-configuration specified in a Task.
+configuration specified in a Task. Only named Steps and Sidecars may be overridden.
 
 For example, given the following Task definition:
 
@@ -450,6 +449,15 @@ spec:
 ```
 `StepOverrides` and `SidecarOverrides` must include the `name` field and may include `resources`.
 No other fields can be overridden.
+If the overridden `Task` uses a [`StepTemplate`](./tasks.md#specifying-a-step-template), configuration on
+`Step` will take precedence over configuration in `StepTemplate`, and configuration in `StepOverride` will
+take precedence over both.
+
+When merging resource requirements, different resource types are considered independently.
+For example, if a `Step` configures both CPU and memory, and a `StepOverride` configures only memory,
+the CPU values from the `Step` will be preserved. Requests and limits are also considered independently.
+For example, if a `Step` configures a memory request and limit, and a `StepOverride` configures only a
+memory request, the memory limit from the `Step` will be preserved.
 
 ### Specifying `LimitRange` values
 
