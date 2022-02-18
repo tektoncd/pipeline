@@ -57,7 +57,17 @@ func (pp *ParamSpec) SetDefaults(ctx context.Context) {
 	if pp != nil && pp.Type == "" {
 		if pp.Default != nil {
 			// propagate the parsed ArrayOrString's type to the parent ParamSpec's type
-			pp.Type = pp.Default.Type
+			if pp.Default.Type != "" {
+				// propagate the default type if specified
+				pp.Type = pp.Default.Type
+			} else {
+				// determine the type based on the array or string values when default value is specified but not the type
+				if pp.Default.ArrayVal != nil {
+					pp.Type = ParamTypeArray
+				} else {
+					pp.Type = ParamTypeString
+				}
+			}
 		} else {
 			// ParamTypeString is the default value (when no type can be inferred from the default value)
 			pp.Type = ParamTypeString
