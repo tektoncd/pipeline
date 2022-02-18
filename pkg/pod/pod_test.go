@@ -792,6 +792,217 @@ _EOF_
 			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
 	}, {
+		desc: "with stepOverrides",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "step1",
+				Image:   "image",
+				Command: []string{"cmd"},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("8"),
+						corev1.ResourceMemory: resource.MustParse("10Gi"),
+					},
+				},
+			}}},
+		},
+		trs: v1beta1.TaskRunSpec{
+			StepOverrides: []v1beta1.TaskRunStepOverride{{
+				Name: "step1",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("6"),
+						corev1.ResourceMemory: resource.MustParse("5Gi"),
+					},
+				},
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{
+				{Container: corev1.Container{Name: "step1"}},
+			})},
+			Containers: []corev1.Container{{
+				Name:    "step-step1",
+				Image:   "image",
+				Command: []string{"/tekton/bin/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/run/0/out",
+					"-termination_path",
+					"/tekton/termination",
+					"-step_metadata_dir",
+					"/tekton/run/0/status",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("6"),
+						corev1.ResourceMemory: resource.MustParse("5Gi"),
+					},
+				},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+		},
+	}, {
+		desc: "with stepOverrides and stepTemplate",
+		ts: v1beta1.TaskSpec{
+			StepTemplate: &corev1.Container{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("8"),
+						corev1.ResourceMemory: resource.MustParse("10Gi"),
+					},
+				},
+			},
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "step1",
+				Image:   "image",
+				Command: []string{"cmd"},
+			}}},
+		},
+		trs: v1beta1.TaskRunSpec{
+			StepOverrides: []v1beta1.TaskRunStepOverride{{
+				Name: "step1",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("6"),
+						corev1.ResourceMemory: resource.MustParse("5Gi"),
+					},
+				},
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy: corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{
+				{Container: corev1.Container{Name: "step1"}},
+			})},
+			Containers: []corev1.Container{{
+				Name:    "step-step1",
+				Image:   "image",
+				Command: []string{"/tekton/bin/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/run/0/out",
+					"-termination_path",
+					"/tekton/termination",
+					"-step_metadata_dir",
+					"/tekton/run/0/status",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("6"),
+						corev1.ResourceMemory: resource.MustParse("5Gi"),
+					},
+				},
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+		},
+	}, {
+		desc: "with sidecarOverrides",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{Container: corev1.Container{
+				Name:    "primary-name",
+				Image:   "primary-image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}}},
+			Sidecars: []v1beta1.Sidecar{{
+				Container: corev1.Container{
+					Name:  "sc-name",
+					Image: "sidecar-image",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("8"),
+							corev1.ResourceMemory: resource.MustParse("10Gi"),
+						},
+					},
+				},
+			}},
+		},
+		trs: v1beta1.TaskRunSpec{
+			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+				Name: "sc-name",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("6"),
+						corev1.ResourceMemory: resource.MustParse("5Gi"),
+					},
+				},
+			}},
+		},
+		wantAnnotations: map[string]string{},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Container: corev1.Container{Name: "primary-name"}}})},
+			Containers: []corev1.Container{{
+				Name:    "step-primary-name",
+				Image:   "primary-image",
+				Command: []string{"/tekton/bin/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/run/0/out",
+					"-termination_path",
+					"/tekton/termination",
+					"-step_metadata_dir",
+					"/tekton/run/0/status",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}}, implicitVolumeMounts...),
+				TerminationMessagePath: "/tekton/termination",
+			}, {
+				Name:  "sidecar-sc-name",
+				Image: "sidecar-image",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("6"),
+						corev1.ResourceMemory: resource.MustParse("5Gi"),
+					},
+				},
+			}},
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+		},
+	}, {
 		desc: "step with script and stepTemplate",
 		ts: v1beta1.TaskSpec{
 			StepTemplate: &corev1.Container{

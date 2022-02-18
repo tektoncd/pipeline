@@ -4081,6 +4081,8 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 						"workloadtype": "tekton",
 					},
 				},
+				StepOverrides:    []v1beta1.TaskRunStepOverride{{Name: "foo"}},
+				SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{Name: "bar"}},
 			}},
 		},
 	}}
@@ -4117,8 +4119,10 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 					"workloadtype": "tekton",
 				},
 			},
-			Resources: &v1beta1.TaskRunResources{},
-			Timeout:   &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			Resources:        &v1beta1.TaskRunResources{},
+			Timeout:          &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			StepOverrides:    []v1beta1.TaskRunStepOverride{{Name: "foo"}},
+			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{Name: "bar"}},
 		},
 	}
 

@@ -138,13 +138,21 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if err != nil {
 		return nil, err
 	}
+	steps, err = v1beta1.MergeStepsWithOverrides(steps, taskRun.Spec.StepOverrides)
+	if err != nil {
+		return nil, err
+	}
+	sidecars, err := v1beta1.MergeSidecarsWithOverrides(taskSpec.Sidecars, taskRun.Spec.SidecarOverrides)
+	if err != nil {
+		return nil, err
+	}
 
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
 	if alphaAPIEnabled {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, taskSpec.Sidecars, taskRun.Spec.Debug)
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, b.Images.ShellImageWin, steps, sidecars, taskRun.Spec.Debug)
 	} else {
-		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, "", steps, taskSpec.Sidecars, nil)
+		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, "", steps, sidecars, nil)
 	}
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
