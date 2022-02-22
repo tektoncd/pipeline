@@ -345,7 +345,7 @@ func TestHasTimedOut(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := tc.taskRun.HasTimedOut(testClock{})
+			result := tc.taskRun.HasTimedOut(testClock)
 			if d := cmp.Diff(result, tc.expectedStatus); d != "" {
 				t.Fatalf(diff.PrintWantGot(d))
 			}

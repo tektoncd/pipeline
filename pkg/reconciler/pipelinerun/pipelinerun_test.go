@@ -52,6 +52,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/clock"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
@@ -97,7 +98,8 @@ var (
 		},
 	}
 
-	now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+	now       = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+	testClock = clock.NewFakePassiveClock(now)
 )
 
 const (
@@ -110,11 +112,6 @@ type PipelineRunTest struct {
 	TestAssets test.Assets
 	Cancel     func()
 }
-
-type testClock struct{}
-
-func (testClock) Now() time.Time                  { return now }
-func (testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
 
 func ensureConfigurationConfigMapsExist(d *test.Data) {
 	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists, metricsExists bool
@@ -181,7 +178,7 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, testClock{})(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
 		la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {})
 	}
@@ -1598,7 +1595,7 @@ func TestUpdateTaskRunsState(t *testing.T) {
 			TaskSpec: &task.Spec,
 		},
 	}}
-	pr.Status.InitializeConditions(testClock{})
+	pr.Status.InitializeConditions(testClock)
 	status := state.GetTaskRunsStatus(pr)
 	if d := cmp.Diff(expectedPipelineRunStatus.TaskRuns, status); d != "" {
 		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
@@ -1676,7 +1673,7 @@ func TestUpdateRunsState(t *testing.T) {
 		RunName:      "test-pipeline-run-success-unit-test-1",
 		Run:          &run,
 	}}
-	pr.Status.InitializeConditions(testClock{})
+	pr.Status.InitializeConditions(testClock)
 	status := state.GetRunsStatus(pr)
 	if d := cmp.Diff(expectedPipelineRunStatus.Runs, status); d != "" {
 		t.Fatalf("Expected PipelineRun status to match Run(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
@@ -1852,7 +1849,7 @@ func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
 				TaskRunName:             taskrunName,
 				ResolvedConditionChecks: tc.rcc,
 			}}
-			pr.Status.InitializeConditions(testClock{})
+			pr.Status.InitializeConditions(testClock)
 			status := state.GetTaskRunsStatus(pr)
 			expected := map[string]*v1beta1.PipelineRunTaskRunStatus{
 				taskrunName: &tc.expectedStatus,
@@ -4141,7 +4138,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), tc.pr, tc.rprt, testClock{}), tc.expected); d != "" {
+			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), tc.pr, tc.rprt, testClock), tc.expected); d != "" {
 				t.Errorf("Unexpected task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -4408,7 +4405,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), tc.pr, tc.rprt, testClock{})); d != "" {
+			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), tc.pr, tc.rprt, testClock)); d != "" {
 				t.Errorf("Unexpected finally task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})

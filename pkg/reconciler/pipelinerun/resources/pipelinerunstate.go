@@ -21,11 +21,11 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
@@ -323,7 +323,7 @@ func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 
 // GetPipelineConditionStatus will return the Condition that the PipelineRun prName should be
 // updated with, based on the status of the TaskRuns in state.
-func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, pr *v1beta1.PipelineRun, logger *zap.SugaredLogger, c clock.Clock) *apis.Condition {
+func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, pr *v1beta1.PipelineRun, logger *zap.SugaredLogger, c clock.PassiveClock) *apis.Condition {
 	// We have 4 different states here:
 	// 1. Timed out -> Failed
 	// 2. All tasks are done and at least one has failed or has been cancelled -> Failed
