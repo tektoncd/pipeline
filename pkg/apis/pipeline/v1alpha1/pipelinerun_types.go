@@ -22,9 +22,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/clock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"knative.dev/pkg/apis"
 )
 
@@ -161,7 +161,7 @@ func (pr *PipelineRun) GetRunKey() string {
 }
 
 // IsTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
-func (pr *PipelineRun) IsTimedOut(c clock.Clock) bool {
+func (pr *PipelineRun) IsTimedOut(c clock.PassiveClock) bool {
 	pipelineTimeout := pr.Spec.Timeout
 	startTime := pr.Status.StartTime
 

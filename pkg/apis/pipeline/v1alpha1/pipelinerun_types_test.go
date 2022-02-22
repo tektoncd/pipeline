@@ -26,15 +26,12 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"knative.dev/pkg/apis"
 )
 
 var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
-
-type testClock struct{}
-
-func (tc testClock) Now() time.Time                  { return now }
-func (tc testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
+var testClock = clock.NewFakePassiveClock(now)
 
 func TestPipelineRunStatusConditions(t *testing.T) {
 	p := &v1alpha1.PipelineRun{}
@@ -76,7 +73,7 @@ func TestInitializeConditions(t *testing.T) {
 			Namespace: "test-ns",
 		},
 	}
-	p.Status.InitializeConditions(testClock{})
+	p.Status.InitializeConditions(testClock)
 
 	if p.Status.TaskRuns == nil {
 		t.Fatalf("PipelineRun status not initialized correctly")
@@ -88,7 +85,7 @@ func TestInitializeConditions(t *testing.T) {
 
 	p.Status.TaskRuns["fooTask"] = &v1alpha1.PipelineRunTaskRunStatus{}
 
-	p.Status.InitializeConditions(testClock{})
+	p.Status.InitializeConditions(testClock)
 	if len(p.Status.TaskRuns) != 1 {
 		t.Fatalf("PipelineRun status getting reset")
 	}
@@ -233,7 +230,7 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				},
 			}
 
-			if pr.IsTimedOut(testClock{}) != tc.expected {
+			if pr.IsTimedOut(testClock) != tc.expected {
 				t.Fatalf("Expected isTimedOut to be %t", tc.expected)
 			}
 		})

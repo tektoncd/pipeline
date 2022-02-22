@@ -24,10 +24,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/clock"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -206,7 +206,7 @@ func (r *Run) GetRunKey() string {
 }
 
 // HasTimedOut returns true if the Run's running time is beyond the allowed timeout
-func (r *Run) HasTimedOut(c clock.Clock) bool {
+func (r *Run) HasTimedOut(c clock.PassiveClock) bool {
 	if r.Status.StartTime == nil || r.Status.StartTime.IsZero() {
 		return false
 	}

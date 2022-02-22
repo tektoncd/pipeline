@@ -26,11 +26,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
-	"github.com/tektoncd/pipeline/pkg/clock"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/clock"
 	controller "knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 )
@@ -73,7 +73,7 @@ func cloudEventDeliveryFromTargets(targets []string) []v1beta1.CloudEventDeliver
 
 // SendCloudEvents is used by the TaskRun controller to send cloud events once
 // the TaskRun is complete. `tr` is used to obtain the list of targets
-func SendCloudEvents(tr *v1beta1.TaskRun, ceclient CEClient, logger *zap.SugaredLogger, c clock.Clock) error {
+func SendCloudEvents(tr *v1beta1.TaskRun, ceclient CEClient, logger *zap.SugaredLogger, c clock.PassiveClock) error {
 	logger = logger.With(zap.String("taskrun", tr.Name))
 
 	// Make the event we would like to send:

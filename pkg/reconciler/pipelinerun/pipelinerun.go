@@ -38,7 +38,6 @@ import (
 	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/clock"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
@@ -55,6 +54,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
@@ -119,7 +119,7 @@ type Reconciler struct {
 	KubeClientSet     kubernetes.Interface
 	PipelineClientSet clientset.Interface
 	Images            pipeline.Images
-	Clock             clock.Clock
+	Clock             clock.PassiveClock
 
 	// listers index properties about resources
 	pipelineRunLister listers.PipelineRunLister
@@ -717,7 +717,7 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 	return nil
 }
 
-type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration
+type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration
 
 func (c *Reconciler) createTaskRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) (*v1beta1.TaskRun, error) {
 	logger := logging.FromContext(ctx)
@@ -1006,7 +1006,7 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 // getFinallyTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask, which is a finally Task.
 // If there is no timeout for the finally TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
+func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
 	taskRunTimeout := calculateTaskRunTimeout(pr.PipelineTimeout(ctx), pr, rprt, c)
 	finallyTimeout := pr.FinallyTimeout()
 	// Return the smaller of taskRunTimeout and finallyTimeout
@@ -1024,7 +1024,7 @@ func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt
 // getTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask.
 // If there is no timeout for the TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
+func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
 	var timeout time.Duration
 	if pr.TasksTimeout() != nil {
 		timeout = pr.TasksTimeout().Duration
@@ -1040,7 +1040,7 @@ func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resou
 // - If ResolvedPipelineRunTask is a Finally Task, `timeout` is the Pipeline Timeout
 // If there is no timeout for the TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.Clock) *metav1.Duration {
+func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
 	if timeout != apisconfig.NoTimeoutDuration {
 		pElapsedTime := c.Since(pr.Status.StartTime.Time)
 		if pElapsedTime > timeout {
