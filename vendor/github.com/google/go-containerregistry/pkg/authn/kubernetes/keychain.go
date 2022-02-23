@@ -19,10 +19,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -122,11 +122,37 @@ func NewFromPullSecrets(ctx context.Context, secrets []corev1.Secret) (authn.Key
 			}
 		}
 
-		for k, v := range auths {
-			// Don't overwrite previously specified Auths for a
-			// given key.
-			if _, found := m[k]; !found {
-				m[k] = v
+		for registry, v := range auths {
+			// From: https://github.com/kubernetes/kubernetes/blob/0dcafb1f37ee522be3c045753623138e5b907001/pkg/credentialprovider/keyring.go
+			value := registry
+			if !strings.HasPrefix(value, "https://") && !strings.HasPrefix(value, "http://") {
+				value = "https://" + value
+			}
+			parsed, err := url.Parse(value)
+			if err != nil {
+				return nil, fmt.Errorf("Entry %q in dockercfg invalid (%w)", value, err)
+			}
+
+			// The docker client allows exact matches:
+			//    foo.bar.com/namespace
+			// Or hostname matches:
+			//    foo.bar.com
+			// It also considers /v2/  and /v1/ equivalent to the hostname
+			// See ResolveAuthConfig in docker/registry/auth.go.
+			effectivePath := parsed.Path
+			if strings.HasPrefix(effectivePath, "/v2/") || strings.HasPrefix(effectivePath, "/v1/") {
+				effectivePath = effectivePath[3:]
+			}
+			var key string
+			if (len(effectivePath) > 0) && (effectivePath != "/") {
+				key = parsed.Host + effectivePath
+			} else {
+				key = parsed.Host
+			}
+
+			// Don't overwrite previously specified Auths for a given key.
+			if _, found := m[key]; !found {
+				m[key] = v
 			}
 		}
 	}
@@ -140,9 +166,6 @@ func (kc authsKeychain) Resolve(target authn.Resource) (authn.Authenticator, err
 	// found, one that matches the registry.
 	var cfg authn.AuthConfig
 	for _, key := range []string{target.String(), target.RegistryStr()} {
-		if key == name.DefaultRegistry {
-			key = authn.DefaultAuthKey
-		}
 		var ok bool
 		cfg, ok = kc[key]
 		if ok {
@@ -153,7 +176,6 @@ func (kc authsKeychain) Resolve(target authn.Resource) (authn.Authenticator, err
 	if cfg == empty {
 		return authn.Anonymous, nil
 	}
-
 	if cfg.Auth != "" {
 		dec, err := base64.StdEncoding.DecodeString(cfg.Auth)
 		if err != nil {
