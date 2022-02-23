@@ -205,6 +205,7 @@ struct ltchars {
 #include <linux/bpf.h>
 #include <linux/can.h>
 #include <linux/can/error.h>
+#include <linux/can/netlink.h>
 #include <linux/can/raw.h>
 #include <linux/capability.h>
 #include <linux/cryptouser.h>
