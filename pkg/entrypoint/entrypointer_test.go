@@ -94,6 +94,7 @@ func TestEntrypointerFailures(t *testing.T) {
 				terminationPath = terminationFile.Name()
 				defer os.Remove(terminationFile.Name())
 			}
+			ctx := context.Background()
 			err := Entrypointer{
 				Command:         []string{"echo", "some", "args"},
 				WaitFiles:       c.waitFiles,
@@ -103,7 +104,7 @@ func TestEntrypointerFailures(t *testing.T) {
 				PostWriter:      fpw,
 				TerminationPath: terminationPath,
 				Timeout:         &c.timeout,
-			}.Go()
+			}.Go(ctx)
 			if err == nil {
 				t.Fatalf("Entrypointer didn't fail")
 			}
@@ -130,6 +131,11 @@ func TestEntrypointer(t *testing.T) {
 		desc, entrypoint, postFile, stepDir, stepDirLink string
 		waitFiles, args                                  []string
 		breakpointOnFailure                              bool
+		cancelFile                                       string
+		noCancel                                         bool
+		shouldCancel                                     bool
+		waiter                                           Waiter
+		runner                                           Runner
 	}{{
 		desc: "do nothing",
 	}, {
@@ -160,6 +166,18 @@ func TestEntrypointer(t *testing.T) {
 	}, {
 		desc:                "breakpointOnFailure to wait or not to wait ",
 		breakpointOnFailure: true,
+	}, {
+		desc:       "Runner completes if not cancelled",
+		cancelFile: "cancelFile",
+		waiter:     &contextWaiter{duration: 30 * time.Millisecond},
+		runner:     &fakeLongRunner{duration: 10 * time.Millisecond},
+		noCancel:   true,
+	}, {
+		desc:         "Runner can be cancelled",
+		cancelFile:   "cancelFile",
+		waiter:       &contextWaiter{duration: 10 * time.Millisecond},
+		runner:       &fakeLongRunner{duration: 30 * time.Millisecond},
+		shouldCancel: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
@@ -171,18 +189,32 @@ func TestEntrypointer(t *testing.T) {
 				terminationPath = terminationFile.Name()
 				defer os.Remove(terminationFile.Name())
 			}
+			var waiter Waiter
+			if c.waiter != nil {
+				waiter = c.waiter
+			} else {
+				waiter = fw
+			}
+			var runner Runner
+			if c.runner != nil {
+				runner = c.runner
+			} else {
+				runner = fr
+			}
+			ctx := context.Background()
 			err := Entrypointer{
 				Command:             append([]string{c.entrypoint}, c.args...),
 				WaitFiles:           c.waitFiles,
 				PostFile:            c.postFile,
-				Waiter:              fw,
-				Runner:              fr,
+				CancelFile:          c.cancelFile,
+				Waiter:              waiter,
+				Runner:              runner,
 				PostWriter:          fpw,
 				TerminationPath:     terminationPath,
 				Timeout:             &timeout,
 				BreakpointOnFailure: c.breakpointOnFailure,
 				StepMetadataDir:     c.stepDir,
-			}.Go()
+			}.Go(ctx)
 			if err != nil {
 				t.Fatalf("Entrypointer failed: %v", err)
 			}
@@ -199,7 +231,7 @@ func TestEntrypointer(t *testing.T) {
 			}
 
 			wantArgs := append([]string{c.entrypoint}, c.args...)
-			if len(wantArgs) != 0 {
+			if c.entrypoint != "" || len(c.args) > 0 {
 				if fr.args == nil {
 					t.Error("Wanted command to be run, got nil")
 				} else if !reflect.DeepEqual(*fr.args, wantArgs) {
@@ -229,14 +261,22 @@ func TestEntrypointer(t *testing.T) {
 				var entries []v1alpha1.PipelineResourceResult
 				if err := json.Unmarshal(fileContents, &entries); err == nil {
 					var found = false
+					var cancelled = false
 					for _, result := range entries {
 						if result.Key == "StartedAt" {
 							found = true
-							break
+						} else if result.Key == "Reason" && result.Value == "Cancelled" {
+							cancelled = true
 						}
 					}
 					if !found {
 						t.Error("Didn't find the startedAt entry")
+					}
+					if c.noCancel && cancelled {
+						t.Error("Didn't expect cancel but run was cancelled")
+					}
+					if c.shouldCancel && !cancelled {
+						t.Error("Expected run to be cancelled but it wasn't")
 					}
 				}
 			} else if !os.IsNotExist(err) {
@@ -307,6 +347,7 @@ func TestEntrypointer_OnError(t *testing.T) {
 				terminationPath = terminationFile.Name()
 				defer os.Remove(terminationFile.Name())
 			}
+			ctx := context.Background()
 			err := Entrypointer{
 				Command:         []string{"echo", "some", "args"},
 				WaitFiles:       []string{},
@@ -316,7 +357,7 @@ func TestEntrypointer_OnError(t *testing.T) {
 				PostWriter:      fpw,
 				TerminationPath: terminationPath,
 				OnError:         c.onError,
-			}.Go()
+			}.Go(ctx)
 
 			if c.expectedError && err == nil {
 				t.Fatalf("Entrypointer didn't fail")
@@ -349,9 +390,24 @@ func TestEntrypointer_OnError(t *testing.T) {
 	}
 }
 
+type contextWaiter struct {
+	duration time.Duration
+}
+
+func (c contextWaiter) Wait(ctx context.Context, _ string, _ bool, _ bool) error {
+	for {
+		select {
+		case <-time.After(c.duration):
+			return nil
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
 type fakeWaiter struct{ waited []string }
 
-func (f *fakeWaiter) Wait(file string, _ bool, _ bool) error {
+func (f *fakeWaiter) Wait(ctx context.Context, file string, _ bool, _ bool) error {
 	f.waited = append(f.waited, file)
 	return nil
 }
@@ -380,7 +436,7 @@ func (f *fakePostWriter) Write(file, content string) {
 
 type fakeErrorWaiter struct{ waited *string }
 
-func (f *fakeErrorWaiter) Wait(file string, expectContent bool, breakpointOnFailure bool) error {
+func (f *fakeErrorWaiter) Wait(ctx context.Context, file string, expectContent bool, breakpointOnFailure bool) error {
 	f.waited = &file
 	return errors.New("waiter failed")
 }
@@ -417,4 +473,15 @@ type fakeExitErrorRunner struct{ args *[]string }
 func (f *fakeExitErrorRunner) Run(ctx context.Context, args ...string) error {
 	f.args = &args
 	return exec.Command("ls", "/bogus/path").Run()
+}
+
+type fakeLongRunner struct{ duration time.Duration }
+
+func (f *fakeLongRunner) Run(ctx context.Context, _ ...string) error {
+	select {
+	case <-time.After(f.duration):
+		return nil
+	case <-ctx.Done():
+		return nil
+	}
 }

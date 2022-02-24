@@ -80,12 +80,15 @@ type Entrypointer struct {
 	OnError string
 	// StepMetadataDir is the directory for a step where the step related metadata can be stored
 	StepMetadataDir string
+
+	// CancelFile is the file that causes the task to be cancelled.
+	CancelFile string
 }
 
 // Waiter encapsulates waiting for files to exist.
 type Waiter interface {
 	// Wait blocks until the specified file exists.
-	Wait(file string, expectContent bool, breakpointOnFailure bool) error
+	Wait(ctx context.Context, file string, expectContent bool, breakpointOnFailure bool) error
 }
 
 // Runner encapsulates running commands.
@@ -101,7 +104,7 @@ type PostWriter interface {
 
 // Go optionally waits for a file, runs the command, and writes a
 // post file.
-func (e Entrypointer) Go() error {
+func (e Entrypointer) Go(ctx context.Context) error {
 	prod, _ := zap.NewProduction()
 	logger := prod.Sugar()
 
@@ -114,7 +117,7 @@ func (e Entrypointer) Go() error {
 	}()
 
 	for _, f := range e.WaitFiles {
-		if err := e.Waiter.Wait(f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
+		if err := e.Waiter.Wait(ctx, f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
 			// *but* we write postfile to make next steps bail too.
 			// In case of breakpoint on failure do not write post file.
@@ -142,17 +145,44 @@ func (e Entrypointer) Go() error {
 	}
 
 	if err == nil {
-		ctx := context.Background()
 		var cancel context.CancelFunc
 		if e.Timeout != nil && *e.Timeout != time.Duration(0) {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
-			defer cancel()
+		} else {
+			ctx, cancel = context.WithCancel(ctx)
 		}
-		err = e.Runner.Run(ctx, e.Command...)
+		defer cancel()
+
+		errChan := make(chan error, 1)
+		go func() {
+			errChan <- e.Runner.Run(ctx, e.Command...)
+			cancel()
+		}()
+
+		var cancelled bool
+		if e.CancelFile != "" {
+			if err := e.Waiter.Wait(ctx, e.CancelFile, true, e.BreakpointOnFailure); err != nil {
+				return err
+			}
+			if ctx.Err() == nil {
+				cancel()
+				cancelled = true
+			}
+		}
+		err = <-errChan
+
 		if err == context.DeadlineExceeded {
 			output = append(output, v1beta1.PipelineResourceResult{
 				Key:        "Reason",
 				Value:      "TimeoutExceeded",
+				ResultType: v1beta1.InternalTektonResultType,
+			})
+		} else if cancelled {
+			// Waiter has found the cancel file: Cancel the run
+			cancel()
+			output = append(output, v1beta1.PipelineResourceResult{
+				Key:        "Reason",
+				Value:      "Cancelled",
 				ResultType: v1beta1.InternalTektonResultType,
 			})
 		}

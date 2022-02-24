@@ -140,7 +140,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		message := fmt.Sprintf("TaskRun %q was cancelled", tr.Name)
-		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
+		err := c.cancelTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
@@ -550,6 +550,67 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 	return err
 }
 
+// cancelTaskRun cancels a TaskRun with the provided Reason
+// If a pod is associated with the TaskRun, all the containers in it get stopped.
+// cancelTaskRun may update the local TaskRun status, but it won't push the updates to etcd
+func (c *Reconciler) cancelTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reason v1beta1.TaskRunReason, message string) error {
+	logger := logging.FromContext(ctx)
+
+	logger.Warnf("cancelling task run %q because of %q", tr.Name, reason)
+	tr.Status.MarkResourceFailed(reason, errors.New(message))
+
+	completionTime := metav1.Time{Time: c.Clock.Now()}
+	tr.Status.CompletionTime = &completionTime
+
+	if tr.Status.PodName == "" {
+		logger.Warnf("task run %q has no pod running yet", tr.Name)
+		return nil
+	}
+
+	var pod *corev1.Pod
+	pod, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+	if k8serrors.IsNotFound(err) {
+		logger.Warnf("Failed to get pod: %v", err)
+		return nil
+	} else if err != nil {
+		logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
+		return err
+	}
+
+	if err := podconvert.CancelPod(ctx, c.KubeClientSet, *pod); err != nil {
+		return err
+	}
+	// Update step states for TaskRun on TaskRun object since taskrun has been cancelled
+	updateTerminatedTaskSteps(tr, completionTime, reason, message)
+	return nil
+}
+
+func updateTerminatedTaskSteps(tr *v1beta1.TaskRun, completionTime metav1.Time, reason v1beta1.TaskRunReason, message string) {
+	for i, step := range tr.Status.Steps {
+		// If running, include StartedAt for when step began running
+		if step.Running != nil {
+			step.Terminated = &corev1.ContainerStateTerminated{
+				ExitCode:   1,
+				StartedAt:  step.Running.StartedAt,
+				FinishedAt: completionTime,
+				Reason:     reason.String(),
+			}
+			step.Running = nil
+			tr.Status.Steps[i] = step
+		}
+
+		if step.Waiting != nil {
+			step.Terminated = &corev1.ContainerStateTerminated{
+				ExitCode:   1,
+				FinishedAt: completionTime,
+				Reason:     reason.String(),
+			}
+			step.Waiting = nil
+			tr.Status.Steps[i] = step
+		}
+	}
+}
+
 // failTaskRun stops a TaskRun with the provided Reason
 // If a pod is associated to the TaskRun, it stops it
 // failTaskRun function may return an error in case the pod could not be deleted
@@ -578,31 +639,8 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 		return err
 	}
 
-	// Update step states for TaskRun on TaskRun object since pod has been deleted for cancel or timeout
-	for i, step := range tr.Status.Steps {
-		// If running, include StartedAt for when step began running
-		if step.Running != nil {
-			step.Terminated = &corev1.ContainerStateTerminated{
-				ExitCode:   1,
-				StartedAt:  step.Running.StartedAt,
-				FinishedAt: completionTime,
-				Reason:     reason.String(),
-			}
-			step.Running = nil
-			tr.Status.Steps[i] = step
-		}
-
-		if step.Waiting != nil {
-			step.Terminated = &corev1.ContainerStateTerminated{
-				ExitCode:   1,
-				FinishedAt: completionTime,
-				Reason:     reason.String(),
-			}
-			step.Waiting = nil
-			tr.Status.Steps[i] = step
-		}
-	}
-
+	// Update step states for TaskRun on TaskRun object since pod has been deleted for timeout
+	updateTerminatedTaskSteps(tr, completionTime, reason, message)
 	return nil
 }
 

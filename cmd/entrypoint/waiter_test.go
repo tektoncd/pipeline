@@ -17,6 +17,8 @@ limitations under the License.
 package main
 
 import (
+	"context"
+	"errors"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -24,7 +26,7 @@ import (
 	"time"
 )
 
-const testWaitPollingInterval = 10 * time.Millisecond
+const testWaitPollingInterval = 25 * time.Millisecond
 
 func TestRealWaiterWaitMissingFile(t *testing.T) {
 	// Create a temp file and then immediately delete it to get
@@ -37,8 +39,9 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 	os.Remove(tmp.Name())
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
+	ctx := context.Background()
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmp.Name(), false, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(ctx, tmp.Name(), false, false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -60,8 +63,9 @@ func TestRealWaiterWaitWithFile(t *testing.T) {
 	defer os.Remove(tmp.Name())
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
+	ctx := context.Background()
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmp.Name(), false, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(ctx, tmp.Name(), false, false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -83,8 +87,9 @@ func TestRealWaiterWaitMissingContent(t *testing.T) {
 	defer os.Remove(tmp.Name())
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
+	ctx := context.Background()
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmp.Name(), true, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(ctx, tmp.Name(), true, false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -106,8 +111,9 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 	defer os.Remove(tmp.Name())
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
+	ctx := context.Background()
 	go func() {
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmp.Name(), true, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(ctx, tmp.Name(), true, false)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -133,9 +139,10 @@ func TestRealWaiterWaitWithErrorWaitfile(t *testing.T) {
 	defer os.Remove(tmp.Name())
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
+	ctx := context.Background()
 	go func() {
 		// error of type skipError is returned after encountering a error waitfile
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmpFileName, false, false)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(ctx, tmpFileName, false, false)
 		if err == nil {
 			t.Errorf("expected skipError upon encounter error waitfile")
 		}
@@ -163,9 +170,10 @@ func TestRealWaiterWaitWithBreakpointOnFailure(t *testing.T) {
 	defer os.Remove(tmp.Name())
 	rw := realWaiter{}
 	doneCh := make(chan struct{})
+	ctx := context.Background()
 	go func() {
 		// When breakpoint on failure is enabled skipError shouldn't be returned for a error waitfile
-		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(tmpFileName, false, true)
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(ctx, tmpFileName, false, true)
 		if err != nil {
 			t.Errorf("error waiting on tmp file %q", tmp.Name())
 		}
@@ -176,5 +184,51 @@ func TestRealWaiterWaitWithBreakpointOnFailure(t *testing.T) {
 		// Success
 	case <-time.After(2 * testWaitPollingInterval):
 		t.Errorf("expected Wait() to have detected a non-zero file size by now")
+	}
+}
+
+func TestRealWaiterWaitWithCancel(t *testing.T) {
+	rw := realWaiter{}
+	doneCh := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(ctx, "does_not_exist", true, false)
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Error("error waiting")
+		}
+		close(doneCh)
+	}()
+	time.Sleep(testWaitPollingInterval)
+	cancel()
+
+	select {
+	case <-doneCh:
+		// Success
+	case <-time.After(2 * testWaitPollingInterval):
+		t.Errorf("expected Wait() to have exited by now")
+	}
+}
+
+func TestRealWaiterWaitWithDeadline(t *testing.T) {
+	rw := realWaiter{}
+	doneCh := make(chan struct{})
+	ctx, cancel := context.WithTimeout(context.Background(), testWaitPollingInterval)
+	defer cancel()
+	go func() {
+		err := rw.setWaitPollingInterval(testWaitPollingInterval).Wait(ctx, "does_not_exist", true, false)
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+			t.Error("error waiting")
+		}
+		close(doneCh)
+	}()
+	time.Sleep(2 * testWaitPollingInterval)
+	cancel()
+
+	select {
+	case <-doneCh:
+		// Success
+	case <-time.After(2 * testWaitPollingInterval):
+		t.Errorf("expected Wait() to have exited by now")
 	}
 }

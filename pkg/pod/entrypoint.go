@@ -43,12 +43,15 @@ const (
 	runVolumeName = "tekton-internal-run"
 	runDir        = "/tekton/run"
 
-	downwardVolumeName     = "tekton-internal-downward"
-	downwardMountPoint     = "/tekton/downward"
-	terminationPath        = "/tekton/termination"
-	downwardMountReadyFile = "ready"
-	readyAnnotation        = "tekton.dev/ready"
-	readyAnnotationValue   = "READY"
+	downwardVolumeName      = "tekton-internal-downward"
+	downwardMountPoint      = "/tekton/downward"
+	terminationPath         = "/tekton/termination"
+	downwardMountReadyFile  = "ready"
+	readyAnnotation         = "tekton.dev/ready"
+	readyAnnotationValue    = "READY"
+	downwardMountCancelFile = "cancel"
+	cancelAnnotation        = "tekton.dev/cancel"
+	cancelAnnotationValue   = "CANCEL"
 
 	stepPrefix    = "step-"
 	sidecarPrefix = "sidecar-"
@@ -78,12 +81,20 @@ var (
 		Name: downwardVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{{
-					Path: downwardMountReadyFile,
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: fmt.Sprintf("metadata.annotations['%s']", readyAnnotation),
+				Items: []corev1.DownwardAPIVolumeFile{
+					{
+						Path: downwardMountReadyFile,
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: fmt.Sprintf("metadata.annotations['%s']", readyAnnotation),
+						},
 					},
-				}},
+					{
+						Path: downwardMountCancelFile,
+						FieldRef: &corev1.ObjectFieldSelector{
+							FieldPath: fmt.Sprintf("metadata.annotations['%s']", cancelAnnotation),
+						},
+					},
+				},
 			},
 		},
 	}
@@ -121,6 +132,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				"-post_file", filepath.Join(runDir, idx, "out"),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
+				"-cancel_file", filepath.Join(downwardMountPoint, downwardMountCancelFile),
 			}
 		default:
 			// All other steps wait for previous file, write next file.
@@ -129,6 +141,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				"-post_file", filepath.Join(runDir, idx, "out"),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
+				"-cancel_file", filepath.Join(downwardMountPoint, downwardMountCancelFile),
 			}
 		}
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
@@ -189,7 +202,7 @@ func collectResultsName(results []v1beta1.TaskResult) string {
 	return strings.Join(resultNames, ",")
 }
 
-var replaceReadyPatchBytes []byte
+var replaceReadyPatchBytes, replaceCancelPatchBytes []byte
 
 func init() {
 	// https://stackoverflow.com/questions/55573724/create-a-patch-to-add-a-kubernetes-annotation
@@ -203,6 +216,17 @@ func init() {
 	if err != nil {
 		log.Fatalf("failed to marshal replace ready patch bytes: %v", err)
 	}
+
+	cancelAnnotationPath := "/metadata/annotations/" + strings.Replace(cancelAnnotation, "/", "~1", 1)
+	replaceCancelPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
+		Operation: "replace",
+		Path:      cancelAnnotationPath,
+		Value:     cancelAnnotationValue,
+	}})
+	if err != nil {
+		log.Fatalf("failed to marshal replace cancel patch bytes: %v", err)
+	}
+
 }
 
 // UpdateReady updates the Pod's annotations to signal the first step to start
@@ -260,6 +284,15 @@ func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
 	}
 
 	return false
+}
+
+// CancelPod updates the Pod's annotations to signal the cancellation
+// by projecting the cancel annotation via the Downward API.
+func CancelPod(ctx context.Context, kubeclient kubernetes.Interface, pod corev1.Pod) error {
+	// PATCH the Pod's annotations to replace the cancel annotation with the
+	// "CANCEL" value, to signal the pod to be cancelled.
+	_, err := kubeclient.CoreV1().Pods(pod.Namespace).Patch(ctx, pod.Name, types.JSONPatchType, replaceCancelPatchBytes, metav1.PatchOptions{})
+	return err
 }
 
 // IsContainerStep returns true if the container name indicates that it
