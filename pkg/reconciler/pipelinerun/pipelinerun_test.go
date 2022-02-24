@@ -1045,138 +1045,120 @@ spec:
 	}
 }
 
-func getInvalidPipelineRun(prName, pName string) *v1beta1.PipelineRun {
-	return &v1beta1.PipelineRun{
-		ObjectMeta: baseObjectMeta(prName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: pName},
-		},
-	}
-}
-
 // TestReconcile_InvalidPipelineRuns runs "Reconcile" on several PipelineRuns that are invalid in different ways.
 // It verifies that reconcile fails, how it fails and which events are triggered.
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	ts := []*v1beta1.Task{
-		{
-			ObjectMeta: baseObjectMeta("a-task-that-exists", "foo"),
-		},
-		{
-			ObjectMeta: baseObjectMeta("a-task-that-needs-params", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "some-param",
-					Type: v1beta1.ParamTypeString,
-				}},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("a-task-that-needs-array-params", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "some-param",
-					Type: v1beta1.ParamTypeArray,
-				}},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("a-task-that-needs-a-resource", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: resourcev1alpha1.PipelineResourceTypeGit,
-						},
-					}},
-				},
-			},
-		},
+		parse.MustParseTask(t, `
+metadata:
+  name: a-task-that-exists
+  namespace: foo
+`),
+		parse.MustParseTask(t, `
+metadata:
+  name: a-task-that-needs-params
+  namespace: foo
+spec:
+  params:
+    - name: some-param
+`),
+		parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: a-task-that-needs-array-params
+  namespace: foo
+spec:
+  params:
+    - name: some-param
+      type: %s
+`, v1beta1.ParamTypeArray)),
+		parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: a-task-that-needs-a-resource
+  namespace: foo
+spec:
+  resources:
+    inputs:
+      - name: workspace
+        type: %s
+`, resourcev1alpha1.PipelineResourceTypeGit)),
 	}
-	ps := []*v1beta1.Pipeline{
-		{
-			ObjectMeta: baseObjectMeta("pipeline-missing-tasks", "foo"),
-			Spec: v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name:    "myspecialtask",
-					TaskRef: &v1beta1.TaskRef{Name: "sometask"},
-				}},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("a-pipeline-without-params", "foo"),
-			Spec: v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name:    "some-task",
-					TaskRef: &v1beta1.TaskRef{Name: "a-task-that-needs-params"},
-				}},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("a-fine-pipeline", "foo"),
-			Spec: v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name:    "some-task",
-					TaskRef: &v1beta1.TaskRef{Name: "a-task-that-exists"},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "needed-resource",
-							Resource: "a-resource",
-						}},
-					},
-				}},
-				Resources: []v1beta1.PipelineDeclaredResource{{
-					Name: "a-resource",
-					Type: resourcev1alpha1.PipelineResourceTypeGit,
-				}},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("a-pipeline-that-should-be-caught-by-admission-control", "foo"),
-			Spec: v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "some-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "a-task-that-exists",
-					},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "needed-resource",
-							Resource: "a-resource",
-						}},
-					},
-				}},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("a-pipeline-with-array-params", "foo"),
-			Spec: v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "some-param",
-					Type: v1beta1.ParamTypeArray,
-				}},
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "some-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "a-task-that-needs-array-params",
-					},
-				}},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("a-pipeline-with-missing-conditions", "foo"),
-			Spec: v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "some-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "a-task-that-exists",
-					},
-					Conditions: []v1beta1.PipelineTaskCondition{{
-						ConditionRef: "condition-does-not-exist",
-					}},
-				}},
-			},
-		},
+
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: pipeline-missing-tasks
+  namespace: foo
+spec:
+  tasks:
+    - name: myspecialtask
+      taskRef:
+        name: sometask
+`),
+		parse.MustParsePipeline(t, `
+metadata:
+  name: a-pipeline-without-params
+  namespace: foo
+spec:
+  tasks:
+    - name: some-task
+      taskRef:
+        name: a-task-that-needs-params
+`),
+		parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: a-fine-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: some-task
+      taskRef:
+        name: a-task-that-exists
+      resources:
+        inputs:
+          - name: needed-resource
+            resource: a-resource
+  resources:
+    - name: a-resource
+      type: %s
+`, resourcev1alpha1.PipelineResourceTypeGit)),
+		parse.MustParsePipeline(t, `
+metadata:
+  name: a-pipeline-that-should-be-caught-by-admission-control
+  namespace: foo
+spec:
+  tasks:
+    - name: some-task
+      taskRef:
+        name: a-task-that-exists
+      resources:
+        inputs:
+          - name: needed-resource
+            resource: a-resource
+`),
+		parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: a-pipeline-with-array-params
+  namespace: foo
+spec:
+  params:
+    - name: some-param
+      type: %s
+  tasks:
+    - name: some-task
+      taskRef:
+        name: a-task-that-needs-array-params
+`, v1beta1.ParamTypeArray)),
+		parse.MustParsePipeline(t, `
+metadata:
+  name: a-pipeline-with-missing-conditions
+  namespace: foo
+spec:
+  tasks:
+    - name: some-task
+      taskRef:
+        name: a-task-that-exists
+      conditions:
+        - conditionRef: condition-does-not-exist
+`),
 	}
 
 	for _, tc := range []struct {
@@ -1187,8 +1169,15 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		permanentError     bool
 		wantEvents         []string
 	}{{
-		name:               "invalid-pipeline-shd-be-stop-reconciling",
-		pipelineRun:        getInvalidPipelineRun("invalid-pipeline", "pipeline-not-exist"),
+		name: "invalid-pipeline-shd-be-stop-reconciling",
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: invalid-pipeline
+  namespace: foo
+spec:
+  pipelineRef:
+    name: pipeline-not-exist
+`),
 		reason:             ReasonCouldntGetPipeline,
 		hasNoDefaultLabels: true,
 		permanentError:     true,
@@ -1197,8 +1186,15 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			"Warning Failed Error retrieving pipeline for pipelinerun",
 		},
 	}, {
-		name:           "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
-		pipelineRun:    getInvalidPipelineRun("pipelinerun-missing-tasks", "pipeline-missing-tasks"),
+		name: "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipelinerun-missing-tasks
+  namespace: foo
+spec:
+  pipelineRef:
+    name: pipeline-missing-tasks
+`),
 		reason:         ReasonCouldntGetTask,
 		permanentError: true,
 		wantEvents: []string{
@@ -1206,8 +1202,15 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			"Warning Failed Pipeline foo/pipeline-missing-tasks can't be Run",
 		},
 	}, {
-		name:           "invalid-pipeline-run-params-dont-exist-shd-stop-reconciling",
-		pipelineRun:    getInvalidPipelineRun("pipeline-params-dont-exist", "a-pipeline-without-params"),
+		name: "invalid-pipeline-run-params-dont-exist-shd-stop-reconciling",
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-params-dont-exist
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-without-params
+`),
 		reason:         ReasonFailedValidation,
 		permanentError: true,
 		wantEvents: []string{
@@ -1215,8 +1218,15 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			"Warning Failed invalid input params for task a-task-that-needs-params: missing values",
 		},
 	}, {
-		name:           "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
-		pipelineRun:    getInvalidPipelineRun("pipeline-resources-not-bound", "a-fine-pipeline"),
+		name: "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-resources-not-bound
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-fine-pipeline
+`),
 		reason:         ReasonInvalidBindings,
 		permanentError: true,
 		wantEvents: []string{
@@ -1225,16 +1235,18 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}, {
 		name: "invalid-pipeline-run-missing-resource-shd-stop-reconciling",
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta("pipeline-resources-dont-exist", "foo"),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "a-fine-pipeline"},
-				Resources: []v1beta1.PipelineResourceBinding{{
-					Name:        "a-resource",
-					ResourceRef: &v1beta1.PipelineResourceRef{Name: "missing-resource"},
-				}},
-			},
-		},
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-resources-dont-exist
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-fine-pipeline
+  resources:
+    - name: a-resource
+      resourceRef:
+        name: missing-resource
+`),
 		reason:         ReasonCouldntGetResource,
 		permanentError: true,
 		wantEvents: []string{
@@ -1242,8 +1254,15 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			"Warning Failed PipelineRun foo/pipeline-resources-dont-exist can't be Run; it tries to bind Resources",
 		},
 	}, {
-		name:           "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
-		pipelineRun:    getInvalidPipelineRun("pipeline-resources-not-declared", "a-pipeline-that-should-be-caught-by-admission-control"),
+		name: "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-resources-not-declared
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-that-should-be-caught-by-admission-control
+`),
 		reason:         ReasonFailedValidation,
 		permanentError: true,
 		wantEvents: []string{
@@ -1252,16 +1271,17 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta("pipeline-mismatching-param-type", "foo"),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: "a-pipeline-with-array-params"},
-				Params: []v1beta1.Param{{
-					Name:  "some-param",
-					Value: *v1beta1.NewArrayOrString("stringval"),
-				}},
-			},
-		},
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-mismatching-param-type
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-with-array-params
+  params:
+    - name: some-param
+      value: stringval
+`),
 		reason:         ReasonParameterTypeMismatch,
 		permanentError: true,
 		wantEvents: []string{
@@ -1269,8 +1289,15 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 			"Warning Failed PipelineRun foo/pipeline-mismatching-param-type parameters have mismatching types",
 		},
 	}, {
-		name:           "invalid-pipeline-missing-conditions-shd-stop-reconciling",
-		pipelineRun:    getInvalidPipelineRun("pipeline-conditions-missing", "a-pipeline-with-missing-conditions"),
+		name: "invalid-pipeline-missing-conditions-shd-stop-reconciling",
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-conditions-missing
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-with-missing-conditions
+`),
 		reason:         ReasonCouldntGetCondition,
 		permanentError: true,
 		wantEvents: []string{
@@ -1279,21 +1306,20 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}, {
 		name: "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta("embedded-pipeline-resources-not-bound", "foo"),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name:    "some-task",
-						TaskRef: &v1beta1.TaskRef{Name: "a-task-that-needs-a-resource"},
-					}},
-					Resources: []v1beta1.PipelineDeclaredResource{{
-						Name: "workspace",
-						Type: resourcev1alpha1.PipelineResourceTypeGit,
-					}},
-				},
-			},
-		},
+		pipelineRun: parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: embedded-pipeline-resources-not-bound
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+      - name: some-task
+        taskRef:
+          name: a-task-that-needs-a-resource
+    resources:
+      - name: workspace
+        type: %s
+`, resourcev1alpha1.PipelineResourceTypeGit)),
 		reason:         ReasonInvalidBindings,
 		permanentError: true,
 		wantEvents: []string{
@@ -1302,17 +1328,17 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}, {
 		name: "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta("embedded-pipeline-invalid", "foo"),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name:    "bad-t@$k",
-						TaskRef: &v1beta1.TaskRef{Name: "b@d-t@$k"},
-					}},
-				},
-			},
-		},
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: embedded-pipeline-invalid
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+      - name: bad-t@$k
+        taskRef:
+          name: b@d-t@$k
+`),
 		reason:         ReasonFailedValidation,
 		permanentError: true,
 		wantEvents: []string{
@@ -1321,25 +1347,23 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}, {
 		name: "invalid-embedded-pipeline-mismatching-parameter-types",
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta("embedded-pipeline-mismatching-param-type", "foo"),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Params: []v1beta1.ParamSpec{{
-						Name: "some-param",
-						Type: v1beta1.ParamTypeArray,
-					}},
-					Tasks: []v1beta1.PipelineTask{{
-						Name:    "some-task",
-						TaskRef: &v1beta1.TaskRef{Name: "a-task-that-needs-array-params"},
-					}},
-				},
-				Params: []v1beta1.Param{{
-					Name:  "some-param",
-					Value: *v1beta1.NewArrayOrString("stringval"),
-				}},
-			},
-		},
+		pipelineRun: parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: embedded-pipeline-mismatching-param-type
+  namespace: foo
+spec:
+  pipelineSpec:
+    params:
+      - name: some-param
+        type: %s
+    tasks:
+      - name: some-task
+        taskRef:
+          name: a-task-that-needs-array-params
+  params:
+    - name: some-param
+      value: stringval
+`, v1beta1.ParamTypeArray)),
 		reason:         ReasonParameterTypeMismatch,
 		permanentError: true,
 		wantEvents: []string{
@@ -1348,21 +1372,20 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}, {
 		name: "invalid-pipeline-run-missing-params-shd-stop-reconciling",
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta("pipelinerun-missing-params", "foo"),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Params: []v1beta1.ParamSpec{{
-						Name: "some-param",
-						Type: v1beta1.ParamTypeString,
-					}},
-					Tasks: []v1beta1.PipelineTask{{
-						Name:    "some-task",
-						TaskRef: &v1beta1.TaskRef{Name: "a-task-that-needs-params"},
-					}},
-				},
-			},
-		},
+		pipelineRun: parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pipelinerun-missing-params
+  namespace: foo
+spec:
+  pipelineSpec:
+    params:
+      - name: some-param
+        type: %s
+    tasks:
+      - name: some-task
+        taskRef:
+          name: a-task-that-needs-params
+`, v1beta1.ParamTypeString)),
 		reason:         ReasonParameterMissing,
 		permanentError: true,
 		wantEvents: []string{
@@ -1371,18 +1394,18 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-dag-graph",
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta("pipeline-invalid-dag-graph", "foo"),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name:     "dag-task-1",
-						TaskRef:  &v1beta1.TaskRef{Name: "dag-task-1"},
-						RunAfter: []string{"dag-task-1"},
-					}},
-				},
-			},
-		},
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-invalid-dag-graph
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+      - name: dag-task-1
+        taskRef:
+          name: dag-task-1
+        runAfter: [ dag-task-1 ]
+`),
 		reason:         ReasonInvalidGraph,
 		permanentError: true,
 		wantEvents: []string{
@@ -1391,27 +1414,24 @@ func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-final-tasks-graph",
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta("pipeline-invalid-final-graph", "foo"),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name:    "dag-task-1",
-						TaskRef: &v1beta1.TaskRef{Name: "taskName"},
-					}},
-					Finally: []v1beta1.PipelineTask{
-						{
-							Name:    "final-task-1",
-							TaskRef: &v1beta1.TaskRef{Name: "taskName"},
-						},
-						{
-							Name:    "final-task-1",
-							TaskRef: &v1beta1.TaskRef{Name: "taskName"},
-						},
-					},
-				},
-			},
-		},
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-invalid-final-graph
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+      - name: dag-task-1
+        taskRef:
+          name: taskName
+    finally:
+      - name: final-task-1
+        taskRef:
+          name: taskName
+      - name: final-task-1
+        taskRef:
+          name: taskName
+`),
 		reason:         ReasonInvalidGraph,
 		permanentError: true,
 		wantEvents: []string{
