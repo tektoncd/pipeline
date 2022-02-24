@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -51,6 +52,7 @@ var (
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
 	stepMetadataDir = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
+	cancelFile      = flag.String("cancel_file", "", "Path indicating task should be cancelled")
 )
 
 const (
@@ -60,7 +62,7 @@ const (
 
 func checkForBreakpointOnFailure(e entrypoint.Entrypointer, breakpointExitPostFile string) {
 	if e.BreakpointOnFailure {
-		if waitErr := e.Waiter.Wait(breakpointExitPostFile, false, false); waitErr != nil {
+		if waitErr := e.Waiter.Wait(context.Background(), breakpointExitPostFile, false, false); waitErr != nil {
 			log.Println("error occurred while waiting for " + breakpointExitPostFile + " : " + waitErr.Error())
 		}
 		// get exitcode from .breakpointexit
@@ -148,6 +150,7 @@ func main() {
 		BreakpointOnFailure: *breakpointOnFailure,
 		OnError:             *onError,
 		StepMetadataDir:     *stepMetadataDir,
+		CancelFile:          *cancelFile,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
@@ -156,7 +159,8 @@ func main() {
 		log.Printf("non-fatal error copying credentials: %q", err)
 	}
 
-	if err := e.Go(); err != nil {
+	ctx := context.Background()
+	if err := e.Go(ctx); err != nil {
 		breakpointExitPostFile := e.PostFile + breakpointExitSuffix
 		switch t := err.(type) {
 		case skipError:

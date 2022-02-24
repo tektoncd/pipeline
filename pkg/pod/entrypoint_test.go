@@ -61,6 +61,8 @@ func TestOrderContainers(t *testing.T) {
 			"-post_file", "/tekton/run/0/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/0/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
@@ -74,6 +76,8 @@ func TestOrderContainers(t *testing.T) {
 			"-post_file", "/tekton/run/1/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/1/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-entrypoint", "cmd1", "--",
 			"cmd2", "cmd3",
 			"arg1", "arg2",
@@ -88,6 +92,8 @@ func TestOrderContainers(t *testing.T) {
 			"-post_file", "/tekton/run/2/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/2/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
@@ -163,6 +169,8 @@ func TestOrderContainersWithDebugOnFailure(t *testing.T) {
 			"-post_file", "/tekton/run/0/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/0/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-breakpoint_on_failure",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
@@ -216,6 +224,8 @@ func TestEntryPointResults(t *testing.T) {
 			"-post_file", "/tekton/run/0/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/0/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-results", "sum,sub",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
@@ -230,6 +240,8 @@ func TestEntryPointResults(t *testing.T) {
 			"-post_file", "/tekton/run/1/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/1/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-results", "sum,sub",
 			"-entrypoint", "cmd1", "--",
 			"cmd2", "cmd3",
@@ -245,6 +257,8 @@ func TestEntryPointResults(t *testing.T) {
 			"-post_file", "/tekton/run/2/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/2/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-results", "sum,sub",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
@@ -285,6 +299,8 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 			"-post_file", "/tekton/run/0/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/0/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-results", "sum,sub",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
@@ -322,6 +338,8 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 			"-post_file", "/tekton/run/0/out",
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/0/status",
+			"-cancel_file",
+			"/tekton/downward/cancel",
 			"-results", "sum",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
@@ -465,6 +483,9 @@ func TestEntryPointStepOutputConfigs(t *testing.T) {
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/0/status",
 			"-stdout_path", "step-1-out",
+			"-cancel_file",
+			"/tekton/downward/cancel",
+			"-on_error", "continue",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
@@ -479,6 +500,9 @@ func TestEntryPointStepOutputConfigs(t *testing.T) {
 			"-termination_path", "/tekton/termination",
 			"-step_metadata_dir", "/tekton/run/1/status",
 			"-stderr_path", "step-2-err",
+			"-cancel_file",
+			"/tekton/downward/cancel",
+			"-on_error", "stopAndFail",
 			"-entrypoint", "cmd1", "--",
 			"cmd2", "cmd3",
 			"arg1", "arg2",
@@ -495,6 +519,9 @@ func TestEntryPointStepOutputConfigs(t *testing.T) {
 			"-step_metadata_dir", "/tekton/run/2/status",
 			"-stdout_path", "step-3-out",
 			"-stderr_path", "step-3-err",
+			"-cancel_file",
+			"/tekton/downward/cancel",
+			"-on_error", "stopAndFail",
 			"-entrypoint", "cmd", "--",
 			"arg1", "arg2",
 		},
@@ -729,6 +756,85 @@ func TestStopSidecars(t *testing.T) {
 				t.Errorf("error stopping sidecar: %v", err)
 			} else if d := cmp.Diff(c.wantContainers, got.Spec.Containers); d != "" {
 				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestCancelPod(t *testing.T) {
+	for _, c := range []struct {
+		desc            string
+		pod             corev1.Pod
+		wantAnnotations map[string]string
+		wantErr         bool
+	}{{
+		desc: "Pod without any annotations fails",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "pod",
+				Annotations: nil,
+			},
+		},
+		wantErr: true, // Nothing to replace.
+	}, {
+		desc: "Pod without cancel annotation adds it",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod",
+				Annotations: map[string]string{
+					"something": "else",
+				},
+			},
+		},
+		wantAnnotations: map[string]string{
+			"something":      "else",
+			cancelAnnotation: "CANCEL",
+		},
+	}, {
+		desc: "Pod with empty annotation value has it replaced",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod",
+				Annotations: map[string]string{
+					"something":      "else",
+					cancelAnnotation: "",
+				},
+			},
+		},
+		wantAnnotations: map[string]string{
+			"something":      "else",
+			cancelAnnotation: cancelAnnotationValue,
+		},
+	}, {
+		desc: "Pod with other annotation value has it replaced",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod",
+				Annotations: map[string]string{
+					"something":      "else",
+					cancelAnnotation: "something else",
+				},
+			},
+		},
+		wantAnnotations: map[string]string{
+			"something":      "else",
+			cancelAnnotation: cancelAnnotationValue,
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			ctx := context.Background()
+			ctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
+			if err := CancelPod(ctx, kubeclient, c.pod); (err != nil) != c.wantErr {
+				t.Errorf("CancelPod (wantErr=%t): %v", c.wantErr, err)
+			}
+
+			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(ctx, c.pod.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Errorf("Getting pod %q after update: %v", c.pod.Name, err)
+			} else if d := cmp.Diff(c.wantAnnotations, got.Annotations); d != "" {
+				t.Errorf("Annotations Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
