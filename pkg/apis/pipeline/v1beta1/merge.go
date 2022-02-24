@@ -23,6 +23,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
+// mergeData is used to store the intermediate data needed to merge an object
+// with a template. It's provided to avoid repeatedly re-serializing the template.
+// +k8s:openapi-gen=false
+type mergeData struct {
+	emptyJSON    []byte
+	templateJSON []byte
+	patchSchema  strategicpatch.PatchMetaFromStruct
+}
+
 // MergeStepsWithStepTemplate takes a possibly nil container template and a
 // list of steps, merging each of the steps with the container template, if
 // it's not nil, and returning the resulting list.
@@ -31,50 +40,14 @@ func MergeStepsWithStepTemplate(template *v1.Container, steps []Step) ([]Step, e
 		return steps, nil
 	}
 
-	// We need JSON bytes to generate a patch to merge the step containers
-	// onto the template container, so marshal the template.
-	templateAsJSON, err := json.Marshal(template)
-	if err != nil {
-		return nil, err
-	}
-	// We need to do a three-way merge to actually merge the template and
-	// step containers, so we need an empty container as the "original"
-	emptyAsJSON, err := json.Marshal(&v1.Container{})
+	md, err := getMergeData(template, &v1.Container{})
 	if err != nil {
 		return nil, err
 	}
 
 	for i, s := range steps {
-		// Marshal the step's to JSON
-		stepAsJSON, err := json.Marshal(s.Container)
-		if err != nil {
-			return nil, err
-		}
-
-		// Get the patch meta for Container, which is needed for generating and applying the merge patch.
-		patchSchema, err := strategicpatch.NewPatchMetaFromStruct(template)
-
-		if err != nil {
-			return nil, err
-		}
-
-		// Create a merge patch, with the empty JSON as the original, the step JSON as the modified, and the template
-		// JSON as the current - this lets us do a deep merge of the template and step containers, with awareness of
-		// the "patchMerge" tags.
-		patch, err := strategicpatch.CreateThreeWayMergePatch(emptyAsJSON, stepAsJSON, templateAsJSON, patchSchema, true)
-		if err != nil {
-			return nil, err
-		}
-
-		// Actually apply the merge patch to the template JSON.
-		mergedAsJSON, err := strategicpatch.StrategicMergePatchUsingLookupPatchMeta(templateAsJSON, patch, patchSchema)
-		if err != nil {
-			return nil, err
-		}
-
-		// Unmarshal the merged JSON to a Container pointer, and return it.
-		merged := &v1.Container{}
-		err = json.Unmarshal(mergedAsJSON, merged)
+		merged := v1.Container{}
+		err := mergeObjWithTemplateBytes(md, &s.Container, &merged)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +58,116 @@ func MergeStepsWithStepTemplate(template *v1.Container, steps []Step) ([]Step, e
 		}
 
 		// Pass through original step Script, for later conversion.
-		steps[i] = Step{Container: *merged, Script: s.Script, OnError: s.OnError, Timeout: s.Timeout}
+		steps[i] = Step{Container: merged, Script: s.Script, OnError: s.OnError, Timeout: s.Timeout}
 	}
 	return steps, nil
+}
+
+// MergeStepsWithOverrides takes a possibly nil list of overrides and a
+// list of steps, merging each of the steps with the overrides' resource requirements, if
+// it's not nil, and returning the resulting list.
+func MergeStepsWithOverrides(steps []Step, overrides []TaskRunStepOverride) ([]Step, error) {
+	stepNameToOverride := make(map[string]TaskRunStepOverride, len(overrides))
+	for _, o := range overrides {
+		stepNameToOverride[o.Name] = o
+	}
+	for i, s := range steps {
+		o, found := stepNameToOverride[s.Name]
+		if !found {
+			continue
+		}
+		merged := v1.ResourceRequirements{}
+		err := mergeObjWithTemplate(&s.Resources, &o.Resources, &merged)
+		if err != nil {
+			return nil, err
+		}
+		steps[i].Container.Resources = merged
+	}
+	return steps, nil
+}
+
+// MergeSidecarsWithOverrides takes a possibly nil list of overrides and a
+// list of sidecars, merging each of the sidecars with the overrides' resource requirements, if
+// it's not nil, and returning the resulting list.
+func MergeSidecarsWithOverrides(sidecars []Sidecar, overrides []TaskRunSidecarOverride) ([]Sidecar, error) {
+	if len(overrides) == 0 {
+		return sidecars, nil
+	}
+	sidecarNameToOverride := make(map[string]TaskRunSidecarOverride, len(overrides))
+	for _, o := range overrides {
+		sidecarNameToOverride[o.Name] = o
+	}
+	for i, s := range sidecars {
+		o, found := sidecarNameToOverride[s.Name]
+		if !found {
+			continue
+		}
+		merged := v1.ResourceRequirements{}
+		err := mergeObjWithTemplate(&s.Resources, &o.Resources, &merged)
+		if err != nil {
+			return nil, err
+		}
+		sidecars[i].Container.Resources = merged
+	}
+	return sidecars, nil
+}
+
+// mergeObjWithTemplate merges obj with template and updates out to reflect the merged result.
+// template, obj, and out should point to the same type. out points to the zero value of that type.
+func mergeObjWithTemplate(template, obj, out interface{}) error {
+	md, err := getMergeData(template, out)
+	if err != nil {
+		return err
+	}
+	return mergeObjWithTemplateBytes(md, obj, out)
+}
+
+// getMergeData serializes the template and empty object to get the intermediate results necessary for
+// merging an object of the same type with this template.
+// This function is provided to avoid repeatedly serializing an identical template.
+func getMergeData(template, empty interface{}) (*mergeData, error) {
+	// We need JSON bytes to generate a patch to merge the object
+	// onto the template, so marshal the template.
+	templateJSON, err := json.Marshal(template)
+	if err != nil {
+		return nil, err
+	}
+	// We need to do a three-way merge to actually merge the template and
+	// object, so we need an empty object as the "original"
+	emptyJSON, err := json.Marshal(empty)
+	if err != nil {
+		return nil, err
+	}
+	// Get the patch meta, which is needed for generating and applying the merge patch.
+	patchSchema, err := strategicpatch.NewPatchMetaFromStruct(template)
+	if err != nil {
+		return nil, err
+	}
+	return &mergeData{templateJSON: templateJSON, emptyJSON: emptyJSON, patchSchema: patchSchema}, nil
+}
+
+// mergeObjWithTemplateBytes merges obj with md's template JSON and updates out to reflect the merged result.
+// out is a pointer to the zero value of obj's type.
+// This function is provided to avoid repeatedly serializing an identical template.
+func mergeObjWithTemplateBytes(md *mergeData, obj, out interface{}) error {
+	// Marshal the object to JSON
+	objAsJSON, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	// Create a merge patch, with the empty JSON as the original, the object JSON as the modified, and the template
+	// JSON as the current - this lets us do a deep merge of the template and object, with awareness of
+	// the "patchMerge" tags.
+	patch, err := strategicpatch.CreateThreeWayMergePatch(md.emptyJSON, objAsJSON, md.templateJSON, md.patchSchema, true)
+	if err != nil {
+		return err
+	}
+
+	// Actually apply the merge patch to the template JSON.
+	mergedAsJSON, err := strategicpatch.StrategicMergePatchUsingLookupPatchMeta(md.templateJSON, patch, md.patchSchema)
+	if err != nil {
+		return err
+	}
+	// Unmarshal the merged JSON to a pointer, and return it.
+	return json.Unmarshal(mergedAsJSON, out)
 }

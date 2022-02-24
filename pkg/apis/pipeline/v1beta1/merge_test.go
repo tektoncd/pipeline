@@ -117,3 +117,377 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestMergeStepOverrides(t *testing.T) {
+	tcs := []struct {
+		name          string
+		steps         []Step
+		stepOverrides []TaskRunStepOverride
+		want          []Step
+	}{{
+		name: "no overrides",
+		steps: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}},
+		want: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}},
+	}, {
+		name: "not all steps overridden",
+		steps: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}, {
+			Container: corev1.Container{
+				Name: "bar",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}},
+		stepOverrides: []TaskRunStepOverride{{
+			Name: "bar",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+			},
+		}},
+		want: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}, {
+			Container: corev1.Container{
+				Name: "bar",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+	}, {
+		name: "override memory but not CPU",
+		steps: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+					},
+				},
+			},
+		}},
+		stepOverrides: []TaskRunStepOverride{{
+			Name: "foo",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+			},
+		}},
+		want: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
+				},
+			},
+		}},
+	}, {
+		name: "override request but not limit",
+		steps: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+		stepOverrides: []TaskRunStepOverride{{
+			Name: "foo",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
+			},
+		}},
+		want: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+	}, {
+		name: "override request and limit",
+		steps: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+		stepOverrides: []TaskRunStepOverride{{
+			Name: "foo",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
+				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+			},
+		}},
+		want: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+				},
+			},
+		}},
+	}, {
+		// We don't make any effort to reject overrides that would result in invalid pods;
+		// instead, we let k8s reject the resulting pod.
+		name: "new request > old limit",
+		steps: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+		stepOverrides: []TaskRunStepOverride{{
+			Name: "foo",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+			},
+		}},
+		want: []Step{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			steps, err := MergeStepsWithOverrides(tc.steps, tc.stepOverrides)
+			if err != nil {
+				t.Errorf("unexpected error merging steps with overrides: %s", err)
+			}
+			if d := cmp.Diff(tc.want, steps); d != "" {
+				t.Errorf("merged steps don't match, diff: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestMergeSidecarOverrides(t *testing.T) {
+	tcs := []struct {
+		name             string
+		sidecars         []Sidecar
+		sidecarOverrides []TaskRunSidecarOverride
+		want             []Sidecar
+	}{{
+		name: "no overrides",
+		sidecars: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}},
+		want: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}},
+	}, {
+		name: "not all sidecars overridden",
+		sidecars: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}, {
+			Container: corev1.Container{
+				Name: "bar",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}},
+		sidecarOverrides: []TaskRunSidecarOverride{{
+			Name: "bar",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+			},
+		}},
+		want: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+				},
+			},
+		}, {
+			Container: corev1.Container{
+				Name: "bar",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+	}, {
+		name: "override memory but not CPU",
+		sidecars: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("1Gi"),
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+					},
+				},
+			},
+		}},
+		sidecarOverrides: []TaskRunSidecarOverride{{
+			Name: "foo",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+			},
+		}},
+		want: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
+				},
+			},
+		}},
+	}, {
+		name: "override request but not limit",
+		sidecars: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+		sidecarOverrides: []TaskRunSidecarOverride{{
+			Name: "foo",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
+			},
+		}},
+		want: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+	}, {
+		name: "override request and limit",
+		sidecars: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+		sidecarOverrides: []TaskRunSidecarOverride{{
+			Name: "foo",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
+				Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+			},
+		}},
+		want: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1.5Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+				},
+			},
+		}},
+	}, {
+		// We don't make any effort to reject overrides that would result in invalid pods;
+		// instead, we let k8s reject the resulting pod.
+		name: "new request > old limit",
+		sidecars: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+		sidecarOverrides: []TaskRunSidecarOverride{{
+			Name: "foo",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+			},
+		}},
+		want: []Sidecar{{
+			Container: corev1.Container{
+				Name: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+					Limits:   corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+				},
+			},
+		}},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			sidecars, err := MergeSidecarsWithOverrides(tc.sidecars, tc.sidecarOverrides)
+			if err != nil {
+				t.Errorf("unexpected error merging sidecars with overrides: %s", err)
+			}
+			if d := cmp.Diff(tc.want, sidecars); d != "" {
+				t.Errorf("merged sidecars don't match, diff: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
