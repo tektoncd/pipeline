@@ -57,6 +57,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sruntimeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/clock"
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -471,10 +472,7 @@ var (
 	fakeVersion string
 )
 
-type testClock struct{}
-
-func (testClock) Now() time.Time                  { return now }
-func (testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
+var testClock = clock.NewFakePassiveClock(now)
 
 func runVolume(i int) corev1.Volume {
 	return corev1.Volume{
@@ -575,7 +573,7 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, testClock{})(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
@@ -2125,7 +2123,7 @@ func TestExpandMountPath(t *testing.T) {
 	r := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
 		PipelineClientSet: testAssets.Clients.Pipeline,
-		Clock:             testClock{},
+		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
@@ -2250,7 +2248,7 @@ func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 	r := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
 		PipelineClientSet: testAssets.Clients.Pipeline,
-		Clock:             testClock{},
+		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
@@ -2306,7 +2304,7 @@ func TestHandlePodCreationError(t *testing.T) {
 	c := &Reconciler{
 		KubeClientSet:     testAssets.Clients.Kube,
 		PipelineClientSet: testAssets.Clients.Pipeline,
-		Clock:             testClock{},
+		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
@@ -3912,7 +3910,7 @@ func TestFailTaskRun(t *testing.T) {
 			c := &Reconciler{
 				KubeClientSet:     testAssets.Clients.Kube,
 				PipelineClientSet: testAssets.Clients.Pipeline,
-				Clock:             testClock{},
+				Clock:             testClock,
 				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
 				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),

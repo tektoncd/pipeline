@@ -31,6 +31,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -39,10 +40,7 @@ import (
 
 var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-type testClock struct{}
-
-func (testClock) Now() time.Time                  { return now }
-func (testClock) Since(t time.Time) time.Duration { return now.Sub(t) }
+var testClock = clock.NewFakePassiveClock(now)
 
 func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 	var taskCancelledByStatusState = PipelineRunState{{
@@ -1151,7 +1149,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: dfinally,
 			}
-			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock{})
+			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
 			wantCondition := &apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: tc.expectedStatus,
@@ -1293,7 +1291,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: df,
 			}
-			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock{})
+			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
 			wantCondition := &apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: tc.expectedStatus,
@@ -1330,7 +1328,7 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 		TasksGraph:      d,
 		FinalTasksGraph: &dag.Graph{},
 	}
-	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock{})
+	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
 	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
 		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
 	}
