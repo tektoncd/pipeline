@@ -231,7 +231,7 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
 			if t.TaskRun == nil && t.Run == nil {
 				tasks = append(tasks, t)
-			} else if t.TaskRun != nil { // only TaskRun currently supports retry
+			} else if t.TaskRun != nil { // TODO(lbernick): Return custom tasks with retries remaining
 				status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 				if status != nil && status.IsFalse() {
 					if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunReasonCancelled.String() || status.Reason == ReasonConditionCheckFailed) {

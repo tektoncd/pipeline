@@ -136,16 +136,46 @@ func (t ResolvedPipelineRunTask) IsSuccessful() bool {
 
 // IsFailure returns true only if the run has failed and will not be retried.
 func (t ResolvedPipelineRunTask) IsFailure() bool {
-	if t.IsCustomTask() {
-		return t.Run != nil && t.Run.IsDone() && !t.Run.IsSuccessful()
+	if t.IsCancelled() {
+		return true
 	}
-	if t.TaskRun == nil {
+	if t.IsSuccessful() {
 		return false
 	}
-	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	retriesDone := len(t.TaskRun.Status.RetriesStatus)
-	retries := t.PipelineTask.Retries
-	return c.IsFalse() && (retriesDone >= retries || c.Reason == v1beta1.TaskRunReasonCancelled.String())
+	var c *apis.Condition
+	var isDone bool
+	if t.IsCustomTask() {
+		if t.Run == nil {
+			return false
+		}
+		c = t.Run.Status.GetCondition(apis.ConditionSucceeded)
+		isDone = t.Run.IsDone()
+	} else {
+		if t.TaskRun == nil {
+			return false
+		}
+		c = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+		isDone = t.TaskRun.IsDone()
+	}
+	return isDone && c.IsFalse() && !t.HasRemainingRetries()
+}
+
+// HasRemainingRetries returns true only when the number of retries already attempted
+// is less than the number of retries allowed.
+func (t ResolvedPipelineRunTask) HasRemainingRetries() bool {
+	var retriesDone int
+	if t.IsCustomTask() {
+		if t.Run == nil {
+			return true
+		}
+		retriesDone = len(t.Run.Status.RetriesStatus)
+	} else {
+		if t.TaskRun == nil {
+			return true
+		}
+		retriesDone = len(t.TaskRun.Status.RetriesStatus)
+	}
+	return retriesDone < t.PipelineTask.Retries
 }
 
 // IsCancelled returns true only if the run is cancelled
