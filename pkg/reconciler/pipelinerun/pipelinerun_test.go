@@ -45,6 +45,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
+	"github.com/tektoncd/pipeline/test/parse"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -7681,43 +7682,44 @@ func getTaskRunStatus(t string, status corev1.ConditionStatus) *v1beta1.Pipeline
 func TestReconcile_CloudEvents(t *testing.T) {
 	names.TestingSeed()
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipelinerun",
-			Namespace: "foo",
-			SelfLink:  "/pipeline/1234",
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-		},
-	}}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "test-1",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "test-task",
-				},
-			}},
-		},
-	}}
-	ts := []*v1beta1.Task{{
-		ObjectMeta: baseObjectMeta("test-task", "foo"),
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					Image:   "foo",
-					Name:    "simple-step",
-					Command: []string{"/mycmd"},
-					Env: []corev1.EnvVar{{
-						Name:  "foo",
-						Value: "bar",
-					}},
-				},
-			}},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{
+		parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipelinerun
+  namespace: foo
+  selfLink: /pipeline/1234
+spec:
+  pipelineRef:
+    name: test-pipeline
+`),
+	}
+	ps := []*v1beta1.Pipeline{
+		parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: test-1
+      taskRef:
+        name: test-task
+`),
+	}
+	ts := []*v1beta1.Task{
+		parse.MustParseTask(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  steps:
+    - name: simple-step
+      image: foo
+      command: ["/mycmd"]
+      env:
+       - name: foo
+         value: bar
+`),
+	}
 	cms := []*corev1.ConfigMap{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
