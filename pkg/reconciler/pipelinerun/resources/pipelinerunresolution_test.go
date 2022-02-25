@@ -244,10 +244,9 @@ func withCancelled(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
 	return tr
 }
 
-func withRunCancelled(run v1alpha1.Run) *v1alpha1.Run {
-	newRun := newRun(run)
-	newRun.Status.Conditions[0].Reason = v1alpha1.RunReasonCancelled
-	return newRun
+func withRunCancelled(run *v1alpha1.Run) *v1alpha1.Run {
+	run.Status.Conditions[0].Reason = v1alpha1.RunReasonCancelled
+	return run
 }
 
 func withCancelledBySpec(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
@@ -257,16 +256,10 @@ func withCancelledBySpec(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
 
 func makeRetried(tr v1beta1.TaskRun) (newTr *v1beta1.TaskRun) {
 	newTr = newTaskRun(tr)
-	newTr.Status.RetriesStatus = []v1beta1.TaskRunStatus{{
-		Status: duckv1beta1.Status{
-			Conditions: []apis.Condition{{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-			}},
-		},
-	}}
+	newTr = withRetries(newTr)
 	return
 }
+
 func withRetries(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
 	tr.Status.RetriesStatus = []v1beta1.TaskRunStatus{{
 		Status: duckv1beta1.Status{
@@ -277,6 +270,18 @@ func withRetries(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
 		},
 	}}
 	return tr
+}
+
+func withRunRetries(r *v1alpha1.Run) *v1alpha1.Run {
+	r.Status.RetriesStatus = []v1alpha1.RunStatus{{
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+			}},
+		},
+	}}
+	return r
 }
 
 func newTaskRun(tr v1beta1.TaskRun) *v1beta1.TaskRun {
@@ -609,7 +614,7 @@ var taskCancelled = PipelineRunState{{
 var runCancelled = PipelineRunState{{
 	PipelineTask: &pts[12],
 	RunName:      "pipelinerun-mytask13",
-	Run:          withRunCancelled(runs[0]),
+	Run:          withRunCancelled(newRun(runs[0])),
 }}
 
 var taskWithOptionalResourcesDeprecated = &v1beta1.Task{
@@ -1308,6 +1313,174 @@ func TestIsSkipped(t *testing.T) {
 					t.Errorf("Didn't get expected isSkipped from task %s: %s", taskName, diff.PrintWantGot(d))
 				}
 			}
+		})
+	}
+}
+
+func TestIsFailure(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		task ResolvedPipelineRunTask
+		want bool
+	}{{
+		name: "taskrun not started",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+		},
+		want: false,
+	}, {
+		name: "run not started",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+		},
+		want: false,
+	}, {
+		name: "taskrun running",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeStarted(trs[0]),
+		},
+		want: false,
+	}, {
+
+		name: "run running",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			Run:          makeRunStarted(runs[0]),
+		},
+		want: false,
+	}, {
+		name: "taskrun succeeded",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeSucceeded(trs[0]),
+		},
+		want: false,
+	}, {
+
+		name: "run succeeded",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			Run:          makeRunSucceeded(runs[0]),
+		},
+		want: false,
+	}, {
+		name: "taskrun failed",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      makeFailed(trs[0]),
+		},
+		want: true,
+	}, {
+
+		name: "run failed",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			CustomTask:   true,
+			Run:          makeRunFailed(runs[0]),
+		},
+		want: true,
+	}, {
+		name: "taskrun failed: retries remaining",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
+			TaskRun:      makeFailed(trs[0]),
+		},
+		want: false,
+	}, {
+
+		name: "run failed: retries remaining",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
+			CustomTask:   true,
+			Run:          makeRunFailed(runs[0]),
+		},
+		want: false,
+	}, {
+		name: "taskrun failed: no retries remaining",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
+			TaskRun:      withRetries(makeFailed(trs[0])),
+		},
+		want: true,
+	}, {
+
+		name: "run failed: no retries remaining",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
+			CustomTask:   true,
+			Run:          withRunRetries(makeRunFailed(runs[0])),
+		},
+		want: true,
+	}, {
+		name: "taskrun cancelled",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      withCancelled(makeFailed(trs[0])),
+		},
+		want: true,
+	}, {
+		name: "taskrun cancelled but not failed",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      withCancelled(newTaskRun(trs[0])),
+		},
+		want: false,
+	}, {
+		name: "run cancelled",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			Run:          withRunCancelled(makeRunFailed(runs[0])),
+			CustomTask:   true,
+		},
+		want: true,
+	}, {
+		name: "run cancelled but not failed",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			Run:          withRunCancelled(newRun(runs[0])),
+			CustomTask:   true,
+		},
+		want: false,
+	}, {
+		name: "taskrun cancelled: retries remaining",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
+			TaskRun:      withCancelled(makeFailed(trs[0])),
+		},
+		want: true,
+	}, {
+		name: "run cancelled: retries remaining",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
+			Run:          withRunCancelled(makeRunFailed(runs[0])),
+			CustomTask:   true,
+		},
+		want: true,
+	}, {
+		name: "taskrun cancelled: no retries remaining",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
+			TaskRun:      withCancelled(withRetries(makeFailed(trs[0]))),
+		},
+		want: true,
+	}, {
+		name: "run cancelled: no retries remaining",
+		task: ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
+			Run:          withRunCancelled(withRunRetries(makeRunFailed(runs[0]))),
+			CustomTask:   true,
+		},
+		want: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.task.IsFailure(); got != tc.want {
+				t.Errorf("expected IsFailure: %t but got %t", tc.want, got)
+			}
+
 		})
 	}
 }
