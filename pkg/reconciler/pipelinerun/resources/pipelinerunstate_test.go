@@ -729,8 +729,15 @@ func TestDAGExecutionQueue(t *testing.T) {
 		specStatus: v1beta1.PipelineRunSpecStatusStoppedRunFinally,
 		state: PipelineRunState{
 			&createdTask, &createdRun, &runningTask, &runningRun, &successfulTask, &successfulRun,
-			&failedTaskWithRetries, &failedRunWithRetries,
 		},
+	}, {
+		name:       "gracefully stopped with retryable tasks",
+		specStatus: v1beta1.PipelineRunSpecStatusStoppedRunFinally,
+		state: PipelineRunState{
+			&createdTask, &createdRun, &runningTask, &runningRun, &successfulTask, &successfulRun,
+			&failedTask, &failedRun, &failedTaskWithRetries, &failedRunWithRetries,
+		},
+		want: PipelineRunState{&failedTaskWithRetries, &failedRunWithRetries},
 	}, {
 		name: "running",
 		state: PipelineRunState{
@@ -744,6 +751,13 @@ func TestDAGExecutionQueue(t *testing.T) {
 			&createdTask, &createdRun, &runningTask, &runningRun,
 			&successfulTask, &successfulRun, &failedTask, &failedRun,
 		},
+	}, {
+		name: "stopped with retryable tasks",
+		state: PipelineRunState{
+			&createdTask, &createdRun, &runningTask, &runningRun, &successfulTask, &successfulRun,
+			&failedTask, &failedRun, &failedTaskWithRetries, &failedRunWithRetries,
+		},
+		want: PipelineRunState{&failedTaskWithRetries, &failedRunWithRetries},
 	}, {
 		name:  "all tasks finished",
 		state: PipelineRunState{&successfulTask, &successfulRun, &failedTask, &failedRun},

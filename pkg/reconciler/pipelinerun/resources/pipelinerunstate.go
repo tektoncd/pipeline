@@ -231,31 +231,43 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
 			if t.TaskRun == nil && t.Run == nil {
 				tasks = append(tasks, t)
-			} else { // Return any TaskRuns or Runs with remaining retries
-				var status *apis.Condition
-				var isCancelled bool
-				if t.TaskRun != nil {
-					status = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-					isCancelled = t.TaskRun.IsCancelled()
-					if status != nil {
-						isCancelled = isCancelled || status.Reason == v1beta1.TaskRunReasonCancelled.String()
-					}
+			}
+		}
+	}
+	tasks = append(tasks, state.getRetryableTasks(candidateTasks)...)
+	return tasks
+}
 
-				} else {
-					status = t.Run.Status.GetCondition(apis.ConditionSucceeded)
-					isCancelled = t.Run.IsCancelled()
-					if status != nil {
-						isCancelled = isCancelled || status.Reason == v1alpha1.RunReasonCancelled
-					}
+// getRetryableTasks returns a list of tasks which should be executed next when the pipelinerun is stopping, i.e.
+// a list of cancelled/failed tasks from candidateTasks which haven't exhausted their retries
+func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*ResolvedPipelineRunTask {
+	var tasks []*ResolvedPipelineRunTask
+	for _, t := range state {
+		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
+			var status *apis.Condition
+			var isCancelled bool
+			if t.TaskRun != nil {
+				status = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+				isCancelled = t.TaskRun.IsCancelled()
+				if status != nil {
+					isCancelled = isCancelled || status.Reason == v1beta1.TaskRunReasonCancelled.String()
 				}
-				if status != nil && status.IsFalse() {
-					if !(isCancelled || status.Reason == ReasonConditionCheckFailed) {
-						if t.HasRemainingRetries() {
-							tasks = append(tasks, t)
-						}
+
+			} else if t.Run != nil {
+				status = t.Run.Status.GetCondition(apis.ConditionSucceeded)
+				isCancelled = t.Run.IsCancelled()
+				if status != nil {
+					isCancelled = isCancelled || status.Reason == v1alpha1.RunReasonCancelled
+				}
+			}
+			if status.IsFalse() {
+				if !(isCancelled || status.Reason == ReasonConditionCheckFailed) {
+					if t.HasRemainingRetries() {
+						tasks = append(tasks, t)
 					}
 				}
 			}
+
 		}
 	}
 	return tasks
@@ -308,22 +320,29 @@ func (facts *PipelineRunFacts) IsGracefullyStopped() bool {
 // DAGExecutionQueue returns a list of DAG tasks which needs to be scheduled next
 func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 	var tasks PipelineRunState
-	// when pipeline run is stopping, cancelled, gracefully cancelled or stopped, do not schedule any new task and only
-	// wait for all running tasks to complete and report their status
-	if !facts.IsStopping() && !facts.IsCancelled() && !facts.IsGracefullyCancelled() && !facts.IsGracefullyStopped() {
-		// candidateTasks is initialized to DAG root nodes to start pipeline execution
-		// candidateTasks is derived based on successfully finished tasks and/or skipped tasks
-		candidateTasks, err := dag.GetSchedulable(facts.TasksGraph, facts.successfulOrSkippedDAGTasks()...)
-		if err != nil {
-			return tasks, err
-		}
+	// when pipelinerun is cancelled or gracefully cancelled, do not schedule any new tasks,
+	// and only wait for all running tasks to complete (without exhausting retries).
+	if facts.IsCancelled() || facts.IsGracefullyCancelled() {
+		return tasks, nil
+	}
+	// candidateTasks is initialized to DAG root nodes to start pipeline execution
+	// candidateTasks is derived based on successfully finished tasks and/or skipped tasks
+	candidateTasks, err := dag.GetSchedulable(facts.TasksGraph, facts.successfulOrSkippedDAGTasks()...)
+	if err != nil {
+		return tasks, err
+	}
+	if !facts.IsStopping() && !facts.IsGracefullyStopped() {
 		tasks = facts.State.getNextTasks(candidateTasks)
+	} else {
+		// when pipeline run is stopping normally or gracefully, do not schedule any new tasks and only
+		// wait for all running tasks to complete (including exhausting retries) and report their status
+		tasks = facts.State.getRetryableTasks(candidateTasks)
 	}
 	return tasks, nil
 }
 
 // GetFinalTasks returns a list of final tasks without any taskRun associated with it
-// GetFinalTasks returns final tasks only when all DAG tasks have finished executing successfully or have been skipped
+// GetFinalTasks returns final tasks only when all DAG tasks have finished executing or have been skipped
 func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 	tasks := PipelineRunState{}
 	finalCandidates := sets.NewString()
