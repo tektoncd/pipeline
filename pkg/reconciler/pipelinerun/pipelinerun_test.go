@@ -45,6 +45,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
+	"github.com/tektoncd/pipeline/test/parse"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -966,29 +967,30 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.
 	names.TestingSeed()
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-success", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name: "test-pipeline",
-			},
-		},
-	}}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "unit-test-task-spec",
-				TaskSpec: &v1beta1.EmbeddedTask{
-					TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1beta1.Step{{Container: corev1.Container{
-							Name:  "mystep",
-							Image: "myimage"}}},
-					},
-				},
-			}},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{
+		parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-success
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`),
+	}
+	ps := []*v1beta1.Pipeline{
+		parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: unit-test-task-spec
+      taskSpec:
+        steps:
+          - name: mystep
+            image: myimage
+`),
+	}
 
 	d := test.Data{
 		PipelineRuns: prs,
