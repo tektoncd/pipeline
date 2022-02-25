@@ -489,7 +489,10 @@ they are referenced in the `Pipeline` definition.
 For each `Task` in the `Pipeline`, you can specify the number of times Tekton
 should retry its execution when it fails. When a `Task` fails, the corresponding
 `TaskRun` sets its `Succeeded` `Condition` to `False`. The `retries` field
-instructs Tekton to retry executing the `Task` when this happens.
+instructs Tekton to retry executing the `Task` when this happens. `retries` are executed
+even when other `Task`s in the `Pipeline` have failed, unless the `PipelineRun` has
+been [cancelled](./pipelineruns.md#cancelling-a-pipelinerun) or
+[gracefully cancelled](./pipelineruns.md#gracefully-cancelling-a-pipelinerun).
 
 If you expect a `Task` to encounter problems during execution (for example,
 you know that there will be issues with network connectivity or missing

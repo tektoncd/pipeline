@@ -721,7 +721,7 @@ spec:
 
 To gracefully stop a `PipelineRun` that's currently executing, update its definition
 to mark it as "StoppedRunFinally". When you do so, the spawned `TaskRuns` are completed normally,
-but no new non-`finally` task is scheduled. `finally` tasks are executed afterwards.
+including executing their `retries`, but no new non-`finally` task is scheduled. `finally` tasks are executed afterwards.
 For example:
 
 ```yaml
