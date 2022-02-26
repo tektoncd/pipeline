@@ -1966,7 +1966,7 @@ func TestReconcileOnCancelledPipelineRunDeprecated(t *testing.T) {
 	// TestReconcileOnCancelledPipelineRunDeprecated runs "Reconcile" on a PipelineRun that has been cancelled.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
 	// This test uses the deprecated status "PipelineRunCancelled" in PipelineRunSpec.
-	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun("test-pipeline-run-cancelled", v1beta1.PipelineRunSpecStatusCancelledDeprecated)}
+	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled", v1beta1.PipelineRunSpecStatusCancelledDeprecated)}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun("test-pipeline-run-cancelled-hello-world", "foo",
@@ -2011,7 +2011,7 @@ func getConfigMapsWithEnabledAlphaAPIFields() []*corev1.ConfigMap {
 func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	// TestReconcileOnCancelledPipelineRun runs "Reconcile" on a PipelineRun that has been cancelled.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun("test-pipeline-run-cancelled", v1beta1.PipelineRunSpecStatusCancelled)}
+	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled", v1beta1.PipelineRunSpecStatusCancelled)}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun("test-pipeline-run-cancelled-hello-world", "foo",
@@ -2280,7 +2280,7 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 func TestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T) {
 	// TestReconcileOnCancelledRunFinallyPipelineRun runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun("test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
+	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
 	ps := []*v1beta1.Pipeline{
 		parse.MustParsePipeline(t, `
 metadata:
@@ -2344,7 +2344,7 @@ spec:
 func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask(t *testing.T) {
 	// TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun("test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
+	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
 	ps := []*v1beta1.Pipeline{{
 		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
 		Spec: v1beta1.PipelineSpec{
@@ -8792,18 +8792,16 @@ func createHelloWorldTaskRun(trName, ns, prName, pName string) *v1beta1.TaskRun 
 	}
 }
 
-func createCancelledPipelineRun(prName string, specStatus v1beta1.PipelineRunSpecStatus) *v1beta1.PipelineRun {
-	return &v1beta1.PipelineRun{
-		ObjectMeta: baseObjectMeta(prName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             specStatus,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-			},
-		},
-	}
+func createCancelledPipelineRun(t *testing.T, prName string, specStatus v1beta1.PipelineRunSpecStatus) *v1beta1.PipelineRun {
+	return parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  status: %s
+status:
+  startTime: %s`, prName, specStatus, now.Format(time.RFC3339)))
 }
