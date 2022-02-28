@@ -54,7 +54,7 @@ data:
     # charge.  If metrics.backend-destination is not Stackdriver, this is
     # ignored.
     metrics.allow-stackdriver-custom-metrics: "false"
-    metrics.taskrun.level: "taskrun"
+    metrics.taskrun.level: "task"
     metrics.taskrun.duration-type: "histogram"
-    metrics.pipelinerun.level: "pipelinerun"
+    metrics.pipelinerun.level: "pipeline"
     metrics.pipelinerun.duration-type: "histogram"

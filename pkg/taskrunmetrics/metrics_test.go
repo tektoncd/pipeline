@@ -47,8 +47,8 @@ func getConfigContext() context.Context {
 	ctx := context.Background()
 	cfg := &config.Config{
 		Metrics: &config.Metrics{
-			TaskrunLevel:            config.DefaultTaskrunLevel,
-			PipelinerunLevel:        config.DefaultPipelinerunLevel,
+			TaskrunLevel:            config.TaskrunLevelAtTaskrun,
+			PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
 			DurationTaskrunType:     config.DefaultDurationTaskrunType,
 			DurationPipelinerunType: config.DefaultDurationPipelinerunType,
 		},
