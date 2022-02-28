@@ -31,12 +31,11 @@ The Labels/Tag marked as "*" are optional. And there's a choice between Histogra
 A sample config-map has been provided as [config-observability](./../config/config-observability.yaml). By default, taskrun and pipelinerun metrics have these values:
 
 ``` yaml
-    metrics.taskrun.level: "taskrun"
+    metrics.taskrun.level: "task"
     metrics.taskrun.duration-type: "histogram"
-    metrics.pipelinerun.level: "pipelinerun"
+    metrics.pipelinerun.level: "pipeline"
     metrics.pipelinerun.duration-type: "histogram"
 ```
-Levels for taskrun and pipelinerun will be changed to task and pipeline respectively in the next release.
 
 Following values are available in the configmap:
 

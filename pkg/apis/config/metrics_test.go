@@ -60,8 +60,8 @@ func TestNewMetricsFromConfigMap(t *testing.T) {
 func TestNewMetricsFromEmptyConfigMap(t *testing.T) {
 	MetricsConfigEmptyName := "config-observability-empty"
 	expectedConfig := &config.Metrics{
-		TaskrunLevel:            config.TaskrunLevelAtTaskrun,
-		PipelinerunLevel:        config.PipelinerunLevelAtPipelinerun,
+		TaskrunLevel:            config.TaskrunLevelAtTask,
+		PipelinerunLevel:        config.PipelinerunLevelAtPipeline,
 		DurationTaskrunType:     config.DurationPipelinerunTypeHistogram,
 		DurationPipelinerunType: config.DurationPipelinerunTypeHistogram,
 	}
