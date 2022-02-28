@@ -235,88 +235,41 @@ Note: Github deprecated basic authentication with username and password. You can
 
 ### Configuring `ssh-auth` authentication for Git
 
-This section describes how to configure an `ssh-auth` type `Secret` for use with Git. In the example below,
-before executing any `Steps` in the `Run`, Tekton creates a `~/.ssh/config` file containing the SSH key
-specified in the `Secret`. When the `Steps` execute, Tekton uses this key to retrieve `PipelineResources`
-specified in the `Run`.
+This section describes how to set up ConfigMap and Secret for use with Git to be able to configuring a git-clone Task to use Tekton Pipelines along with a Tekton trigger connected to a Git repository.
 
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
-1. In `secret.yaml`, define a `Secret` that specifies your SSH private key:
+1. Create _known_hosts_ file called _ssh_known_hosts_ with public host keys (example using github.com):
+	```
+	ssh-keyscan github.com > ssh_known_hosts
+	```
+2. Create a configmap using _ssh_known_hosts_ file:
+	```
+	kubectl create configmap github-known-hosts --from-file=ssh_known_hosts
+	```
+3. Generate a public/private rsa key pair to local files:
+	```
+	ssh-keygen -t rsa -b 4096 -f id_rsa -q -N ""
+	```
+4. Create a secret from the file with the private key:
+	```
+	kubectl create secret generic github-private-key --from-file=id_rsa
+	```
+5. Upload the public key id_rsa.pub to GitHub:
 
-   ```yaml
-   apiVersion: v1
-   kind: Secret
-   metadata:
-     name: ssh-key
-     annotations:
-       tekton.dev/git-0: github.com # Described below
-   type: kubernetes.io/ssh-auth
-   stringData:
-     ssh-privatekey: <private-key>
-     # This is non-standard, but its use is encouraged to make this more secure.
-     # If it is not provided then the git server's public key will be requested
-     # when the repo is first fetched.
-     known_hosts: <known-hosts>
-   ```
+	Copy the content of the public key from the id_rsa.pub file and follow [Adding a new SSH key to your GitHub account](https://help.github.com/en/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account) or alternatively [Managing Deploy Keys](https://docs.github.com/en/free-pro-team@latest/developers/overview/managing-deploy-keys#deploy-keys) for an organization.
 
-   In the above example, the value for `tekton.dev/git-0` specifies the URL for which Tekton will use this `Secret`,
-   as described in [Understanding credential selection](#understanding-credential-selection).
-
-1. Generate the `ssh-privatekey` value. For example:
-
-   `cat ~/.ssh/id_rsa`
-
-1. Set the value of the `known_hosts` field to the generated `ssh-privatekey` value from the previous step.
-
-1. In `serviceaccount.yaml`, associate the `Secret` with the desired `ServiceAccount`:
-
-   ```yaml
-   apiVersion: v1
-   kind: ServiceAccount
-   metadata:
-     name: build-bot
-   secrets:
-     - name: ssh-key
-   ```
-
-1. In `run.yaml`, associate the `ServiceAccount` with your `Run` by doing one of the following:
-
-   - Associate the `ServiceAccount` with your `TaskRun`:
-
-     ```yaml
-     apiVersion: tekton.dev/v1beta1
-     kind: TaskRun
-     metadata:
-       name: build-push-task-run-2
-     spec:
-       serviceAccountName: build-bot
-       taskRef:
-         name: build-push
-     ```
-
-   - Associate the `ServiceAccount` with your `PipelineRun`:
-
-   ```yaml
-   apiVersion: tekton.dev/v1beta1
-   kind: PipelineRun
-   metadata:
-     name: demo-pipeline
-     namespace: default
-   spec:
-     serviceAccountName: build-bot
-     pipelineRef:
-       name: demo-pipeline
-   ```
-
-1. Execute the `Run`:
-
-   ```shell
-   kubectl apply --filename secret.yaml,serviceaccount.yaml,run.yaml
-   ```
+6. Expose the _ConfigMap_ and _Secret_ created above to a Task with a Projected Volume:
+	```
+	      volumes:
+	      - name: ssh-auth                  # name of volume - matching name in Task
+		projected:
+		  defaultMode: 0400
+		  sources:
+		  - configMap:
+		      name: github-known-hosts  # name of ConfigMap from Auth setup
+		  - secret:
+		      name: github-private-key  # name of Secret from Auth setup
+	```
 
 ### Using a custom port for SSH authentication
 
