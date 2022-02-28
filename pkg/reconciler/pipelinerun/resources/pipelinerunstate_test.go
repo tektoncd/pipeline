@@ -23,14 +23,18 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/test/diff"
+	"github.com/tektoncd/pipeline/test/parse"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
@@ -1788,4 +1792,340 @@ func TestPipelineRunFacts_IsRunning(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestUpdateTaskRunsState runs "getTaskRunsStatus" and verifies how it updates a PipelineRun status
+// from a TaskRun associated to the PipelineRun
+func TestUpdateTaskRunsState(t *testing.T) {
+	pr := parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`)
+
+	pipelineTask := v1beta1.PipelineTask{
+		Name: "unit-test-1",
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo", "bar"},
+		}},
+		TaskRef: &v1beta1.TaskRef{Name: "unit-test-task"},
+	}
+
+	task := parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
+  name: unit-test-task
+  namespace: foo
+spec:
+  resources:
+    inputs:
+      - name: workspace
+        type: %s
+`, resourcev1alpha1.PipelineResourceTypeGit))
+
+	taskrun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline-run-success-unit-test-1
+  namespace: foo
+spec:
+  taskRef:
+    name: unit-test-task
+  serviceAccountName: test-sa
+  timeout: 1h0m0s
+status:
+  conditions:
+    - type: Succeeded
+  steps:
+    - container:
+      terminated:
+        exitCode: 0
+`))
+
+	state := PipelineRunState{{
+		PipelineTask: &pipelineTask,
+		TaskRunName:  "test-pipeline-run-success-unit-test-1",
+		TaskRun:      taskrun,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+	pr.Status.InitializeConditions(testClock)
+	status := state.GetTaskRunsStatus(pr)
+
+	expectedPipelineRunStatus := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipelinerun
+  namespace: foo
+status:
+  taskRuns:
+    test-pipeline-run-success-unit-test-1:
+      pipelineTaskName: unit-test-1
+      status:
+        conditions:
+          - type: Succeeded
+        steps:
+          - container:
+            terminated:
+              exitCode: 0
+      whenExpressions:
+        - input: foo
+          operator: in
+          values: ["foo", "bar"]
+`)
+
+	if d := cmp.Diff(expectedPipelineRunStatus.Status.TaskRuns, status); d != "" {
+		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
+	}
+}
+
+// TestUpdateRunsState runs "getRunsStatus" and verifies how it updates a PipelineRun status
+// from a Run associated to the PipelineRun
+func TestUpdateRunsState(t *testing.T) {
+	pr := parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`)
+
+	pipelineTask := v1beta1.PipelineTask{
+		Name: "unit-test-1",
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo", "bar"},
+		}},
+		TaskRef: &v1beta1.TaskRef{
+			APIVersion: "example.dev/v0",
+			Kind:       "Example",
+			Name:       "unit-test-run",
+		},
+	}
+
+	run := parse.MustParseRun(t, fmt.Sprintf(`
+metadata:
+  name: unit-test-run
+  namespace: foo
+status:
+  conditions:
+    - type: Succeeded
+      status: "True"
+`))
+
+	state := PipelineRunState{{
+		PipelineTask: &pipelineTask,
+		CustomTask:   true,
+		RunName:      "test-pipeline-run-success-unit-test-1",
+		Run:          run,
+	}}
+	pr.Status.InitializeConditions(testClock)
+	status := state.GetRunsStatus(pr)
+
+	expectedPipelineRunStatus := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipelinerun
+  namespace: foo
+status:
+  runs:
+    test-pipeline-run-success-unit-test-1:
+      pipelineTaskName: unit-test-1
+      status:
+        conditions:
+          - type: Succeeded
+            status: "True"
+        steps:
+          - container:
+            terminated:
+              exitCode: 0
+      whenExpressions:
+        - input: foo
+          operator: in
+          values: ["foo", "bar"]
+`)
+
+	if d := cmp.Diff(expectedPipelineRunStatus.Status.Runs, status); d != "" {
+		t.Fatalf("Expected PipelineRun status to match Run(s) status, but got a mismatch: %s", diff.PrintWantGot(d))
+	}
+}
+
+// TestUpdateTaskRunStateWithConditionChecks runs "getTaskRunsStatus" and verifies how it updates a PipelineRun status
+// from several TaskRun with Conditions associated to the PipelineRun
+func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
+	taskrunName := "task-run"
+	successConditionCheckName := "success-condition"
+	failingConditionCheckName := "fail-condition"
+
+	successCondition := parse.MustParseCondition(t, `
+metadata:
+  name: cond-1
+  namespace: foo
+`)
+
+	failingCondition := parse.MustParseCondition(t, `
+metadata:
+  name: cond-2
+  namespace: foo
+`)
+
+	pipelineTask := v1beta1.PipelineTask{
+		TaskRef: &v1beta1.TaskRef{Name: "unit-test-task"},
+		Conditions: []v1beta1.PipelineTaskCondition{{
+			ConditionRef: successCondition.Name,
+		}, {
+			ConditionRef: failingCondition.Name,
+		}},
+	}
+
+	successConditionCheck := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+status:
+  conditions:
+    - type: Succeeded
+      status: "True"
+  steps:
+    - container:
+      terminated:
+        exitCode: 0
+`, successConditionCheckName))
+
+	failingConditionCheck := parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+status:
+  conditions:
+    - type: Succeeded
+      status: "False"
+  steps:
+    - container:
+      terminated:
+        exitCode: 127
+`, failingConditionCheckName))
+
+	successrcc := ResolvedConditionCheck{
+		ConditionRegisterName: successCondition.Name + "-0",
+		ConditionCheckName:    successConditionCheckName,
+		Condition:             successCondition,
+		ConditionCheck:        conditionCheckFromTaskRun(successConditionCheck),
+	}
+	failingrcc := ResolvedConditionCheck{
+		ConditionRegisterName: failingCondition.Name + "-0",
+		ConditionCheckName:    failingConditionCheckName,
+		Condition:             failingCondition,
+		ConditionCheck:        conditionCheckFromTaskRun(failingConditionCheck),
+	}
+
+	successConditionCheckStatus := &v1beta1.PipelineRunConditionCheckStatus{
+		ConditionName: successrcc.ConditionRegisterName,
+		Status: &v1beta1.ConditionCheckStatus{
+			ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
+				Check: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+				},
+			},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}},
+			},
+		},
+	}
+
+	failingConditionCheckStatus := &v1beta1.PipelineRunConditionCheckStatus{
+		ConditionName: failingrcc.ConditionRegisterName,
+		Status: &v1beta1.ConditionCheckStatus{
+			ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
+				Check: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+				},
+			},
+			Status: duckv1beta1.Status{
+				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+			},
+		},
+	}
+
+	failedTaskRunStatus := v1beta1.TaskRunStatus{
+		Status: duckv1beta1.Status{
+			Conditions: []apis.Condition{{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  ReasonConditionCheckFailed,
+				Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", taskrunName, "test-pipeline-run"),
+			}},
+		},
+	}
+
+	tcs := []struct {
+		name           string
+		rcc            TaskConditionCheckState
+		expectedStatus v1beta1.PipelineRunTaskRunStatus
+	}{{
+		name: "success-condition-checks",
+		rcc:  TaskConditionCheckState{&successrcc},
+		expectedStatus: v1beta1.PipelineRunTaskRunStatus{
+			ConditionChecks: map[string]*v1beta1.PipelineRunConditionCheckStatus{
+				successrcc.ConditionCheck.Name: successConditionCheckStatus,
+			},
+		},
+	}, {
+		name: "failing-condition-checks",
+		rcc:  TaskConditionCheckState{&failingrcc},
+		expectedStatus: v1beta1.PipelineRunTaskRunStatus{
+			Status: &failedTaskRunStatus,
+			ConditionChecks: map[string]*v1beta1.PipelineRunConditionCheckStatus{
+				failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
+			},
+		},
+	}, {
+		name: "multiple-condition-checks",
+		rcc:  TaskConditionCheckState{&successrcc, &failingrcc},
+		expectedStatus: v1beta1.PipelineRunTaskRunStatus{
+			Status: &failedTaskRunStatus,
+			ConditionChecks: map[string]*v1beta1.PipelineRunConditionCheckStatus{
+				successrcc.ConditionCheck.Name: successConditionCheckStatus,
+				failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
+			},
+		},
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`)
+			state := PipelineRunState{{
+				PipelineTask:            &pipelineTask,
+				TaskRunName:             taskrunName,
+				ResolvedConditionChecks: tc.rcc,
+			}}
+			pr.Status.InitializeConditions(testClock)
+			status := state.GetTaskRunsStatus(pr)
+			expected := map[string]*v1beta1.PipelineRunTaskRunStatus{
+				taskrunName: &tc.expectedStatus,
+			}
+			if d := cmp.Diff(status, expected, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
+				t.Fatalf("Did not get expected status for %s %s", tc.name, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+// conditionCheckFromTaskRun takes a pointer to a TaskRun and wraps it into a ConditionCheck
+func conditionCheckFromTaskRun(tr *v1beta1.TaskRun) *v1beta1.ConditionCheck {
+	cc := v1beta1.ConditionCheck(*tr)
+	return &cc
 }

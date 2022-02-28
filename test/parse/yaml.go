@@ -44,6 +44,16 @@ kind: TaskRun
 	return &tr
 }
 
+// MustParseRun takes YAML and parses it into a *v1alpha1.Run
+func MustParseRun(t *testing.T, yaml string) *v1alpha1.Run {
+	var r v1alpha1.Run
+	yaml = `apiVersion: tekton.dev/v1alpha1
+kind: Run
+` + yaml
+	mustParseYAML(t, yaml, &r)
+	return &r
+}
+
 // MustParseTask takes YAML and parses it into a *v1beta1.Task
 func MustParseTask(t *testing.T, yaml string) *v1beta1.Task {
 	var task v1beta1.Task
