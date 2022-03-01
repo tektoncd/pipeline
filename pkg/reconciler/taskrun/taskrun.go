@@ -140,7 +140,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		message := fmt.Sprintf("TaskRun %q was cancelled", tr.Name)
-		err := c.cancelTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
+		var err error
+		if isCancelUsingEntrypointEnabled(ctx) {
+			err = c.cancelTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
+		} else {
+			err = c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
+		}
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
@@ -865,4 +870,12 @@ func willOverwritePodSetAffinity(taskRun *v1beta1.TaskRun) bool {
 		podTemplate = *taskRun.Spec.PodTemplate
 	}
 	return taskRun.Annotations[workspace.AnnotationAffinityAssistantName] != "" && podTemplate.Affinity != nil
+}
+
+// isCancelUsingEntrypointEnabled returns a bool indicating whether the cancellation of tasks
+// should be performed using the entrypoint binary. The default behaviour is to delete the pods
+// corresponding to a task.
+func isCancelUsingEntrypointEnabled(ctx context.Context) bool {
+	cfg := config.FromContextOrDefaults(ctx)
+	return cfg.FeatureFlags.EnableCancelUsingEntrypoint
 }

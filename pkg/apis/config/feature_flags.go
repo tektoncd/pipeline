@@ -59,6 +59,8 @@ const (
 	DefaultSendCloudEventsForRuns = false
 	// DefaultEmbeddedStatus is the default value for "embedded-status".
 	DefaultEmbeddedStatus = FullEmbeddedStatus
+	// DefaultEnableCancelUsingEntrypoint is the default value for "enable-cancel-using-entrypoint"
+	DefaultEnableCancelUsingEntrypoint = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -70,6 +72,7 @@ const (
 	scopeWhenExpressionsToTask          = "scope-when-expressions-to-task"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
 	embeddedStatus                      = "embedded-status"
+	enableCancelUsingEntrypoint         = "enable-cancel-using-entrypoint"
 )
 
 // FeatureFlags holds the features configurations
@@ -85,6 +88,7 @@ type FeatureFlags struct {
 	EnableAPIFields                  string
 	SendCloudEventsForRuns           bool
 	EmbeddedStatus                   string
+	EnableCancelUsingEntrypoint      bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -134,6 +138,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setEmbeddedStatus(cfgMap, DefaultEmbeddedStatus, &tc.EmbeddedStatus); err != nil {
+		return nil, err
+	}
+	if err := setFeature(enableCancelUsingEntrypoint, DefaultEnableCancelUsingEntrypoint, &tc.EnableCancelUsingEntrypoint); err != nil {
 		return nil, err
 	}
 

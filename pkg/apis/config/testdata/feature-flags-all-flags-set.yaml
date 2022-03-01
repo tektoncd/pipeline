@@ -27,3 +27,4 @@ data:
   enable-api-fields: "alpha"
   send-cloudevents-for-runs: "true"
   embedded-status: "both"
+  enable-cancel-using-entrypoint: "true"

@@ -1922,6 +1922,111 @@ func TestReconcileOnCancelledTaskRun(t *testing.T) {
 	}
 }
 
+func TestReconcileOnCancelledTaskRunWithFeatureFlag(t *testing.T) {
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-cancelled", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+			Status: v1beta1.TaskRunSpecStatusCancelled,
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					},
+				},
+			},
+		},
+	}
+	pod, err := makePod(taskRun, simpleTask)
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
+	}
+	taskRun.Status.PodName = pod.Name
+
+	expectedStatus := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  "TaskRunCancelled",
+		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
+	}
+
+	testCases := []struct {
+		name          string
+		cancelEnabled bool
+	}{
+		{
+			name:          "Taskrun cancellation with entrypoint cancel enabled",
+			cancelEnabled: true,
+		},
+		{
+			name:          "Taskrun cancellation without entrypoint cancel",
+			cancelEnabled: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1beta1.TaskRun{taskRun},
+				Tasks:    []*v1beta1.Task{simpleTask},
+				Pods:     []*corev1.Pod{pod},
+			}
+
+			if tc.cancelEnabled {
+				d.ConfigMaps = []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+						Data: map[string]string{
+							"enable-cancel-using-entrypoint": "true",
+						},
+					},
+				}
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+			}
+			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+			}
+
+			if d := cmp.Diff(expectedStatus, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
+				t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
+			}
+
+			wantEvents := []string{
+				"Normal Started",
+				"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled",
+			}
+			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-cancelled-taskrun", wantEvents)
+			if !(err == nil) {
+				t.Errorf(err.Error())
+			}
+
+			_, err = clients.Kube.CoreV1().Pods(pod.ObjectMeta.Namespace).Get(testAssets.Ctx, pod.ObjectMeta.Name, metav1.GetOptions{})
+			if tc.cancelEnabled {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			} else {
+				if !k8sapierrors.IsNotFound(err) {
+					t.Errorf("expected a NotFound response, got: %v", err)
+				}
+			}
+		})
+	}
+}
+
 func TestReconcileTimeouts(t *testing.T) {
 	type testCase struct {
 		name           string
