@@ -372,6 +372,18 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 	return errs
 }
 
+func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *apis.FieldError) {
+	for i, ws := range pt.Workspaces {
+		if !workspaceNames.Has(ws.Workspace) {
+			errs = errs.Also(apis.ErrInvalidValue(
+				fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", pt.Name, ws.Workspace),
+				"",
+			).ViaFieldIndex("workspaces", i))
+		}
+	}
+	return errs
+}
+
 // TaskSpecMetadata returns the metadata of the PipelineTask's EmbeddedTask spec.
 func (pt *PipelineTask) TaskSpecMetadata() PipelineTaskMetadata {
 	return pt.TaskSpec.Metadata
