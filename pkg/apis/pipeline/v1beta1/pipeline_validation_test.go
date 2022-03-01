@@ -2420,10 +2420,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `invalid value: pipeline tasks can not refer to execution status of any other pipeline task or aggregate status of tasks`,
-			Paths:   []string{"tasks[0].params[bar-status].value"},
-		}).Also(&apis.FieldError{
-			Message: `invalid value: when expressions in pipeline tasks can not refer to execution status of any other pipeline task or aggregate status of tasks`,
-			Paths:   []string{"tasks[0].when[0]"},
+			Paths:   []string{"tasks[0].params[bar-status].value", "tasks[0].when[0]"},
 		}),
 	}, {
 		name: "invalid string variable in dag task accessing aggregate status of tasks",
