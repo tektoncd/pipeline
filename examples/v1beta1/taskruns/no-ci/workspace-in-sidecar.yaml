@@ -13,8 +13,7 @@ spec:
   timeout: 60s
   workspaces:
   - name: signals
-    emptyDir:
-      sizeLimit: 1M
+    emptyDir: {}
   taskSpec:
     workspaces:
     - name: signals
