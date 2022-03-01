@@ -70,7 +70,8 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineResults(ps.Results))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
-	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
+	errs = errs.Also(validateWhenExpressions(ps.Tasks).ViaField("tasks"))
+	errs = errs.Also(validateWhenExpressions(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	return errs
@@ -358,22 +359,12 @@ func validateTasksInputFrom(tasks []PipelineTask) (errs *apis.FieldError) {
 	return errs
 }
 
-func validateWhenExpressions(tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
-	for i, t := range tasks {
-		errs = errs.Also(validateOneOfWhenExpressionsOrConditions(t).ViaFieldIndex("tasks", i))
-		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("tasks", i))
-	}
-	for i, t := range finalTasks {
-		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("finally", i))
+func validateWhenExpressions(pts []PipelineTask) (errs *apis.FieldError) {
+	for i, pt := range pts {
+		errs = errs.Also(pt.validateOneOfWhenExpressionsOrConditions())
+		errs = errs.Also(pt.WhenExpressions.validate()).ViaIndex(i)
 	}
 	return errs
-}
-
-func validateOneOfWhenExpressionsOrConditions(t PipelineTask) *apis.FieldError {
-	if t.WhenExpressions != nil && t.Conditions != nil {
-		return apis.ErrMultipleOneOf("when", "conditions")
-	}
-	return nil
 }
 
 // validateDeclaredResources ensures that the specified resources have unique names and

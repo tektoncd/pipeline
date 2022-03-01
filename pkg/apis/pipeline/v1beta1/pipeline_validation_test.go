@@ -255,6 +255,34 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			Paths:   []string{"tasks[0].conditions", "tasks[0].when"},
 		},
 	}, {
+		name: "invalid pipeline with one pipeline task having both conditions and when expressions in finally",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}},
+			Finally: []PipelineTask{{
+				Name:    "invalid-pipeline-final-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
+				Conditions: []PipelineTaskCondition{{
+					ConditionRef: "some-condition",
+				}},
+			}},
+		},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `expected exactly one, got both`,
+			Paths:   []string{"finally[0].conditions", "finally[0].when"},
+		}).Also(&apis.FieldError{
+			Message: `invalid value: no conditions allowed under spec.finally, final task invalid-pipeline-final-task has conditions specified`,
+			Paths:   []string{"finally[0]"},
+		}),
+	}, {
 		name: "invalid pipeline with one pipeline task having when expression with invalid operator (not In/NotIn)",
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",

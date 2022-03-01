@@ -372,6 +372,13 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 	return errs
 }
 
+func (pt *PipelineTask) validateOneOfWhenExpressionsOrConditions() *apis.FieldError {
+	if pt.WhenExpressions != nil && pt.Conditions != nil {
+		return apis.ErrMultipleOneOf("when", "conditions")
+	}
+	return nil
+}
+
 // TaskSpecMetadata returns the metadata of the PipelineTask's EmbeddedTask spec.
 func (pt *PipelineTask) TaskSpecMetadata() PipelineTaskMetadata {
 	return pt.TaskSpec.Metadata
