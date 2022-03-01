@@ -65,7 +65,9 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
 	// Validate the pipeline's workspaces.
-	errs = errs.Also(validatePipelineWorkspaces(ps.Workspaces, ps.Tasks, ps.Finally))
+	errs = errs.Also(validatePipelineWorkspacesDeclarations(ps.Workspaces))
+	errs = errs.Also(validatePipelineWorkspacesUsage(ps.Workspaces, ps.Tasks).ViaField("tasks"))
+	errs = errs.Also(validatePipelineWorkspacesUsage(ps.Workspaces, ps.Finally).ViaField("finally"))
 	// Validate the pipeline's results
 	errs = errs.Also(validatePipelineResults(ps.Results))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
@@ -86,9 +88,9 @@ func ValidatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks
 	return errs
 }
 
-// validatePipelineWorkspaces validates the specified workspaces, ensuring having unique name without any empty string,
-// and validates that all the referenced workspaces (by pipeline tasks) are specified in the pipeline
-func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
+// validatePipelineWorkspacesDeclarations validates the specified workspaces, ensuring having unique name without any
+// empty string,
+func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) (errs *apis.FieldError) {
 	// Workspace names must be non-empty and unique.
 	wsTable := sets.NewString()
 	for i, ws := range wss {
@@ -102,28 +104,19 @@ func validatePipelineWorkspaces(wss []PipelineWorkspaceDeclaration, pts []Pipeli
 		}
 		wsTable.Insert(ws.Name)
 	}
+	return errs
+}
 
-	// Any workspaces used in PipelineTasks should have their name declared in the Pipeline's
-	// Workspaces list.
-	for i, pt := range pts {
-		for j, ws := range pt.Workspaces {
-			if !wsTable.Has(ws.Workspace) {
-				errs = errs.Also(apis.ErrInvalidValue(
-					fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", pt.Name, ws.Workspace),
-					"",
-				).ViaFieldIndex("workspaces", j).ViaFieldIndex("tasks", i))
-			}
-		}
+// validatePipelineWorkspacesUsage validates that all the referenced workspaces (by pipeline tasks) are specified in
+// the pipeline
+func validatePipelineWorkspacesUsage(wss []PipelineWorkspaceDeclaration, pts []PipelineTask) (errs *apis.FieldError) {
+	workspaceNames := sets.NewString()
+	for _, ws := range wss {
+		workspaceNames.Insert(ws.Name)
 	}
-	for i, t := range finalTasks {
-		for j, ws := range t.Workspaces {
-			if !wsTable.Has(ws.Workspace) {
-				errs = errs.Also(apis.ErrInvalidValue(
-					fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", t.Name, ws.Workspace),
-					"",
-				).ViaFieldIndex("workspaces", j).ViaFieldIndex("finally", i))
-			}
-		}
+	// Any workspaces used in PipelineTasks should have their name declared in the Pipeline's Workspaces list.
+	for i, pt := range pts {
+		errs = errs.Also(pt.validateWorkspaces(workspaceNames).ViaIndex(i))
 	}
 	return errs
 }
