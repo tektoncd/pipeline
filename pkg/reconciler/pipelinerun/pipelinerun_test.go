@@ -2362,32 +2362,27 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask(t *testing.T) {
 	// TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					RunAfter: []string{"hello-world-1"},
-				},
-			},
-			Finally: []v1beta1.PipelineTask{{
-				Name: "final-task-1",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "some-task",
-				},
-			}},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{
+		parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: hello-world-1
+      taskRef:
+        name: hello-world
+    - name: hello-world-2
+      taskRef:
+        name: hello-world
+      runAfter:
+        - hello-world-1
+  finally:
+    - name: final-task-1
+      taskRef:
+        name: some-task
+`),
+	}
 	ts := []*v1beta1.Task{
 		simpleHelloWorldTask,
 		simpleSomeTask,
