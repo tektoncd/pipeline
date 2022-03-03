@@ -456,6 +456,66 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
+	var runCancelledByStatusState = PipelineRunState{{
+		PipelineTask: &pts[4], // 2 retries needed
+		RunName:      "pipelinerun-mytask1",
+		Run:          withRunCancelled(withRunRetries(newRun(runs[0]))),
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runCancelledBySpecState = PipelineRunState{{
+		PipelineTask: &pts[4],
+		RunName:      "pipelinerun-mytask1",
+		Run:          withRunCancelledBySpec(withRunRetries(newRun(runs[0]))),
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runRunningState = PipelineRunState{{
+		PipelineTask: &pts[4],
+		RunName:      "pipelinerun-mytask1",
+		Run:          makeRunStarted(runs[0]),
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runSucceededState = PipelineRunState{{
+		PipelineTask: &pts[4],
+		RunName:      "pipelinerun-mytask1",
+		Run:          makeRunSucceeded(runs[0]),
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runRetriedState = PipelineRunState{{
+		PipelineTask: &pts[3], // 1 retry needed
+		RunName:      "pipelinerun-mytask1",
+		Run:          withRunCancelled(withRunRetries(newRun(runs[0]))),
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runExpectedState = PipelineRunState{{
+		PipelineTask: &pts[4], // 2 retries needed
+		RunName:      "pipelinerun-mytask1",
+		Run:          withRunRetries(makeRunFailed(runs[0])),
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
 	tcs := []struct {
 		name         string
 		state        PipelineRunState
@@ -491,10 +551,40 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		state:        taskExpectedState,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineRunTask{taskExpectedState[0]},
+	}, {
+		name:         "runs-cancelled-no-candidates",
+		state:        runCancelledByStatusState,
+		candidates:   sets.NewString("mytask5"),
+		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "runs-cancelled-bySpec-no-candidates",
+		state:        runCancelledBySpecState,
+		candidates:   sets.NewString("mytask5"),
+		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "runs-running-no-candidates",
+		state:        runRunningState,
+		candidates:   sets.NewString("mytask5"),
+		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "run-succeeded-bySpec-no-candidates",
+		state:        runSucceededState,
+		candidates:   sets.NewString("mytask5"),
+		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "run-retried-no-candidates",
+		state:        runRetriedState,
+		candidates:   sets.NewString("mytask5"),
+		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "run-retried-one-candidates",
+		state:        runExpectedState,
+		candidates:   sets.NewString("mytask5"),
+		expectedNext: []*ResolvedPipelineRunTask{runExpectedState[0]},
 	}}
 
-	// iterate over *state* to get from candidate and check if TaskRun is there.
-	// Cancelled TaskRun should have a TaskRun cancelled and with a retry but should not retry.
+	// iterate over *state* to get from candidate and check if TaskRun or Run is there.
+	// Cancelled TaskRun should have a TaskRun cancelled and with a retry but should not retry and likewise for Runs.
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
