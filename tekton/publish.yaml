@@ -80,7 +80,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: golang:1.16
+    image: golang:1.17.7
     script: |
       #!/bin/sh
       set -ex
@@ -116,7 +116,7 @@ spec:
       cat ${PROJECT_ROOT}/.ko.yaml
 
   - name: run-ko
-    image: gcr.io/tekton-releases/dogfooding/ko:latest
+    image: gcr.io/tekton-releases/dogfooding/ko@sha256:ec55b9dd6c7af2b237cc7c38a974cc42212d53a026ee2a84f685f02c471c6c9e
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
