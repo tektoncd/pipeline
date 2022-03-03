@@ -254,6 +254,11 @@ func withCancelledBySpec(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
 	return tr
 }
 
+func withRunCancelledBySpec(run *v1alpha1.Run) *v1alpha1.Run {
+	run.Spec.Status = v1alpha1.RunSpecStatusCancelled
+	return run
+}
+
 func makeRetried(tr v1beta1.TaskRun) (newTr *v1beta1.TaskRun) {
 	newTr = newTaskRun(tr)
 	newTr = withRetries(newTr)

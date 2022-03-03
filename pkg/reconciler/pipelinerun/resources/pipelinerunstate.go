@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"go.uber.org/zap"
@@ -231,11 +232,26 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
 			if t.TaskRun == nil && t.Run == nil {
 				tasks = append(tasks, t)
-			} else if t.TaskRun != nil { // TODO(lbernick): Return custom tasks with retries remaining
-				status := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+			} else { // Return any TaskRuns or Runs with remaining retries
+				var status *apis.Condition
+				var isCancelled bool
+				if t.TaskRun != nil {
+					status = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+					isCancelled = t.TaskRun.IsCancelled()
+					if status != nil {
+						isCancelled = isCancelled || status.Reason == v1beta1.TaskRunReasonCancelled.String()
+					}
+
+				} else {
+					status = t.Run.Status.GetCondition(apis.ConditionSucceeded)
+					isCancelled = t.Run.IsCancelled()
+					if status != nil {
+						isCancelled = isCancelled || status.Reason == v1alpha1.RunReasonCancelled
+					}
+				}
 				if status != nil && status.IsFalse() {
-					if !(t.TaskRun.IsCancelled() || status.Reason == v1beta1.TaskRunReasonCancelled.String() || status.Reason == ReasonConditionCheckFailed) {
-						if len(t.TaskRun.Status.RetriesStatus) < t.PipelineTask.Retries {
+					if !(isCancelled || status.Reason == ReasonConditionCheckFailed) {
+						if t.HasRemainingRetries() {
 							tasks = append(tasks, t)
 						}
 					}
