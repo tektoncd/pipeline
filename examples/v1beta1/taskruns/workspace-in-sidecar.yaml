@@ -25,6 +25,7 @@ spec:
           cpu: "100m"
       script: |
         #!/usr/bin/env ash
+        echo "Creating FIFO..."
         mkfifo "$(workspaces.signals.path)/channel"
         echo "Greeting sidecar..."
         echo "hello there" > "$(workspaces.signals.path)/channel"
