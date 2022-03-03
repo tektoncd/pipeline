@@ -23,7 +23,7 @@ spec:
       description: The secret that contains a service account authorized to push to the imageRegistry and to the output bucket
   steps:
 
-  - image: gcr.io/tekton-releases/dogfooding/buildx-gcloud:latest
+  - image: gcr.io/tekton-releases/dogfooding/buildx-gcloud@sha256:57a4971011f57f5ba940e54192c435445f24b495bfc6f3d3542f189a50fb7882
     name: build-image
     env:
     # Connect to the sidecar over TCP, with TLS.
