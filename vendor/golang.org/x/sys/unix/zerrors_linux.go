@@ -1286,6 +1286,8 @@ const (
 	IUTF8                                       = 0x4000
 	IXANY                                       = 0x800
 	JFFS2_SUPER_MAGIC                           = 0x72b6
+	KCMPROTO_CONNECTED                          = 0x0
+	KCM_RECV_DISABLE                            = 0x1
 	KEXEC_ARCH_386                              = 0x30000
 	KEXEC_ARCH_68K                              = 0x40000
 	KEXEC_ARCH_AARCH64                          = 0xb70000
@@ -2458,6 +2460,9 @@ const (
 	SIOCGSTAMPNS                                = 0x8907
 	SIOCGSTAMPNS_OLD                            = 0x8907
 	SIOCGSTAMP_OLD                              = 0x8906
+	SIOCKCMATTACH                               = 0x89e0
+	SIOCKCMCLONE                                = 0x89e2
+	SIOCKCMUNATTACH                             = 0x89e1
 	SIOCOUTQNSD                                 = 0x894b
 	SIOCPROTOPRIVATE                            = 0x89e0
 	SIOCRTMSG                                   = 0x890d

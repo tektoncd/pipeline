@@ -232,6 +232,7 @@ struct ltchars {
 #include <linux/if_packet.h>
 #include <linux/if_xdp.h>
 #include <linux/input.h>
+#include <linux/kcm.h>
 #include <linux/kexec.h>
 #include <linux/keyctl.h>
 #include <linux/landlock.h>
@@ -504,6 +505,7 @@ ccflags="$@"
 		$2 ~ /^O?XTABS$/ ||
 		$2 ~ /^TC[IO](ON|OFF)$/ ||
 		$2 ~ /^IN_/ ||
+		$2 ~ /^KCM/ ||
 		$2 ~ /^LANDLOCK_/ ||
 		$2 ~ /^LOCK_(SH|EX|NB|UN)$/ ||
 		$2 ~ /^LO_(KEY|NAME)_SIZE$/ ||

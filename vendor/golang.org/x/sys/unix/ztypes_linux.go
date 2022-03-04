@@ -3771,6 +3771,8 @@ const (
 	ETHTOOL_A_TUNNEL_INFO_MAX                 = 0x2
 )
 
+const SPEED_UNKNOWN = -0x1
+
 type EthtoolDrvinfo struct {
 	Cmd          uint32
 	Driver       [32]byte
@@ -4145,3 +4147,16 @@ const (
 	IFLA_CAN_DATA_BITRATE_CONST   = 0xe
 	IFLA_CAN_BITRATE_MAX          = 0xf
 )
+
+type KCMAttach struct {
+	Fd     int32
+	Bpf_fd int32
+}
+
+type KCMUnattach struct {
+	Fd int32
+}
+
+type KCMClone struct {
+	Fd int32
+}
