@@ -16,11 +16,11 @@ Supported kinds are: bug, cleanup, design, documentation, feature, flake, misc, 
 
 As the author of this PR, please check off the items in this checklist:
 
-- [ ] [Docs](https://github.com/tektoncd/community/blob/main/standards.md#docs) included if any changes are user facing
-- [ ] [Tests](https://github.com/tektoncd/community/blob/main/standards.md#tests) included if any functionality added or changed
-- [ ] Follows the [commit message standard](https://github.com/tektoncd/community/blob/main/standards.md#commits)
-- [ ] Meets the [Tekton contributor standards](https://github.com/tektoncd/community/blob/main/standards.md) (including
-  functionality, content, code)
+- [ ] [Docs][docs] included if any changes are user facing
+- [ ] [Tests][tests] included if any functionality added or changed
+- [ ] Follows the [commit message standard][commits]
+- [ ] Meets the [Tekton contributor standards][standards] (including functionality, content, code)
+- [ ] User-facing [enhancements][enhancement] have a [Tekton Enhancement Proposal][teps] that's [*implementable*][tep-workflow]
 - [ ] Release notes block below has been filled in or deleted (only if no user facing changes)
 
 # Release Notes
@@ -52,3 +52,12 @@ For pull requests that don't need to be mentioned at release time, use the `/rel
 NONE
 ```
 -->
+
+
+[docs]: https://github.com/tektoncd/community/blob/main/standards.md#docs
+[tests]: https://github.com/tektoncd/community/blob/main/standards.md#tests
+[commits]: https://github.com/tektoncd/community/blob/main/standards.md#commits
+[standards]: https://github.com/tektoncd/community/blob/main/standards.md
+[teps]: https://github.com/tektoncd/community/tree/main/teps
+[tep-workflow]: https://github.com/tektoncd/community/blob/main/teps/0001-tekton-enhancement-proposal-process.md#tep-workflow
+[enhancement]: https://github.com/tektoncd/community/blob/main/teps/0001-tekton-enhancement-proposal-process.md#what-type-of-work-should-be-tracked-by-a-tep
