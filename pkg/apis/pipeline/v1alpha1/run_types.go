@@ -163,6 +163,11 @@ type RunList struct {
 	Items           []Run `json:"items"`
 }
 
+// GetStatusCondition returns the task run status as a ConditionAccessor
+func (r *Run) GetStatusCondition() apis.ConditionAccessor {
+	return &r.Status
+}
+
 // GetGroupVersionKind implements kmeta.OwnerRefable.
 func (*Run) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(pipeline.RunControllerName)

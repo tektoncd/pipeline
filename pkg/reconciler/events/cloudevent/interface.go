@@ -22,7 +22,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// objectWithCondition is implemented by TaskRun and PipelineRun
+// objectWithCondition is implemented by TaskRun, PipelineRun and Run
 type objectWithCondition interface {
 
 	// Object requires GetObjectKind() and DeepCopyObject()
