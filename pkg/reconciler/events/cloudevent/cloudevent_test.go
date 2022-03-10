@@ -20,12 +20,13 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
-	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
@@ -33,6 +34,7 @@ const (
 	defaultEventSourceURI = "/runtocompletion/1234"
 	taskRunName           = "faketaskrunname"
 	pipelineRunName       = "fakepipelinerunname"
+	runName               = "fakerunname"
 )
 
 func getTaskRunByCondition(status corev1.ConditionStatus, reason string) *v1beta1.TaskRun {
@@ -83,6 +85,34 @@ func getPipelineRunByCondition(status corev1.ConditionStatus, reason string) *v1
 	}
 }
 
+func createRunWithCondition(status corev1.ConditionStatus, reason string) *v1alpha1.Run {
+	myrun := &v1alpha1.Run{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Run",
+			APIVersion: "v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      runName,
+			Namespace: "marshmallow",
+			SelfLink:  defaultEventSourceURI,
+		},
+		Spec: v1alpha1.RunSpec{},
+	}
+	switch status {
+	case corev1.ConditionFalse, corev1.ConditionUnknown, corev1.ConditionTrue:
+		myrun.Status = v1alpha1.RunStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: status,
+					Reason: reason,
+				}},
+			},
+		}
+	}
+	return myrun
+}
+
 func TestEventForTaskRun(t *testing.T) {
 	taskRunTests := []struct {
 		desc          string
@@ -121,7 +151,6 @@ func TestEventForTaskRun(t *testing.T) {
 
 	for _, c := range taskRunTests {
 		t.Run(c.desc, func(t *testing.T) {
-			names.TestingSeed()
 
 			got, err := eventForTaskRun(c.taskRun)
 			if err != nil {
@@ -180,7 +209,6 @@ func TestEventForPipelineRun(t *testing.T) {
 
 	for _, c := range pipelineRunTests {
 		t.Run(c.desc, func(t *testing.T) {
-			names.TestingSeed()
 
 			got, err := eventForPipelineRun(c.pipelineRun)
 			if err != nil {
@@ -194,6 +222,64 @@ func TestEventForPipelineRun(t *testing.T) {
 					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
 				}
 				wantData := newTektonCloudEventData(c.pipelineRun)
+				gotData := TektonCloudEventData{}
+				if err := got.DataAs(&gotData); err != nil {
+					t.Errorf("Unexpected error from DataAsl; %s", err)
+				}
+				if d := cmp.Diff(wantData, gotData); d != "" {
+					t.Errorf("Wrong Event data %s", diff.PrintWantGot(d))
+				}
+
+				if err := got.Validate(); err != nil {
+					t.Errorf("Expected event to be valid; %s", err)
+				}
+			}
+		})
+	}
+}
+
+func TestEventForRun(t *testing.T) {
+	runTests := []struct {
+		desc          string
+		run           *v1alpha1.Run
+		wantEventType TektonEventType
+	}{{
+		desc:          "send a cloud event with unset condition, just started",
+		run:           createRunWithCondition("", ""),
+		wantEventType: RunStartedEventV1,
+	}, {
+		desc:          "send a cloud event with unknown status run, empty reason",
+		run:           createRunWithCondition(corev1.ConditionUnknown, ""),
+		wantEventType: RunRunningEventV1,
+	}, {
+		desc:          "send a cloud event with unknown status run, some reason set",
+		run:           createRunWithCondition(corev1.ConditionUnknown, "custom controller reason"),
+		wantEventType: RunRunningEventV1,
+	}, {
+		desc:          "send a cloud event with successful status run",
+		run:           createRunWithCondition(corev1.ConditionTrue, "yay"),
+		wantEventType: RunSuccessfulEventV1,
+	}, {
+		desc:          "send a cloud event with unknown status run",
+		run:           createRunWithCondition(corev1.ConditionFalse, "meh"),
+		wantEventType: RunFailedEventV1,
+	}}
+
+	for _, c := range runTests {
+		t.Run(c.desc, func(t *testing.T) {
+
+			got, err := eventForRun(c.run)
+			if err != nil {
+				t.Fatalf("I did not expect an error but I got %s", err)
+			} else {
+				wantSubject := runName
+				if d := cmp.Diff(wantSubject, got.Subject()); d != "" {
+					t.Errorf("Wrong Event ID %s", diff.PrintWantGot(d))
+				}
+				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
+					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
+				}
+				wantData := newTektonCloudEventData(c.run)
 				gotData := TektonCloudEventData{}
 				if err := got.DataAs(&gotData); err != nil {
 					t.Errorf("Unexpected error from DataAsl; %s", err)

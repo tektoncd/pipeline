@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"knative.dev/pkg/apis"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
@@ -61,6 +62,16 @@ const (
 	PipelineRunSuccessfulEventV1 TektonEventType = "dev.tekton.event.pipelinerun.successful.v1"
 	// PipelineRunFailedEventV1 is sent for PipelineRuns with "ConditionSucceeded" "False"
 	PipelineRunFailedEventV1 TektonEventType = "dev.tekton.event.pipelinerun.failed.v1"
+	// RunStartedEventV1 is sent for Runs with "ConditionSucceeded" "Unknown"
+	// the first time they are picked up by the reconciler
+	RunStartedEventV1 TektonEventType = "dev.tekton.event.run.started.v1"
+	// RunRunningEventV1 is sent for Runs with "ConditionSucceeded" "Unknown"
+	// once the Run is validated and Pod created
+	RunRunningEventV1 TektonEventType = "dev.tekton.event.run.running.v1"
+	// RunSuccessfulEventV1 is sent for Runs with "ConditionSucceeded" "True"
+	RunSuccessfulEventV1 TektonEventType = "dev.tekton.event.run.successful.v1"
+	// RunFailedEventV1 is sent for Runs with "ConditionSucceeded" "False"
+	RunFailedEventV1 TektonEventType = "dev.tekton.event.run.failed.v1"
 )
 
 func (t TektonEventType) String() string {
@@ -75,6 +86,7 @@ type CEClient cloudevents.Client
 type TektonCloudEventData struct {
 	TaskRun     *v1beta1.TaskRun     `json:"taskRun,omitempty"`
 	PipelineRun *v1beta1.PipelineRun `json:"pipelineRun,omitempty"`
+	Run         *v1alpha1.Run        `json:"run,omitempty"`
 }
 
 // newTektonCloudEventData returns a new instance of TektonCloudEventData
@@ -85,6 +97,8 @@ func newTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData
 		tektonCloudEventData.TaskRun = v
 	case *v1beta1.PipelineRun:
 		tektonCloudEventData.PipelineRun = v
+	case *v1alpha1.Run:
+		tektonCloudEventData.Run = v
 	}
 	return tektonCloudEventData
 }
@@ -142,12 +156,31 @@ func eventForPipelineRun(pipelineRun *v1beta1.PipelineRun) (*cloudevents.Event, 
 	return eventForObjectWithCondition(pipelineRun)
 }
 
+// eventForRun will create a new event based on a Run, or return an error if
+// not possible.
+func eventForRun(run *v1alpha1.Run) (*cloudevents.Event, error) {
+	// Check if the Run is defined
+	if run == nil {
+		return nil, errors.New("Cannot send an event for an empty Run")
+	}
+	return eventForObjectWithCondition(run)
+}
+
 func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
+	var eventType TektonEventType
 	c := runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 	if c == nil {
-		return nil, fmt.Errorf("no condition for ConditionSucceeded in %T", runObject)
+		// When the `Run` is created, it may not have any condition until it's
+		// picked up by the `Run` reconciler. In that case we consider the run
+		// as started. In all other cases, conditions have to be initialised
+		switch runObject.(type) {
+		case *v1alpha1.Run:
+			eventType = RunStartedEventV1
+			return &eventType, nil
+		default:
+			return nil, fmt.Errorf("no condition for ConditionSucceeded in %T", runObject)
+		}
 	}
-	var eventType TektonEventType
 	switch {
 	case c.IsUnknown():
 		switch runObject.(type) {
@@ -169,6 +202,11 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			default:
 				eventType = PipelineRunUnknownEventV1
 			}
+		case *v1alpha1.Run:
+			// Run controller have the freedom of setting reasons as they wish
+			// so we cannot make many assumptions here. If a condition is set
+			// to unknown (not finished), we sent the running event
+			eventType = RunRunningEventV1
 		}
 	case c.IsFalse():
 		switch runObject.(type) {
@@ -176,6 +214,8 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			eventType = TaskRunFailedEventV1
 		case *v1beta1.PipelineRun:
 			eventType = PipelineRunFailedEventV1
+		case *v1alpha1.Run:
+			eventType = RunFailedEventV1
 		}
 	case c.IsTrue():
 		switch runObject.(type) {
@@ -183,6 +223,8 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			eventType = TaskRunSuccessfulEventV1
 		case *v1beta1.PipelineRun:
 			eventType = PipelineRunSuccessfulEventV1
+		case *v1alpha1.Run:
+			eventType = RunSuccessfulEventV1
 		}
 	default:
 		return nil, fmt.Errorf("unknown condition for in %T.Status %s", runObject, c.Status)
