@@ -66,7 +66,7 @@ A `TaskRun` definition supports the following fields:
   - [`serviceAccountName`](#specifying-serviceaccount-credentials) - Specifies a `ServiceAccount`
     object that provides custom credentials for executing the `TaskRun`.
   - [`params`](#specifying-parameters) - Specifies the desired execution parameters for the `Task`.
-  - [`resources`](#specifying-resources) - Specifies the desired `PipelineResource` values.
+  - [`resources` (deprecated)](#specifying-resources) - Specifies the desired `PipelineResource` values.
     - [`inputs`](#specifying-resources) - Specifies the input resources.
     - [`outputs`](#specifying-resources) - Specifies the output resources.
   - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before the `TaskRun` fails.
@@ -74,6 +74,9 @@ A `TaskRun` definition supports the following fields:
     the starting point for configuring the `Pods` for the `Task`.
   - [`workspaces`](#specifying-workspaces) - Specifies the physical volumes to use for the
     [`Workspaces`](workspaces.md#using-workspaces-in-tasks) declared by a `Task`.
+  - [`debug`](#debugging-a-taskrun)- Specifies any breakpoints and debugging configuration for the `Task` execution.
+  - [`stepOverrides`](#overriding-task-steps-and-sidecars) - Specifies configuration to use to override the `Task`'s `Step`s.
+  - [`sidecarOverrides`](#overriding-task-steps-and-sidecars) - Specifies configuration to use to override the `Task`'s `Sidecar`s.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
