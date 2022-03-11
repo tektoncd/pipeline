@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	eventstest "github.com/tektoncd/pipeline/test/events"
@@ -235,6 +236,62 @@ func TestEmit(t *testing.T) {
 
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
 		Emit(ctx, nil, after, object)
+		if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+			t.Fatalf(err.Error())
+		}
+		if err := eventstest.CheckEventsUnordered(t, fakeClient.Events, tc.name, tc.wantCloudEvents); err != nil {
+			t.Fatalf(err.Error())
+		}
+	}
+}
+
+func TestEmitCloudEvents(t *testing.T) {
+
+	object := &v1alpha1.Run{
+		ObjectMeta: metav1.ObjectMeta{
+			SelfLink: "/run/test1",
+		},
+		Status: v1alpha1.RunStatus{},
+	}
+	testcases := []struct {
+		name            string
+		data            map[string]string
+		wantEvents      []string
+		wantCloudEvents []string
+	}{{
+		name:            "without sink",
+		data:            map[string]string{},
+		wantEvents:      []string{},
+		wantCloudEvents: []string{},
+	}, {
+		name:            "with empty string sink",
+		data:            map[string]string{"default-cloud-events-sink": ""},
+		wantEvents:      []string{},
+		wantCloudEvents: []string{},
+	}, {
+		name:            "with sink",
+		data:            map[string]string{"default-cloud-events-sink": "http://mysink"},
+		wantEvents:      []string{},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.run.started.v1.*test1`},
+	}}
+
+	for _, tc := range testcases {
+		// Setup the context and seed test data
+		ctx, _ := rtesting.SetupFakeContext(t)
+		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true})
+		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+
+		// Setup the config and add it to the context
+		defaults, _ := config.NewDefaultsFromMap(tc.data)
+		featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{})
+		cfg := &config.Config{
+			Defaults:     defaults,
+			FeatureFlags: featureFlags,
+		}
+		ctx = config.ToContext(ctx, cfg)
+
+		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		EmitCloudEvents(ctx, object)
 		if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}

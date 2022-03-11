@@ -74,7 +74,11 @@ Resource      |Event    |Event Type
 `Run`         | `Succeed` | `dev.tekton.event.run.successful.v1`
 `Run`         | `Failed`  | `dev.tekton.event.run.failed.v1`
 
-`CloudEvents` for `Runs` are defined but not sent yet.
+`CloudEvents` for `Runs` are only sent when enabled in the [configuration](./install.md#configuring-cloudevents-notifications).
+
+**Note**: `CloudEvents` for `Runs` rely on an ephemeral cache to avoid duplicate
+events. In case of controller restart, the cache is reset and duplicate events
+may be sent.
 
 ## Format of `CloudEvents`
 

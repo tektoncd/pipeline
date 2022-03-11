@@ -74,5 +74,5 @@ func (c FakeClient) StartReceiver(ctx context.Context, fn interface{}) error {
 
 // WithClient adds to the context a fake client with the desired behaviour
 func WithClient(ctx context.Context, behaviour *FakeClientBehaviour) context.Context {
-	return context.WithValue(ctx, CECKey{}, newFakeClient(behaviour))
+	return context.WithValue(ctx, ceKey{}, newFakeClient(behaviour))
 }

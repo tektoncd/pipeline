@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -594,12 +595,18 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		},
 		wantCEvents: []string{},
 		wantEvents:  []string{"Warning Cloud Event Failure"},
+	}, {
+		name: "test-send-cloud-event-run",
+		clientBehaviour: FakeClientBehaviour{
+			SendSuccessfully: true,
+		},
+		object:      &v1alpha1.Run{},
+		wantCEvents: []string{"Context Attributes,"},
+		wantEvents:  []string{},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := setupFakeContext(t, tc.clientBehaviour, true)
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
 			if err := SendCloudEventWithRetries(ctx, tc.object); err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}

@@ -33,8 +33,8 @@ func init() {
 	injection.Dynamic.RegisterDynamicClient(withCloudEventClient)
 }
 
-// CECKey is used to associate the CloudEventClient inside the context.Context
-type CECKey struct{}
+// ceKey is used to associate the CloudEventClient inside the context.Context
+type ceKey struct{}
 
 func withCloudEventClient(ctx context.Context) context.Context {
 	logger := logging.FromContext(ctx)
@@ -59,12 +59,12 @@ func withCloudEventClient(ctx context.Context) context.Context {
 		logger.Panicf("Error creating the cloudevents client: %s", err)
 	}
 
-	return context.WithValue(ctx, CECKey{}, cloudEventClient)
+	return context.WithValue(ctx, ceKey{}, cloudEventClient)
 }
 
 // Get extracts the cloudEventClient client from the context.
 func Get(ctx context.Context) CEClient {
-	untyped := ctx.Value(CECKey{})
+	untyped := ctx.Value(ceKey{})
 	if untyped == nil {
 		logging.FromContext(ctx).Errorf(
 			"Unable to fetch client from context.")
@@ -75,5 +75,5 @@ func Get(ctx context.Context) CEClient {
 
 // ToContext adds the cloud events client to the context
 func ToContext(ctx context.Context, cec CEClient) context.Context {
-	return context.WithValue(ctx, CECKey{}, cec)
+	return context.WithValue(ctx, ceKey{}, cec)
 }

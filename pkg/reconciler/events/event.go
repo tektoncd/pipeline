@@ -69,6 +69,23 @@ func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *
 	}
 }
 
+// EmitCloudEvents emits CloudEvents (only) for object
+func EmitCloudEvents(ctx context.Context, object runtime.Object) {
+	logger := logging.FromContext(ctx)
+	configs := config.FromContextOrDefaults(ctx)
+	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
+	if sendCloudEvents {
+		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
+	}
+
+	if sendCloudEvents {
+		err := cloudevent.SendCloudEventWithRetries(ctx, object)
+		if err != nil {
+			logger.Warnf("Failed to emit cloud events %v", err.Error())
+		}
+	}
+}
+
 func sendKubernetesEvents(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	// Events that are going to be sent
 	//
