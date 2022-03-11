@@ -791,14 +791,22 @@ func storeTaskSpecAndMergeMeta(tr *v1beta1.TaskRun, ts *v1beta1.TaskSpec, meta *
 			tr.ObjectMeta.Annotations = make(map[string]string, len(meta.Annotations))
 		}
 		for key, value := range meta.Annotations {
-			tr.ObjectMeta.Annotations[key] = value
+			// Do not override duplicates between TaskRun and Task
+			// TaskRun labels take precedences over Task
+			if _, ok := tr.ObjectMeta.Annotations[key]; !ok {
+				tr.ObjectMeta.Annotations[key] = value
+			}
 		}
 		// Propagate labels from Task to TaskRun.
 		if tr.ObjectMeta.Labels == nil {
 			tr.ObjectMeta.Labels = make(map[string]string, len(meta.Labels)+1)
 		}
 		for key, value := range meta.Labels {
-			tr.ObjectMeta.Labels[key] = value
+			// Do not override duplicates between TaskRun and Task
+			// TaskRun labels take precedences over Task
+			if _, ok := tr.ObjectMeta.Labels[key]; !ok {
+				tr.ObjectMeta.Labels[key] = value
+			}
 		}
 		if tr.Spec.TaskRef != nil {
 			if tr.Spec.TaskRef.Kind == "ClusterTask" {

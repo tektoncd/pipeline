@@ -6042,6 +6042,29 @@ func Test_storePipelineSpec(t *testing.T) {
 	}
 }
 
+func Test_storePipelineSpec_metadata(t *testing.T) {
+	pipelinerunlabels := map[string]string{"lbl1": "value1", "lbl2": "value2"}
+	pipelinerunannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2"}
+	pipelinelabels := map[string]string{"lbl1": "another value", "lbl3": "value3"}
+	pipelineannotations := map[string]string{"io.annotation.1": "another value", "io.annotation.3": "value3"}
+	wantedlabels := map[string]string{"lbl1": "value1", "lbl2": "value2", "lbl3": "value3", pipeline.PipelineLabelKey: "bar"}
+	wantedannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2", "io.annotation.3": "value3"}
+
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Labels: pipelinerunlabels, Annotations: pipelinerunannotations},
+	}
+	meta := metav1.ObjectMeta{Name: "bar", Labels: pipelinelabels, Annotations: pipelineannotations}
+	if err := storePipelineSpecAndMergeMeta(pr, &v1beta1.PipelineSpec{}, &meta); err != nil {
+		t.Errorf("storePipelineSpecAndMergeMeta error = %v", err)
+	}
+	if d := cmp.Diff(pr.ObjectMeta.Labels, wantedlabels); d != "" {
+		t.Fatalf(diff.PrintWantGot(d))
+	}
+	if d := cmp.Diff(pr.ObjectMeta.Annotations, wantedannotations); d != "" {
+		t.Fatalf(diff.PrintWantGot(d))
+	}
+}
+
 func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	// It may happen that a PipelineRun creates one or more TaskRuns during reconcile
 	// but it fails to sync the update on the status back. This test verifies that

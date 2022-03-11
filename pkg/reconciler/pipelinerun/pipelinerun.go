@@ -1135,7 +1135,11 @@ func storePipelineSpecAndMergeMeta(pr *v1beta1.PipelineRun, ps *v1beta1.Pipeline
 			pr.ObjectMeta.Labels = make(map[string]string, len(meta.Labels)+1)
 		}
 		for key, value := range meta.Labels {
-			pr.ObjectMeta.Labels[key] = value
+			// Do not override duplicates between PipelineRun and Pipeline
+			// PipelineRun labels take precedences over Pipeline
+			if _, ok := pr.ObjectMeta.Labels[key]; !ok {
+				pr.ObjectMeta.Labels[key] = value
+			}
 		}
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
 
@@ -1144,7 +1148,11 @@ func storePipelineSpecAndMergeMeta(pr *v1beta1.PipelineRun, ps *v1beta1.Pipeline
 			pr.ObjectMeta.Annotations = make(map[string]string, len(meta.Annotations))
 		}
 		for key, value := range meta.Annotations {
-			pr.ObjectMeta.Annotations[key] = value
+			// Do not override duplicates between PipelineRun and Pipeline
+			// PipelineRun labels take precedences over Pipeline
+			if _, ok := pr.ObjectMeta.Annotations[key]; !ok {
+				pr.ObjectMeta.Annotations[key] = value
+			}
 		}
 
 	}

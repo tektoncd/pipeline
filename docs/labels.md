@@ -1,10 +1,10 @@
 <!--
 ---
-linkTitle: "Labels"
+linkTitle: "Labels and Annotations"
 weight: 1300
 ---
 -->
-# Labels
+# Labels and Annotations
 
 Tekton allows you to use custom [Kubernetes Labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
 to easily mark Tekton entities belonging to the same conceptual execution chain. Tekton also automatically adds select labels
@@ -25,14 +25,16 @@ Labels propagate among Tekton entities as follows:
 
 - For `Pipelines` instantiated using a `PipelineRun`, labels propagate
 automatically from `Pipelines` to `PipelineRuns` to `TaskRuns`, and then to
-the associated `Pods`.
+the associated `Pods`. If a label is present in both `Pipeline` and
+`PipelineRun`, the label in `PipelineRun` takes precedence.
 
 - Labels from `Tasks` referenced by `TaskRuns` within a `PipelineRun` propagate to the corresponding `TaskRuns`,
-and then to the associated `Pods`.
+and then to the associated `Pods`. As for `Pipeline` and `PipelineRun`, if a label is present in both `Task` and
+`TaskRun`, the label in `TaskRun` takes precedence.
 
 - For standalone `TaskRuns` (that is, ones not executing as part of a `Pipeline`), labels
 propagate from the [referenced `Task`](taskruns.md#specifying-the-target-task), if one exists, to
-the corresponding `TaskRun`, and then to the associated `Pod`.
+the corresponding `TaskRun`, and then to the associated `Pod`. The same as above applies.
 
 - For `Conditions`, labels propagate to the corresponding `TaskRuns`, and then to the associated `Pods`.
 
@@ -116,3 +118,22 @@ The following command finds all `TaskRuns` that reference a `ClusterTask` named 
 ```shell
 kubectl get taskruns --all-namespaces -l tekton.dev/clusterTask=test-clustertask
 ```
+
+## Annotations propagation
+
+Annotation propagate among Tekton entities as follows (similar to Labels):
+
+- For `Pipelines` instantiated using a `PipelineRun`, annotations propagate
+automatically from `Pipelines` to `PipelineRuns` to `TaskRuns`, and then to
+the associated `Pods`. If a annotation is present in both `Pipeline` and
+`PipelineRun`, the annotation in `PipelineRun` takes precedence.
+
+- Annotations from `Tasks` referenced by `TaskRuns` within a `PipelineRun` propagate to the corresponding `TaskRuns`,
+and then to the associated `Pods`. As for `Pipeline` and `PipelineRun`, if a annotation is present in both `Task` and
+`TaskRun`, the annotation in `TaskRun` takes precedence.
+
+- For standalone `TaskRuns` (that is, ones not executing as part of a `Pipeline`), annotations
+propagate from the [referenced `Task`](taskruns.md#specifying-the-target-task), if one exists, to
+the corresponding `TaskRun`, and then to the associated `Pod`. The same as above applies.
+
+- For `Conditions`, annotations propagate to the corresponding `TaskRuns`, and then to the associated `Pods`.

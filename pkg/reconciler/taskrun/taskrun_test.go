@@ -3939,7 +3939,7 @@ func TestFailTaskRun(t *testing.T) {
 }
 
 func Test_storeTaskSpec(t *testing.T) {
-	labels := map[string]string{"lbl": "value"}
+	labels := map[string]string{"lbl1": "value1"}
 	annotations := map[string]string{"io.annotation": "value"}
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -3981,6 +3981,29 @@ func Test_storeTaskSpec(t *testing.T) {
 		t.Errorf("storeTaskSpec() error = %v", err)
 	}
 	if d := cmp.Diff(tr, want); d != "" {
+		t.Fatalf(diff.PrintWantGot(d))
+	}
+}
+
+func Test_storeTaskSpec_metadata(t *testing.T) {
+	taskrunlabels := map[string]string{"lbl1": "value1", "lbl2": "value2"}
+	taskrunannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2"}
+	tasklabels := map[string]string{"lbl1": "another value", "lbl3": "value3"}
+	taskannotations := map[string]string{"io.annotation.1": "another value", "io.annotation.3": "value3"}
+	wantedlabels := map[string]string{"lbl1": "value1", "lbl2": "value2", "lbl3": "value3"}
+	wantedannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2", "io.annotation.3": "value3"}
+
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Labels: taskrunlabels, Annotations: taskrunannotations},
+	}
+	meta := metav1.ObjectMeta{Labels: tasklabels, Annotations: taskannotations}
+	if err := storeTaskSpecAndMergeMeta(tr, &v1beta1.TaskSpec{}, &meta); err != nil {
+		t.Errorf("storeTaskSpecAndMergeMeta error = %v", err)
+	}
+	if d := cmp.Diff(tr.ObjectMeta.Labels, wantedlabels); d != "" {
+		t.Fatalf(diff.PrintWantGot(d))
+	}
+	if d := cmp.Diff(tr.ObjectMeta.Annotations, wantedannotations); d != "" {
 		t.Fatalf(diff.PrintWantGot(d))
 	}
 }
