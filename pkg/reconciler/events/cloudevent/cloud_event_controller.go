@@ -23,9 +23,11 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -137,11 +139,25 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 	if err != nil {
 		return err
 	}
+	// Events for Runs require a cache of events that have been sent
+	cacheClient := cache.Get(ctx)
+	_, isRun := object.(*v1alpha1.Run)
 
 	wasIn := make(chan error)
 	go func() {
 		wasIn <- nil
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
+		// In case of Run event, check cache if cloudevent is already sent
+		if isRun {
+			cloudEventSent, err := cache.IsCloudEventSent(cacheClient, event)
+			if err != nil {
+				logger.Errorf("error while checking cache: %s", err)
+			}
+			if cloudEventSent {
+				logger.Infof("cloudevent %v already sent", event)
+				return
+			}
+		}
 		if result := ceClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event); !cloudevents.IsACK(result) {
 			logger.Warnf("Failed to send cloudevent: %s", result.Error())
 			recorder := controller.GetEventRecorder(ctx)
@@ -149,6 +165,12 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 				logger.Warnf("No recorder in context, cannot emit error event")
 			}
 			recorder.Event(object, corev1.EventTypeWarning, "Cloud Event Failure", result.Error())
+		}
+		// In case of Run event, add to the cache to avoid duplicate events
+		if isRun {
+			if err := cache.AddEventSentToCache(cacheClient, event); err != nil {
+				logger.Errorf("error while adding sent event to cache: %s", err)
+			}
 		}
 	}()
 

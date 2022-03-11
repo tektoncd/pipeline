@@ -50,6 +50,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableCustomTasks:                true,
 				ScopeWhenExpressionsToTask:       true,
 				EnableAPIFields:                  "alpha",
+				SendCloudEventsForRuns:           true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
