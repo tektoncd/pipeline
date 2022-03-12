@@ -29,7 +29,7 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"gomodules.xyz/jsonpatch/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -106,7 +106,7 @@ spec:
 			patches := []jsonpatch.JsonPatchOperation{{
 				Operation: "add",
 				Path:      "/spec/status",
-				Value:     v1alpha1.PipelineRunSpecStatusCancelled,
+				Value:     v1beta1.PipelineRunSpecStatusCancelled,
 			}}
 			patchBytes, err := json.Marshal(patches)
 			if err != nil {
@@ -117,7 +117,7 @@ spec:
 			}
 
 			t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", pipelineRunName, namespace)
-			if err := WaitForPipelineRunState(ctx, c, pipelineRunName, pipelineRunTimeout, FailedWithReason("PipelineRunCancelled", pipelineRunName), "PipelineRunCancelled"); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, pipelineRunName, pipelineRunTimeout, FailedWithReason("Cancelled", pipelineRunName), "Cancelled"); err != nil {
 				t.Errorf("Error waiting for PipelineRun %q to finished: %s", pipelineRunName, err)
 			}
 

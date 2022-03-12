@@ -492,8 +492,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	// check if pipeline run is not gracefully cancelled and there are active task runs, which require cancelling
-	if cfg.FeatureFlags.EnableAPIFields == apisconfig.AlphaAPIFields &&
-		pr.IsGracefullyCancelled() && pipelineRunFacts.IsRunning() {
+	if pr.IsGracefullyCancelled() && pipelineRunFacts.IsRunning() {
 		// If the pipelinerun is cancelled, cancel tasks, but run finally
 		err := gracefullyCancelPipelineRun(ctx, logger, pr, c.PipelineClientSet)
 		if err != nil {
