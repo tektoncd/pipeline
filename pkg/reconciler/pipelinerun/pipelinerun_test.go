@@ -1539,7 +1539,7 @@ func runTestReconcileOnCancelledPipelineRun(t *testing.T, embeddedStatus string)
 			ts := []*v1beta1.Task{simpleHelloWorldTask}
 			trs := []*v1beta1.TaskRun{createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-hello-world", "foo",
 				"test-pipeline-run-cancelled", "test-pipeline")}
-			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
+			cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
 
 			d := test.Data{
 				PipelineRuns: prs,
@@ -1811,12 +1811,10 @@ func runTestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T, embeddedStat
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
 	ps := []*v1beta1.Pipeline{helloWorldPipelineWithRunAfter(t)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -1908,7 +1906,7 @@ spec:
 		simpleHelloWorldTask,
 		simpleSomeTask,
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
+	cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -1991,13 +1989,11 @@ spec:
 		createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-run-finally-final-task", "foo",
 			"test-pipeline-run-cancelled-run-finally", "test-pipeline"),
 	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
-		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -2138,7 +2134,7 @@ func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *
 		})}
 
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
+	cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -2350,13 +2346,11 @@ status:
 			}
 			ps := []*v1beta1.Pipeline{tc.pipeline}
 			ts := []*v1beta1.Task{simpleHelloWorldTask}
-			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{pr},
 				Pipelines:    ps,
 				Tasks:        ts,
 				TaskRuns:     tc.taskRuns,
-				ConfigMaps:   cms,
 			}
 			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
