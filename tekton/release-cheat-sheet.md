@@ -86,6 +86,15 @@ the pipelines repo, a terminal window and a text editor.
       | jq ".[].name"
     ```
 
+    1. Find the Rekor UUID for the release
+
+    ```bash
+    RELEASE_FILE=https://storage.googleapis.com/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
+    CONTROLLER_IMAGE_SHA=$(curl $RELEASE_FILE | egrep 'gcr.io.*controller' | cut -d'@' -f2)
+    REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
+    echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
+    ```
+
     1. Create additional environment variables
 
     ```bash
@@ -94,36 +103,20 @@ the pipelines repo, a terminal window and a text editor.
     TEKTON_PACKAGE=tektoncd/pipeline
     ```
 
-    1. Create a `PipelineResource` of type `git`
-
-    ```shell
-    cat <<EOF | kubectl --context dogfooding create -f -
-    apiVersion: tekton.dev/v1alpha1
-    kind: PipelineResource
-    metadata:
-      name: tekton-pipelines-$(echo $TEKTON_VERSION | tr '.' '-')
-      namespace: default
-    spec:
-      type: git
-      params:
-        - name: url
-          value: 'https://github.com/tektoncd/pipeline'
-        - name: revision
-          value: ${TEKTON_RELEASE_GIT_SHA}
-    EOF
-    ```
-
-    1. Execute the Draft Release task.
+    1. Execute the Draft Release Pipeline.
 
     ```bash
-    tkn --context dogfooding task start \
-      -i source="tekton-pipelines-$(echo $TEKTON_VERSION | tr '.' '-')" \
-      -i release-bucket=pipeline-tekton-bucket \
+    tkn --context dogfooding pipeline start \
+      --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
+      --workspace name=credentials,secret=release-secret \
       -p package="${TEKTON_PACKAGE}" \
+      -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
       -p release-tag="${TEKTON_VERSION}" \
       -p previous-release-tag="${TEKTON_OLD_VERSION}" \
       -p release-name="${TEKTON_RELEASE_NAME}" \
-      create-draft-release
+      -p bucket="gs://tekton-releases/pipeline" \
+      -p rekor-uuid="$REKOR_UUID" \
+      release-draft
     ```
 
     1. Watch logs of create-draft-release
@@ -162,6 +155,9 @@ the pipelines repo, a terminal window and a text editor.
 
 1. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure
 to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/master/test/e2e-tests.sh).
+
+1. For major releases, the [website sync configuration](https://github.com/tektoncd/website/blob/main/sync/config/pipelines.yaml)
+   to include the new release.
 
 Congratulations, you're done!
 
