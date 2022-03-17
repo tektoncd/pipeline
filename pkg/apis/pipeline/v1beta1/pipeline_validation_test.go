@@ -2306,6 +2306,24 @@ func TestContextValid(t *testing.T) {
 				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
 			}},
 		}},
+	}, {
+		name: "valid string context variable for PipelineTask retries",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineTask.retries)"},
+			}},
+		}},
+	}, {
+		name: "valid array context variable for PipelineTask retries",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
+			}},
+		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2348,16 +2366,30 @@ func TestContextInvalid(t *testing.T) {
 			Paths:   []string{"value"},
 		},
 	}, {
-		name: "invalid array context variables for pipeline and pipelineRun",
+		name: "invalid string context variable for pipelineTask",
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.missing)", "and", "$(context.pipelineRun.missing)"}},
+				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineTask.missing)"},
 			}},
 		}},
-		expectedError: *apis.ErrGeneric(`non-existent variable in "$(context.pipeline.missing)"`, "value").Also(
-			apis.ErrGeneric(`non-existent variable in "$(context.pipelineRun.missing)"`, "value")),
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineTask.missing)"`,
+			Paths:   []string{"value"},
+		},
+	}, {
+		name: "invalid array context variables for pipeline, pipelineTask and pipelineRun",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.missing)", "$(context.pipelineTask.missing)", "$(context.pipelineRun.missing)"}},
+			}},
+		}},
+		expectedError: *apis.ErrGeneric(`non-existent variable in "$(context.pipeline.missing)"`, "value").
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineRun.missing)"`, "value")).
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineTask.missing)"`, "value")),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
