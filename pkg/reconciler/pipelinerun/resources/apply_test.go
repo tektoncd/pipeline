@@ -656,11 +656,15 @@ func TestContext(t *testing.T) {
 				Spec: v1beta1.PipelineSpec{
 					Tasks: []v1beta1.PipelineTask{{
 						Params: []v1beta1.Param{tc.original},
+						Matrix: []v1beta1.Param{tc.original},
 					}},
 				},
 			}
 			got := ApplyContexts(&orig.Spec, orig.Name, tc.pr)
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Params[0]); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tc.expected, got.Tasks[0].Matrix[0]); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
 		})
@@ -680,10 +684,18 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Name:  "retries",
 				Value: *v1beta1.NewArrayOrString("$(context.pipelineTask.retries)"),
 			}},
+			Matrix: []v1beta1.Param{{
+				Name:  "retries",
+				Value: *v1beta1.NewArrayOrString("$(context.pipelineTask.retries)"),
+			}},
 		},
 		want: v1beta1.PipelineTask{
 			Retries: 5,
 			Params: []v1beta1.Param{{
+				Name:  "retries",
+				Value: *v1beta1.NewArrayOrString("5"),
+			}},
+			Matrix: []v1beta1.Param{{
 				Name:  "retries",
 				Value: *v1beta1.NewArrayOrString("5"),
 			}},
@@ -695,9 +707,17 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Name:  "retries",
 				Value: *v1beta1.NewArrayOrString("$(context.pipelineTask.retries)"),
 			}},
+			Matrix: []v1beta1.Param{{
+				Name:  "retries",
+				Value: *v1beta1.NewArrayOrString("$(context.pipelineTask.retries)"),
+			}},
 		},
 		want: v1beta1.PipelineTask{
 			Params: []v1beta1.Param{{
+				Name:  "retries",
+				Value: *v1beta1.NewArrayOrString("0"),
+			}},
+			Matrix: []v1beta1.Param{{
 				Name:  "retries",
 				Value: *v1beta1.NewArrayOrString("0"),
 			}},

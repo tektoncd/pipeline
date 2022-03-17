@@ -181,7 +181,7 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	)
 	var paramValues []string
 	for _, task := range tasks {
-		for _, param := range task.Params {
+		for _, param := range append(task.Params, task.Matrix...) {
 			paramValues = append(paramValues, param.Value.StringVal)
 			paramValues = append(paramValues, param.Value.ArrayVal...)
 		}

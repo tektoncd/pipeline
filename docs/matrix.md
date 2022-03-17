@@ -8,6 +8,8 @@ weight: 11
 # Matrix
 
 - [Overview](#overview)
+- [Configuring a Matrix](#configuring-a-matrix)
+  - [Context Variables](#context-variables)
 
 ## Overview
 
@@ -19,3 +21,17 @@ Tekton.
 >
 > :warning: This feature is in a preview mode. 
 > It is still in a very early stage of development and is not yet fully functional.
+
+## Configuring a Matrix
+
+A `Matrix` supports the following features:
+* [Context Variables](#context-variables)
+
+### Context Variables
+
+Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Matrix` field will accept 
+[context variables](variables.md) that will be substituted, including:
+
+* `PipelineRun` name, namespace and uid
+* `Pipeline` name
+* `PipelineTask` retries
