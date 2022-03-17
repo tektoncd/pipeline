@@ -92,6 +92,10 @@ Pod templates support fields listed in the table below.
 			<td><code>hostNetwork</code></td>
 			<td><b>Default:</b> <code>false</code>. Determines whether to use the host network namespace.</td>
 		</tr>
+		<tr>
+			<td><code>hostAliases</code></td>
+			<td>Adds entries to a Pod's `/etc/hosts` to provide Pod-level overrides of hostnames. For further info see [Kubernetes' docs for this field](https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/).</td>
+		</tr>
 	</tbody>
 </table>
 
