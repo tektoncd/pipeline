@@ -92,6 +92,7 @@ func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
 		"context.pipelineTask.retries": strconv.Itoa(pt.Retries),
 	}
 	pt.Params = replaceParamValues(pt.Params, replacements, map[string][]string{})
+	pt.Matrix = replaceParamValues(pt.Matrix, replacements, map[string][]string{})
 	return pt
 }
 
@@ -148,6 +149,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 
 	for i := range p.Tasks {
 		p.Tasks[i].Params = replaceParamValues(p.Tasks[i].Params, replacements, arrayReplacements)
+		p.Tasks[i].Matrix = replaceParamValues(p.Tasks[i].Matrix, replacements, arrayReplacements)
 		for j := range p.Tasks[i].Workspaces {
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
 		}
@@ -160,6 +162,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 
 	for i := range p.Finally {
 		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements)
+		p.Finally[i].Matrix = replaceParamValues(p.Finally[i].Matrix, replacements, arrayReplacements)
 		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
 	}
 
