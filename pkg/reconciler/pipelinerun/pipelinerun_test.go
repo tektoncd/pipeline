@@ -1550,7 +1550,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	}}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{createHelloWorldTaskRunWithStatus(taskRunName, "foo",
+	trs := []*v1beta1.TaskRun{createHelloWorldTaskRunWithStatus(t, taskRunName, "foo",
 		"test-pipeline-run-completed", "test-pipeline", "",
 		apis.Condition{
 			Type: apis.ConditionSucceeded,
@@ -1621,7 +1621,7 @@ func TestReconcileOnCancelledPipelineRunDeprecated(t *testing.T) {
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled", v1beta1.PipelineRunSpecStatusCancelledDeprecated)}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun("test-pipeline-run-cancelled-hello-world", "foo",
+	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-hello-world", "foo",
 		"test-pipeline-run-cancelled", "test-pipeline")}
 
 	d := test.Data{
@@ -1666,7 +1666,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled", v1beta1.PipelineRunSpecStatusCancelled)}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun("test-pipeline-run-cancelled-hello-world", "foo",
+	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-hello-world", "foo",
 		"test-pipeline-run-cancelled", "test-pipeline")}
 	cms := getConfigMapsWithEnabledAlphaAPIFields()
 
@@ -2118,13 +2118,13 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask(t *testin
 		simpleSomeTask,
 	}
 	trs := []*v1beta1.TaskRun{
-		createHelloWorldTaskRunWithStatus("test-pipeline-run-cancelled-run-finally-hello-world", "foo",
+		createHelloWorldTaskRunWithStatus(t, "test-pipeline-run-cancelled-run-finally-hello-world", "foo",
 			"test-pipeline-run-cancelled-run-finally", "test-pipeline", "my-pod-name",
 			apis.Condition{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionTrue,
 			}),
-		createHelloWorldTaskRun("test-pipeline-run-cancelled-run-finally-final-task", "foo",
+		createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-run-finally-final-task", "foo",
 			"test-pipeline-run-cancelled-run-finally", "test-pipeline"),
 	}
 	cms := getConfigMapsWithEnabledAlphaAPIFields()
@@ -2224,7 +2224,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 	}}
 
 	// TaskRun exists for DAG task "hello-world-1" that has failed with reason of cancellation
-	trs := []*v1beta1.TaskRun{createHelloWorldTaskRunWithStatus("test-pipeline-run-cancelled-run-finally-hello-world", "foo",
+	trs := []*v1beta1.TaskRun{createHelloWorldTaskRunWithStatus(t, "test-pipeline-run-cancelled-run-finally-hello-world", "foo",
 		"test-pipeline-run-cancelled-run-finally", "test-pipeline", "my-pod-name",
 		apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -2305,6 +2305,7 @@ func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
 	}
 	trs := []*v1beta1.TaskRun{
 		getTaskRun(
+			t,
 			"test-pipeline-fails-to-cancelhello-world-1",
 			prName,
 			"test-pipeline",
@@ -2412,6 +2413,7 @@ func TestReconcileTaskResolutionError(t *testing.T) {
 	}}
 	trs := []*v1beta1.TaskRun{
 		getTaskRun(
+			t,
 			"test-pipeline-fails-task-resolutionhello-world-1",
 			prName,
 			"test-pipeline",
@@ -2555,6 +2557,7 @@ func TestReconcileOnStoppedRunFinallyPipelineRunWithRunningTask(t *testing.T) {
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	trs := []*v1beta1.TaskRun{
 		getTaskRun(
+			t,
 			"test-pipeline-run-stopped-run-finally-hello-world",
 			"test-pipeline-run-stopped-run-finally",
 			"test-pipeline",
@@ -2650,6 +2653,7 @@ func TestReconcileOnStoppedPipelineRunWithCompletedTask(t *testing.T) {
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	trs := []*v1beta1.TaskRun{
 		getTaskRun(
+			t,
 			"test-pipeline-run-stopped-hello-world",
 			"test-pipeline-run-stopped",
 			"test-pipeline",
@@ -6952,6 +6956,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		trs: []*v1beta1.TaskRun{
 			getTaskRun(
+				t,
 				"task-run-dag-task",
 				"pipeline-run-dag-task-failing",
 				"pipeline-dag-task-failing",
@@ -6959,6 +6964,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 				corev1.ConditionFalse,
 			),
 			getTaskRun(
+				t,
 				"task-run-final-task",
 				"pipeline-run-dag-task-failing",
 				"pipeline-dag-task-failing",
@@ -7016,6 +7022,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		trs: []*v1beta1.TaskRun{
 			getTaskRun(
+				t,
 				"task-run-dag-task",
 				"pipeline-run-with-dag-successful-but-final-failing",
 				"pipeline-with-dag-successful-but-final-failing",
@@ -7023,6 +7030,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 				"",
 			),
 			getTaskRun(
+				t,
 				"task-run-final-task",
 				"pipeline-run-with-dag-successful-but-final-failing",
 				"pipeline-with-dag-successful-but-final-failing",
@@ -7080,6 +7088,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		trs: []*v1beta1.TaskRun{
 			getTaskRun(
+				t,
 				"task-run-dag-task",
 				"pipeline-run-with-dag-and-final-failing",
 				"pipeline-with-dag-and-final-failing",
@@ -7087,6 +7096,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 				corev1.ConditionFalse,
 			),
 			getTaskRun(
+				t,
 				"task-run-final-task",
 				"pipeline-run-with-dag-and-final-failing",
 				"pipeline-with-dag-and-final-failing",
@@ -7151,6 +7161,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		trs: []*v1beta1.TaskRun{
 			getTaskRun(
+				t,
 				"task-run-dag-task-1",
 				"pipeline-run-with-dag-running",
 				"pipeline-with-dag-running",
@@ -7158,6 +7169,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 				corev1.ConditionFalse,
 			),
 			getTaskRun(
+				t,
 				"task-run-dag-task-2",
 				"pipeline-run-with-dag-running",
 				"pipeline-with-dag-running",
@@ -7216,6 +7228,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		trs: []*v1beta1.TaskRun{
 			getTaskRun(
+				t,
 				"task-run-dag-task-1",
 				"pipeline-run-dag-task-running",
 				"pipeline-dag-task-running",
@@ -7328,8 +7341,8 @@ func getPipeline(p string, spec v1beta1.PipelineSpec) []*v1beta1.Pipeline {
 	return ps
 }
 
-func getTaskRun(tr, pr, p, t string, status corev1.ConditionStatus) *v1beta1.TaskRun {
-	return createHelloWorldTaskRunWithStatusTaskLabel(tr, "foo", pr, p, "", t,
+func getTaskRun(t *testing.T, tr, pr, p, tl string, status corev1.ConditionStatus) *v1beta1.TaskRun {
+	return createHelloWorldTaskRunWithStatusTaskLabel(t, tr, "foo", pr, p, "", tl,
 		apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: status,
@@ -8424,8 +8437,12 @@ func taskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName string
 	return om
 }
 
-func createHelloWorldTaskRunWithStatus(trName, ns, prName, pName, podName string, condition apis.Condition) *v1beta1.TaskRun {
-	p := createHelloWorldTaskRun(trName, ns, prName, pName)
+func createHelloWorldTaskRunWithStatus(
+	t *testing.T,
+	trName, ns, prName, pName, podName string,
+	condition apis.Condition,
+) *v1beta1.TaskRun {
+	p := createHelloWorldTaskRun(t, trName, ns, prName, pName)
 	p.Status = v1beta1.TaskRunStatus{
 		Status: duckv1beta1.Status{
 			Conditions: duckv1beta1.Conditions{condition},
@@ -8437,34 +8454,30 @@ func createHelloWorldTaskRunWithStatus(trName, ns, prName, pName, podName string
 	return p
 }
 
-func createHelloWorldTaskRunWithStatusTaskLabel(trName, ns, prName, pName, podName, taskLabel string, condition apis.Condition) *v1beta1.TaskRun {
-	p := createHelloWorldTaskRunWithStatus(trName, ns, prName, pName, podName, condition)
+func createHelloWorldTaskRunWithStatusTaskLabel(
+	t *testing.T,
+	trName, ns, prName, pName, podName, taskLabel string,
+	condition apis.Condition,
+) *v1beta1.TaskRun {
+	p := createHelloWorldTaskRunWithStatus(t, trName, ns, prName, pName, podName, condition)
 	p.Labels[pipeline.PipelineTaskLabelKey] = taskLabel
 
 	return p
 }
 
-func createHelloWorldTaskRun(trName, ns, prName, pName string) *v1beta1.TaskRun {
-	return &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      trName,
-			Namespace: ns,
-			OwnerReferences: []metav1.OwnerReference{{
-				Kind: "kind",
-				Name: "name",
-			}},
-			Labels: map[string]string{
-				pipeline.PipelineLabelKey:    pName,
-				pipeline.PipelineRunLabelKey: prName,
-			},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-			ServiceAccountName: "test-sa",
-		},
-	}
+func createHelloWorldTaskRun(t *testing.T, trName, ns, prName, pName string) *v1beta1.TaskRun {
+	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+  labels:
+    %s: %s
+    %s: %s
+spec:
+  taskRef:
+    name: hello-world
+  serviceAccountName: test-sa
+`, trName, ns, pipeline.PipelineLabelKey, pName, pipeline.PipelineRunLabelKey, prName))
 }
 
 func createCancelledPipelineRun(t *testing.T, prName string, specStatus v1beta1.PipelineRunSpecStatus) *v1beta1.PipelineRun {
