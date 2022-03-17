@@ -2262,7 +2262,7 @@ func TestContextValid(t *testing.T) {
 		name  string
 		tasks []PipelineTask
 	}{{
-		name: "valid string context variable for task name",
+		name: "valid string context variable for Pipeline name",
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
@@ -2271,7 +2271,7 @@ func TestContextValid(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "valid string context variable for taskrun name",
+		name: "valid string context variable for PipelineRun name",
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
@@ -2280,7 +2280,7 @@ func TestContextValid(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "valid string context variable for taskRun namespace",
+		name: "valid string context variable for PipelineRun namespace",
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
@@ -2289,7 +2289,7 @@ func TestContextValid(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "valid string context variable for taskRun uid",
+		name: "valid string context variable for PipelineRun uid",
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
@@ -2298,7 +2298,7 @@ func TestContextValid(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "valid array context variables for task and taskRun names",
+		name: "valid array context variables for Pipeline and PipelineRun names",
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
