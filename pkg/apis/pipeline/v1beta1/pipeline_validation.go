@@ -176,6 +176,9 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	pipelineContextNames := sets.NewString().Insert(
 		"name",
 	)
+	pipelineTaskContextNames := sets.NewString().Insert(
+		"retries",
+	)
 	var paramValues []string
 	for _, task := range tasks {
 		for _, param := range task.Params {
@@ -183,8 +186,10 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 			paramValues = append(paramValues, param.Value.ArrayVal...)
 		}
 	}
-	errs := validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineRun", pipelineRunContextNames)
-	return errs.Also(validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipeline", pipelineContextNames))
+	errs := validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineRun", pipelineRunContextNames).
+		Also(validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipeline", pipelineContextNames)).
+		Also(validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipelineTask", pipelineTaskContextNames))
+	return errs
 }
 
 func containsExecutionStatusRef(p string) bool {
