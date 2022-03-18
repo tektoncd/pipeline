@@ -7444,45 +7444,43 @@ spec:
 func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
 	names.TestingSeed()
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-success", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-		},
-	}}
-
-	ts := v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{Container: corev1.Container{
-			Name:  "mystep",
-			Image: "myimage"}}},
+	prs := []*v1beta1.PipelineRun{
+		parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-success
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`),
 	}
 
-	labels := map[string]string{"label1": "labelvalue1", "label2": "labelvalue2"}
-	annotations := map[string]string{"annotation1": "value1", "annotation2": "value2"}
-
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "task-without-metadata",
-					TaskSpec: &v1beta1.EmbeddedTask{
-						TaskSpec: ts,
-					},
-				},
-				{
-					Name: "task-with-metadata",
-					TaskSpec: &v1beta1.EmbeddedTask{
-						TaskSpec: ts,
-						Metadata: v1beta1.PipelineTaskMetadata{
-							Labels:      labels,
-							Annotations: annotations,
-						},
-					},
-				},
-			},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{
+		parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: task-without-metadata
+      taskSpec:
+        steps:
+          - name: mystep
+            image: myimage
+    - name: task-with-metadata
+      taskSpec:
+        steps:
+          - name: mystep
+            image: myimage
+        metadata:
+          labels:
+            label1: labelvalue1
+            label2: labelvalue2
+          annotations:
+            annotation1: value1
+            annotation2: value2
+`),
+	}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -7517,8 +7515,8 @@ func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
 		"test-pipeline-run-success",
 		"test-pipeline",
 		"task-with-metadata",
-		labels,
-		annotations,
+		map[string]string{"label1": "labelvalue1", "label2": "labelvalue2"},
+		map[string]string{"annotation1": "value1", "annotation2": "value2"},
 	)
 
 	expectedTaskRun["test-pipeline-run-success-task-without-metadata"] = getTaskRunWithTaskSpec(
