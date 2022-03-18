@@ -38,9 +38,9 @@ weight: 300
 - [Code examples](#code-examples)
   - [Example `TaskRun` with a referenced `Task`](#example-taskrun-with-a-referenced-task)
   - [Example `TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task)
-  - [Reusing a `Task`](#reusing-a-task)
-  - [Using custom `ServiceAccount` credentials](#using-custom-serviceaccount-credentials)
-  - [Running Step Containers as a Non Root User](#running-step-containers-as-a-non-root-user)
+  - [Example of reusing a `Task`](#example-of-reusing-a-task)
+  - [Example of Using custom `ServiceAccount` credentials](#example-of-using-custom-serviceaccount-credentials)
+  - [Example of Running Step Containers as a Non Root User](#example-of-running-step-containers-as-a-non-root-user)
 <!-- /toc -->
 
 ## Overview
@@ -668,7 +668,8 @@ To better understand `TaskRuns`, study the following code examples:
 - [Example `TaskRun` with a referenced `Task`](#example-taskrun-with-a-referenced-task)
 - [Example `TaskRun` with an embedded `Task`](#example-taskrun-with-an-embedded-task)
 - [Example of reusing a `Task`](#example-of-reusing-a-task)
-- [Example of specifying a `ServiceAccount`](#example-of-specifying-a-service-account)
+- [Example of Using custom `ServiceAccount` credentials](#example-of-using-custom-serviceaccount-credentials)
+- [Example of Running Step Containers as a Non Root User](#example-of-running-step-containers-as-a-non-root-user)
 
 ### Example `TaskRun` with a referenced `Task`
 
@@ -780,7 +781,7 @@ spec:
               value: https://github.com/pivotal-nader-ziada/gohelloworld
 ```
 
-### Reusing a `Task`
+### Example of Reusing a `Task`
 
 The following example illustrates the reuse of the same `Task`. Below, you can see
 several `TaskRuns` that instantiate a `Task` named `dockerfile-build-and-push`. The
@@ -880,7 +881,7 @@ spec:
           name: cloud-builder-repo
 ```
 
-### Using custom `ServiceAccount` credentials
+### Example of Using custom `ServiceAccount` credentials
 
 The example below illustrates how to specify a `ServiceAccount` to access a private `git` repository:
 
@@ -942,7 +943,7 @@ data:
   known_hosts: Z2l0aHViLmNvbSBzc2g.....[example]
 ```
 
-### Running Step Containers as a Non Root User
+### Example of Running Step Containers as a Non Root User
 
 All steps that do not require to be run as a root user should make use of TaskRun features to
 designate the container for a step runs as a user without root permissions. As a best practice,
