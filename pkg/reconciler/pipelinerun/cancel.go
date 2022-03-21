@@ -99,23 +99,48 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1bet
 func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) []string {
 	errs := []string{}
 
-	// Loop over the TaskRuns in the PipelineRun status.
-	// If a TaskRun is not in the status yet we should not cancel it anyways.
-	for taskRunName := range pr.Status.TaskRuns {
-		logger.Infof("cancelling TaskRun %s", taskRunName)
+	// If pr.Status.ChildReferences is populated, use that as source of truth for TaskRun and Run names.
+	if len(pr.Status.ChildReferences) > 0 {
+		// Loop over the ChildReferences in the PipelineRun status.
+		for _, cr := range pr.Status.ChildReferences {
+			switch cr.Kind {
+			case "TaskRun":
+				logger.Infof("cancelling TaskRun %s", cr.Name)
 
-		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
-			continue
+				if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, cr.Name, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
+					errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", cr.Name, err).Error())
+					continue
+				}
+			case "Run":
+				logger.Infof("cancelling Run %s", cr.Name)
+
+				if err := cancelRun(ctx, cr.Name, pr.Namespace, clientSet); err != nil {
+					errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %s", cr.Name, err).Error())
+					continue
+				}
+			default:
+				errs = append(errs, fmt.Errorf("unknown or unsupported kind `%s` for cancellation", cr.Kind).Error())
+			}
 		}
-	}
-	// Loop over the Runs in the PipelineRun status.
-	for runName := range pr.Status.Runs {
-		logger.Infof("cancelling Run %s", runName)
+	} else {
+		// Loop over the TaskRuns in the PipelineRun status.
+		// If a TaskRun is not in the status yet we should not cancel it anyways.
+		for taskRunName := range pr.Status.TaskRuns {
+			logger.Infof("cancelling TaskRun %s", taskRunName)
 
-		if err := cancelRun(ctx, runName, pr.Namespace, clientSet); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %s", runName, err).Error())
-			continue
+			if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
+				errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
+				continue
+			}
+		}
+		// Loop over the Runs in the PipelineRun status.
+		for runName := range pr.Status.Runs {
+			logger.Infof("cancelling Run %s", runName)
+
+			if err := cancelRun(ctx, runName, pr.Namespace, clientSet); err != nil {
+				errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %s", runName, err).Error())
+				continue
+			}
 		}
 	}
 
