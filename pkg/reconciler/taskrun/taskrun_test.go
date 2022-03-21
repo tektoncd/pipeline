@@ -1795,7 +1795,7 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 		Message: "Build succeeded",
 	}
 	taskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun-run-success"},
+		ObjectMeta: objectMeta("test-taskrun-run-success", "foo"),
 		Spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
 				Name: simpleTask.Name,
@@ -1806,6 +1806,9 @@ func TestReconcileOnCompletedTaskRun(t *testing.T) {
 				Conditions: duckv1beta1.Conditions{
 					*taskSt,
 				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: now.Add(-15 * time.Second)},
 			},
 		},
 	}
