@@ -162,6 +162,7 @@ func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec
 func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String) (errs *apis.FieldError) {
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames).ViaIndex(idx))
+		errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix, prefix, paramNames, arrayParamNames).ViaIndex(idx))
 		errs = errs.Also(task.WhenExpressions.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames).ViaIndex(idx))
 	}
 	return errs

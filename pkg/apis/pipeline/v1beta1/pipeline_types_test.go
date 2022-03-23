@@ -22,6 +22,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/diff"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -645,6 +646,75 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineTaskList.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPipelineTask_validateMatrix(t *testing.T) {
+	tests := []struct {
+		name     string
+		pt       *PipelineTask
+		wantErrs *apis.FieldError
+	}{{
+		name: "parameter duplicated in matrix and params",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+			Params: []Param{{
+				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		},
+		wantErrs: apis.ErrMultipleOneOf("matrix[foobar]", "params[foobar]"),
+	}, {
+		name: "parameters unique in matrix and params",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+			Params: []Param{{
+				Name: "barfoo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+			}},
+		},
+	}, {
+		name: "parameters in matrix are strings",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foo", Value: ArrayOrString{Type: ParamTypeString, StringVal: "foo"},
+			}, {
+				Name: "bar", Value: ArrayOrString{Type: ParamTypeString, StringVal: "bar"},
+			}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type array only are allowed in matrix",
+			Paths:   []string{"matrix[foo]", "matrix[bar]"},
+		},
+	}, {
+		name: "parameters in matrix are arrays",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}, {
+				Name: "barfoo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+			}},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": "alpha",
+			})
+			cfg := &config.Config{
+				FeatureFlags: featureFlags,
+			}
+			ctx := config.ToContext(context.Background(), cfg)
+			if d := cmp.Diff(tt.wantErrs.Error(), tt.pt.validateMatrix(ctx).Error()); d != "" {
+				t.Errorf("PipelineTask.validateMatrix() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
