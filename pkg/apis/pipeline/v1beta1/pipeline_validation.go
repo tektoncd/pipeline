@@ -75,6 +75,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
+	errs = errs.Also(validateResultsFromMatrixedPipelineTasksNotConsumed(ps.Tasks, ps.Finally))
 	return errs
 }
 
@@ -485,6 +486,22 @@ func validateGraph(tasks []PipelineTask) *apis.FieldError {
 func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.FieldError) {
 	for idx, task := range tasks {
 		errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
+	}
+	return errs
+}
+
+func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, finally []PipelineTask) (errs *apis.FieldError) {
+	matrixedPipelineTasks := sets.String{}
+	for _, pt := range tasks {
+		if len(pt.Matrix) != 0 {
+			matrixedPipelineTasks.Insert(pt.Name)
+		}
+	}
+	for idx, pt := range tasks {
+		errs = errs.Also(pt.validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks).ViaFieldIndex("tasks", idx))
+	}
+	for idx, pt := range finally {
+		errs = errs.Also(pt.validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks).ViaFieldIndex("finally", idx))
 	}
 	return errs
 }

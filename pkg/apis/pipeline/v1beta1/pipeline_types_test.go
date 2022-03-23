@@ -703,6 +703,18 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 				Name: "barfoo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
 		},
+	}, {
+		name: "parameters in matrix contain results references",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
+			}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: result references are not allowed in parameters in a matrix",
+			Paths:   []string{"matrix[a-param].value"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
