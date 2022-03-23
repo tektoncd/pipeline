@@ -1318,6 +1318,34 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 				Name: "a-param", Value: ArrayOrString{StringVal: "$(input.workspace.$(baz))"},
 			}},
 		}},
+	}, {
+		name: "valid array parameter variables in matrix",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
+		}, {
+			Name: "foo-is-baz", Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(baz)", "and", "$(foo-is-baz)"}},
+			}},
+		}},
+	}, {
+		name: "valid star array parameter variables in matrix",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
+		}, {
+			Name: "foo-is-baz", Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(baz[*])", "and", "$(foo-is-baz[*])"}},
+			}},
+		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1595,6 +1623,53 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `parameter appears more than once`,
 			Paths:   []string{"params[baz]"},
+		},
+	}, {
+		name: "invalid pipeline task with a matrix parameter which is missing from the param declarations",
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.does-not-exist)"`,
+			Paths:   []string{"[0].matrix[a-param].value[0]"},
+		},
+	}, {
+		name: "invalid pipeline task with a matrix parameter combined with missing param from the param declarations",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)", "and", "$(params.does-not-exist)"}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.does-not-exist)"`,
+			Paths:   []string{"[0].matrix[a-param].value[2]"},
+		},
+	}, {
+		name: "invalid pipeline task with two matrix parameters and one of them missing from the param declarations",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)"}},
+			}, {
+				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.does-not-exist)"`,
+			Paths:   []string{"[0].matrix[b-param].value[0]"},
 		},
 	}}
 	for _, tt := range tests {
@@ -2744,6 +2819,86 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func Test_validateMatrix(t *testing.T) {
+	tests := []struct {
+		name     string
+		tasks    []PipelineTask
+		wantErrs *apis.FieldError
+	}{{
+		name: "parameter in both matrix and params",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+			Params: []Param{{
+				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		}},
+		wantErrs: apis.ErrMultipleOneOf("[0].matrix[foobar]", "[0].params[foobar]"),
+	}, {
+		name: "parameters unique in matrix and params",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+			Params: []Param{{
+				Name: "barfoo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+			}},
+		}},
+	}, {
+		name: "parameters in matrix are strings",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "foo", Value: ArrayOrString{Type: ParamTypeString, StringVal: "foo"},
+			}, {
+				Name: "bar", Value: ArrayOrString{Type: ParamTypeString, StringVal: "bar"},
+			}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Matrix: []Param{{
+				Name: "baz", Value: ArrayOrString{Type: ParamTypeString, StringVal: "baz"},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type array only are allowed in matrix",
+			Paths:   []string{"[0].matrix[foo]", "[0].matrix[bar]", "[1].matrix[baz]"},
+		},
+	}, {
+		name: "parameters in matrix are arrays",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}, {
+				Name: "barfoo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+			}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": "alpha",
+			})
+			cfg := &config.Config{
+				FeatureFlags: featureFlags,
+			}
+
+			ctx := config.ToContext(context.Background(), cfg)
+			if d := cmp.Diff(tt.wantErrs.Error(), validateMatrix(ctx, tt.tasks).Error()); d != "" {
+				t.Errorf("validateMatrix() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
