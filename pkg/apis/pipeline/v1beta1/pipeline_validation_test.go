@@ -2884,6 +2884,25 @@ func Test_validateMatrix(t *testing.T) {
 				Name: "barfoo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
 		}},
+	}, {
+		name: "parameters in matrix contain results references",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
+			}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Matrix: []Param{{
+				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: result references are not allowed in parameters in a matrix",
+			Paths:   []string{"[0].matrix[a-param].value", "[1].matrix[b-param].value"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -2897,6 +2916,160 @@ func Test_validateMatrix(t *testing.T) {
 			ctx := config.ToContext(context.Background(), cfg)
 			if d := cmp.Diff(tt.wantErrs.Error(), validateMatrix(ctx, tt.tasks).Error()); d != "" {
 				t.Errorf("validateMatrix() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
+	tests := []struct {
+		name     string
+		tasks    []PipelineTask
+		finally  []PipelineTask
+		wantErrs *apis.FieldError
+	}{{
+		name: "results from matrixed task consumed in tasks through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: []Param{{
+				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"tasks[1]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in finally through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: []Param{{
+				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"finally[0]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in tasks and finally through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: []Param{{
+				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+			}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			Params: []Param{{
+				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"tasks[1]", "finally[0]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in tasks through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.a-task.results.a-result)"},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"tasks[1]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in finally through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "$(tasks.a-task.results.a-result)",
+				Operator: selection.In,
+				Values:   []string{"foo", "bar"},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"finally[0]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in tasks and finally through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "$(tasks.a-task.results.a-result)",
+				Operator: selection.In,
+				Values:   []string{"foo", "bar"},
+			}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			WhenExpressions: WhenExpressions{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.a-task.results.a-result)"},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"tasks[1]", "finally[0]"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if d := cmp.Diff(tt.wantErrs.Error(), validateResultsFromMatrixedPipelineTasksNotConsumed(tt.tasks, tt.finally).Error()); d != "" {
+				t.Errorf("validateResultsFromMatrixedPipelineTasksNotConsumed() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

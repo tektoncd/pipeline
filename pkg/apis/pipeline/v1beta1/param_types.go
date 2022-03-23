@@ -192,6 +192,10 @@ func validateParametersInTaskMatrix(matrix []Param) (errs *apis.FieldError) {
 		if param.Value.Type != ParamTypeArray {
 			errs = errs.Also(apis.ErrInvalidValue("parameters of type array only are allowed in matrix", "").ViaFieldKey("matrix", param.Name))
 		}
+		// results are not yet allowed in parameters in a matrix - dynamic fanning out will be supported in future milestone
+		if expressions, ok := GetVarSubstitutionExpressionsForParam(param); ok && LooksLikeContainsResultRefs(expressions) {
+			return errs.Also(apis.ErrInvalidValue("result references are not allowed in parameters in a matrix", "value").ViaFieldKey("matrix", param.Name))
+		}
 	}
 	return errs
 }

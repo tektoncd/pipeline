@@ -298,6 +298,15 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 	return errs
 }
 
+func (pt *PipelineTask) validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks sets.String) (errs *apis.FieldError) {
+	for _, ref := range PipelineTaskResultRefs(pt) {
+		if matrixedPipelineTasks.Has(ref.PipelineTask) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("consuming results from matrixed task %s is not allowed", ref.PipelineTask), ""))
+		}
+	}
+	return errs
+}
+
 func (pt *PipelineTask) validateExecutionStatusVariablesDisallowed() (errs *apis.FieldError) {
 	for _, param := range pt.Params {
 		if expressions, ok := GetVarSubstitutionExpressionsForParam(param); ok {

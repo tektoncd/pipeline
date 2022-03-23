@@ -11,6 +11,9 @@ weight: 11
 - [Configuring a Matrix](#configuring-a-matrix)
   - [Parameters](#parameters)
   - [Context Variables](#context-variables)
+  - [Results](#results)
+    - [Specifying Results in a Matrix](#specifying-results-in-a-matrix)
+    - [Results from fanned out PipelineTasks](#results-from-fanned-out-pipelinetasks)
 
 ## Overview
 
@@ -88,3 +91,17 @@ Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Ma
 * `PipelineRun` name, namespace and uid
 * `Pipeline` name
 * `PipelineTask` retries
+
+### Results
+
+#### Specifying Results in a Matrix
+
+Consuming `Results` from previous `TaskRuns` or `Runs` in a `Matrix`, which would dynamically generate 
+`TaskRuns` or `Runs` from the fanned out `PipelineTask`, is not yet supported. This dynamic fan out of
+`PipelineTasks` through consuming `Results` will be supported soon. 
+
+#### Results from fanned out PipelineTasks
+
+Consuming `Results` from fanned out `PipelineTasks` will not be in the supported in the initial iteration
+of `Matrix`. Supporting consuming `Results` from fanned out `PipelineTasks` will be revisited after array
+and object `Results` are supported. 
