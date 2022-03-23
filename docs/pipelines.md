@@ -903,6 +903,8 @@ performed by the Tekton Controller when a PipelineRun is executed.
 See the [complete list of variable substitutions for Pipelines](./variables.md#variables-available-in-a-pipeline)
 and the [list of fields that accept substitutions](./variables.md#fields-that-accept-variable-substitutions).
 
+For an end-to-end example, see [using context variables](../examples/v1beta1/pipelineruns/using_context_variables.yaml).
+
 ### Using the `retries` and `retry-count` variable substitutions
 
 Tekton supports variable substitution for the [`retries`](#using-the-retries-field)
