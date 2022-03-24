@@ -317,6 +317,41 @@
         }
       }
     },
+    "v1beta1.ChildStatusReference": {
+      "description": "ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "conditionChecks": {
+          "description": "ConditionChecks is the the list of condition checks, including their names and statuses, for the PipelineTask. Deprecated: This field will be removed when conditions are removed.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1beta1.PipelineRunChildConditionCheckStatus"
+          }
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "description": "Name is the name of the TaskRun or Run this is referencing.",
+          "type": "string"
+        },
+        "pipelineTaskName": {
+          "description": "PipelineTaskName is the name of the PipelineTask this is referencing.",
+          "type": "string"
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          }
+        }
+      }
+    },
     "v1beta1.CloudEventDelivery": {
       "description": "CloudEventDelivery is the target of a cloud event along with the state of delivery.",
       "type": "object",
@@ -876,6 +911,23 @@
         }
       }
     },
+    "v1beta1.PipelineRunChildConditionCheckStatus": {
+      "description": "PipelineRunChildConditionCheckStatus is used to record the status of condition checks within StatusChildReferences.",
+      "type": "object",
+      "properties": {
+        "conditionCheckName": {
+          "type": "string"
+        },
+        "conditionName": {
+          "description": "ConditionName is the name of the Condition",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status is the ConditionCheckStatus for the corresponding ConditionCheck",
+          "$ref": "#/definitions/v1beta1.ConditionCheckStatus"
+        }
+      }
+    },
     "v1beta1.PipelineRunConditionCheckStatus": {
       "description": "PipelineRunConditionCheckStatus returns the condition check status",
       "type": "object",
@@ -1052,6 +1104,14 @@
             "default": ""
           }
         },
+        "childReferences": {
+          "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.ChildStatusReference"
+          }
+        },
         "completionTime": {
           "description": "CompletionTime is the time the PipelineRun completed.",
           "$ref": "#/definitions/v1.Time"
@@ -1084,7 +1144,7 @@
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "runs": {
-          "description": "map of PipelineRunRunStatus with the run name as the key",
+          "description": "Deprecated - use ChildReferences instead. map of PipelineRunRunStatus with the run name as the key",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/v1beta1.PipelineRunRunStatus"
@@ -1103,7 +1163,7 @@
           "$ref": "#/definitions/v1.Time"
         },
         "taskRuns": {
-          "description": "map of PipelineRunTaskRunStatus with the taskRun name as the key",
+          "description": "Deprecated - use ChildReferences instead. map of PipelineRunTaskRunStatus with the taskRun name as the key",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/v1beta1.PipelineRunTaskRunStatus"
@@ -1115,6 +1175,14 @@
       "description": "PipelineRunStatusFields holds the fields of PipelineRunStatus' status. This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
       "type": "object",
       "properties": {
+        "childReferences": {
+          "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.ChildStatusReference"
+          }
+        },
         "completionTime": {
           "description": "CompletionTime is the time the PipelineRun completed.",
           "$ref": "#/definitions/v1.Time"
@@ -1132,7 +1200,7 @@
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "runs": {
-          "description": "map of PipelineRunRunStatus with the run name as the key",
+          "description": "Deprecated - use ChildReferences instead. map of PipelineRunRunStatus with the run name as the key",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/v1beta1.PipelineRunRunStatus"
@@ -1151,7 +1219,7 @@
           "$ref": "#/definitions/v1.Time"
         },
         "taskRuns": {
-          "description": "map of PipelineRunTaskRunStatus with the taskRun name as the key",
+          "description": "Deprecated - use ChildReferences instead. map of PipelineRunTaskRunStatus with the taskRun name as the key",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/v1beta1.PipelineRunTaskRunStatus"

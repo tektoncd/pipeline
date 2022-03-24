@@ -49,6 +49,7 @@ const (
 var supportedFeatureGates = map[string]string{
 	"enable-custom-tasks": "true",
 	"enable-api-fields":   "alpha",
+	"embedded-status":     "full",
 }
 
 func TestCustomTask(t *testing.T) {

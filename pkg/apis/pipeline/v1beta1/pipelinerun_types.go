@@ -20,6 +20,8 @@ import (
 	"context"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -396,6 +398,23 @@ func (pr *PipelineRunStatus) MarkRunning(reason, messageFormat string, messageA 
 	pipelineRunCondSet.Manage(pr).MarkUnknown(apis.ConditionSucceeded, reason, messageFormat, messageA...)
 }
 
+// ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.
+type ChildStatusReference struct {
+	runtime.TypeMeta `json:",inline"`
+	// Name is the name of the TaskRun or Run this is referencing.
+	Name string `json:"name,omitempty"`
+	// PipelineTaskName is the name of the PipelineTask this is referencing.
+	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
+
+	// ConditionChecks is the the list of condition checks, including their names and statuses, for the PipelineTask.
+	// Deprecated: This field will be removed when conditions are removed.
+	// +optional
+	ConditionChecks []*PipelineRunChildConditionCheckStatus `json:"conditionChecks,omitempty"`
+	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
+	// +optional
+	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
+}
+
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
 // This is defined separately and inlined so that other types can readily
 // consume these fields via duck typing.
@@ -408,10 +427,12 @@ type PipelineRunStatusFields struct {
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
+	// Deprecated - use ChildReferences instead.
 	// map of PipelineRunTaskRunStatus with the taskRun name as the key
 	// +optional
 	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
 
+	// Deprecated - use ChildReferences instead.
 	// map of PipelineRunRunStatus with the run name as the key
 	// +optional
 	Runs map[string]*PipelineRunRunStatus `json:"runs,omitempty"`
@@ -426,6 +447,10 @@ type PipelineRunStatusFields struct {
 	// list of tasks that were skipped due to when expressions evaluating to false
 	// +optional
 	SkippedTasks []SkippedTask `json:"skippedTasks,omitempty"`
+
+	// list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.
+	// +optional
+	ChildReferences []ChildStatusReference `json:"childReferences,omitempty"`
 }
 
 // SkippedTask is used to describe the Tasks that were skipped due to their When Expressions
@@ -482,6 +507,12 @@ type PipelineRunConditionCheckStatus struct {
 	// Status is the ConditionCheckStatus for the corresponding ConditionCheck
 	// +optional
 	Status *ConditionCheckStatus `json:"status,omitempty"`
+}
+
+// PipelineRunChildConditionCheckStatus is used to record the status of condition checks within StatusChildReferences.
+type PipelineRunChildConditionCheckStatus struct {
+	PipelineRunConditionCheckStatus `json:",inline"`
+	ConditionCheckName              string `json:"conditionCheckName,omitempty"`
 }
 
 // PipelineRunSpecServiceAccountName can be used to configure specific
