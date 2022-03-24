@@ -38,6 +38,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 				EnableAPIFields:                  "stable",
+				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -51,6 +52,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ScopeWhenExpressionsToTask:       true,
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
+				EmbeddedStatus:                   "both",
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -64,6 +66,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
+				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
 		},
@@ -75,6 +78,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
+				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
@@ -95,6 +99,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		RunningInEnvWithInjectedSidecars: true,
 		ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 		EnableAPIFields:                  "stable",
+		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -137,6 +142,8 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-invalid-boolean",
 	}, {
 		fileName: "feature-flags-invalid-enable-api-fields",
+	}, {
+		fileName: "feature-flags-invalid-embedded-status",
 	}, {
 		fileName: "feature-flags-invalid-scope-when-expressions-to-task",
 	}} {

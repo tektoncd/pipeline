@@ -23,7 +23,10 @@ weight: 500
     - [Specifying <code>Workspaces</code>](#specifying-workspaces)
     - [Specifying <code>LimitRange</code> values](#specifying-limitrange-values)
     - [Configuring a failure timeout](#configuring-a-failure-timeout)
-  - [Monitoring execution status](#monitoring-execution-status)
+  - [<code>PipelineRun</code> status](#pipelinerun-status)
+    - [The <code>status</code> field](#the-status-field) 
+    - [Configuring usage of <code>TaskRun</code> and <code>Run</code> embedded statuses](#configuring-usage-of-taskrun-and-run-embedded-statuses)
+    - [Monitoring execution status](#monitoring-execution-status)
   - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
   - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
   - [Gracefully stopping a <code>PipelineRun</code>](#gracefully-stopping-a-pipelinerun)
@@ -67,10 +70,11 @@ A `PipelineRun` definition supports the following fields:
     object that supplies specific execution credentials for the `Pipeline`.
   - [`serviceAccountNames`](#mapping-serviceaccount-credentials-to-tasks) - Maps specific `serviceAccountName` values
     to `Tasks` in the `Pipeline`. This overrides the credentials set for the entire `Pipeline`.
-  - [`taskRunSpec`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`.
-  - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails.
-  - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis
-    for the configuration of the `Pod` that executes each `Task`.
+  - [`taskRunSpecs`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`.
+  - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeout` is deprecated and will eventually be removed, so consider using `timeouts` instead.
+  - [`timeouts`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels
+  - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis for the configuration of the `Pod` that executes each `Task`.
+  - [`workspaces`](#specifying-workspaces) - Specifies a set of workspace bindings which must match the names of workspaces declared in the pipeline being used. 
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
@@ -560,7 +564,43 @@ The `timeout` value is a `duration` conforming to Go's
 values are `1h30m`, `1h`, `1m`, and `60s`. If you set the global timeout to 0, all `PipelineRuns`
 that do not have an individual timeout set will fail immediately upon encountering an error.
 
-## Monitoring execution status
+## `PipelineRun` status
+
+### The `status` field
+
+Your `PipelineRun`'s `status` field can contain the following fields:
+
+- Required:
+  - `status` - Most relevant, `status.conditions`, which contains the latest observations of the `PipelineRun`'s state. [See here](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties) for information on typical status properties. 
+  - `startTime` - The time at which the `PipelineRun` began executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
+  - `completionTime` - The time at which the `PipelineRun` finished executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
+  - [`pipelineSpec`](pipelines.md#configuring-a-pipeline) - The exact `PipelineSpec` used when starting the `PipelineRun`.
+- Optional:
+  - `taskRuns` - A map of `TaskRun` names to detailed information about the status of that `TaskRun`. This is deprecated and will be removed in favor of using `childReferences`.
+  - `runs` - A map of custom task `Run` names to detailed information about the status of that `Run`. This is deprecated and will be removed in favor of using `childReferences`.
+  - [`pipelineResults`](pipelines.md#emitting-results-from-a-pipeline) - Results emitted by this `PipelineRun`.
+  - `skippedTasks` - A list of `Task`s which were skipped when running this `PipelineRun` due to [when expressions](pipelines.md#guard-task-execution-using-when-expressions), including the when expressions applying to the skipped task.
+  - `childReferences` - A list of references to each `TaskRun` or `Run` in this `PipelineRun`, which can be used to look up the status of the underlying `TaskRun` or `Run`. Each entry contains the following:
+    - [`kind`][kubernetes-overview] - Generally either `TaskRun` or `Run`.
+    - [`apiVersion`][kubernetes-overview] - The API version for the underlying `TaskRun` or `Run`.
+    - `conditionChecks` - A list of [condition checks](conditions.md) performed for this `TaskRun`. `conditions` are deprecated and this will be removed in the future.
+    - [`whenExpressions`](pipelines.md#guard-task-execution-using-when-expressions) - The list of when expressions guarding the execution of this task.
+
+### Configuring usage of `TaskRun` and `Run` embedded statuses
+
+Currently, the default behavior is for the statuses of `TaskRun`s and `Run`s within this `PipelineRun`
+to be embedded in the `status.taskRuns` and `status.runs` fields. This will change in the future to
+instead default to `status.childReferences` being populated with references to the `TaskRun`s and
+`Run`s, which can be used to look up their statuses.
+
+This behavior can be controlled by changing the `embedded-status` feature flag in the `feature-flags`
+config map. See [`install.md`](./install.md#customizing-the-pipelines-controller-behavior) for more
+information on feature flags. The possible values for `embedded-status` are:
+- `full` - The current default behavior of populating `status.taskRuns` and `status.runs`, without populating `status.childReferences`.
+- `minimal` - Just populate `status.childReferences`, not `status.taskRuns` or `status.runs`.
+- `both` - Populate `status.childReferences` as well as `status.taskRuns` and `status.runs`.
+
+### Monitoring execution status
 
 As your `PipelineRun` executes, its `status` field accumulates information on the execution of each `TaskRun`
 as well as the `PipelineRun` as a whole. This information includes the name of the pipeline `Task` associated

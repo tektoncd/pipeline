@@ -390,6 +390,11 @@ features](#alpha-features) to be used.
   to "false" to guard a `Task` and its dependent `Tasks`. It defaults to "true". For more information, see [guarding
   `Task` execution using `when` expressions](pipelines.md#guard-task-execution-using-whenexpressions).
 
+- `embedded-status`: set this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the 
+ `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the `PipelineRun` status with
+  name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to 
+  do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses). **NOTE**: This functionality is not yet active.
+
 For example:
 
 ```yaml
@@ -423,6 +428,7 @@ Features currently in "alpha" are:
 | [Debug](./debug.md)                                                                                   | [TEP-0042](https://github.com/tektoncd/community/blob/main/teps/0042-taskrun-breakpoint-on-failure.md)               | [v0.26.0](https://github.com/tektoncd/pipeline/releases/tag/v0.26.0) |                             |
 | [Step and Sidecar Overrides](./taskruns.md#overriding-task-steps-and-sidecars)                        | [TEP-0094](https://github.com/tektoncd/community/blob/main/teps/0094-specifying-resource-requirements-at-runtime.md) |                                                                      |                             |
 | [Matrix](./matrix.md)                                                                                 | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                                      |                                                                      |                             |
+| [Embedded Statuse](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses)                                                                                  | [TEP-0100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md)                                      |                                                                      |                             |
 
 ## Configuring High Availability
 
