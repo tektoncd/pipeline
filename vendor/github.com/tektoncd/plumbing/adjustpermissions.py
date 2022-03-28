@@ -30,13 +30,14 @@ import yaml
 from typing import List
 
 
-ROLES = (
+RW_ROLES = (
   "roles/container.admin",
   "roles/iam.serviceAccountUser",
   "roles/storage.admin",
   "roles/compute.storageAdmin",
   "roles/viewer",
 )
+READONLY_ROLES = ("roles/viewer",)
 KNOWN_PROJECTS = (
   "tekton-releases",
   "tekton-nightly",
@@ -50,11 +51,12 @@ def gcloud_required() -> None:
     sys.exit(1)
 
 
-def update_all_projects(users: List[str], projects: List[str], remove: bool) -> None:
+def update_all_projects(users: List[str], projects: List[str], remove: bool, readonly: bool) -> None:
   command = "remove-iam-policy-binding" if remove else "add-iam-policy-binding"
+  roles = READONLY_ROLES if readonly else RW_ROLES
   for user in users:
     for project in projects:
-      for role in ROLES:
+      for role in roles:
         subprocess.check_call(shlex.split(
             "gcloud projects {} {} --member user:{} --role {}".format(command, project, user, role)
         ))
@@ -62,9 +64,9 @@ def update_all_projects(users: List[str], projects: List[str], remove: bool) -> 
 
 def parse_boskos_projects() -> List[str]:
   config = urllib.request.urlopen(BOSKOS_CONFIG_URL).read()
-  c = yaml.load(config)
+  c = yaml.safe_load(config)
   nested_config = c["data"]["config"]
-  cc = yaml.load(nested_config)
+  cc = yaml.safe_load(nested_config)
   return cc["resources"][0]["names"]
 
 
@@ -75,8 +77,9 @@ if __name__ == '__main__':
                           help="The names of the users' accounts, usually their email address, comma separated")
   arg_parser.add_argument("--remove", action="store_true",
                           help="Use this flag to remove user access instead of adding it")
+  arg_parser.add_argument("--readonly", type=bool, default=True, help="Grant only read permissions")
   args = arg_parser.parse_args()
 
   gcloud_required()
   boskos_projects = parse_boskos_projects()
-  update_all_projects([u.strip() for u in args.users.split(",")], list(KNOWN_PROJECTS) + boskos_projects, args.remove)
+  update_all_projects([u.strip() for u in args.users.split(",")], list(KNOWN_PROJECTS) + boskos_projects, args.remove, args.readonly)
