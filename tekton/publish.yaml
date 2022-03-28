@@ -110,6 +110,7 @@ spec:
 
         # This matches values configured in .ko.yaml
         $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/git-init-build-base:latest
+        $(params.package)/cmd/pullrequest-init: gcr.io/distroless/static
       EOF
 
       cat ${PROJECT_ROOT}/.ko.yaml
