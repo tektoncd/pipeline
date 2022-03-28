@@ -58,8 +58,8 @@ function run_e2e() {
   # Run these _after_ the integration tests b/c they don't quite work all the way
   # and they cause a lot of noise in the logs, making it harder to debug integration
   # test failures.
-  if [ "${RUN_YAML_TESTS}" == "true"]; then
-    go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
+  if [ "${RUN_YAML_TESTS}" == "true" ]; then
+    go_test_e2e -mod=readonly -tags=examples -timeout=20m ./test/ || failed=1
   fi
 }
 

@@ -363,7 +363,7 @@ github.com/spf13/pflag
 # github.com/stretchr/testify v1.7.0
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
-# github.com/tektoncd/plumbing v0.0.0-20211012143332-c7cc43d9bc0c
+# github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
 ## explicit
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/cmd/combine

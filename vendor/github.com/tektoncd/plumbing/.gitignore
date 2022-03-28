@@ -1,5 +1,12 @@
 # IDEs
 .idea/
+.vscode/
 
 # Coverage
 .coverage
+
+# Python files
+**/__pycache__/
+
+# Virtualenv files
+.venv

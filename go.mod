@@ -23,7 +23,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198
 	github.com/pkg/errors v0.9.1
-	github.com/tektoncd/plumbing v0.0.0-20211012143332-c7cc43d9bc0c
+	github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
