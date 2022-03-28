@@ -34,7 +34,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	admissionv1 "k8s.io/api/admission/v1"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/network"
 	"knative.dev/pkg/system"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
 )
@@ -60,6 +59,10 @@ type Options struct {
 	// StatsReporter reports metrics about the webhook.
 	// This will be automatically initialized by the constructor if left uninitialized.
 	StatsReporter StatsReporter
+
+	// GracePeriod is how long to wait after failing readiness probes
+	// before shutting down.
+	GracePeriod time.Duration
 }
 
 // Operation is the verb being operated on
@@ -82,10 +85,6 @@ type Webhook struct {
 
 	// synced is function that is called when the informers have been synced.
 	synced context.CancelFunc
-
-	// grace period is how long to wait after failing readiness probes
-	// before shutting down.
-	gracePeriod time.Duration
 
 	mux http.ServeMux
 
@@ -123,10 +122,9 @@ func New(
 	syncCtx, cancel := context.WithCancel(context.Background())
 
 	webhook = &Webhook{
-		Options:     *opts,
-		Logger:      logger,
-		synced:      cancel,
-		gracePeriod: network.DefaultDrainTimeout,
+		Options: *opts,
+		Logger:  logger,
+		synced:  cancel,
 	}
 
 	if opts.SecretName != "" {
@@ -207,7 +205,7 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 
 	drainer := &handlers.Drainer{
 		Inner:       wh,
-		QuietPeriod: wh.gracePeriod,
+		QuietPeriod: wh.Options.GracePeriod,
 	}
 
 	server := &http.Server{

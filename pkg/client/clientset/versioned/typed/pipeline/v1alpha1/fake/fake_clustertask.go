@@ -99,7 +99,7 @@ func (c *FakeClusterTasks) Update(ctx context.Context, clusterTask *v1alpha1.Clu
 // Delete takes name of the clusterTask and deletes it. Returns an error if one occurs.
 func (c *FakeClusterTasks) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(clustertasksResource, name), &v1alpha1.ClusterTask{})
+		Invokes(testing.NewRootDeleteActionWithOptions(clustertasksResource, name, opts), &v1alpha1.ClusterTask{})
 	return err
 }
 

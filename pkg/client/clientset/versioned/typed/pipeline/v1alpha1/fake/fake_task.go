@@ -105,7 +105,7 @@ func (c *FakeTasks) Update(ctx context.Context, task *v1alpha1.Task, opts v1.Upd
 // Delete takes name of the task and deletes it. Returns an error if one occurs.
 func (c *FakeTasks) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(tasksResource, c.ns, name), &v1alpha1.Task{})
+		Invokes(testing.NewDeleteActionWithOptions(tasksResource, c.ns, name, opts), &v1alpha1.Task{})
 
 	return err
 }
