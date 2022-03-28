@@ -105,7 +105,7 @@ func (c *FakeConditions) Update(ctx context.Context, condition *v1alpha1.Conditi
 // Delete takes name of the condition and deletes it. Returns an error if one occurs.
 func (c *FakeConditions) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(conditionsResource, c.ns, name), &v1alpha1.Condition{})
+		Invokes(testing.NewDeleteActionWithOptions(conditionsResource, c.ns, name, opts), &v1alpha1.Condition{})
 
 	return err
 }

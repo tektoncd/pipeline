@@ -24,9 +24,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
-
-	"github.com/spf13/pflag"
 
 	"go.uber.org/automaxprocs/maxprocs" // automatically set GOMAXPROCS based on cgroups
 	"go.uber.org/zap"
@@ -120,13 +119,12 @@ var (
 // by name.
 func MainNamed(ctx context.Context, component string, ctors ...injection.NamedControllerConstructor) {
 
-	disabledControllers := pflag.StringSlice("disable-controllers", []string{}, "Comma-separated list of disabled controllers.")
+	disabledControllers := flag.String("disable-controllers", "", "Comma-separated list of disabled controllers.")
 
 	// HACK: This parses flags, so the above should be set once this runs.
 	cfg := injection.ParseAndGetRESTConfigOrDie()
 
-	enabledCtors := enabledControllers(*disabledControllers, ctors)
-
+	enabledCtors := enabledControllers(strings.Split(*disabledControllers, ","), ctors)
 	MainWithConfig(ctx, component, cfg, toControllerConstructors(enabledCtors)...)
 }
 
@@ -268,7 +266,9 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 		wh.InformersHaveSynced()
 	}
 	logger.Info("Starting controllers...")
-	go controller.StartAll(ctx, controllers...)
+	eg.Go(func() error {
+		return controller.StartAll(ctx, controllers...)
+	})
 
 	// This will block until either a signal arrives or one of the grouped functions
 	// returns an error.
