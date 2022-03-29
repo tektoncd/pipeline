@@ -1,3 +1,4 @@
+//go:build conformance
 // +build conformance
 
 /*
