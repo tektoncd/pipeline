@@ -462,11 +462,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Build PipelineRunFacts with a list of resolved pipeline tasks,
 	// dag tasks graph and final tasks graph
 	pipelineRunFacts := &resources.PipelineRunFacts{
-		State:                      pipelineRunState,
-		SpecStatus:                 pr.Spec.Status,
-		TasksGraph:                 d,
-		FinalTasksGraph:            dfinally,
-		ScopeWhenExpressionsToTask: config.FromContextOrDefaults(ctx).FeatureFlags.ScopeWhenExpressionsToTask,
+		State:           pipelineRunState,
+		SpecStatus:      pr.Spec.Status,
+		TasksGraph:      d,
+		FinalTasksGraph: dfinally,
 	}
 
 	for _, rprt := range pipelineRunFacts.State {

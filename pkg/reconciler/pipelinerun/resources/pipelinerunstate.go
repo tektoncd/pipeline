@@ -47,7 +47,7 @@ type PipelineRunState []*ResolvedPipelineRunTask
 // PipelineRunFacts holds the state of all the components that make up the Pipeline graph that are used to track the
 // PipelineRun state without passing all these components separately. It helps simplify our implementation for getting
 // and scheduling the next tasks. It is a collection of list of ResolvedPipelineTask, graph of DAG tasks, graph of
-// finally tasks, cache of skipped tasks, and the scope of when expressions.
+// finally tasks, cache of skipped tasks.
 type PipelineRunFacts struct {
 	State           PipelineRunState
 	SpecStatus      v1beta1.PipelineRunSpecStatus
@@ -62,8 +62,7 @@ type PipelineRunFacts struct {
 	// needed, via the `Skip` method in pipelinerunresolution.go
 	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
 	// can be used to clean the cache and force re-computation when needed.
-	SkipCache                  map[string]TaskSkipStatus
-	ScopeWhenExpressionsToTask bool
+	SkipCache map[string]TaskSkipStatus
 }
 
 // pipelineRunStatusCount holds the count of successful, failed, cancelled, skipped, and incomplete tasks

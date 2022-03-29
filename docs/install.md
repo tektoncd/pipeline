@@ -386,10 +386,6 @@ use of custom tasks in pipelines.
 most stable features to be used. Set it to "alpha" to allow [alpha
 features](#alpha-features) to be used.
 
-- `scope-when-expressions-to-task`: set this flag to "true" to scope `when` expressions to guard a `Task` only. Set it
-  to "false" to guard a `Task` and its dependent `Tasks`. It defaults to "true". For more information, see [guarding
-  `Task` execution using `when` expressions](pipelines.md#guard-task-execution-using-whenexpressions).
-
 - `embedded-status`: set this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the 
  `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the `PipelineRun` status with
   name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to 

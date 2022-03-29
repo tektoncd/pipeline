@@ -4878,7 +4878,7 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 	}
 }
 
-func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
+func TestReconcileWithWhenExpressions(t *testing.T) {
 	//		(b)
 	//		/
 	//	(a) ———— (c) ———— (d)
@@ -4977,21 +4977,10 @@ func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
 		{ObjectMeta: baseObjectMeta("f-task", "foo")},
 	}
 
-	// set the scope of when expressions to task -- execution of dependent tasks is unblocked
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"scope-when-expressions-to-task": "true",
-			},
-		},
-	}
-
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -5083,7 +5072,7 @@ func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
 	}
 }
 
-func TestReconcileWithWhenExpressionsScopedToTaskWitResultRefs(t *testing.T) {
+func TestReconcileWithWhenExpressionsWithResultRefs(t *testing.T) {
 	names.TestingSeed()
 	ps := []*v1beta1.Pipeline{{
 		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
@@ -5160,22 +5149,12 @@ func TestReconcileWithWhenExpressionsScopedToTaskWitResultRefs(t *testing.T) {
 			},
 		},
 	}}
-	// set the scope of when expressions to task -- execution of dependent tasks is unblocked
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"scope-when-expressions-to-task": "true",
-			},
-		},
-	}
 
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
-		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
