@@ -26,6 +26,7 @@ import (
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/ptr"
 )
 
 var (
@@ -195,6 +196,10 @@ func (s *Resource) GetInputTaskModifier(_ *v1beta1.TaskSpec, path string) (v1bet
 			WorkingDir: pipeline.WorkspaceDir,
 			// This is used to populate the ResourceResult status.
 			Env: env,
+			SecurityContext: &corev1.SecurityContext{
+				// The git pipeline resource only works when running as root.
+				RunAsUser: ptr.Int64(0),
+			},
 		},
 	}
 

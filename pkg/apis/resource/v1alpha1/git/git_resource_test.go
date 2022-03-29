@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	pipeline "github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -542,7 +543,7 @@ func TestGitResource_Replacements(t *testing.T) {
 
 func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 	names.TestingSeed()
-
+	securityContext := &corev1.SecurityContext{RunAsUser: ptr.Int64(0)}
 	for _, tc := range []struct {
 		desc        string
 		gitResource *git.Resource
@@ -583,6 +584,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}, {
 		desc: "Without submodules",
@@ -621,6 +623,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}, {
 		desc: "With more depth",
@@ -660,6 +663,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}, {
 		desc: "Without sslVerify",
@@ -699,6 +703,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}, {
 		desc: "Without httpProxy",
@@ -736,6 +741,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}, {
 		desc: "Without httpsProxy",
@@ -773,6 +779,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}, {
 		desc: "Without noProxy",
@@ -810,6 +817,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTP_PROXY", Value: "http-proxy.git.com"},
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}, {
 		desc: "With Refspec",
@@ -850,6 +858,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}, {
 		desc: "Without Refspec and without revision",
@@ -886,6 +895,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				{Name: "HTTPS_PROXY", Value: "https-proxy.git.com"},
 				{Name: "NO_PROXY", Value: "no-proxy.git.com"},
 			},
+			SecurityContext: securityContext,
 		},
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {

@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"knative.dev/pkg/ptr"
 )
 
 var (
@@ -99,6 +100,9 @@ var (
 			Type:     "git",
 			Optional: true,
 		}},
+	}
+	gitResourceSecurityContext = &corev1.SecurityContext{
+		RunAsUser: ptr.Int64(0),
 	}
 )
 
@@ -369,6 +373,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git"},
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
+				SecurityContext: gitResourceSecurityContext,
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -410,6 +415,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
+				SecurityContext: gitResourceSecurityContext,
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -458,6 +464,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
+				SecurityContext: gitResourceSecurityContext,
 			}}, {Container: corev1.Container{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
@@ -468,6 +475,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
+				SecurityContext: gitResourceSecurityContext,
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: multipleGitInputs,
@@ -509,6 +517,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git"},
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
+				SecurityContext: gitResourceSecurityContext,
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -550,6 +559,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
+				SecurityContext: gitResourceSecurityContext,
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -640,6 +650,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-sslVerify-false"},
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
+				SecurityContext: gitResourceSecurityContext,
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
@@ -964,6 +975,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 					{Name: "TEKTON_RESOURCE_NAME", Value: "the-git-with-branch"},
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
+				SecurityContext: gitResourceSecurityContext,
 			}}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: optionalGitInputs,
