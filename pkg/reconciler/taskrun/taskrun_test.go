@@ -30,6 +30,7 @@ import (
 	"time"
 
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -469,7 +470,10 @@ var (
 		Name:       "place-tools",
 		Image:      "override-with-entrypoint:latest",
 	}
-	fakeVersion string
+	fakeVersion                string
+	gitResourceSecurityContext = &corev1.SecurityContext{
+		RunAsUser: ptr.Int64(0),
+	}
 )
 
 var testClock = clock.NewFakePassiveClock(now)
@@ -1147,7 +1151,8 @@ func TestReconcile(t *testing.T) {
 					"TEKTON_RESOURCE_NAME": "workspace",
 					"HOME":                 "/tekton/home",
 				},
-				workingDir: workspaceDir,
+				workingDir:      workspaceDir,
+				securityContext: gitResourceSecurityContext,
 			},
 			{
 				name:  "mycontainer",
@@ -1196,7 +1201,8 @@ func TestReconcile(t *testing.T) {
 					"TEKTON_RESOURCE_NAME": "workspace",
 					"HOME":                 "/tekton/home",
 				},
-				workingDir: workspaceDir,
+				workingDir:      workspaceDir,
+				securityContext: gitResourceSecurityContext,
 			},
 			{
 				name:  "mycontainer",
@@ -1239,7 +1245,8 @@ func TestReconcile(t *testing.T) {
 					"TEKTON_RESOURCE_NAME": "workspace",
 					"HOME":                 "/tekton/home",
 				},
-				workingDir: workspaceDir,
+				workingDir:      workspaceDir,
+				securityContext: gitResourceSecurityContext,
 			},
 			{
 				name:  "mystep",
@@ -4579,12 +4586,13 @@ func podObjectMeta(name, taskName, taskRunName, ns string, isClusterTask bool) m
 }
 
 type stepForExpectedPod struct {
-	name       string
-	image      string
-	cmd        string
-	args       []string
-	envVars    map[string]string
-	workingDir string
+	name            string
+	image           string
+	cmd             string
+	args            []string
+	envVars         map[string]string
+	workingDir      string
+	securityContext *corev1.SecurityContext
 }
 
 func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
@@ -4643,6 +4651,10 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 
 		if s.workingDir != "" {
 			stepContainer.WorkingDir = s.workingDir
+		}
+
+		if s.securityContext != nil {
+			stepContainer.SecurityContext = s.securityContext
 		}
 
 		p.Spec.Containers = append(p.Spec.Containers, stepContainer)
