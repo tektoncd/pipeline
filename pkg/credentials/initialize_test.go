@@ -10,8 +10,7 @@ import (
 const credContents string = "hello, world!"
 
 func TestTryCopyCredDir(t *testing.T) {
-	dir, cleanup := createTempDir(t)
-	defer cleanup()
+	dir := t.TempDir()
 
 	fakeCredDir := filepath.Join(dir, ".docker")
 	err := os.Mkdir(fakeCredDir, 0700)
@@ -39,8 +38,7 @@ func TestTryCopyCredDir(t *testing.T) {
 }
 
 func TestTryCopyCredFile(t *testing.T) {
-	dir, cleanup := createTempDir(t)
-	defer cleanup()
+	dir := t.TempDir()
 	fakeCredFile := writeFakeCred(t, dir, ".git-credentials", credContents)
 	destination := filepath.Join(dir, ".git-credentials-copy")
 
@@ -60,8 +58,7 @@ func TestTryCopyCredFile(t *testing.T) {
 }
 
 func TestTryCopyCredFileMissing(t *testing.T) {
-	dir, cleanup := createTempDir(t)
-	defer cleanup()
+	dir := t.TempDir()
 	fakeCredFile := filepath.Join(dir, "foo")
 	destination := filepath.Join(dir, "foo-copy")
 
@@ -87,16 +84,4 @@ func writeFakeCred(t *testing.T, dir, name, contents string) string {
 	_, _ = cred.Write([]byte(credContents))
 	_ = cred.Close()
 	return path
-}
-
-func createTempDir(t *testing.T) (string, func()) {
-	dir, err := ioutil.TempDir("", "cred-test-fs-")
-	if err != nil {
-		t.Fatalf("unexpected error creating temp directory: %v", err)
-	}
-	return dir, func() {
-		if err := os.RemoveAll(dir); err != nil {
-			t.Errorf("unexpected error cleaning up temp directory: %v", err)
-		}
-	}
 }

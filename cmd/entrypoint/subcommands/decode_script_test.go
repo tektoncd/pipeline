@@ -33,21 +33,18 @@ echo "Hello World!"
 	mode := os.FileMode(0600)
 	expectedPermissions := os.FileMode(0600)
 
-	tmp, err := ioutil.TempDir("", "decode-script-test-*")
-	if err != nil {
-		t.Fatalf("error creating temp file: %v", err)
-	}
+	tmp := t.TempDir()
 	src := filepath.Join(tmp, "script.txt")
 	defer func() {
 		if err := os.Remove(src); err != nil {
 			t.Errorf("temporary script file %q was not cleaned up: %v", src, err)
 		}
 	}()
-	if err = ioutil.WriteFile(src, []byte(encoded), mode); err != nil {
+	if err := ioutil.WriteFile(src, []byte(encoded), mode); err != nil {
 		t.Fatalf("error writing encoded script: %v", err)
 	}
 
-	if err = decodeScript(src); err != nil {
+	if err := decodeScript(src); err != nil {
 		t.Errorf("unexpected error decoding script: %v", err)
 	}
 

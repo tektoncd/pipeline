@@ -1,7 +1,6 @@
 package subcommands
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,11 +11,7 @@ const helloWorldBase64 = "aGVsbG8gd29ybGQK"
 // TestProcessSuccessfulSubcommands checks that input args matching the format
 // expected by subcommands results in successfully running those subcommands.
 func TestProcessSuccessfulSubcommands(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "cp-test-*")
-	if err != nil {
-		t.Fatalf("error creating temp directory: %v", err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 	src := filepath.Join(tmp, "foo.txt")
 	dst := filepath.Join(tmp, "bar.txt")
 

@@ -18,8 +18,6 @@ package pullrequest
 
 import (
 	"context"
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/go-multierror"
@@ -95,11 +93,6 @@ func TestDownload(t *testing.T) {
 	ctx := context.Background()
 	h, data := newHandler(t)
 
-	dir, err := ioutil.TempDir("", t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
 	got, err := h.Download(ctx)
 	if err != nil {
 		t.Fatal(err)
@@ -122,11 +115,7 @@ func TestUploadFromDisk(t *testing.T) {
 	ctx := context.Background()
 	h, _ := newHandler(t)
 
-	dir, err := ioutil.TempDir("", t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 	r, err := h.Download(ctx)
 	if err != nil {
 		t.Fatal(err)
