@@ -22,8 +22,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"k8s.io/apimachinery/pkg/selection"
+
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -34,7 +38,6 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
@@ -2313,4 +2316,310 @@ spec:
 func conditionCheckFromTaskRun(tr *v1beta1.TaskRun) *v1beta1.ConditionCheck {
 	cc := v1beta1.ConditionCheck(*tr)
 	return &cc
+}
+
+func TestPipelineRunState_GetChildReferences(t *testing.T) {
+	successConditionCheckName := "success-condition"
+	failingConditionCheckName := "fail-condition"
+
+	successCondition := &v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cond-1",
+			Namespace: "foo",
+		},
+	}
+	failingCondition := &v1alpha1.Condition{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cond-2",
+			Namespace: "foo",
+		},
+	}
+
+	successConditionCheck := v1beta1.ConditionCheck(v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: successConditionCheckName},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(0)},
+					},
+				}},
+			},
+		},
+	})
+	failingConditionCheck := v1beta1.ConditionCheck(v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Name: failingConditionCheckName},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+					},
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(127)},
+					},
+				}},
+			},
+		},
+	})
+
+	successrcc := ResolvedConditionCheck{
+		ConditionRegisterName: successCondition.Name + "-0",
+		ConditionCheckName:    successConditionCheckName,
+		Condition:             successCondition,
+		ConditionCheck:        &successConditionCheck,
+	}
+	failingrcc := ResolvedConditionCheck{
+		ConditionRegisterName: failingCondition.Name + "-0",
+		ConditionCheckName:    failingConditionCheckName,
+		Condition:             failingCondition,
+		ConditionCheck:        &failingConditionCheck,
+	}
+
+	successConditionCheckStatus := &v1beta1.PipelineRunChildConditionCheckStatus{
+		PipelineRunConditionCheckStatus: v1beta1.PipelineRunConditionCheckStatus{
+			ConditionName: successrcc.ConditionRegisterName,
+			Status: &v1beta1.ConditionCheckStatus{
+				ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
+					Check: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
+					},
+				},
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}},
+				},
+			},
+		},
+		ConditionCheckName: successConditionCheckName,
+	}
+	failingConditionCheckStatus := &v1beta1.PipelineRunChildConditionCheckStatus{
+		PipelineRunConditionCheckStatus: v1beta1.PipelineRunConditionCheckStatus{
+			ConditionName: failingrcc.ConditionRegisterName,
+			Status: &v1beta1.ConditionCheckStatus{
+				ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
+					Check: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
+					},
+				},
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
+				},
+			},
+		},
+		ConditionCheckName: failingConditionCheckName,
+	}
+
+	testCases := []struct {
+		name      string
+		state     PipelineRunState
+		childRefs []v1beta1.ChildStatusReference
+	}{
+		{
+			name:      "no-tasks",
+			state:     PipelineRunState{},
+			childRefs: nil,
+		},
+		{
+			name: "unresolved-task",
+			state: PipelineRunState{{
+				TaskRunName: "unresolved-task-run",
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "unresolved-task-1",
+					TaskRef: &v1beta1.TaskRef{
+						Name:       "unresolved-task",
+						Kind:       "Task",
+						APIVersion: "v1beta1",
+					},
+				},
+			}},
+			childRefs: nil,
+		},
+		{
+			name: "unresolved-custom-task",
+			state: PipelineRunState{{
+				RunName:    "unresolved-custom-task-run",
+				CustomTask: true,
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "unresolved-custom-task-1",
+					TaskRef: &v1beta1.TaskRef{
+						APIVersion: "example.dev/v0",
+						Kind:       "Example",
+						Name:       "unresolved-custom-task",
+					},
+				},
+			}},
+			childRefs: nil,
+		},
+		{
+			name: "single-task",
+			state: PipelineRunState{{
+				TaskRunName: "single-task-run",
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "single-task-1",
+					TaskRef: &v1beta1.TaskRef{
+						Name:       "single-task",
+						Kind:       "Task",
+						APIVersion: "v1beta1",
+					},
+					WhenExpressions: []v1beta1.WhenExpression{{
+						Input:    "foo",
+						Operator: selection.In,
+						Values:   []string{"foo", "bar"},
+					}},
+				},
+				TaskRun: &v1beta1.TaskRun{
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "single-task-run"},
+				},
+			}},
+			childRefs: []v1beta1.ChildStatusReference{{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				Name:             "single-task-run",
+				PipelineTaskName: "single-task-1",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}},
+		},
+		{
+			name: "task-with-condition-check",
+			state: PipelineRunState{{
+				TaskRunName: "task-with-condition-check-run",
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "task-with-condition-check-1",
+					TaskRef: &v1beta1.TaskRef{
+						Name:       "task-with-condition-check",
+						Kind:       "Task",
+						APIVersion: "v1beta1",
+					},
+				},
+				ResolvedConditionChecks: TaskConditionCheckState{&successrcc, &failingrcc},
+			}},
+			childRefs: []v1beta1.ChildStatusReference{{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				Name:             "task-with-condition-check-run",
+				PipelineTaskName: "task-with-condition-check-1",
+				ConditionChecks: []*v1beta1.PipelineRunChildConditionCheckStatus{
+					successConditionCheckStatus,
+					failingConditionCheckStatus,
+				},
+			}},
+		},
+		{
+			name: "single-custom-task",
+			state: PipelineRunState{{
+				RunName:    "single-custom-task-run",
+				CustomTask: true,
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "single-custom-task-1",
+					TaskRef: &v1beta1.TaskRef{
+						APIVersion: "example.dev/v0",
+						Kind:       "Example",
+						Name:       "single-custom-task",
+					},
+					WhenExpressions: []v1beta1.WhenExpression{{
+						Input:    "foo",
+						Operator: selection.In,
+						Values:   []string{"foo", "bar"},
+					}},
+				},
+				Run: &v1alpha1.Run{
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "single-custom-task-run"},
+				},
+			}},
+			childRefs: []v1beta1.ChildStatusReference{{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1alpha1",
+					Kind:       "Run",
+				},
+				Name:             "single-custom-task-run",
+				PipelineTaskName: "single-custom-task-1",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}},
+		},
+		{
+			name: "task-and-custom-task",
+			state: PipelineRunState{{
+				TaskRunName: "single-task-run",
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "single-task-1",
+					TaskRef: &v1beta1.TaskRef{
+						Name:       "single-task",
+						Kind:       "Task",
+						APIVersion: "v1beta1",
+					},
+				},
+				TaskRun: &v1beta1.TaskRun{
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "single-task-run"},
+				},
+			}, {
+				RunName:    "single-custom-task-run",
+				CustomTask: true,
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "single-custom-task-1",
+					TaskRef: &v1beta1.TaskRef{
+						APIVersion: "example.dev/v0",
+						Kind:       "Example",
+						Name:       "single-custom-task",
+					},
+				},
+				Run: &v1alpha1.Run{
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "single-custom-task-run"},
+				},
+			}},
+			childRefs: []v1beta1.ChildStatusReference{{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				Name:             "single-task-run",
+				PipelineTaskName: "single-task-1",
+			}, {
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1alpha1",
+					Kind:       "Run",
+				},
+				Name:             "single-custom-task-run",
+				PipelineTaskName: "single-custom-task-1",
+			}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			childRefs := tc.state.GetChildReferences(v1beta1.SchemeGroupVersion.String(), v1alpha1.SchemeGroupVersion.String())
+			if d := cmp.Diff(tc.childRefs, childRefs); d != "" {
+				t.Errorf("Didn't get expected child references for %s: %s", tc.name, diff.PrintWantGot(d))
+			}
+
+		})
+	}
 }

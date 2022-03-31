@@ -26,6 +26,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
@@ -220,6 +221,71 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 		status[rprt.RunName] = prrs
 	}
 	return status
+}
+
+// GetChildReferences returns a slice of references, including version, kind, name, and pipeline task name, for all
+// TaskRuns and Runs in the state.
+func (state PipelineRunState) GetChildReferences(taskRunVersion string, runVersion string) []v1beta1.ChildStatusReference {
+	var childRefs []v1beta1.ChildStatusReference
+
+	for _, rprt := range state {
+		if rprt.ResolvedConditionChecks == nil && ((rprt.CustomTask && rprt.Run == nil) || (!rprt.CustomTask && rprt.TaskRun == nil)) {
+			continue
+		}
+
+		var childAPIVersion string
+		var childTaskKind string
+		var childName string
+		var childConditions []*v1beta1.PipelineRunChildConditionCheckStatus
+
+		if rprt.CustomTask {
+			childName = rprt.RunName
+			childTaskKind = "Run"
+
+			if rprt.Run != nil {
+				childAPIVersion = rprt.Run.APIVersion
+			} else {
+				childAPIVersion = runVersion
+			}
+		} else {
+			childName = rprt.TaskRunName
+			childTaskKind = "TaskRun"
+
+			if rprt.TaskRun != nil {
+				childAPIVersion = rprt.TaskRun.APIVersion
+			} else {
+				childAPIVersion = taskRunVersion
+			}
+			if len(rprt.ResolvedConditionChecks) > 0 {
+				for _, c := range rprt.ResolvedConditionChecks {
+					condCheck := &v1beta1.PipelineRunChildConditionCheckStatus{
+						PipelineRunConditionCheckStatus: v1beta1.PipelineRunConditionCheckStatus{
+							ConditionName: c.ConditionRegisterName,
+						},
+						ConditionCheckName: c.ConditionCheckName,
+					}
+					if c.ConditionCheck != nil {
+						condCheck.Status = c.NewConditionCheckStatus()
+					}
+
+					childConditions = append(childConditions, condCheck)
+				}
+			}
+		}
+
+		childRefs = append(childRefs, v1beta1.ChildStatusReference{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: childAPIVersion,
+				Kind:       childTaskKind,
+			},
+			Name:             childName,
+			PipelineTaskName: rprt.PipelineTask.Name,
+			WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+			ConditionChecks:  childConditions,
+		})
+
+	}
+	return childRefs
 }
 
 // getNextTasks returns a list of tasks which should be executed next i.e.
