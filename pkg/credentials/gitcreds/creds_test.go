@@ -32,7 +32,7 @@ import (
 )
 
 func TestBasicFlagHandling(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
@@ -85,7 +85,7 @@ func TestBasicFlagHandling(t *testing.T) {
 }
 
 func TestBasicFlagHandlingTwice(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	fooDir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
@@ -152,7 +152,7 @@ https://bleh:belch@gitlab.com
 }
 
 func TestBasicFlagHandlingMissingFiles(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("not-found")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
@@ -166,7 +166,7 @@ func TestBasicFlagHandlingMissingFiles(t *testing.T) {
 }
 
 func TestBasicFlagHandlingURLCollision(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
@@ -188,7 +188,7 @@ func TestBasicFlagHandlingURLCollision(t *testing.T) {
 }
 
 func TestSSHFlagHandling(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
@@ -249,7 +249,7 @@ func TestSSHFlagHandling(t *testing.T) {
 }
 
 func TestSSHFlagHandlingThrice(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	fooDir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
@@ -361,7 +361,7 @@ ssh-rsa cccc`
 }
 
 func TestSSHFlagHandlingMissingFiles(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("not-found")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
@@ -451,7 +451,7 @@ func TestMatchingAnnotations(t *testing.T) {
 }
 
 func TestBasicBackslashInUsername(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)

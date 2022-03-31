@@ -1,18 +1,13 @@
 package subcommands
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestStepInit(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "step-init-*")
-	if err != nil {
-		t.Fatalf("error creating temp directory: %v", err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 
 	// Override tektonRoot for testing.
 	tektonRoot = tmp
