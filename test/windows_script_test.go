@@ -1,3 +1,4 @@
+//go:build e2e && windows_e2e
 // +build e2e,windows_e2e
 
 /*

@@ -1,3 +1,4 @@
+//go:build conformance || e2e || examples
 // +build conformance e2e examples
 
 /*
