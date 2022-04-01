@@ -1198,112 +1198,97 @@ func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr
 		logger.Errorf("could not list TaskRuns %#v", err)
 		return err
 	}
-	updatePipelineRunStatusFromTaskRuns(ctx, logger, pr, taskRuns)
-
 	runs, err := c.runLister.Runs(pr.Namespace).List(k8slabels.SelectorFromSet(pipelineRunLabels))
 	if err != nil {
 		logger.Errorf("could not list Runs %#v", err)
 		return err
 	}
-	updatePipelineRunStatusFromRuns(ctx, logger, pr, runs)
+
+	c.updatePipelineRunStatusFromSlices(ctx, logger, pr, taskRuns, runs)
 
 	return nil
 }
 
-// updatePipelineRunStatusFromTaskRuns takes a PipelineRun and list of TaskRuns within that PipelineRun, and updates the
-// PipelineRun's .Status.TaskRuns and/or .Status.ChildReferences, depending on the value of the "embedded-status" feature
-// flag, with information about each of the given TaskRuns, including ensuring that any (deprecated) condition checks are
-// represented.
-func updatePipelineRunStatusFromTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun) {
-	// If no TaskRun was found, nothing to be done. We never remove taskruns from the status
-	if len(trs) == 0 {
-		return
-	}
+func (c *Reconciler) updatePipelineRunStatusFromSlices(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, taskRuns []*v1beta1.TaskRun, runs []*v1alpha1.Run) {
+	taskNameByPipelineTask := make(map[string]string)
 
 	cfg := config.FromContextOrDefaults(ctx)
 	fullEmbedded := cfg.FeatureFlags.EmbeddedStatus == config.FullEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus
 	minimalEmbedded := cfg.FeatureFlags.EmbeddedStatus == config.MinimalEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus
 
+	if minimalEmbedded {
+		taskNameByPipelineTask = updatePipelineRunStatusFromChildRefs(logger, pr, taskRuns, runs)
+	}
+	if fullEmbedded {
+		updatePipelineRunStatusFromTaskRuns(logger, pr, taskRuns, taskNameByPipelineTask)
+		updatePipelineRunStatusFromRuns(logger, pr, runs)
+	}
+}
+
+// updatePipelineRunStatusFromTaskRuns takes a PipelineRun, a list of TaskRuns within that PipelineRun, and a map of
+// existing PipelineTask names to TaskRun (or Run) names, and updates the PipelineRun's .Status.TaskRuns, including
+// ensuring that any (deprecated) condition checks are represented.
+func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun, taskRunNameByPipelineTask map[string]string) {
+	// If no TaskRun was found, nothing to be done. We never remove taskruns from the status
+	if len(trs) == 0 {
+		return
+	}
+
+	if taskRunNameByPipelineTask == nil {
+		taskRunNameByPipelineTask = make(map[string]string)
+	}
+
 	// Store a list of Condition TaskRuns for each PipelineTask (by name)
 	conditionTaskRuns := make(map[string][]*v1beta1.TaskRun)
-	// Map PipelineTask names to TaskRun names that were already in the status
-	taskRunByPipelineTask := make(map[string]string)
-	// Map PipelineTask names to TaskRun child references that were already in the status
-	childRefByPipelineTask := make(map[string]*v1beta1.ChildStatusReference)
 
-	if fullEmbedded {
-		if pr.Status.TaskRuns != nil {
-			for taskRunName, pipelineRunTaskRunStatus := range pr.Status.TaskRuns {
-				taskRunByPipelineTask[pipelineRunTaskRunStatus.PipelineTaskName] = taskRunName
-			}
-		} else {
-			pr.Status.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+	if pr.Status.TaskRuns != nil {
+		for taskRunName, pipelineRunTaskRunStatus := range pr.Status.TaskRuns {
+			taskRunNameByPipelineTask[pipelineRunTaskRunStatus.PipelineTaskName] = taskRunName
 		}
-	}
-	if minimalEmbedded {
-		for i := range pr.Status.ChildReferences {
-			childRefByPipelineTask[pr.Status.ChildReferences[i].PipelineTaskName] = &pr.Status.ChildReferences[i]
-		}
+	} else {
+		pr.Status.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
 	}
 
 	// Loop over all the TaskRuns associated to Tasks
-	for _, taskrun := range trs {
+	for _, tr := range trs {
 		// Only process TaskRuns that are owned by this PipelineRun.
 		// This skips TaskRuns that are indirectly created by the PipelineRun (e.g. by custom tasks).
-		if len(taskrun.OwnerReferences) < 1 || taskrun.OwnerReferences[0].UID != pr.ObjectMeta.UID {
-			logger.Debugf("Found a TaskRun %s that is not owned by this PipelineRun", taskrun.Name)
+		if len(tr.OwnerReferences) < 1 || tr.OwnerReferences[0].UID != pr.ObjectMeta.UID {
+			logger.Debugf("Found a TaskRun %s that is not owned by this PipelineRun", tr.Name)
 			continue
 		}
-		lbls := taskrun.GetLabels()
+		lbls := tr.GetLabels()
 		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
 		if _, ok := lbls[pipeline.ConditionCheckKey]; ok {
 			// Save condition for looping over them after this
 			if _, ok := conditionTaskRuns[pipelineTaskName]; !ok {
-				// If it's the first condition taskrun, initialise the slice
+				// If it's the first condition tr, initialise the slice
 				conditionTaskRuns[pipelineTaskName] = []*v1beta1.TaskRun{}
 			}
-			conditionTaskRuns[pipelineTaskName] = append(conditionTaskRuns[pipelineTaskName], taskrun)
+			conditionTaskRuns[pipelineTaskName] = append(conditionTaskRuns[pipelineTaskName], tr)
 			continue
 		}
 
-		if _, ok := pr.Status.TaskRuns[taskrun.Name]; fullEmbedded && !ok {
-			// This taskrun was missing from the status.
+		if _, ok := pr.Status.TaskRuns[tr.Name]; !ok {
+			// This tr was missing from the status.
 			// Add it without conditions, which are handled in the next loop
-			logger.Infof("Found a TaskRun %s that was missing from the PipelineRun status", taskrun.Name)
-			pr.Status.TaskRuns[taskrun.Name] = &v1beta1.PipelineRunTaskRunStatus{
+			logger.Infof("Found a TaskRun %s that was missing from the PipelineRun status", tr.Name)
+			pr.Status.TaskRuns[tr.Name] = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: pipelineTaskName,
-				Status:           &taskrun.Status,
+				Status:           &tr.Status,
 				ConditionChecks:  nil,
 			}
 			// Since this was recovered now, add it to the map, or it might be overwritten
-			taskRunByPipelineTask[pipelineTaskName] = taskrun.Name
-		}
-		if _, ok := childRefByPipelineTask[pipelineTaskName]; minimalEmbedded && !ok {
-			// This taskrun was missing from the status.
-			// Add it without conditions, which are handled in the next loop
-			logger.Infof("Found a TaskRun %s that was missing from the PipelineRun status", taskrun.Name)
-
-			// Since this was recovered now, add it to the map, or it might be overwritten
-			childRefByPipelineTask[pipelineTaskName] = &v1beta1.ChildStatusReference{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: v1beta1.SchemeGroupVersion.String(),
-					Kind:       "TaskRun",
-				},
-				Name:             taskrun.Name,
-				PipelineTaskName: pipelineTaskName,
-			}
+			taskRunNameByPipelineTask[pipelineTaskName] = tr.Name
 		}
 	}
 	// Then loop by pipelinetask name over all the TaskRuns associated to Conditions
 	for pipelineTaskName, actualConditionTaskRuns := range conditionTaskRuns {
 		ok := false
 		// Default the taskRunName to be a generated one - this will be overridden if we already find pipelineTaskName
-		// in either childRefByPipelineTask or taskRunByPipelineTask.
+		// in either childRefByPipelineTask or taskRunNameByPipelineTask.
 		taskRunName := ""
-		cr, inChildRef := childRefByPipelineTask[pipelineTaskName]
-		if inChildRef {
-			taskRunName = cr.Name
-		} else if taskRunName, ok = taskRunByPipelineTask[pipelineTaskName]; !ok {
+		if taskRunName, ok = taskRunNameByPipelineTask[pipelineTaskName]; !ok {
 			// The pipelineTask associated to the conditions was not found in the pipelinerun
 			// status. This means that the conditions were orphaned, and never added to the
 			// status. In this case we need to generate a new TaskRun name, that will be used
@@ -1311,18 +1296,7 @@ func updatePipelineRunStatusFromTaskRuns(ctx context.Context, logger *zap.Sugare
 			taskRunName = resources.GetTaskRunName(pr.Status.TaskRuns, pr.Status.ChildReferences, pipelineTaskName, pr.Name)
 		}
 
-		if _, ok := childRefByPipelineTask[pipelineTaskName]; !ok && minimalEmbedded {
-			childRefByPipelineTask[pipelineTaskName] = &v1beta1.ChildStatusReference{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: v1beta1.SchemeGroupVersion.String(),
-					Kind:       "TaskRun",
-				},
-				Name:             taskRunName,
-				PipelineTaskName: pipelineTaskName,
-			}
-		}
-
-		if _, ok := taskRunByPipelineTask[pipelineTaskName]; !ok && fullEmbedded {
+		if _, ok := pr.Status.TaskRuns[taskRunName]; !ok {
 			pr.Status.TaskRuns[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: pipelineTaskName,
 				Status:           nil,
@@ -1330,45 +1304,36 @@ func updatePipelineRunStatusFromTaskRuns(ctx context.Context, logger *zap.Sugare
 			}
 		}
 
-		updateConditionChecksForTaskRun(logger, pr, childRefByPipelineTask, actualConditionTaskRuns, pipelineTaskName, taskRunName, fullEmbedded, minimalEmbedded)
-	}
-	if minimalEmbedded {
-		var newChildRefs []v1beta1.ChildStatusReference
-		for k := range childRefByPipelineTask {
-			newChildRefs = append(newChildRefs, *childRefByPipelineTask[k])
+		// Add any new condition checks which we've found but weren't already present to the status's condition checks map
+		for k, v := range getNewConditionChecksForTaskRun(logger, pr.Status.TaskRuns[taskRunName].ConditionChecks, actualConditionTaskRuns) {
+			if pr.Status.TaskRuns[taskRunName].ConditionChecks == nil {
+				pr.Status.TaskRuns[taskRunName].ConditionChecks = make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
+			}
+
+			pr.Status.TaskRuns[taskRunName].ConditionChecks[k] = v
 		}
-		pr.Status.ChildReferences = newChildRefs
 	}
 }
 
-func updateConditionChecksForTaskRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, childRefByPipelineTask map[string]*v1beta1.ChildStatusReference,
-	actualConditionTaskRuns []*v1beta1.TaskRun, pipelineTaskName string, taskRunName string, fullEmbedded, minimalEmbedded bool) {
-	// Build the map of condition checks for the taskrun
-	// If there were no other condition, initialise the map
-	conditionChecks := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
-	// Instantiate the slice of condition checks for ChildReferences as well.
-	var conditionsSlice []*v1beta1.PipelineRunChildConditionCheckStatus
+// getNewConditionChecksForTaskRun returns a map of condition task name to condition check status for each condition TaskRun
+// provided which isn't already present in the existing map of condition checks.
+func getNewConditionChecksForTaskRun(logger *zap.SugaredLogger, existingChecks map[string]*v1beta1.PipelineRunConditionCheckStatus,
+	actualConditionTaskRuns []*v1beta1.TaskRun) map[string]*v1beta1.PipelineRunConditionCheckStatus {
+	// If we don't have any condition task runs to process, just return nil.
+	if len(actualConditionTaskRuns) == 0 {
+		return nil
+	}
 
-	if _, ok := childRefByPipelineTask[pipelineTaskName]; ok && minimalEmbedded {
-		for i := range childRefByPipelineTask[pipelineTaskName].ConditionChecks {
-			cc := childRefByPipelineTask[pipelineTaskName].ConditionChecks[i]
-			conditionChecks[cc.ConditionCheckName] = &cc.PipelineRunConditionCheckStatus
-		}
-	} else if fullEmbedded {
-		conditionChecks = pr.Status.TaskRuns[taskRunName].ConditionChecks
-	}
-	if conditionChecks == nil {
-		conditionChecks = make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
-	}
+	newChecks := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
 
 	for i, foundTaskRun := range actualConditionTaskRuns {
 		lbls := foundTaskRun.GetLabels()
-		if _, ok := conditionChecks[foundTaskRun.Name]; !ok {
+		if _, ok := existingChecks[foundTaskRun.Name]; !ok {
 			// The condition check was not found, so we need to add it
 			// We only add the condition name, the status can now be gathered by the
 			// normal reconcile process
 			if conditionName, ok := lbls[pipeline.ConditionNameKey]; ok {
-				conditionChecks[foundTaskRun.Name] = &v1beta1.PipelineRunConditionCheckStatus{
+				newChecks[foundTaskRun.Name] = &v1beta1.PipelineRunConditionCheckStatus{
 					ConditionName: fmt.Sprintf("%s-%s", conditionName, strconv.Itoa(i)),
 				}
 			} else {
@@ -1379,41 +1344,130 @@ func updateConditionChecksForTaskRun(logger *zap.SugaredLogger, pr *v1beta1.Pipe
 		}
 	}
 
-	if _, ok := childRefByPipelineTask[pipelineTaskName]; ok && minimalEmbedded {
-		for k, v := range conditionChecks {
-			conditionsSlice = append(conditionsSlice, &v1beta1.PipelineRunChildConditionCheckStatus{
-				PipelineRunConditionCheckStatus: *v,
-				ConditionCheckName:              k,
-			})
-		}
-		childRefByPipelineTask[pipelineTaskName].ConditionChecks = conditionsSlice
-	}
-
-	if fullEmbedded {
-		pr.Status.TaskRuns[taskRunName].ConditionChecks = conditionChecks
-	}
+	return newChecks
 }
 
-func updatePipelineRunStatusFromRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, runs []*v1alpha1.Run) {
+func updatePipelineRunStatusFromRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, runs []*v1alpha1.Run) {
 	// If no Run was found, nothing to be done. We never remove runs from the status
 	if len(runs) == 0 {
 		return
 	}
+	if pr.Status.Runs == nil {
+		pr.Status.Runs = make(map[string]*v1beta1.PipelineRunRunStatus)
+	}
 
-	cfg := config.FromContextOrDefaults(ctx)
-	fullEmbedded := cfg.FeatureFlags.EmbeddedStatus == config.FullEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus
-	minimalEmbedded := cfg.FeatureFlags.EmbeddedStatus == config.MinimalEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus
-
-	childRefByPipelineTask := make(map[string]v1beta1.ChildStatusReference)
-
-	if fullEmbedded {
-		if pr.Status.Runs == nil {
-			pr.Status.Runs = make(map[string]*v1beta1.PipelineRunRunStatus)
+	// Loop over all the Runs associated to Tasks
+	for _, run := range runs {
+		// Only process Runs that are owned by this PipelineRun.
+		// This skips Runs that are indirectly created by the PipelineRun (e.g. by custom tasks).
+		if len(run.OwnerReferences) < 1 && run.OwnerReferences[0].UID != pr.ObjectMeta.UID {
+			logger.Debugf("Found a Run %s that is not owned by this PipelineRun", run.Name)
+			continue
+		}
+		lbls := run.GetLabels()
+		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
+		if _, ok := pr.Status.Runs[run.Name]; !ok {
+			// This run was missing from the status.
+			pr.Status.Runs[run.Name] = &v1beta1.PipelineRunRunStatus{
+				PipelineTaskName: pipelineTaskName,
+				Status:           &run.Status,
+			}
 		}
 	}
-	if minimalEmbedded {
-		for _, cr := range pr.Status.ChildReferences {
-			childRefByPipelineTask[cr.PipelineTaskName] = cr
+}
+
+func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun, runs []*v1alpha1.Run) map[string]string {
+	// If no TaskRun or Run was found, nothing to be done. We never remove child references from the status.
+	// We do still return an empty map of TaskRun/Run names keyed by PipelineTask name for later functions.
+	if len(trs) == 0 && len(runs) == 0 {
+		return make(map[string]string)
+	}
+
+	// Store a list of Condition TaskRuns for each PipelineTask (by name)
+	conditionTaskRuns := make(map[string][]*v1beta1.TaskRun)
+	// Map PipelineTask names to TaskRun names that were already in the status
+	taskRunNameByPipelineTask := make(map[string]string)
+	// Map PipelineTask names to TaskRun child references that were already in the status
+	childRefByPipelineTask := make(map[string]*v1beta1.ChildStatusReference)
+
+	for i := range pr.Status.ChildReferences {
+		childRefByPipelineTask[pr.Status.ChildReferences[i].PipelineTaskName] = &pr.Status.ChildReferences[i]
+		taskRunNameByPipelineTask[pr.Status.ChildReferences[i].PipelineTaskName] = pr.Status.ChildReferences[i].Name
+	}
+
+	// Loop over all the TaskRuns associated to Tasks
+	for _, tr := range trs {
+		// Only process TaskRuns that are owned by this PipelineRun.
+		// This skips TaskRuns that are indirectly created by the PipelineRun (e.g. by custom tasks).
+		if len(tr.OwnerReferences) < 1 || tr.OwnerReferences[0].UID != pr.ObjectMeta.UID {
+			logger.Debugf("Found a TaskRun %s that is not owned by this PipelineRun", tr.Name)
+			continue
+		}
+		lbls := tr.GetLabels()
+		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
+		if _, ok := lbls[pipeline.ConditionCheckKey]; ok {
+			// Save condition for looping over them after this
+			if _, ok := conditionTaskRuns[pipelineTaskName]; !ok {
+				// If it's the first condition tr, initialise the slice
+				conditionTaskRuns[pipelineTaskName] = []*v1beta1.TaskRun{}
+			}
+			conditionTaskRuns[pipelineTaskName] = append(conditionTaskRuns[pipelineTaskName], tr)
+			continue
+		}
+
+		if _, ok := childRefByPipelineTask[pipelineTaskName]; !ok {
+			// This tr was missing from the status.
+			// Add it without conditions, which are handled in the next loop
+			logger.Infof("Found a TaskRun %s that was missing from the PipelineRun status", tr.Name)
+
+			// Since this was recovered now, add it to the map, or it might be overwritten
+			childRefByPipelineTask[pipelineTaskName] = &v1beta1.ChildStatusReference{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: v1beta1.SchemeGroupVersion.String(),
+					Kind:       "TaskRun",
+				},
+				Name:             tr.Name,
+				PipelineTaskName: pipelineTaskName,
+			}
+		}
+	}
+	// Then loop by pipelinetask name over all the TaskRuns associated to Conditions
+	for pipelineTaskName, actualConditionTaskRuns := range conditionTaskRuns {
+		ok := false
+		// Default the taskRunName to be a generated one - this will be overridden if we already find pipelineTaskName
+		// in either childRefByPipelineTask or taskRunNameByPipelineTask.
+		taskRunName := ""
+		cr, inChildRef := childRefByPipelineTask[pipelineTaskName]
+		if inChildRef {
+			taskRunName = cr.Name
+		} else if taskRunName, ok = taskRunNameByPipelineTask[pipelineTaskName]; !ok {
+			// The pipelineTask associated to the conditions was not found in the pipelinerun
+			// status. This means that the conditions were orphaned, and never added to the
+			// status. In this case we need to generate a new TaskRun name, that will be used
+			// to run the TaskRun if the conditions are passed.
+			taskRunName = resources.GetTaskRunName(pr.Status.TaskRuns, pr.Status.ChildReferences, pipelineTaskName, pr.Name)
+			taskRunNameByPipelineTask[pipelineTaskName] = taskRunName
+		}
+
+		if _, ok := childRefByPipelineTask[pipelineTaskName]; !ok {
+			childRefByPipelineTask[pipelineTaskName] = &v1beta1.ChildStatusReference{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: v1beta1.SchemeGroupVersion.String(),
+					Kind:       "TaskRun",
+				},
+				Name:             taskRunName,
+				PipelineTaskName: pipelineTaskName,
+			}
+			cr = childRefByPipelineTask[pipelineTaskName]
+		}
+
+		for k, v := range getNewConditionChecksForTaskRun(logger, cr.GetConditionChecksAsMap(), actualConditionTaskRuns) {
+			// Just append any new condition checks to the relevant ChildStatusReference.ConditionChecks.
+			childRefByPipelineTask[pipelineTaskName].ConditionChecks = append(childRefByPipelineTask[pipelineTaskName].ConditionChecks,
+				&v1beta1.PipelineRunChildConditionCheckStatus{
+					PipelineRunConditionCheckStatus: *v,
+					ConditionCheckName:              k,
+				})
 		}
 	}
 
@@ -1427,17 +1481,9 @@ func updatePipelineRunStatusFromRuns(ctx context.Context, logger *zap.SugaredLog
 		}
 		lbls := run.GetLabels()
 		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
-		if _, ok := pr.Status.Runs[run.Name]; !ok && fullEmbedded {
+		if _, ok := childRefByPipelineTask[run.Name]; !ok {
 			// This run was missing from the status.
-			pr.Status.Runs[run.Name] = &v1beta1.PipelineRunRunStatus{
-				PipelineTaskName: pipelineTaskName,
-				Status:           &run.Status,
-			}
-		}
-
-		if _, ok := childRefByPipelineTask[run.Name]; !ok && minimalEmbedded {
-			// This run was missing from the status.
-			childRefByPipelineTask[pipelineTaskName] = v1beta1.ChildStatusReference{
+			childRefByPipelineTask[pipelineTaskName] = &v1beta1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: v1alpha1.SchemeGroupVersion.String(),
 					Kind:       "Run",
@@ -1448,11 +1494,11 @@ func updatePipelineRunStatusFromRuns(ctx context.Context, logger *zap.SugaredLog
 		}
 	}
 
-	if minimalEmbedded {
-		var newChildRefs []v1beta1.ChildStatusReference
-		for _, v := range childRefByPipelineTask {
-			newChildRefs = append(newChildRefs, v)
-		}
-		pr.Status.ChildReferences = newChildRefs
+	var newChildRefs []v1beta1.ChildStatusReference
+	for k := range childRefByPipelineTask {
+		newChildRefs = append(newChildRefs, *childRefByPipelineTask[k])
 	}
+	pr.Status.ChildReferences = newChildRefs
+
+	return taskRunNameByPipelineTask
 }

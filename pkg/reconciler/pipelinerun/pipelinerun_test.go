@@ -7373,16 +7373,12 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 			t.Run(fmt.Sprintf("%s-with-%s-embedded-status", tc.prName, embeddedVal), func(t *testing.T) {
 				logger := logtesting.TestLogger(t)
 
-				ctx := config.ToContext(context.Background(), &config.Config{
-					FeatureFlags: &config.FeatureFlags{EmbeddedStatus: embeddedVal},
-				})
-
 				pr := &v1beta1.PipelineRun{
 					ObjectMeta: metav1.ObjectMeta{Name: tc.prName, UID: prUID},
 					Status:     prStatusForEmbeddedStatus(tc.prStatus, embeddedVal),
 				}
 
-				updatePipelineRunStatusFromTaskRuns(ctx, logger, pr, tc.trs)
+				updatePipelineRunStatusFromTaskRuns(logger, pr, tc.trs, nil)
 				actualPrStatus := pr.Status
 
 				expectedPRStatus := prStatusForEmbeddedStatus(tc.expectedPrStatus, embeddedVal)
