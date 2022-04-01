@@ -34,6 +34,7 @@ type WhenExpression struct {
 
 	// Values is an array of strings, which is compared against the input, for guard checking
 	// It must be non-empty
+	// +listType=atomic
 	Values []string `json:"values"`
 }
 

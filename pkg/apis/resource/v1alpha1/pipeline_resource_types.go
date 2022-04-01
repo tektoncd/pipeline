@@ -95,9 +95,11 @@ type PipelineResourceSpec struct {
 	// +optional
 	Description string               `json:"description,omitempty"`
 	Type        PipelineResourceType `json:"type"`
-	Params      []ResourceParam      `json:"params"`
+	// +listType=atomic
+	Params []ResourceParam `json:"params"`
 	// Secrets to fetch to populate some of resource fields
 	// +optional
+	// +listType=atomic
 	SecretParams []SecretParam `json:"secrets,omitempty"`
 }
 

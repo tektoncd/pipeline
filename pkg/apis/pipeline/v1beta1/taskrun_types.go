@@ -38,6 +38,7 @@ type TaskRunSpec struct {
 	// +optional
 	Debug *TaskRunDebug `json:"debug,omitempty"`
 	// +optional
+	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	Resources *TaskRunResources `json:"resources,omitempty"`
@@ -60,18 +61,21 @@ type TaskRunSpec struct {
 	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
+	// +listType=atomic
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
 	// Overrides to apply to Steps in this TaskRun.
 	// If a field is specified in both a Step and a StepOverride,
 	// the value from the StepOverride will be used.
 	// This field is only supported when the alpha feature gate is enabled.
 	// +optional
+	// +listType=atomic
 	StepOverrides []TaskRunStepOverride `json:"stepOverrides,omitempty"`
 	// Overrides to apply to Sidecars in this TaskRun.
 	// If a field is specified in both a Sidecar and a SidecarOverride,
 	// the value from the SidecarOverride will be used.
 	// This field is only supported when the alpha feature gate is enabled.
 	// +optional
+	// +listType=atomic
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 }
 
@@ -87,20 +91,24 @@ const (
 // TaskRunDebug defines the breakpoint config for a particular TaskRun
 type TaskRunDebug struct {
 	// +optional
+	// +listType=atomic
 	Breakpoint []string `json:"breakpoint,omitempty"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
 	// +optional
+	// +listType=atomic
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 	// +optional
+	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 }
 
 // TaskRunOutputs holds the output values that this task was invoked with.
 type TaskRunOutputs struct {
 	// +optional
+	// +listType=atomic
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 }
 
@@ -192,29 +200,35 @@ type TaskRunStatusFields struct {
 
 	// Steps describes the state of each build step container.
 	// +optional
+	// +listType=atomic
 	Steps []StepState `json:"steps,omitempty"`
 
 	// CloudEvents describe the state of each cloud event requested via a
 	// CloudEventResource.
 	// +optional
+	// +listType=atomic
 	CloudEvents []CloudEventDelivery `json:"cloudEvents,omitempty"`
 
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
 	// +optional
+	// +listType=atomic
 	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
 
 	// Results from Resources built during the taskRun. currently includes
 	// the digest of build container images
 	// +optional
+	// +listType=atomic
 	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
 
 	// TaskRunResults are the list of results written out by the task's containers
 	// +optional
+	// +listType=atomic
 	TaskRunResults []TaskRunResult `json:"taskResults,omitempty"`
 
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
+	// +listType=atomic
 	Sidecars []SidecarState `json:"sidecars,omitempty"`
 
 	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
@@ -233,17 +247,17 @@ type TaskRunResult struct {
 // TaskRunStepOverride is used to override the values of a Step in the corresponding Task.
 type TaskRunStepOverride struct {
 	// The name of the Step to override.
-	Name string
+	Name string `json:"name"`
 	// The resource requirements to apply to the Step.
-	Resources corev1.ResourceRequirements
+	Resources corev1.ResourceRequirements `json:"resources"`
 }
 
 // TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.
 type TaskRunSidecarOverride struct {
 	// The name of the Sidecar to override.
-	Name string
+	Name string `json:"name"`
 	// The resource requirements to apply to the Sidecar.
-	Resources corev1.ResourceRequirements
+	Resources corev1.ResourceRequirements `json:"resources"`
 }
 
 // GetGroupVersionKind implements kmeta.OwnerRefable.

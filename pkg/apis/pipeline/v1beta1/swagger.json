@@ -17,7 +17,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.LocalObjectReference"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "nodeSelector": {
           "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
@@ -33,7 +34,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Toleration"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -67,7 +69,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.HostAlias"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "hostNetwork": {
           "description": "HostNetwork specifies whether the pod may use the node network namespace",
@@ -79,7 +82,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.LocalObjectReference"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "nodeSelector": {
           "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
@@ -111,7 +115,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Toleration"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
           "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
@@ -120,6 +125,7 @@
             "default": {},
             "$ref": "#/definitions/v1.Volume"
           },
+          "x-kubernetes-list-type": "atomic",
           "x-kubernetes-patch-merge-key": "name",
           "x-kubernetes-patch-strategy": "merge,retainKeys"
         }
@@ -197,7 +203,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1alpha1.ResourceParam"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "secrets": {
           "description": "Secrets to fetch to populate some of resource fields",
@@ -205,7 +212,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1alpha1.SecretParam"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "type": {
           "type": "string",
@@ -304,7 +312,8 @@
           "items": {
             "type": "string",
             "default": ""
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "stringVal": {
           "description": "Represents the stored type of ArrayOrString.",
@@ -329,7 +338,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/v1beta1.PipelineRunChildConditionCheckStatus"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "kind": {
           "type": "string"
@@ -348,7 +358,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WhenExpression"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -573,7 +584,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "resources": {
           "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.",
@@ -585,7 +597,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "sidecars": {
           "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
@@ -593,7 +606,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Sidecar"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "spec": {
           "description": "Spec is a specification of a custom task",
@@ -610,7 +624,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Step"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
           "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
@@ -618,7 +633,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "workspaces": {
           "description": "Workspaces are the volumes that this Task requires.",
@@ -626,7 +642,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceDeclaration"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -634,31 +651,34 @@
       "description": "InternalTaskModifier implements TaskModifier for resources that are built-in to Tekton Pipelines.",
       "type": "object",
       "required": [
-        "StepsToPrepend",
-        "StepsToAppend",
-        "Volumes"
+        "stepsToPrepend",
+        "stepsToAppend",
+        "volumes"
       ],
       "properties": {
-        "StepsToAppend": {
+        "stepsToAppend": {
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Step"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
-        "StepsToPrepend": {
+        "stepsToPrepend": {
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Step"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
-        "Volumes": {
+        "volumes": {
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1005,7 +1025,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WhenExpression"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1019,7 +1040,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "pipelineRef": {
           "$ref": "#/definitions/v1beta1.PipelineRef"
@@ -1037,7 +1059,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineResourceBinding"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "serviceAccountName": {
           "type": "string"
@@ -1048,7 +1071,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineRunSpecServiceAccountName"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "status": {
           "description": "Used for cancelling a pipelinerun (and maybe more later on)",
@@ -1060,7 +1084,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskRunSpec"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "timeout": {
           "description": "Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
@@ -1076,7 +1101,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceBinding"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1110,7 +1136,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ChildStatusReference"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "completionTime": {
           "description": "CompletionTime is the time the PipelineRun completed.",
@@ -1137,7 +1164,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineRunResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "pipelineSpec": {
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
@@ -1156,7 +1184,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.SkippedTask"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
@@ -1181,7 +1210,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ChildStatusReference"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "completionTime": {
           "description": "CompletionTime is the time the PipelineRun completed.",
@@ -1193,7 +1223,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineRunResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "pipelineSpec": {
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
@@ -1212,7 +1243,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.SkippedTask"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
@@ -1252,7 +1284,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WhenExpression"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1270,7 +1303,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTask"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "params": {
           "description": "Params declares a list of input parameters that must be supplied when this Pipeline is run.",
@@ -1278,7 +1312,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "resources": {
           "description": "Resources declares the names and types of the resources given to the Pipeline's tasks as inputs and outputs.",
@@ -1286,7 +1321,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineDeclaredResource"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "results": {
           "description": "Results are values that this pipeline can output once run",
@@ -1294,7 +1330,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "tasks": {
           "description": "Tasks declares the graph of Tasks that execute when this Pipeline is run.",
@@ -1302,7 +1339,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTask"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "workspaces": {
           "description": "Workspaces declares a set of named workspaces that are expected to be provided by a PipelineRun.",
@@ -1310,7 +1348,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineWorkspaceDeclaration"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1324,7 +1363,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskCondition"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "matrix": {
           "description": "Matrix declares parameters used to fan out this task.",
@@ -1332,7 +1372,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "name": {
           "description": "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",
@@ -1344,7 +1385,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "resources": {
           "description": "Resources declares the resources given to this task as inputs and outputs.",
@@ -1361,7 +1403,8 @@
           "items": {
             "type": "string",
             "default": ""
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "taskRef": {
           "description": "TaskRef is a reference to a task definition.",
@@ -1389,7 +1432,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspacePipelineTaskBinding"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1411,7 +1455,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "resources": {
           "description": "Resources declare the resources provided to this Condition as input",
@@ -1419,7 +1464,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskInputResource"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1437,7 +1483,8 @@
           "items": {
             "type": "string",
             "default": ""
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "name": {
           "description": "Name is the name of the PipelineResource as declared by the Task.",
@@ -1519,7 +1566,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskInputResource"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "outputs": {
           "description": "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
@@ -1527,7 +1575,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineTaskOutputResource"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1552,14 +1601,16 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunSidecarOverride"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "stepOverrides": {
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunStepOverride"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "taskPodTemplate": {
           "$ref": "#/definitions/pod.Template"
@@ -1595,16 +1646,16 @@
       "description": "ResolverParam is a single parameter passed to a resolver.",
       "type": "object",
       "required": [
-        "Name",
-        "Value"
+        "name",
+        "value"
       ],
       "properties": {
-        "Name": {
+        "name": {
           "description": "Name is the name of the parameter that will be passed to the resolver.",
           "type": "string",
           "default": ""
         },
-        "Value": {
+        "value": {
           "description": "Value is the string value of the parameter that will be passed to the resolver.",
           "type": "string",
           "default": ""
@@ -1625,7 +1676,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ResolverParam"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1633,15 +1685,15 @@
       "description": "ResultRef is a type that represents a reference to a task run result",
       "type": "object",
       "required": [
-        "PipelineTask",
-        "Result"
+        "pipelineTask",
+        "result"
       ],
       "properties": {
-        "PipelineTask": {
+        "pipelineTask": {
           "type": "string",
           "default": ""
         },
-        "Result": {
+        "result": {
           "type": "string",
           "default": ""
         }
@@ -1795,7 +1847,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceUsage"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1844,7 +1897,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WhenExpression"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2004,7 +2058,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceUsage"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2154,7 +2209,8 @@
           "items": {
             "type": "string",
             "default": ""
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "resourceRef": {
           "description": "ResourceRef is a reference to the instance of the actual PipelineResource that should be used",
@@ -2176,7 +2232,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskResource"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "outputs": {
           "description": "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
@@ -2184,7 +2241,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskResource"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2242,7 +2300,8 @@
           "items": {
             "type": "string",
             "default": ""
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2255,14 +2314,16 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "resources": {
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2303,7 +2364,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2317,7 +2379,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "outputs": {
           "description": "Outputs holds the inputs resources this task was invoked with",
@@ -2325,7 +2388,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2353,16 +2417,16 @@
       "description": "TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.",
       "type": "object",
       "required": [
-        "Name",
-        "Resources"
+        "name",
+        "resources"
       ],
       "properties": {
-        "Name": {
+        "name": {
           "description": "The name of the Sidecar to override.",
           "type": "string",
           "default": ""
         },
-        "Resources": {
+        "resources": {
           "description": "The resource requirements to apply to the Sidecar.",
           "default": {},
           "$ref": "#/definitions/v1.ResourceRequirements"
@@ -2381,7 +2445,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "podTemplate": {
           "description": "PodTemplate holds pod specific configuration",
@@ -2400,7 +2465,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunSidecarOverride"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "status": {
           "description": "Used for cancelling a taskrun (and maybe more later on)",
@@ -2412,7 +2478,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunStepOverride"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "taskRef": {
           "description": "no more than one of the TaskRef and TaskSpec may be specified.",
@@ -2431,7 +2498,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceBinding"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2456,7 +2524,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.CloudEventDelivery"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "completionTime": {
           "description": "CompletionTime is the time the build completed.",
@@ -2488,7 +2557,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineResourceResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "retriesStatus": {
           "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
@@ -2496,7 +2566,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunStatus"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "sidecars": {
           "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
@@ -2504,7 +2575,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.SidecarState"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
@@ -2516,7 +2588,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.StepState"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "taskResults": {
           "description": "TaskRunResults are the list of results written out by the task's containers",
@@ -2524,7 +2597,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
           "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
@@ -2545,7 +2619,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.CloudEventDelivery"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "completionTime": {
           "description": "CompletionTime is the time the build completed.",
@@ -2562,7 +2637,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.PipelineResourceResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "retriesStatus": {
           "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
@@ -2570,7 +2646,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunStatus"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "sidecars": {
           "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
@@ -2578,7 +2655,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.SidecarState"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
@@ -2590,7 +2668,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.StepState"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "taskResults": {
           "description": "TaskRunResults are the list of results written out by the task's containers",
@@ -2598,7 +2677,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskRunResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
           "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
@@ -2610,16 +2690,16 @@
       "description": "TaskRunStepOverride is used to override the values of a Step in the corresponding Task.",
       "type": "object",
       "required": [
-        "Name",
-        "Resources"
+        "name",
+        "resources"
       ],
       "properties": {
-        "Name": {
+        "name": {
           "description": "The name of the Step to override.",
           "type": "string",
           "default": ""
         },
-        "Resources": {
+        "resources": {
           "description": "The resource requirements to apply to the Step.",
           "default": {},
           "$ref": "#/definitions/v1.ResourceRequirements"
@@ -2640,7 +2720,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ParamSpec"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "resources": {
           "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.",
@@ -2652,7 +2733,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.TaskResult"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "sidecars": {
           "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
@@ -2660,7 +2742,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Sidecar"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "stepTemplate": {
           "description": "StepTemplate can be used as the basis for all step containers within the Task, so that the steps inherit settings on the base container.",
@@ -2672,7 +2755,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Step"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
           "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
@@ -2680,7 +2764,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.Volume"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         },
         "workspaces": {
           "description": "Workspaces are the volumes that this Task requires.",
@@ -2688,7 +2773,8 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspaceDeclaration"
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2735,7 +2821,8 @@
           "items": {
             "type": "string",
             "default": ""
-          }
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
