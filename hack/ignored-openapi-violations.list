@@ -1,0 +1,10 @@
+# This a list of API field name vs JSON tag rule violations which predate the addition of such violations causing failures.
+# They are in the specific order they are printed out by k8s.io/kube-openapi/cmd/openapi-gen.
+# No additional violations should be added to this ignored list.
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,CloudEventDeliveryState,Error
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,PipelineResourceResult,ResultType
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,PipelineTask,WhenExpressions
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,SidecarState,ContainerName
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,StepState,ContainerName
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,TaskRunStatusFields,TaskRunResults
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1,PipelineResourceSpec,SecretParams

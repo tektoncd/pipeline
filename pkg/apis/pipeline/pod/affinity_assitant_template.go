@@ -35,10 +35,12 @@ type AffinityAssistantTemplate struct {
 
 	// If specified, the pod's tolerations.
 	// +optional
+	// +listType=atomic
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
 	// +optional
+	// +listType=atomic
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 

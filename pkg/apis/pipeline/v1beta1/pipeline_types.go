@@ -92,22 +92,28 @@ type PipelineSpec struct {
 	Description string `json:"description,omitempty"`
 	// Resources declares the names and types of the resources given to the
 	// Pipeline's tasks as inputs and outputs.
+	// +listType=atomic
 	Resources []PipelineDeclaredResource `json:"resources,omitempty"`
 	// Tasks declares the graph of Tasks that execute when this Pipeline is run.
+	// +listType=atomic
 	Tasks []PipelineTask `json:"tasks,omitempty"`
 	// Params declares a list of input parameters that must be supplied when
 	// this Pipeline is run.
+	// +listType=atomic
 	Params []ParamSpec `json:"params,omitempty"`
 	// Workspaces declares a set of named workspaces that are expected to be
 	// provided by a PipelineRun.
 	// +optional
+	// +listType=atomic
 	Workspaces []PipelineWorkspaceDeclaration `json:"workspaces,omitempty"`
 	// Results are values that this pipeline can output once run
 	// +optional
+	// +listType=atomic
 	Results []PipelineResult `json:"results,omitempty"`
 	// Finally declares the list of Tasks that execute just before leaving the Pipeline
 	// i.e. either after all Tasks are finished executing successfully
 	// or after a failure which would result in ending the Pipeline
+	// +listType=atomic
 	Finally []PipelineTask `json:"finally,omitempty"`
 }
 
@@ -169,6 +175,7 @@ type PipelineTask struct {
 	// Conditions is a list of conditions that need to be true for the task to run
 	// Conditions are deprecated, use WhenExpressions instead
 	// +optional
+	// +listType=atomic
 	Conditions []PipelineTaskCondition `json:"conditions,omitempty"`
 
 	// WhenExpressions is a list of when expressions that need to be true for the task to run
@@ -182,6 +189,7 @@ type PipelineTask struct {
 	// RunAfter is the list of PipelineTask names that should be executed before
 	// this Task executes. (Used to force a specific ordering in graph execution.)
 	// +optional
+	// +listType=atomic
 	RunAfter []string `json:"runAfter,omitempty"`
 
 	// Resources declares the resources given to this task as inputs and
@@ -191,15 +199,18 @@ type PipelineTask struct {
 
 	// Parameters declares parameters passed to this task.
 	// +optional
+	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 
 	// Matrix declares parameters used to fan out this task.
 	// +optional
+	// +listType=atomic
 	Matrix []Param `json:"matrix,omitempty"`
 
 	// Workspaces maps workspaces from the pipeline spec to the workspaces
 	// declared in the Task.
 	// +optional
+	// +listType=atomic
 	Workspaces []WorkspacePipelineTaskBinding `json:"workspaces,omitempty"`
 
 	// Time after which the TaskRun times out. Defaults to 1 hour.
@@ -562,9 +573,11 @@ type PipelineTaskCondition struct {
 
 	// Params declare parameters passed to this Condition
 	// +optional
+	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 
 	// Resources declare the resources provided to this Condition as input
+	// +listType=atomic
 	Resources []PipelineTaskInputResource `json:"resources,omitempty"`
 }
 
@@ -590,9 +603,11 @@ type PipelineDeclaredResource struct {
 type PipelineTaskResources struct {
 	// Inputs holds the mapping from the PipelineResources declared in
 	// DeclaredPipelineResources to the input PipelineResources required by the Task.
+	// +listType=atomic
 	Inputs []PipelineTaskInputResource `json:"inputs,omitempty"`
 	// Outputs holds the mapping from the PipelineResources declared in
 	// DeclaredPipelineResources to the input PipelineResources required by the Task.
+	// +listType=atomic
 	Outputs []PipelineTaskOutputResource `json:"outputs,omitempty"`
 }
 
@@ -607,6 +622,7 @@ type PipelineTaskInputResource struct {
 	// From is the list of PipelineTask names that the resource has to come from.
 	// (Implies an ordering in the execution graph.)
 	// +optional
+	// +listType=atomic
 	From []string `json:"from,omitempty"`
 }
 

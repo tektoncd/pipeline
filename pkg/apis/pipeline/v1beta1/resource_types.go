@@ -64,9 +64,11 @@ var AllResourceTypes = resource.AllResourceTypes
 type TaskResources struct {
 	// Inputs holds the mapping from the PipelineResources declared in
 	// DeclaredPipelineResources to the input PipelineResources required by the Task.
+	// +listType=atomic
 	Inputs []TaskResource `json:"inputs,omitempty"`
 	// Outputs holds the mapping from the PipelineResources declared in
 	// DeclaredPipelineResources to the input PipelineResources required by the Task.
+	// +listType=atomic
 	Outputs []TaskResource `json:"outputs,omitempty"`
 }
 
@@ -82,8 +84,10 @@ type TaskResource struct {
 // TaskRunResources allows a TaskRun to declare inputs and outputs TaskResourceBinding
 type TaskRunResources struct {
 	// Inputs holds the inputs resources this task was invoked with
+	// +listType=atomic
 	Inputs []TaskResourceBinding `json:"inputs,omitempty"`
 	// Outputs holds the inputs resources this task was invoked with
+	// +listType=atomic
 	Outputs []TaskResourceBinding `json:"outputs,omitempty"`
 }
 
@@ -95,6 +99,7 @@ type TaskResourceBinding struct {
 	// The optional Path field corresponds to a path on disk at which the Resource can be found
 	// (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).
 	// +optional
+	// +listType=atomic
 	Paths []string `json:"paths,omitempty"`
 }
 
@@ -209,9 +214,12 @@ type TaskModifier interface {
 
 // InternalTaskModifier implements TaskModifier for resources that are built-in to Tekton Pipelines.
 type InternalTaskModifier struct {
-	StepsToPrepend []Step
-	StepsToAppend  []Step
-	Volumes        []v1.Volume
+	// +listType=atomic
+	StepsToPrepend []Step `json:"stepsToPrepend"`
+	// +listType=atomic
+	StepsToAppend []Step `json:"stepsToAppend"`
+	// +listType=atomic
+	Volumes []v1.Volume `json:"volumes"`
 }
 
 // GetStepsToPrepend returns a set of Steps to prepend to the Task.

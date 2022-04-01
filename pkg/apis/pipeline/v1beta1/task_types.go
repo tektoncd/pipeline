@@ -90,6 +90,7 @@ type TaskSpec struct {
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.
 	// +optional
+	// +listType=atomic
 	Params []ParamSpec `json:"params,omitempty"`
 
 	// Description is a user-facing description of the task that may be
@@ -99,10 +100,12 @@ type TaskSpec struct {
 
 	// Steps are the steps of the build; each step is run sequentially with the
 	// source mounted into /workspace.
+	// +listType=atomic
 	Steps []Step `json:"steps,omitempty"`
 
 	// Volumes is a collection of volumes that are available to mount into the
 	// steps of the build.
+	// +listType=atomic
 	Volumes []corev1.Volume `json:"volumes,omitempty"`
 
 	// StepTemplate can be used as the basis for all step containers within the
@@ -111,12 +114,15 @@ type TaskSpec struct {
 
 	// Sidecars are run alongside the Task's step containers. They begin before
 	// the steps start and end after the steps complete.
+	// +listType=atomic
 	Sidecars []Sidecar `json:"sidecars,omitempty"`
 
 	// Workspaces are the volumes that this Task requires.
+	// +listType=atomic
 	Workspaces []WorkspaceDeclaration `json:"workspaces,omitempty"`
 
 	// Results are values that this Task can output
+	// +listType=atomic
 	Results []TaskResult `json:"results,omitempty"`
 }
 
@@ -154,6 +160,7 @@ type Step struct {
 	// other Step or Sidecar that does not also request this Workspace will
 	// not have access to it.
 	// +optional
+	// +listType=atomic
 	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
 
 	// OnError defines the exiting behavior of a container on error
@@ -181,6 +188,7 @@ type Sidecar struct {
 	// other Step or Sidecar that does not also request this Workspace will
 	// not have access to it.
 	// +optional
+	// +listType=atomic
 	Workspaces []WorkspaceUsage `json:"workspaces,omitempty"`
 }
 
