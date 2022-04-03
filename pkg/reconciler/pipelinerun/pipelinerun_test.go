@@ -6776,6 +6776,17 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 		},
 	}
 
+	taskRunsWithNoOwner := []*v1beta1.TaskRun{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr-task-1-xxyyy",
+				Labels: map[string]string{
+					pipeline.PipelineTaskLabelKey: "task-1",
+				},
+			},
+		},
+	}
+
 	tcs := []struct {
 		prName           string
 		prStatus         v1beta1.PipelineRunStatus
@@ -6848,6 +6859,11 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 			prStatus:         prStatusWithEmptyTaskRuns,
 			trs:              taskRunsFromAnotherPR,
 			expectedPrStatus: prStatusWithEmptyTaskRuns,
+		}, {
+			prName:           "tr-with-no-owner",
+			prStatus:         prStatusWithEmptyTaskRuns,
+			trs:              taskRunsWithNoOwner,
+			expectedPrStatus: prStatusWithEmptyTaskRuns,
 		},
 	}
 
@@ -6875,6 +6891,211 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 				}
 				actualPrStatus.PipelineRunStatusFields.TaskRuns = fixedTaskRuns
 			}
+
+			if d := cmp.Diff(tc.expectedPrStatus, actualPrStatus); d != "" {
+				t.Errorf("expected the PipelineRun status to match %#v. Diff %s", tc.expectedPrStatus, diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestUpdatePipelineRunStatusFromRuns(t *testing.T) {
+
+	prUID := types.UID("11111111-1111-1111-1111-111111111111")
+	otherPrUID := types.UID("22222222-2222-2222-2222-222222222222")
+
+	prRunningStatus := duckv1beta1.Status{
+		Conditions: []apis.Condition{
+			{
+				Type:    "Succeeded",
+				Status:  "Unknown",
+				Reason:  "Running",
+				Message: "Not all Tasks in the Pipeline have finished executing",
+			},
+		},
+	}
+
+	prStatusWithSomeRuns := v1beta1.PipelineRunStatus{
+		Status: prRunningStatus,
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			Runs: map[string]*v1beta1.PipelineRunRunStatus{
+				"pr-run-1-xxyyy": {
+					PipelineTaskName: "run-1",
+					Status:           &v1alpha1.RunStatus{},
+				},
+				"pr-run-2-xxyyy": {
+					PipelineTaskName: "run-2",
+					Status:           nil,
+				},
+			},
+		},
+	}
+
+	prStatusWithAllRuns := v1beta1.PipelineRunStatus{
+		Status: prRunningStatus,
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			Runs: map[string]*v1beta1.PipelineRunRunStatus{
+				"pr-run-1-xxyyy": {
+					PipelineTaskName: "run-1",
+					Status:           &v1alpha1.RunStatus{},
+				},
+				"pr-run-2-xxyyy": {
+					PipelineTaskName: "run-2",
+					Status:           nil,
+				},
+				"pr-run-3-xxyyy": {
+					PipelineTaskName: "run-3",
+					Status:           &v1alpha1.RunStatus{},
+				},
+			},
+		},
+	}
+
+	prStatusWithEmptyRuns := v1beta1.PipelineRunStatus{
+		Status: prRunningStatus,
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			Runs: map[string]*v1beta1.PipelineRunRunStatus{},
+		},
+	}
+
+	prStatusRecoveredSimple := v1beta1.PipelineRunStatus{
+		Status: prRunningStatus,
+		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+			Runs: map[string]*v1beta1.PipelineRunRunStatus{
+				"pr-run-1-xxyyy": {
+					PipelineTaskName: "run-1",
+					Status:           &v1alpha1.RunStatus{},
+				},
+			},
+		},
+	}
+
+	allRuns := []*v1alpha1.Run{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr-run-1-xxyyy",
+				Labels: map[string]string{
+					pipeline.PipelineTaskLabelKey: "run-1",
+				},
+				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr-run-2-xxyyy",
+				Labels: map[string]string{
+					pipeline.PipelineTaskLabelKey: "run-2",
+				},
+				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr-run-3-xxyyy",
+				Labels: map[string]string{
+					pipeline.PipelineTaskLabelKey: "run-3",
+				},
+				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
+			},
+		},
+	}
+
+	runsFromAnotherPR := []*v1alpha1.Run{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr-run-1-xxyyy",
+				Labels: map[string]string{
+					pipeline.PipelineTaskLabelKey: "run-1",
+				},
+				OwnerReferences: []metav1.OwnerReference{{UID: otherPrUID}},
+			},
+		},
+	}
+
+	runsWithNoOwner := []*v1alpha1.Run{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pr-run-1-xxyyy",
+				Labels: map[string]string{
+					pipeline.PipelineTaskLabelKey: "run-1",
+				},
+			},
+		},
+	}
+
+	tcs := []struct {
+		prName           string
+		prStatus         v1beta1.PipelineRunStatus
+		runs             []*v1alpha1.Run
+		expectedPrStatus v1beta1.PipelineRunStatus
+	}{
+		{
+			prName:           "no-status-no-runs",
+			prStatus:         v1beta1.PipelineRunStatus{},
+			runs:             nil,
+			expectedPrStatus: v1beta1.PipelineRunStatus{},
+		}, {
+			prName:           "status-no-runs",
+			prStatus:         prStatusWithSomeRuns,
+			runs:             nil,
+			expectedPrStatus: prStatusWithSomeRuns,
+		}, {
+			prName:   "status-nil-runs",
+			prStatus: prStatusWithEmptyRuns,
+			runs: []*v1alpha1.Run{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pr-run-1-xxyyy",
+						Labels: map[string]string{
+							pipeline.PipelineTaskLabelKey: "run-1",
+						},
+						OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
+					},
+				},
+			},
+			expectedPrStatus: prStatusRecoveredSimple,
+		}, {
+			prName:   "status-missing-runs",
+			prStatus: prStatusWithSomeRuns,
+			runs: []*v1alpha1.Run{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pr-run-3-xxyyy",
+					Labels: map[string]string{
+						pipeline.PipelineTaskLabelKey: "run-3",
+					},
+					OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
+				},
+			}},
+			expectedPrStatus: prStatusWithAllRuns,
+		}, {
+			prName:           "status-matching-runs-pr",
+			prStatus:         prStatusWithAllRuns,
+			runs:             allRuns,
+			expectedPrStatus: prStatusWithAllRuns,
+		}, {
+			prName:           "run-from-another-pr",
+			prStatus:         prStatusWithEmptyRuns,
+			runs:             runsFromAnotherPR,
+			expectedPrStatus: prStatusWithEmptyRuns,
+		}, {
+			prName:           "run-with-no-owner",
+			prStatus:         prStatusWithEmptyRuns,
+			runs:             runsWithNoOwner,
+			expectedPrStatus: prStatusWithEmptyRuns,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.prName, func(t *testing.T) {
+			logger := logtesting.TestLogger(t)
+
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: tc.prName, UID: prUID},
+				Status:     tc.prStatus,
+			}
+
+			updatePipelineRunStatusFromRuns(logger, pr, tc.runs)
+			actualPrStatus := pr.Status
 
 			if d := cmp.Diff(tc.expectedPrStatus, actualPrStatus); d != "" {
 				t.Errorf("expected the PipelineRun status to match %#v. Diff %s", tc.expectedPrStatus, diff.PrintWantGot(d))

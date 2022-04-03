@@ -1297,7 +1297,7 @@ func updatePipelineRunStatusFromRuns(logger *zap.SugaredLogger, pr *v1beta1.Pipe
 	for _, run := range runs {
 		// Only process Runs that are owned by this PipelineRun.
 		// This skips Runs that are indirectly created by the PipelineRun (e.g. by custom tasks).
-		if len(run.OwnerReferences) < 1 && run.OwnerReferences[0].UID != pr.ObjectMeta.UID {
+		if len(run.OwnerReferences) < 1 || run.OwnerReferences[0].UID != pr.ObjectMeta.UID {
 			logger.Debugf("Found a Run %s that is not owned by this PipelineRun", run.Name)
 			continue
 		}
