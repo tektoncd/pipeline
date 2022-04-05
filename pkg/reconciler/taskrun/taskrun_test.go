@@ -63,6 +63,7 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -4333,6 +4334,124 @@ status:
 				if action.Matches("get", "pods") {
 					t.Errorf("expected the pod not to be retrieved because the TaskRun has no sidecars")
 				}
+			}
+		})
+	}
+}
+
+func TestReconcileOnTaskRunSign(t *testing.T) {
+	sc := &spire.MockClient{}
+
+	taskSt := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  "Build succeeded",
+		Message: "Build succeeded",
+	}
+	taskRunStartedUnsigned := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("taskrun-started-unsigned", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					*taskSt,
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: now.Add(-15 * time.Second)},
+			},
+		},
+	}
+	taskRunUnstarted := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("taskrun-unstarted", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					*taskSt,
+				},
+			},
+		},
+	}
+	taskRunStartedSigned := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("taskrun-started-signed", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					*taskSt,
+				},
+			},
+		},
+	}
+	if err := sc.AppendStatusInternalAnnotation(context.Background(), taskRunStartedSigned); err != nil {
+		t.Fatal("failed to sign test taskrun")
+	}
+
+	d := test.Data{
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"enable-spire": "true",
+			},
+		}},
+
+		TaskRuns: []*v1beta1.TaskRun{
+			taskRunStartedUnsigned, taskRunUnstarted, taskRunStartedSigned,
+		},
+		Tasks: []*v1beta1.Task{simpleTask},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	testCases := []struct {
+		name       string
+		tr         *v1beta1.TaskRun
+		verifiable bool
+	}{
+		{
+			name:       "sign/verify unstarted taskrun",
+			tr:         taskRunUnstarted,
+			verifiable: true,
+		},
+		{
+			name:       "sign/verify signed started taskrun",
+			tr:         taskRunStartedSigned,
+			verifiable: true,
+		},
+		{
+			name:       "sign/verify unsigned started taskrun should fail",
+			tr:         taskRunStartedUnsigned,
+			verifiable: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.tr)); err != nil {
+				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+			}
+			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.tr.Namespace).Get(testAssets.Ctx, tc.tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.tr.Name, err)
+			}
+			verified := sc.CheckSpireVerifiedFlag(newTr)
+			if verified != tc.verifiable {
+				t.Fatalf("expected verifiable: %v, got %v", tc.verifiable, verified)
 			}
 		})
 	}

@@ -26,7 +26,6 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -62,11 +61,6 @@ func hermeticTest(t *testing.T, spireEnabled bool) {
 	t.Parallel()
 	defer tearDown(ctx, t, c, namespace)
 
-	if spireEnabled {
-		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
-		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
-	}
-
 	tests := []struct {
 		desc       string
 		getTaskRun func(*testing.T, string, string, string) *v1beta1.TaskRun
@@ -98,6 +92,7 @@ func hermeticTest(t *testing.T, spireEnabled bool) {
 					t.Errorf("Error retrieving taskrun: %s", err)
 				}
 				spireShouldPassTaskRunResultsVerify(tr, t)
+				spireShouldPassSpireAnnotation(tr, t)
 			}
 
 			// now, run the task mode with hermetic mode
@@ -117,6 +112,7 @@ func hermeticTest(t *testing.T, spireEnabled bool) {
 					t.Errorf("Error retrieving taskrun: %s", err)
 				}
 				spireShouldFailTaskRunResultsVerify(tr, t)
+				spireShouldPassSpireAnnotation(tr, t)
 			}
 		})
 	}

@@ -81,11 +81,6 @@ func helmDeploytest(t *testing.T, spireEnabled bool) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	if spireEnabled {
-		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
-		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
-	}
-
 	t.Logf("Creating Git PipelineResource %s", sourceResourceName)
 	if _, err := c.PipelineResourceClient.Create(ctx, getGoHelloworldGitResource(t, sourceResourceName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", sourceResourceName, err)
@@ -134,6 +129,7 @@ func helmDeploytest(t *testing.T, spireEnabled bool) {
 		}
 		for _, taskrunItem := range taskrunList.Items {
 			spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+			spireShouldPassSpireAnnotation(&taskrunItem, t)
 		}
 	}
 

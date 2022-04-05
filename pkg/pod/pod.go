@@ -193,7 +193,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	readyImmediately := isPodReadyImmediately(*featureFlags, taskSpec.Sidecars)
-
 	// append credEntrypointArgs with entrypoint arg that contains if spire is enabled by configmap
 	commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, credEntrypointArgs...)
 

@@ -32,7 +32,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	corev1 "k8s.io/api/core/v1"
@@ -70,11 +69,6 @@ func taskrunFailureTest(t *testing.T, spireEnabled bool) {
 	defer tearDown(ctx, t, c, namespace)
 
 	taskRunName := helpers.ObjectNameForTest(t)
-
-	if spireEnabled {
-		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
-		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
-	}
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := parse.MustParseTask(t, fmt.Sprintf(`
@@ -120,6 +114,7 @@ spec:
 
 	if spireEnabled {
 		spireShouldFailTaskRunResultsVerify(taskrun, t)
+		spireShouldPassSpireAnnotation(taskrun, t)
 	}
 
 	expectedStepState := []v1beta1.StepState{{
@@ -192,10 +187,6 @@ func taskrunStatusTest(t *testing.T, spireEnabled bool) {
 	defer tearDown(ctx, t, c, namespace)
 
 	taskRunName := helpers.ObjectNameForTest(t)
-	if spireEnabled {
-		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
-		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
-	}
 
 	fqImageName := getTestImage(busyboxImage)
 
@@ -237,6 +228,7 @@ spec:
 
 	if spireEnabled {
 		spireShouldPassTaskRunResultsVerify(taskrun, t)
+		spireShouldPassSpireAnnotation(taskrun, t)
 	}
 
 	expectedStepState := []v1beta1.StepState{{
@@ -355,6 +347,7 @@ spec:
 
 	if spireEnabled {
 		spireShouldFailTaskRunResultsVerify(taskrun, t)
+		spireShouldFailSpireAnnotation(taskrun, t)
 	}
 
 	expectedStepState := []v1beta1.StepState{{

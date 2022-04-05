@@ -63,22 +63,22 @@ This feature relies on a SPIRE installation. This is how it integrates into the 
 ┌─────────────┐  Register TaskRun Workload Identity           ┌──────────┐
 │             ├──────────────────────────────────────────────►│          │
 │  Tekton     │                                               │  SPIRE   │
-│  Controller │◄───────────┐                                  │  Server  │
-│             │            │ Listen on TaskRun                │          │
-└────────────┬┘            │                                  └──────────┘
- ▲           │     ┌───────┴───────────────────────────────┐     ▲
- │           │     │           Tekton TaskRun              │     │
- │           │     └───────────────────────────────────────┘     │
- │  Configure│                                          ▲        │ Attest
- │  Pod &    │                                          │        │   +
- │  check    │                                          │        │ Request
- │  ready    │     ┌───────────┐                        │        │ SVIDs
- │           └────►│  TaskRun  ├────────────────────────┘        │
- │                 │  Pod      │                                 │
- │                 └───────────┘     TaskRun Entrypointer        │
- │                   ▲               Sign Result and update      │
- │ Get               │ Get SVID      TaskRun status with         │
- │ SPIRE             │               signature + cert            │
+│  Pipelines  │◄───────────┐                                  │  Server  │
+│  Controller │            │ Listen on TaskRun                │          │
+└────────────┬┘◄┐          │                                  └──────────┘
+ ▲           │  │  ┌───────┴───────────────────────────────┐     ▲
+ │           │  │  │           Tekton TaskRun              │     │
+ │           │  │  └───────────────────────────────────────┘     │
+ │  Configure│  │                                                │ Attest
+ │  Pod &    │  └─────────────────┐ TaskRun Entrypointer         │   +
+ │  check    │                    │ Sign Result and update       │ Request
+ │  ready    │     ┌───────────┐  │ the status with the          │ SVIDs
+ │           └────►│  TaskRun  ├──┘ signature + cert             │
+ │                 │  Pod      │    which will be used by        │
+ │                 └───────────┘    tekton-pipelines-controller  │
+ │                   ▲              to update TaskRun.           │
+ │ Get               │ Get SVID                                  │
+ │ SPIRE             │                                           │
  │ server            │                                           │
  │ Credentials       │                                           ▼
 ┌┴───────────────────┴─────────────────────────────────────────────────────┐
@@ -280,6 +280,101 @@ The signatures are being verified by the Tekton controller, the process of verif
   - For each of the items in the results, verify its content against its associated `.sig` field
 
 
+# TaskRun Status attestations
+
+Each TaskRun status that is written by the tekton-pipelines-controller will be signed to ensure that there is no external
+tampering of the TaskRun status. Upon each retrieval of the TaskRun, the tekton-pipelines-controller checks if the status is initialized,
+and that the signature validates the current status.
+The signature and SVID will be stored as annotations on the TaskRun Status field, and can be verified by a client.
+
+The verification is done on every consumption of the TaskRun except when the TaskRun is uninitialized. When uninitialized, the 
+tekton-pipelines-controller is not influenced by fields in the status and thus will not sign incorrect reflections of the TaskRun.
+
+The spec and TaskRun annotations/labels are not signed when there are valid interactions from other controllers or users (i.e. cancelling taskrun).
+Editing the object annotations/labels or spec will not result in any unverifiable outcome of the status field.
+
+As the TaskRun progresses, the Pipeline Controller will reconcile the TaskRun object and continually verify the current hash against the `tekton.dev/status-hash-sig` before updating the hash to match the new status and creating a new signature.
+
+An example TaskRun annotations would be:
+
+```console
+$ tkn tr describe non-falsifiable-provenance -oyaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  annotations:
+    pipeline.tekton.dev/release: 3ee99ec
+  creationTimestamp: "2022-03-04T19:10:46Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/managed-by: tekton-pipelines
+  name: non-falsifiable-provenance
+  namespace: default
+  resourceVersion: "23088242"
+  uid: 548ebe99-d40b-4580-a9bc-afe80915e22e
+spec:
+  serviceAccountName: default
+  taskSpec:
+    results:
+    - description: ""
+      name: foo
+    - description: ""
+      name: bar
+    steps:
+    - image: ubuntu
+      name: non-falsifiable
+      resources: {}
+      script: |
+        #!/usr/bin/env bash
+        sleep 30
+        printf "%s" "hello" > "$(results.foo.path)"
+        printf "%s" "world" > "$(results.bar.path)"
+  timeout: 1m0s
+status:
+  annotations:
+    tekton.dev/controller-svid: |
+      -----BEGIN CERTIFICATE-----
+      MIIB7jCCAZSgAwIBAgIRAI8/08uXSn9tyv7cRN87uvgwCgYIKoZIzj0EAwIwHjEL
+      MAkGA1UEBhMCVVMxDzANBgNVBAoTBlNQSUZGRTAeFw0yMjAzMDQxODU0NTlaFw0y
+      MjAzMDQxOTU1MDlaMB0xCzAJBgNVBAYTAlVTMQ4wDAYDVQQKEwVTUElSRTBZMBMG
+      ByqGSM49AgEGCCqGSM49AwEHA0IABL+e9OjkMv+7XgMWYtrzq0ESzJi+znA/Pm8D
+      nvApAHg3/rEcNS8c5LgFFRzDfcs9fxGSSkL1JrELzoYul1Q13XejgbMwgbAwDgYD
+      VR0PAQH/BAQDAgOoMB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAMBgNV
+      HRMBAf8EAjAAMB0GA1UdDgQWBBR+ma+yZfo092FKIM4F3yhEY8jgDDAfBgNVHSME
+      GDAWgBRKiCg5+YdTaQ+5gJmvt2QcDkQ6KjAxBgNVHREEKjAohiZzcGlmZmU6Ly9l
+      eGFtcGxlLm9yZy90ZWt0b24vY29udHJvbGxlcjAKBggqhkjOPQQDAgNIADBFAiEA
+      8xVWrQr8+i6yMLDm9IUjtvTbz9ofjSsWL6c/+rxmmRYCIBTiJ/HW7di3inSfxwqK
+      5DKyPrKoR8sq8Ne7flkhgbkg
+      -----END CERTIFICATE-----
+    tekton.dev/status-hash: 76692c9dcd362f8a6e4bda8ccb4c0937ad16b0d23149ae256049433192892511
+    tekton.dev/status-hash-sig: MEQCIFv2bW0k4g0Azx+qaeZjUulPD8Ma3uCUn0tXQuuR1FaEAiBHQwN4XobOXmC2nddYm04AZ74YubUyNl49/vnbnR/HcQ==
+  completionTime: "2022-03-04T19:11:22Z"
+  conditions:
+  - lastTransitionTime: "2022-03-04T19:11:22Z"
+    message: All Steps have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  - lastTransitionTime: "2022-03-04T19:11:22Z"
+    message: Spire verified
+    reason: TaskRunResultsVerified
+    status: "True"
+    type: SignedResultsVerified
+  podName: non-falsifiable-provenance-pod
+  startTime: "2022-03-04T19:10:46Z"
+  steps:
+  ...
+  <TRUNCATED>
+```
+
+## How is the status being verified
+
+The signature are being verified by the Tekton controller, the process of verification is as follows:
+
+- Verify status-hash fields
+  - verify `tekton.dev/status-hash` content against its associated `tekton.dev/status-hash-sig` field. If status hash does 
+    not match invalidate the `tekton.dev/not-verified = yes` annotation will be added
+
 ## Further Details
 
-To learn more about SPIRE TaskRun attestations, check out the [TEP](https://github.com/tektoncd/community/blob/main/teps/0089-nonfalsifiable-provenance-support.md).
+To learn more about SPIRE attestations, check out the [TEP](https://github.com/tektoncd/community/blob/main/teps/0089-nonfalsifiable-provenance-support.md).

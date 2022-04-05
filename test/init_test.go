@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -289,4 +290,30 @@ func spireShouldPassTaskRunResultsVerify(tr *v1beta1.TaskRun, t *testing.T) {
 		t.Errorf("Taskrun `%s` status condition not verified. Spire taskrun results verification failure", tr.Name)
 	}
 	t.Logf("Taskrun `%s` status results condition verified by spire as true, which is valid", tr.Name)
+}
+
+// Verifies if the taskrun status annotation does not contain "not-verified"
+func spireShouldPassSpireAnnotation(tr *v1beta1.TaskRun, t *testing.T) {
+	if _, notVerified := tr.Status.Annotations[spire.NotVerifiedAnnotation]; notVerified {
+		t.Errorf("Taskrun `%s` status not verified. Spire annotation tekton.dev/not-verified = yes. Failed spire verification", tr.Name)
+	}
+	t.Logf("Taskrun `%s` status spire annotation verified", tr.Name)
+}
+
+// Verifies if the taskrun status annotation does contain "not-verified"
+func spireShouldFailSpireAnnotation(tr *v1beta1.TaskRun, t *testing.T) {
+	_, notVerified := tr.Status.Annotations[spire.NotVerifiedAnnotation]
+	_, hash := tr.Status.Annotations[spire.TaskRunStatusHashAnnotation]
+	if !notVerified && hash {
+		t.Errorf("Taskrun `%s` status should be not verified missing spire Annotation tekton.dev/not-verified = yes", tr.Name)
+	}
+	t.Logf("Taskrun `%s` status spire annotation not verified, which is valid", tr.Name)
+}
+
+// Verifies the taskrun status annotation should not exist
+func spireZeroSpireAnnotation(tr *v1beta1.TaskRun, t *testing.T) {
+	if len(tr.Status.Annotations) > 0 {
+		t.Errorf("Taskrun `%s` status should not have any spire annotations", tr.Name)
+	}
+	t.Logf("Taskrun `%s` status spire annotation not found, which is valid", tr.Name)
 }

@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/parse"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,10 +67,6 @@ func entryPointerTest(t *testing.T, spireEnabled bool) {
 	defer tearDown(ctx, t, c, namespace)
 
 	epTaskRunName := helpers.ObjectNameForTest(t)
-	if spireEnabled {
-		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
-		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
-	}
 
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 	if _, err := c.TaskRunClient.Create(ctx, parse.MustParseTaskRun(t, fmt.Sprintf(`
@@ -102,6 +97,7 @@ spec:
 			t.Errorf("Error retrieving taskrun: %s", err)
 		}
 		spireShouldPassTaskRunResultsVerify(tr, t)
+		spireShouldPassSpireAnnotation(tr, t)
 	}
 
 }

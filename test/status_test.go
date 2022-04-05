@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/parse"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,11 +64,6 @@ func taskRunPipelineRunStatus(t *testing.T, spireEnabled bool) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	if spireEnabled {
-		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
-		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
-	}
-
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
@@ -104,6 +98,7 @@ spec:
 			t.Errorf("Error retrieving taskrun: %s", err)
 		}
 		spireShouldFailTaskRunResultsVerify(tr, t)
+		spireShouldPassSpireAnnotation(tr, t)
 	}
 
 	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
@@ -140,6 +135,7 @@ spec:
 		}
 		for _, taskrunItem := range taskrunList.Items {
 			spireShouldFailTaskRunResultsVerify(&taskrunItem, t)
+			spireShouldPassSpireAnnotation(&taskrunItem, t)
 		}
 	}
 
