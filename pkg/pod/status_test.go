@@ -17,12 +17,17 @@ limitations under the License.
 package pod
 
 import (
+	"context"
+	"encoding/json"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/spire"
+	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,6 +37,353 @@ import (
 )
 
 var ignoreVolatileTime = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
+
+func TestMakeTaskRunStatusVerify(t *testing.T) {
+	sc := &spire.MockClient{}
+	processConditions := cmp.Transformer("sortConditionsAndFilterMessages", func(in []apis.Condition) []apis.Condition {
+		for i := range in {
+			in[i].Message = ""
+		}
+		sort.Slice(in, func(i, j int) bool {
+			return in[i].Type < in[j].Type
+		})
+		return in
+	})
+
+	terminationMessageTrans := cmp.Transformer("sortAndPrint", func(in *corev1.ContainerStateTerminated) *corev1.ContainerStateTerminated {
+		prs, err := termination.ParseMessage(nil, in.Message)
+		if err != nil {
+			return in
+		}
+		sort.Slice(prs, func(i, j int) bool {
+			return prs[i].Key < prs[j].Key
+		})
+
+		b, _ := json.Marshal(prs)
+		in.Message = string(b)
+
+		return in
+	})
+
+	// test awaiting results - OK
+	// results + test signed termination message - OK
+	// results + test unsigned termination message - OK
+
+	// no task results, no result + test signed termiantion message
+	// no task results, no result + test unsigned termiantion message
+	// force task result, no result + test unsigned termiantion message
+
+	statusSRVUnknown := func() duckv1beta1.Status {
+		status := statusRunning()
+		status.Conditions = append(status.Conditions, apis.Condition{
+			Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+			Status:  corev1.ConditionUnknown,
+			Reason:  v1beta1.AwaitingTaskRunResults.String(),
+			Message: "Waiting upon TaskRun results and signatures to verify",
+		})
+		return status
+	}
+
+	statusSRVVerified := func() duckv1beta1.Status {
+		status := statusSuccess()
+		status.Conditions = append(status.Conditions, apis.Condition{
+			Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+			Status:  corev1.ConditionTrue,
+			Reason:  v1beta1.TaskRunReasonResultsVerified.String(),
+			Message: "Successfully verified all spire signed taskrun results",
+		})
+		return status
+	}
+
+	statusSRVUnverified := func() duckv1beta1.Status {
+		status := statusSuccess()
+		status.Conditions = append(status.Conditions, apis.Condition{
+			Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonsResultsVerificationFailed.String(),
+			Message: "",
+		})
+		return status
+	}
+
+	for _, c := range []struct {
+		desc                 string
+		specifyTaskRunResult bool
+		resultOut            []v1beta1.PipelineResourceResult
+		podStatus            corev1.PodStatus
+		pod                  corev1.Pod
+		want                 v1beta1.TaskRunStatus
+	}{{
+		// test awaiting results
+		desc:      "running pod awaiting results",
+		podStatus: corev1.PodStatus{},
+
+		want: v1beta1.TaskRunStatus{
+			Status: statusSRVUnknown(),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps:    []v1beta1.StepState{},
+				Sidecars: []v1beta1.SidecarState{},
+			},
+		},
+	}, {
+		desc: "test result with pipeline result without signed termination message",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-bar",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+					},
+				},
+			}},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusSRVUnverified(),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"resultValue","type":1}]`,
+						}},
+					Name:          "bar",
+					ContainerName: "step-bar",
+				}},
+				Sidecars: []v1beta1.SidecarState{},
+				ResourcesResult: []v1beta1.PipelineResourceResult{{
+					Key:         "digest",
+					Value:       "sha256:1234",
+					ResourceRef: &v1beta1.PipelineResourceRef{Name: "source-image"},
+				}},
+				TaskRunResults: []v1beta1.TaskRunResult{{
+					Name:  "resultName",
+					Value: "resultValue",
+				}},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "test result with pipeline result with signed termination message",
+		resultOut: []v1beta1.PipelineResourceResult{
+			{
+				Key:        "resultName",
+				Value:      "resultValue",
+				ResultType: v1beta1.TaskRunResultType,
+			},
+		},
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-bar",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: `<to override by signing test routine>`,
+					},
+				},
+			}},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusSRVVerified(),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `to be overridden by signing`,
+						}},
+					Name:          "bar",
+					ContainerName: "step-bar",
+				}},
+				Sidecars: []v1beta1.SidecarState{},
+				TaskRunResults: []v1beta1.TaskRunResult{{
+					Name:  "resultName",
+					Value: "resultValue",
+				}},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc:      "test result with no result with signed termination message",
+		resultOut: []v1beta1.PipelineResourceResult{},
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-bar",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: `to be overridden by signing`,
+					},
+				},
+			}},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusSRVVerified(),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `to be overridden by signing`,
+						}},
+					Name:          "bar",
+					ContainerName: "step-bar",
+				}},
+				Sidecars: []v1beta1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "test result with no result without signed termination message",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-bar",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: "[]",
+					},
+				},
+			}},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusSRVVerified(),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: "[]",
+						}},
+					Name:          "bar",
+					ContainerName: "step-bar",
+				}},
+				Sidecars: []v1beta1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc:                 "test result (with task run result defined) with no result without signed termination message",
+		specifyTaskRunResult: true,
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-bar",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: "[]",
+					},
+				},
+			}},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusSRVUnverified(),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: "[]",
+						}},
+					Name:          "bar",
+					ContainerName: "step-bar",
+				}},
+				Sidecars: []v1beta1.SidecarState{},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			now := metav1.Now()
+			ctx := context.Background()
+			if cmp.Diff(c.pod, corev1.Pod{}) == "" {
+				c.pod = corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "pod",
+						Namespace:         "foo",
+						CreationTimestamp: now,
+					},
+					Status: c.podStatus,
+				}
+			}
+
+			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
+			tr := v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run",
+					Namespace: "foo",
+				},
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: &metav1.Time{Time: startTime},
+					},
+				},
+			}
+
+			if c.specifyTaskRunResult {
+				// Specify result
+				tr.Status.TaskSpec = &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{{
+						Name: "some-task-result",
+					}},
+				}
+
+				c.want.TaskSpec = tr.Status.TaskSpec
+			}
+
+			if err := sc.CreateEntries(ctx, &tr, &c.pod, 10000); err != nil {
+				t.Fatalf("unable to create entry for tr: %v", tr.Name)
+			}
+
+			if c.resultOut != nil {
+				id := sc.GetIdentity(&tr)
+				for i := 0; i < 20; i++ {
+					sc.SignIdentities = append(sc.SignIdentities, id)
+				}
+				sigs, err := sc.Sign(ctx, c.resultOut)
+				if err != nil {
+					t.Fatalf("failed to sign: %v", err)
+				}
+				c.resultOut = append(c.resultOut, sigs...)
+				s, err := createMessageFromResults(c.resultOut)
+				if err != nil {
+					t.Fatalf("failed to create message from result: %v", err)
+				}
+
+				c.podStatus.ContainerStatuses[0].State.Terminated.Message = s
+				c.want.TaskRunStatusFields.Steps[0].ContainerState.Terminated.Message = s
+			}
+
+			logger, _ := logging.NewLogger("", "status")
+			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, true, sc)
+			if err != nil {
+				t.Errorf("MakeTaskRunResult: %s", err)
+			}
+
+			// Common traits, set for test case brevity.
+			c.want.PodName = "pod"
+			c.want.StartTime = &metav1.Time{Time: startTime}
+
+			ensureTimeNotNil := cmp.Comparer(func(x, y *metav1.Time) bool {
+				if x == nil {
+					return y == nil
+				}
+				return y != nil
+			})
+			if d := cmp.Diff(c.want, got, ignoreVolatileTime, ensureTimeNotNil, processConditions, terminationMessageTrans); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+			if tr.Status.StartTime.Time != c.want.StartTime.Time {
+				t.Errorf("Expected TaskRun startTime to be unchanged but was %s", tr.Status.StartTime)
+			}
+
+			if err := sc.DeleteEntry(ctx, &tr, &c.pod); err != nil {
+				t.Fatalf("unable to create entry for tr: %v", tr.Name)
+			}
+
+		})
+	}
+}
 
 func TestMakeTaskRunStatus(t *testing.T) {
 	for _, c := range []struct {
@@ -960,7 +1312,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}
 
 			logger, _ := logging.NewLogger("", "status")
-			got, err := MakeTaskRunStatus(logger, tr, &c.pod)
+			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, false, nil)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -1080,7 +1432,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 	}
 
 	logger, _ := logging.NewLogger("", "status")
-	gotTr, err := MakeTaskRunStatus(logger, tr, pod)
+	gotTr, err := MakeTaskRunStatus(context.Background(), logger, tr, pod, false, nil)
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}

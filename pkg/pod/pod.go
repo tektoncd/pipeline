@@ -118,6 +118,12 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	implicitEnvVars := []corev1.EnvVar{}
 	alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
 
+	// Entrypoint arg to enable or disable spire
+	var commonExtraEntrypointArgs []string
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSpire {
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-enable_spire")
+	}
+
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
 	volumeMounts = append(volumeMounts, implicitVolumeMounts...)
@@ -197,10 +203,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		VolumeMounts: []corev1.VolumeMount{binMount},
 	}
 
+	// append credEntrypointArgs with entrypoint arg that contains if spire is enabled by configmap
+	commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, credEntrypointArgs...)
+
 	if alphaAPIEnabled {
-		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug)
+		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug)
 	} else {
-		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, nil)
+		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, nil)
 	}
 	if err != nil {
 		return nil, err
@@ -279,9 +288,35 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Add podTemplate Volumes to the explicitly declared use volumes
 	volumes = append(volumes, taskSpec.Volumes...)
 	volumes = append(volumes, podTemplate.Volumes...)
-
 	if err := v1beta1.ValidateVolumes(volumes); err != nil {
 		return nil, err
+	}
+
+	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSpire {
+		volumes = append(volumes, corev1.Volume{
+			Name: "spiffe-workload-api",
+			VolumeSource: corev1.VolumeSource{
+				CSI: &corev1.CSIVolumeSource{
+					Driver: "csi.spiffe.io",
+				},
+			},
+		})
+
+		for i := range stepContainers {
+			c := &stepContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      "spiffe-workload-api",
+				MountPath: "/spiffe-workload-api",
+			})
+		}
+		for i := range initContainers {
+			c := &initContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      "spiffe-workload-api",
+				MountPath: "/spiffe-workload-api",
+			})
+		}
 	}
 
 	mergedPodContainers := stepContainers
@@ -302,7 +337,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		priorityClassName = *podTemplate.PriorityClassName
 	}
 
-	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
 	version, err := changeset.Get()
 	if err != nil {
 		return nil, err

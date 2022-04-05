@@ -16,8 +16,13 @@ limitations under the License.
 
 package pipeline
 
+import (
+	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
+)
+
 // Options holds options passed to the Tekton Pipeline controllers
 // typically via command-line flags.
 type Options struct {
-	Images Images
+	Images      Images
+	SpireConfig spireconfig.SpireConfig
 }

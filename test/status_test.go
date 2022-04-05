@@ -23,6 +23,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/parse"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,14 +34,29 @@ import (
 // verify a very simple "hello world" TaskRun and PipelineRun failure
 // execution lead to the correct TaskRun status.
 func TestTaskRunPipelineRunStatus(t *testing.T) {
+	taskRunPipelineRunStatus(t, false)
+}
+
+// TestWithSpireTaskRunPipelineRunStatus is an integration test with spire enabled that will
+// verify a very simple "hello world" TaskRun and PipelineRun failure
+// execution lead to the correct TaskRun status.
+func TestWithSpireTaskRunPipelineRunStatus(t *testing.T) {
+	taskRunPipelineRunStatus(t, true)
+}
+
+func taskRunPipelineRunStatus(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := parse.MustParseTask(t, `
@@ -70,6 +86,15 @@ spec:
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
+	if spireEnabled {
+		tr, err := c.TaskRunClient.Get(ctx, "apple", metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Error retrieving taskrun: %s", err)
+		}
+		spireShouldFailTaskRunResultsVerify(tr, t)
+		spireShouldPassSpireAnnotation(tr, t)
+	}
+
 	pipeline := parse.MustParsePipeline(t, `
 metadata:
   name: tomatoes
@@ -96,4 +121,16 @@ spec:
 	if err := WaitForPipelineRunState(ctx, c, "pear", timeout, PipelineRunFailed("pear"), "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
+
+	if spireEnabled {
+		taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldFailTaskRunResultsVerify(&taskrunItem, t)
+			spireShouldPassSpireAnnotation(&taskrunItem, t)
+		}
+	}
+
 }

@@ -57,6 +57,8 @@ const (
 	DefaultSendCloudEventsForRuns = false
 	// DefaultEmbeddedStatus is the default value for "embedded-status".
 	DefaultEmbeddedStatus = FullEmbeddedStatus
+	// DefaultEnableSpire is the default value for "enable-sire".
+	DefaultEnableSpire = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -67,6 +69,7 @@ const (
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
 	embeddedStatus                      = "embedded-status"
+	enableSpire                         = "enable-spire"
 )
 
 // FeatureFlags holds the features configurations
@@ -82,6 +85,7 @@ type FeatureFlags struct {
 	EnableAPIFields                  string
 	SendCloudEventsForRuns           bool
 	EmbeddedStatus                   string
+	EnableSpire                      bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -128,6 +132,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setEmbeddedStatus(cfgMap, DefaultEmbeddedStatus, &tc.EmbeddedStatus); err != nil {
+		return nil, err
+	}
+	if err := setFeature(enableSpire, DefaultEnableSpire, &tc.EnableSpire); err != nil {
 		return nil, err
 	}
 

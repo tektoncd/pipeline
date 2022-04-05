@@ -73,3 +73,7 @@ data:
   # Setting this flag to "true" enables CloudEvents for Runs, as long as a
   # CloudEvents sink is configured in the config-defaults config map
   send-cloudevents-for-runs: "false"
+  # Setting this flag to "true" enables spire integration with pipeline.
+  # This is an experimental feature and thus should still be considered
+  # an alpha feature.
+  enable-spire: "false"

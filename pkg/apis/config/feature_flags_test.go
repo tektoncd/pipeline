@@ -51,6 +51,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
 				EmbeddedStatus:                   "both",
+				EnableSpire:                      true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -78,6 +79,16 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
+		{
+			expectedConfig: &config.FeatureFlags{
+				EnableAPIFields: "stable",
+				EmbeddedStatus:  "full",
+				EnableSpire:     true,
+
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+			},
+			fileName: "feature-flags-enable-spire",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -95,6 +106,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		RunningInEnvWithInjectedSidecars: true,
 		EnableAPIFields:                  "stable",
 		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
+		EnableSpire:                      false,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }

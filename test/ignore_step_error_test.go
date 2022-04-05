@@ -25,18 +25,32 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 )
 
 func TestMissingResultWhenStepErrorIsIgnored(t *testing.T) {
+	stepErrorTest(t, false)
+}
+
+func TestWithSpireMissingResultWhenStepErrorIsIgnored(t *testing.T) {
+	stepErrorTest(t, true)
+}
+
+func stepErrorTest(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	pipelineRun := parse.MustParsePipelineRun(t, `
 metadata:
@@ -95,6 +109,11 @@ spec:
 
 	if len(taskrunItem.Status.TaskRunResults) != 1 {
 		t.Fatalf("task1 should have produced a result before failing the step")
+	}
+
+	if spireEnabled {
+		spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+		spireShouldPassSpireAnnotation(&taskrunItem, t)
 	}
 
 	for _, r := range taskrunItem.Status.TaskRunResults {

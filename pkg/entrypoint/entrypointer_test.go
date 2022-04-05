@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -31,7 +32,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/test/diff"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestEntrypointerFailures(t *testing.T) {
@@ -349,6 +353,167 @@ func TestEntrypointer_OnError(t *testing.T) {
 	}
 }
 
+func TestEntrypointerResults(t *testing.T) {
+	for _, c := range []struct {
+		desc, entrypoint, postFile, stepDir, stepDirLink string
+		waitFiles, args                                  []string
+		resultsToWrite                                   map[string]string
+		resultsOverride                                  []string
+		breakpointOnFailure                              bool
+		sign                                             bool
+		signVerify                                       bool
+	}{{
+		desc: "do nothing",
+	}, {
+		desc:       "no results",
+		entrypoint: "echo",
+	}, {
+		desc:       "write single result",
+		entrypoint: "echo",
+		resultsToWrite: map[string]string{
+			"foo": "abc",
+		},
+	}, {
+		desc:       "write multiple result",
+		entrypoint: "echo",
+		resultsToWrite: map[string]string{
+			"foo": "abc",
+			"bar": "def",
+		},
+	}, {
+		// These next two tests show that if not results are defined in the entrypointer, then no signature is produced
+		// indicating that no signature was created. However, it is important to note that results were defined,
+		// but no results were created, that signature is still produced.
+		desc:       "no results signed",
+		entrypoint: "echo",
+		sign:       true,
+		signVerify: false,
+	}, {
+		desc:            "defined results but no results produced signed",
+		entrypoint:      "echo",
+		resultsOverride: []string{"foo"},
+		sign:            true,
+		signVerify:      true,
+	}, {
+		desc:       "write single result",
+		entrypoint: "echo",
+		resultsToWrite: map[string]string{
+			"foo": "abc",
+		},
+		sign:       true,
+		signVerify: true,
+	}, {
+		desc:       "write multiple result",
+		entrypoint: "echo",
+		resultsToWrite: map[string]string{
+			"foo": "abc",
+			"bar": "def",
+		},
+		sign:       true,
+		signVerify: true,
+	}, {
+		desc:       "write n/m results",
+		entrypoint: "echo",
+		resultsToWrite: map[string]string{
+			"foo": "abc",
+		},
+		resultsOverride: []string{"foo", "bar"},
+		sign:            true,
+		signVerify:      true,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			ctx := context.Background()
+			fw, fpw := &fakeWaiter{}, &fakePostWriter{}
+			var fr Runner = &fakeRunner{}
+			timeout := time.Duration(0)
+			terminationPath := "termination"
+			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+				t.Fatalf("unexpected error creating temporary termination file: %v", err)
+			} else {
+				terminationPath = terminationFile.Name()
+				defer os.Remove(terminationFile.Name())
+			}
+
+			resultsDir := createTmpDir(t, "results")
+			var results []string
+			if c.resultsToWrite != nil {
+				tmpResultsToWrite := map[string]string{}
+				for k, v := range c.resultsToWrite {
+					resultFile := path.Join(resultsDir, k)
+					tmpResultsToWrite[resultFile] = v
+					results = append(results, k)
+				}
+
+				fr = &fakeResultsWriter{
+					resultsToWrite: tmpResultsToWrite,
+				}
+			}
+
+			signClient, verifyClient, tr := getMockSpireClient(ctx)
+			if !c.sign {
+				signClient = nil
+			}
+
+			if c.resultsOverride != nil {
+				results = c.resultsOverride
+			}
+
+			err := Entrypointer{
+				Command:             append([]string{c.entrypoint}, c.args...),
+				WaitFiles:           c.waitFiles,
+				PostFile:            c.postFile,
+				Waiter:              fw,
+				Runner:              fr,
+				PostWriter:          fpw,
+				Results:             results,
+				ResultsDirectory:    resultsDir,
+				TerminationPath:     terminationPath,
+				Timeout:             &timeout,
+				BreakpointOnFailure: c.breakpointOnFailure,
+				StepMetadataDir:     c.stepDir,
+				SpireWorkloadAPI:    signClient,
+			}.Go()
+			if err != nil {
+				t.Fatalf("Entrypointer failed: %v", err)
+			}
+
+			fileContents, err := ioutil.ReadFile(terminationPath)
+			if err == nil {
+				resultCheck := map[string]bool{}
+				var entries []v1alpha1.PipelineResourceResult
+				if err := json.Unmarshal(fileContents, &entries); err != nil {
+					t.Fatalf("failed to unmarshal results: %v", err)
+				}
+
+				for _, result := range entries {
+					if _, ok := c.resultsToWrite[result.Key]; ok {
+						if c.resultsToWrite[result.Key] == result.Value {
+							resultCheck[result.Key] = true
+						} else {
+							t.Errorf("expected result (%v) to have value %v, got %v", result.Key, result.Value, c.resultsToWrite[result.Key])
+						}
+					}
+				}
+
+				if len(resultCheck) != len(c.resultsToWrite) {
+					t.Error("number of results matching did not add up")
+				}
+
+				// Check signature
+				verified := verifyClient.VerifyTaskRunResults(ctx, entries, tr) == nil
+				if verified != c.signVerify {
+					t.Errorf("expected signature verify result %v, got %v", c.signVerify, verified)
+				}
+			} else if !os.IsNotExist(err) {
+				t.Error("Wanted termination file written, got nil")
+			}
+			if err := os.Remove(terminationPath); err != nil {
+				t.Errorf("Could not remove termination path: %s", err)
+			}
+		})
+	}
+}
+
 type fakeWaiter struct{ waited []string }
 
 func (f *fakeWaiter) Wait(file string, _ bool, _ bool) error {
@@ -417,4 +582,56 @@ type fakeExitErrorRunner struct{ args *[]string }
 func (f *fakeExitErrorRunner) Run(ctx context.Context, args ...string) error {
 	f.args = &args
 	return exec.Command("ls", "/bogus/path").Run()
+}
+
+type fakeResultsWriter struct {
+	args           *[]string
+	resultsToWrite map[string]string
+}
+
+func (f *fakeResultsWriter) Run(ctx context.Context, args ...string) error {
+	f.args = &args
+	for k, v := range f.resultsToWrite {
+		err := ioutil.WriteFile(k, []byte(v), 0666)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func createTmpDir(t *testing.T, name string) string {
+	tmpDir, err := ioutil.TempDir("", name)
+	if err != nil {
+		t.Fatalf("unexpected error creating temporary dir: %v", err)
+	}
+	return tmpDir
+}
+
+func getMockSpireClient(ctx context.Context) (spire.EntrypointerAPIClient, spire.ControllerAPIClient, *v1beta1.TaskRun) {
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "taskrun-example",
+			Namespace: "foo",
+		},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:       "taskname",
+				APIVersion: "a1",
+			},
+			ServiceAccountName: "test-sa",
+		},
+	}
+
+	sc := &spire.MockClient{}
+
+	_ = sc.CreateEntries(ctx, tr, nil, 10000)
+
+	// bootstrap with about 20 calls to sign which should be enough for testing
+	id := sc.GetIdentity(tr)
+	for i := 0; i < 20; i++ {
+		sc.SignIdentities = append(sc.SignIdentities, id)
+	}
+
+	return sc, sc, tr
 }

@@ -29,6 +29,7 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -54,7 +55,14 @@ var (
 )
 
 func TestPipelineRun(t *testing.T) {
-	t.Parallel()
+	pipelineTestWithOptions(t, false)
+}
+
+func TestWithSpirePipelineRun(t *testing.T) {
+	pipelineTestWithOptions(t, true)
+}
+
+func pipelineTestWithOptions(t *testing.T, spireEnabled bool) {
 	type tests struct {
 		name                   string
 		testSetup              func(ctx context.Context, t *testing.T, c *clients, namespace string, index int)
@@ -208,7 +216,6 @@ spec:
 		i := i   // capture range variable
 		td := td // capture range variable
 		t.Run(td.name, func(t *testing.T) {
-			t.Parallel()
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -216,6 +223,11 @@ spec:
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
+
+			if spireEnabled {
+				originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+				defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+			}
 
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			td.testSetup(ctx, t, c, namespace, i)
@@ -243,6 +255,10 @@ spec:
 				for _, actualTaskRunItem := range actualTaskrunList.Items {
 					if strings.HasPrefix(actualTaskRunItem.Name, taskRunName) {
 						taskRunName = actualTaskRunItem.Name
+					}
+					if spireEnabled {
+						spireShouldPassTaskRunResultsVerify(&actualTaskRunItem, t)
+						spireShouldPassSpireAnnotation(&actualTaskRunItem, t)
 					}
 				}
 				expectedTaskRunNames = append(expectedTaskRunNames, taskRunName)
@@ -326,6 +342,16 @@ spec:
 // TestPipelineRunRefDeleted tests that a running PipelineRun doesn't fail when the Pipeline
 // it references is deleted.
 func TestPipelineRunRefDeleted(t *testing.T) {
+	pipelineRunRefDeletedTestWithOptions(t, false)
+}
+
+// TestWithSpirePipelineRunRefDeleted tests (with spire enabled) that a running PipelineRun doesn't fail when the Pipeline
+// it references is deleted.
+func TestWithSpirePipelineRunRefDeleted(t *testing.T) {
+	pipelineRunRefDeletedTestWithOptions(t, true)
+}
+
+func pipelineRunRefDeletedTestWithOptions(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -333,6 +359,11 @@ func TestPipelineRunRefDeleted(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	prName := "pipelinerun-referencing-deleted"
 	t.Logf("Creating Pipeline, and PipelineRun %s in namespace %s", prName, namespace)
@@ -392,6 +423,17 @@ spec:
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 
+	if spireEnabled {
+		taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + prName})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+			spireShouldPassSpireAnnotation(&taskrunItem, t)
+		}
+	}
+
 }
 
 // TestPipelineRunPending tests that a Pending PipelineRun is not run until the pending
@@ -399,6 +441,18 @@ spec:
 // transition PipelineRun states during the test, which the TestPipelineRun suite does not
 // support.
 func TestPipelineRunPending(t *testing.T) {
+	pipelineRunPendingTestWithOptions(t, false)
+}
+
+// TestWithSpirePipelineRunPending tests (with spire) that a Pending PipelineRun is not run until the pending
+// status is cleared. This is separate from the TestPipelineRun suite because it has to
+// transition PipelineRun states during the test, which the TestPipelineRun suite does not
+// support.
+func TestWithSpirePipelineRunPending(t *testing.T) {
+	pipelineRunPendingTestWithOptions(t, true)
+}
+
+func pipelineRunPendingTestWithOptions(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -406,6 +460,11 @@ func TestPipelineRunPending(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	prName := "pending-pipelinerun-test"
 
@@ -475,6 +534,16 @@ spec:
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
 	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+	if spireEnabled {
+		taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + prName})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+			spireShouldPassSpireAnnotation(&taskrunItem, t)
+		}
 	}
 }
 

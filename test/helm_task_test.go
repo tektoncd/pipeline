@@ -26,6 +26,7 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
@@ -42,6 +43,16 @@ var (
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
+	helmDeploytest(t, false)
+}
+
+// TestWithSpireHelmDeployPipelineRun is an integration test with spire enabled that will verify a pipeline build an image
+// and then using helm to deploy it
+func TestWithSpireHelmDeployPipelineRun(t *testing.T) {
+	helmDeploytest(t, true)
+}
+
+func helmDeploytest(t *testing.T, spireEnabled bool) {
 	repo := ensureDockerRepo(t)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -61,6 +72,11 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	t.Logf("Creating Git PipelineResource %s", sourceResourceName)
 	if _, err := c.PipelineResourceClient.Create(ctx, getGoHelloworldGitResource(t, sourceResourceName), metav1.CreateOptions{}); err != nil {
@@ -101,6 +117,17 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	if err := WaitForPipelineRunState(ctx, c, helmDeployPipelineRunName, timeout, PipelineRunSucceed(helmDeployPipelineRunName), "PipelineRunCompleted"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
+	}
+
+	if spireEnabled {
+		taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + helmDeployPipelineRunName})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", helmDeployPipelineRunName, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+			spireShouldPassSpireAnnotation(&taskrunItem, t)
+		}
 	}
 
 	// cleanup task to remove helm releases from cluster and cluster role bindings, will not fail the test if it fails, just log

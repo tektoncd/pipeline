@@ -61,10 +61,18 @@ func main() {
 	flag.StringVar(&opts.Images.ImageDigestExporterImage, "imagedigest-exporter-image", "", "The container image containing our image digest exporter binary.")
 	flag.StringVar(&opts.Images.WorkingDirInitImage, "workingdirinit-image", "", "The container image containing our working dir init binary.")
 
+	flag.StringVar(&opts.SpireConfig.TrustDomain, "spire-trust-domain", "example.org", "Experimental: The SPIRE Trust domain to use.")
+	flag.StringVar(&opts.SpireConfig.SocketPath, "spire-socket-path", "/spiffe-workload-api/spire-agent.sock", "Experimental: The SPIRE agent socket for SPIFFE workload API.")
+	flag.StringVar(&opts.SpireConfig.ServerAddr, "spire-server-addr", "spire-server.spire.svc.cluster.local:8081", "Experimental: The SPIRE server address for workload/node registration.")
+	flag.StringVar(&opts.SpireConfig.NodeAliasPrefix, "spire-node-alias-prefix", "/tekton-node/", "Experimental: The SPIRE node alias prefix to use.")
+
 	// This parses flags.
 	cfg := injection.ParseAndGetRESTConfigOrDie()
 
 	if err := opts.Images.Validate(); err != nil {
+		log.Fatal(err)
+	}
+	if err := opts.SpireConfig.Validate(); err != nil {
 		log.Fatal(err)
 	}
 	if cfg.QPS == 0 {
