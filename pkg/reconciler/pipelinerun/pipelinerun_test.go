@@ -104,7 +104,9 @@ var (
 )
 
 const (
-	apiFieldsFeatureFlag = "enable-api-fields"
+	apiFieldsFeatureFlag   = "enable-api-fields"
+	customTasksFeatureFlag = "enable-custom-tasks"
+	ociBundlesFeatureFlag  = "enable-tekton-oci-bundles"
 )
 
 type PipelineRunTest struct {
@@ -901,14 +903,7 @@ func TestReconcile_CustomTask(t *testing.T) {
 		},
 	}}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
+	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1654,11 +1649,29 @@ func TestReconcileOnCancelledPipelineRunDeprecated(t *testing.T) {
 	}
 }
 
-func getConfigMapsWithEnabledAlphaAPIFields() []*corev1.ConfigMap {
-	return []*corev1.ConfigMap{{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-		Data:       map[string]string{apiFieldsFeatureFlag: config.AlphaAPIFields},
-	}}
+func newFeatureFlagsConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data:       make(map[string]string),
+	}
+}
+
+func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
+	new := cm.DeepCopy()
+	new.Data[apiFieldsFeatureFlag] = config.AlphaAPIFields
+	return new
+}
+
+func withCustomTasks(cm *corev1.ConfigMap) *corev1.ConfigMap {
+	new := cm.DeepCopy()
+	new.Data[customTasksFeatureFlag] = "true"
+	return new
+}
+
+func withOCIBundles(cm *corev1.ConfigMap) *corev1.ConfigMap {
+	new := cm.DeepCopy()
+	new.Data[ociBundlesFeatureFlag] = "true"
+	return new
 }
 
 func TestReconcileOnCancelledPipelineRun(t *testing.T) {
@@ -1669,7 +1682,7 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-hello-world", "foo",
 		"test-pipeline-run-cancelled", "test-pipeline")}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -1758,14 +1771,7 @@ func TestReconcileForCustomTaskWithPipelineTaskTimedOut(t *testing.T) {
 		},
 	}
 	runs := []*v1alpha1.Run{startedRun}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
+	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -1854,14 +1860,7 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 				},
 			}}
 
-			cms := []*corev1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data: map[string]string{
-						"enable-custom-tasks": "true",
-					},
-				},
-			}
+			cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 			d := test.Data{
 				PipelineRuns: prs,
 				Pipelines:    ps,
@@ -1952,8 +1951,7 @@ spec:
 `),
 	}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -2023,8 +2021,7 @@ spec:
 		simpleHelloWorldTask,
 		simpleSomeTask,
 	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -2128,8 +2125,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask(t *testin
 		createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-run-finally-final-task", "foo",
 			"test-pipeline-run-cancelled-run-finally", "test-pipeline"),
 	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -2234,8 +2230,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 		})}
 
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -2314,8 +2309,7 @@ func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
 			corev1.ConditionUnknown,
 		),
 	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -2492,8 +2486,7 @@ func TestReconcileOnStoppedRunFinallyPipelineRun(t *testing.T) {
 	}}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -2566,8 +2559,7 @@ func TestReconcileOnStoppedRunFinallyPipelineRunWithRunningTask(t *testing.T) {
 			corev1.ConditionUnknown,
 		),
 	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -2662,8 +2654,7 @@ func TestReconcileOnStoppedPipelineRunWithCompletedTask(t *testing.T) {
 			corev1.ConditionTrue,
 		),
 	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -3285,15 +3276,7 @@ func TestReconcileCustomTasksWithDifferentServiceAccounts(t *testing.T) {
 		},
 	}}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
-
+	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -4168,15 +4151,7 @@ func TestReconcileCustomTasksWithTaskRunSpec(t *testing.T) {
 		},
 	}}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
-
+	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -6328,14 +6303,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		},
 	}}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
+	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -7614,6 +7582,7 @@ spec:
 			},
 		},
 	}
+	t.Logf("config maps: %s", cms)
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -8182,12 +8151,7 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 
 	ctx := context.Background()
 	cfg := config.NewStore(logtesting.TestLogger(t))
-	cfg.OnConfigChanged(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-tekton-oci-bundles": "true",
-		},
-	})
+	cfg.OnConfigChanged(withOCIBundles(newFeatureFlagsConfigMap()))
 	ctx = cfg.ToContext(ctx)
 
 	// Set up a fake registry to push an image to.
@@ -8218,14 +8182,7 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 			},
 		},
 	}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-tekton-oci-bundles": "true",
-			},
-		},
-	}
+	cms := []*corev1.ConfigMap{withOCIBundles(newFeatureFlagsConfigMap())}
 
 	// This task will be uploaded along with the pipeline definition.
 	remoteTask := &v1beta1.Task{
@@ -8598,12 +8555,7 @@ func TestReconcileWithResolver(t *testing.T) {
 		},
 	}
 
-	cms := []*corev1.ConfigMap{{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-		Data: map[string]string{
-			"enable-api-fields": "alpha",
-		},
-	}}
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 
 	d := test.Data{
 		ConfigMaps:   cms,
