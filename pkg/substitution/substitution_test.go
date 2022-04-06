@@ -116,6 +116,36 @@ func TestValidateVariables(t *testing.T) {
 	}
 }
 
+func  TestValidateVariableP(t *testing.T){
+	type args struct {
+		input        string
+		prefix       string
+		vars         sets.String
+	}
+	for _, tc := range []struct {
+		name          string
+		args          args
+		expectedError *apis.FieldError
+	}{{
+		name: "valid variable",
+		args: args{
+			input:        "echo {\"key\": \"$(params.a)\"}",
+			prefix:       "params",
+			vars:         sets.NewString(),
+		},
+		expectedError: nil,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := substitution.ValidateVariableP(tc.args.input, tc.args.prefix, tc.args.vars) 
+		
+			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("ValidateVariableP() error did not match expected error %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+
+}
+
 func TestApplyReplacements(t *testing.T) {
 	type args struct {
 		input        string
