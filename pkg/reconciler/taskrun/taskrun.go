@@ -51,6 +51,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
 	corev1Listers "k8s.io/client-go/listers/core/v1"
@@ -74,6 +75,7 @@ type Reconciler struct {
 	taskRunLister       listers.TaskRunLister
 	resourceLister      resourcelisters.PipelineResourceLister
 	limitrangeLister    corev1Listers.LimitRangeLister
+	podLister           corev1Listers.PodLister
 	cloudEventClient    cloudevent.CEClient
 	entrypointCache     podconvert.EntrypointCache
 	metrics             *taskrunmetrics.Recorder
@@ -395,7 +397,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	var err error
 
 	if tr.Status.PodName != "" {
-		pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+		pod, err = c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
 		if k8serrors.IsNotFound(err) {
 			// Keep going, this will result in the Pod being created below.
 		} else if err != nil {
@@ -409,18 +411,17 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		// List pods that have a label with this TaskRun name.  Do not include other labels from the
 		// TaskRun in this selector.  The user could change them during the lifetime of the TaskRun so the
 		// current labels may not be set on a previously created Pod.
-		labelSelector := fmt.Sprintf("%s=%s", pipeline.TaskRunLabelKey, tr.Name)
-		pos, err := c.KubeClientSet.CoreV1().Pods(tr.Namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: labelSelector,
-		})
+		labelSelector := labels.Set{pipeline.TaskRunLabelKey: tr.Name}
+		pos, err := c.podLister.Pods(tr.Namespace).List(labelSelector.AsSelector())
+
 		if err != nil {
 			logger.Errorf("Error listing pods: %v", err)
 			return err
 		}
-		for index := range pos.Items {
-			po := pos.Items[index]
-			if metav1.IsControlledBy(&po, tr) && !podconvert.DidTaskRunFail(&po) {
-				pod = &po
+		for index := range pos {
+			po := pos[index]
+			if metav1.IsControlledBy(po, tr) && !podconvert.DidTaskRunFail(po) {
+				pod = po
 			}
 		}
 	}
