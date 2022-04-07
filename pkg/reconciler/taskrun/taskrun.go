@@ -571,6 +571,8 @@ func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) erro
 		return controller.NewRequeueAfter(time.Minute)
 	case isTaskRunValidationFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+	case k8serrors.IsAlreadyExists(err):
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, fmt.Sprint("tried to create pod, but it already exists"))
 	default:
 		// The pod creation failed with unknown reason. The most likely
 		// reason is that something is wrong with the spec of the Task, that we could
@@ -714,10 +716,21 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 		return nil, fmt.Errorf("translating TaskSpec to Pod: %w", err)
 	}
 
+	// Stash the podname in case there's create conflict so that we can try
+	// to fetch it.
+	podName := pod.Name
 	pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 	if err == nil && willOverwritePodSetAffinity(tr) {
 		if recorder := controller.GetEventRecorder(ctx); recorder != nil {
 			recorder.Eventf(tr, corev1.EventTypeWarning, "PodAffinityOverwrite", "Pod template affinity is overwritten by affinity assistant for pod %q", pod.Name)
+		}
+	}
+	// If the pod failed to be created because it already exists, try to fetch
+	// from the informer and return if successful. Otherwise, return the
+	// original error.
+	if err != nil && k8serrors.IsAlreadyExists(err) {
+		if p, getErr := c.podLister.Pods(tr.Namespace).Get(podName); getErr == nil {
+			return p, nil
 		}
 	}
 	return pod, err
