@@ -166,7 +166,7 @@ func extractVariablesFromString(s, prefix string) ([]string, bool) {
 }
 
 func replaceContentInsideQuotes(value string) string {
-	// match every string inside double and/or single quotes.
+	// Matches every string inside double and/or single quotes.
 	re := regexp.MustCompile(`"[^"]*"|'[^']*'`)
 	return re.ReplaceAllString(value, "")
 }
