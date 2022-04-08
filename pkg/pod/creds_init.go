@@ -71,11 +71,20 @@ func credsInit(ctx context.Context, serviceAccountName, namespace string, kubecl
 
 	var volumeMounts []corev1.VolumeMount
 	var volumes []corev1.Volume
-	args := []string{}
+	var args []string
+	// Track duplicated secrets, prevent errors like this:
+	//  Pod "xxx" is invalid: spec.containers[0].volumeMounts[12].mountPath: Invalid value:
+	//  "/tekton/creds-secrets/demo-docker-credentials": must be unique
+	visitedSecrets := make(map[string]struct{})
 	for _, secretEntry := range sa.Secrets {
 		if secretEntry.Name == "" {
 			continue
 		}
+		if _, ok := visitedSecrets[secretEntry.Name]; ok {
+			continue
+		}
+		visitedSecrets[secretEntry.Name] = struct{}{}
+
 		secret, err := kubeclient.CoreV1().Secrets(namespace).Get(ctx, secretEntry.Name, metav1.GetOptions{})
 		if err != nil {
 			return nil, nil, nil, err
