@@ -1843,23 +1843,7 @@ func runTestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T, embeddedStat
 	// TestReconcileOnCancelledRunFinallyPipelineRun runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
-	ps := []*v1beta1.Pipeline{
-		parse.MustParsePipeline(t, `
-metadata:
-  name: test-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: hello-world-1
-      taskRef:
-        name: hello-world
-    - name: hello-world-2
-      taskRef:
-        name: hello-world
-      runAfter:
-        - hello-world-1
-`),
-	}
+	ps := []*v1beta1.Pipeline{helloWorldPipelineWithRunAfter(t)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 	d := test.Data{
@@ -2423,239 +2407,148 @@ func TestReconcileTaskResolutionError(t *testing.T) {
 	}
 }
 
-func TestReconcileOnStoppedRunFinallyPipelineRun(t *testing.T) {
-	// TestReconcileOnStoppedRunFinallyPipelineRun runs "Reconcile" on a PipelineRun that has been gracefully stopped
-	// and waits for all running tasks to be completed, before cancelling the run.
-	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-stopped-run-finally", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusStoppedRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-			},
-		},
-	}}
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
+func TestReconcileOnStoppedPipelineRun(t *testing.T) {
+	basePRYAML := fmt.Sprintf(`
+metadata:
+  name: "test-pipeline-run-stopped-run-finally"
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  status: %s
+status:
+  startTime: %s`, v1beta1.PipelineRunSpecStatusStoppedRunFinally, now.Format(time.RFC3339))
 
-	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled",
-	}
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-stopped-run-finally", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
-	}
-
-	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
-
-	if len(reconciledRun.Status.TaskRuns) != 0 {
-		t.Fatalf("Expected no TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
-	}
-
-	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "hello-world-1",
-	}}
-
-	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
-		t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
-	}
-
-}
-
-func TestReconcileOnStoppedRunFinallyPipelineRunWithRunningTask(t *testing.T) {
-	// TestReconcileOnStoppedRunFinallyPipelineRunWithRunningTask runs "Reconcile" on a PipelineRun that has been gracefully stopped
-	// and waits for all running tasks to be completed, before cancelling the run.
-	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-stopped-run-finally", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusStoppedRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"test-pipeline-run-stopped-run-finally-hello-world": {
-						PipelineTaskName: "hello-world-1",
-						Status:           &v1beta1.TaskRunStatus{},
-					},
+	testCases := []struct {
+		name                 string
+		pipeline             *v1beta1.Pipeline
+		taskRuns             []*v1beta1.TaskRun
+		initialTaskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus
+		expectedEvents       []string
+		hasNilCompletionTime bool
+		isFailed             bool
+		trInStatusCount      int
+		skippedTasks         []string
+	}{
+		{
+			name:                 "stopped PipelineRun",
+			pipeline:             simpleHelloWorldPipeline,
+			taskRuns:             nil,
+			initialTaskRunStatus: nil,
+			expectedEvents:       []string{"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled"},
+			hasNilCompletionTime: false,
+			isFailed:             true,
+			trInStatusCount:      0,
+			skippedTasks:         []string{"hello-world-1"},
+		}, {
+			name:     "with running task",
+			pipeline: simpleHelloWorldPipeline,
+			taskRuns: []*v1beta1.TaskRun{getTaskRun(
+				t,
+				"test-pipeline-run-stopped-run-finally-hello-world",
+				"test-pipeline-run-stopped-run-finally",
+				"test-pipeline",
+				"hello-world",
+				corev1.ConditionUnknown,
+			)},
+			initialTaskRunStatus: map[string]*v1beta1.PipelineRunTaskRunStatus{
+				"test-pipeline-run-stopped-run-finally-hello-world": {
+					PipelineTaskName: "hello-world-1",
+					Status:           &v1beta1.TaskRunStatus{},
 				},
 			},
-		},
-	}}
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{
-		getTaskRun(
-			t,
-			"test-pipeline-run-stopped-run-finally-hello-world",
-			"test-pipeline-run-stopped-run-finally",
-			"test-pipeline",
-			"hello-world",
-			corev1.ConditionUnknown,
-		),
-	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Normal Started",
-	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-stopped-run-finally", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime != nil {
-		t.Errorf("Expected a CompletionTime to be nil on incomplete PipelineRun but was %v", reconciledRun.Status.CompletionTime)
-	}
-
-	// This PipelineRun should still be complete and unknown, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun status to be complete and unknown, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
-
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Fatalf("Expected 1 TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
-	}
-
-	actions := clients.Pipeline.Actions()
-	patchCount := 0
-	for _, action := range actions {
-		if _, ok := action.(ktesting.PatchAction); ok {
-			patchCount++
-		}
-	}
-	if patchCount != 0 {
-		t.Errorf("Expected no patch action, but was %v", patchCount)
-	}
-}
-
-func TestReconcileOnStoppedPipelineRunWithCompletedTask(t *testing.T) {
-	// TestReconcileOnStoppedPipelineRunWithCompletedTask runs "Reconcile" on a PipelineRun that has been gracefully stopped
-	// and waits for all running tasks to be completed, before stopping the run.
-	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-stopped", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusStoppedRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"test-pipeline-run-stopped-hello-world": {
-						PipelineTaskName: "hello-world-1",
-						Status:           &v1beta1.TaskRunStatus{},
-					},
+			expectedEvents:       []string{"Normal Started"},
+			hasNilCompletionTime: true,
+			isFailed:             false,
+			trInStatusCount:      1,
+			skippedTasks:         nil,
+		}, {
+			name:     "with completed task",
+			pipeline: helloWorldPipelineWithRunAfter(t),
+			taskRuns: []*v1beta1.TaskRun{getTaskRun(
+				t,
+				"test-pipeline-run-stopped-run-finally-hello-world",
+				"test-pipeline-run-stopped-run-finally",
+				"test-pipeline",
+				"hello-world",
+				corev1.ConditionTrue,
+			)},
+			initialTaskRunStatus: map[string]*v1beta1.PipelineRunTaskRunStatus{
+				"test-pipeline-run-stopped-run-finally-hello-world": {
+					PipelineTaskName: "hello-world-1",
+					Status:           &v1beta1.TaskRunStatus{},
 				},
 			},
+			expectedEvents:       []string{"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled"},
+			hasNilCompletionTime: false,
+			isFailed:             true,
+			trInStatusCount:      1,
+			skippedTasks:         []string{"hello-world-2"},
 		},
-	}}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					RunAfter: []string{"hello-world-1"},
-				},
-			},
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{
-		getTaskRun(
-			t,
-			"test-pipeline-run-stopped-hello-world",
-			"test-pipeline-run-stopped",
-			"test-pipeline",
-			"hello-world",
-			corev1.ConditionTrue,
-		),
-	}
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-stopped\" was cancelled",
-	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-stopped", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
 	}
 
-	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := parse.MustParsePipelineRun(t, basePRYAML)
+			if tc.initialTaskRunStatus != nil {
+				pr.Status.TaskRuns = tc.initialTaskRunStatus
+			}
+			ps := []*v1beta1.Pipeline{tc.pipeline}
+			ts := []*v1beta1.Task{simpleHelloWorldTask}
+			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+			d := test.Data{
+				PipelineRuns: []*v1beta1.PipelineRun{pr},
+				Pipelines:    ps,
+				Tasks:        ts,
+				TaskRuns:     tc.taskRuns,
+				ConfigMaps:   cms,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
 
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Fatalf("Expected 1 TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
-	}
+			var wantEvents []string
 
-	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "hello-world-2",
-	}}
+			for _, we := range tc.expectedEvents {
+				wantEvents = append(wantEvents, we)
+			}
 
-	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
-		t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
-	}
+			reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-stopped-run-finally", wantEvents, false)
 
-	actions := clients.Pipeline.Actions()
-	patchCount := 0
-	for _, action := range actions {
-		if _, ok := action.(ktesting.PatchAction); ok {
-			patchCount++
-		}
-	}
-	if patchCount != 0 {
-		t.Errorf("Expected no patch action, but was %v", patchCount)
+			if (reconciledRun.Status.CompletionTime == nil) != tc.hasNilCompletionTime {
+				t.Errorf("Expected CompletionTime == nil to be %t on invalid PipelineRun but was %t", tc.hasNilCompletionTime, reconciledRun.Status.CompletionTime == nil)
+			}
+
+			if tc.isFailed && !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+				t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+			} else if !tc.isFailed && !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+				t.Errorf("Expected PipelineRun status to be complete and unknown, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+			}
+
+			if len(reconciledRun.Status.TaskRuns) != tc.trInStatusCount {
+				t.Fatalf("Expected %d TaskRuns in status but got %d", tc.trInStatusCount, len(reconciledRun.Status.TaskRuns))
+			}
+
+			var expectedSkipped []v1beta1.SkippedTask
+			for _, st := range tc.skippedTasks {
+				expectedSkipped = append(expectedSkipped, v1beta1.SkippedTask{Name: st})
+			}
+
+			if d := cmp.Diff(expectedSkipped, reconciledRun.Status.SkippedTasks); d != "" {
+				t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
+			}
+
+			actions := clients.Pipeline.Actions()
+			patchCount := 0
+			for _, action := range actions {
+				if _, ok := action.(ktesting.PatchAction); ok {
+					patchCount++
+				}
+			}
+			if patchCount != 0 {
+				t.Errorf("Expected no patch action, but was %v", patchCount)
+			}
+		})
 	}
 }
 
@@ -7915,4 +7808,22 @@ func mustParseRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYA
 	r := parse.MustParseRun(t, asYAML)
 	r.ObjectMeta = objectMeta
 	return r
+}
+
+func helloWorldPipelineWithRunAfter(t *testing.T) *v1beta1.Pipeline {
+	return parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: hello-world-1
+      taskRef:
+        name: hello-world
+    - name: hello-world-2
+      taskRef:
+        name: hello-world
+      runAfter:
+        - hello-world-1
+`)
 }
