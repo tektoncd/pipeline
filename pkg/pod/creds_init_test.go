@@ -120,6 +120,39 @@ func TestCredsInit(t *testing.T) {
 		}},
 		ctx: context.Background(),
 	}, {
+		desc: "service account has duplicate dockerconfigjson secret and no HOME env var passed in; initialize creds in /tekton/creds",
+		objs: []runtime.Object{
+			&corev1.ServiceAccount{
+				ObjectMeta: metav1.ObjectMeta{Name: serviceAccountName, Namespace: namespace},
+				Secrets: []corev1.ObjectReference{{
+					Name: "my-docker-creds",
+				}, {
+					Name: "my-docker-creds",
+				}, {
+					Name: "my-docker-creds",
+				}},
+			},
+			&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "my-docker-creds",
+					Namespace: namespace,
+				},
+				Type: "kubernetes.io/dockerconfigjson",
+				Data: map[string][]byte{
+					".dockerconfigjson": []byte("ewogICJhdXRocyI6IHsKICAgICJleGFtcGxlLmNvbSI6IHsKICAgICAgInVzZXJuYW1lIjogImRlbW8iLAogICAgICAicGFzc3dvcmQiOiAidGVzdCIKICB9Cn0KCg=="),
+				},
+			},
+		},
+		envVars: []corev1.EnvVar{},
+		wantArgs: []string{
+			"-docker-config=my-docker-creds",
+		},
+		wantVolumeMounts: []corev1.VolumeMount{{
+			Name:      "tekton-internal-secret-volume-my-docker-creds-9l9zj",
+			MountPath: "/tekton/creds-secrets/my-docker-creds",
+		}},
+		ctx: context.Background(),
+	}, {
 		desc: "service account with secret and HOME env var passed in",
 		objs: []runtime.Object{
 			&corev1.ServiceAccount{
