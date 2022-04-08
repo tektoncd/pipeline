@@ -52,7 +52,7 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 			v = strings.TrimSuffix(v, "[*]")
 			if !vars.Has(v) {
 				return &apis.FieldError{
-					Message: fmt.Sprintf("non-existent variable in %q", value),
+					Message: fmt.Sprintf("non-existent variable %q in %q", v, value),
 					// Empty path is required to make the `ViaField`, … work
 					Paths: []string{""},
 				}
@@ -149,6 +149,7 @@ func extractExpressionFromString(s, prefix string) (string, bool) {
 func extractVariablesFromString(s, prefix string) ([]string, bool) {
 	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution)
 	re := regexp.MustCompile(pattern)
+	s = replaceContentInsideQuotes(s)
 	matches := re.FindAllStringSubmatch(s, -1)
 	if len(matches) == 0 {
 		return []string{}, false
@@ -162,6 +163,12 @@ func extractVariablesFromString(s, prefix string) ([]string, bool) {
 		vars[i] = strings.SplitN(groups["var"], ".", 2)[0]
 	}
 	return vars, true
+}
+
+func replaceContentInsideQuotes(value string) string {
+	// match every string inside double and/or single quotes.
+	re := regexp.MustCompile(`"[^"]*"|'[^']*'`)
+	return re.ReplaceAllString(value, "")
 }
 
 func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
