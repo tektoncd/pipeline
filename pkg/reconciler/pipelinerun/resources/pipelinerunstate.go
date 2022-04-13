@@ -187,6 +187,23 @@ func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[str
 	return status
 }
 
+// GetTaskRunsResults returns a map of all successfully completed TaskRuns in the state, with the pipeline task name as
+// the key and the results from the corresponding TaskRun as the value. It only includes tasks which have completed successfully.
+func (state PipelineRunState) GetTaskRunsResults() map[string][]v1beta1.TaskRunResult {
+	results := make(map[string][]v1beta1.TaskRunResult)
+	for _, rprt := range state {
+		if rprt.IsCustomTask() {
+			continue
+		}
+		if !rprt.IsSuccessful() {
+			continue
+		}
+		results[rprt.PipelineTask.Name] = rprt.TaskRun.Status.TaskRunResults
+	}
+
+	return results
+}
+
 // GetRunsStatus returns a map of run name and the run.
 // Ignore a nil run in pipelineRunState, otherwise, capture run object from PipelineRun Status.
 // Update run status based on the pipelineRunState before returning it in the map.
@@ -216,10 +233,27 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 			prrs.Status = &rprt.Run.Status
 		}
 
-		// TODO(#3133): Include any condition check statuses here too.
+		// TODO(#3133): Include any condition check taskResults here too.
 		status[rprt.RunName] = prrs
 	}
 	return status
+}
+
+// GetRunsResults returns a map of all successfully completed Runs in the state, with the pipeline task name as the key
+// and the results from the corresponding TaskRun as the value. It only includes runs which have completed successfully.
+func (state PipelineRunState) GetRunsResults() map[string][]v1alpha1.RunResult {
+	results := make(map[string][]v1alpha1.RunResult)
+	for _, rprt := range state {
+		if !rprt.IsCustomTask() {
+			continue
+		}
+		if !rprt.IsSuccessful() {
+			continue
+		}
+		results[rprt.PipelineTask.Name] = rprt.Run.Status.Results
+	}
+
+	return results
 }
 
 // getNextTasks returns a list of tasks which should be executed next i.e.

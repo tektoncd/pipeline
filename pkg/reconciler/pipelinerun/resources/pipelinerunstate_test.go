@@ -2309,6 +2309,202 @@ spec:
 	}
 }
 
+func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
+	state := PipelineRunState{{
+		TaskRunName: "successful-task-with-results",
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "successful-task-with-results-1",
+		},
+		TaskRun: &v1beta1.TaskRun{
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}}},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{{
+						Name:  "foo",
+						Value: "oof",
+					}, {
+						Name:  "bar",
+						Value: "rab",
+					}},
+				},
+			},
+		},
+	}, {
+		TaskRunName: "successful-task-without-results",
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "successful-task-without-results-1",
+		},
+		TaskRun: &v1beta1.TaskRun{
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}}},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{},
+			},
+		},
+	}, {
+		TaskRunName: "failed-task",
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "failed-task-1",
+		},
+		TaskRun: &v1beta1.TaskRun{
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}}},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{{
+						Name:  "fail-foo",
+						Value: "fail-oof",
+					}},
+				},
+			},
+		},
+	}, {
+		TaskRunName: "incomplete-task",
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "incomplete-task-1",
+		},
+		TaskRun: &v1beta1.TaskRun{
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+				}}},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{{
+						Name:  "unknown-foo",
+						Value: "unknown-oof",
+					}},
+				},
+			},
+		},
+	}, {
+		TaskRunName: "nil-taskrun",
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "nil-taskrun-1",
+		},
+	}, {
+		RunName:    "successful-run-with-results",
+		CustomTask: true,
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "successful-run-with-results-1",
+		},
+		Run: &v1alpha1.Run{
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}}},
+				RunStatusFields: v1alpha1.RunStatusFields{
+					Results: []v1alpha1.RunResult{{
+						Name:  "foo",
+						Value: "oof",
+					}, {
+						Name:  "bar",
+						Value: "rab",
+					}},
+				},
+			},
+		},
+	}, {
+		RunName:    "successful-run-without-results",
+		CustomTask: true,
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "successful-run-without-results-1",
+		},
+		Run: &v1alpha1.Run{
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}}},
+				RunStatusFields: v1alpha1.RunStatusFields{},
+			},
+		},
+	}, {
+		RunName: "failed-run",
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "failed-run-1",
+		},
+		Run: &v1alpha1.Run{
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+				}}},
+				RunStatusFields: v1alpha1.RunStatusFields{
+					Results: []v1alpha1.RunResult{{
+						Name:  "fail-foo",
+						Value: "fail-oof",
+					}},
+				},
+			},
+		},
+	}, {
+		RunName: "incomplete-run",
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "incomplete-run-1",
+		},
+		Run: &v1alpha1.Run{
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionUnknown,
+				}}},
+				RunStatusFields: v1alpha1.RunStatusFields{
+					Results: []v1alpha1.RunResult{{
+						Name:  "unknown-foo",
+						Value: "unknown-oof",
+					}},
+				},
+			},
+		},
+	}, {
+		RunName:    "nil-run",
+		CustomTask: true,
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "nil-run-1",
+		},
+	}}
+
+	expectedTaskResults := map[string][]v1beta1.TaskRunResult{
+		"successful-task-with-results-1": {{
+			Name:  "foo",
+			Value: "oof",
+		}, {
+			Name:  "bar",
+			Value: "rab",
+		}},
+		"successful-task-without-results-1": nil,
+	}
+	expectedRunResults := map[string][]v1alpha1.RunResult{
+		"successful-run-with-results-1": {{
+			Name:  "foo",
+			Value: "oof",
+		}, {
+			Name:  "bar",
+			Value: "rab",
+		}},
+		"successful-run-without-results-1": nil,
+	}
+
+	actualTaskResults := state.GetTaskRunsResults()
+	if d := cmp.Diff(expectedTaskResults, actualTaskResults); d != "" {
+		t.Errorf("Didn't get expected TaskRun results map: %s", diff.PrintWantGot(d))
+	}
+
+	actualRunResults := state.GetRunsResults()
+	if d := cmp.Diff(expectedRunResults, actualRunResults); d != "" {
+		t.Errorf("Didn't get expected Run results map: %s", diff.PrintWantGot(d))
+	}
+}
+
 // conditionCheckFromTaskRun takes a pointer to a TaskRun and wraps it into a ConditionCheck
 func conditionCheckFromTaskRun(tr *v1beta1.TaskRun) *v1beta1.ConditionCheck {
 	cc := v1beta1.ConditionCheck(*tr)
