@@ -2846,39 +2846,38 @@ status:
 	}
 }
 
-func TestReconcilePropagateLabels(t *testing.T) {
+func TestReconcilePropagateLabelsAndAnnotations(t *testing.T) {
 	names.TestingSeed()
 
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-with-labels",
-			Namespace: "foo",
-			Labels: map[string]string{
-				"PipelineRunLabel":        "PipelineRunValue",
-				pipeline.PipelineLabelKey: "WillNotBeUsed",
-			},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  labels:
+    PipelineRunLabel: PipelineRunValue
+    tekton.dev/pipeline: WillNotBeUsed
+  name: test-pipeline-run-with-labels
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
-	expectedObjectMeta := taskRunObjectMeta("test-pipeline-run-with-labels-hello-world-1", "foo", "test-pipeline-run-with-labels", "test-pipeline", "hello-world-1", false)
+	expectedObjectMeta := taskRunObjectMeta("test-pipeline-run-with-labels-hello-world-1", "foo", "test-pipeline-run-with-labels",
+		"test-pipeline", "hello-world-1", false)
 	expectedObjectMeta.Labels["PipelineRunLabel"] = "PipelineRunValue"
-	expected := &v1beta1.TaskRun{
-		ObjectMeta: expectedObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
+	expectedObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
+	expected := mustParseTaskRunWithObjectMeta(t, expectedObjectMeta, `
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+`)
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -2896,94 +2895,70 @@ func TestReconcilePropagateLabels(t *testing.T) {
 
 	// Check that the expected TaskRun was created
 	actual := getTaskRunCreations(t, actions)[0]
-	if d := cmp.Diff(actual, expected); d != "" {
+	// We're ignoring TypeMeta here because parse.MustParseTaskRun populates that, but ktesting does not, so actual does not have it.
+	if d := cmp.Diff(expected, actual, cmpopts.IgnoreTypes(metav1.TypeMeta{})); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, diff.PrintWantGot(d))
 	}
 }
 
-func TestReconcilePropagateLabelsPending(t *testing.T) {
-	names.TestingSeed()
-
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-with-labels",
-			Namespace: "foo",
-			Labels: map[string]string{
-				"PipelineRunLabel":        "PipelineRunValue",
-				pipeline.PipelineLabelKey: "WillNotBeUsed",
-			},
+func TestReconcilePropagateLabelsWithSpecStatus(t *testing.T) {
+	testCases := []struct {
+		name       string
+		specStatus v1beta1.PipelineRunSpecStatus
+	}{
+		{
+			name:       "pending",
+			specStatus: v1beta1.PipelineRunSpecStatusPending,
+		}, {
+			name:       "cancelled",
+			specStatus: v1beta1.PipelineRunSpecStatusCancelled,
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusPending,
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
-
-	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-labels", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("unexpected error when updating status: %v", err)
 	}
 
-	want := "test-pipeline"
-	got := reconciledRun.ObjectMeta.Labels["tekton.dev/pipeline"]
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("expected to see label %v created. Diff %s", want, diff.PrintWantGot(d))
-	}
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
 
-func TestReconcilePropagateLabelsCancelled(t *testing.T) {
-	names.TestingSeed()
+			ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
+			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  labels:
+    PipelineRunLabel: PipelineRunValue
+    tekton.dev/pipeline: WillNotBeUsed
+  name: test-pipeline-run-with-labels
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  status: %s
+`, tc.specStatus))}
 
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-with-labels",
-			Namespace: "foo",
-			Labels: map[string]string{
-				"PipelineRunLabel":        "PipelineRunValue",
-				pipeline.PipelineLabelKey: "WillNotBeUsed",
-			},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusCancelled,
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
+			ts := []*v1beta1.Task{simpleHelloWorldTask}
 
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
 
-	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
+			_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
 
-	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-labels", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("unexpected error when updating status: %v", err)
-	}
+			reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-labels", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("unexpected error when updating status: %v", err)
+			}
 
-	want := "test-pipeline"
-	got := reconciledRun.ObjectMeta.Labels["tekton.dev/pipeline"]
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("expected to see label %v created. Diff %s", want, diff.PrintWantGot(d))
+			want := "test-pipeline"
+			got := reconciledRun.ObjectMeta.Labels["tekton.dev/pipeline"]
+			if d := cmp.Diff(want, got); d != "" {
+				t.Errorf("expected to see label %v created. Diff %s", want, diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
@@ -3221,59 +3196,6 @@ status:
 				t.Fatalf("Succeeded expected to be %s but is %s", tc.conditionSucceeded, status)
 			}
 		})
-	}
-}
-
-func TestReconcilePropagateAnnotations(t *testing.T) {
-	names.TestingSeed()
-
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-pipeline-run-with-annotations",
-			Namespace:   "foo",
-			Annotations: map[string]string{"PipelineRunAnnotation": "PipelineRunValue"},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-annotations", []string{}, false)
-
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
-
-	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)[0]
-	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-with-annotations-hello-world-1", "foo", "test-pipeline-run-with-annotations", "test-pipeline", "hello-world-1", false)
-	expectedTaskRunObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: expectedTaskRunObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
-
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
 
