@@ -109,7 +109,7 @@ spec:
         $(params.package)/cmd/workingdirinit: ${COMBINED_BASE_IMAGE}
 
         # This matches values configured in .ko.yaml
-        $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/git-init-build-base:latest
+        $(params.package)/cmd/git-init: ghcr.io/distroless/git
       EOF
 
       cat ${PROJECT_ROOT}/.ko.yaml
