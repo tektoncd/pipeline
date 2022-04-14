@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -99,9 +101,12 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1bet
 func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) []string {
 	errs := []string{}
 
-	// Loop over the TaskRuns in the PipelineRun status.
-	// If a TaskRun is not in the status yet we should not cancel it anyways.
-	for taskRunName := range pr.Status.TaskRuns {
+	trNames, runNames, err := getChildObjectsFromPRStatus(ctx, pr.Status)
+	if err != nil {
+		errs = append(errs, err.Error())
+	}
+
+	for _, taskRunName := range trNames {
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
 		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
@@ -109,8 +114,8 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 			continue
 		}
 	}
-	// Loop over the Runs in the PipelineRun status.
-	for runName := range pr.Status.Runs {
+
+	for _, runName := range runNames {
 		logger.Infof("cancelling Run %s", runName)
 
 		if err := cancelRun(ctx, runName, pr.Namespace, clientSet); err != nil {
@@ -120,6 +125,43 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 	}
 
 	return errs
+}
+
+// getChildObjectsFromPRStatus returns taskruns and runs in the PipelineRunStatus's ChildReferences or TaskRuns/Runs,
+// based on the value of the embedded status flag.
+func getChildObjectsFromPRStatus(ctx context.Context, prs v1beta1.PipelineRunStatus) ([]string, []string, error) {
+	cfg := config.FromContextOrDefaults(ctx)
+
+	var trNames []string
+	var runNames []string
+	unknownChildKinds := make(map[string]string)
+
+	if cfg.FeatureFlags.EmbeddedStatus != config.FullEmbeddedStatus {
+		for _, cr := range prs.ChildReferences {
+			switch cr.Kind {
+			case "TaskRun":
+				trNames = append(trNames, cr.Name)
+			case "Run":
+				runNames = append(runNames, cr.Name)
+			default:
+				unknownChildKinds[cr.Name] = cr.Kind
+			}
+		}
+	} else {
+		for trName := range prs.TaskRuns {
+			trNames = append(trNames, trName)
+		}
+		for runName := range prs.Runs {
+			runNames = append(runNames, runName)
+		}
+	}
+
+	var err error
+	if len(unknownChildKinds) > 0 {
+		err = fmt.Errorf("found child objects of unknown kinds: %v", unknownChildKinds)
+	}
+
+	return trNames, runNames, err
 }
 
 // gracefullyCancelPipelineRun marks any non-final resolved TaskRun(s) as cancelled and runs finally.
