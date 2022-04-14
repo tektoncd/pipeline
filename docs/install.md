@@ -389,7 +389,7 @@ features](#alpha-features) to be used.
 - `embedded-status`: set this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the 
  `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the `PipelineRun` status with
   name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to 
-  do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses). **NOTE**: This functionality is not yet active.
+  do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses).
 
 For example:
 

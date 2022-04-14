@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/system"
@@ -31,4 +33,18 @@ func requireAnyGate(gates map[string]string) func(context.Context, *testing.T, *
 		}
 		t.Skipf("No feature flag matching %s", strings.Join(pairs, " or "))
 	}
+}
+
+// GetEmbeddedStatus gets the current value for the "embedded-status" feature flag.
+// If the flag is not set, it returns the default value.
+func GetEmbeddedStatus(ctx context.Context, t *testing.T, kubeClient kubernetes.Interface) string {
+	featureFlagsCM, err := kubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
+	}
+	val := featureFlagsCM.Data["embedded-status"]
+	if val == "" {
+		return config.DefaultEmbeddedStatus
+	}
+	return val
 }

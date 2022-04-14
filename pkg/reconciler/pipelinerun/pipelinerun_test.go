@@ -2117,7 +2117,6 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 }
 
 func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *testing.T, embeddedStatus string) {
-
 	// Pipeline has a DAG task "hello-world-1" and Finally task "hello-world-2"
 	ps := []*v1beta1.Pipeline{{
 		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
@@ -2148,24 +2147,36 @@ func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *
 			Status:             v1beta1.PipelineRunSpecStatusCancelledRunFinally,
 		},
 		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"test-pipeline-run-cancelled-run-finally-hello-world": {
-						PipelineTaskName: "hello-world-1",
-						Status: &v1beta1.TaskRunStatus{
-							Status: duckv1beta1.Status{
-								Conditions: []apis.Condition{{
-									Type:   apis.ConditionSucceeded,
-									Status: corev1.ConditionFalse,
-									Reason: v1beta1.TaskRunReasonCancelled.String(),
-								}},
-							},
-						},
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{},
+		},
+	}}
+
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		prs[0].Status.ChildReferences = append(prs[0].Status.ChildReferences, v1beta1.ChildStatusReference{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: v1beta1.SchemeGroupVersion.String(),
+				Kind:       "TaskRun",
+			},
+			Name:             "test-pipeline-run-cancelled-run-finally-hello-world",
+			PipelineTaskName: "hello-world-1",
+		})
+	}
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		prs[0].Status.TaskRuns = map[string]*v1beta1.PipelineRunTaskRunStatus{
+			"test-pipeline-run-cancelled-run-finally-hello-world": {
+				PipelineTaskName: "hello-world-1",
+				Status: &v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+							Reason: v1beta1.TaskRunReasonCancelled.String(),
+						}},
 					},
 				},
 			},
-		},
-	}}
+		}
+	}
 
 	// TaskRun exists for DAG task "hello-world-1" that has failed with reason of cancellation
 	trs := []*v1beta1.TaskRun{createHelloWorldTaskRunWithStatus(t, "test-pipeline-run-cancelled-run-finally-hello-world", "foo",
@@ -7790,15 +7801,11 @@ status:
 }
 
 func shouldHaveFullEmbeddedStatus(embeddedVal string) bool {
-	return true
-	// TODO(abayer): Uncomment when implementation of TEP-0100 is done.
-	// return embeddedVal == config.FullEmbeddedStatus || embeddedVal == config.BothEmbeddedStatus
+	return embeddedVal == config.FullEmbeddedStatus || embeddedVal == config.BothEmbeddedStatus
 }
 
 func shouldHaveMinimalEmbeddedStatus(embeddedVal string) bool {
-	return false
-	// TODO(abayer): Uncomment when implementation of TEP-0100 is done.
-	// return embeddedVal == config.MinimalEmbeddedStatus || embeddedVal == config.BothEmbeddedStatus
+	return embeddedVal == config.MinimalEmbeddedStatus || embeddedVal == config.BothEmbeddedStatus
 }
 
 func verifyTaskRunStatusesCount(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, taskCount int) {
