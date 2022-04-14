@@ -58,6 +58,8 @@ spec:
   steps:
     - name: clone
       image: ko://github.com/tektoncd/pipeline/cmd/git-init
+      securityContext:
+        runAsUser: 0 # This needs root, and git-init is nonroot by default
       script: |
         CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
 
