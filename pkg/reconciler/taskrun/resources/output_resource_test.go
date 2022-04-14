@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	"knative.dev/pkg/ptr"
 )
 
 var (
@@ -224,16 +225,22 @@ func TestValidOutputResources(t *testing.T) {
 			Image:   "busybox",
 			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
-			Name:    "source-mkdir-source-git-mz4c7",
-			Image:   "busybox",
+			Name:  "source-mkdir-source-git-mz4c7",
+			Image: "busybox",
+			SecurityContext: &corev1.SecurityContext{
+				RunAsUser: ptr.Int64(0),
+			},
 			Command: []string{"mkdir", "-p", "pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
 		}}, {Container: corev1.Container{
-			Name:    "source-copy-source-git-mssqb",
-			Image:   "busybox",
+			Name:  "source-copy-source-git-mssqb",
+			Image: "busybox",
+			SecurityContext: &corev1.SecurityContext{
+				RunAsUser: ptr.Int64(0),
+			},
 			Command: []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
@@ -298,16 +305,22 @@ func TestValidOutputResources(t *testing.T) {
 			Image:   "busybox",
 			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 		}}, {Container: corev1.Container{
-			Name:    "source-mkdir-source-git-mz4c7",
-			Image:   "busybox",
+			Name:  "source-mkdir-source-git-mz4c7",
+			Image: "busybox",
+			SecurityContext: &corev1.SecurityContext{
+				RunAsUser: ptr.Int64(0),
+			},
 			Command: []string{"mkdir", "-p", "pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
 				MountPath: "/pvc",
 			}},
 		}}, {Container: corev1.Container{
-			Name:    "source-copy-source-git-mssqb",
-			Image:   "busybox",
+			Name:  "source-copy-source-git-mssqb",
+			Image: "busybox",
+			SecurityContext: &corev1.SecurityContext{
+				RunAsUser: ptr.Int64(0),
+			},
 			Command: []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-name"},
 			VolumeMounts: []corev1.VolumeMount{{
 				Name:      "pipelinerun-pvc",
@@ -476,14 +489,20 @@ func TestValidOutputResources(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 			}},
 			{Container: corev1.Container{
-				Name:         "source-mkdir-source-gcs-mz4c7",
-				Image:        "busybox",
+				Name:  "source-mkdir-source-gcs-mz4c7",
+				Image: "busybox",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.Int64(0),
+				},
 				Command:      []string{"mkdir", "-p", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 			}},
 			{Container: corev1.Container{
-				Name:         "source-copy-source-gcs-mssqb",
-				Image:        "busybox",
+				Name:  "source-copy-source-gcs-mssqb",
+				Image: "busybox",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.Int64(0),
+				},
 				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
 				Env: []corev1.EnvVar{
@@ -570,14 +589,20 @@ func TestValidOutputResources(t *testing.T) {
 				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
 			}},
 			{Container: corev1.Container{
-				Name:         "source-mkdir-source-gcs-mz4c7",
-				Image:        "busybox",
+				Name:  "source-mkdir-source-gcs-mz4c7",
+				Image: "busybox",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.Int64(0),
+				},
 				Command:      []string{"mkdir", "-p", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 			}},
 			{Container: corev1.Container{
-				Name:         "source-copy-source-gcs-mssqb",
-				Image:        "busybox",
+				Name:  "source-copy-source-gcs-mssqb",
+				Image: "busybox",
+				SecurityContext: &corev1.SecurityContext{
+					RunAsUser: ptr.Int64(0),
+				},
 				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
 				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
 				Env: []corev1.EnvVar{

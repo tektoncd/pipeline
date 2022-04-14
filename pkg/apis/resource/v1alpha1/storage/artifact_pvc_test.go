@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestPVCGetCopyFromContainerSpec(t *testing.T) {
@@ -57,13 +58,19 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 		ShellImage: "busybox",
 	}
 	want := []v1beta1.Step{{Container: corev1.Container{
-		Name:         "source-mkdir-workspace-9l9zj",
-		Image:        "busybox",
+		Name:  "source-mkdir-workspace-9l9zj",
+		Image: "busybox",
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser: ptr.Int64(0),
+		},
 		Command:      []string{"mkdir", "-p", "/workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 	}}, {Container: corev1.Container{
-		Name:         "source-copy-workspace-mz4c7",
-		Image:        "busybox",
+		Name:  "source-copy-workspace-mz4c7",
+		Image: "busybox",
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser: ptr.Int64(0),
+		},
 		Command:      []string{"cp", "-r", "src-path/.", "/workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 		Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "workspace"}},
