@@ -26,6 +26,7 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -60,6 +61,11 @@ func hermeticTest(t *testing.T, spireEnabled bool) {
 
 	t.Parallel()
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	tests := []struct {
 		desc       string

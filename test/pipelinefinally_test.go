@@ -471,6 +471,11 @@ func pipelineLevelFinallyOneFinalTaskFailedFailureWithOptions(t *testing.T, spir
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
+
 	task := getSuccessTask(t, namespace)
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
@@ -561,6 +566,11 @@ func pipelineLevelFinallyOneFinalTaskCancelledRunFinallyWithOptions(t *testing.T
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	task1 := getDelaySuccessTaskProducingResults(t, namespace)
 	task1.Spec.Results = append(task1.Spec.Results, v1beta1.TaskResult{
@@ -705,6 +715,11 @@ func pipelineLevelFinallyOneFinalTaskStoppedRunFinallyWithOptions(t *testing.T, 
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	task1 := getDelaySuccessTaskProducingResults(t, namespace)
 	task1.Spec.Results = append(task1.Spec.Results, v1beta1.TaskResult{

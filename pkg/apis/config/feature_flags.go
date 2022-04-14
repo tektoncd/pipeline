@@ -142,6 +142,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setEmbeddedStatus(cfgMap, DefaultEmbeddedStatus, &tc.EmbeddedStatus); err != nil {
 		return nil, err
 	}
+	if err := setFeature(enableSpire, DefaultEnableSpire, &tc.EnableSpire); err != nil {
+		return nil, err
+	}
 
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
 	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of

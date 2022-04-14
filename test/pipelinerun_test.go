@@ -320,7 +320,6 @@ spec:
 		i := i   // capture range variable
 		td := td // capture range variable
 		t.Run(td.name, func(t *testing.T) {
-			t.Parallel()
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -336,6 +335,11 @@ spec:
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
+
+			if spireEnabled {
+				originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+				defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+			}
 
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
 			resources, p := td.testSetup(ctx, t, c, namespace, i)
@@ -602,6 +606,10 @@ func pipelineRunPendingTestWithOptions(t *testing.T, spireEnabled bool) {
 	taskName := helpers.ObjectNameForTest(t)
 	pipelineName := helpers.ObjectNameForTest(t)
 	prName := helpers.ObjectNameForTest(t)
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	t.Logf("Creating Task, Pipeline, and Pending PipelineRun %s in namespace %s", prName, namespace)
 

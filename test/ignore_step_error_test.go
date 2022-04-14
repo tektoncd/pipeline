@@ -26,6 +26,7 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -56,6 +57,11 @@ func stepErrorTest(t *testing.T, spireEnabled bool) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
 
 	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
 metadata:

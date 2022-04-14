@@ -33,13 +33,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
 
 const (
-	systemNamespace  = "tekton-pipelines"
 	bucketSecretName = "bucket-secret"
 	bucketSecretKey  = "bucket-secret-key"
 )
@@ -256,26 +254,6 @@ spec:
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", bucketTestPipelineRunName, err)
 		t.Fatalf("PipelineRun execution failed")
 	}
-}
-
-// updateConfigMap updates the config map for specified @name with values. We can't use the one from knativetest because
-// it assumes that Data is already a non-nil map, and by default, it isn't!
-func updateConfigMap(ctx context.Context, client kubernetes.Interface, name string, configName string, values map[string]string) error {
-	configMap, err := client.CoreV1().ConfigMaps(name).Get(ctx, configName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	if configMap.Data == nil {
-		configMap.Data = make(map[string]string)
-	}
-
-	for key, value := range values {
-		configMap.Data[key] = value
-	}
-
-	_, err = client.CoreV1().ConfigMaps(name).Update(ctx, configMap, metav1.UpdateOptions{})
-	return err
 }
 
 func getBucketSecret(t *testing.T, configFilePath, namespace string) *corev1.Secret {

@@ -81,6 +81,11 @@ func kanikoTest(t *testing.T, spireEnabled bool) {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", git.Name, err)
 	}
 
+	if spireEnabled {
+		originalConfigMapData := enableSpireConfigMap(ctx, c, t)
+		defer resetConfigMap(ctx, t, c, systemNamespace, config.GetFeatureFlagsConfigName(), originalConfigMapData)
+	}
+
 	image := getImageResource(t, repo)
 	t.Logf("Creating Image PipelineResource %s", repo)
 	if _, err := c.PipelineResourceClient.Create(ctx, image, metav1.CreateOptions{}); err != nil {
