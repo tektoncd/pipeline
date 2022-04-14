@@ -422,6 +422,21 @@ type ChildStatusReference struct {
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
+// GetConditionChecks returns a map representation of this ChildStatusReference's ConditionChecks, in the same form
+// as PipelineRunTaskRunStatus.ConditionChecks.
+func (cr ChildStatusReference) GetConditionChecks() map[string]*PipelineRunConditionCheckStatus {
+	if len(cr.ConditionChecks) == 0 {
+		return nil
+	}
+	ccMap := make(map[string]*PipelineRunConditionCheckStatus)
+
+	for _, cc := range cr.ConditionChecks {
+		ccMap[cc.ConditionCheckName] = &cc.PipelineRunConditionCheckStatus
+	}
+
+	return ccMap
+}
+
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
 // This is defined separately and inlined so that other types can readily
 // consume these fields via duck typing.
