@@ -43,6 +43,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/spire"
+	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	eventstest "github.com/tektoncd/pipeline/test/events"
@@ -91,6 +93,7 @@ var (
 		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
+	spireConfig              = spireconfig.SpireConfig{MockSpire: true}
 	now                      = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
 	// Pods are created with a random 5-character suffix that we want to
@@ -522,7 +525,7 @@ func ensureConfigurationConfigMapsExist(d *test.Data) {
 func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 	t.Helper()
 	names.TestingSeed()
-	return initializeTaskRunControllerAssets(t, d, pipeline.Options{Images: images})
+	return initializeTaskRunControllerAssets(t, d, pipeline.Options{Images: images, SpireConfig: spireConfig})
 }
 
 func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
@@ -597,7 +600,7 @@ spec:
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
@@ -605,7 +608,7 @@ spec:
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			saName := tc.taskRun.Spec.ServiceAccountName
@@ -1005,7 +1008,7 @@ spec:
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
@@ -1017,7 +1020,7 @@ spec:
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "params",
 		taskRun: taskRunSubstitution,
@@ -1082,7 +1085,7 @@ spec:
 					"[{\"name\":\"myimage\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/myimage\"}]",
 				},
 			},
-		}),
+		}, false),
 	}, {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
@@ -1112,7 +1115,7 @@ spec:
 					"--my-arg=foo",
 				},
 			},
-		}),
+		}, false),
 	}, {
 		name:    "success-with-cluster-task",
 		taskRun: taskRunWithClusterTask,
@@ -1124,7 +1127,7 @@ spec:
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "taskrun-with-resource-spec-task-spec",
 		taskRun: taskRunWithResourceSpecAndTaskSpec,
@@ -1153,7 +1156,7 @@ spec:
 				image: "ubuntu",
 				cmd:   "/mycmd",
 			},
-		}),
+		}, false),
 	}, {
 		name:    "taskrun-with-pod",
 		taskRun: taskRunWithPod,
@@ -1165,7 +1168,7 @@ spec:
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "taskrun-with-credentials-variable-default-tekton-creds",
 		taskRun: taskRunWithCredentialsVariable,
@@ -1177,7 +1180,7 @@ spec:
 			name:  "mycontainer",
 			image: "myimage",
 			cmd:   "/mycmd /tekton/creds",
-		}}),
+		}}, false),
 	}, {
 		name:    "remote-task",
 		taskRun: taskRunBundle,
@@ -1189,7 +1192,7 @@ spec:
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets, cancel := getTaskRunController(t, d)
@@ -1315,12 +1318,28 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
-			name:       "mycontainer",
-			image:      "myimage",
-			stdoutPath: "stdout.txt",
-			cmd:        "/mycmd",
-		}}),
+		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "foo", config.DefaultServiceAccountValue, false,
+			[]corev1.Volume{
+				{
+					Name: spire.WorkloadAPI,
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							Driver: "csi.spiffe.io",
+						},
+					},
+				}}, []stepForExpectedPod{{
+				name:       "mycontainer",
+				image:      "myimage",
+				stdoutPath: "stdout.txt",
+				cmd:        "/mycmd",
+			}}, true),
+			[]corev1.VolumeMount{
+				{
+					Name:      spire.WorkloadAPI,
+					MountPath: spire.VolumeMountPath,
+				},
+			},
+		),
 	}, {
 		name:    "taskrun-with-output-config-ws",
 		taskRun: taskRunWithOutputConfigAndWorkspace,
@@ -1329,22 +1348,38 @@ spec:
 			"Normal Running Not all Steps",
 		},
 		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "foo", config.DefaultServiceAccountValue, false,
-			[]corev1.Volume{{
-				Name: "ws-9l9zj",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
+			[]corev1.Volume{
+				{
+					Name: "ws-9l9zj",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				}, {
+					Name: spire.WorkloadAPI,
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							Driver: "csi.spiffe.io",
+						},
+					},
 				},
-			}},
+			},
 			[]stepForExpectedPod{{
 				name:       "mycontainer",
 				image:      "myimage",
 				stdoutPath: "stdout.txt",
 				cmd:        "/mycmd",
-			}}),
-			[]corev1.VolumeMount{{
-				Name:      "ws-9l9zj",
-				MountPath: "/workspace/data",
-			}}),
+			}}, true),
+			[]corev1.VolumeMount{
+				{
+					Name:      "ws-9l9zj",
+					MountPath: "/workspace/data",
+				},
+				{
+					Name:      spire.WorkloadAPI,
+					MountPath: spire.VolumeMountPath,
+				},
+			},
+		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets, cancel := getTaskRunController(t, d)
@@ -1405,8 +1440,8 @@ spec:
 }
 
 func addVolumeMounts(p *corev1.Pod, vms []corev1.VolumeMount) *corev1.Pod {
-	for i, vm := range vms {
-		p.Spec.Containers[i].VolumeMounts = append(p.Spec.Containers[i].VolumeMounts, vm)
+	for i := range p.Spec.Containers {
+		p.Spec.Containers[i].VolumeMounts = append(p.Spec.Containers[i].VolumeMounts, vms...)
 	}
 	return p
 }
@@ -4516,7 +4551,7 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 	return mnts
 }
 
-func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []string, idx int) []string {
+func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []string, idx int, alpha bool) []string {
 	args := []string{
 		"-wait_file",
 	}
@@ -4525,6 +4560,7 @@ func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []
 	} else {
 		args = append(args, fmt.Sprintf("/tekton/run/%d/out", idx-1))
 	}
+
 	args = append(args,
 		"-post_file",
 		fmt.Sprintf("/tekton/run/%d/out", idx),
@@ -4533,6 +4569,9 @@ func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []
 		"-step_metadata_dir",
 		fmt.Sprintf("/tekton/run/%d/status", idx),
 	)
+	if alpha {
+		args = append(args, "-enable_spire")
+	}
 	if stdoutPath != "" {
 		args = append(args, "-stdout_path", stdoutPath)
 	}
@@ -4594,11 +4633,23 @@ type stepForExpectedPod struct {
 	stderrPath      string
 }
 
-func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
+func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod, alpha bool) *corev1.Pod {
 	stepNames := make([]string, 0, len(steps))
 	for _, s := range steps {
 		stepNames = append(stepNames, fmt.Sprintf("step-%s", s.name))
 	}
+
+	initContainers := []corev1.Container{placeToolsInitContainer(stepNames)}
+	if alpha {
+		for i := range initContainers {
+			c := &initContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+			})
+		}
+	}
+
 	p := &corev1.Pod{
 		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, ns, isClusterTask),
 		Spec: corev1.PodSpec{
@@ -4610,7 +4661,7 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 				binVolume,
 				downwardVolume,
 			},
-			InitContainers:        []corev1.Container{placeToolsInitContainer(stepNames)},
+			InitContainers:        initContainers,
 			RestartPolicy:         corev1.RestartPolicyNever,
 			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			ServiceAccountName:    saName,
@@ -4631,7 +4682,7 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 			VolumeMounts:           podVolumeMounts(idx, len(steps)),
 			TerminationMessagePath: "/tekton/termination",
 		}
-		stepContainer.Args = podArgs(s.cmd, s.stdoutPath, s.stderrPath, s.args, idx)
+		stepContainer.Args = podArgs(s.cmd, s.stdoutPath, s.stderrPath, s.args, idx, alpha)
 
 		for k, v := range s.envVars {
 			stepContainer.Env = append(stepContainer.Env, corev1.EnvVar{

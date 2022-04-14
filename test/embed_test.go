@@ -41,10 +41,29 @@ const (
 // TestTaskRun_EmbeddedResource is an integration test that will verify a very simple "hello world" TaskRun can be
 // executed with an embedded resource spec.
 func TestTaskRun_EmbeddedResource(t *testing.T) {
+	embeddedResourceTest(t, false)
+}
+
+// TestTaskRun_EmbeddedResourceWithSpire is an integration test with spire enabled that will verify a very simple "hello world" TaskRun can be
+// executed with an embedded resource spec.
+func TestTaskRun_EmbeddedResourceWithSpire(t *testing.T) {
+	embeddedResourceTest(t, true)
+}
+
+func embeddedResourceTest(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	if spireEnabled {
+		c, namespace = setup(ctx, t, requireAnyGate(spireFeatureGates))
+	} else {
+		c, namespace = setup(ctx, t)
+	}
+
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
@@ -68,6 +87,15 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 
 	// TODO(#127) Currently we have no reliable access to logs from the TaskRun so we'll assume successful
 	// completion of the TaskRun means the TaskRun did what it was intended.
+
+	if spireEnabled {
+		tr, err := c.TaskRunClient.Get(ctx, embedTaskRunName, metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Error retrieving taskrun: %s", err)
+		}
+		spireShouldPassTaskRunResultsVerify(tr, t)
+	}
+
 }
 
 func getEmbeddedTask(t *testing.T, taskName, namespace string, args []string) *v1beta1.Task {

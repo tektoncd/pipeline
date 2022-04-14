@@ -42,11 +42,30 @@ var (
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
 func TestHelmDeployPipelineRun(t *testing.T) {
+	helmDeploytest(t, false)
+}
+
+// TestHelmDeployPipelineRunWithSpire is an integration test with spire enabled that will verify a pipeline build an image
+// and then using helm to deploy it
+func TestHelmDeployPipelineRunWithSpire(t *testing.T) {
+	helmDeploytest(t, true)
+}
+
+func helmDeploytest(t *testing.T, spireEnabled bool) {
 	repo := ensureDockerRepo(t)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	if spireEnabled {
+		c, namespace = setup(ctx, t, requireAnyGate(spireFeatureGates))
+	} else {
+		c, namespace = setup(ctx, t)
+	}
+
 	setupClusterBindingForHelm(ctx, c, t, namespace)
 
 	var (
@@ -101,6 +120,16 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	if err := WaitForPipelineRunState(ctx, c, helmDeployPipelineRunName, timeout, PipelineRunSucceed(helmDeployPipelineRunName), "PipelineRunCompleted"); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
+	}
+
+	if spireEnabled {
+		taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + helmDeployPipelineRunName})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", helmDeployPipelineRunName, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+		}
 	}
 
 	// cleanup task to remove helm releases from cluster and cluster role bindings, will not fail the test if it fails, just log

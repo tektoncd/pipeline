@@ -42,6 +42,15 @@ const (
 
 // TestTaskRun is an integration test that will verify a TaskRun using kaniko
 func TestKanikoTaskRun(t *testing.T) {
+	kanikoTest(t, false)
+}
+
+// TestKanikoTaskRunWithSpire is an integration test that will verify a TaskRun using kaniko with Spire enabled
+func TestKanikoTaskRunWithSpire(t *testing.T) {
+	kanikoTest(t, true)
+}
+
+func kanikoTest(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -50,7 +59,15 @@ func TestKanikoTaskRun(t *testing.T) {
 		t.Skip("Skip test as skipRootUserTests set to true")
 	}
 
-	c, namespace := setup(ctx, t, withRegistry)
+	var c *clients
+	var namespace string
+
+	if spireEnabled {
+		c, namespace = setup(ctx, t, withRegistry, requireAnyGate(spireFeatureGates))
+	} else {
+		c, namespace = setup(ctx, t, withRegistry)
+	}
+
 	t.Parallel()
 
 	repo := fmt.Sprintf("registry.%s:5000/kanikotasktest", namespace)
@@ -121,6 +138,10 @@ func TestKanikoTaskRun(t *testing.T) {
 
 	if revision != commit {
 		t.Fatalf("Expected remote commit to match local revision: %s, %s", commit, revision)
+	}
+
+	if spireEnabled {
+		spireShouldPassTaskRunResultsVerify(tr, t)
 	}
 
 	// match the local digest, which is first capture group against the remote image

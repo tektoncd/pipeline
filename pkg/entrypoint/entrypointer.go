@@ -31,6 +31,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 )
@@ -80,6 +81,10 @@ type Entrypointer struct {
 	OnError string
 	// StepMetadataDir is the directory for a step where the step related metadata can be stored
 	StepMetadataDir string
+	// SpireWorkloadAPI connects to spire and does obtains SVID based on taskrun
+	SpireWorkloadAPI spire.EntrypointerAPIClient
+	// ResultsDirectory is the directory to find results, defaults to pipeline.DefaultResultPath
+	ResultsDirectory string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -136,13 +141,14 @@ func (e Entrypointer) Go() error {
 		ResultType: v1beta1.InternalTektonResultType,
 	})
 
+	ctx := context.Background()
 	var err error
+
 	if e.Timeout != nil && *e.Timeout < time.Duration(0) {
 		err = fmt.Errorf("negative timeout specified")
 	}
 
 	if err == nil {
-		ctx := context.Background()
 		var cancel context.CancelFunc
 		if e.Timeout != nil && *e.Timeout != time.Duration(0) {
 			ctx, cancel = context.WithTimeout(ctx, *e.Timeout)
@@ -184,7 +190,11 @@ func (e Entrypointer) Go() error {
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
 	// This creates an error when trying to open the result folder as a file.
 	if len(e.Results) >= 1 && e.Results[0] != "" {
-		if err := e.readResultsFromDisk(pipeline.DefaultResultPath); err != nil {
+		resultPath := pipeline.DefaultResultPath
+		if e.ResultsDirectory != "" {
+			resultPath = e.ResultsDirectory
+		}
+		if err := e.readResultsFromDisk(ctx, resultPath); err != nil {
 			logger.Fatalf("Error while handling results: %s", err)
 		}
 	}
@@ -192,7 +202,7 @@ func (e Entrypointer) Go() error {
 	return err
 }
 
-func (e Entrypointer) readResultsFromDisk(resultDir string) error {
+func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string) error {
 	output := []v1beta1.PipelineResourceResult{}
 	for _, resultFile := range e.Results {
 		if resultFile == "" {
@@ -211,6 +221,15 @@ func (e Entrypointer) readResultsFromDisk(resultDir string) error {
 			ResultType: v1beta1.TaskRunResultType,
 		})
 	}
+
+	if e.SpireWorkloadAPI != nil {
+		signed, err := e.SpireWorkloadAPI.Sign(ctx, output)
+		if err != nil {
+			return err
+		}
+		output = append(output, signed...)
+	}
+
 	// push output to termination path
 	if len(output) != 0 {
 		if err := termination.WriteMessage(e.TerminationPath, output); err != nil {

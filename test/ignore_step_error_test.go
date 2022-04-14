@@ -33,10 +33,27 @@ import (
 )
 
 func TestMissingResultWhenStepErrorIsIgnored(t *testing.T) {
+	stepErrorTest(t, false)
+}
+
+func TestMissingResultWhenStepErrorIsIgnoredWithSpire(t *testing.T) {
+	stepErrorTest(t, true)
+}
+
+func stepErrorTest(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	if spireEnabled {
+		c, namespace = setup(ctx, t, requireAnyGate(spireFeatureGates))
+	} else {
+		c, namespace = setup(ctx, t)
+	}
+
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
@@ -97,6 +114,10 @@ spec:
 
 	if len(taskrunItem.Status.TaskRunResults) != 1 {
 		t.Fatalf("task1 should have produced a result before failing the step")
+	}
+
+	if spireEnabled {
+		spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
 	}
 
 	for _, r := range taskrunItem.Status.TaskRunResults {

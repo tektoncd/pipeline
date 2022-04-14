@@ -35,10 +35,30 @@ import (
 // verify a very simple "hello world" TaskRun and PipelineRun failure
 // execution lead to the correct TaskRun status.
 func TestTaskRunPipelineRunStatus(t *testing.T) {
+	taskRunPipelineRunStatus(t, false)
+}
+
+// TestTaskRunPipelineRunStatusWithSpire is an integration test with spire enabled that will
+// verify a very simple "hello world" TaskRun and PipelineRun failure
+// execution lead to the correct TaskRun status.
+func TestTaskRunPipelineRunStatusWithSpire(t *testing.T) {
+	taskRunPipelineRunStatus(t, true)
+}
+
+func taskRunPipelineRunStatus(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	if spireEnabled {
+		c, namespace = setup(ctx, t, requireAnyGate(spireFeatureGates))
+	} else {
+		c, namespace = setup(ctx, t)
+	}
+
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
@@ -72,6 +92,14 @@ spec:
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
+	if spireEnabled {
+		tr, err := c.TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Error retrieving taskrun: %s", err)
+		}
+		spireShouldFailTaskRunResultsVerify(tr, t)
+	}
+
 	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -98,4 +126,15 @@ spec:
 	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
+
+	if spireEnabled {
+		taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldFailTaskRunResultsVerify(&taskrunItem, t)
+		}
+	}
+
 }

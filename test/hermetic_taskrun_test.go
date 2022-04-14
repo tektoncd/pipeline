@@ -34,11 +34,30 @@ import (
 // it does this by first running the TaskRun normally to make sure it passes
 // Then, it enables hermetic mode and makes sure the same TaskRun fails because it no longer has access to a network.
 func TestHermeticTaskRun(t *testing.T) {
+	hermeticTest(t, false)
+}
+
+// TestHermeticTaskRunWithSpire (with spire enabled) make sure that the hermetic execution mode actually drops network from a TaskRun step
+// it does this by first running the TaskRun normally to make sure it passes
+// Then, it enables hermetic mode and makes sure the same TaskRun fails because it no longer has access to a network.
+func TestHermeticTaskRunWithSpire(t *testing.T) {
+	hermeticTest(t, true)
+}
+
+func hermeticTest(t *testing.T, spireEnabled bool) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "alpha"}))
+	var c *clients
+	var namespace string
+
+	if spireEnabled {
+		c, namespace = setup(ctx, t, requireAnyGate(spireFeatureGates))
+	} else {
+		c, namespace = setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "alpha"}))
+	}
+
 	t.Parallel()
 	defer tearDown(ctx, t, c, namespace)
 
@@ -67,6 +86,13 @@ func TestHermeticTaskRun(t *testing.T) {
 			if err := WaitForTaskRunState(ctx, c, regularTaskRunName, Succeed(regularTaskRunName), "TaskRunCompleted"); err != nil {
 				t.Errorf("Error waiting for TaskRun %s to finish: %s", regularTaskRunName, err)
 			}
+			if spireEnabled {
+				tr, err := c.TaskRunClient.Get(ctx, regularTaskRunName, metav1.GetOptions{})
+				if err != nil {
+					t.Errorf("Error retrieving taskrun: %s", err)
+				}
+				spireShouldPassTaskRunResultsVerify(tr, t)
+			}
 
 			// now, run the task mode with hermetic mode
 			// it should fail, since it shouldn't be able to access any network
@@ -78,6 +104,13 @@ func TestHermeticTaskRun(t *testing.T) {
 			}
 			if err := WaitForTaskRunState(ctx, c, hermeticTaskRunName, Failed(hermeticTaskRunName), "Failed"); err != nil {
 				t.Errorf("Error waiting for TaskRun %s to fail: %s", hermeticTaskRunName, err)
+			}
+			if spireEnabled {
+				tr, err := c.TaskRunClient.Get(ctx, hermeticTaskRunName, metav1.GetOptions{})
+				if err != nil {
+					t.Errorf("Error retrieving taskrun: %s", err)
+				}
+				spireShouldFailTaskRunResultsVerify(tr, t)
 			}
 		})
 	}

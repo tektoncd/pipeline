@@ -60,6 +60,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
 				EmbeddedStatus:                   "both",
+				EnableSpire:                      true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -70,6 +71,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				// if the submitted text value is "false".
 				EnableTektonOCIBundles: true,
 				EnableCustomTasks:      true,
+				EnableSpire:            true,
 
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -97,6 +99,17 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
+		{
+			expectedConfig: &config.FeatureFlags{
+				EnableAPIFields: "stable",
+				EmbeddedStatus:  "full",
+				EnableSpire:     true,
+
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+			},
+			fileName: "feature-flags-enable-spire",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -121,6 +134,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EnableAPIFields:                  config.DefaultEnableAPIFields,
 		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
+		EnableSpire:                      config.DefaultEnableSpire,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }

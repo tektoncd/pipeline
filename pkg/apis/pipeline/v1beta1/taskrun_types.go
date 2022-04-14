@@ -124,6 +124,19 @@ type TaskRunStatus struct {
 	TaskRunStatusFields `json:",inline"`
 }
 
+// TaskRunConditionType is an enum used to store TaskRun custom conditions
+// conditions such as one used in spire results verification
+type TaskRunConditionType string
+
+const (
+	// TaskRunConditionResultsVerified is a Condition Type that indicates that the results were verified by spire
+	TaskRunConditionResultsVerified TaskRunConditionType = "SignedResultsVerified"
+)
+
+func (t TaskRunConditionType) String() string {
+	return string(t)
+}
+
 // TaskRunReason is an enum used to store all TaskRun reason for
 // the Succeeded condition that are controlled by the TaskRun itself. Failure
 // reasons that emerge from underlying resources are not included here
@@ -147,6 +160,12 @@ const (
 	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
 	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
 	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
+	// TaskRunReasonResultsVerified is the reason set when the TaskRun results are verified by spire
+	TaskRunReasonResultsVerified TaskRunReason = "TaskRunResultsVerified"
+	// TaskRunReasonsResultsVerificationFailed is the reason set when the TaskRun results are failed to verify by spire
+	TaskRunReasonsResultsVerificationFailed TaskRunReason = "TaskRunResultsVerificationFailed"
+	// AwaitingTaskRunResults is the reason set when waiting upon `TaskRun` results and signatures to verify
+	AwaitingTaskRunResults TaskRunReason = "AwaitingTaskRunResults"
 )
 
 func (t TaskRunReason) String() string {
@@ -422,6 +441,16 @@ func (tr *TaskRun) IsSuccessful() bool {
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
 func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// IsTaskRunResultVerified returns true if the TaskRun's results have been validated by spire.
+func (tr *TaskRun) IsTaskRunResultVerified() bool {
+	return tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsTrue()
+}
+
+// IsTaskRunResultDone returns true if the TaskRun's results are available for verification
+func (tr *TaskRun) IsTaskRunResultDone() bool {
+	return !tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsUnknown()
 }
 
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout

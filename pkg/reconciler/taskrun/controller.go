@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/pod"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	resolutionclient "github.com/tektoncd/resolution/pkg/client/injection/client"
 	resolutioninformer "github.com/tektoncd/resolution/pkg/client/injection/informers/resolution/v1alpha1/resolutionrequest"
@@ -54,6 +55,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		resourceInformer := resourceinformer.Get(ctx)
 		limitrangeInformer := limitrangeinformer.Get(ctx)
 		resolutionInformer := resolutioninformer.Get(ctx)
+		spireControllerAPI := spire.GetControllerAPIClient(ctx)
 		configStore := config.NewStore(logger.Named("config-store"), taskrunmetrics.MetricsOnStore(logger))
 		configStore.WatchConfigs(cmw)
 
@@ -66,6 +68,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			KubeClientSet:       kubeclientset,
 			PipelineClientSet:   pipelineclientset,
 			Images:              opts.Images,
+			SpireClient:         spireControllerAPI,
 			Clock:               clock,
 			taskRunLister:       taskRunInformer.Lister(),
 			resourceLister:      resourceInformer.Lister(),
@@ -77,6 +80,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			pvcHandler:          volumeclaim.NewPVCHandler(kubeclientset, logger),
 			resolutionRequester: resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
 		}
+		c.SpireClient.SetConfig(opts.SpireConfig)
 		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{
 				AgentName:   pipeline.TaskRunControllerName,

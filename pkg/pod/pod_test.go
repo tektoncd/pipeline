@@ -35,6 +35,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -86,6 +87,15 @@ func TestPodBuild(t *testing.T) {
 	enableServiceLinks := false
 	priorityClassName := "system-cluster-critical"
 	taskRunName := "taskrun-name"
+
+	initContainers := []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})}
+	for i := range initContainers {
+		c := &initContainers[i]
+		c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+			Name:      spire.WorkloadAPI,
+			MountPath: spire.VolumeMountPath,
+		})
+	}
 
 	for _, c := range []struct {
 		desc            string
@@ -1522,7 +1532,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: initContainers,
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1537,6 +1547,7 @@ _EOF_
 						"/tekton/termination",
 						"-step_metadata_dir",
 						"/tekton/run/0/status",
+						"-enable_spire",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1544,6 +1555,9 @@ _EOF_
 					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
+					}, {
+						Name:      spire.WorkloadAPI,
+						MountPath: spire.VolumeMountPath,
 					}}, implicitVolumeMounts...),
 					TerminationMessagePath: "/tekton/termination",
 					Env: []corev1.EnvVar{
@@ -1553,6 +1567,13 @@ _EOF_
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}, corev1.Volume{
+					Name: spire.WorkloadAPI,
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							Driver: "csi.spiffe.io",
+						},
+					},
 				}),
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
@@ -1572,7 +1593,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: initContainers,
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1587,6 +1608,7 @@ _EOF_
 						"/tekton/termination",
 						"-step_metadata_dir",
 						"/tekton/run/0/status",
+						"-enable_spire",
 						"-entrypoint",
 						"cmd",
 						"--",
@@ -1594,6 +1616,9 @@ _EOF_
 					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 						Name:      "tekton-creds-init-home-0",
 						MountPath: "/tekton/creds",
+					}, {
+						Name:      spire.WorkloadAPI,
+						MountPath: spire.VolumeMountPath,
 					}}, implicitVolumeMounts...),
 					TerminationMessagePath: "/tekton/termination",
 					Env: []corev1.EnvVar{
@@ -1605,6 +1630,13 @@ _EOF_
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}, corev1.Volume{
+					Name: spire.WorkloadAPI,
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							Driver: "csi.spiffe.io",
+						},
+					},
 				}),
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
@@ -1858,9 +1890,21 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 `},
 	}
 
+	initContainers := []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}}), placeScriptsContainer}
+	for i := range initContainers {
+		c := &initContainers[i]
+		c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+			Name:      spire.WorkloadAPI,
+			MountPath: spire.VolumeMountPath,
+		})
+	}
+
 	containersVolumeMounts := append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
 		Name:      "tekton-creds-init-home-0",
 		MountPath: "/tekton/creds",
+	}, {
+		Name:      spire.WorkloadAPI,
+		MountPath: spire.VolumeMountPath,
 	}}, implicitVolumeMounts...)
 	containersVolumeMounts = append(containersVolumeMounts, debugScriptsVolumeMount)
 	containersVolumeMounts = append(containersVolumeMounts, corev1.VolumeMount{
@@ -1891,7 +1935,7 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}}), placeScriptsContainer},
+			InitContainers: initContainers,
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -1906,6 +1950,7 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 					"/tekton/termination",
 					"-step_metadata_dir",
 					"/tekton/run/0/status",
+					"-enable_spire",
 					"-breakpoint_on_failure",
 					"-entrypoint",
 					"cmd",
@@ -1917,6 +1962,13 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 			Volumes: append(implicitVolumes, debugScriptsVolume, debugInfoVolume, binVolume, scriptsVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}, corev1.Volume{
+				Name: spire.WorkloadAPI,
+				VolumeSource: corev1.VolumeSource{
+					CSI: &corev1.CSIVolumeSource{
+						Driver: "csi.spiffe.io",
+					},
+				},
 			}),
 			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 		},
@@ -1924,6 +1976,167 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 		t.Run(c.desc, func(t *testing.T) {
 			featureFlags := map[string]string{
 				"enable-api-fields": "alpha",
+			}
+			names.TestingSeed()
+			store := config.NewStore(logtesting.TestLogger(t))
+			store.OnConfigChanged(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       featureFlags,
+				},
+			)
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "service-account", Namespace: "default"},
+					Secrets: []corev1.ObjectReference{{
+						Name: "multi-creds",
+					}},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "multi-creds",
+						Namespace: "default",
+						Annotations: map[string]string{
+							"tekton.dev/docker-0": "https://us.gcr.io",
+							"tekton.dev/docker-1": "https://docker.io",
+							"tekton.dev/git-0":    "github.com",
+							"tekton.dev/git-1":    "gitlab.com",
+						}},
+					Type: "kubernetes.io/basic-auth",
+					Data: map[string][]byte{
+						"username": []byte("foo"),
+						"password": []byte("BestEver"),
+					},
+				},
+			)
+			var trAnnotations map[string]string
+			if c.trAnnotation == nil {
+				trAnnotations = map[string]string{
+					ReleaseAnnotation: fakeVersion,
+				}
+			} else {
+				trAnnotations = c.trAnnotation
+				trAnnotations[ReleaseAnnotation] = fakeVersion
+			}
+			tr := &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "taskrun-name",
+					Namespace:   "default",
+					Annotations: trAnnotations,
+				},
+				Spec: c.trs,
+			}
+
+			// No entrypoints should be looked up.
+			entrypointCache := fakeCache{}
+			builder := Builder{
+				Images:          images,
+				KubeClient:      kubeclient,
+				EntrypointCache: entrypointCache,
+			}
+
+			got, err := builder.Build(store.ToContext(context.Background()), tr, c.ts)
+			if err != nil {
+				t.Fatalf("builder.Build: %v", err)
+			}
+
+			expectedName := kmeta.ChildName(tr.Name, "-pod")
+			if d := cmp.Diff(expectedName, got.Name); d != "" {
+				t.Errorf("Pod name does not match: %q", d)
+			}
+
+			if d := cmp.Diff(c.want, &got.Spec, resourceQuantityCmp, volumeSort, volumeMountSort); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+
+			if c.wantAnnotations != nil {
+				if d := cmp.Diff(c.wantAnnotations, got.ObjectMeta.Annotations, cmpopts.IgnoreMapEntries(ignoreReleaseAnnotation)); d != "" {
+					t.Errorf("Annotation Diff(-want, +got):\n%s", d)
+				}
+			}
+		})
+	}
+}
+
+func TestPodBuildwithSpireEnabled(t *testing.T) {
+	initContainers := []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})}
+	for i := range initContainers {
+		c := &initContainers[i]
+		c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+			Name:      spire.WorkloadAPI,
+			MountPath: spire.VolumeMountPath,
+		})
+	}
+
+	for _, c := range []struct {
+		desc            string
+		trs             v1beta1.TaskRunSpec
+		trAnnotation    map[string]string
+		ts              v1beta1.TaskSpec
+		want            *corev1.PodSpec
+		wantAnnotations map[string]string
+	}{{
+		desc: "simple with debug breakpoint onFailure",
+		trs: v1beta1.TaskRunSpec{
+			Debug: &v1beta1.TaskRunDebug{
+				Breakpoint: []string{breakpointOnFailure},
+			},
+		},
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Name:    "name",
+				Image:   "image",
+				Command: []string{"cmd"}, // avoid entrypoint lookup.
+			}},
+		},
+		want: &corev1.PodSpec{
+			RestartPolicy:  corev1.RestartPolicyNever,
+			InitContainers: initContainers,
+			Containers: []corev1.Container{{
+				Name:    "step-name",
+				Image:   "image",
+				Command: []string{"/tekton/bin/entrypoint"},
+				Args: []string{
+					"-wait_file",
+					"/tekton/downward/ready",
+					"-wait_file_content",
+					"-post_file",
+					"/tekton/run/0/out",
+					"-termination_path",
+					"/tekton/termination",
+					"-step_metadata_dir",
+					"/tekton/run/0/status",
+					"-enable_spire",
+					"-entrypoint",
+					"cmd",
+					"--",
+				},
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+					Name:      "tekton-creds-init-home-0",
+					MountPath: "/tekton/creds",
+				}, {
+					Name:      spire.WorkloadAPI,
+					MountPath: spire.VolumeMountPath,
+				}}, implicitVolumeMounts...),
+				TerminationMessagePath: "/tekton/termination",
+			}},
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+				Name:         "tekton-creds-init-home-0",
+				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+			}, corev1.Volume{
+				Name: spire.WorkloadAPI,
+				VolumeSource: corev1.VolumeSource{
+					CSI: &corev1.CSIVolumeSource{
+						Driver: "csi.spiffe.io",
+					},
+				},
+			}),
+			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+		},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			featureFlags := map[string]string{
+				"enable-spire": "true",
 			}
 			names.TestingSeed()
 			store := config.NewStore(logtesting.TestLogger(t))

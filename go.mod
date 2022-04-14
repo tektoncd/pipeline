@@ -18,7 +18,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198
 	github.com/pkg/errors v0.9.1
 	github.com/spiffe/go-spiffe/v2 v2.1.1
-	github.com/spiffe/spire-api-sdk v1.3.1
+	github.com/spiffe/spire-api-sdk v1.3.2
 	github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.21.0

@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -119,6 +120,12 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	featureFlags := config.FromContextOrDefaults(ctx).FeatureFlags
 	alphaAPIEnabled := featureFlags.EnableAPIFields == config.AlphaAPIFields
 
+	// Entrypoint arg to enable or disable spire
+	var commonExtraEntrypointArgs []string
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSpire {
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-enable_spire")
+	}
+
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
 	volumeMounts = append(volumeMounts, implicitVolumeMounts...)
@@ -186,11 +193,13 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	readyImmediately := isPodReadyImmediately(*featureFlags, taskSpec.Sidecars)
+	// append credEntrypointArgs with entrypoint arg that contains if spire is enabled by configmap
+	commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, credEntrypointArgs...)
 
 	if alphaAPIEnabled {
-		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately)
+		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug, !readyImmediately)
 	} else {
-		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, nil, !readyImmediately)
+		stepContainers, err = orderContainers(commonExtraEntrypointArgs, stepContainers, &taskSpec, nil, !readyImmediately)
 	}
 	if err != nil {
 		return nil, err
@@ -266,9 +275,35 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Add podTemplate Volumes to the explicitly declared use volumes
 	volumes = append(volumes, taskSpec.Volumes...)
 	volumes = append(volumes, podTemplate.Volumes...)
-
 	if err := v1beta1.ValidateVolumes(volumes); err != nil {
 		return nil, err
+	}
+
+	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableSpire {
+		volumes = append(volumes, corev1.Volume{
+			Name: spire.WorkloadAPI,
+			VolumeSource: corev1.VolumeSource{
+				CSI: &corev1.CSIVolumeSource{
+					Driver: "csi.spiffe.io",
+				},
+			},
+		})
+
+		for i := range stepContainers {
+			c := &stepContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+			})
+		}
+		for i := range initContainers {
+			c := &initContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+			})
+		}
 	}
 
 	mergedPodContainers := stepContainers
@@ -289,7 +324,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		priorityClassName = *podTemplate.PriorityClassName
 	}
 
-	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
 	version, err := changeset.Get()
 	if err != nil {
 		return nil, err

@@ -37,9 +37,24 @@ fi
 
 header "Setting up environment"
 
-install_pipeline_crd
-
-failed=0
+function alpha_gate() {
+  local gate="$1"
+  if [ "$gate" != "alpha" ] && [ "$gate" != "stable" ] && [ "$gate" != "beta" ] ; then
+    printf "Invalid gate %s\n" ${gate}
+    exit 255
+  fi
+  if [ "$gate" == "alpha" ] ; then
+    printf "Setting up environement for alpha features"
+    install_spire
+    install_pipeline_crd
+    patch_pipline_spire
+    failed=0
+  else
+    printf "Setting up environement for non-alpha features"
+    install_pipeline_crd
+    failed=0
+  fi
+}
 
 function set_feature_gate() {
   local gate="$1"
@@ -81,6 +96,7 @@ function run_e2e() {
   fi
 }
 
+alpha_gate "$PIPELINE_FEATURE_GATE"
 set_feature_gate "$PIPELINE_FEATURE_GATE"
 set_embedded_status "$EMBEDDED_STATUS_GATE"
 run_e2e
