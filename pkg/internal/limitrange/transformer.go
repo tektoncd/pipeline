@@ -47,20 +47,17 @@ func NewTransformer(ctx context.Context, namespace string, lister corev1listers.
 		// computed if there is multiple LimitRange to satisfy the most (if we can).
 		// Count the number of containers (that we know) in the Pod.
 		// This should help us find the smallest request to apply to containers
-		// We are adding +1 to the number of container to take into account the init containers.
-		// The reason to use +1 only is that, k8s treats request on all init container as one (getting the max of all)
-		nbContainers := len(p.Spec.Containers) + 1
-		// FIXME(vdemeester) maxLimitRequestRatio to support later
-		defaultRequests := getDefaultRequest(limitRange, nbContainers)
+		nbContainers := len(p.Spec.Containers)
+		// FIXME(#4230) maxLimitRequestRatio to support later
 		defaultLimits := getDefaultLimits(limitRange)
-
+		defaultInitRequests := getDefaultInitContainerRequest(limitRange)
 		for i := range p.Spec.InitContainers {
 			// We are trying to set the smallest requests possible
 			if p.Spec.InitContainers[i].Resources.Requests == nil {
-				p.Spec.InitContainers[i].Resources.Requests = defaultRequests
+				p.Spec.InitContainers[i].Resources.Requests = defaultInitRequests
 			} else {
 				for _, name := range resourceNames {
-					setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Requests, defaultRequests)
+					setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Requests, defaultInitRequests)
 				}
 			}
 			// We are trying to set the highest limits possible
@@ -73,6 +70,7 @@ func NewTransformer(ctx context.Context, namespace string, lister corev1listers.
 			}
 		}
 
+		defaultRequests := getDefaultAppContainerRequest(limitRange, nbContainers)
 		for i := range p.Spec.Containers {
 			if p.Spec.Containers[i].Resources.Requests == nil {
 				p.Spec.Containers[i].Resources.Requests = defaultRequests
@@ -99,7 +97,9 @@ func setRequestsOrLimits(name corev1.ResourceName, dst, src corev1.ResourceList)
 	}
 }
 
-func getDefaultRequest(limitRange *corev1.LimitRange, nbContainers int) corev1.ResourceList {
+// Returns the default requests to use for each app container, determined by dividing the LimitRange default requests
+// among the app containers, and applying the LimitRange minimum if necessary
+func getDefaultAppContainerRequest(limitRange *corev1.LimitRange, nbContainers int) corev1.ResourceList {
 	// Support only Type Container to start with
 	var r corev1.ResourceList = map[corev1.ResourceName]resource.Quantity{}
 	for _, item := range limitRange.Spec.Limits {
@@ -120,6 +120,23 @@ func getDefaultRequest(limitRange *corev1.LimitRange, nbContainers int) corev1.R
 				} else {
 					r[name] = takeTheMax(request, *resource.NewMilliQuantity(defaultRequest.MilliValue()/int64(nbContainers), defaultRequest.Format), min)
 				}
+			}
+		}
+	}
+	return r
+}
+
+// Returns the default requests to use for each init container, determined by the LimitRange default requests and minimums
+func getDefaultInitContainerRequest(limitRange *corev1.LimitRange) corev1.ResourceList {
+	// Support only Type Container to start with
+	var r corev1.ResourceList
+	for _, item := range limitRange.Spec.Limits {
+		// Only support LimitTypeContainer
+		if item.Type == corev1.LimitTypeContainer {
+			if item.DefaultRequest != nil {
+				r = item.DefaultRequest
+			} else if item.Min != nil {
+				r = item.Min
 			}
 		}
 	}
