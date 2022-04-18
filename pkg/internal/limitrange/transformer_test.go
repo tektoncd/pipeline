@@ -63,9 +63,7 @@ func TestTransformerOneContainer(t *testing.T) {
 		want: corev1.PodSpec{
 			InitContainers: []corev1.Container{{
 				// No resources set
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{},
-				},
+				Resources: corev1.ResourceRequirements{},
 			}},
 			Containers: []corev1.Container{{
 				Resources: corev1.ResourceRequirements{
@@ -104,11 +102,6 @@ func TestTransformerOneContainer(t *testing.T) {
 						corev1.ResourceCPU:              resource.MustParse("1"),
 						corev1.ResourceMemory:           resource.MustParse("100Mi"),
 						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
-					},
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.Quantity{},
-						corev1.ResourceMemory:           resource.Quantity{},
-						corev1.ResourceEphemeralStorage: resource.Quantity{},
 					},
 				},
 			}},
@@ -151,18 +144,18 @@ func TestTransformerOneContainer(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("500m"),
-						corev1.ResourceMemory:           resource.MustParse("50Mi"),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
 			Containers: []corev1.Container{{
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("500m"),
-						corev1.ResourceMemory:           resource.MustParse("50Mi"),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -201,9 +194,9 @@ func TestTransformerOneContainer(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("500m"),
-						corev1.ResourceMemory:           resource.MustParse("50Mi"),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -215,9 +208,9 @@ func TestTransformerOneContainer(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("500m"),
-						corev1.ResourceMemory:           resource.MustParse("50Mi"),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -385,9 +378,9 @@ func TestTransformerOneContainer(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("700m"),
-						corev1.ResourceMemory:           resource.MustParse("70Mi"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("700Mi"),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -399,9 +392,9 @@ func TestTransformerOneContainer(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("700m"),
-						corev1.ResourceMemory:           resource.MustParse("70Mi"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("700Mi"),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -461,9 +454,7 @@ func TestTransformerMultipleContainer(t *testing.T) {
 		want: corev1.PodSpec{
 			InitContainers: []corev1.Container{{
 				// No resources set
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{},
-				},
+				Resources: corev1.ResourceRequirements{},
 			}},
 			Containers: []corev1.Container{{
 				Resources: corev1.ResourceRequirements{
@@ -509,11 +500,6 @@ func TestTransformerMultipleContainer(t *testing.T) {
 						corev1.ResourceCPU:              resource.MustParse("1"),
 						corev1.ResourceMemory:           resource.MustParse("100Mi"),
 						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
-					},
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.Quantity{},
-						corev1.ResourceMemory:           resource.Quantity{},
-						corev1.ResourceEphemeralStorage: resource.Quantity{},
 					},
 				},
 			}},
@@ -572,26 +558,26 @@ func TestTransformerMultipleContainer(t *testing.T) {
 			InitContainers: []corev1.Container{{
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("1000m"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
 			Containers: []corev1.Container{{
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("500m"),
+						corev1.ResourceMemory:           resource.MustParse("50Mi"),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
 					},
 				},
 			}, {
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("500m"),
+						corev1.ResourceMemory:           resource.MustParse("50Mi"),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
 					},
 				},
 			}},
@@ -633,9 +619,9 @@ func TestTransformerMultipleContainer(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -647,9 +633,9 @@ func TestTransformerMultipleContainer(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("500m"),
+						corev1.ResourceMemory:           resource.MustParse("50Mi"),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
 					},
 				},
 			}, {
@@ -660,9 +646,9 @@ func TestTransformerMultipleContainer(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("333m"),
-						corev1.ResourceMemory:           *resource.NewQuantity(34952533, resource.BinarySI),
-						corev1.ResourceEphemeralStorage: *resource.NewQuantity(357913941, resource.BinarySI),
+						corev1.ResourceCPU:              resource.MustParse("500m"),
+						corev1.ResourceMemory:           resource.MustParse("50Mi"),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
 					},
 				},
 			}},
@@ -785,9 +771,9 @@ func TestTransformerMultipleContainer(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("700m"),
-						corev1.ResourceMemory:           resource.MustParse("70Mi"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("700Mi"),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -925,9 +911,9 @@ func TestTransformerOneContainerMultipleLimitRange(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("800m"),
-						corev1.ResourceMemory:           resource.MustParse("80Mi"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("800Mi"),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -939,9 +925,9 @@ func TestTransformerOneContainerMultipleLimitRange(t *testing.T) {
 						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.MustParse("800m"),
-						corev1.ResourceMemory:           resource.MustParse("80Mi"),
-						corev1.ResourceEphemeralStorage: resource.MustParse("800Mi"),
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
