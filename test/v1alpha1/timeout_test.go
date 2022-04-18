@@ -109,7 +109,7 @@ spec:
 	}
 
 	for i := 1; i <= len(taskrunList.Items); i++ {
-		if <-errChan != nil {
+		if err := <-errChan; err != nil {
 			t.Errorf("Error waiting for TaskRun %s to be running: %s", taskrunList.Items[i-1].Name, err)
 		}
 	}
