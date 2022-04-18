@@ -469,7 +469,7 @@ time from the invoked `Task`, Tekton will requests the compute values for CPU, m
 storage for each `Step` based on the [`LimitRange`](https://kubernetes.io/docs/concepts/policy/limit-range/)
 object(s), if present. Any `Request` or `Limit` specified by the user (on `Task` for example) will be left unchanged.
 
-For more information, see the [`LimitRange` support in Pipeline](./limitrange.md).
+For more information, see the [`LimitRange` support in Pipeline](./compute-resources.md#limitrange-support).
 
 ### Configuring the failure timeout
 

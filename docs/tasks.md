@@ -165,7 +165,10 @@ The following requirements apply to each container image referenced in a `steps`
 - Each container image runs to completion or until the first failure occurs.
 - The CPU, memory, and ephemeral storage resource requests set on `Step`s
   will be adjusted to comply with any [`LimitRange`](https://kubernetes.io/docs/concepts/policy/limit-range/)s
-  present in the `Namespace`. For more detail, see [LimitRange support in Pipeline](./limitrange.md).
+  present in the `Namespace`. In addition, Kubernetes determines a pod's effective resource
+  requests and limits by summing the requests and limits for all its containers, even
+  though Tekton runs `Steps` sequentially.
+  For more detail, see [Compute Resources in Tekton](./compute-resources.md).
 
 Below is an example of setting the resource requests and limits for a step:
 
