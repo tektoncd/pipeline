@@ -23,5 +23,5 @@ import (
 // ApplyStepReplacements applies variable interpolation on a Step.
 func ApplyStepReplacements(step *Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	step.Script = substitution.ApplyReplacements(step.Script, stringReplacements)
-	applyContainerReplacements(&step.Container, stringReplacements, arrayReplacements)
+	applyStepReplacements(step, stringReplacements, arrayReplacements)
 }

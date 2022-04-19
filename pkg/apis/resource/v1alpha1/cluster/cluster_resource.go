@@ -186,7 +186,7 @@ func (s *Resource) GetInputTaskModifier(ts *v1beta1.TaskSpec, path string) (v1be
 		}
 		envVars = append(envVars, ev)
 	}
-	step := v1beta1.Step{Container: corev1.Container{
+	step := v1beta1.Step{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("kubeconfig"),
 		Image:   s.KubeconfigWriterImage,
 		Command: []string{"/ko-app/kubeconfigwriter"},
@@ -194,7 +194,7 @@ func (s *Resource) GetInputTaskModifier(ts *v1beta1.TaskSpec, path string) (v1be
 			"-clusterConfig", s.String(),
 		},
 		Env: envVars,
-	}}
+	}
 	return &v1beta1.InternalTaskModifier{
 		StepsToPrepend: []v1beta1.Step{
 			step,

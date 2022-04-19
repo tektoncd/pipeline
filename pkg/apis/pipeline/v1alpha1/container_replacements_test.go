@@ -34,7 +34,7 @@ func TestApplyContainerReplacements(t *testing.T) {
 		"array.replace.me": {"val1", "val2"},
 	}
 
-	s := corev1.Container{
+	s := v1alpha1.Step{
 		Name:       "$(replace.me)",
 		Image:      "$(replace.me)",
 		Command:    []string{"$(array.replace.me)"},
@@ -77,7 +77,7 @@ func TestApplyContainerReplacements(t *testing.T) {
 		}},
 	}
 
-	expected := corev1.Container{
+	expected := v1alpha1.Step{
 		Name:       "replaced!",
 		Image:      "replaced!",
 		Command:    []string{"val1", "val2"},
@@ -127,7 +127,7 @@ func TestApplyContainerReplacements(t *testing.T) {
 }
 
 func TestApplyContainerReplacements_NotDefined(t *testing.T) {
-	s := corev1.Container{
+	s := v1alpha1.Step{
 		Name: "$(params.not.defined)",
 	}
 	replacements := map[string]string{
@@ -138,7 +138,7 @@ func TestApplyContainerReplacements_NotDefined(t *testing.T) {
 		"array.replace.me": {"val1", "val2"},
 	}
 
-	expected := corev1.Container{
+	expected := v1alpha1.Step{
 		Name: "$(params.not.defined)",
 	}
 	v1alpha1.ApplyContainerReplacements(&s, replacements, arrayReplacements)

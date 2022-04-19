@@ -23,5 +23,5 @@ import (
 // ApplySidecarReplacements applies variable interpolation on a Sidecar.
 func ApplySidecarReplacements(sidecar *Sidecar, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	sidecar.Script = substitution.ApplyReplacements(sidecar.Script, stringReplacements)
-	applyContainerReplacements(&sidecar.Container, stringReplacements, arrayReplacements)
+	applySidecarReplacements(sidecar, stringReplacements, arrayReplacements)
 }

@@ -285,28 +285,26 @@ func TestClusterResource_GetInputTaskModifier(t *testing.T) {
 	ts := v1beta1.TaskSpec{}
 	wantSteps := []v1beta1.Step{
 		{
-			Container: corev1.Container{
-				Name:    "kubeconfig-9l9zj",
-				Image:   "override-with-kubeconfig-writer:latest",
-				Command: []string{"/ko-app/kubeconfigwriter"},
-				Args:    []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
-				Env: []corev1.EnvVar{
-					{
-						Name:  "TEKTON_RESOURCE_NAME",
-						Value: "test-cluster-resource",
-					},
-					{
-						Name: "CADATA",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "secret1",
-								},
-								Key: "cadatakey",
+			Name:    "kubeconfig-9l9zj",
+			Image:   "override-with-kubeconfig-writer:latest",
+			Command: []string{"/ko-app/kubeconfigwriter"},
+			Args:    []string{"-clusterConfig", `{"name":"test-cluster-resource","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`},
+			Env: []corev1.EnvVar{
+				{
+					Name:  "TEKTON_RESOURCE_NAME",
+					Value: "test-cluster-resource",
+				},
+				{
+					Name: "CADATA",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "secret1",
 							},
+							Key: "cadatakey",
 						},
-					}},
-			},
+					},
+				}},
 		},
 	}
 

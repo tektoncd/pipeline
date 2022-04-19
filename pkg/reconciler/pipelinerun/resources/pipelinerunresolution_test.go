@@ -140,9 +140,9 @@ var task = &v1beta1.Task{
 		Name: "task",
 	},
 	Spec: v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{Container: corev1.Container{
+		Steps: []v1beta1.Step{{
 			Name: "step1",
-		}}},
+		}},
 	},
 }
 
@@ -627,9 +627,9 @@ var taskWithOptionalResourcesDeprecated = &v1beta1.Task{
 		Name: "task",
 	},
 	Spec: v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{Container: corev1.Container{
+		Steps: []v1beta1.Step{{
 			Name: "step1",
-		}}},
+		}},
 		Resources: &v1beta1.TaskResources{
 			Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 				Name:     "optional-input",
@@ -657,9 +657,9 @@ var taskWithOptionalResources = &v1beta1.Task{
 		Name: "task",
 	},
 	Spec: v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{Container: corev1.Container{
+		Steps: []v1beta1.Step{{
 			Name: "step1",
-		}}},
+		}},
 		Resources: &v1beta1.TaskResources{
 			Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 				Name:     "optional-input",
@@ -1794,9 +1794,7 @@ func TestResolvePipelineRun(t *testing.T) {
 					Name: "mytask4",
 					TaskSpec: &v1beta1.EmbeddedTask{
 						TaskSpec: v1beta1.TaskSpec{
-							Steps: []v1beta1.Step{{
-								Container: corev1.Container{Name: "step1"},
-							}},
+							Steps: []v1beta1.Step{{Name: "step1"}},
 						},
 					},
 				},

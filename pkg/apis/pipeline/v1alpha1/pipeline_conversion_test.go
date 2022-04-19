@@ -25,7 +25,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -105,9 +104,9 @@ func TestPipelineConversion_Success(t *testing.T) {
 				}, {
 					Name: "task2",
 					TaskSpec: &TaskSpec{TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1beta1.Step{{Container: corev1.Container{
+						Steps: []v1beta1.Step{{
 							Image: "foo",
-						}}},
+						}},
 					}},
 					RunAfter: []string{"task1"},
 				}},
@@ -162,9 +161,9 @@ func TestPipelineConversion_Failure(t *testing.T) {
 					Name: "task2",
 					TaskSpec: &TaskSpec{
 						TaskSpec: v1beta1.TaskSpec{
-							Steps: []v1beta1.Step{{Container: corev1.Container{
+							Steps: []v1beta1.Step{{
 								Image: "foo",
-							}}},
+							}},
 							Resources: &v1beta1.TaskResources{
 								Inputs: []v1beta1.TaskResource{{ResourceDeclaration: v1beta1.ResourceDeclaration{
 									Name: "input-1",

@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"encoding/json"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
@@ -35,19 +36,19 @@ type mergeData struct {
 // MergeStepsWithStepTemplate takes a possibly nil container template and a
 // list of steps, merging each of the steps with the container template, if
 // it's not nil, and returning the resulting list.
-func MergeStepsWithStepTemplate(template *v1.Container, steps []Step) ([]Step, error) {
+func MergeStepsWithStepTemplate(template *StepTemplate, steps []Step) ([]Step, error) {
 	if template == nil {
 		return steps, nil
 	}
 
-	md, err := getMergeData(template, &v1.Container{})
+	md, err := getMergeData(template.ToK8sContainer(), &corev1.Container{})
 	if err != nil {
 		return nil, err
 	}
 
 	for i, s := range steps {
-		merged := v1.Container{}
-		err := mergeObjWithTemplateBytes(md, &s.Container, &merged)
+		merged := corev1.Container{}
+		err := mergeObjWithTemplateBytes(md, s.ToK8sContainer(), &merged)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +59,9 @@ func MergeStepsWithStepTemplate(template *v1.Container, steps []Step) ([]Step, e
 		}
 
 		// Pass through original step Script, for later conversion.
-		steps[i] = Step{Container: merged, Script: s.Script, OnError: s.OnError, Timeout: s.Timeout}
+		newStep := Step{Script: s.Script, OnError: s.OnError, Timeout: s.Timeout}
+		newStep.SetContainerFields(merged)
+		steps[i] = newStep
 	}
 	return steps, nil
 }
@@ -81,7 +84,7 @@ func MergeStepsWithOverrides(steps []Step, overrides []TaskRunStepOverride) ([]S
 		if err != nil {
 			return nil, err
 		}
-		steps[i].Container.Resources = merged
+		steps[i].Resources = merged
 	}
 	return steps, nil
 }
@@ -107,7 +110,7 @@ func MergeSidecarsWithOverrides(sidecars []Sidecar, overrides []TaskRunSidecarOv
 		if err != nil {
 			return nil, err
 		}
-		sidecars[i].Container.Resources = merged
+		sidecars[i].Resources = merged
 	}
 	return sidecars, nil
 }

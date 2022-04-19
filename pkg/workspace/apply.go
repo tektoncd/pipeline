@@ -98,7 +98,7 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 
 	// Initialize StepTemplate if it hasn't been already
 	if ts.StepTemplate == nil {
-		ts.StepTemplate = &corev1.Container{}
+		ts.StepTemplate = &v1beta1.StepTemplate{}
 	}
 
 	isolatedWorkspaces := sets.NewString()

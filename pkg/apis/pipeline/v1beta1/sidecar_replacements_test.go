@@ -34,95 +34,91 @@ func TestApplySidecarReplacements(t *testing.T) {
 	}
 
 	s := v1beta1.Sidecar{
-		Script: "$(replace.me)",
-		Container: corev1.Container{
-			Name:       "$(replace.me)",
-			Image:      "$(replace.me)",
-			Command:    []string{"$(array.replace.me)"},
-			Args:       []string{"$(array.replace.me)"},
-			WorkingDir: "$(replace.me)",
-			EnvFrom: []corev1.EnvFromSource{{
-				ConfigMapRef: &corev1.ConfigMapEnvSource{
+		Script:     "$(replace.me)",
+		Name:       "$(replace.me)",
+		Image:      "$(replace.me)",
+		Command:    []string{"$(array.replace.me)"},
+		Args:       []string{"$(array.replace.me)"},
+		WorkingDir: "$(replace.me)",
+		EnvFrom: []corev1.EnvFromSource{{
+			ConfigMapRef: &corev1.ConfigMapEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "$(replace.me)",
+				},
+			},
+			SecretRef: &corev1.SecretEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "$(replace.me)",
+				},
+			},
+		}},
+		Env: []corev1.EnvVar{{
+			Name:  "not_me",
+			Value: "$(replace.me)",
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "$(replace.me)",
 					},
+					Key: "$(replace.me)",
 				},
-				SecretRef: &corev1.SecretEnvSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "$(replace.me)",
 					},
+					Key: "$(replace.me)",
 				},
-			}},
-			Env: []corev1.EnvVar{{
-				Name:  "not_me",
-				Value: "$(replace.me)",
-				ValueFrom: &corev1.EnvVarSource{
-					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "$(replace.me)",
-						},
-						Key: "$(replace.me)",
-					},
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "$(replace.me)",
-						},
-						Key: "$(replace.me)",
-					},
-				},
-			}},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "$(replace.me)",
-				MountPath: "$(replace.me)",
-				SubPath:   "$(replace.me)",
-			}},
-		},
+			},
+		}},
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "$(replace.me)",
+			MountPath: "$(replace.me)",
+			SubPath:   "$(replace.me)",
+		}},
 	}
 
 	expected := v1beta1.Sidecar{
-		Script: "replaced!",
-		Container: corev1.Container{
-			Name:       "replaced!",
-			Image:      "replaced!",
-			Command:    []string{"val1", "val2"},
-			Args:       []string{"val1", "val2"},
-			WorkingDir: "replaced!",
-			EnvFrom: []corev1.EnvFromSource{{
-				ConfigMapRef: &corev1.ConfigMapEnvSource{
+		Script:     "replaced!",
+		Name:       "replaced!",
+		Image:      "replaced!",
+		Command:    []string{"val1", "val2"},
+		Args:       []string{"val1", "val2"},
+		WorkingDir: "replaced!",
+		EnvFrom: []corev1.EnvFromSource{{
+			ConfigMapRef: &corev1.ConfigMapEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "replaced!",
+				},
+			},
+			SecretRef: &corev1.SecretEnvSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "replaced!",
+				},
+			},
+		}},
+		Env: []corev1.EnvVar{{
+			Name:  "not_me",
+			Value: "replaced!",
+			ValueFrom: &corev1.EnvVarSource{
+				ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "replaced!",
 					},
+					Key: "replaced!",
 				},
-				SecretRef: &corev1.SecretEnvSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: "replaced!",
 					},
+					Key: "replaced!",
 				},
-			}},
-			Env: []corev1.EnvVar{{
-				Name:  "not_me",
-				Value: "replaced!",
-				ValueFrom: &corev1.EnvVarSource{
-					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "replaced!",
-						},
-						Key: "replaced!",
-					},
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "replaced!",
-						},
-						Key: "replaced!",
-					},
-				},
-			}},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "replaced!",
-				MountPath: "replaced!",
-				SubPath:   "replaced!",
-			}},
-		},
+			},
+		}},
+		VolumeMounts: []corev1.VolumeMount{{
+			Name:      "replaced!",
+			MountPath: "replaced!",
+			SubPath:   "replaced!",
+		}},
 	}
 	v1beta1.ApplySidecarReplacements(&s, replacements, arrayReplacements)
 	if d := cmp.Diff(s, expected); d != "" {

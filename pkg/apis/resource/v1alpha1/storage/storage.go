@@ -84,9 +84,9 @@ func getStorageVolumeSpec(s PipelineStorageResourceInterface, spec v1beta1.TaskS
 
 // CreateDirStep returns a Step that creates a given directory with a given name.
 func CreateDirStep(shellImage string, name, destinationPath string) v1beta1.Step {
-	return v1beta1.Step{Container: corev1.Container{
+	return v1beta1.Step{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("create-dir-%s", strings.ToLower(name))),
 		Image:   shellImage,
 		Command: []string{"mkdir", "-p", destinationPath},
-	}}
+	}
 }

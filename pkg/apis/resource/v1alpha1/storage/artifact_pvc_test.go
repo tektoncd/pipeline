@@ -36,13 +36,13 @@ func TestPVCGetCopyFromContainerSpec(t *testing.T) {
 		Name:       "pipelinerun-pvc",
 		ShellImage: "busybox",
 	}
-	want := []v1beta1.Step{{Container: corev1.Container{
+	want := []v1beta1.Step{{
 		Name:  "source-copy-workspace-9l9zj",
 		Image: "busybox",
 
 		Command: []string{"cp", "-r", "src-path/.", "/workspace/destination"},
 		Env:     []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "workspace"}},
-	}}}
+	}}
 
 	got := pvc.GetCopyFromStorageToSteps("workspace", "src-path", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
@@ -57,7 +57,7 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 		Name:       "pipelinerun-pvc",
 		ShellImage: "busybox",
 	}
-	want := []v1beta1.Step{{Container: corev1.Container{
+	want := []v1beta1.Step{{
 		Name:  "source-mkdir-workspace-9l9zj",
 		Image: "busybox",
 		SecurityContext: &corev1.SecurityContext{
@@ -65,7 +65,7 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 		},
 		Command:      []string{"mkdir", "-p", "/workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-	}}, {Container: corev1.Container{
+	}, {
 		Name:  "source-copy-workspace-mz4c7",
 		Image: "busybox",
 		SecurityContext: &corev1.SecurityContext{
@@ -74,7 +74,7 @@ func TestPVCGetCopyToContainerSpec(t *testing.T) {
 		Command:      []string{"cp", "-r", "src-path/.", "/workspace/destination"},
 		VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 		Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "workspace"}},
-	}}}
+	}}
 
 	got := pvc.GetCopyToStorageFromSteps("workspace", "src-path", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
@@ -100,11 +100,11 @@ func TestPVCGetPvcMount(t *testing.T) {
 func TestPVCGetMakeStep(t *testing.T) {
 	names.TestingSeed()
 
-	want := v1beta1.Step{Container: corev1.Container{
+	want := v1beta1.Step{
 		Name:    "create-dir-workspace-9l9zj",
 		Image:   "busybox",
 		Command: []string{"mkdir", "-p", "/workspace/destination"},
-	}}
+	}
 	got := storage.CreateDirStep("busybox", "workspace", "/workspace/destination")
 	if d := cmp.Diff(got, want); d != "" {
 		t.Errorf("Diff:\n%s", diff.PrintWantGot(d))

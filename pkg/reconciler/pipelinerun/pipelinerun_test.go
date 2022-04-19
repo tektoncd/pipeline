@@ -3780,11 +3780,9 @@ func makeExpectedTr(condName, ccName string, labels, annotations map[string]stri
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Name:  "condition-check-" + condName,
-						Image: "foo",
-						Args:  []string{"bar"},
-					},
+					Name:  "condition-check-" + condName,
+					Image: "foo",
+					Args:  []string{"bar"},
 				}},
 			},
 			ServiceAccountName: "test-sa",
@@ -7135,10 +7133,8 @@ func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Name:  "mystep",
-						Image: "myimage",
-					},
+					Name:  "mystep",
+					Image: "myimage",
 				}},
 			},
 			ServiceAccountName: config.DefaultServiceAccountValue,
