@@ -637,7 +637,7 @@ spec:
     breakpoint: ["onFailure"]
 ```
 
-Upon failure of a step, the TaskRun Pod execution is halted. If ths TaskRun Pod continues to run without any lifecycle
+Upon failure of a step, the TaskRun Pod execution is halted. If this TaskRun Pod continues to run without any lifecycle
 change done by the user (running the debug-continue or debug-fail-continue script) the TaskRun would be subject to
 [TaskRunTimeout](#configuring-the-failure-timeout).
 During this time, the user/client can get remote shell access to the step container with a command such as the following.
