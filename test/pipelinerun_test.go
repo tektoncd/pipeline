@@ -75,7 +75,7 @@ func TestPipelineRun(t *testing.T) {
 
 			for _, res := range getFanInFanOutGitResources(t) {
 				if _, err := c.PipelineResourceClient.Create(ctx, res, metav1.CreateOptions{}); err != nil {
-					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
+					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", res.Name, err)
 				}
 			}
 
@@ -189,7 +189,7 @@ spec:
   - name: config-docker
     image: gcr.io/tekton-releases/dogfooding/skopeo:latest
     command: ['skopeo']
-    args: ['copy', '$(params["the.path"])', '$(params["the.dest"])']  
+    args: ['copy', '$(params["the.path"])', '$(params["the.dest"])']
 `, getName(taskName, index), namespace))
 			if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Task `%s`: %s", fmt.Sprint("task", index), err)

@@ -74,7 +74,7 @@ func TestPipelineRun(t *testing.T) {
 
 			for _, res := range getFanInFanOutGitResources(t) {
 				if _, err := c.PipelineResourceClient.Create(ctx, res, metav1.CreateOptions{}); err != nil {
-					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
+					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", res.Name, err)
 				}
 			}
 
