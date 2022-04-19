@@ -230,12 +230,10 @@ func TestPipelineRun_Validate(t *testing.T) {
 								Type: v1beta1.ParamTypeArray,
 							}},
 							Steps: []v1beta1.Step{{
-								Container: corev1.Container{
-									Name:    "echo",
-									Image:   "ubuntu",
-									Command: []string{"echo"},
-									Args:    []string{"$(params.task-words[*])"},
-								},
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.task-words[*])"},
 							}},
 						}},
 					}},

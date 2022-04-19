@@ -24,7 +24,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -33,10 +32,10 @@ func TestCondition_Validate(t *testing.T) {
 	c := v1alpha1.Condition{
 		ObjectMeta: metav1.ObjectMeta{Name: "condname"},
 		Spec: v1alpha1.ConditionSpec{
-			Check: v1alpha1.Step{Container: corev1.Container{
+			Check: v1alpha1.Step{
 				Name:  "cname",
 				Image: "ubuntu",
-			}},
+			},
 			Params: []v1alpha1.ParamSpec{{
 				Name: "paramname",
 				Type: v1alpha1.ParamTypeString,
@@ -67,9 +66,9 @@ func TestCondition_Invalid(t *testing.T) {
 		cond: &v1alpha1.Condition{
 			ObjectMeta: metav1.ObjectMeta{Name: "condname"},
 			Spec: v1alpha1.ConditionSpec{
-				Check: v1alpha1.Step{Container: corev1.Container{
+				Check: v1alpha1.Step{
 					Image: "",
-				}},
+				},
 			},
 		},
 		expectedError: apis.FieldError{
@@ -82,11 +81,9 @@ func TestCondition_Invalid(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "condname"},
 			Spec: v1alpha1.ConditionSpec{
 				Check: v1alpha1.Step{
-					Container: corev1.Container{
-						Image:   "image",
-						Command: []string{"exit", "0"},
-					},
-					Script: "echo foo",
+					Image:   "image",
+					Command: []string{"exit", "0"},
+					Script:  "echo foo",
 				},
 			},
 		},
@@ -100,10 +97,8 @@ func TestCondition_Invalid(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "condname"},
 			Spec: v1alpha1.ConditionSpec{
 				Check: v1alpha1.Step{
-					Container: corev1.Container{
-						Name:  "Cname",
-						Image: "image",
-					},
+					Name:  "Cname",
+					Image: "image",
 				},
 			},
 		},

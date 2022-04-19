@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -38,10 +37,8 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 		},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					Image:   "myimage",
-					Command: []string{"mycmd"},
-				},
+				Image:   "myimage",
+				Command: []string{"mycmd"},
 			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: []v1beta1.TaskResource{
@@ -129,10 +126,8 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					Image:   "myimage",
-					Command: []string{"mycmd"},
-				},
+				Image:   "myimage",
+				Command: []string{"mycmd"},
 			}},
 			Params: []v1beta1.ParamSpec{
 				{
@@ -178,10 +173,8 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					Image:   "myimage",
-					Command: []string{"mycmd"},
-				},
+				Image:   "myimage",
+				Command: []string{"mycmd"},
 			}},
 			Params: []v1beta1.ParamSpec{
 				{
@@ -432,13 +425,9 @@ func TestValidateOverrides(t *testing.T) {
 		name: "valid stepOverrides",
 		ts: &v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					Name: "step1",
-				},
+				Name: "step1",
 			}, {
-				Container: corev1.Container{
-					Name: "step2",
-				},
+				Name: "step2",
 			}},
 		},
 		trs: &v1beta1.TaskRunSpec{
@@ -450,13 +439,9 @@ func TestValidateOverrides(t *testing.T) {
 		name: "valid sidecarOverrides",
 		ts: &v1beta1.TaskSpec{
 			Sidecars: []v1beta1.Sidecar{{
-				Container: corev1.Container{
-					Name: "step1",
-				},
+				Name: "step1",
 			}, {
-				Container: corev1.Container{
-					Name: "step2",
-				},
+				Name: "step2",
 			}},
 		},
 		trs: &v1beta1.TaskRunSpec{

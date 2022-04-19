@@ -168,7 +168,7 @@ func (s *Resource) getSteps(mode string, sourcePath string) []pipelinev1beta1.St
 		}
 	}
 
-	return []pipelinev1beta1.Step{{Container: corev1.Container{
+	return []pipelinev1beta1.Step{{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(prSource + "-" + s.Name),
 		Image:      s.PRImage,
 		Command:    []string{"/ko-app/pullrequest-init"},
@@ -179,5 +179,5 @@ func (s *Resource) getSteps(mode string, sourcePath string) []pipelinev1beta1.St
 			// The pullrequest pipeline resource only works when running as root.
 			RunAsUser: ptr.Int64(0),
 		},
-	}}}
+	}}
 }

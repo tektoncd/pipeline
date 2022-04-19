@@ -207,10 +207,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Name: "taskrefname",
 			},
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "mystep",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("taskRef", "taskSpec"),
@@ -236,10 +236,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		name: "invalid taskspec",
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "invalid-name-with-$weird-char/%",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 		wantErr: &apis.FieldError{
@@ -511,10 +511,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "taskspec without a taskRef",
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "mystep",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 	}, {
@@ -522,10 +522,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		spec: v1beta1.TaskRunSpec{
 			Timeout: &metav1.Duration{Duration: 0},
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "mystep",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 	}, {
@@ -537,10 +537,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("value"),
 			}},
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "mystep",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 	}, {
@@ -548,10 +548,8 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Name:  "mystep",
-						Image: "myimage",
-					},
+					Name:   "mystep",
+					Image:  "myimage",
 					Script: `echo "creds-init writes to $(credentials.path)"`,
 				}},
 			},

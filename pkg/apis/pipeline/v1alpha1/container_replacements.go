@@ -18,12 +18,11 @@ package v1alpha1
 
 import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // ApplyContainerReplacements replaces ${...} expressions in the container's name, image, args, env, command, workingDir,
 // and volumes.
-func ApplyContainerReplacements(step *corev1.Container, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+func ApplyContainerReplacements(step *Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	step.Name = substitution.ApplyReplacements(step.Name, stringReplacements)
 	step.Image = substitution.ApplyReplacements(step.Image, stringReplacements)
 

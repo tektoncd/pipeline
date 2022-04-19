@@ -271,11 +271,11 @@ func TestGetInputSteps(t *testing.T) {
 			ShellImage:  "busybox",
 			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
-		wantSteps: []v1beta1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{
 			Name:    "create-dir-gcs-valid-9l9zj",
 			Image:   "busybox",
 			Command: []string{"mkdir", "-p", "/workspace"},
-		}}, {
+		}, {
 			Script: `#!/usr/bin/env bash
 if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
   echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
@@ -283,21 +283,19 @@ if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
 fi
 gsutil rsync -d -r gs://some-bucket /workspace
 `,
-			Container: corev1.Container{
-				Name:  "fetch-gcs-valid-mz4c7",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				Env: []corev1.EnvVar{{
-					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-					Value: "/var/secret/secretName/key.json",
-				}, {
-					Name:  "HOME",
-					Value: "/tekton/home",
-				}},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "volume-gcs-valid-secretName",
-					MountPath: "/var/secret/secretName",
-				}},
-			},
+			Name:  "fetch-gcs-valid-mz4c7",
+			Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
+			Env: []corev1.EnvVar{{
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+				Value: "/var/secret/secretName/key.json",
+			}, {
+				Name:  "HOME",
+				Value: "/tekton/home",
+			}},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "volume-gcs-valid-secretName",
+				MountPath: "/var/secret/secretName",
+			}},
 		}},
 	}, {
 		name: "duplicate secret mount paths",
@@ -316,11 +314,11 @@ gsutil rsync -d -r gs://some-bucket /workspace
 			ShellImage:  "busybox",
 			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
-		wantSteps: []v1beta1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{
 			Name:    "create-dir-gcs-valid-mssqb",
 			Image:   "busybox",
 			Command: []string{"mkdir", "-p", "/workspace"},
-		}}, {
+		}, {
 			Script: `#!/usr/bin/env bash
 if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
   echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
@@ -328,21 +326,19 @@ if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
 fi
 gsutil cp gs://some-bucket /workspace
 `,
-			Container: corev1.Container{
-				Name:  "fetch-gcs-valid-78c5n",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				Env: []corev1.EnvVar{{
-					Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-					Value: "/var/secret/secretName/key.json",
-				}, {
-					Name:  "HOME",
-					Value: "/tekton/home",
-				}},
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "volume-gcs-valid-secretName",
-					MountPath: "/var/secret/secretName",
-				}},
-			},
+			Name:  "fetch-gcs-valid-78c5n",
+			Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
+			Env: []corev1.EnvVar{{
+				Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+				Value: "/var/secret/secretName/key.json",
+			}, {
+				Name:  "HOME",
+				Value: "/tekton/home",
+			}},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "volume-gcs-valid-secretName",
+				MountPath: "/var/secret/secretName",
+			}},
 		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -379,7 +375,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 			}},
 			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
-		wantSteps: []v1beta1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{
 			Name:    "upload-gcs-valid-9l9zj",
 			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
@@ -395,7 +391,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
 			}},
-		}}},
+		}},
 	}, {
 		name: "duplicate secret mount paths",
 		gcsResource: &storage.GCSResource{
@@ -412,7 +408,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 			}},
 			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
-		wantSteps: []v1beta1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{
 			Name:    "upload-gcs-valid-mz4c7",
 			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
@@ -428,7 +424,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 				Name:      "volume-gcs-valid-secretName",
 				MountPath: "/var/secret/secretName",
 			}},
-		}}},
+		}},
 	}, {
 		name: "valid upload to protected buckets with single file",
 		gcsResource: &storage.GCSResource{
@@ -437,7 +433,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 			TypeDir:     false,
 			GsutilImage: "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		},
-		wantSteps: []v1beta1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{
 			Name:    "upload-gcs-valid-mssqb",
 			Image:   "gcr.io/google.com/cloudsdktool/cloud-sdk",
 			Command: []string{"gsutil"},
@@ -446,7 +442,7 @@ func TestGetOutputTaskModifier(t *testing.T) {
 				Name:  "HOME",
 				Value: "/tekton/home",
 			}},
-		}}},
+		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ts := v1beta1.TaskSpec{}

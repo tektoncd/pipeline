@@ -547,7 +547,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 	for _, tc := range []struct {
 		desc        string
 		gitResource *git.Resource
-		want        corev1.Container
+		want        v1beta1.Step
 	}{{
 		desc: "With basic values",
 		gitResource: &git.Resource{
@@ -564,7 +564,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPSProxy: "https-proxy.git.com",
 			NOProxy:    "no-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-9l9zj",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -602,7 +602,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPSProxy: "https-proxy.git.com",
 			NOProxy:    "no-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-mz4c7",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -641,7 +641,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPSProxy: "https-proxy.git.com",
 			NOProxy:    "no-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-mssqb",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -681,7 +681,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPSProxy: "https-proxy.git.com",
 			NOProxy:    "no-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-78c5n",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -720,7 +720,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPSProxy: "https-proxy.git.com",
 			NOProxy:    "no-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-6nl7g",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -758,7 +758,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPProxy:  "http-proxy.git.com",
 			NOProxy:    "no-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-j2tds",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -796,7 +796,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPProxy:  "http-proxy.git.com",
 			HTTPSProxy: "https-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-vr6ds",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -835,7 +835,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPSProxy: "https-proxy.git.com",
 			NOProxy:    "no-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-l22wn",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -876,7 +876,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 			HTTPSProxy: "https-proxy.git.com",
 			NOProxy:    "no-proxy.git.com",
 		},
-		want: corev1.Container{
+		want: v1beta1.Step{
 			Name:    "git-source-git-resource-twkr2",
 			Image:   "override-with-git:latest",
 			Command: []string{"/ko-app/git-init"},
@@ -905,7 +905,7 @@ func TestGitResource_GetDownloadTaskModifier(t *testing.T) {
 				t.Fatalf("Unexpected error getting GetDownloadTaskModifier: %s", err)
 			}
 
-			if d := cmp.Diff([]v1beta1.Step{{Container: tc.want}}, modifier.GetStepsToPrepend()); d != "" {
+			if d := cmp.Diff([]v1beta1.Step{tc.want}, modifier.GetStepsToPrepend()); d != "" {
 				t.Errorf("Mismatch of GitResource DownloadContainerSpec %s", diff.PrintWantGot(d))
 			}
 		})

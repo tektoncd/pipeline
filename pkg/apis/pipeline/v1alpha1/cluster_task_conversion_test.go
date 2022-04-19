@@ -58,9 +58,9 @@ func TestClusterTaskConversion(t *testing.T) {
 			},
 			Spec: TaskSpec{
 				TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
+					Steps: []v1beta1.Step{{
 						Image: "foo",
-					}}},
+					}},
 					Volumes: []corev1.Volume{{}},
 					Params: []v1beta1.ParamSpec{{
 						Name:        "param-1",

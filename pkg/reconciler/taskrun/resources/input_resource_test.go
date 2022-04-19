@@ -363,7 +363,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 		taskRun: taskRun,
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:       "git-source-the-git-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
@@ -374,7 +374,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 				SecurityContext: gitResourceSecurityContext,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
 			},
@@ -405,7 +405,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
@@ -416,7 +416,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 				SecurityContext: gitResourceSecurityContext,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
 			},
@@ -454,7 +454,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:       "git-source-the-git-with-branch-mz4c7",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
@@ -465,7 +465,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 				SecurityContext: gitResourceSecurityContext,
-			}}, {Container: corev1.Container{
+			}, {
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
@@ -476,7 +476,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 				SecurityContext: gitResourceSecurityContext,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: multipleGitInputs,
 			},
@@ -507,7 +507,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:       "git-source-the-git-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
@@ -518,7 +518,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 				SecurityContext: gitResourceSecurityContext,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
 			},
@@ -549,7 +549,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
@@ -560,7 +560,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 				SecurityContext: gitResourceSecurityContext,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
 			},
@@ -593,17 +593,17 @@ func TestAddInputResourceToTask(t *testing.T) {
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:    "create-dir-gitspace-mz4c7",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gitspace"},
-			}}, {Container: corev1.Container{
+			}, {
 				Name:         "source-copy-gitspace-9l9zj",
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gitspace"},
 				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
 				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "gitspace"}},
-			}}},
+			}},
 			Volumes: []corev1.Volume{{
 				Name: "pipelinerun-pvc",
 				VolumeSource: corev1.VolumeSource{
@@ -640,7 +640,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:       "git-source-the-git-with-sslVerify-false-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
@@ -651,7 +651,7 @@ func TestAddInputResourceToTask(t *testing.T) {
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 				SecurityContext: gitResourceSecurityContext,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
 			},
@@ -679,11 +679,11 @@ func TestAddInputResourceToTask(t *testing.T) {
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:    "create-dir-storage1-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
-			}}, {
+			}, {
 				Script: `#!/usr/bin/env bash
 if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
   echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
@@ -691,14 +691,12 @@ if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
 fi
 gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 `,
-				Container: corev1.Container{
-					Name:  "fetch-storage1-mz4c7",
-					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-					Env: []corev1.EnvVar{{
-						Name:  "HOME",
-						Value: pipeline.HomeDir,
-					}},
-				},
+				Name:  "fetch-storage1-mz4c7",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
+				Env: []corev1.EnvVar{{
+					Name:  "HOME",
+					Value: pipeline.HomeDir,
+				}},
 			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gcsInputs,
@@ -732,11 +730,11 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:    "create-dir-workspace-mz4c7",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
-			}}, {Container: corev1.Container{
+			}, {
 				Name:         "source-copy-workspace-9l9zj",
 				Image:        "busybox",
 				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gcs-dir"},
@@ -745,7 +743,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 					Name:  "TEKTON_RESOURCE_NAME",
 					Value: "workspace",
 				}},
-			}}},
+			}},
 			Volumes: []corev1.Volume{{
 				Name: "pipelinerun-pvc",
 				VolumeSource: corev1.VolumeSource{
@@ -857,16 +855,14 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 		want: &v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{
 				{
-					Container: corev1.Container{
-						Name:    "kubeconfig-9l9zj",
-						Image:   "override-with-kubeconfig-writer:latest",
-						Command: []string{"/ko-app/kubeconfigwriter"},
-						Args: []string{
-							"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","clientKeyData":"Y2xpZW50LWtleS1kYXRh","clientCertificateData":"Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=","secrets":null}`,
-						},
-						Env: []corev1.EnvVar{
-							{Name: "TEKTON_RESOURCE_NAME", Value: "cluster3"},
-						},
+					Name:    "kubeconfig-9l9zj",
+					Image:   "override-with-kubeconfig-writer:latest",
+					Command: []string{"/ko-app/kubeconfigwriter"},
+					Args: []string{
+						"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","clientKeyData":"Y2xpZW50LWtleS1kYXRh","clientCertificateData":"Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=","secrets":null}`,
+					},
+					Env: []corev1.EnvVar{
+						{Name: "TEKTON_RESOURCE_NAME", Value: "cluster3"},
 					},
 				},
 			},
@@ -912,27 +908,25 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 		want: &v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{
 				{
-					Container: corev1.Container{
-						Name:    "kubeconfig-9l9zj",
-						Image:   "override-with-kubeconfig-writer:latest",
-						Command: []string{"/ko-app/kubeconfigwriter"},
-						Args: []string{
-							"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
-						},
-						Env: []corev1.EnvVar{
-							{Name: "TEKTON_RESOURCE_NAME", Value: "cluster2"},
-							{
-								ValueFrom: &corev1.EnvVarSource{
-									SecretKeyRef: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "secret1",
-										},
-										Key: "cadatakey",
-									},
-								},
-								Name: "CADATA",
-							}},
+					Name:    "kubeconfig-9l9zj",
+					Image:   "override-with-kubeconfig-writer:latest",
+					Command: []string{"/ko-app/kubeconfigwriter"},
+					Args: []string{
+						"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
 					},
+					Env: []corev1.EnvVar{
+						{Name: "TEKTON_RESOURCE_NAME", Value: "cluster2"},
+						{
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "secret1",
+									},
+									Key: "cadatakey",
+								},
+							},
+							Name: "CADATA",
+						}},
 				},
 			},
 			Resources: &v1beta1.TaskResources{
@@ -965,7 +959,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:       "git-source-the-git-with-branch-9l9zj",
 				Image:      "override-with-git:latest",
 				Command:    []string{"/ko-app/git-init"},
@@ -976,7 +970,7 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 				SecurityContext: gitResourceSecurityContext,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: optionalGitInputs,
 			},
@@ -1085,11 +1079,11 @@ func TestStorageInputResource(t *testing.T) {
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:    "create-dir-gcs-input-resource-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-input-resource"},
-			}}, {
+			}, {
 				Script: `#!/usr/bin/env bash
 if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
   echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
@@ -1097,11 +1091,9 @@ if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
 fi
 gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 `,
-				Container: corev1.Container{
-					Name:  "fetch-gcs-input-resource-mz4c7",
-					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-					Env:   []corev1.EnvVar{{Name: "HOME", Value: pipeline.HomeDir}},
-				},
+				Name:  "fetch-gcs-input-resource-mz4c7",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
+				Env:   []corev1.EnvVar{{Name: "HOME", Value: pipeline.HomeDir}},
 			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gcsStorageInputs,
@@ -1156,11 +1148,11 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 		},
 		wantErr: false,
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:    "create-dir-storage-gcs-keys-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-input-resource"},
-			}}, {
+			}, {
 				Script: `#!/usr/bin/env bash
 if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
   echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
@@ -1168,16 +1160,14 @@ if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
 fi
 gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
 `,
-				Container: corev1.Container{
-					Name:  "fetch-storage-gcs-keys-mz4c7",
-					Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-					VolumeMounts: []corev1.VolumeMount{
-						{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
-					},
-					Env: []corev1.EnvVar{
-						{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
-						{Name: "HOME", Value: pipeline.HomeDir},
-					},
+				Name:  "fetch-storage-gcs-keys-mz4c7",
+				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
+				VolumeMounts: []corev1.VolumeMount{
+					{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
+				},
+				Env: []corev1.EnvVar{
+					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
+					{Name: "HOME", Value: pipeline.HomeDir},
 				},
 			}},
 			Resources: &v1beta1.TaskResources{
@@ -1320,18 +1310,18 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 			},
 		},
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:    "artifact-dest-mkdir-gitspace-9l9zj",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gitspace"},
-			}}, {Container: corev1.Container{
+			}, {
 				Name:         "artifact-copy-from-gitspace-mz4c7",
 				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gitspace"},
 				Env:          gcsEnv,
 				VolumeMounts: gcsVolumeMounts,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
 			},
@@ -1364,18 +1354,18 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 			},
 		},
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:    "artifact-dest-mkdir-workspace-mssqb",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
-			}}, {Container: corev1.Container{
+			}, {
 				Name:         "artifact-copy-from-workspace-78c5n",
 				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,
 				VolumeMounts: gcsVolumeMounts,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gcsInputs,
 			},
@@ -1416,29 +1406,29 @@ func TestAddStepsToTaskWithBucketFromConfigMap(t *testing.T) {
 			},
 		},
 		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Name:    "artifact-dest-mkdir-workspace-vr6ds",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
-			}}, {Container: corev1.Container{
+			}, {
 				Name:         "artifact-copy-from-workspace-l22wn",
 				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,
 				VolumeMounts: gcsVolumeMounts,
-			}}, {Container: corev1.Container{
+			}, {
 				Name:    "artifact-dest-mkdir-workspace2-6nl7g",
 				Image:   "busybox",
 				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
-			}}, {Container: corev1.Container{
+			}, {
 				Name:         "artifact-copy-from-workspace2-j2tds",
 				Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 				Command:      []string{"gsutil"},
 				Args:         []string{"cp", "-P", "-r", "gs://fake-bucket/prev-task-path2/*", "/workspace/gcs-dir"},
 				Env:          gcsEnv,
 				VolumeMounts: gcsVolumeMounts,
-			}}},
+			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: multipleGcsInputs,
 			},

@@ -28,13 +28,9 @@ import (
 
 func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
 	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
-		Container: corev1.Container{
-			Image: "step-1",
-		},
+		Image: "step-1",
 	}, {
-		Container: corev1.Container{
-			Image: "step-2",
-		},
+		Image: "step-2",
 	}}, []v1beta1.Sidecar{}, nil)
 	want := []corev1.Container{{
 		Image: "step-1",
@@ -55,13 +51,9 @@ func TestConvertScripts_NothingToConvert_EmptySidecars(t *testing.T) {
 
 func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
 	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
-		Container: corev1.Container{
-			Image: "step-1",
-		},
+		Image: "step-1",
 	}, {
-		Container: corev1.Container{
-			Image: "step-2",
-		},
+		Image: "step-2",
 	}}, nil, nil)
 	want := []corev1.Container{{
 		Image: "step-1",
@@ -82,17 +74,11 @@ func TestConvertScripts_NothingToConvert_NilSidecars(t *testing.T) {
 
 func TestConvertScripts_NothingToConvert_WithSidecar(t *testing.T) {
 	gotInit, gotScripts, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
-		Container: corev1.Container{
-			Image: "step-1",
-		},
+		Image: "step-1",
 	}, {
-		Container: corev1.Container{
-			Image: "step-2",
-		},
+		Image: "step-2",
 	}}, []v1beta1.Sidecar{{
-		Container: corev1.Container{
-			Image: "sidecar-1",
-		},
+		Image: "sidecar-1",
 	}}, nil)
 	want := []corev1.Container{{
 		Image: "step-1",
@@ -133,26 +119,22 @@ func TestConvertScripts(t *testing.T) {
 	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
 		Script: `#!/bin/sh
 script-1`,
-		Container: corev1.Container{Image: "step-1"},
+		Image: "step-1",
 	}, {
 		// No script to convert here.
-		Container: corev1.Container{Image: "step-2"},
+		Image: "step-2",
 	}, {
 		Script: `
 #!/bin/sh
 script-3`,
-		Container: corev1.Container{
-			Image:        "step-3",
-			VolumeMounts: preExistingVolumeMounts,
-			Args:         []string{"my", "args"},
-		},
+		Image:        "step-3",
+		VolumeMounts: preExistingVolumeMounts,
+		Args:         []string{"my", "args"},
 	}, {
-		Script: `no-shebang`,
-		Container: corev1.Container{
-			Image:        "step-3",
-			VolumeMounts: preExistingVolumeMounts,
-			Args:         []string{"my", "args"},
-		},
+		Script:       `no-shebang`,
+		Image:        "step-3",
+		VolumeMounts: preExistingVolumeMounts,
+		Args:         []string{"my", "args"},
 	}}, []v1beta1.Sidecar{}, nil)
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
@@ -226,26 +208,22 @@ func TestConvertScripts_WithBreakpoint_OnFailure(t *testing.T) {
 	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
 		Script: `#!/bin/sh
 script-1`,
-		Container: corev1.Container{Image: "step-1"},
+		Image: "step-1",
 	}, {
 		// No script to convert here.
-		Container: corev1.Container{Image: "step-2"},
+		Image: "step-2",
 	}, {
 		Script: `
 #!/bin/sh
 script-3`,
-		Container: corev1.Container{
-			Image:        "step-3",
-			VolumeMounts: preExistingVolumeMounts,
-			Args:         []string{"my", "args"},
-		},
+		Image:        "step-3",
+		VolumeMounts: preExistingVolumeMounts,
+		Args:         []string{"my", "args"},
 	}, {
-		Script: `no-shebang`,
-		Container: corev1.Container{
-			Image:        "step-3",
-			VolumeMounts: preExistingVolumeMounts,
-			Args:         []string{"my", "args"},
-		},
+		Script:       `no-shebang`,
+		Image:        "step-3",
+		VolumeMounts: preExistingVolumeMounts,
+		Args:         []string{"my", "args"},
 	}}, []v1beta1.Sidecar{}, &v1beta1.TaskRunDebug{
 		Breakpoint: []string{breakpointOnFailure},
 	})
@@ -368,22 +346,20 @@ func TestConvertScripts_WithSidecar(t *testing.T) {
 	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
 		Script: `#!/bin/sh
 script-1`,
-		Container: corev1.Container{Image: "step-1"},
+		Image: "step-1",
 	}, {
 		// No script to convert here.:
-		Container: corev1.Container{Image: "step-2"},
+		Image: "step-2",
 	}, {
 		Script: `#!/bin/sh
 script-3`,
-		Container: corev1.Container{
-			Image:        "step-3",
-			VolumeMounts: preExistingVolumeMounts,
-			Args:         []string{"my", "args"},
-		},
+		Image:        "step-3",
+		VolumeMounts: preExistingVolumeMounts,
+		Args:         []string{"my", "args"},
 	}}, []v1beta1.Sidecar{{
 		Script: `#!/bin/sh
 sidecar-1`,
-		Container: corev1.Container{Image: "sidecar-1"},
+		Image: "sidecar-1",
 	}}, nil)
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
@@ -462,26 +438,22 @@ func TestConvertScripts_Windows(t *testing.T) {
 	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
 		Script: `#!win pwsh -File
 script-1`,
-		Container: corev1.Container{Image: "step-1"},
+		Image: "step-1",
 	}, {
 		// No script to convert here.
-		Container: corev1.Container{Image: "step-2"},
+		Image: "step-2",
 	}, {
 		Script: `#!win powershell -File
 script-3`,
-		Container: corev1.Container{
-			Image:        "step-3",
-			VolumeMounts: preExistingVolumeMounts,
-			Args:         []string{"my", "args"},
-		},
+		Image:        "step-3",
+		VolumeMounts: preExistingVolumeMounts,
+		Args:         []string{"my", "args"},
 	}, {
 		Script: `#!win
 no-shebang`,
-		Container: corev1.Container{
-			Image:        "step-3",
-			VolumeMounts: preExistingVolumeMounts,
-			Args:         []string{"my", "args"},
-		},
+		Image:        "step-3",
+		VolumeMounts: preExistingVolumeMounts,
+		Args:         []string{"my", "args"},
 	}}, []v1beta1.Sidecar{}, nil)
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
@@ -549,22 +521,20 @@ func TestConvertScripts_Windows_WithSidecar(t *testing.T) {
 	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
 		Script: `#!win pwsh -File
 script-1`,
-		Container: corev1.Container{Image: "step-1"},
+		Image: "step-1",
 	}, {
 		// No script to convert here.:
-		Container: corev1.Container{Image: "step-2"},
+		Image: "step-2",
 	}, {
 		Script: `#!win powershell -File
 script-3`,
-		Container: corev1.Container{
-			Image:        "step-3",
-			VolumeMounts: preExistingVolumeMounts,
-			Args:         []string{"my", "args"},
-		},
+		Image:        "step-3",
+		VolumeMounts: preExistingVolumeMounts,
+		Args:         []string{"my", "args"},
 	}}, []v1beta1.Sidecar{{
 		Script: `#!win pwsh -File
 sidecar-1`,
-		Container: corev1.Container{Image: "sidecar-1"},
+		Image: "sidecar-1",
 	}}, nil)
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
@@ -630,11 +600,11 @@ func TestConvertScripts_Windows_SidecarOnly(t *testing.T) {
 
 	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
 		// No script to convert here.:
-		Container: corev1.Container{Image: "step-1"},
+		Image: "step-1",
 	}}, []v1beta1.Sidecar{{
 		Script: `#!win python
 sidecar-1`,
-		Container: corev1.Container{Image: "sidecar-1"},
+		Image: "sidecar-1",
 	}}, nil)
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",

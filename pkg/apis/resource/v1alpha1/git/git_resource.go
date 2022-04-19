@@ -188,18 +188,16 @@ func (s *Resource) GetInputTaskModifier(_ *v1beta1.TaskSpec, path string) (v1bet
 	}
 
 	step := v1beta1.Step{
-		Container: corev1.Container{
-			Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
-			Image:      s.GitImage,
-			Command:    []string{"/ko-app/git-init"},
-			Args:       args,
-			WorkingDir: pipeline.WorkspaceDir,
-			// This is used to populate the ResourceResult status.
-			Env: env,
-			SecurityContext: &corev1.SecurityContext{
-				// The git pipeline resource only works when running as root.
-				RunAsUser: ptr.Int64(0),
-			},
+		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(gitSource + "-" + s.Name),
+		Image:      s.GitImage,
+		Command:    []string{"/ko-app/git-init"},
+		Args:       args,
+		WorkingDir: pipeline.WorkspaceDir,
+		// This is used to populate the ResourceResult status.
+		Env: env,
+		SecurityContext: &corev1.SecurityContext{
+			// The git pipeline resource only works when running as root.
+			RunAsUser: ptr.Int64(0),
 		},
 	}
 

@@ -217,7 +217,7 @@ func TestApply(t *testing.T) {
 			SubPath: "/foo/bar/baz",
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-9l9zj",
 					MountPath: "/workspace/custom",
@@ -251,7 +251,7 @@ func TestApply(t *testing.T) {
 			SubPath: "/foo/bar/baz",
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-mz4c7",
 					MountPath: "/workspace/custom",
@@ -273,7 +273,7 @@ func TestApply(t *testing.T) {
 	}, {
 		name: "task spec already has volumes and stepTemplate",
 		ts: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "awesome-volume",
 					MountPath: "/",
@@ -297,7 +297,7 @@ func TestApply(t *testing.T) {
 			SubPath: "/foo/bar/baz",
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "awesome-volume",
 					MountPath: "/",
@@ -328,16 +328,14 @@ func TestApply(t *testing.T) {
 		name: "0 workspace bindings",
 		ts: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					Name: "foo",
-				}}},
+				Name: "foo",
+			}},
 		},
 		workspaces: []v1beta1.WorkspaceBinding{},
 		expectedTaskSpec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					Name: "foo",
-				}}},
+				Name: "foo",
+			}},
 		},
 	}, {
 		name: "binding multiple workspaces",
@@ -361,7 +359,7 @@ func TestApply(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-78c5n",
 					MountPath: "/workspace/custom",
@@ -415,7 +413,7 @@ func TestApply(t *testing.T) {
 			SubPath: "/very/professional/work/space",
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-j2tds",
 					MountPath: "/workspace/custom",
@@ -455,7 +453,7 @@ func TestApply(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-l22wn",
 					MountPath: "/my/fancy/mount/path",
@@ -490,7 +488,7 @@ func TestApply(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-twkr2",
 					MountPath: "/my/fancy/mount/path",
@@ -540,7 +538,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 					Name: "source",
 				}},
 			}},
-			Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{Name: "foo"}}},
+			Sidecars: []v1beta1.Sidecar{{Name: "foo"}},
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
 				Name: "source",
 			}},
@@ -552,7 +550,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{},
+			StepTemplate: &v1beta1.StepTemplate{},
 			Volumes: []corev1.Volume{{
 				Name: "ws-9l9zj",
 				VolumeSource: corev1.VolumeSource{
@@ -562,17 +560,15 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 				},
 			}},
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "ws-9l9zj",
-						MountPath: "/workspace/source",
-					}},
-				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-9l9zj",
+					MountPath: "/workspace/source",
+				}},
 				Workspaces: []v1beta1.WorkspaceUsage{{
 					Name: "source",
 				}},
 			}},
-			Sidecars: []v1beta1.Sidecar{{Container: corev1.Container{Name: "foo"}}},
+			Sidecars: []v1beta1.Sidecar{{Name: "foo"}},
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
 				Name: "source",
 			}},
@@ -581,7 +577,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 		name: "workspace isolated to sidecar does not appear in steps",
 		ts: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Name: "step1"},
+				Name: "step1",
 			}},
 			Sidecars: []v1beta1.Sidecar{{
 				Workspaces: []v1beta1.WorkspaceUsage{{
@@ -599,7 +595,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{},
+			StepTemplate: &v1beta1.StepTemplate{},
 			Volumes: []corev1.Volume{{
 				Name: "ws-mz4c7",
 				VolumeSource: corev1.VolumeSource{
@@ -609,15 +605,13 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 				},
 			}},
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{Name: "step1"},
+				Name: "step1",
 			}},
 			Sidecars: []v1beta1.Sidecar{{
-				Container: corev1.Container{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "ws-mz4c7",
-						MountPath: "/workspace/source",
-					}},
-				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-mz4c7",
+					MountPath: "/workspace/source",
+				}},
 				Workspaces: []v1beta1.WorkspaceUsage{{
 					Name: "source",
 				}},
@@ -634,7 +628,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 					Name: "source",
 				}},
 			}, {
-				Container: corev1.Container{Name: "step2"},
+				Name: "step2",
 			}},
 			Sidecars: []v1beta1.Sidecar{{
 				Workspaces: []v1beta1.WorkspaceUsage{{
@@ -652,7 +646,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{},
+			StepTemplate: &v1beta1.StepTemplate{},
 			Volumes: []corev1.Volume{{
 				Name: "ws-mssqb",
 				VolumeSource: corev1.VolumeSource{
@@ -662,25 +656,21 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 				},
 			}},
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "ws-mssqb",
-						MountPath: "/workspace/source",
-					}},
-				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-mssqb",
+					MountPath: "/workspace/source",
+				}},
 				Workspaces: []v1beta1.WorkspaceUsage{{
 					Name: "source",
 				}},
 			}, {
-				Container: corev1.Container{Name: "step2"},
+				Name: "step2",
 			}},
 			Sidecars: []v1beta1.Sidecar{{
-				Container: corev1.Container{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "ws-mssqb",
-						MountPath: "/workspace/source",
-					}},
-				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-mssqb",
+					MountPath: "/workspace/source",
+				}},
 				Workspaces: []v1beta1.WorkspaceUsage{{
 					Name: "source",
 				}},
@@ -705,7 +695,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name: "ws-78c5n", MountPath: "/workspace/source",
 				}},
@@ -720,12 +710,10 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 			}},
 			Steps: []v1beta1.Step{{}},
 			Sidecars: []v1beta1.Sidecar{{
-				Container: corev1.Container{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "ws-78c5n",
-						MountPath: "/workspace/source",
-					}},
-				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-78c5n",
+					MountPath: "/workspace/source",
+				}},
 			}},
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
 				Name: "source",
@@ -757,7 +745,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{},
+			StepTemplate: &v1beta1.StepTemplate{},
 			Volumes: []corev1.Volume{{
 				Name: "ws-6nl7g",
 				VolumeSource: corev1.VolumeSource{
@@ -771,24 +759,20 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 					Name:      "source",
 					MountPath: "/foo",
 				}},
-				Container: corev1.Container{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "ws-6nl7g",
-						MountPath: "/foo",
-					}},
-				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-6nl7g",
+					MountPath: "/foo",
+				}},
 			}},
 			Sidecars: []v1beta1.Sidecar{{
 				Workspaces: []v1beta1.WorkspaceUsage{{
 					Name:      "source",
 					MountPath: "/bar",
 				}},
-				Container: corev1.Container{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "ws-6nl7g",
-						MountPath: "/bar",
-					}},
-				},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-6nl7g",
+					MountPath: "/bar",
+				}},
 			}},
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
 				Name: "source",
@@ -803,13 +787,11 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 				ReadOnly:  true,
 			}},
 			Sidecars: []v1beta1.Sidecar{{
-				Container: corev1.Container{
-					Name: "conflicting volume mount sidecar",
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "mount-path-conflicts",
-						MountPath: "/my/fancy/mount/path",
-					}},
-				},
+				Name: "conflicting volume mount sidecar",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "mount-path-conflicts",
+					MountPath: "/my/fancy/mount/path",
+				}},
 			}},
 		},
 		workspaces: []v1beta1.WorkspaceBinding{{
@@ -819,7 +801,7 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 			},
 		}},
 		expectedTaskSpec: v1beta1.TaskSpec{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "ws-j2tds",
 					MountPath: "/my/fancy/mount/path",
@@ -827,13 +809,11 @@ func TestApply_IsolatedWorkspaces(t *testing.T) {
 				}},
 			},
 			Sidecars: []v1beta1.Sidecar{{
-				Container: corev1.Container{
-					Name: "conflicting volume mount sidecar",
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "mount-path-conflicts",
-						MountPath: "/my/fancy/mount/path",
-					}},
-				},
+				Name: "conflicting volume mount sidecar",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "mount-path-conflicts",
+					MountPath: "/my/fancy/mount/path",
+				}},
 			}},
 			Volumes: []corev1.Volume{{
 				Name: "ws-j2tds",
@@ -901,12 +881,10 @@ func TestAddSidecarVolumeMount(t *testing.T) {
 			MountPath: "/workspace/foo",
 		},
 		expectedSidecar: v1beta1.Sidecar{
-			Container: corev1.Container{
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "foo",
-					MountPath: "/workspace/foo",
-				}},
-			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/workspace/foo",
+			}},
 		},
 	}, {
 		sidecarMounts: []corev1.VolumeMount{},
@@ -915,12 +893,10 @@ func TestAddSidecarVolumeMount(t *testing.T) {
 			MountPath: "/workspace/foo",
 		},
 		expectedSidecar: v1beta1.Sidecar{
-			Container: corev1.Container{
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "foo",
-					MountPath: "/workspace/foo",
-				}},
-			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "foo",
+				MountPath: "/workspace/foo",
+			}},
 		},
 	}, {
 		sidecarMounts: []corev1.VolumeMount{{
@@ -932,12 +908,10 @@ func TestAddSidecarVolumeMount(t *testing.T) {
 			MountPath: "/workspace/bar",
 		},
 		expectedSidecar: v1beta1.Sidecar{
-			Container: corev1.Container{
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "bar",
-					MountPath: "/workspace/bar",
-				}},
-			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "bar",
+				MountPath: "/workspace/bar",
+			}},
 		},
 	}, {
 		sidecarMounts: []corev1.VolumeMount{{
@@ -949,19 +923,17 @@ func TestAddSidecarVolumeMount(t *testing.T) {
 			MountPath: "/workspace/foo",
 		},
 		expectedSidecar: v1beta1.Sidecar{
-			Container: corev1.Container{
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "bar",
-					MountPath: "/workspace/bar",
-				}, {
-					Name:      "foo",
-					MountPath: "/workspace/foo",
-				}},
-			},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "bar",
+				MountPath: "/workspace/bar",
+			}, {
+				Name:      "foo",
+				MountPath: "/workspace/foo",
+			}},
 		},
 	}} {
 		sidecar := v1beta1.Sidecar{}
-		sidecar.Container.VolumeMounts = tc.sidecarMounts
+		sidecar.VolumeMounts = tc.sidecarMounts
 		workspace.AddSidecarVolumeMount(&sidecar, tc.volumeMount)
 		if d := cmp.Diff(tc.expectedSidecar, sidecar); d != "" {
 			t.Error(diff.PrintWantGot(d))

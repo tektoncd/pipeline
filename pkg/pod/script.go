@@ -97,12 +97,13 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 
 	breakpoints := []string{}
 	sideCarSteps := []v1beta1.Step{}
-	for _, step := range sidecars {
+	for _, sidecar := range sidecars {
+		c := sidecar.ToK8sContainer()
 		sidecarStep := v1beta1.Step{
-			Container: step.Container,
-			Script:    step.Script,
-			Timeout:   &metav1.Duration{},
+			Script:  sidecar.Script,
+			Timeout: &metav1.Duration{},
 		}
+		sidecarStep.SetContainerFields(*c)
 		sideCarSteps = append(sideCarSteps, sidecarStep)
 	}
 
@@ -131,7 +132,7 @@ func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, p
 	for i, s := range steps {
 		if s.Script == "" {
 			// Nothing to convert.
-			containers = append(containers, s.Container)
+			containers = append(containers, *s.ToK8sContainer())
 			continue
 		}
 
@@ -194,7 +195,7 @@ cat > ${scriptfile} << '%s'
 			}
 			steps[i].VolumeMounts = append(steps[i].VolumeMounts, debugScriptsVolumeMount, debugInfoVolumeMount)
 		}
-		containers = append(containers, steps[i].Container)
+		containers = append(containers, *steps[i].ToK8sContainer())
 	}
 
 	// Place debug scripts if breakpoints are enabled

@@ -112,11 +112,9 @@ var (
 	cloudEventTarget2    = "https://bar"
 
 	simpleStep = v1beta1.Step{
-		Container: corev1.Container{
-			Name:    "simple-step",
-			Image:   "foo",
-			Command: []string{"/mycmd"},
-		},
+		Name:    "simple-step",
+		Image:   "foo",
+		Command: []string{"/mycmd"},
 	}
 	simpleTask = &v1beta1.Task{
 		ObjectMeta: objectMeta("test-task", "foo"),
@@ -145,10 +143,8 @@ var (
 		ObjectMeta: objectMeta("test-task-sidecar", "foo"),
 		Spec: v1beta1.TaskSpec{
 			Sidecars: []v1beta1.Sidecar{{
-				Container: corev1.Container{
-					Name:  "sidecar",
-					Image: "image-id",
-				},
+				Name:  "sidecar",
+				Image: "image-id",
 			}},
 		},
 	}
@@ -157,16 +153,12 @@ var (
 		Spec: v1beta1.TaskSpec{
 			Sidecars: []v1beta1.Sidecar{
 				{
-					Container: corev1.Container{
-						Name:  "sidecar",
-						Image: "image-id",
-					},
+					Name:  "sidecar",
+					Image: "image-id",
 				},
 				{
-					Container: corev1.Container{
-						Name:  "sidecar2",
-						Image: "image-id",
-					},
+					Name:  "sidecar2",
+					Image: "image-id",
 				},
 			},
 		},
@@ -205,11 +197,9 @@ var (
 		ObjectMeta: objectMeta("test-with-sa", "foo"),
 		Spec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				Container: corev1.Container{
-					Name:    "sa-step",
-					Image:   "foo",
-					Command: []string{"/mycmd"},
-				},
+				Name:    "sa-step",
+				Image:   "foo",
+				Command: []string{"/mycmd"},
 			}},
 		},
 	}
@@ -253,27 +243,23 @@ var (
 			},
 			Steps: []v1beta1.Step{
 				{
-					Container: corev1.Container{
-						Image:   "myimage",
-						Name:    "mycontainer",
-						Command: []string{"/mycmd"},
-						Args: []string{
-							"--my-arg=$(inputs.params.myarg)",
-							"--my-arg-with-default=$(inputs.params.myarghasdefault)",
-							"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
-							"--my-additional-arg=$(outputs.resources.myimage.url)",
-							"--my-taskname-arg=$(context.task.name)",
-							"--my-taskrun-arg=$(context.taskRun.name)",
-						},
+					Image:   "myimage",
+					Name:    "mycontainer",
+					Command: []string{"/mycmd"},
+					Args: []string{
+						"--my-arg=$(inputs.params.myarg)",
+						"--my-arg-with-default=$(inputs.params.myarghasdefault)",
+						"--my-arg-with-default2=$(inputs.params.myarghasdefault2)",
+						"--my-additional-arg=$(outputs.resources.myimage.url)",
+						"--my-taskname-arg=$(context.task.name)",
+						"--my-taskrun-arg=$(context.taskRun.name)",
 					},
 				},
 				{
-					Container: corev1.Container{
-						Image:   "myotherimage",
-						Name:    "myothercontainer",
-						Command: []string{"/mycmd"},
-						Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
-					},
+					Image:   "myotherimage",
+					Name:    "myothercontainer",
+					Command: []string{"/mycmd"},
+					Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
 				},
 			},
 			Volumes: []corev1.Volume{{
@@ -3823,12 +3809,10 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 		taskSpec: &v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{
 				{
-					Container: corev1.Container{
-						Image:   "image",
-						Command: []string{"cmd"},
-					},
+					Image:   "image",
+					Command: []string{"cmd"},
 				}},
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1beta1.StepTemplate{
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("4"),
@@ -3840,7 +3824,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 	}, {
 		name: "no limit configured",
 		taskSpec: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				Resources: corev1.ResourceRequirements{
@@ -3849,12 +3833,12 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
 					},
 				},
-			}}},
+			}},
 		},
 	}, {
 		name: "request less or equal than step limit but larger than steptemplate limit",
 		taskSpec: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				Resources: corev1.ResourceRequirements{
@@ -3867,8 +3851,8 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("8Gi"),
 					},
 				},
-			}}},
-			StepTemplate: &corev1.Container{
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("4"),
@@ -3880,7 +3864,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 	}, {
 		name: "request less or equal than step limit",
 		taskSpec: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				Resources: corev1.ResourceRequirements{
@@ -3893,12 +3877,12 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("8Gi"),
 					},
 				},
-			}}},
+			}},
 		},
 	}, {
 		name: "request less or equal than steptemplate limit",
 		taskSpec: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				Resources: corev1.ResourceRequirements{
@@ -3907,8 +3891,8 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
 					},
 				},
-			}}},
-			StepTemplate: &corev1.Container{
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
@@ -3937,7 +3921,7 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 	}{{
 		name: "step request larger than step limit",
 		taskSpec: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				Resources: corev1.ResourceRequirements{
@@ -3950,11 +3934,11 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("4Gi"),
 					},
 				},
-			}}}},
+			}}},
 	}, {
 		name: "step request larger than steptemplate limit",
 		taskSpec: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: corev1.Container{
+			Steps: []v1beta1.Step{{
 				Image:   "image",
 				Command: []string{"cmd"},
 				Resources: corev1.ResourceRequirements{
@@ -3963,8 +3947,8 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 						corev1.ResourceMemory: resource.MustParse("8Gi"),
 					},
 				},
-			}}},
-			StepTemplate: &corev1.Container{
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("8"),
