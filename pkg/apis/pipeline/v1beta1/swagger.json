@@ -2262,6 +2262,10 @@
           "description": "Name the given name",
           "type": "string",
           "default": ""
+        },
+        "type": {
+          "description": "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+          "type": "string"
         }
       }
     },
@@ -2405,6 +2409,10 @@
           "description": "Name the given name",
           "type": "string",
           "default": ""
+        },
+        "type": {
+          "description": "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+          "type": "string"
         },
         "value": {
           "description": "Value the given value of the result",

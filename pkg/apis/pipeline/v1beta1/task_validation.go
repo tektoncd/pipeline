@@ -77,14 +77,6 @@ func validateResults(ctx context.Context, results []TaskResult) (errs *apis.Fiel
 	return errs
 }
 
-// Validate implements apis.Validatable
-func (tr TaskResult) Validate(_ context.Context) *apis.FieldError {
-	if !resultNameFormatRegex.MatchString(tr.Name) {
-		return apis.ErrInvalidKeyName(tr.Name, "name", fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
-	}
-	return nil
-}
-
 // a mount path which conflicts with any other declared workspaces, with the explicitly
 // declared volume mounts, or with the stepTemplate. The names must also be unique.
 func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) (errs *apis.FieldError) {

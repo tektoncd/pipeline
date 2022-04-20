@@ -126,16 +126,6 @@ type TaskSpec struct {
 	Results []TaskResult `json:"results,omitempty"`
 }
 
-// TaskResult used to describe the results of a task
-type TaskResult struct {
-	// Name the given name
-	Name string `json:"name"`
-
-	// Description is a human-readable description of the result
-	// +optional
-	Description string `json:"description"`
-}
-
 // Step embeds the Container type, which allows it to include fields not
 // provided by Container.
 type Step struct {

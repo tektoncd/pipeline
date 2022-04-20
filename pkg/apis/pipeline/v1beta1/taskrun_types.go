@@ -235,15 +235,6 @@ type TaskRunStatusFields struct {
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 }
 
-// TaskRunResult used to describe the results of a task
-type TaskRunResult struct {
-	// Name the given name
-	Name string `json:"name"`
-
-	// Value the given value of the result
-	Value string `json:"value"`
-}
-
 // TaskRunStepOverride is used to override the values of a Step in the corresponding Task.
 type TaskRunStepOverride struct {
 	// The name of the Step to override.
