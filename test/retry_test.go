@@ -34,6 +34,7 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestTaskRunRetry tests that retries behave as expected, by creating multiple
@@ -50,7 +51,7 @@ func TestTaskRunRetry(t *testing.T) {
 
 	// Create a PipelineRun with a single TaskRun that can only fail,
 	// configured to retry 5 times.
-	pipelineRunName := "retry-pipeline"
+	pipelineRunName := helpers.ObjectNameForTest(t)
 	numRetries := 5
 	if _, err := c.PipelineRunClient.Create(ctx, parse.MustParsePipelineRun(t, fmt.Sprintf(`
 metadata:

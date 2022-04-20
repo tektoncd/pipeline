@@ -30,12 +30,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 const (
-	embedTaskName    = "helloworld"
-	embedTaskRunName = "helloworld-run"
-
 	// TODO(#127) Currently not reliable to retrieve this output
 	taskOutput = "do you want to build a snowman"
 )
@@ -52,11 +50,14 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	embedTaskName := helpers.ObjectNameForTest(t)
+	embedTaskRunName := helpers.ObjectNameForTest(t)
+
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(ctx, getEmbeddedTask(t, namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)}), metav1.CreateOptions{}); err != nil {
+	if _, err := c.TaskClient.Create(ctx, getEmbeddedTask(t, embedTaskName, namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)}), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", embedTaskName, err)
 	}
-	if _, err := c.TaskRunClient.Create(ctx, getEmbeddedTaskRun(t, namespace), metav1.CreateOptions{}); err != nil {
+	if _, err := c.TaskRunClient.Create(ctx, getEmbeddedTaskRun(t, embedTaskRunName, namespace, embedTaskName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", embedTaskRunName, err)
 	}
 
@@ -69,7 +70,7 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	// completion of the TaskRun means the TaskRun did what it was intended.
 }
 
-func getEmbeddedTask(t *testing.T, namespace string, args []string) *v1beta1.Task {
+func getEmbeddedTask(t *testing.T, taskName, namespace string, args []string) *v1beta1.Task {
 	var argsForYaml []string
 	for _, s := range args {
 		argsForYaml = append(argsForYaml, fmt.Sprintf("'%s'", s))
@@ -89,10 +90,10 @@ spec:
     args: ['-c', 'cat /workspace/docs/LICENSE']
   - image: busybox
     command: %s
-`, embedTaskName, namespace, fmt.Sprintf("[%s]", strings.Join(argsForYaml, ", "))))
+`, taskName, namespace, fmt.Sprintf("[%s]", strings.Join(argsForYaml, ", "))))
 }
 
-func getEmbeddedTaskRun(t *testing.T, namespace string) *v1beta1.TaskRun {
+func getEmbeddedTaskRun(t *testing.T, trName, namespace, taskName string) *v1beta1.TaskRun {
 	return parse.MustParseTaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -108,5 +109,5 @@ spec:
           value: https://github.com/knative/docs
   taskRef:
     name: %s
-`, embedTaskRunName, namespace, embedTaskName))
+`, trName, namespace, taskName))
 }

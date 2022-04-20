@@ -30,11 +30,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 const (
-	sidecarTaskName      = "sidecar-test-task"
-	sidecarTaskRunName   = "sidecar-test-task-run"
 	sidecarContainerName = "sidecar-container"
 	primaryContainerName = "primary"
 )
@@ -62,8 +61,7 @@ func TestSidecarTaskSupport(t *testing.T) {
 	ctx := context.Background()
 	t.Parallel()
 
-	for i, test := range tests {
-		i := i
+	for _, test := range tests {
 		test := test
 		t.Run(test.desc, func(t *testing.T) {
 			t.Parallel()
@@ -74,8 +72,8 @@ func TestSidecarTaskSupport(t *testing.T) {
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, clients, namespace) }, t.Logf)
 			defer tearDown(ctx, t, clients, namespace)
 
-			sidecarTaskName := fmt.Sprintf("%s-%d", sidecarTaskName, i)
-			sidecarTaskRunName := fmt.Sprintf("%s-%d", sidecarTaskRunName, i)
+			sidecarTaskName := helpers.ObjectNameForTest(t)
+			sidecarTaskRunName := helpers.ObjectNameForTest(t)
 			task := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
   name: %s

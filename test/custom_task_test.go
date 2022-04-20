@@ -67,7 +67,7 @@ func TestCustomTask(t *testing.T) {
 	customTaskRawSpec := []byte(`{"field1":123,"field2":"value"}`)
 	metadataLabel := map[string]string{"test-label": "test"}
 	// Create a PipelineRun that runs a Custom Task.
-	pipelineRunName := "custom-task-pipeline"
+	pipelineRunName := helpers.ObjectNameForTest(t)
 	if _, err := c.PipelineRunClient.Create(
 		ctx,
 		parse.MustParsePipelineRun(t, fmt.Sprintf(`
