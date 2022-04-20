@@ -34,6 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestTaskRunPipelineRunCancel cancels a PipelineRun and verifies TaskRun statuses and Pod deletions.
@@ -53,7 +54,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
 
-			pipelineRunName := "cancel-me"
+			pipelineRunName := helpers.ObjectNameForTest(t)
 			pipelineRun := parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s

@@ -33,6 +33,7 @@ import (
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 const sleepDuration = 15 * time.Second
@@ -59,7 +60,7 @@ func TestDAGPipelineRun(t *testing.T) {
 
 	echoTask := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
-  name: echo-task
+  name: %s
   namespace: %s
 spec:
   resources:
@@ -82,21 +83,21 @@ spec:
     script: 'sleep %d'
   - image: busybox
     script: 'ln -s $(resources.inputs.repo.path) $(resources.outputs.repo.path)'
-`, namespace, int(sleepDuration.Seconds())))
+`, helpers.ObjectNameForTest(t), namespace, int(sleepDuration.Seconds())))
 	if _, err := c.TaskClient.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)
 	}
 
 	// Create the repo PipelineResource (doesn't really matter which repo we use)
-	repoResource := parse.MustParsePipelineResource(t, `
+	repoResource := parse.MustParsePipelineResource(t, fmt.Sprintf(`
 metadata:
-  name: repo
+  name: %s
 spec:
   type: git
   params:
   - name: Url
     value: https://github.com/githubtraining/example-basic
-`)
+`, helpers.ObjectNameForTest(t)))
 	if _, err := c.PipelineResourceClient.Create(ctx, repoResource, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create simple repo PipelineResource: %s", err)
 	}
@@ -105,7 +106,7 @@ spec:
 	// of execution isn't at all dependent on the order they are declared in
 	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
 metadata:
-  name: dag-pipeline
+  name: %s
   namespace: %s
 spec:
   resources:
@@ -127,7 +128,7 @@ spec:
       - name: repo
         resource: repo
     taskRef:
-      name: echo-task
+      name: %s
   - name: pipeline-task-2-parallel-2
     params:
     - name: text
@@ -142,7 +143,7 @@ spec:
       - name: repo
         resource: repo
     taskRef:
-      name: echo-task
+      name: %s
   - name: pipeline-task-4
     params:
     - name: text
@@ -157,7 +158,7 @@ spec:
     runAfter:
     - pipeline-task-3
     taskRef:
-      name: echo-task
+      name: %s
   - name: pipeline-task-2-parallel-1
     params:
     - name: text
@@ -172,7 +173,7 @@ spec:
       - name: repo
         resource: repo
     taskRef:
-      name: echo-task
+      name: %s
   - name: pipeline-task-1
     params:
     - name: text
@@ -185,35 +186,35 @@ spec:
       - name: repo
         resource: repo
     taskRef:
-      name: echo-task
-`, namespace))
+      name: %s
+`, helpers.ObjectNameForTest(t), namespace, echoTask.Name, echoTask.Name, echoTask.Name, echoTask.Name, echoTask.Name))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline: %s", err)
 	}
 	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
 metadata:
-  name: dag-pipeline-run
+  name: %s
   namespace: %s
 spec:
   pipelineRef:
-    name: dag-pipeline
+    name: %s
   resources:
   - name: repo
     resourceRef:
-      name: repo
-`, namespace))
+      name: %s
+`, helpers.ObjectNameForTest(t), namespace, pipeline.Name, repoResource.Name))
 	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}
 	t.Logf("Waiting for DAG pipeline to complete")
-	if err := WaitForPipelineRunState(ctx, c, "dag-pipeline-run", timeout, PipelineRunSucceed("dag-pipeline-run"), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	verifyExpectedOrder(ctx, t, c.TaskRunClient)
+	verifyExpectedOrder(ctx, t, c.TaskRunClient, pipelineRun.Name)
 }
 
-func verifyExpectedOrder(ctx context.Context, t *testing.T, c clientset.TaskRunInterface) {
+func verifyExpectedOrder(ctx context.Context, t *testing.T, c clientset.TaskRunInterface, prName string) {
 	t.Logf("Verifying order of execution")
 
 	taskRunsResp, err := c.List(ctx, metav1.ListOptions{})
@@ -232,12 +233,12 @@ func verifyExpectedOrder(ctx context.Context, t *testing.T, c clientset.TaskRunI
 	})
 
 	wantPrefixes := []string{
-		"dag-pipeline-run-pipeline-task-1",
+		prName + "-pipeline-task-1",
 		// Could be task-2-parallel-1 or task-2-parallel-2
-		"dag-pipeline-run-pipeline-task-2-parallel",
-		"dag-pipeline-run-pipeline-task-2-parallel",
-		"dag-pipeline-run-pipeline-task-3",
-		"dag-pipeline-run-pipeline-task-4",
+		prName + "-pipeline-task-2-parallel",
+		prName + "-pipeline-task-2-parallel",
+		prName + "-pipeline-task-3",
+		prName + "-pipeline-task-4",
 	}
 	for i, wp := range wantPrefixes {
 		if !strings.HasPrefix(taskRuns[i].Name, wp) {

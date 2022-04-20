@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
@@ -39,8 +40,8 @@ func TestWorkspaceReadOnlyDisallowsWrite(t *testing.T) {
 	defer cancel()
 	c, namespace := setup(ctx, t)
 
-	taskName := "write-disallowed"
-	taskRunName := "write-disallowed-tr"
+	taskName := helpers.ObjectNameForTest(t)
+	taskRunName := helpers.ObjectNameForTest(t)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -116,9 +117,9 @@ func TestWorkspacePipelineRunDuplicateWorkspaceEntriesInvalid(t *testing.T) {
 	defer cancel()
 	c, namespace := setup(ctx, t)
 
-	taskName := "read-workspace"
-	pipelineName := "read-workspace-pipeline"
-	pipelineRunName := "read-workspace-pipelinerun"
+	taskName := helpers.ObjectNameForTest(t)
+	pipelineName := helpers.ObjectNameForTest(t)
+	pipelineRunName := helpers.ObjectNameForTest(t)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -186,9 +187,9 @@ func TestWorkspacePipelineRunMissingWorkspaceInvalid(t *testing.T) {
 	defer cancel()
 	c, namespace := setup(ctx, t)
 
-	taskName := "read-workspace"
-	pipelineName := "read-workspace-pipeline"
-	pipelineRunName := "read-workspace-pipelinerun"
+	taskName := helpers.ObjectNameForTest(t)
+	pipelineName := helpers.ObjectNameForTest(t)
+	pipelineRunName := helpers.ObjectNameForTest(t)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -256,8 +257,8 @@ func TestWorkspaceVolumeNameMatchesVolumeVariableReplacement(t *testing.T) {
 	defer cancel()
 	c, namespace := setup(ctx, t)
 
-	taskName := "foo-task"
-	taskRunName := "foo-taskrun"
+	taskName := helpers.ObjectNameForTest(t)
+	taskRunName := helpers.ObjectNameForTest(t)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
