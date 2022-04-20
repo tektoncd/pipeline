@@ -3999,6 +3999,13 @@ func schema_pkg_apis_pipeline_v1beta1_TaskResult(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"description": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Description is a human-readable description of the result",
@@ -4290,6 +4297,13 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunResult(ref common.ReferenceCallback
 						SchemaProps: spec.SchemaProps{
 							Description: "Name the given name",
 							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
 							Type:        []string{"string"},
 							Format:      "",
 						},

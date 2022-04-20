@@ -138,6 +138,8 @@ type PipelineResourceResult struct {
 }
 
 // ResultType used to find out whether a PipelineResourceResult is from a task result or not
+// Note that ResultsType is another type which is used to define the data type
+// (e.g. string, array, etc) we used for Results
 type ResultType int
 
 // UnmarshalJSON unmarshals either an int or a string into a ResultType. String

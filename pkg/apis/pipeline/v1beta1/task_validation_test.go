@@ -295,6 +295,21 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid result type",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Container: corev1.Container{
+					Image: "my-image",
+					Args:  []string{"arg"},
+				},
+			}},
+			Results: []v1beta1.TaskResult{{
+				Name:        "MY-RESULT",
+				Type:        "string",
+				Description: "my great result",
+			}},
+		},
+	}, {
 		name: "valid task name context",
 		fields: fields{
 			Steps: []v1beta1.Step{{
@@ -955,6 +970,21 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: `invalid key name "MY^RESULT"`,
 			Paths:   []string{"results[0].name"},
 			Details: "Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$')",
+		},
+	}, {
+		name: "result type not validate",
+		fields: fields{
+			Steps: validSteps,
+			Results: []v1beta1.TaskResult{{
+				Name:        "MY-RESULT",
+				Type:        "wrong",
+				Description: "my great result",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: wrong`,
+			Paths:   []string{"results[0].type"},
+			Details: "type must be string",
 		},
 	}, {
 		name: "context not validate",
