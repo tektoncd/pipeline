@@ -182,7 +182,9 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
 	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
-		la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {})
+		if err := la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {}); err != nil {
+			t.Fatalf("error promoting reconciler leader: %v", err)
+		}
 	}
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
@@ -205,7 +207,7 @@ func getTaskRunCreations(t *testing.T, actions []ktesting.Action, minActionCount
 		t.Fatalf("Expected client to have at least %d action implementation but it has %d", minActionCount, len(actions))
 	}
 
-	outputs := []*v1beta1.TaskRun{}
+	var outputs []*v1beta1.TaskRun
 	for _, a := range actions {
 		if action, ok := a.(ktesting.CreateAction); ok {
 			if output, ok := action.GetObject().(*v1beta1.TaskRun); ok {
@@ -226,7 +228,7 @@ func getTaskRunCreations(t *testing.T, actions []ktesting.Action, minActionCount
 // set of them. It will fatal the test if none are found.
 func getPipelineRunUpdates(t *testing.T, actions []ktesting.Action) []*v1beta1.PipelineRun {
 	t.Helper()
-	outputs := []*v1beta1.PipelineRun{}
+	var outputs []*v1beta1.PipelineRun
 	for _, a := range actions {
 		if action, ok := a.(ktesting.UpdateAction); ok {
 			if output, ok := action.GetObject().(*v1beta1.PipelineRun); ok {
@@ -276,7 +278,6 @@ func runTestReconcileWithEmbeddedStatus(t *testing.T, embeddedStatus string) {
 	// TestReconcile runs "Reconcile" on a PipelineRun with one Task that has not been started yet.
 	// It verifies that the TaskRun is created, it checks the resulting API actions, status and events.
 	names.TestingSeed()
-	const pipelineRunName = "test-pipeline-run-success"
 	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
@@ -299,7 +300,6 @@ spec:
       type: image
   serviceAccountName: test-sa
 `)}
-	const pipelineName = "test-pipeline"
 	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
 metadata:
   name: test-pipeline
@@ -591,7 +591,6 @@ spec:
 func TestReconcile_CustomTask(t *testing.T) {
 	names.TestingSeed()
 	const pipelineRunName = "test-pipelinerun"
-	const pipelineTaskName = "custom-task"
 	const namespace = "namespace"
 
 	simpleCustomTaskPRYAML := `metadata:
@@ -1458,21 +1457,21 @@ func newFeatureFlagsConfigMap() *corev1.ConfigMap {
 }
 
 func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
-	new := cm.DeepCopy()
-	new.Data[apiFieldsFeatureFlag] = config.AlphaAPIFields
-	return new
+	newCM := cm.DeepCopy()
+	newCM.Data[apiFieldsFeatureFlag] = config.AlphaAPIFields
+	return newCM
 }
 
 func withCustomTasks(cm *corev1.ConfigMap) *corev1.ConfigMap {
-	new := cm.DeepCopy()
-	new.Data[customTasksFeatureFlag] = "true"
-	return new
+	newCM := cm.DeepCopy()
+	newCM.Data[customTasksFeatureFlag] = "true"
+	return newCM
 }
 
 func withOCIBundles(cm *corev1.ConfigMap) *corev1.ConfigMap {
-	new := cm.DeepCopy()
-	new.Data[ociBundlesFeatureFlag] = "true"
-	return new
+	newCM := cm.DeepCopy()
+	newCM.Data[ociBundlesFeatureFlag] = "true"
+	return newCM
 }
 
 func withEmbeddedStatus(cm *corev1.ConfigMap, flagVal string) *corev1.ConfigMap {
@@ -1638,7 +1637,7 @@ status:
 	}
 
 	// The patch operation to cancel the run must be executed.
-	got := []jsonpatch.Operation{}
+	var got []jsonpatch.Operation
 	for _, a := range actions {
 		if action, ok := a.(ktesting.PatchAction); ok {
 			if a.(ktesting.PatchAction).Matches("patch", "runs") {
@@ -1750,7 +1749,7 @@ status:
 			}
 
 			// The patch operation to cancel the run must be executed.
-			got := []jsonpatch.Operation{}
+			var got []jsonpatch.Operation
 			for _, a := range actions {
 				if action, ok := a.(ktesting.PatchAction); ok {
 					if a.(ktesting.PatchAction).Matches("patch", "runs") {
@@ -2414,8 +2413,8 @@ spec:
   status: PipelineRunPending
 `)}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{}
-	trs := []*v1beta1.TaskRun{}
+	var ts []*v1beta1.Task
+	var trs []*v1beta1.TaskRun
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -2426,7 +2425,7 @@ spec:
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
-	wantEvents := []string{}
+	var wantEvents []string
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-pending", wantEvents, false)
 
 	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonPending.String())
@@ -2654,7 +2653,7 @@ spec:
 				"Warning InternalError 1 error occurred",
 			}
 			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
-			if !(err == nil) {
+			if err != nil {
 				t.Errorf(err.Error())
 			}
 
@@ -6218,8 +6217,7 @@ spec:
 		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	err := eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents)
-	if !(err == nil) {
+	if err := eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents); err != nil {
 		t.Errorf(err.Error())
 	}
 }
@@ -7076,8 +7074,7 @@ spec:
 	defer prt.Cancel()
 
 	wantEvents := []string(nil)
-	permanentError := false
-	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, permanentError)
+	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
 	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, ReasonResolvingPipelineRef)
 
 	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
