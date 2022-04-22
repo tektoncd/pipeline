@@ -23,7 +23,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -31,6 +30,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	tkremote "github.com/tektoncd/pipeline/pkg/remote/oci"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
 )
 
 // ObjectAnnotationMapper is a func alias that maps a runtime Object to the Tekton Bundle annotations map.

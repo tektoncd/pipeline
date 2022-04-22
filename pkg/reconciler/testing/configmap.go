@@ -21,8 +21,8 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 )
 
 // ConfigMapFromTestFile creates a v1.ConfigMap from a YAML file
@@ -37,7 +37,7 @@ func ConfigMapFromTestFile(t *testing.T, name string) *corev1.ConfigMap {
 
 	var cm corev1.ConfigMap
 
-	// Use github.com/ghodss/yaml since it reads json struct
+	// Use "sigs.k8s.io/yaml" since it reads json struct
 	// tags so things unmarshal properly
 	if err := yaml.Unmarshal(b, &cm); err != nil {
 		t.Fatalf("yaml.Unmarshal() = %v", err)
