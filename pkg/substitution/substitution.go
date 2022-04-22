@@ -109,6 +109,31 @@ func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.F
 	return nil
 }
 
+// ValidateEntireVariableProhibitedP verifies that values of object type are not used as whole.
+func ValidateEntireVariableProhibitedP(value, prefix string, vars sets.String) *apis.FieldError {
+	vs, err := extractEntireVariablesFromString(value, prefix)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("extractEntireVariablesFromString failed : %v", err),
+			// Empty path is required to make the `ViaField`, … work
+			Paths: []string{""},
+		}
+	}
+
+	for _, v := range vs {
+		v = strings.TrimSuffix(v, "[*]")
+		if vars.Has(v) {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("variable type invalid in %q", value),
+				// Empty path is required to make the `ViaField`, … work
+				Paths: []string{""},
+			}
+		}
+	}
+
+	return nil
+}
+
 // ValidateVariableIsolated verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
 	if vs, present, _ := extractVariablesFromString(value, prefix); present {
@@ -180,36 +205,55 @@ func extractVariablesFromString(s, prefix string) ([]string, bool, string) {
 		groups := matchGroups(match, re)
 		for j, v := range []string{"var1", "var2", "var3"} {
 			val := groups[v]
-			// if using the dot notation
+			// If using the dot notation, the number of dot-separated components is restricted up to 2.
+			// Valid Examples:
+			//  - extract "aString" from <prefix>.aString
+			//  - extract "anObject" from <prefix>.anObject.key
+			// Invalid Examples:
+			//  - <prefix>.foo.bar.baz....
 			if j == 0 && strings.Contains(val, ".") {
-				switch prefix {
-				case "params":
-					// params can only have a maximum of two components in the dot notation otherwise it needs to use the bracket notation.
-					if len(strings.Split(val, ".")) > 0 {
-						errString = fmt.Sprintf(`Invalid referencing of parameters in %s !!! You can only use the dots inside single or double quotes. eg. $(params["org.foo.blah"]) or $(params['org.foo.blah']) are valid references but NOT $params.org.foo.blah.`, s)
-						return vars, true, errString
-					}
-				case "resources.(?:inputs|outputs)":
-					// resources can only have a maximum of 4 components.
-					if len(strings.Split(val, ".")) > 2 {
-						errString = fmt.Sprintf(`Invalid referencing of parameters in %s !!! resources.* can only have 4 components (eg. resources.inputs.foo.bar). Found more than 4 components.`, s)
-						return vars, true, errString
-					}
-					vars[i] = strings.SplitN(val, ".", 2)[0]
-				default:
-					// for backwards compatibality
-					vars[i] = strings.SplitN(val, ".", 2)[0]
+				if len(strings.Split(val, ".")) > 2 {
+					errString = fmt.Sprintf(`Invalid referencing of parameters in "%s"! Only two dot-separated components after the prefix "%s" are allowed.`, s, prefix)
+					return vars, true, errString
 				}
+				vars[i] = strings.SplitN(val, ".", 2)[0]
 				break
 			}
-			if groups[v] != "" {
+			if val != "" {
 				vars[i] = val
 				break
 			}
-
 		}
 	}
 	return vars, true, errString
+}
+
+func extractEntireVariablesFromString(s, prefix string) ([]string, error) {
+	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("Fail to parse regex pattern: %v", err)
+	}
+
+	matches := re.FindAllStringSubmatch(s, -1)
+	if len(matches) == 0 {
+		return []string{}, nil
+	}
+	vars := make([]string, len(matches))
+	for i, match := range matches {
+		groups := matchGroups(match, re)
+		// foo -> foo
+		// foo.bar -> foo.bar
+		// foo.bar.baz -> foo.bar.baz
+		for _, v := range []string{"var1", "var2", "var3"} {
+			val := groups[v]
+			if val != "" {
+				vars[i] = val
+				break
+			}
+		}
+	}
+	return vars, nil
 }
 
 func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {

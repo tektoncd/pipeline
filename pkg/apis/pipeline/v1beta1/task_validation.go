@@ -374,11 +374,7 @@ func ValidateResourcesVariables(ctx context.Context, steps []Step, resources *Ta
 	return validateVariables(ctx, steps, "resources.(?:inputs|outputs)", resourceNames)
 }
 
-// TODO (@chuangw6): Make sure an object param is not used as a whole when providing values for strings.
-// https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#variable-replacement-with-object-params
-// "When providing values for strings, Task and Pipeline authors can access
-// individual attributes of an object param; they cannot access the object
-// as whole (we could add support for this later)."
+// validateObjectUsage validates the usage of individual attributes of an object param and the usage of the entire object
 func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) (errs *apis.FieldError) {
 	objectParameterNames := sets.NewString()
 	for _, p := range params {
@@ -399,7 +395,7 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 		errs = errs.Also(validateVariables(ctx, steps, fmt.Sprintf("params\\.%s", p.Name), objectKeys))
 	}
 
-	return errs
+	return errs.Also(validateObjectUsageAsWhole(steps, "params", objectParameterNames))
 }
 
 // validate if object keys defined in properties are all provided in default
@@ -418,6 +414,38 @@ func validateObjectKeysInDefault(defaultObject map[string]string, neededObjectKe
 		}
 	}
 	return nil
+}
+
+// validateObjectUsageAsWhole makes sure the object params are not used as whole when providing values for strings
+// i.e. param.objectParam, param.objectParam[*]
+func validateObjectUsageAsWhole(steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
+	for idx, step := range steps {
+		errs = errs.Also(validateStepObjectUsageAsWhole(step, prefix, vars)).ViaFieldIndex("steps", idx)
+	}
+	return errs
+}
+
+func validateStepObjectUsageAsWhole(step Step, prefix string, vars sets.String) *apis.FieldError {
+	errs := validateTaskNoObjectReferenced(step.Name, prefix, vars).ViaField("name")
+	errs = errs.Also(validateTaskNoObjectReferenced(step.Image, prefix, vars).ViaField("image"))
+	errs = errs.Also(validateTaskNoObjectReferenced(step.WorkingDir, prefix, vars).ViaField("workingDir"))
+	errs = errs.Also(validateTaskNoObjectReferenced(step.Script, prefix, vars).ViaField("script"))
+	for i, cmd := range step.Command {
+		errs = errs.Also(validateTaskNoObjectReferenced(cmd, prefix, vars).ViaFieldIndex("command", i))
+	}
+	for i, arg := range step.Args {
+		errs = errs.Also(validateTaskNoObjectReferenced(arg, prefix, vars).ViaFieldIndex("args", i))
+
+	}
+	for _, env := range step.Env {
+		errs = errs.Also(validateTaskNoObjectReferenced(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+	}
+	for i, v := range step.VolumeMounts {
+		errs = errs.Also(validateTaskNoObjectReferenced(v.Name, prefix, vars).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(validateTaskNoObjectReferenced(v.MountPath, prefix, vars).ViaField("mountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(validateTaskNoObjectReferenced(v.SubPath, prefix, vars).ViaField("subPath").ViaFieldIndex("volumeMount", i))
+	}
+	return errs
 }
 
 func validateArrayUsage(steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
@@ -505,6 +533,10 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 
 func validateTaskVariable(value, prefix string, vars sets.String) *apis.FieldError {
 	return substitution.ValidateVariableP(value, prefix, vars)
+}
+
+func validateTaskNoObjectReferenced(value, prefix string, objectNames sets.String) *apis.FieldError {
+	return substitution.ValidateEntireVariableProhibitedP(value, prefix, objectNames)
 }
 
 func validateTaskNoArrayReferenced(value, prefix string, arrayNames sets.String) *apis.FieldError {
