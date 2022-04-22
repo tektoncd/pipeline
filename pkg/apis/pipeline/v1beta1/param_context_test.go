@@ -57,10 +57,29 @@ func TestAddContextParams(t *testing.T) {
 			},
 		},
 		{
+			name:   "add-object-param",
+			params: []Param{{Name: "c", Value: *NewObject(map[string]string{"key1": "val1", "key2": "val2"})}},
+			want: paramCtxVal{
+				"a": ParamSpec{
+					Name: "a",
+					Type: ParamTypeString,
+				},
+				"b": ParamSpec{
+					Name: "b",
+					Type: ParamTypeArray,
+				},
+				"c": ParamSpec{
+					Name: "c",
+					Type: ParamTypeObject,
+				},
+			},
+		},
+		{
 			name: "existing-param",
 			params: []Param{
 				{Name: "a", Value: *NewArrayOrString("foo1")},
 				{Name: "b", Value: *NewArrayOrString("bar1", "baz1")},
+				{Name: "c", Value: *NewObject(map[string]string{"key1": "val1", "key2": "val2"})},
 			},
 			want: paramCtxVal{
 				"a": ParamSpec{
@@ -70,6 +89,10 @@ func TestAddContextParams(t *testing.T) {
 				"b": ParamSpec{
 					Name: "b",
 					Type: ParamTypeArray,
+				},
+				"c": ParamSpec{
+					Name: "c",
+					Type: ParamTypeObject,
 				},
 			},
 		},
@@ -90,6 +113,10 @@ func TestAddContextParams(t *testing.T) {
 				"b": ParamSpec{
 					Name: "b",
 					Type: ParamTypeArray,
+				},
+				"c": ParamSpec{
+					Name: "c",
+					Type: ParamTypeObject,
 				},
 			},
 		},
@@ -118,10 +145,17 @@ func TestAddContextParamSpec(t *testing.T) {
 			name: "add-paramspec",
 			params: []ParamSpec{{
 				Name: "a",
+			}, {
+				Name:       "b",
+				Properties: map[string]PropertySpec{"key1": {}},
 			}},
 			want: paramCtxVal{
 				"a": ParamSpec{
 					Name: "a",
+				},
+				"b": ParamSpec{
+					Name:       "b",
+					Properties: map[string]PropertySpec{"key1": {}},
 				},
 			},
 		},
@@ -132,6 +166,12 @@ func TestAddContextParamSpec(t *testing.T) {
 				Type:        ParamTypeArray,
 				Default:     NewArrayOrString("foo", "bar"),
 				Description: "tacocat",
+			}, {
+				Name:        "b",
+				Type:        ParamTypeObject,
+				Properties:  map[string]PropertySpec{"key2": {}},
+				Default:     NewObject(map[string]string{"key2": "val"}),
+				Description: "my object",
 			}},
 			want: paramCtxVal{
 				"a": ParamSpec{
@@ -139,6 +179,13 @@ func TestAddContextParamSpec(t *testing.T) {
 					Type:        ParamTypeArray,
 					Default:     NewArrayOrString("foo", "bar"),
 					Description: "tacocat",
+				},
+				"b": ParamSpec{
+					Name:        "b",
+					Type:        ParamTypeObject,
+					Properties:  map[string]PropertySpec{"key2": {}},
+					Default:     NewObject(map[string]string{"key2": "val"}),
+					Description: "my object",
 				},
 			},
 		},
@@ -158,6 +205,13 @@ func TestAddContextParamSpec(t *testing.T) {
 					Type:        ParamTypeArray,
 					Default:     NewArrayOrString("foo", "bar"),
 					Description: "tacocat",
+				},
+				"b": ParamSpec{
+					Name:        "b",
+					Type:        ParamTypeObject,
+					Properties:  map[string]PropertySpec{"key2": {}},
+					Default:     NewObject(map[string]string{"key2": "val"}),
+					Description: "my object",
 				},
 			},
 		},
@@ -187,6 +241,13 @@ func TestGetContextParams(t *testing.T) {
 			Default:     NewArrayOrString("bar"),
 			Description: "racecar",
 		},
+		{
+			Name:        "c",
+			Type:        ParamTypeObject,
+			Properties:  map[string]PropertySpec{"key1": {}},
+			Default:     NewObject(map[string]string{"key1": "val1"}),
+			Description: "my object",
+		},
 	}
 
 	ctx = addContextParamSpec(ctx, want)
@@ -210,6 +271,13 @@ func TestGetContextParams(t *testing.T) {
 						ArrayVal: []string{"$(params.b[*])"},
 					},
 				},
+				{
+					Name: "c",
+					Value: ArrayOrString{
+						Type:      ParamTypeObject,
+						ObjectVal: map[string]string{"c": "$(params.c[*])"},
+					},
+				},
 			},
 		},
 		{
@@ -217,6 +285,9 @@ func TestGetContextParams(t *testing.T) {
 			overlay: []Param{{
 				Name:  "a",
 				Value: *NewArrayOrString("tacocat"),
+			}, {
+				Name:  "c",
+				Value: *NewObject(map[string]string{"key2": "val2"}),
 			}},
 			want: []Param{
 				{
@@ -228,6 +299,13 @@ func TestGetContextParams(t *testing.T) {
 					Value: ArrayOrString{
 						Type:     ParamTypeArray,
 						ArrayVal: []string{"$(params.b[*])"},
+					},
+				},
+				{
+					Name: "c",
+					Value: ArrayOrString{
+						Type:      ParamTypeObject,
+						ObjectVal: map[string]string{"key2": "val2"},
 					},
 				},
 			},
@@ -256,6 +334,13 @@ func TestGetContextParamSpecs(t *testing.T) {
 			Type:        ParamTypeArray,
 			Default:     NewArrayOrString("bar"),
 			Description: "racecar",
+		},
+		{
+			Name:        "c",
+			Type:        ParamTypeObject,
+			Properties:  map[string]PropertySpec{"key1": {}},
+			Default:     NewObject(map[string]string{"key1": "val1"}),
+			Description: "my object",
 		},
 	}
 

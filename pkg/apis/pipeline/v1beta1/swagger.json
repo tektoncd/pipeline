@@ -299,12 +299,13 @@
       }
     },
     "v1beta1.ArrayOrString": {
-      "description": "ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings.",
+      "description": "ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings. consideration the object case after the community reaches an agreement on it.",
       "type": "object",
       "required": [
         "type",
         "stringVal",
-        "arrayVal"
+        "arrayVal",
+        "objectVal"
       ],
       "properties": {
         "arrayVal": {
@@ -314,6 +315,13 @@
             "default": ""
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "objectVal": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
         },
         "stringVal": {
           "description": "Represents the stored type of ArrayOrString.",
@@ -720,8 +728,16 @@
           "type": "string",
           "default": ""
         },
+        "properties": {
+          "description": "Properties is the JSON Schema properties to support key-value pairs parameter.",
+          "type": "object",
+          "additionalProperties": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.PropertySpec"
+          }
+        },
         "type": {
-          "description": "Type is the user-specified type of the parameter. The possible types are currently \"string\" and \"array\", and \"string\" is the default.",
+          "description": "Type is the user-specified type of the parameter. The possible types are currently \"string\", \"array\" and \"object\", and \"string\" is the default.",
           "type": "string"
         }
       }
@@ -1639,6 +1655,15 @@
         "optional": {
           "description": "Optional marks a Workspace as not being required in PipelineRuns. By default this field is false and so declared workspaces are required.",
           "type": "boolean"
+        }
+      }
+    },
+    "v1beta1.PropertySpec": {
+      "description": "PropertySpec defines the struct for object keys",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
         }
       }
     },

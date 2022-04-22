@@ -58,6 +58,9 @@ func addContextParams(ctx context.Context, in []Param) context.Context {
 			if v.StringVal != "" {
 				p.Value.Type = ParamTypeString
 			}
+			if v.ObjectVal != nil {
+				p.Value.Type = ParamTypeObject
+			}
 		}
 		out[p.Name] = ParamSpec{
 			Name: p.Name,
@@ -86,6 +89,7 @@ func addContextParamSpec(ctx context.Context, in []ParamSpec) context.Context {
 			Name:        p.Name,
 			Type:        p.Type,
 			Description: p.Description,
+			Properties:  p.Properties,
 			Default:     p.Default,
 		}
 		out[p.Name] = cps
@@ -127,18 +131,25 @@ func getContextParams(ctx context.Context, overlays ...Param) []Param {
 
 		// If there is no overlay, pass through the param to the next level.
 		// e.g. for strings $(params.name), for arrays $(params.name[*]).
+		// for object: {key: param's name, value: $(params.name[*])}
 		p := Param{
 			Name: ps.Name,
 		}
-		if ps.Type == ParamTypeString {
-			p.Value = ArrayOrString{
-				Type:      ParamTypeString,
-				StringVal: fmt.Sprintf("$(params.%s)", ps.Name),
-			}
-		} else {
+		switch ps.Type {
+		case ParamTypeArray:
 			p.Value = ArrayOrString{
 				Type:     ParamTypeArray,
 				ArrayVal: []string{fmt.Sprintf("$(params.%s[*])", ps.Name)},
+			}
+		case ParamTypeObject:
+			p.Value = ArrayOrString{
+				Type:      ParamTypeObject,
+				ObjectVal: map[string]string{ps.Name: fmt.Sprintf("$(params.%s[*])", ps.Name)},
+			}
+		default:
+			p.Value = ArrayOrString{
+				Type:      ParamTypeString,
+				StringVal: fmt.Sprintf("$(params.%s)", ps.Name),
 			}
 		}
 		out = append(out, p)
@@ -161,6 +172,7 @@ func getContextParamSpecs(ctx context.Context) []ParamSpec {
 			Name:        ps.Name,
 			Type:        ps.Type,
 			Description: ps.Description,
+			Properties:  ps.Properties,
 			Default:     ps.Default,
 		})
 	}

@@ -137,6 +137,26 @@ func TestTaskSpecValidate(t *testing.T) {
 				Type:        v1beta1.ParamTypeString,
 				Description: "param",
 				Default:     v1beta1.NewArrayOrString("default"),
+			}, {
+				Name:        "myobj",
+				Type:        v1beta1.ParamTypeObject,
+				Description: "param",
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {},
+					"key2": {},
+				},
+				Default: v1beta1.NewObject(map[string]string{
+					"key1": "var1",
+					"key2": "var2",
+				}),
+			}, {
+				Name:        "myobjWithoutDefault",
+				Type:        v1beta1.ParamTypeObject,
+				Description: "param",
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {},
+					"key2": {},
+				},
 			}},
 			Steps: validSteps,
 		},
@@ -363,7 +383,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := context.Background()
+			ctx := getContextBasedOnFeatureFlag("alpha")
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -529,6 +549,90 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `"string" type does not match default value's type: "array"`,
 			Paths:   []string{"params.task.type", "params.task.default.type"},
+		},
+	}, {
+		name: "param mismatching default/type 3",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "task",
+				Type:        v1beta1.ParamTypeArray,
+				Description: "param",
+				Default: v1beta1.NewObject(map[string]string{
+					"key1": "var1",
+					"key2": "var2",
+				}),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `"array" type does not match default value's type: "object"`,
+			Paths:   []string{"params.task.type", "params.task.default.type"},
+		},
+	}, {
+		name: "param mismatching default/type 4",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "task",
+				Type:        v1beta1.ParamTypeObject,
+				Description: "param",
+				Properties:  map[string]v1beta1.PropertySpec{"key1": {}},
+				Default:     v1beta1.NewArrayOrString("var"),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `"object" type does not match default value's type: "string"`,
+			Paths:   []string{"params.task.type", "params.task.default.type"},
+		},
+	}, {
+		name: "the spec of object type parameter misses the definition of properties",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "task",
+				Type:        v1beta1.ParamTypeObject,
+				Description: "param",
+			}},
+			Steps: validSteps,
+		},
+		expectedError: *apis.ErrMissingField(fmt.Sprintf("params.task.properties")),
+	}, {
+		name: "PropertySpec type is set with unsupported type",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "task",
+				Type:        v1beta1.ParamTypeObject,
+				Description: "param",
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {Type: "number"},
+					"key2": {Type: "string"},
+				},
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("The value type specified for these keys %v is invalid", []string{"key1"}),
+			Paths:   []string{"params.task.properties"},
+		},
+	}, {
+		name: "keys defined in properties are missed in default",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "myobjectParam",
+				Description: "param",
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {},
+					"key2": {},
+				},
+				Default: v1beta1.NewObject(map[string]string{
+					"key1": "var1",
+					"key3": "var1",
+				}),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("Required key(s) %s for the parameter %s are not provided in default.", []string{"key2"}, "myobjectParam"),
+			Paths:   []string{"myobjectParam.properties", "myobjectParam.default"},
 		},
 	}, {
 		name: "invalid step",
@@ -994,9 +1098,9 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := context.Background()
+			ctx := getContextBasedOnFeatureFlag("alpha")
 			ts.SetDefaults(ctx)
-			err := ts.Validate(context.Background())
+			err := ts.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}

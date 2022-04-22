@@ -56,7 +56,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 
-	errs = errs.Also(validateParameters(ts.Params).ViaField("params"))
+	errs = errs.Also(validateParameters(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(validateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	if ts.Debug != nil {
@@ -112,12 +112,17 @@ func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs
 	return errs
 }
 
-func validateParameters(params []Param) (errs *apis.FieldError) {
+func validateParameters(ctx context.Context, params []Param) (errs *apis.FieldError) {
 	var names []string
 	for _, p := range params {
+		if p.Value.Type == ParamTypeObject {
+			// Object type parameter is an alpha feature and will fail validation if it's used in a taskrun spec
+			// when the enable-api-fields feature gate is not "alpha".
+			errs = errs.Also(ValidateEnabledAPIFields(ctx, "object type parameter", config.AlphaAPIFields))
+		}
 		names = append(names, p.Name)
 	}
-	return validateNoDuplicateNames(names, false)
+	return errs.Also(validateNoDuplicateNames(names, false))
 }
 
 func validateStepOverrides(overrides []TaskRunStepOverride) (errs *apis.FieldError) {

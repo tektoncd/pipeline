@@ -141,6 +141,13 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 				{
 					Name: "zoo",
 					Type: v1beta1.ParamTypeString,
+				}, {
+					Name: "myobj",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {},
+						"key2": {},
+					},
 				},
 			},
 		},
@@ -154,6 +161,13 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	}, {
 		Name:  "bar",
 		Value: *v1beta1.NewArrayOrString("somethinggood"),
+	}, {
+		Name: "myobj",
+		Value: *v1beta1.NewObject(map[string]string{
+			"key1":      "val1",
+			"key2":      "val2",
+			"extra_key": "val3",
+		}),
 	}}
 	m := []v1beta1.Param{{
 		Name:  "zoo",
@@ -196,6 +210,14 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 					Name: "bar",
 					Type: v1beta1.ParamTypeArray,
 				},
+				{
+					Name: "myobj",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {},
+						"key2": {},
+					},
+				},
 			},
 		},
 	}
@@ -235,7 +257,20 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 			Name:  "bar",
 			Value: *v1beta1.NewArrayOrString("bar", "foo"),
 		}},
-	}}
+	}, {
+		name: "missing object param keys",
+		rtr: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+		params: []v1beta1.Param{{
+			Name: "myobj",
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1":    "val1",
+				"misskey": "val2",
+			}),
+		}},
+	},
+	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := ValidateResolvedTaskResources(ctx, tc.params, tc.matrix, tc.rtr); err == nil {

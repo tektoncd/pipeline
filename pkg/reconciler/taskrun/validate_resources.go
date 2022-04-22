@@ -81,6 +81,9 @@ func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params 
 	if wrongTypeParamNames := wrongTypeParamsNames(params, matrix, neededParamsTypes); len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
 	}
+	if missingKeysObjectParamNames := missingKeysObjectParamNames(paramSpecs, params); len(missingKeysObjectParamNames) != 0 {
+		return fmt.Errorf("missing keys for these params which are required in ParamSpec's properties %v", missingKeysObjectParamNames)
+	}
 
 	return nil
 }
@@ -152,6 +155,51 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, needed
 		}
 	}
 	return wrongTypeParamNames
+}
+
+// missingKeysObjectParamNames checks if all required keys of object type params are provided in taskrun params.
+// TODO (@chuangw6): This might be refactored out to support single pair validation.
+func missingKeysObjectParamNames(paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) []string {
+	neededKeys := make(map[string][]string)
+	providedKeys := make(map[string][]string)
+
+	// collect needed keys for object parameters
+	for _, spec := range paramSpecs {
+		if spec.Type == v1beta1.ParamTypeObject {
+			for key := range spec.Properties {
+				neededKeys[spec.Name] = append(neededKeys[spec.Name], key)
+			}
+		}
+	}
+
+	// collect provided keys for object parameters
+	for _, p := range params {
+		if p.Value.Type == v1beta1.ParamTypeObject {
+			for key := range p.Value.ObjectVal {
+				providedKeys[p.Name] = append(providedKeys[p.Name], key)
+			}
+		}
+	}
+
+	return validateObjectKeys(neededKeys, providedKeys)
+}
+
+// validateObjectKeys checks if objects have missing keys in its provider (either taskrun value or result value)
+func validateObjectKeys(neededObjectKeys, providedObjectKeys map[string][]string) []string {
+	missings := []string{}
+	for p, keys := range providedObjectKeys {
+		if _, ok := neededObjectKeys[p]; !ok {
+			// Ignore any missing objects - this happens when extra objects were
+			// passed that aren't being used.
+			continue
+		}
+		missedKeys := list.DiffLeft(neededObjectKeys[p], keys)
+		if len(missedKeys) != 0 {
+			missings = append(missings, p)
+		}
+	}
+
+	return missings
 }
 
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
