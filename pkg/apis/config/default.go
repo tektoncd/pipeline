@@ -18,13 +18,14 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
 
-	"github.com/ghodss/yaml"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -115,7 +116,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 
 	if defaultPodTemplate, ok := cfgMap[defaultPodTemplateKey]; ok {
 		var podTemplate pod.Template
-		if err := yaml.Unmarshal([]byte(defaultPodTemplate), &podTemplate); err != nil {
+		if err := yamlUnmarshal(defaultPodTemplate, defaultPodTemplateKey, &podTemplate); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal %v", defaultPodTemplate)
 		}
 		tc.DefaultPodTemplate = &podTemplate
@@ -123,7 +124,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 
 	if defaultAAPodTemplate, ok := cfgMap[defaultAAPodTemplateKey]; ok {
 		var podTemplate pod.AffinityAssistantTemplate
-		if err := yaml.Unmarshal([]byte(defaultAAPodTemplate), &podTemplate); err != nil {
+		if err := yamlUnmarshal(defaultAAPodTemplate, defaultAAPodTemplateKey, &podTemplate); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal %v", defaultAAPodTemplate)
 		}
 		tc.DefaultAAPodTemplate = &podTemplate
@@ -137,6 +138,15 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		tc.DefaultTaskRunWorkspaceBinding = bindingYAML
 	}
 	return &tc, nil
+}
+
+func yamlUnmarshal(s string, key string, o interface{}) error {
+	b := []byte(s)
+	if err := yaml.UnmarshalStrict(b, o); err != nil {
+		log.Printf("warning: failed to decode %q: %q. Trying decode with non-strict mode", key, err)
+		return yaml.Unmarshal(b, o)
+	}
+	return nil
 }
 
 // NewDefaultsFromConfigMap returns a Config for the given configmap

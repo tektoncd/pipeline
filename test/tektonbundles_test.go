@@ -33,7 +33,6 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
-	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -47,6 +46,7 @@ import (
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
+	"sigs.k8s.io/yaml"
 )
 
 var requireFeatureFlags = requireAnyGate(map[string]string{
