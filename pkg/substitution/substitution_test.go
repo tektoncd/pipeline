@@ -18,6 +18,7 @@ limitations under the License.
 package substitution_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -174,7 +175,7 @@ func TestValidateVariablePs(t *testing.T) {
 			vars:   sets.NewString("foo.bar.baz"),
 		},
 		expectedError: &apis.FieldError{
-			Message: `Invalid referencing of parameters in --flag=$(params.foo.bar.baz) !!! You can only use the dots inside single or double quotes. eg. $(params["org.foo.blah"]) or $(params['org.foo.blah']) are valid references but NOT $params.org.foo.blah.`,
+			Message: fmt.Sprintf(`Invalid referencing of parameters in "%s"! Only two dot-separated components after the prefix "%s" are allowed.`, "--flag=$(params.foo.bar.baz)", "params"),
 			Paths:   []string{""},
 		},
 	}, {
@@ -193,7 +194,7 @@ func TestValidateVariablePs(t *testing.T) {
 			vars:   sets.NewString("foo.bar"),
 		},
 		expectedError: &apis.FieldError{
-			Message: `Invalid referencing of parameters in --flag=$(resources.inputs.foo.bar.baz) !!! resources.* can only have 4 components (eg. resources.inputs.foo.bar). Found more than 4 components.`,
+			Message: fmt.Sprintf(`Invalid referencing of parameters in "%s"! Only two dot-separated components after the prefix "%s" are allowed.`, "--flag=$(resources.inputs.foo.bar.baz)", "resources.(?:inputs|outputs)"),
 			Paths:   []string{""},
 		},
 	}, {
@@ -221,6 +222,22 @@ func TestValidateVariablePs(t *testing.T) {
 		},
 		expectedError: nil,
 	}, {
+		name: "valid usage of an individual attribute of an object param",
+		args: args{
+			input:  "--flag=$(params.objectParam.key1)",
+			prefix: "params.objectParam",
+			vars:   sets.NewString("key1", "key2"),
+		},
+		expectedError: nil,
+	}, {
+		name: "valid usage of multiple individual attributes of an object param",
+		args: args{
+			input:  "--flag=$(params.objectParam.key1) $(params.objectParam.key2)",
+			prefix: "params.objectParam",
+			vars:   sets.NewString("key1", "key2"),
+		},
+		expectedError: nil,
+	}, {
 		name: "different context and prefix",
 		args: args{
 			input:  "--flag=$(something.baz)",
@@ -239,6 +256,17 @@ func TestValidateVariablePs(t *testing.T) {
 			Message: `non-existent variable in "--flag=$(inputs.params.baz)"`,
 			Paths:   []string{""},
 		},
+	}, {
+		name: "undefined individual attributes of an object param",
+		args: args{
+			input:  "--flag=$(params.objectParam.key3)",
+			prefix: "params.objectParam",
+			vars:   sets.NewString("key1", "key2"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `non-existent variable in "--flag=$(params.objectParam.key3)"`,
+			Paths:   []string{""},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := substitution.ValidateVariableP(tc.args.input, tc.args.prefix, tc.args.vars)
@@ -249,6 +277,69 @@ func TestValidateVariablePs(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateEntireVariableProhibitedP(t *testing.T) {
+	type args struct {
+		input  string
+		prefix string
+		vars   sets.String
+	}
+	for _, tc := range []struct {
+		name          string
+		args          args
+		expectedError *apis.FieldError
+	}{{
+		name: "valid usage of an individual key of an object param",
+		args: args{
+			input:  "--flag=$(params.objectParam.key1)",
+			prefix: "params",
+			vars:   sets.NewString("objectParam"),
+		},
+		expectedError: nil,
+	}, {
+		name: "invalid regex",
+		args: args{
+			input:  "--flag=$(params.objectParam.key1)",
+			prefix: `???`,
+			vars:   sets.NewString("objectParam"),
+		},
+		expectedError: &apis.FieldError{
+			Message: "extractEntireVariablesFromString failed : Fail to parse regex pattern: error parsing regexp: invalid nested repetition operator: `???`",
+			Paths:   []string{""},
+		},
+	}, {
+		name: "invalid usage of an entire object param when providing values for strings",
+		args: args{
+			input:  "--flag=$(params.objectParam)",
+			prefix: "params",
+			vars:   sets.NewString("objectParam"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `variable type invalid in "--flag=$(params.objectParam)"`,
+			Paths:   []string{""},
+		},
+	}, {
+		name: "invalid usage of an entire object param when providing values for strings",
+		args: args{
+			input:  "--flag=$(params.objectParam[*])",
+			prefix: "params",
+			vars:   sets.NewString("objectParam"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `variable type invalid in "--flag=$(params.objectParam[*])"`,
+			Paths:   []string{""},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := substitution.ValidateEntireVariableProhibitedP(tc.args.input, tc.args.prefix, tc.args.vars)
+
+			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("ValidateEntireVariableProhibitedP() error did not match expected error %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestApplyReplacements(t *testing.T) {
 	type args struct {
 		input        string

@@ -194,6 +194,24 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid object template variable",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "some-git-image",
+				Args:       []string{"-url=$(params.gitrepo.url)", "-commit=$(params.gitrepo.commit)"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+	}, {
 		name: "valid star array template variable",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{
@@ -899,6 +917,94 @@ func TestTaskSpecValidateError(t *testing.T) {
 		},
 		expectedError: apis.FieldError{
 			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "object used in a string field",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "$(params.gitrepo)",
+				Args:       []string{"echo"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "object star used in a string field",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "$(params.gitrepo[*])",
+				Args:       []string{"echo"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo[*])"`,
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "object used in a field that can accept array type",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "myimage",
+				Args:       []string{"$(params.gitrepo)"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "object star used in a field that can accept array type",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "some-git-image",
+				Args:       []string{"$(params.gitrepo[*])"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo[*])"`,
 			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
