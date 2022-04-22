@@ -87,7 +87,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 	// Validate that the parameters type are correct
-	if err := v1beta1.ValidateParameterTypes(ts.Params); err != nil {
+	if err := v1beta1.ValidateParameterTypes(ctx, ts.Params); err != nil {
 		return err
 	}
 

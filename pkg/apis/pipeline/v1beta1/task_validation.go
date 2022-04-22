@@ -25,6 +25,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -62,7 +63,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
-	errs = errs.Also(ValidateParameterTypes(ts.Params).ViaField("params"))
+	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ts.Steps, ts.Params))
 	errs = errs.Also(ValidateResourcesVariables(ts.Steps, ts.Resources))
 	errs = errs.Also(validateTaskContextVariables(ts.Steps))
@@ -237,8 +238,13 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 }
 
 // ValidateParameterTypes validates all the types within a slice of ParamSpecs
-func ValidateParameterTypes(params []ParamSpec) (errs *apis.FieldError) {
+func ValidateParameterTypes(ctx context.Context, params []ParamSpec) (errs *apis.FieldError) {
 	for _, p := range params {
+		if p.Type == ParamTypeObject {
+			// Object type parameter is an alpha feature and will fail validation if it's used in a task spec
+			// when the enable-api-fields feature gate is not "alpha".
+			errs = errs.Also(ValidateEnabledAPIFields(ctx, "object type parameter", config.AlphaAPIFields))
+		}
 		errs = errs.Also(p.ValidateType())
 	}
 	return errs
@@ -268,6 +274,33 @@ func (p ParamSpec) ValidateType() *apis.FieldError {
 			},
 		}
 	}
+
+	// Check object type and its PropertySpec type
+	return p.ValidateObjectType()
+}
+
+// ValidateObjectType checks that object type parameter does not miss the
+// definition of `properties` section and the type of a PropertySpec is allowed.
+// (Currently, only string is allowed)
+func (p ParamSpec) ValidateObjectType() *apis.FieldError {
+	if p.Type == ParamTypeObject && p.Properties == nil {
+		return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+	}
+
+	invalidKeys := []string{}
+	for key, propertySpec := range p.Properties {
+		if propertySpec.Type != ParamTypeString {
+			invalidKeys = append(invalidKeys, key)
+		}
+	}
+
+	if len(invalidKeys) != 0 {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("The value type specified for these keys %v is invalid", invalidKeys),
+			Paths:   []string{fmt.Sprintf("%s.properties", p.Name)},
+		}
+	}
+
 	return nil
 }
 
@@ -275,16 +308,21 @@ func (p ParamSpec) ValidateType() *apis.FieldError {
 func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldError {
 	parameterNames := sets.NewString()
 	arrayParameterNames := sets.NewString()
+	objectParamSpecs := []ParamSpec{}
 
 	for _, p := range params {
 		parameterNames.Insert(p.Name)
 		if p.Type == ParamTypeArray {
 			arrayParameterNames.Insert(p.Name)
 		}
+		if p.Type == ParamTypeObject {
+			objectParamSpecs = append(objectParamSpecs, p)
+		}
 	}
 
 	errs := validateVariables(steps, "params", parameterNames)
-	return errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
+	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
+	return errs.Also(validateObjectUsage(steps, objectParamSpecs))
 }
 
 func validateTaskContextVariables(steps []Step) *apis.FieldError {
@@ -318,6 +356,52 @@ func ValidateResourcesVariables(steps []Step, resources *TaskResources) *apis.Fi
 		}
 	}
 	return validateVariables(steps, "resources.(?:inputs|outputs)", resourceNames)
+}
+
+// TODO (@chuangw6): Make sure an object param is not used as a whole when providing values for strings.
+// https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#variable-replacement-with-object-params
+// "When providing values for strings, Task and Pipeline authors can access
+// individual attributes of an object param; they cannot access the object
+// as whole (we could add support for this later)."
+func validateObjectUsage(steps []Step, params []ParamSpec) (errs *apis.FieldError) {
+	objectParameterNames := sets.NewString()
+	for _, p := range params {
+		// collect all names of object type params
+		objectParameterNames.Insert(p.Name)
+
+		// collect all keys for this object param
+		objectKeys := sets.NewString()
+		for key := range p.Properties {
+			objectKeys.Insert(key)
+		}
+
+		if p.Default != nil && p.Default.ObjectVal != nil {
+			errs = errs.Also(validateObjectKeysInDefault(p.Default.ObjectVal, objectKeys, p.Name))
+		}
+
+		// check if the object's key names are referenced correctly i.e. param.objectParam.key1
+		errs = errs.Also(validateVariables(steps, fmt.Sprintf("params\\.%s", p.Name), objectKeys))
+	}
+
+	return errs
+}
+
+// validate if object keys defined in properties are all provided in default
+func validateObjectKeysInDefault(defaultObject map[string]string, neededObjectKeys sets.String, paramName string) (errs *apis.FieldError) {
+	neededObjectKeysInSpec := neededObjectKeys.List()
+	providedObjectKeysInDefault := []string{}
+	for k := range defaultObject {
+		providedObjectKeysInDefault = append(providedObjectKeysInDefault, k)
+	}
+
+	missingObjectKeys := list.DiffLeft(neededObjectKeysInSpec, providedObjectKeysInDefault)
+	if len(missingObjectKeys) != 0 {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("Required key(s) %s for the parameter %s are not provided in default.", missingObjectKeys, paramName),
+			Paths:   []string{fmt.Sprintf("%s.properties", paramName), fmt.Sprintf("%s.default", paramName)},
+		}
+	}
+	return nil
 }
 
 func validateArrayUsage(steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {

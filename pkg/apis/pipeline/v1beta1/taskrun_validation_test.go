@@ -261,7 +261,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrMultipleOneOf("params[myname].name"),
 	}, {
-		name: "invalid params- same names but different case",
+		name: "invalid params - same names but different case",
 		spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "FOO",
@@ -273,6 +273,20 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
 		wantErr: apis.ErrMultipleOneOf("params[foo].name"),
+	}, {
+		name: "invalid params (object type) - same names but different case",
+		spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
+				Name:  "MYOBJECTPARAM",
+				Value: *v1beta1.NewObject(map[string]string{"key1": "val1", "key2": "val2"}),
+			}, {
+				Name:  "myobjectparam",
+				Value: *v1beta1.NewObject(map[string]string{"key1": "val1", "key2": "val2"}),
+			}},
+			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
+		},
+		wantErr: apis.ErrMultipleOneOf("params[myobjectparam].name"),
+		wc:      enableAlphaAPIFields,
 	}, {
 		name: "use of bundle without the feature flag set",
 		spec: v1beta1.TaskRunSpec{
