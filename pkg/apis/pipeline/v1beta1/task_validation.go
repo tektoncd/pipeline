@@ -321,8 +321,12 @@ func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldErr
 	parameterNames := sets.NewString()
 	arrayParameterNames := sets.NewString()
 	objectParamSpecs := []ParamSpec{}
-
+	var errs *apis.FieldError
 	for _, p := range params {
+		// validate no duplicate names
+		if parameterNames.Has(p.Name) {
+			errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", p.Name))
+		}
 		parameterNames.Insert(p.Name)
 		if p.Type == ParamTypeArray {
 			arrayParameterNames.Insert(p.Name)
@@ -332,7 +336,7 @@ func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldErr
 		}
 	}
 
-	errs := validateVariables(steps, "params", parameterNames)
+	errs = errs.Also(validateVariables(steps, "params", parameterNames))
 	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 	return errs.Also(validateObjectUsage(steps, objectParamSpecs))
 }

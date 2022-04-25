@@ -530,6 +530,26 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Details: "Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)\nMust begin with a letter or an underscore (_)",
 		},
 	}, {
+		name: "duplicated param names",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "foo",
+				Type:        v1beta1.ParamTypeString,
+				Description: "parameter",
+				Default:     v1beta1.NewArrayOrString("value1"),
+			}, {
+				Name:        "foo",
+				Type:        v1beta1.ParamTypeString,
+				Description: "parameter",
+				Default:     v1beta1.NewArrayOrString("value2"),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `parameter appears more than once`,
+			Paths:   []string{"params[foo]"},
+		},
+	}, {
 		name: "invalid param type",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{
