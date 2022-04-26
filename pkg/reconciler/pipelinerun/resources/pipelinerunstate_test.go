@@ -1890,7 +1890,8 @@ func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
 		dagTasks:     []v1beta1.PipelineTask{pts[0]},
 		finallyTasks: []v1beta1.PipelineTask{pts[14]},
 		expectedSkippedTasks: []v1beta1.SkippedTask{{
-			Name: pts[14].Name,
+			Name:   pts[14].Name,
+			Reason: v1beta1.MissingResultsSkip,
 		}},
 	}, {
 		name: "when-expressions-skip-finally",
@@ -1899,7 +1900,8 @@ func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
 		}},
 		finallyTasks: []v1beta1.PipelineTask{pts[10]},
 		expectedSkippedTasks: []v1beta1.SkippedTask{{
-			Name: pts[10].Name,
+			Name:   pts[10].Name,
+			Reason: v1beta1.WhenExpressionsSkip,
 			WhenExpressions: []v1beta1.WhenExpression{{
 				Input:    "foo",
 				Operator: "notin",

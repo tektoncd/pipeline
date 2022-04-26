@@ -665,6 +665,8 @@ False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
 
 When a `PipelineRun` changes status, [events](events.md#pipelineruns) are triggered accordingly.
 
+When a `PipelineRun` has `Tasks` that were `skipped`, the `reason` for skipping the task will be listed in the `Skipped Tasks` section of the `status` of the `PipelineRun`.
+
 When a `PipelineRun` has `Tasks` with [`when` expressions](pipelines.md#guard-task-execution-using-when-expressions):
 - If the `when` expressions evaluate to `true`, the `Task` is executed then the `TaskRun` and its resolved `when` expressions will be listed in the `Task Runs` section of the `status` of the `PipelineRun`.
 - If the `when` expressions evaluate to `false`, the `Task` is skipped then its name and its resolved `when` expressions will be listed in the `Skipped Tasks` section of the `status` of the `PipelineRun`.
@@ -678,6 +680,7 @@ Conditions:
   Type:                  Succeeded
 Skipped Tasks:
   Name:       skip-this-task
+  Reason:     When Expressions evaluated to false
   When Expressions:
     Input:     foo
     Operator:  in

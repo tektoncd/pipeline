@@ -1836,9 +1836,11 @@ func runTestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T, embeddedStat
 	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 0)
 
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "hello-world-1",
+		Name:   "hello-world-1",
+		Reason: v1beta1.GracefullyCancelledSkip,
 	}, {
-		Name: "hello-world-2",
+		Name:   "hello-world-2",
+		Reason: v1beta1.GracefullyCancelledSkip,
 	}}
 
 	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
@@ -2278,7 +2280,7 @@ status:
 		hasNilCompletionTime bool
 		isFailed             bool
 		trInStatusCount      int
-		skippedTasks         []string
+		skippedTasks         []v1beta1.SkippedTask
 	}{
 		{
 			name:                 "stopped PipelineRun",
@@ -2289,7 +2291,7 @@ status:
 			hasNilCompletionTime: false,
 			isFailed:             true,
 			trInStatusCount:      0,
-			skippedTasks:         []string{"hello-world-1"},
+			skippedTasks:         []v1beta1.SkippedTask{{Name: "hello-world-1", Reason: v1beta1.GracefullyStoppedSkip}},
 		}, {
 			name:     "with running task",
 			pipeline: simpleHelloWorldPipeline,
@@ -2333,7 +2335,7 @@ status:
 			hasNilCompletionTime: false,
 			isFailed:             true,
 			trInStatusCount:      1,
-			skippedTasks:         []string{"hello-world-2"},
+			skippedTasks:         []v1beta1.SkippedTask{{Name: "hello-world-2", Reason: v1beta1.GracefullyStoppedSkip}},
 		},
 	}
 
@@ -2376,12 +2378,7 @@ status:
 				t.Fatalf("Expected %d TaskRuns in status but got %d", tc.trInStatusCount, len(reconciledRun.Status.TaskRuns))
 			}
 
-			var expectedSkipped []v1beta1.SkippedTask
-			for _, st := range tc.skippedTasks {
-				expectedSkipped = append(expectedSkipped, v1beta1.SkippedTask{Name: st})
-			}
-
-			if d := cmp.Diff(expectedSkipped, reconciledRun.Status.SkippedTasks); d != "" {
+			if d := cmp.Diff(tc.skippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
 				t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
 			}
 
@@ -3985,7 +3982,8 @@ spec:
 
 	actualSkippedTasks := pipelineRun.Status.SkippedTasks
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "c-task",
+		Name:   "c-task",
+		Reason: v1beta1.WhenExpressionsSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "aResultValue",
 			Operator: "in",
@@ -4165,7 +4163,8 @@ spec:
 	actualSkippedTasks := pipelineRun.Status.SkippedTasks
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
 		// its when expressions evaluate to false
-		Name: "a-task",
+		Name:   "a-task",
+		Reason: v1beta1.WhenExpressionsSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "foo",
 			Operator: "in",
@@ -4173,7 +4172,8 @@ spec:
 		}},
 	}, {
 		// its when expressions evaluate to false
-		Name: "c-task",
+		Name:   "c-task",
+		Reason: v1beta1.WhenExpressionsSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "foo",
 			Operator: "in",
@@ -4181,14 +4181,16 @@ spec:
 		}},
 	}, {
 		// was attempted, but has missing results references
-		Name: "e-task",
+		Name:   "e-task",
+		Reason: v1beta1.MissingResultsSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "$(tasks.a-task.results.aResult)",
 			Operator: "in",
 			Values:   []string{"aResultValue"},
 		}},
 	}, {
-		Name: "f-task",
+		Name:   "f-task",
+		Reason: v1beta1.ParentTasksSkip,
 	}}
 	if d := cmp.Diff(expectedSkippedTasks, actualSkippedTasks); d != "" {
 		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
@@ -4311,7 +4313,8 @@ status:
 	actualSkippedTasks := pipelineRun.Status.SkippedTasks
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
 		// its when expressions evaluate to false
-		Name: "b-task",
+		Name:   "b-task",
+		Reason: v1beta1.WhenExpressionsSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "aResultValue",
 			Operator: "in",
@@ -6630,18 +6633,22 @@ spec:
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "final-task-2",
+		Name:   "final-task-2",
+		Reason: v1beta1.MissingResultsSkip,
 	}, {
-		Name: "final-task-3",
+		Name:   "final-task-3",
+		Reason: v1beta1.WhenExpressionsSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "aResultValue",
 			Operator: "notin",
 			Values:   []string{"aResultValue"},
 		}},
 	}, {
-		Name: "final-task-5",
+		Name:   "final-task-5",
+		Reason: v1beta1.MissingResultsSkip,
 	}, {
-		Name: "final-task-6",
+		Name:   "final-task-6",
+		Reason: v1beta1.MissingResultsSkip,
 	}}
 
 	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
