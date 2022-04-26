@@ -556,17 +556,19 @@ func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 		if rprt.Skip(facts).IsSkipped {
 			skippedTask := v1beta1.SkippedTask{
 				Name:            rprt.PipelineTask.Name,
+				Reason:          rprt.Skip(facts).SkippingReason,
 				WhenExpressions: rprt.PipelineTask.WhenExpressions,
 			}
 			skipped = append(skipped, skippedTask)
 		}
 		if rprt.IsFinallySkipped(facts).IsSkipped {
 			skippedTask := v1beta1.SkippedTask{
-				Name: rprt.PipelineTask.Name,
+				Name:   rprt.PipelineTask.Name,
+				Reason: rprt.IsFinallySkipped(facts).SkippingReason,
 			}
 			// include the when expressions only when the finally task was skipped because
 			// its when expressions evaluated to false (not because results variables were missing)
-			if rprt.IsFinallySkipped(facts).SkippingReason == WhenExpressionsSkip {
+			if rprt.IsFinallySkipped(facts).SkippingReason == v1beta1.WhenExpressionsSkip {
 				skippedTask.WhenExpressions = rprt.PipelineTask.WhenExpressions
 			}
 			skipped = append(skipped, skippedTask)

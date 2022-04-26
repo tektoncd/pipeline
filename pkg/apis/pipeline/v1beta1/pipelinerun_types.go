@@ -484,11 +484,35 @@ type PipelineRunStatusFields struct {
 type SkippedTask struct {
 	// Name is the Pipeline Task name
 	Name string `json:"name"`
+	// Reason is hte cause of the PipelineTask being skipped.
+	Reason SkippingReason `json: "reason"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
 	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
+
+// SkippingReason explains why a PipelineTask was skiped.
+type SkippingReason string
+
+const (
+	// WhenExpressionsSkip means the task was skipped due to at least one of its when expressions evaluating to false
+	WhenExpressionsSkip SkippingReason = "WhenExpressionsSkip"
+	// ConditionsSkip means the task was skipped due to at least one of its conditions failing
+	ConditionsSkip SkippingReason = "ConditionsSkip"
+	// ParentTasksSkip means the task was skipped because its parent was skipped
+	ParentTasksSkip SkippingReason = "ParentTasksSkip"
+	// IsStoppingSkip means the task was skipped because the pipeline run is stopping
+	IsStoppingSkip SkippingReason = "IsStoppingSkip"
+	// IsGracefullyCancelledSkip means the task was skipped because the pipeline run has been gracefully cancelled
+	IsGracefullyCancelledSkip SkippingReason = "IsGracefullyCancelledSkip"
+	// IsGracefullyStoppedSkip means the task was skipped because the pipeline run has been gracefully stopped
+	IsGracefullyStoppedSkip SkippingReason = "IsGracefullyStoppedSkip"
+	// MissingResultsSkip means the task was skipped because it's missing necessary results
+	MissingResultsSkip SkippingReason = "MissingResultsSkip"
+	// None means the task was not skipped
+	None SkippingReason = "None"
+)
 
 // PipelineRunResult used to describe the results of a pipeline
 type PipelineRunResult struct {
