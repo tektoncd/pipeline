@@ -501,6 +501,35 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"resources.outputs.name"},
 		},
 	}, {
+		name: "invalid param name format",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "_validparam1",
+				Description: "valid param name format",
+			}, {
+				Name:        "valid_param2",
+				Description: "valid param name format",
+			}, {
+				Name:        "",
+				Description: "invalid param name format",
+			}, {
+				Name:        "a^b",
+				Description: "invalid param name format",
+			}, {
+				Name:        "0ab",
+				Description: "invalid param name format",
+			}, {
+				Name:        "f oo",
+				Description: "invalid param name format",
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("The format of following variable names is invalid. %s", []string{"", "0ab", "a^b", "f oo"}),
+			Paths:   []string{"params"},
+			Details: "Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)\nMust begin with a letter or an underscore (_)",
+		},
+	}, {
 		name: "invalid param type",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{
