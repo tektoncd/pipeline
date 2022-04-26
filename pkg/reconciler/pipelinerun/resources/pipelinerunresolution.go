@@ -39,28 +39,6 @@ const (
 	ReasonConditionCheckFailed = "ConditionCheckFailed"
 )
 
-// SkippingReason explains why a task was skipped
-// type SkippingReason string
-
-// const (
-// 	// WhenExpressionsSkip means the task was skipped due to at least one of its when expressions evaluating to false
-// 	WhenExpressionsSkip SkippingReason = "WhenExpressionsSkip"
-// 	// ConditionsSkip means the task was skipped due to at least one of its conditions failing
-// 	ConditionsSkip SkippingReason = "ConditionsSkip"
-// 	// ParentTasksSkip means the task was skipped because its parent was skipped
-// 	ParentTasksSkip SkippingReason = "ParentTasksSkip"
-// 	// IsStoppingSkip means the task was skipped because the pipeline run is stopping
-// 	IsStoppingSkip SkippingReason = "IsStoppingSkip"
-// 	// IsGracefullyCancelledSkip means the task was skipped because the pipeline run has been gracefully cancelled
-// 	IsGracefullyCancelledSkip SkippingReason = "IsGracefullyCancelledSkip"
-// 	// IsGracefullyStoppedSkip means the task was skipped because the pipeline run has been gracefully stopped
-// 	IsGracefullyStoppedSkip SkippingReason = "IsGracefullyStoppedSkip"
-// 	// MissingResultsSkip means the task was skipped because it's missing necessary results
-// 	MissingResultsSkip SkippingReason = "MissingResultsSkip"
-// 	// None means the task was not skipped
-// 	None SkippingReason = "None"
-// )
-
 // TaskSkipStatus stores whether a task was skipped and why
 type TaskSkipStatus struct {
 	IsSkipped      bool

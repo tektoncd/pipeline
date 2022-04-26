@@ -3330,6 +3330,14 @@ func schema_pkg_apis_pipeline_v1beta1_SkippedTask(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"reason": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Reason is the cause of the PipelineTask being skipped.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"whenExpressions": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -3350,7 +3358,7 @@ func schema_pkg_apis_pipeline_v1beta1_SkippedTask(ref common.ReferenceCallback) 
 						},
 					},
 				},
-				Required: []string{"name"},
+				Required: []string{"name", "reason"},
 			},
 		},
 		Dependencies: []string{

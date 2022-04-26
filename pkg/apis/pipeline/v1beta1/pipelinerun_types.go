@@ -484,8 +484,8 @@ type PipelineRunStatusFields struct {
 type SkippedTask struct {
 	// Name is the Pipeline Task name
 	Name string `json:"name"`
-	// Reason is hte cause of the PipelineTask being skipped.
-	Reason SkippingReason `json: "reason"`
+	// Reason is the cause of the PipelineTask being skipped.
+	Reason SkippingReason `json:"reason"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
 	// +listType=atomic
