@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -33,6 +34,8 @@ import (
 )
 
 var _ apis.Validatable = (*Task)(nil)
+
+const variableNameFormat = "^[_a-zA-Z][_a-zA-Z0-9.-]*$"
 
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
@@ -351,6 +354,28 @@ func validateStepArrayUsage(step Step, prefix string, vars sets.String) *apis.Fi
 }
 
 func validateVariables(steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
+	// validate that the variable name format follows the rules
+	// - Must only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)
+	// - Must begin with a letter or an underscore (_)
+	re := regexp.MustCompile(variableNameFormat)
+	invalidNames := []string{}
+	// Converting to sorted list here rather than just looping map keys
+	// because we want the order of items in vars to be deterministic for purpose of unit testing
+	for _, name := range vars.List() {
+		if !re.MatchString(name) {
+			invalidNames = append(invalidNames, name)
+		}
+	}
+
+	if len(invalidNames) != 0 {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("The format of following variable names is invalid. %s", invalidNames),
+			Paths:   []string{"params"},
+			Details: "Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)\nMust begin with a letter or an underscore (_)",
+		}
+	}
+
+	// We've checked param name format. Now, we want to check if param names are referenced correctly in each step
 	for idx, step := range steps {
 		errs = errs.Also(validateStepVariables(step, prefix, vars).ViaFieldIndex("steps", idx))
 	}
