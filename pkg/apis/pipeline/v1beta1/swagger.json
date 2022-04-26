@@ -1889,11 +1889,17 @@
       "description": "SkippedTask is used to describe the Tasks that were skipped due to their When Expressions evaluating to False. This is a struct because we are looking into including more details about the When Expressions that caused this Task to be skipped.",
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "reason"
       ],
       "properties": {
         "name": {
           "description": "Name is the Pipeline Task name",
+          "type": "string",
+          "default": ""
+        },
+        "reason": {
+          "description": "Reason is the cause of the PipelineTask being skipped.",
           "type": "string",
           "default": ""
         },

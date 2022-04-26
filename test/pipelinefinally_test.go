@@ -347,29 +347,36 @@ spec:
 	// finaltaskconsumingdagtask1 has a reference to a task result from failed task
 	// finaltaskconsumingdagtask4 has a reference to a task result from skipped task with when expression
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "dagtask3",
+		Name:   "dagtask3",
+		Reason: v1beta1.StoppingSkip,
 	}, {
-		Name: "dagtask4",
+		Name:   "dagtask4",
+		Reason: v1beta1.StoppingSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "foo",
 			Operator: "notin",
 			Values:   []string{"foo"},
 		}},
 	}, {
-		Name: "finaltaskconsumingdagtask1",
+		Name:   "finaltaskconsumingdagtask1",
+		Reason: v1beta1.MissingResultsSkip,
 	}, {
-		Name: "finaltaskconsumingdagtask4",
+		Name:   "finaltaskconsumingdagtask4",
+		Reason: v1beta1.MissingResultsSkip,
 	}, {
-		Name: "guardedfinaltaskconsumingdagtask4",
+		Name:   "guardedfinaltaskconsumingdagtask4",
+		Reason: v1beta1.MissingResultsSkip,
 	}, {
-		Name: "guardedfinaltaskusingdagtask5result2",
+		Name:   "guardedfinaltaskusingdagtask5result2",
+		Reason: v1beta1.WhenExpressionsSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "Hello",
 			Operator: "notin",
 			Values:   []string{"Hello"},
 		}},
 	}, {
-		Name: "guardedfinaltaskusingdagtask5status2",
+		Name:   "guardedfinaltaskusingdagtask5status2",
+		Reason: v1beta1.WhenExpressionsSkip,
 		WhenExpressions: v1beta1.WhenExpressions{{
 			Input:    "Succeeded",
 			Operator: "in",
