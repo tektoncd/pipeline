@@ -17,7 +17,6 @@ limitations under the License.
 package pod
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -33,61 +32,6 @@ import (
 )
 
 var ignoreVolatileTime = cmp.Comparer(func(_, _ apis.VolatileTime) bool { return true })
-
-func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
-	for _, c := range []struct {
-		desc              string
-		ContainerStatuses []corev1.ContainerStatus
-	}{{
-		desc: "test result with large pipeline result",
-		ContainerStatuses: []corev1.ContainerStatus{{
-			Name: "step-bar-0",
-			State: corev1.ContainerState{
-				Terminated: &corev1.ContainerStateTerminated{
-					Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
-				},
-			},
-		},
-			{
-				Name: "step-bar1",
-				State: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 3072) + `","resourceRef":{"name":"source-image"}}]`,
-					},
-				},
-			},
-			{
-				Name: "step-bar2",
-				State: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 3072) + `","resourceRef":{"name":"source-image"}}]`,
-					},
-				},
-			}},
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			startTime := time.Date(2010, 1, 1, 1, 1, 1, 1, time.UTC)
-			tr := v1beta1.TaskRun{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "task-run",
-					Namespace: "foo",
-				},
-				Status: v1beta1.TaskRunStatus{
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						StartTime: &metav1.Time{Time: startTime},
-					},
-				},
-			}
-
-			logger, _ := logging.NewLogger("", "status")
-			merr := setTaskRunStatusBasedOnStepStatus(logger, c.ContainerStatuses, &tr)
-			if merr != nil {
-				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
-			}
-
-		})
-	}
-}
 
 func TestMakeTaskRunStatus(t *testing.T) {
 	for _, c := range []struct {
