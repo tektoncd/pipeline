@@ -676,6 +676,7 @@ Conditions:
   Type:                  Succeeded
 Skipped Tasks:
   Name:       skip-this-task
+  Reason:     WhenExpressionsSkip
   When Expressions:
     Input:     foo
     Operator:  in
