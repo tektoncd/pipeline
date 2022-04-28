@@ -492,7 +492,7 @@ type SkippedTask struct {
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
-// SkippingReason explains why a PipelineTask was skiped.
+// SkippingReason explains why a PipelineTask was skipped.
 type SkippingReason string
 
 const (
