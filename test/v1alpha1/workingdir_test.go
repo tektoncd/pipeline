@@ -30,11 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
-)
-
-const (
-	wdTaskName    = "wd-task"
-	wdTaskRunName = "wd-task-run"
+	"knative.dev/pkg/test/helpers"
 )
 
 func TestWorkingDirCreated(t *testing.T) {
@@ -46,6 +42,9 @@ func TestWorkingDirCreated(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	wdTaskName := helpers.ObjectNameForTest(t)
+	wdTaskRunName := helpers.ObjectNameForTest(t)
 
 	task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
 metadata:
@@ -114,6 +113,9 @@ func TestWorkingDirIgnoredNonSlashWorkspace(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	wdTaskName := helpers.ObjectNameForTest(t)
+	wdTaskRunName := helpers.ObjectNameForTest(t)
 
 	task := parse.MustParseAlphaTask(t, fmt.Sprintf(`
 metadata:

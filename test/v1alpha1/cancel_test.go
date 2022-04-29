@@ -29,11 +29,12 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"gomodules.xyz/jsonpatch/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestTaskRunPipelineRunCancel cancels a PipelineRun and verifies TaskRun statuses and Pod deletions.
@@ -53,7 +54,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
 
-			pipelineRunName := "cancel-me"
+			pipelineRunName := helpers.ObjectNameForTest(t)
 			pipelineRun := parse.MustParseAlphaPipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -105,7 +106,7 @@ spec:
 			patches := []jsonpatch.JsonPatchOperation{{
 				Operation: "add",
 				Path:      "/spec/status",
-				Value:     v1alpha1.PipelineRunSpecStatusCancelled,
+				Value:     v1beta1.PipelineRunSpecStatusCancelled,
 			}}
 			patchBytes, err := json.Marshal(patches)
 			if err != nil {
@@ -116,7 +117,7 @@ spec:
 			}
 
 			t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", pipelineRunName, namespace)
-			if err := WaitForPipelineRunState(ctx, c, pipelineRunName, pipelineRunTimeout, FailedWithReason("PipelineRunCancelled", pipelineRunName), "PipelineRunCancelled"); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, pipelineRunName, pipelineRunTimeout, FailedWithReason("Cancelled", pipelineRunName), "Cancelled"); err != nil {
 				t.Errorf("Error waiting for PipelineRun %q to finished: %s", pipelineRunName, err)
 			}
 
