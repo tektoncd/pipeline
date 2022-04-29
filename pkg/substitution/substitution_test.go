@@ -50,6 +50,26 @@ func TestValidateVariables(t *testing.T) {
 		},
 		expectedError: nil,
 	}, {
+		name: "valid variable single quote bracket",
+		args: args{
+			input:        "--flag=$(inputs.params['baz'])",
+			prefix:       "inputs.params",
+			locationName: "step",
+			path:         "taskspec.steps",
+			vars:         sets.NewString("baz"),
+		},
+		expectedError: nil,
+	}, {
+		name: "valid variable single double bracket",
+		args: args{
+			input:        "--flag=$(inputs.params[\"baz\"])",
+			prefix:       "inputs.params",
+			locationName: "step",
+			path:         "taskspec.steps",
+			vars:         sets.NewString("baz"),
+		},
+		expectedError: nil,
+	}, {
 		name: "valid variable uid",
 		args: args{
 			input:        "--flag=$(context.taskRun.uid)",
@@ -63,6 +83,16 @@ func TestValidateVariables(t *testing.T) {
 		name: "multiple variables",
 		args: args{
 			input:        "--flag=$(inputs.params.baz) $(input.params.foo)",
+			prefix:       "inputs.params",
+			locationName: "step",
+			path:         "taskspec.steps",
+			vars:         sets.NewString("baz", "foo"),
+		},
+		expectedError: nil,
+	}, {
+		name: "multiple variables with brackets",
+		args: args{
+			input:        "--flag=$(inputs.params[\"baz\"]) $(input.params['foo'])",
 			prefix:       "inputs.params",
 			locationName: "step",
 			path:         "taskspec.steps",

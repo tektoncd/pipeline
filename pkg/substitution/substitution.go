@@ -27,7 +27,7 @@ import (
 
 const parameterSubstitution = `[_a-zA-Z][_a-zA-Z0-9.-]*(\[\*\])?`
 
-const braceMatchingRegex = "(\\$(\\(%s\\.(?P<var>%s)\\)))"
+const braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\['(?P<var3>%s)'\\])\\)))"
 
 // ValidateVariable makes sure all variables in the provided string are known
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
@@ -40,6 +40,15 @@ func ValidateVariable(name, value, prefix, locationName, path string, vars sets.
 					Paths:   []string{path + "." + name},
 				}
 			}
+		}
+	} else {
+		// if expected variables but cannot be extracted from the string.
+		if len(vars) > 0 {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("Expected to find variables but none found in %q", value),
+				Paths:   []string{path + "." + name},
+			}
+
 		}
 	}
 	return nil
@@ -56,6 +65,15 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 					// Empty path is required to make the `ViaField`, … work
 					Paths: []string{""},
 				}
+			}
+		}
+	} else {
+		// if expected variables but cannot be extracted from the string.
+		if len(vars) > 0 {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("Expected to find variables but none found in %q", value),
+				// Empty path is required to make the `ViaField`, … work
+				Paths: []string{""},
 			}
 		}
 	}
@@ -137,7 +155,7 @@ func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.Fie
 // Extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
 // "" and false if nothing is found.
 func extractExpressionFromString(s, prefix string) (string, bool) {
-	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution)
+	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
 	re := regexp.MustCompile(pattern)
 	match := re.FindStringSubmatch(s)
 	if match == nil {
@@ -147,7 +165,7 @@ func extractExpressionFromString(s, prefix string) (string, bool) {
 }
 
 func extractVariablesFromString(s, prefix string) ([]string, bool) {
-	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution)
+	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(s, -1)
 	if len(matches) == 0 {
@@ -159,7 +177,13 @@ func extractVariablesFromString(s, prefix string) ([]string, bool) {
 		// foo -> foo
 		// foo.bar -> foo
 		// foo.bar.baz -> foo
-		vars[i] = strings.SplitN(groups["var"], ".", 2)[0]
+		for _, v := range []string{"var1", "var2", "var3"} {
+			val := strings.SplitN(groups[v], ".", 2)[0]
+			if strings.SplitN(groups[v], ".", 2)[0] != "" {
+				vars[i] = val
+				break
+			}
+		}
 	}
 	return vars, true
 }
