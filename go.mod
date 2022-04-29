@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/cloudevents/sdk-go/v2 v2.5.0
 	github.com/containerd/containerd v1.5.10
-	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-cmp v0.5.7
 	github.com/google/go-containerregistry v0.8.1-0.20220216220642-00c59d91847c
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20220328141311-efc62d802606
@@ -29,6 +28,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf
 	knative.dev/pkg v0.0.0-20220329144915-0a1ec2e0d46c
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
@@ -146,5 +146,4 @@ require (
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
 )

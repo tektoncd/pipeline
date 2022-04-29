@@ -25,13 +25,13 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
-	"github.com/ghodss/yaml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	tkremote "github.com/tektoncd/pipeline/pkg/remote/oci"
+	"sigs.k8s.io/yaml"
 )
 
 func TestCreateImage(t *testing.T) {

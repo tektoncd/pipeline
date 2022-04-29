@@ -653,12 +653,12 @@ Completion time is set once a `PipelineRun` reaches status `True` or `False`:
 :-------|:-------|:---------------------:|--------------:
 Unknown|Started|No|The `PipelineRun` has just been picked up by the controller.
 Unknown|Running|No|The `PipelineRun` has been validate and started to perform its work.
-Unknown|PipelineRunCancelled|No|The user requested the PipelineRun to be cancelled. Cancellation has not be done yet.
+Unknown|Cancelled|No|The user requested the PipelineRun to be cancelled. Cancellation has not be done yet.
 True|Succeeded|Yes|The `PipelineRun` completed successfully.
 True|Completed|Yes|The `PipelineRun` completed successfully, one or more Tasks were skipped.
 False|Failed|Yes|The `PipelineRun` failed because one of the `TaskRuns` failed.
 False|\[Error message\]|Yes|The `PipelineRun` failed with a permanent error (usually validation).
-False|PipelineRunCancelled|Yes|The `PipelineRun` was cancelled successfully.
+False|Cancelled|Yes|The `PipelineRun` was cancelled successfully.
 False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
 
 When a `PipelineRun` changes status, [events](events.md#pipelineruns) are triggered accordingly.
@@ -714,7 +714,7 @@ Some examples:
 ## Cancelling a `PipelineRun`
 
 To cancel a `PipelineRun` that's currently executing, update its definition
-to mark it as "PipelineRunCancelled". When you do so, the spawned `TaskRuns` are also marked
+to mark it as "Cancelled". When you do so, the spawned `TaskRuns` are also marked
 as cancelled, all associated `Pods` are deleted, and their `Retries` are not executed.
 Pending `finally` tasks are not scheduled.
 
@@ -727,15 +727,10 @@ metadata:
   name: go-example-git
 spec:
   # […]
-  status: "PipelineRunCancelled"
+  status: "Cancelled"
 ```
 
-Warning: "PipelineRunCancelled" status is deprecated and would be removed in V1, please use "Cancelled" instead.
-
 ## Gracefully cancelling a `PipelineRun`
-
-[Graceful pipeline run termination](https://github.com/tektoncd/community/blob/main/teps/0058-graceful-pipeline-run-termination.md)
-is currently an **_alpha feature_**.
 
 To gracefully cancel a `PipelineRun` that's currently executing, update its definition
 to mark it as "CancelledRunFinally". When you do so, the spawned `TaskRuns` are also marked
@@ -790,7 +785,7 @@ spec:
   status: "PipelineRunPending"
 ```
 
-To start the PipelineRun, clear the `.spec.status` field. Alternatively, update the value to `PipelineRunCancelled` to cancel it.
+To start the PipelineRun, clear the `.spec.status` field. Alternatively, update the value to `Cancelled` to cancel it.
 
 ---
 

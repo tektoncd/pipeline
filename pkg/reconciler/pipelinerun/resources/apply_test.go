@@ -24,14 +24,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/selection"
-	"knative.dev/pkg/apis"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestApplyParameters(t *testing.T) {
@@ -787,30 +782,17 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 	for _, tc := range []struct {
 		description string
 		results     []v1beta1.PipelineResult
-		statuses    map[string]*v1beta1.PipelineRunTaskRunStatus
-		runStatuses map[string]*v1beta1.PipelineRunRunStatus
+		taskResults map[string][]v1beta1.TaskRunResult
+		runResults  map[string][]v1alpha1.RunResult
 		expected    []v1beta1.PipelineRunResult
 	}{{
 		description: "no-pipeline-results-no-returned-results",
 		results:     []v1beta1.PipelineResult{},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task1": {
-				PipelineTaskName: "pt1",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "foo",
-							Value: "bar",
-						}},
-					},
-				},
-			},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {{
+				Name:  "foo",
+				Value: "bar",
+			}},
 		},
 		expected: nil,
 	}, {
@@ -819,24 +801,11 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: "$(tasks.pt1_results.foo)",
 		}},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task1": {
-				PipelineTaskName: "pt1",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "foo",
-							Value: "bar",
-						}},
-					},
-				},
-			},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {{
+				Name:  "foo",
+				Value: "bar",
+			}},
 		},
 		expected: nil,
 	}, {
@@ -845,21 +814,8 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: "$(tasks.pt1.results.foo)",
 		}},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task1": {
-				PipelineTaskName: "pt1",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{},
-					},
-				},
-			},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {},
 		},
 		expected: nil,
 	}, {
@@ -868,24 +824,11 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: "$(tasks.pt1.results.foo)",
 		}},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task1": {
-				PipelineTaskName: "definitely-not-pt1",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "foo",
-							Value: "bar",
-						}},
-					},
-				},
-			},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"definitely-not-pt1": {{
+				Name:  "foo",
+				Value: "bar",
+			}},
 		},
 		expected: nil,
 	}, {
@@ -894,24 +837,11 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: "$(tasks.pt1.results.foo)",
 		}},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task1": {
-				PipelineTaskName: "pt1",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "definitely-not-foo",
-							Value: "bar",
-						}},
-					},
-				},
-			},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {{
+				Name:  "definitely-not-foo",
+				Value: "bar",
+			}},
 		},
 		expected: nil,
 	}, {
@@ -920,26 +850,8 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: "$(tasks.pt1.results.foo)",
 		}},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task1": {
-				PipelineTaskName: "pt1",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionFalse,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "foo",
-							Value: "bar",
-						}},
-					},
-				},
-			},
-		},
-		expected: nil,
+		taskResults: map[string][]v1beta1.TaskRunResult{},
+		expected:    nil,
 	}, {
 		description: "mixed-success-tasks-some-returned-results",
 		results: []v1beta1.PipelineResult{{
@@ -949,41 +861,11 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "bar",
 			Value: "$(tasks.pt2.results.bar)",
 		}},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task1": {
-				PipelineTaskName: "pt1",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionFalse,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "foo",
-							Value: "do",
-						}},
-					},
-				},
-			},
-			"task2": {
-				PipelineTaskName: "pt2",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "bar",
-							Value: "rae",
-						}},
-					},
-				},
-			},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt2": {{
+				Name:  "bar",
+				Value: "rae",
+			}},
 		},
 		expected: []v1beta1.PipelineRunResult{{
 			Name:  "bar",
@@ -998,44 +880,20 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "pipeline-result-2",
 			Value: "$(tasks.pt1.results.foo), $(tasks.pt2.results.baz), $(tasks.pt1.results.bar), $(tasks.pt2.results.baz), $(tasks.pt1.results.foo)",
 		}},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task1": {
-				PipelineTaskName: "pt1",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "foo",
-							Value: "do",
-						}, {
-							Name:  "bar",
-							Value: "mi",
-						}},
-					},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: "do",
+				}, {
+					Name:  "bar",
+					Value: "mi",
 				},
 			},
-			"task2": {
-				PipelineTaskName: "pt2",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "baz",
-							Value: "rae",
-						}},
-					},
-				},
-			},
+			"pt2": {{
+				Name:  "baz",
+				Value: "rae",
+			}},
 		},
 		expected: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
@@ -1050,47 +908,19 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: "$(tasks.customtask.results.foo)",
 		}},
-		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
-			"task1": {
-				PipelineTaskName: "customtask",
-				Status: &runv1alpha1.RunStatus{
-					Status: duckv1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					RunStatusFields: runv1alpha1.RunStatusFields{
-						Results: []runv1alpha1.RunResult{},
-					},
-				},
-			},
-		},
-		expected: nil,
+		runResults: map[string][]v1alpha1.RunResult{},
+		expected:   nil,
 	}, {
 		description: "wrong-customtask-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
 			Value: "$(tasks.customtask.results.foo)",
 		}},
-		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
-			"task1": {
-				PipelineTaskName: "differentcustomtask",
-				Status: &runv1alpha1.RunStatus{
-					Status: duckv1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					RunStatusFields: runv1alpha1.RunStatusFields{
-						Results: []runv1alpha1.RunResult{{
-							Name:  "foo",
-							Value: "bar",
-						}},
-					},
-				},
-			},
+		runResults: map[string][]v1alpha1.RunResult{
+			"differentcustomtask": {{
+				Name:  "foo",
+				Value: "bar",
+			}},
 		},
 		expected: nil,
 	}, {
@@ -1099,24 +929,11 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: "$(tasks.customtask.results.foo)",
 		}},
-		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
-			"task1": {
-				PipelineTaskName: "customtask",
-				Status: &runv1alpha1.RunStatus{
-					Status: duckv1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					RunStatusFields: runv1alpha1.RunStatusFields{
-						Results: []runv1alpha1.RunResult{{
-							Name:  "notfoo",
-							Value: "bar",
-						}},
-					},
-				},
-			},
+		runResults: map[string][]v1alpha1.RunResult{
+			"customtask": {{
+				Name:  "notfoo",
+				Value: "bar",
+			}},
 		},
 		expected: nil,
 	}, {
@@ -1125,24 +942,8 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: "$(tasks.customtask.results.foo)",
 		}},
-		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
-			"task1": {
-				PipelineTaskName: "customtask",
-				Status: &runv1alpha1.RunStatus{
-					Status: duckv1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionFalse,
-						}},
-					},
-					RunStatusFields: runv1alpha1.RunStatusFields{
-						Results: []runv1alpha1.RunResult{{
-							Name:  "foo",
-							Value: "bar",
-						}},
-					},
-				},
-			},
+		runResults: map[string][]v1alpha1.RunResult{
+			"customtask": {},
 		},
 		expected: nil,
 	}, {
@@ -1154,46 +955,22 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "pipeline-result-2",
 			Value: "$(tasks.customtask.results.foo), $(tasks.normaltask.results.baz), $(tasks.customtask.results.bar), $(tasks.normaltask.results.baz), $(tasks.customtask.results.foo)",
 		}},
-		runStatuses: map[string]*v1beta1.PipelineRunRunStatus{
-			"task1": {
-				PipelineTaskName: "customtask",
-				Status: &runv1alpha1.RunStatus{
-					Status: duckv1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					RunStatusFields: runv1alpha1.RunStatusFields{
-						Results: []runv1alpha1.RunResult{{
-							Name:  "foo",
-							Value: "do",
-						}, {
-							Name:  "bar",
-							Value: "mi",
-						}},
-					},
+		runResults: map[string][]v1alpha1.RunResult{
+			"customtask": {
+				{
+					Name:  "foo",
+					Value: "do",
+				}, {
+					Name:  "bar",
+					Value: "mi",
 				},
 			},
 		},
-		statuses: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task2": {
-				PipelineTaskName: "normaltask",
-				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: []apis.Condition{{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						}},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						TaskRunResults: []v1beta1.TaskRunResult{{
-							Name:  "baz",
-							Value: "rae",
-						}},
-					},
-				},
-			},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"normaltask": {{
+				Name:  "baz",
+				Value: "rae",
+			}},
 		},
 		expected: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
@@ -1204,7 +981,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received := ApplyTaskResultsToPipelineResults(tc.results, tc.statuses, tc.runStatuses)
+			received := ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults)
 			if d := cmp.Diff(tc.expected, received); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}

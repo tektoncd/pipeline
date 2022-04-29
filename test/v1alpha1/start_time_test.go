@@ -25,6 +25,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestStartTime tests that step start times are reported accurately.
@@ -50,7 +51,7 @@ func TestStartTime(t *testing.T) {
 	t.Logf("Creating TaskRun in namespace %q", namespace)
 	tr, err := c.TaskRunClient.Create(ctx, parse.MustParseAlphaTaskRun(t, fmt.Sprintf(`
 metadata:
-  generateName: start-time-test-
+  name: %s
   namespace: %s
 spec:
   taskSpec:
@@ -65,7 +66,7 @@ spec:
       script: sleep 2
     - image: busybox
       script: sleep 2
-`, namespace)), metav1.CreateOptions{})
+`, helpers.ObjectNameForTest(t), namespace)), metav1.CreateOptions{})
 	if err != nil {
 		t.Fatalf("Error creating TaskRun: %v", err)
 	}

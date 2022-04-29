@@ -85,3 +85,10 @@ These changes must be approved by [more than half of the project OWNERS](OWNERS)
 
 Tekton Pipelines [maintains a list of features that have been deprecated](https://github.com/tektoncd/pipeline/tree/main/docs/deprecations.md)
 which includes the earliest date each feature will be removed.
+
+## Go libraries compatibility policy
+
+Tekton Pipelines may introduce breaking changes to its Go client libraries, as long as these changes
+do not impact users' yaml/json CRD definitions. For example, a change that renames a field of a CRD
+would need to follow the policy on [backwards incompatible changes](#backwards-incompatible-changes),
+but a change that renames the Go struct type for that field is allowed.

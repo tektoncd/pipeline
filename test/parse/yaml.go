@@ -64,6 +64,16 @@ kind: Task
 	return &task
 }
 
+// MustParseClusterTask takes YAML and parses it into a *v1beta1.ClusterTask
+func MustParseClusterTask(t *testing.T, yaml string) *v1beta1.ClusterTask {
+	var clusterTask v1beta1.ClusterTask
+	yaml = `apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+` + yaml
+	mustParseYAML(t, yaml, &clusterTask)
+	return &clusterTask
+}
+
 // MustParseAlphaTask takes YAML and parses it into a *v1alpha1.Task
 func MustParseAlphaTask(t *testing.T, yaml string) *v1alpha1.Task {
 	var task v1alpha1.Task

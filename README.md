@@ -27,7 +27,7 @@ Tekton Pipelines are **Typed**:
 ## Want to start using Pipelines
 
 - [Installing Tekton Pipelines](docs/install.md)
-- Jump in with [the tutorial!](docs/tutorial.md)
+- Jump in with [the "Getting started" tutorial!](https://tekton.dev/docs/getting-started/tasks/)
 - Take a look at our [roadmap](roadmap.md)
 
 ### Required Kubernetes Version
@@ -42,6 +42,7 @@ Tekton Pipelines are **Typed**:
 | Version                                                                      | Docs                                                                                              | Examples                                                                                          |
 |------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
 | [HEAD](DEVELOPMENT.md#install-pipeline)                                      | [Docs @ HEAD](/docs/README.md)                                                                    | [Examples @ HEAD](/examples)                                                                      |
+| [v0.35.0](https://github.com/tektoncd/pipeline/releases/tag/v0.35.0)         | [Docs @ v0.35.0](https://github.com/tektoncd/pipeline/tree/v0.35.0/docs#tekton-pipelines)         | [Examples @ v0.35.0](https://github.com/tektoncd/pipeline/tree/v0.35.0/examples#examples)         |
 | [v0.34.1](https://github.com/tektoncd/pipeline/releases/tag/v0.34.1)         | [Docs @ v0.34.1](https://github.com/tektoncd/pipeline/tree/v0.34.1/docs#tekton-pipelines)         | [Examples @ v0.34.1](https://github.com/tektoncd/pipeline/tree/v0.34.1/examples#examples)         |
 | [v0.34.0](https://github.com/tektoncd/pipeline/releases/tag/v0.34.0)         | [Docs @ v0.34.0](https://github.com/tektoncd/pipeline/tree/v0.34.0/docs#tekton-pipelines)         | [Examples @ v0.34.0](https://github.com/tektoncd/pipeline/tree/v0.34.0/examples#examples)         |
 | [v0.33.4](https://github.com/tektoncd/pipeline/releases/tag/v0.33.4)         | [Docs @ v0.33.4](https://github.com/tektoncd/pipeline/tree/v0.33.4/docs#tekton-pipelines)         | [Examples @ v0.33.4](https://github.com/tektoncd/pipeline/tree/v0.33.4/examples#examples)         |

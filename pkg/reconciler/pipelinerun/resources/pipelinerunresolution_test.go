@@ -3444,6 +3444,11 @@ func TestGetTaskRunName(t *testing.T) {
 			PipelineTaskName: "task1",
 		},
 	}
+	childRefs := []v1beta1.ChildStatusReference{{
+		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+		Name:             "taskrun-for-task1",
+		PipelineTaskName: "task1",
+	}}
 
 	for _, tc := range []struct {
 		name       string
@@ -3478,8 +3483,12 @@ func TestGetTaskRunName(t *testing.T) {
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			gotTrName := GetTaskRunName(taskRunsStatus, tc.ptName, testPrName)
-			if d := cmp.Diff(tc.wantTrName, gotTrName); d != "" {
+			trNameFromTRStatus := GetTaskRunName(taskRunsStatus, nil, tc.ptName, testPrName)
+			if d := cmp.Diff(tc.wantTrName, trNameFromTRStatus); d != "" {
+				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
+			}
+			trNameFromChildRefs := GetTaskRunName(nil, childRefs, tc.ptName, testPrName)
+			if d := cmp.Diff(tc.wantTrName, trNameFromChildRefs); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -3493,6 +3502,11 @@ func TestGetRunName(t *testing.T) {
 			PipelineTaskName: "task1",
 		},
 	}
+	childRefs := []v1beta1.ChildStatusReference{{
+		TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+		Name:             "run-for-task1",
+		PipelineTaskName: "task1",
+	}}
 
 	for _, tc := range []struct {
 		name       string
@@ -3527,8 +3541,16 @@ func TestGetRunName(t *testing.T) {
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			gotTrName := getRunName(runsStatus, tc.ptName, testPrName)
-			if d := cmp.Diff(tc.wantTrName, gotTrName); d != "" {
+			rnFromRunsStatus := getRunName(runsStatus, nil, tc.ptName, testPrName)
+			if d := cmp.Diff(tc.wantTrName, rnFromRunsStatus); d != "" {
+				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
+			}
+			rnFromChildRefs := getRunName(nil, childRefs, tc.ptName, testPrName)
+			if d := cmp.Diff(tc.wantTrName, rnFromChildRefs); d != "" {
+				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
+			}
+			rnFromBoth := getRunName(runsStatus, childRefs, tc.ptName, testPrName)
+			if d := cmp.Diff(tc.wantTrName, rnFromBoth); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
 			}
 		})

@@ -93,8 +93,16 @@ func Fetch(logger *zap.SugaredLogger, spec FetchSpec) error {
 		if err := os.Chdir(spec.Path); err != nil {
 			return fmt.Errorf("failed to change directory with path %s; err: %w", spec.Path, err)
 		}
-	} else if _, err := run(logger, "", "init"); err != nil {
-		return err
+		if _, err := run(logger, "", "config", "--add", "--global", "safe.directory", spec.Path); err != nil {
+			return err
+		}
+	} else {
+		if _, err := run(logger, "", "init"); err != nil {
+			return err
+		}
+		if _, err := run(logger, "", "config", "--add", "--global", "safe.directory", "/"); err != nil {
+			return err
+		}
 	}
 	if err := configSparseCheckout(logger, spec); err != nil {
 		return err
