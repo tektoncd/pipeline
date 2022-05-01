@@ -248,7 +248,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}, {
-		name: "invalid params",
+		name: "invalid params - exactly same names",
 		spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "myname",
@@ -260,6 +260,19 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
 		wantErr: apis.ErrMultipleOneOf("params[myname].name"),
+	}, {
+		name: "invalid params- same names but different case",
+		spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
+				Name:  "FOO",
+				Value: *v1beta1.NewArrayOrString("value"),
+			}, {
+				Name:  "foo",
+				Value: *v1beta1.NewArrayOrString("value"),
+			}},
+			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
+		},
+		wantErr: apis.ErrMultipleOneOf("params[foo].name"),
 	}, {
 		name: "use of bundle without the feature flag set",
 		spec: v1beta1.TaskRunSpec{
