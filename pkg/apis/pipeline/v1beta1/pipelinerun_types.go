@@ -219,15 +219,14 @@ type PipelineRunSpec struct {
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
-	// This is an alpha field. You must set the "enable-api-fields" feature flag to "alpha"
-	// for this field to be supported.
-	//
 	// Time after which the Pipeline times out.
 	// Currently three keys are accepted in the map
 	// pipeline, tasks and finally
 	// with Timeouts.pipeline >= Timeouts.tasks + Timeouts.finally
 	// +optional
 	Timeouts *TimeoutFields `json:"timeouts,omitempty"`
+
+	// Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead
 	// Time after which the Pipeline times out. Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional

@@ -513,12 +513,6 @@ For more information, see the [`LimitRange` support in Pipeline](./compute-resou
 
 ### Configuring a failure timeout
 
-You can use the `timeout` field to set the `PipelineRun's` desired timeout value in minutes.
-If you do not specify this value in the `PipelineRun`, the global default timeout value applies.
-If you set the timeout to 0, the `PipelineRun` fails immediately upon encountering an error.
-
-> :warning: ** `timeout`will be deprecated in future versions. Consider using `timeouts` instead.
-
 You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.  There are three sub-fields than can be used to specify failures timeout for the entire pipeline, for tasks, and for `finally` tasks.
 
 ```yaml
@@ -551,6 +545,12 @@ spec:
     pipeline: "0h4m0s"
     finally: "0h3m0s"
 ```
+
+You can also use the *Deprecated* `timeout` field to set the `PipelineRun's` desired timeout value in minutes.
+If you do not specify this value in the `PipelineRun`, the global default timeout value applies.
+If you set the timeout to 0, the `PipelineRun` fails immediately upon encountering an error.
+
+> :warning: ** `timeout` is deprecated and will be removed in future versions. Consider using `timeouts` instead.
 
 If you do not specify the `timeout` value or `timeouts.pipeline` in the `PipelineRun`, the global default timeout value applies.
 If you set the `timeout` value or `timeouts.pipeline` to 0, the `PipelineRun` fails immediately upon encountering an error.
