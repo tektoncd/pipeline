@@ -63,9 +63,6 @@ spec:
   # 1 hour and half timeout for the pipeline
   # 1 hour and fifteen minutes for the pipeline tasks
   # 15 minutes for the finally tasks
-  #
-  # This field requires enable-api-fields: "alpha" flag
-  # Check https://github.com/tektoncd/pipeline/blob/main/config/config-feature-flags.yaml
   timeouts:
     pipeline: 1h30m
     tasks: 1h15m

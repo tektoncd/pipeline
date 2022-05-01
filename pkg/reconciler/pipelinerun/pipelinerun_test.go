@@ -2432,8 +2432,8 @@ spec:
 	}
 }
 
-func TestReconcileWithTimeout(t *testing.T) {
-	// TestReconcileWithTimeout runs "Reconcile" on a PipelineRun that has timed out.
+func TestReconcileWithTimeoutDeprecated(t *testing.T) {
+	// TestReconcileWithTimeoutDeprecated runs "Reconcile" on a PipelineRun that has timed out.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
@@ -2478,6 +2478,56 @@ status:
 	// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
 	if actual.Spec.Timeout.Duration > prs[0].Spec.Timeout.Duration {
 		t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.Timeout.Duration.String(), prs[0].Spec.Timeout.Duration.String())
+	}
+}
+
+func TestReconcileWithTimeouts(t *testing.T) {
+	// TestReconcileWithTimeouts runs "Reconcile" on a PipelineRun that has timed out.
+	// It verifies that reconcile is successful, the pipeline status updated and events generated.
+	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-timeout
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  timeouts:
+    pipeline: 12h0m0s
+status:
+  startTime: "2021-12-31T00:00:00Z"
+`)}
+	ts := []*v1beta1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Warning Failed PipelineRun \"test-pipeline-run-with-timeout\" failed to finish within \"12h0m0s\"",
+	}
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-with-timeout", wantEvents, false)
+
+	if reconciledRun.Status.CompletionTime == nil {
+		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+	}
+
+	// The PipelineRun should be timed out.
+	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
+		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	}
+
+	// Check that the expected TaskRun was created
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+
+	// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
+	if actual.Spec.Timeout.Duration > prs[0].Spec.Timeouts.Pipeline.Duration {
+		t.Errorf("TaskRun timeout %s should be less than or equal to PipelineRun timeout %s", actual.Spec.Timeout.Duration.String(), prs[0].Spec.Timeouts.Pipeline.Duration.String())
 	}
 }
 

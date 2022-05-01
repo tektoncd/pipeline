@@ -1587,7 +1587,7 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 }
 
 // pipeline should result in timeout if its runtime exceeds its spec.Timeout based on its status.Timeout
-func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
+func TestGetPipelineConditionStatus_PipelineTimeoutDeprecated(t *testing.T) {
 	d, err := dagFromState(oneFinishedState)
 	if err != nil {
 		t.Fatalf("Unexpected error while building DAG for state %v: %v", oneFinishedState, err)
@@ -1596,6 +1596,36 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-no-tasks-started"},
 		Spec: v1beta1.PipelineRunSpec{
 			Timeout: &metav1.Duration{Duration: 1 * time.Minute},
+		},
+		Status: v1beta1.PipelineRunStatus{
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: now.Add(-2 * time.Minute)},
+			},
+		},
+	}
+	facts := PipelineRunFacts{
+		State:           oneFinishedState,
+		TasksGraph:      d,
+		FinalTasksGraph: &dag.Graph{},
+	}
+	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
+		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
+	}
+}
+
+// pipeline should result in timeout if its runtime exceeds its spec.Timeouts.Pipeline based on its status.Timeout
+func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
+	d, err := dagFromState(oneFinishedState)
+	if err != nil {
+		t.Fatalf("Unexpected error while building DAG for state %v: %v", oneFinishedState, err)
+	}
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-no-tasks-started"},
+		Spec: v1beta1.PipelineRunSpec{
+			Timeouts: &v1beta1.TimeoutFields{
+				Pipeline: &metav1.Duration{Duration: 1 * time.Minute},
+			},
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{

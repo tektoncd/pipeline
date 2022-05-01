@@ -80,8 +80,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			errs = errs.Also(apis.ErrDisallowedFields("timeout", "timeouts"))
 		}
 
-		errs = errs.Also(ValidateEnabledAPIFields(ctx, "timeouts", config.AlphaAPIFields))
-
 		// tasks timeout should be a valid duration of at least 0.
 		errs = errs.Also(validateTimeoutDuration("tasks", ps.Timeouts.Tasks))
 

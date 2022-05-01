@@ -1779,13 +1779,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref common.ReferenceCallba
 					},
 					"timeouts": {
 						SchemaProps: spec.SchemaProps{
-							Description: "This is an alpha field. You must set the \"enable-api-fields\" feature flag to \"alpha\" for this field to be supported.\n\nTime after which the Pipeline times out. Currently three keys are accepted in the map pipeline, tasks and finally with Timeouts.pipeline >= Timeouts.tasks + Timeouts.finally",
+							Description: "Time after which the Pipeline times out. Currently three keys are accepted in the map pipeline, tasks and finally with Timeouts.pipeline >= Timeouts.tasks + Timeouts.finally",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TimeoutFields"),
 						},
 					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Description: "Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},

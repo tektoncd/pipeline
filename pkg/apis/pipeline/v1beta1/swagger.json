@@ -1088,11 +1088,11 @@
           "x-kubernetes-list-type": "atomic"
         },
         "timeout": {
-          "description": "Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "description": "Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
           "$ref": "#/definitions/v1.Duration"
         },
         "timeouts": {
-          "description": "This is an alpha field. You must set the \"enable-api-fields\" feature flag to \"alpha\" for this field to be supported.\n\nTime after which the Pipeline times out. Currently three keys are accepted in the map pipeline, tasks and finally with Timeouts.pipeline \u003e= Timeouts.tasks + Timeouts.finally",
+          "description": "Time after which the Pipeline times out. Currently three keys are accepted in the map pipeline, tasks and finally with Timeouts.pipeline \u003e= Timeouts.tasks + Timeouts.finally",
           "$ref": "#/definitions/v1beta1.TimeoutFields"
         },
         "workspaces": {
