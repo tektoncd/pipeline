@@ -1021,43 +1021,43 @@ func getTaskrunLabels(pr *v1beta1.PipelineRun, pipelineTaskName string, includeP
 }
 
 func combineTaskRunAndTaskSpecLabels(pr *v1beta1.PipelineRun, pipelineTask *v1beta1.PipelineTask) map[string]string {
-	var tsLabels map[string]string
-	trLabels := getTaskrunLabels(pr, pipelineTask.Name, true)
+	labels := make(map[string]string)
+
+	taskRunSpec := pr.GetTaskRunSpec(pipelineTask.Name)
+	addMetadataByPrecedence(labels, taskRunSpec.Metadata.Labels)
+
+	addMetadataByPrecedence(labels, getTaskrunLabels(pr, pipelineTask.Name, true))
 
 	if pipelineTask.TaskSpec != nil {
-		tsLabels = pipelineTask.TaskSpecMetadata().Labels
+		addMetadataByPrecedence(labels, pipelineTask.TaskSpecMetadata().Labels)
 	}
 
-	// labels from TaskRun takes higher precedence over the ones specified in Pipeline through TaskSpec
-	// initialize labels with TaskRun labels
-	labels := trLabels
-	for key, value := range tsLabels {
-		// add labels from TaskSpec if the label does not exist
-		if _, ok := labels[key]; !ok {
-			labels[key] = value
-		}
-	}
 	return labels
 }
 
 func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask *v1beta1.PipelineTask) map[string]string {
-	var tsAnnotations map[string]string
-	trAnnotations := getTaskrunAnnotations(pr)
+	annotations := make(map[string]string)
+
+	taskRunSpec := pr.GetTaskRunSpec(pipelineTask.Name)
+	addMetadataByPrecedence(annotations, taskRunSpec.Metadata.Annotations)
+
+	addMetadataByPrecedence(annotations, getTaskrunAnnotations(pr))
 
 	if pipelineTask.TaskSpec != nil {
-		tsAnnotations = pipelineTask.TaskSpecMetadata().Annotations
+		addMetadataByPrecedence(annotations, pipelineTask.TaskSpecMetadata().Annotations)
 	}
 
-	// annotations from TaskRun takes higher precedence over the ones specified in Pipeline through TaskSpec
-	// initialize annotations with TaskRun annotations
-	annotations := trAnnotations
-	for key, value := range tsAnnotations {
-		// add annotations from TaskSpec if the annotation does not exist
-		if _, ok := annotations[key]; !ok {
-			annotations[key] = value
+	return annotations
+}
+
+// addMetadataByPrecedence() adds the elements in addedMetadata to metadata. If the same key is present in both maps, the value from metadata will be used.
+func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[string]string) {
+	for key, value := range addedMetadata {
+		// add new annotations if the key not exists in current ones
+		if _, ok := metadata[key]; !ok {
+			metadata[key] = value
 		}
 	}
-	return annotations
 }
 
 // getFinallyTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask, which is a finally Task.
