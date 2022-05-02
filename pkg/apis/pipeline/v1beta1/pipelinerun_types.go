@@ -600,6 +600,9 @@ type PipelineTaskRunSpec struct {
 	StepOverrides []TaskRunStepOverride `json:"stepOverrides,omitempty"`
 	// +listType=atomic
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
+
+	// +optional
+	Metadata PipelineTaskMetadata `json:"metadata,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given
@@ -620,6 +623,7 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			}
 			s.StepOverrides = task.StepOverrides
 			s.SidecarOverrides = task.SidecarOverrides
+			s.Metadata = task.Metadata
 		}
 	}
 	return s

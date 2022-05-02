@@ -7635,5 +7635,127 @@ spec:
 			}
 		})
 	}
+}
 
+func TestReconcile_PropagatePipelineTaskRunSpecMetadata(t *testing.T) {
+	names.TestingSeed()
+	prName := "test-pipeline-run"
+	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+    metadata:
+      labels:
+        PipelineTaskRunSpecLabel: PipelineTaskRunSpecValue 	
+      annotations:
+        PipelineTaskRunSpecAnnotation: PipelineTaskRunSpecValue
+    taskServiceAccountName: custom-sa
+`)}
+	ts := []*v1beta1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-hello-world-1", "foo", "test-pipeline-run", "test-pipeline", "hello-world-1", false)
+	expectedTaskRunObjectMeta.Labels["PipelineTaskRunSpecLabel"] = "PipelineTaskRunSpecValue"
+	expectedTaskRunObjectMeta.Annotations["PipelineTaskRunSpecAnnotation"] = "PipelineTaskRunSpecValue"
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
+spec:
+  resources: {}
+  serviceAccountName: custom-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+`)
+
+	if d := cmp.Diff(actual, expectedTaskRun, ignoreTypeMeta); d != "" {
+		t.Errorf("expected to see propagated metadata from PipelineTaskRunSpec in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+}
+
+func TestReconcile_AddMetadataByPrecedence(t *testing.T) {
+	names.TestingSeed()
+	prName := "test-pipeline-run"
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: hello-world-1
+      taskSpec:
+        steps:
+          - name: foo-step
+            image: foo-image
+        metadata:
+          labels:
+            TestPrecedenceLabel: PipelineTaskSpecValue 
+          annotations:
+            TestPrecedenceAnnotation: PipelineTaskSpecValue
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+  metadata:
+    labels:
+      TestPrecedenceLabel: PipelineRunValue 
+    annotations:
+      TestPrecedenceAnnotation: PipelineRunValue 
+spec:
+  pipelineRef:
+    name: test-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+    metadata:
+      labels:
+        TestPrecedenceLabel: PipelineTaskRunSpecValue 
+      annotations:
+        TestPrecedenceAnnotation: PipelineTaskRunSpecValue
+    taskServiceAccountName: custom-sa
+`)}
+	ts := []*v1beta1.Task{simpleHelloWorldTask}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
+
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-hello-world-1", "foo", "test-pipeline-run", "test-pipeline", "hello-world-1", false)
+	expectedTaskRunObjectMeta.Labels["TestPrecedenceLabel"] = "PipelineTaskRunSpecValue"
+	expectedTaskRunObjectMeta.Annotations["TestPrecedenceAnnotation"] = "PipelineTaskRunSpecValue"
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
+spec:
+  resources: {}
+  serviceAccountName: custom-sa
+  taskSpec:
+    steps:
+      - name: foo-step
+        image: foo-image
+  timeout: 1h0m0s
+`)
+
+	if d := cmp.Diff(actual, expectedTaskRun, ignoreTypeMeta); d != "" {
+		t.Errorf("expected to see propagated metadata by the precedence from PipelineTaskRunSpec in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
 }

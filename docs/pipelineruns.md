@@ -74,7 +74,7 @@ A `PipelineRun` definition supports the following fields:
   - [`serviceAccountNames`](#mapping-serviceaccount-credentials-to-tasks) - Maps specific `serviceAccountName` values
     to `Tasks` in the `Pipeline`. This overrides the credentials set for the entire `Pipeline`.
   - [`status`](#cancelling-a-pipelinerun) - Specifies options for cancelling a `PipelineRun`. 
-  - [`taskRunSpecs`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`.
+  - [`taskRunSpecs`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName`, [`Pod` template](./podtemplates.md), and `Metadata` for each task. This overrides the `Pod` template set for the entire `Pipeline`.
   - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeout` is deprecated and will eventually be removed, so consider using `timeouts` instead.
   - [`timeouts`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](./podtemplates.md) to use as the basis for the configuration of the `Pod` that executes each `Task`.
@@ -755,6 +755,39 @@ spec:
 If used with this `Pipeline`,  `build-task` will use the task specific `PodTemplate` (where `nodeSelector` has `disktype` equal to `ssd`).
 `PipelineTaskRunSpec` may also contain `StepOverrides` and `SidecarOverrides`; see
 [Overriding `Task` `Steps` and `Sidecars`](./taskruns.md#overriding-task-steps-and-sidecars) for more information.
+
+The optional annotations and labels can be added under a `Metadata` field as for a specific running context.
+
+e.g.
+
+Rendering needed secrets with Vault:
+
+```yaml
+spec:
+  pipelineRef:
+    name: pipeline-name
+  taskRunSpecs:
+    - pipelineTaskName: task-name
+      metadata: 
+        annotations:
+          vault.hashicorp.com/agent-inject-secret-foo: "/path/to/foo"
+          vault.hashicorp.com/role: role-name
+```
+
+Updating labels applied in a runtime context:
+
+```yaml
+spec:
+  pipelineRef:
+    name: pipeline-name
+  taskRunSpecs:
+    - pipelineTaskName: task-name
+      metadata: 
+        labels:
+          app: cloudevent
+```
+
+If a metadata key is present in different levels, the value that will be used in the `PipelineRun` is determined using this precedence order: `PipelineRun.spec.taskRunSpec.metadata` > `PipelineRun.metadata` > `Pipeline.spec.tasks.taskSpec.metadata`.
 
 ### Specifying `Workspaces`
 

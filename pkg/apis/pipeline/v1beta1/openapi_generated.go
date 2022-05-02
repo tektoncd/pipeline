@@ -2881,11 +2881,17 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineTaskRunSpec(ref common.ReferenceCa
 							},
 						},
 					},
+					"metadata": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStepOverride"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStepOverride"},
 	}
 }
 
