@@ -260,6 +260,8 @@ to all `persistentVolumeClaims` generated internally.
 
 ### Specifying `Parameters`
 
+(See also [Specifying Parameters in Tasks](tasks.md#specifying-parameters))
+
 You can specify `Parameters` that you want to pass to the `Pipeline` during execution,
 including different values of the same parameter for different `Tasks` in the `Pipeline`.
 
