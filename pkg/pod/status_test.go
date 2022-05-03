@@ -39,7 +39,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 		desc              string
 		ContainerStatuses []corev1.ContainerStatus
 	}{{
-		desc: "test result with large pipeline result",
+		desc: "test result with large pipeline result.",
 		ContainerStatuses: []corev1.ContainerStatus{{
 			Name: "step-bar-0",
 			State: corev1.ContainerState{
