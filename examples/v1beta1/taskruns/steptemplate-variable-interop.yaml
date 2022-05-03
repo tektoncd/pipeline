@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: steptemplate-variables-
+spec:
+  params:
+  - name: image
+    value: ubuntu
+  taskSpec:
+    params:
+    - name: image
+    stepTemplate:
+      image: $(params.image)
+    steps:
+    - name: foo
+      script: |
+        echo hello from $(params.image)

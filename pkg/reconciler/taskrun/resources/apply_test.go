@@ -62,6 +62,7 @@ var (
 				Name:  "template-var",
 				Value: `$(params["FOO"])`,
 			}},
+			Image: "$(params.myimage)",
 		},
 		Steps: []v1beta1.Step{{
 			Name:  "foo",
@@ -526,6 +527,7 @@ func TestApplyParameters(t *testing.T) {
 	}}
 	want := applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "world"
+		spec.StepTemplate.Image = "bar"
 
 		spec.Steps[0].Image = "bar"
 		spec.Steps[2].Image = "mydefault"

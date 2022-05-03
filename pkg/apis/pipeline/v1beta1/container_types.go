@@ -421,6 +421,31 @@ type StepTemplate struct {
 	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
 }
 
+// SetContainerFields sets the fields of the Step to the values of the corresponding fields in the Container
+func (s *StepTemplate) SetContainerFields(c corev1.Container) {
+	s.Name = c.Name
+	s.Image = c.Image
+	s.Command = c.Command
+	s.Args = c.Args
+	s.WorkingDir = c.WorkingDir
+	s.Ports = c.Ports
+	s.EnvFrom = c.EnvFrom
+	s.Env = c.Env
+	s.Resources = c.Resources
+	s.VolumeMounts = c.VolumeMounts
+	s.VolumeDevices = c.VolumeDevices
+	s.LivenessProbe = c.LivenessProbe
+	s.ReadinessProbe = c.ReadinessProbe
+	s.StartupProbe = c.StartupProbe
+	s.Lifecycle = c.Lifecycle
+	s.TerminationMessagePath = c.TerminationMessagePath
+	s.ImagePullPolicy = c.ImagePullPolicy
+	s.SecurityContext = c.SecurityContext
+	s.Stdin = c.Stdin
+	s.StdinOnce = c.StdinOnce
+	s.TTY = c.TTY
+}
+
 // ToK8sContainer converts the StepTemplate to a Kubernetes Container struct
 func (s *StepTemplate) ToK8sContainer() *corev1.Container {
 	return &corev1.Container{
