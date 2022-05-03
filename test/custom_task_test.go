@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -26,6 +27,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+
 	"github.com/tektoncd/pipeline/test/parse"
 
 	"github.com/google/go-cmp/cmp"
@@ -49,7 +52,6 @@ const (
 var supportedFeatureGates = map[string]string{
 	"enable-custom-tasks": "true",
 	"enable-api-fields":   "alpha",
-	"embedded-status":     "full",
 }
 
 func TestCustomTask(t *testing.T) {
@@ -59,10 +61,13 @@ func TestCustomTask(t *testing.T) {
 	c, namespace := setup(ctx, t, requireAnyGate(supportedFeatureGates))
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
+
+	embeddedStatusValue := GetEmbeddedStatus(ctx, t, c.KubeClient)
+
 	customTaskRawSpec := []byte(`{"field1":123,"field2":"value"}`)
 	metadataLabel := map[string]string{"test-label": "test"}
 	// Create a PipelineRun that runs a Custom Task.
-	pipelineRunName := "custom-task-pipeline"
+	pipelineRunName := helpers.ObjectNameForTest(t)
 	if _, err := c.PipelineRunClient.Create(
 		ctx,
 		parse.MustParsePipelineRun(t, fmt.Sprintf(`
@@ -121,11 +126,26 @@ spec:
 	}
 
 	// Get the Run name.
-	if len(pr.Status.Runs) != 2 {
-		t.Fatalf("PipelineRun had unexpected .status.runs; got %d, want 2", len(pr.Status.Runs))
+	var runNames []string
+	if embeddedStatusValue != config.MinimalEmbeddedStatus {
+		if len(pr.Status.Runs) != 2 {
+			t.Fatalf("PipelineRun had unexpected .status.runs; got %d, want 2", len(pr.Status.Runs))
+		}
+		for rn := range pr.Status.Runs {
+			runNames = append(runNames, rn)
+		}
 	}
-
-	for runName := range pr.Status.Runs {
+	if embeddedStatusValue != config.FullEmbeddedStatus {
+		for _, cr := range pr.Status.ChildReferences {
+			if cr.Kind == "Run" {
+				runNames = append(runNames, cr.Name)
+			}
+		}
+		if len(runNames) != 2 {
+			t.Fatalf("PipelineRun had unexpected number of Runs in .status.childReferences; got %d, want 2", len(runNames))
+		}
+	}
+	for _, runName := range runNames {
 		// Get the Run.
 		r, err := c.RunClient.Get(ctx, runName, metav1.GetOptions{})
 		if err != nil {
@@ -185,13 +205,26 @@ spec:
 	}
 
 	// Get the TaskRun name.
-	if len(pr.Status.TaskRuns) != 1 {
-		t.Fatalf("PipelineRun had unexpected .status.taskRuns; got %d, want 1", len(pr.Status.TaskRuns))
-	}
 	var taskRunName string
-	for k := range pr.Status.TaskRuns {
-		taskRunName = k
-		break
+
+	if embeddedStatusValue != config.MinimalEmbeddedStatus {
+		if len(pr.Status.TaskRuns) != 1 {
+			t.Fatalf("PipelineRun had unexpected .status.taskRuns; got %d, want 1", len(pr.Status.TaskRuns))
+		}
+		for k := range pr.Status.TaskRuns {
+			taskRunName = k
+			break
+		}
+	}
+	if embeddedStatusValue != config.FullEmbeddedStatus {
+		for _, cr := range pr.Status.ChildReferences {
+			if cr.Kind == "TaskRun" {
+				taskRunName = cr.Name
+			}
+		}
+		if taskRunName == "" {
+			t.Fatal("PipelineRun does not have expected TaskRun in .status.childReferences")
+		}
 	}
 
 	// Get the TaskRun.
@@ -256,6 +289,9 @@ func TestPipelineRunCustomTaskTimeout(t *testing.T) {
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
 	defer tearDown(context.Background(), t, c, namespace)
+
+	embeddedStatusValue := GetEmbeddedStatus(ctx, t, c.KubeClient)
+
 	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -294,36 +330,47 @@ spec:
 	}
 
 	// Get the Run name.
-	if len(pr.Status.Runs) != 1 {
-		t.Fatalf("PipelineRun had unexpected .status.runs; got %d, want 1", len(pr.Status.Runs))
+	runName := ""
+
+	if embeddedStatusValue != config.MinimalEmbeddedStatus {
+		if len(pr.Status.Runs) != 1 {
+			t.Fatalf("PipelineRun had unexpected .status.runs; got %d, want 1", len(pr.Status.Runs))
+		}
+		for rn := range pr.Status.Runs {
+			runName = rn
+		}
+	}
+	if embeddedStatusValue != config.FullEmbeddedStatus {
+		if len(pr.Status.ChildReferences) != 1 {
+			t.Fatalf("PipelineRun had unexpected .status.childReferences; got %d, want 1", len(pr.Status.ChildReferences))
+		}
+		runName = pr.Status.ChildReferences[0].Name
 	}
 
-	for runName := range pr.Status.Runs {
-		// Get the Run.
-		r, err := c.RunClient.Get(ctx, runName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Failed to get Run %q: %v", runName, err)
-		}
-		if r.IsDone() {
-			t.Fatalf("Run unexpectedly done: %v", r.Status.GetCondition(apis.ConditionSucceeded))
-		}
+	// Get the Run.
+	r, err := c.RunClient.Get(ctx, runName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get Run %q: %v", runName, err)
+	}
+	if r.IsDone() {
+		t.Fatalf("Run unexpectedly done: %v", r.Status.GetCondition(apis.ConditionSucceeded))
+	}
 
-		// Simulate a Custom Task controller updating the Run to be started/running,
-		// because, a run that has not started cannot timeout.
-		r.Status = v1alpha1.RunStatus{
-			RunStatusFields: v1alpha1.RunStatusFields{
-				StartTime: &metav1.Time{Time: time.Now()},
-			},
-			Status: duckv1.Status{
-				Conditions: []apis.Condition{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionUnknown,
-				}},
-			},
-		}
-		if _, err := c.RunClient.UpdateStatus(ctx, r, metav1.UpdateOptions{}); err != nil {
-			t.Fatalf("Failed to update Run to successful: %v", err)
-		}
+	// Simulate a Custom Task controller updating the Run to be started/running,
+	// because, a run that has not started cannot timeout.
+	r.Status = v1alpha1.RunStatus{
+		RunStatusFields: v1alpha1.RunStatusFields{
+			StartTime: &metav1.Time{Time: time.Now()},
+		},
+		Status: duckv1.Status{
+			Conditions: []apis.Condition{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionUnknown,
+			}},
+		},
+	}
+	if _, err := c.RunClient.UpdateStatus(ctx, r, metav1.UpdateOptions{}); err != nil {
+		t.Fatalf("Failed to update Run to successful: %v", err)
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)

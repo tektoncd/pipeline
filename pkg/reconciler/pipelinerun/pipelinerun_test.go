@@ -18,12 +18,12 @@ package pipelinerun
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http/httptest"
 	"net/url"
-	"regexp"
 	"testing"
 	"time"
 
@@ -50,7 +50,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/clock"
 	ktesting "k8s.io/client-go/testing"
@@ -103,7 +102,10 @@ var (
 )
 
 const (
-	apiFieldsFeatureFlag = "enable-api-fields"
+	apiFieldsFeatureFlag      = "enable-api-fields"
+	customTasksFeatureFlag    = "enable-custom-tasks"
+	ociBundlesFeatureFlag     = "enable-tekton-oci-bundles"
+	embeddedStatusFeatureFlag = "embedded-status"
 )
 
 type PipelineRunTest struct {
@@ -180,7 +182,9 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
 	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
-		la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {})
+		if err := la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {}); err != nil {
+			t.Fatalf("error promoting reconciler leader: %v", err)
+		}
 	}
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
@@ -196,10 +200,14 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 }
 
 // getTaskRunCreations will look through a set of actions to find all task run creation actions and return the set of
-// them. It will fatal the test if none are found.
-func getTaskRunCreations(t *testing.T, actions []ktesting.Action) []*v1beta1.TaskRun {
+// them. It will fatal the test if none are found, or if less actions were found than expected.
+func getTaskRunCreations(t *testing.T, actions []ktesting.Action, minActionCount int) []*v1beta1.TaskRun {
 	t.Helper()
-	outputs := []*v1beta1.TaskRun{}
+	if len(actions) < minActionCount {
+		t.Fatalf("Expected client to have at least %d action implementation but it has %d", minActionCount, len(actions))
+	}
+
+	var outputs []*v1beta1.TaskRun
 	for _, a := range actions {
 		if action, ok := a.(ktesting.CreateAction); ok {
 			if output, ok := action.GetObject().(*v1beta1.TaskRun); ok {
@@ -220,7 +228,7 @@ func getTaskRunCreations(t *testing.T, actions []ktesting.Action) []*v1beta1.Tas
 // set of them. It will fatal the test if none are found.
 func getPipelineRunUpdates(t *testing.T, actions []ktesting.Action) []*v1beta1.PipelineRun {
 	t.Helper()
-	outputs := []*v1beta1.PipelineRun{}
+	var outputs []*v1beta1.PipelineRun
 	for _, a := range actions {
 		if action, ok := a.(ktesting.UpdateAction); ok {
 			if output, ok := action.GetObject().(*v1beta1.PipelineRun); ok {
@@ -237,328 +245,254 @@ func getPipelineRunUpdates(t *testing.T, actions []ktesting.Action) []*v1beta1.P
 }
 
 func TestReconcile(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileWithEmbeddedStatus(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcileWithEmbeddedStatus(t *testing.T, embeddedStatus string) {
 	// TestReconcile runs "Reconcile" on a PipelineRun with one Task that has not been started yet.
 	// It verifies that the TaskRun is created, it checks the resulting API actions, status and events.
 	names.TestingSeed()
-	const pipelineRunName = "test-pipeline-run-success"
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(pipelineRunName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name: "test-pipeline",
-			},
-			ServiceAccountName: "test-sa",
-			Resources: []v1beta1.PipelineResourceBinding{
-				{
-					Name: "git-repo",
-					ResourceRef: &v1beta1.PipelineResourceRef{
-						Name: "some-repo",
-					},
-				},
-				{
-					Name: "best-image",
-					ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
-						Type: resourcev1alpha1.PipelineResourceTypeImage,
-						Params: []resourcev1alpha1.ResourceParam{{
-							Name:  "url",
-							Value: "gcr.io/sven",
-						}},
-					},
-				},
-			},
-			Params: []v1beta1.Param{{
-				Name:  "bar",
-				Value: *v1beta1.NewArrayOrString("somethingmorefun"),
-			}},
-		},
-	}}
-	funParam := v1beta1.Param{
-		Name:  "foo",
-		Value: *v1beta1.NewArrayOrString("somethingfun"),
-	}
-	moreFunParam := v1beta1.Param{
-		Name:  "bar",
-		Value: *v1beta1.NewArrayOrString("$(params.bar)"),
-	}
-	templatedParam := v1beta1.Param{
-		Name:  "templatedparam",
-		Value: *v1beta1.NewArrayOrString("$(inputs.workspace.$(params.rev-param))"),
-	}
-	contextRunParam := v1beta1.Param{
-		Name:  "contextRunParam",
-		Value: *v1beta1.NewArrayOrString("$(context.pipelineRun.name)"),
-	}
-	contextPipelineParam := v1beta1.Param{
-		Name:  "contextPipelineParam",
-		Value: *v1beta1.NewArrayOrString("$(context.pipeline.name)"),
-	}
-	retriesParam := v1beta1.Param{
-		Name:  "contextRetriesParam",
-		Value: *v1beta1.NewArrayOrString("$(context.pipelineTask.retries)"),
-	}
-	const pipelineName = "test-pipeline"
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta(pipelineName, "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{
-				{
-					Name: "git-repo",
-					Type: resourcev1alpha1.PipelineResourceTypeGit,
-				},
-				{
-					Name: "best-image",
-					Type: resourcev1alpha1.PipelineResourceTypeImage,
-				},
-			},
-			Params: []v1beta1.ParamSpec{
-				{
-					Name:    "pipeline-param",
-					Type:    v1beta1.ParamTypeString,
-					Default: v1beta1.NewArrayOrString("somethingdifferent"),
-				},
-				{
-					Name:    "rev-param",
-					Type:    v1beta1.ParamTypeString,
-					Default: v1beta1.NewArrayOrString("revision"),
-				},
-				{
-					Name: "bar",
-					Type: v1beta1.ParamTypeString,
-				},
-			},
-			Tasks: []v1beta1.PipelineTask{
-				{
-					// unit-test-3 uses runAfter to indicate it should run last
-					Name: "unit-test-3",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "unit-test-task",
-					},
-					Params: []v1beta1.Param{funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam, retriesParam},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-						}},
-						Outputs: []v1beta1.PipelineTaskOutputResource{
-							{
-								Name:     "image-to-use",
-								Resource: "best-image",
-							},
-							{
-								Name:     "workspace",
-								Resource: "git-repo",
-							},
-						},
-					},
-					RunAfter: []string{"unit-test-2"},
-				},
-				{
-					// unit-test-1 can run right away because it has no dependencies
-					Name: "unit-test-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "unit-test-task",
-					},
-					Params: []v1beta1.Param{funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam, retriesParam},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-						}},
-						Outputs: []v1beta1.PipelineTaskOutputResource{
-							{
-								Name:     "image-to-use",
-								Resource: "best-image",
-							},
-							{
-								Name:     "workspace",
-								Resource: "git-repo",
-							},
-						},
-					},
-					Retries: 5,
-				},
-				{
-					Name: "unit-test-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "unit-test-followup-task",
-					},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-							From:     []string{"unit-test-1"},
-						}},
-					},
-				},
-				{
-					Name: "unit-test-cluster-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "unit-test-cluster-task",
-						Kind: v1beta1.ClusterTaskKind,
-					},
-					Params: []v1beta1.Param{funParam, moreFunParam, templatedParam, contextRunParam, contextPipelineParam},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "workspace",
-							Resource: "git-repo",
-						}},
-						Outputs: []v1beta1.PipelineTaskOutputResource{
-							{
-								Name:     "image-to-use",
-								Resource: "best-image",
-							},
-							{
-								Name:     "workspace",
-								Resource: "git-repo",
-							},
-						},
-					},
-				},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-success
+  namespace: foo
+spec:
+  params:
+  - name: bar
+    value: somethingmorefun
+  pipelineRef:
+    name: test-pipeline
+  resources:
+  - name: git-repo
+    resourceRef:
+      name: some-repo
+  - name: best-image
+    resourceSpec:
+      params:
+      - name: url
+        value: gcr.io/sven
+      type: image
+  serviceAccountName: test-sa
+`)}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  params:
+  - default: somethingdifferent
+    name: pipeline-param
+    type: string
+  - default: revision
+    name: rev-param
+    type: string
+  - name: bar
+    type: string
+  resources:
+  - name: git-repo
+    type: git
+  - name: best-image
+    type: image
+  tasks:
+  - name: unit-test-3
+    params:
+    - name: foo
+      value: somethingfun
+    - name: bar
+      value: $(params.bar)
+    - name: templatedparam
+      value: $(inputs.workspace.$(params.rev-param))
+    - name: contextRunParam
+      value: $(context.pipelineRun.name)
+    - name: contextPipelineParam
+      value: $(context.pipeline.name)
+    - name: contextRetriesParam
+      value: $(context.pipelineTask.retries)
+    resources:
+      inputs:
+      - name: workspace
+        resource: git-repo
+      outputs:
+      - name: image-to-use
+        resource: best-image
+      - name: workspace
+        resource: git-repo
+    runAfter:
+    - unit-test-2
+    taskRef:
+      name: unit-test-task
+  - name: unit-test-1
+    params:
+    - name: foo
+      value: somethingfun
+    - name: bar
+      value: $(params.bar)
+    - name: templatedparam
+      value: $(inputs.workspace.$(params.rev-param))
+    - name: contextRunParam
+      value: $(context.pipelineRun.name)
+    - name: contextPipelineParam
+      value: $(context.pipeline.name)
+    - name: contextRetriesParam
+      value: $(context.pipelineTask.retries)
+    resources:
+      inputs:
+      - name: workspace
+        resource: git-repo
+      outputs:
+      - name: image-to-use
+        resource: best-image
+      - name: workspace
+        resource: git-repo
+    retries: 5
+    taskRef:
+      name: unit-test-task
+  - name: unit-test-2
+    resources:
+      inputs:
+      - from:
+        - unit-test-1
+        name: workspace
+        resource: git-repo
+    taskRef:
+      name: unit-test-followup-task
+  - name: unit-test-cluster-task
+    params:
+    - name: foo
+      value: somethingfun
+    - name: bar
+      value: $(params.bar)
+    - name: templatedparam
+      value: $(inputs.workspace.$(params.rev-param))
+    - name: contextRunParam
+      value: $(context.pipelineRun.name)
+    - name: contextPipelineParam
+      value: $(context.pipeline.name)
+    resources:
+      inputs:
+      - name: workspace
+        resource: git-repo
+      outputs:
+      - name: image-to-use
+        resource: best-image
+      - name: workspace
+        resource: git-repo
+    taskRef:
+      kind: ClusterTask
+      name: unit-test-cluster-task
+`)}
 	ts := []*v1beta1.Task{
-		{
-			ObjectMeta: baseObjectMeta("unit-test-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{
-					{
-						Name: "foo",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "bar",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "templatedparam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextRunParam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextPipelineParam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextRetriesParam",
-						Type: v1beta1.ParamTypeString,
-					},
-				},
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: v1beta1.PipelineResourceTypeGit,
-						},
-					}},
-					Outputs: []v1beta1.TaskResource{
-						{
-							ResourceDeclaration: v1beta1.ResourceDeclaration{
-								Name: "image-to-use",
-								Type: v1beta1.PipelineResourceTypeImage,
-							},
-						},
-						{
-							ResourceDeclaration: v1beta1.ResourceDeclaration{
-								Name: "workspace",
-								Type: v1beta1.PipelineResourceTypeGit,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("unit-test-followup-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: v1beta1.PipelineResourceTypeGit,
-						},
-					}},
-				},
-			},
-		},
+		parse.MustParseTask(t, `
+metadata:
+  name: unit-test-task
+  namespace: foo
+spec:
+  params:
+  - name: foo
+    type: string
+  - name: bar
+    type: string
+  - name: templatedparam
+    type: string
+  - name: contextRunParam
+    type: string
+  - name: contextPipelineParam
+    type: string
+  - name: contextRetriesParam
+    type: string
+  resources:
+    inputs:
+    - name: workspace
+      type: git
+    outputs:
+    - name: image-to-use
+      type: image
+    - name: workspace
+      type: git
+`),
+		parse.MustParseTask(t, `
+metadata:
+  name: unit-test-followup-task
+  namespace: foo
+spec:
+  resources:
+    inputs:
+    - name: workspace
+      type: git
+`),
 	}
 	clusterTasks := []*v1beta1.ClusterTask{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: "unit-test-cluster-task"},
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{
-					{
-						Name: "foo",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "bar",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "templatedparam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextRunParam",
-						Type: v1beta1.ParamTypeString,
-					},
-					{
-						Name: "contextPipelineParam",
-						Type: v1beta1.ParamTypeString,
-					},
-				},
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: v1beta1.PipelineResourceTypeGit,
-						},
-					}},
-					Outputs: []v1beta1.TaskResource{
-						{
-							ResourceDeclaration: v1beta1.ResourceDeclaration{
-								Name: "image-to-use",
-								Type: v1beta1.PipelineResourceTypeImage,
-							},
-						},
-						{
-							ResourceDeclaration: v1beta1.ResourceDeclaration{
-								Name: "workspace",
-								Type: v1beta1.PipelineResourceTypeGit,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: "unit-test-followup-task"},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "workspace",
-							Type: v1beta1.PipelineResourceTypeGit,
-						},
-					}},
-				},
-			},
-		},
+		parse.MustParseClusterTask(t, `
+metadata:
+  name: unit-test-cluster-task
+spec:
+  params:
+  - name: foo
+    type: string
+  - name: bar
+    type: string
+  - name: templatedparam
+    type: string
+  - name: contextRunParam
+    type: string
+  - name: contextPipelineParam
+    type: string
+  resources:
+    inputs:
+    - name: workspace
+      type: git
+    outputs:
+    - name: image-to-use
+      type: image
+    - name: workspace
+      type: git
+`),
+		parse.MustParseClusterTask(t, `
+metadata:
+  name: unit-test-followup-task
+spec:
+  resources:
+    inputs:
+    - name: workspace
+      type: git
+`),
 	}
-	rs := []*resourcev1alpha1.PipelineResource{{
-		ObjectMeta: baseObjectMeta("some-repo", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "url",
-				Value: "https://github.com/kristoff/reindeer",
-			}},
-		},
-	}}
+	rs := []*resourcev1alpha1.PipelineResource{parse.MustParsePipelineResource(t, `
+metadata:
+  name: some-repo
+  namespace: foo
+spec:
+  params:
+  - name: url
+    value: https://github.com/kristoff/reindeer
+  type: git
+`)}
 
 	// When PipelineResources are created in the cluster, Kubernetes will add a SelfLink. We
 	// are using this to differentiate between Resources that we are referencing by Spec or by Ref
@@ -571,6 +505,7 @@ func TestReconcile(t *testing.T) {
 		Tasks:             ts,
 		ClusterTasks:      clusterTasks,
 		PipelineResources: rs,
+		ConfigMaps:        []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -581,86 +516,54 @@ func TestReconcile(t *testing.T) {
 	}
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
 
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
-
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)[0]
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success", "test-pipeline", "unit-test-1", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "unit-test-task",
-			},
-			ServiceAccountName: "test-sa",
-			Params: []v1beta1.Param{
-				{
-					Name:  "foo",
-					Value: *v1beta1.NewArrayOrString("somethingfun"),
-				},
-				{
-					Name:  "bar",
-					Value: *v1beta1.NewArrayOrString("somethingmorefun"),
-				},
-				{
-					Name:  "templatedparam",
-					Value: *v1beta1.NewArrayOrString("$(inputs.workspace.revision)"),
-				},
-				{
-					Name:  "contextRunParam",
-					Value: *v1beta1.NewArrayOrString(pipelineRunName),
-				},
-				{
-					Name:  "contextPipelineParam",
-					Value: *v1beta1.NewArrayOrString(pipelineName),
-				},
-				{
-					Name:  "contextRetriesParam",
-					Value: *v1beta1.NewArrayOrString("5"),
-				},
-			},
-			Resources: &v1beta1.TaskRunResources{
-				Inputs: []v1beta1.TaskResourceBinding{{
-					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-						Name: "workspace",
-						ResourceRef: &v1beta1.PipelineResourceRef{
-							Name: "some-repo",
-						},
-					},
-				}},
-				Outputs: []v1beta1.TaskResourceBinding{
-					{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "image-to-use",
-							ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
-								Type: resourcev1alpha1.PipelineResourceTypeImage,
-								Params: []resourcev1alpha1.ResourceParam{{
-									Name:  "url",
-									Value: "gcr.io/sven",
-								}},
-							},
-						},
-						Paths: []string{"/pvc/unit-test-1/image-to-use"},
-					},
-					{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "some-repo",
-							},
-						},
-						Paths: []string{"/pvc/unit-test-1/workspace"},
-					},
-				},
-			},
-			Timeout: &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
-
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success",
+			"test-pipeline", "unit-test-1", false),
+		`
+spec:
+  params:
+  - name: foo
+    value: somethingfun
+  - name: bar
+    value: somethingmorefun
+  - name: templatedparam
+    value: $(inputs.workspace.revision)
+  - name: contextRunParam
+    value: test-pipeline-run-success
+  - name: contextPipelineParam
+    value: test-pipeline
+  - name: contextRetriesParam
+    value: "5"
+  resources:
+    inputs:
+    - name: workspace
+      resourceRef:
+        apiVersion: tekton.dev/v1alpha1
+        name: some-repo
+    outputs:
+    - name: image-to-use
+      paths:
+      - /pvc/unit-test-1/image-to-use
+      resourceSpec:
+        params:
+        - name: url
+          value: gcr.io/sven
+        type: image
+    - name: workspace
+      paths:
+      - /pvc/unit-test-1/workspace
+      resourceRef:
+        apiVersion: tekton.dev/v1alpha1
+        name: some-repo
+  serviceAccountName: test-sa
+  taskRef:
+    name: unit-test-task
+  timeout: 1h0m0s
+`)
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
@@ -669,26 +572,17 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// This PipelineRun is in progress now and the status should reflect that
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil || condition.Status != corev1.ConditionUnknown {
-		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
-	}
-	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
-		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
-	}
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 
-	if len(reconciledRun.Status.TaskRuns) != 2 {
-		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
-	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1"]; !exists {
-		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
-	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-cluster-task"]; !exists {
-		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
-	}
+	tr1Name := "test-pipeline-run-success-unit-test-1"
+	tr2Name := "test-pipeline-run-success-unit-test-cluster-task"
+
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 2)
+	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, tr1Name, tr2Name)
 
 	// A PVC should have been created to deal with output -> input linking
 	ensurePVCCreated(prt.TestAssets.Ctx, t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
+
 }
 
 // TestReconcile_CustomTask runs "Reconcile" on a PipelineRun with one Custom
@@ -697,220 +591,163 @@ func TestReconcile(t *testing.T) {
 func TestReconcile_CustomTask(t *testing.T) {
 	names.TestingSeed()
 	const pipelineRunName = "test-pipelinerun"
-	const pipelineTaskName = "custom-task"
 	const namespace = "namespace"
+
+	simpleCustomTaskPRYAML := `metadata:
+  name: test-pipelinerun
+  namespace: namespace
+spec:
+  pipelineSpec:
+    tasks:
+    - name: custom-task
+      params:
+      - name: param1
+        value: value1
+      retries: 3
+      taskRef:
+        apiVersion: example.dev/v0
+        kind: Example
+`
+	simpleCustomTaskWantRunYAML := `metadata:
+  annotations: {}
+  labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: test-pipelinerun
+    tekton.dev/pipelineRun: test-pipelinerun
+    tekton.dev/pipelineTask: custom-task
+  name: test-pipelinerun-custom-task
+  namespace: namespace
+  ownerReferences:
+  - apiVersion: tekton.dev/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: PipelineRun
+    name: test-pipelinerun
+spec:
+  params:
+  - name: param1
+    value: value1
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+  retries: 3
+  serviceAccountName: default
+  timeout: 1h0m0s
+`
+
 	tcs := []struct {
-		name    string
-		pr      *v1beta1.PipelineRun
-		wantRun *v1alpha1.Run
+		name           string
+		pr             *v1beta1.PipelineRun
+		wantRun        *v1alpha1.Run
+		embeddedStatus string
 	}{{
-		name: "simple custom task with taskRef",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      pipelineRunName,
-				Namespace: namespace,
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name:    pipelineTaskName,
-						Retries: 3,
-						Params: []v1beta1.Param{{
-							Name:  "param1",
-							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
-						}},
-						TaskRef: &v1beta1.TaskRef{
-							APIVersion: "example.dev/v0",
-							Kind:       "Example",
-						},
-					}},
-				},
-			},
-		},
-		wantRun: &v1alpha1.Run{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-pipelinerun-custom-task",
-				Namespace: namespace,
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1beta1",
-					Kind:               "PipelineRun",
-					Name:               pipelineRunName,
-					Controller:         &trueb,
-					BlockOwnerDeletion: &trueb,
-				}},
-				Labels: map[string]string{
-					"tekton.dev/pipeline":     pipelineRunName,
-					"tekton.dev/pipelineRun":  pipelineRunName,
-					"tekton.dev/pipelineTask": pipelineTaskName,
-					pipeline.MemberOfLabelKey: v1beta1.PipelineTasks,
-				},
-				Annotations: map[string]string{},
-			},
-			Spec: v1alpha1.RunSpec{
-				Retries: 3,
-				Params: []v1beta1.Param{{
-					Name:  "param1",
-					Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
-				}},
-				Timeout: &metav1.Duration{Duration: time.Hour},
-				Ref: &v1beta1.TaskRef{
-					APIVersion: "example.dev/v0",
-					Kind:       "Example",
-				},
-				ServiceAccountName: "default",
-			},
-		},
+		name:    "simple custom task with taskRef",
+		pr:      parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+		wantRun: parse.MustParseRun(t, simpleCustomTaskWantRunYAML),
+	}, {
+		name:           "simple custom task with full embedded status",
+		pr:             parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+		wantRun:        parse.MustParseRun(t, simpleCustomTaskWantRunYAML),
+		embeddedStatus: config.FullEmbeddedStatus,
+	}, {
+		name:           "simple custom task with minimal embedded status",
+		pr:             parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+		wantRun:        parse.MustParseRun(t, simpleCustomTaskWantRunYAML),
+		embeddedStatus: config.MinimalEmbeddedStatus,
 	}, {
 		name: "simple custom task with taskSpec",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      pipelineRunName,
-				Namespace: namespace,
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name: pipelineTaskName,
-						Params: []v1beta1.Param{{
-							Name:  "param1",
-							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
-						}},
-						TaskSpec: &v1beta1.EmbeddedTask{
-							TypeMeta: runtime.TypeMeta{
-								APIVersion: "example.dev/v0",
-								Kind:       "Example",
-							},
-							Metadata: v1beta1.PipelineTaskMetadata{Labels: map[string]string{"test-label": "test"}},
-							Spec: runtime.RawExtension{
-								Raw: []byte(`{"field1":123,"field2":"value"}`),
-							},
-						},
-					}},
-				},
-			},
-		},
-		wantRun: &v1alpha1.Run{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-pipelinerun-custom-task",
-				Namespace: namespace,
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1beta1",
-					Kind:               "PipelineRun",
-					Name:               pipelineRunName,
-					Controller:         &trueb,
-					BlockOwnerDeletion: &trueb,
-				}},
-				Labels: map[string]string{
-					"tekton.dev/pipeline":     pipelineRunName,
-					"tekton.dev/pipelineRun":  pipelineRunName,
-					"tekton.dev/pipelineTask": pipelineTaskName,
-					pipeline.MemberOfLabelKey: v1beta1.PipelineTasks,
-				},
-				Annotations: map[string]string{},
-			},
-			Spec: v1alpha1.RunSpec{
-				Params: []v1beta1.Param{{
-					Name:  "param1",
-					Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "value1"},
-				}},
-				Spec: &v1alpha1.EmbeddedRunSpec{
-					TypeMeta: runtime.TypeMeta{
-						APIVersion: "example.dev/v0",
-						Kind:       "Example",
-					},
-					Metadata: v1beta1.PipelineTaskMetadata{Labels: map[string]string{"test-label": "test"}},
-					Spec: runtime.RawExtension{
-						Raw: []byte(`{"field1":123,"field2":"value"}`),
-					},
-				},
-				ServiceAccountName: "default",
-				Timeout:            &metav1.Duration{Duration: time.Hour},
-			},
-		},
+		pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipelinerun
+  namespace: namespace
+spec:
+  pipelineSpec:
+    tasks:
+    - name: custom-task
+      params:
+      - name: param1
+        value: value1
+      taskSpec:
+        apiVersion: example.dev/v0
+        kind: Example
+        metadata:
+          labels:
+            test-label: test
+        spec:
+          field1: 123
+          field2: value
+`),
+		wantRun: mustParseRunWithObjectMeta(t,
+			taskRunObjectMeta("test-pipelinerun-custom-task", "namespace", "test-pipelinerun", "test-pipelinerun", "custom-task", false),
+			`
+spec:
+  params:
+  - name: param1
+    value: value1
+  serviceAccountName: default
+  spec:
+    apiVersion: example.dev/v0
+    kind: Example
+    metadata:
+      labels:
+        test-label: test
+    spec:
+      field1: 123
+      field2: value
+  timeout: 1h0m0s
+`),
 	}, {
 		name: "custom task with workspace",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      pipelineRunName,
-				Namespace: namespace,
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineSpec: &v1beta1.PipelineSpec{
-					Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{Name: "pipelinews"}},
-					Tasks: []v1beta1.PipelineTask{{
-						Name: pipelineTaskName,
-						TaskRef: &v1beta1.TaskRef{
-							APIVersion: "example.dev/v0",
-							Kind:       "Example",
-						},
-						Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-							Name:      "taskws",
-							Workspace: "pipelinews",
-							SubPath:   "bar",
-						}},
-					}},
-				},
-				Workspaces: []v1beta1.WorkspaceBinding{{
-					Name:    "pipelinews",
-					SubPath: "foo",
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "myclaim",
-						ReadOnly:  false,
-					}},
-				},
-			},
-		},
-		wantRun: &v1alpha1.Run{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-pipelinerun-custom-task",
-				Namespace: namespace,
-				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion:         "tekton.dev/v1beta1",
-					Kind:               "PipelineRun",
-					Name:               pipelineRunName,
-					Controller:         &trueb,
-					BlockOwnerDeletion: &trueb,
-				}},
-				Labels: map[string]string{
-					"tekton.dev/pipeline":     pipelineRunName,
-					"tekton.dev/pipelineRun":  pipelineRunName,
-					"tekton.dev/pipelineTask": pipelineTaskName,
-					pipeline.MemberOfLabelKey: v1beta1.PipelineTasks,
-				},
-				Annotations: map[string]string{
+		pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipelinerun
+  namespace: namespace
+spec:
+  pipelineSpec:
+    tasks:
+    - name: custom-task
+      taskRef:
+        apiVersion: example.dev/v0
+        kind: Example
+      workspaces:
+      - name: taskws
+        subPath: bar
+        workspace: pipelinews
+    workspaces:
+    - name: pipelinews
+  workspaces:
+  - name: pipelinews
+    persistentVolumeClaim:
+      claimName: myclaim
+    subPath: foo
+`),
+		wantRun: mustParseRunWithObjectMeta(t,
+			taskRunObjectMetaWithAnnotations("test-pipelinerun-custom-task", "namespace", "test-pipelinerun",
+				"test-pipelinerun", "custom-task", false, map[string]string{
 					"pipeline.tekton.dev/affinity-assistant": getAffinityAssistantName("pipelinews", pipelineRunName),
-				},
-			},
-			Spec: v1alpha1.RunSpec{
-				Ref: &v1beta1.TaskRef{
-					APIVersion: "example.dev/v0",
-					Kind:       "Example",
-				},
-				ServiceAccountName: "default",
-				Timeout:            &metav1.Duration{Duration: time.Hour},
-				Workspaces: []v1beta1.WorkspaceBinding{{
-					Name:    "taskws",
-					SubPath: "foo/bar",
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "myclaim",
-						ReadOnly:  false,
-					}},
-				},
-			},
-		},
+				}),
+			`
+spec:
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+  serviceAccountName: default
+  timeout: 1h0m0s
+  workspaces:
+  - name: taskws
+    persistentVolumeClaim:
+      claimName: myclaim
+    subPath: foo/bar
+`),
 	}}
-
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			embeddedStatus := tc.embeddedStatus
+			if embeddedStatus == "" {
+				embeddedStatus = config.DefaultEmbeddedStatus
+			}
+			cms := []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
 
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
@@ -932,25 +769,16 @@ func TestReconcile_CustomTask(t *testing.T) {
 
 			// Check that the expected Run was created.
 			actual := actions[0].(ktesting.CreateAction).GetObject()
-			if d := cmp.Diff(tc.wantRun, actual); d != "" {
+			// Ignore the TypeMeta field, because parse.MustParseRun automatically populates it but the "actual" Run won't have it.
+			if d := cmp.Diff(tc.wantRun, actual, cmpopts.IgnoreFields(v1alpha1.Run{}, "TypeMeta")); d != "" {
 				t.Errorf("expected to see Run created: %s", diff.PrintWantGot(d))
 			}
 
 			// This PipelineRun is in progress now and the status should reflect that
-			condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-			if condition == nil || condition.Status != corev1.ConditionUnknown {
-				t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
-			}
-			if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
-				t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
-			}
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 
-			if len(reconciledRun.Status.Runs) != 1 {
-				t.Errorf("Expected PipelineRun status to include one Run status, got %d", len(reconciledRun.Status.Runs))
-			}
-			if _, exists := reconciledRun.Status.Runs[tc.wantRun.Name]; !exists {
-				t.Errorf("Expected PipelineRun status to include Run status but was %v", reconciledRun.Status.Runs)
-			}
+			verifyRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 1)
+			verifyRunStatusesNames(t, embeddedStatus, reconciledRun.Status, tc.wantRun.Name)
 		})
 	}
 }
@@ -958,6 +786,36 @@ func TestReconcile_CustomTask(t *testing.T) {
 func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	// TestReconcile_PipelineSpecTaskSpec runs "Reconcile" on a PipelineRun that has an embedded PipelineSpec that has an embedded TaskSpec.
 	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcilePipelineSpecTaskSpec(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcilePipelineSpecTaskSpec(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
 
 	prs := []*v1beta1.PipelineRun{
@@ -988,6 +846,7 @@ spec:
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
+		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -998,13 +857,8 @@ spec:
 	}
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
 
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
-
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)[0]
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
 	expectedTaskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
 spec:
   taskSpec:
@@ -1028,13 +882,8 @@ spec:
 		t.Errorf("expected to see TaskRun PVC name set to %q created but got %s", "test-pipeline-run-success-pvc", expectedTaskRun.GetPipelineRunPVCName())
 	}
 
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
-	}
-
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-task-spec"]; !exists {
-		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
-	}
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 1)
+	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, "test-pipeline-run-success-unit-test-task-spec")
 }
 
 // TestReconcile_InvalidPipelineRuns runs "Reconcile" on several PipelineRuns that are invalid in different ways.
@@ -1448,13 +1297,7 @@ spec:
 			}
 
 			// Since the PipelineRun is invalid, the status should say it has failed
-			condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-			if condition == nil || condition.Status != corev1.ConditionFalse {
-				t.Errorf("Expected status to be failed on invalid PipelineRun but was: %v", condition)
-			}
-			if condition != nil && condition.Reason != tc.reason {
-				t.Errorf("Expected failure to be because of reason %q but was %s", tc.reason, condition.Reason)
-			}
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, tc.reason)
 			if !tc.hasNoDefaultLabels {
 				expectedPipelineLabel := reconciledRun.Name
 				// Embedded pipelines use the pipelinerun name
@@ -1521,33 +1364,25 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// in the PipelineRun status, that the completion status is not altered, that not error is returned and
 	// a successful event is triggered
 	taskRunName := "test-pipeline-run-completed-hello-world"
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-completed", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-		},
-		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionTrue,
-						Reason:  v1beta1.PipelineRunReasonSuccessful.String(),
-						Message: "All Tasks have completed executing",
-					},
-				},
-			},
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					taskRunName: {
-						PipelineTaskName: "hello-world-1",
-						Status:           &v1beta1.TaskRunStatus{},
-					},
-				},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-completed
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+status:
+  conditions:
+  - lastTransitionTime: null
+    message: All Tasks have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  taskRuns:
+    test-pipeline-run-completed-hello-world:
+      pipelineTaskName: hello-world-1
+`)}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	trs := []*v1beta1.TaskRun{createHelloWorldTaskRunWithStatus(t, taskRunName, "foo",
@@ -1614,84 +1449,128 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	}
 }
 
-func TestReconcileOnCancelledPipelineRunDeprecated(t *testing.T) {
-	// TestReconcileOnCancelledPipelineRunDeprecated runs "Reconcile" on a PipelineRun that has been cancelled.
-	// It verifies that reconcile is successful, the pipeline status updated and events generated.
-	// This test uses the deprecated status "PipelineRunCancelled" in PipelineRunSpec.
-	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled", v1beta1.PipelineRunSpecStatusCancelledDeprecated)}
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-hello-world", "foo",
-		"test-pipeline-run-cancelled", "test-pipeline")}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-cancelled\" was cancelled",
-	}
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-cancelled", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
-	}
-
-	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
-
-	// The PipelineRun should be still cancelled.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != ReasonCancelledDeprecated {
-		t.Errorf("Expected PipelineRun to be cancelled, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+func newFeatureFlagsConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data:       make(map[string]string),
 	}
 }
 
-func getConfigMapsWithEnabledAlphaAPIFields() []*corev1.ConfigMap {
-	return []*corev1.ConfigMap{{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-		Data:       map[string]string{apiFieldsFeatureFlag: config.AlphaAPIFields},
-	}}
+func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	newCM.Data[apiFieldsFeatureFlag] = config.AlphaAPIFields
+	return newCM
+}
+
+func withCustomTasks(cm *corev1.ConfigMap) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	newCM.Data[customTasksFeatureFlag] = "true"
+	return newCM
+}
+
+func withOCIBundles(cm *corev1.ConfigMap) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	newCM.Data[ociBundlesFeatureFlag] = "true"
+	return newCM
+}
+
+func withEmbeddedStatus(cm *corev1.ConfigMap, flagVal string) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	newCM.Data[embeddedStatusFeatureFlag] = flagVal
+	return newCM
 }
 
 func TestReconcileOnCancelledPipelineRun(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileOnCancelledPipelineRun(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcileOnCancelledPipelineRun(t *testing.T, embeddedStatus string) {
 	// TestReconcileOnCancelledPipelineRun runs "Reconcile" on a PipelineRun that has been cancelled.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled", v1beta1.PipelineRunSpecStatusCancelled)}
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-hello-world", "foo",
-		"test-pipeline-run-cancelled", "test-pipeline")}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
 
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-cancelled\" was cancelled",
-	}
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-cancelled", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+	testCases := []struct {
+		name       string
+		specStatus v1beta1.PipelineRunSpecStatus
+		reason     string
+	}{
+		{
+			name:       "cancelled",
+			specStatus: v1beta1.PipelineRunSpecStatusCancelled,
+			reason:     ReasonCancelled,
+		},
+		{
+			name:       "cancelled deprecated",
+			specStatus: v1beta1.PipelineRunSpecStatusCancelledDeprecated,
+			reason:     ReasonCancelledDeprecated,
+		},
 	}
 
-	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled", tc.specStatus)}
+			ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
+			ts := []*v1beta1.Task{simpleHelloWorldTask}
+			trs := []*v1beta1.TaskRun{createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-hello-world", "foo",
+				"test-pipeline-run-cancelled", "test-pipeline")}
+			cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
+
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+				TaskRuns:     trs,
+				ConfigMaps:   cms,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			wantEvents := []string{
+				"Warning Failed PipelineRun \"test-pipeline-run-cancelled\" was cancelled",
+			}
+			reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-cancelled", wantEvents, false)
+			actions := clients.Pipeline.Actions()
+
+			if reconciledRun.Status.CompletionTime == nil {
+				t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
+			}
+
+			// This PipelineRun should still be complete and false, and the status should reflect that
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, tc.reason)
+
+			// Check that no TaskRun is created or run
+			for _, action := range actions {
+				actionType := fmt.Sprintf("%T", action)
+				if !(actionType == "testing.UpdateActionImpl" || actionType == "testing.GetActionImpl") {
+					t.Errorf("Expected a TaskRun to be get/updated, but it was %s", actionType)
+				}
+			}
+		})
 	}
 }
 
@@ -1700,71 +1579,43 @@ func TestReconcileForCustomTaskWithPipelineTaskTimedOut(t *testing.T) {
 	// TestReconcileForCustomTaskWithPipelineTaskTimedOut runs "Reconcile" on a PipelineRun.
 	// It verifies that reconcile is successful, and the individual
 	// custom task which has timed out, is patched as cancelled.
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "test"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "hello-world-1",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "hello-world",
-				},
-			}},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: test
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      apiVersion: example.dev/v0
+      kind: Example
+`)}
 	prName := "test-pipeline-run-custom-task-with-timeout"
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(prName, "test"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-		},
-	}}
-	ps[0].Spec.Tasks[0].TaskRef = &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"}
-	startedRun := &v1alpha1.Run{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-custom-task-with-timeout-hello-world-1",
-			Namespace: "test",
-			OwnerReferences: []metav1.OwnerReference{{
-				Kind: "PipelineRun",
-				Name: prName,
-			}},
-			Labels: map[string]string{
-				pipeline.PipelineLabelKey:     "test-pipeline",
-				pipeline.PipelineRunLabelKey:  prName,
-				pipeline.PipelineTaskLabelKey: "hello-world-1",
-			},
-			Annotations: map[string]string{},
-		},
-		Spec: v1alpha1.RunSpec{
-			Timeout: &metav1.Duration{Duration: time.Minute},
-			Ref: &v1beta1.TaskRef{
-				APIVersion: "example.dev/v0",
-				Kind:       "Example",
-			},
-		},
-		Status: v1alpha1.RunStatus{
-			RunStatusFields: v1alpha1.RunStatusFields{
-				StartTime: &metav1.Time{Time: now.Add(-61 * time.Second)},
-			},
-			Status: duckv1.Status{
-				Conditions: []apis.Condition{
-					{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionUnknown,
-					},
-				},
-			},
-		},
-	}
-	runs := []*v1alpha1.Run{startedRun}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-custom-task-with-timeout
+  namespace: test
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+`)}
+	runs := []*v1alpha1.Run{mustParseRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-custom-task-with-timeout-hello-world-1", "test", "test-pipeline-run-custom-task-with-timeout",
+			"test-pipeline", "hello-world-1", true),
+		`
+spec:
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+  timeout: 1m0s
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+  startTime: "2021-12-31T23:58:59Z"
+`)}
+	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -1786,7 +1637,7 @@ func TestReconcileForCustomTaskWithPipelineTaskTimedOut(t *testing.T) {
 	}
 
 	// The patch operation to cancel the run must be executed.
-	got := []jsonpatch.Operation{}
+	var got []jsonpatch.Operation
 	for _, a := range actions {
 		if action, ok := a.(ktesting.PatchAction); ok {
 			if a.(ktesting.PatchAction).Matches("patch", "runs") {
@@ -1827,40 +1678,34 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 		timeouts: &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: 12 * time.Hour}},
 	}} {
 		t.Run(tc.name, func(*testing.T) {
-			ps := []*v1beta1.Pipeline{{
-				ObjectMeta: baseObjectMeta("test-pipeline", "test"),
-				Spec: v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name:    "hello-world-1",
-						TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-					}},
-				},
-			}}
+			ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: test
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      apiVersion: example.dev/v0
+      kind: Example
+`)}
 
 			prName := "test-pipeline-run-custom-task"
-			prs := []*v1beta1.PipelineRun{{
-				ObjectMeta: baseObjectMeta(prName, "test"),
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-					ServiceAccountName: "test-sa",
-					Timeout:            tc.timeout,
-					Timeouts:           tc.timeouts,
-				},
-				Status: v1beta1.PipelineRunStatus{
-					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-						StartTime: &metav1.Time{Time: now.AddDate(0, 0, -1)},
-					},
-				},
-			}}
+			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-custom-task
+  namespace: test
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+status:
+  startTime: "2021-12-31T00:00:00Z"
+`)}
+			prs[0].Spec.Timeout = tc.timeout
+			prs[0].Spec.Timeouts = tc.timeouts
 
-			cms := []*corev1.ConfigMap{
-				{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-					Data: map[string]string{
-						"enable-custom-tasks": "true",
-					},
-				},
-			}
+			cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 			d := test.Data{
 				PipelineRuns: prs,
 				Pipelines:    ps,
@@ -1904,7 +1749,7 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 			}
 
 			// The patch operation to cancel the run must be executed.
-			got := []jsonpatch.Operation{}
+			var got []jsonpatch.Operation
 			for _, a := range actions {
 				if action, ok := a.(ktesting.PatchAction); ok {
 					if a.(ktesting.PatchAction).Matches("patch", "runs") {
@@ -1930,34 +1775,45 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 }
 
 func TestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T) {
+	testCases := []struct {
+		name        string
+		embeddedVal string
+	}{
+		{
+			name:        "default embedded status",
+			embeddedVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:        "full embedded status",
+			embeddedVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:        "both embedded status",
+			embeddedVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:        "minimal embedded status",
+			embeddedVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileOnCancelledRunFinallyPipelineRun(t, tc.embeddedVal)
+		})
+	}
+}
+
+func runTestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T, embeddedStatus string) {
 	// TestReconcileOnCancelledRunFinallyPipelineRun runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
-	ps := []*v1beta1.Pipeline{
-		parse.MustParsePipeline(t, `
-metadata:
-  name: test-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: hello-world-1
-      taskRef:
-        name: hello-world
-    - name: hello-world-2
-      taskRef:
-        name: hello-world
-      runAfter:
-        - hello-world-1
-`),
-	}
+	ps := []*v1beta1.Pipeline{helloWorldPipelineWithRunAfter(t)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -1977,9 +1833,7 @@ spec:
 	}
 
 	// There should be no task runs triggered for the pipeline tasks
-	if len(reconciledRun.Status.TaskRuns) != 0 {
-		t.Errorf("Expected PipelineRun status to have exactly no task runs, but was %v", len(reconciledRun.Status.TaskRuns))
-	}
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 0)
 
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
 		Name: "hello-world-1",
@@ -1990,10 +1844,39 @@ spec:
 	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
 		t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
 	}
-
 }
 
 func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask(t *testing.T, embeddedStatus string) {
 	// TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
@@ -2022,7 +1905,7 @@ spec:
 		simpleHelloWorldTask,
 		simpleSomeTask,
 	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
+	cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -2048,71 +1931,49 @@ spec:
 	}
 
 	// There should be exactly one task run triggered for the "final-task-1" final task
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Errorf("Expected PipelineRun status to have exactly one task run, but was %v", len(reconciledRun.Status.TaskRuns))
-	}
-
-	expectedTaskRunsStatus := &v1beta1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "final-task-1",
-		Status:           &v1beta1.TaskRunStatus{},
-	}
-	for _, taskRun := range reconciledRun.Status.TaskRuns {
-		if d := cmp.Diff(taskRun, expectedTaskRunsStatus); d != "" {
-			t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch %s", diff.PrintWantGot(d))
-		}
-	}
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 1)
+	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, "test-pipeline-run-cancelled-run-finally-final-task-1")
 }
 
 func TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask(t *testing.T) {
 	// TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful and completed tasks and running final tasks are left untouched.
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-cancelled-run-finally", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusCancelledRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"test-pipeline-run-cancelled-run-finally-hello-world": {
-						PipelineTaskName: "hello-world-1",
-						Status: &v1beta1.TaskRunStatus{
-							Status: duckv1beta1.Status{
-								Conditions: []apis.Condition{{
-									Type:   apis.ConditionSucceeded,
-									Status: corev1.ConditionTrue,
-								}},
-							},
-						},
-					},
-					"test-pipeline-run-cancelled-run-finally-final-task": {
-						PipelineTaskName: "final-task-1",
-						Status:           &v1beta1.TaskRunStatus{},
-					},
-				},
-			},
-		},
-	}}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "hello-world-1",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "hello-world",
-				},
-			}},
-			Finally: []v1beta1.PipelineTask{{
-				Name: "final-task-1",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "some-task",
-				},
-			}},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-cancelled-run-finally
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  status: CancelledRunFinally
+status:
+  startTime: "2022-01-01T00:00:00Z"
+  taskRuns:
+    test-pipeline-run-cancelled-run-finally-final-task:
+      pipelineTaskName: final-task-1
+    test-pipeline-run-cancelled-run-finally-hello-world:
+      pipelineTaskName: hello-world-1
+      status:
+        conditions:
+        - lastTransitionTime: null
+          status: "True"
+          type: Succeeded
+`)}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  finally:
+  - name: final-task-1
+    taskRef:
+      name: some-task
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+`)}
 	ts := []*v1beta1.Task{
 		simpleHelloWorldTask,
 		simpleSomeTask,
@@ -2127,14 +1988,11 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask(t *testin
 		createHelloWorldTaskRun(t, "test-pipeline-run-cancelled-run-finally-final-task", "foo",
 			"test-pipeline-run-cancelled-run-finally", "test-pipeline"),
 	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
-		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -2174,6 +2032,36 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 	// TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries runs "Reconcile" on a PipelineRun that has
 	// been gracefully cancelled. It verifies that reconcile is successful, the pipeline status updated and events generated.
 
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *testing.T, embeddedStatus string) {
 	// Pipeline has a DAG task "hello-world-1" and Finally task "hello-world-2"
 	ps := []*v1beta1.Pipeline{{
 		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
@@ -2204,24 +2092,36 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 			Status:             v1beta1.PipelineRunSpecStatusCancelledRunFinally,
 		},
 		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"test-pipeline-run-cancelled-run-finally-hello-world": {
-						PipelineTaskName: "hello-world-1",
-						Status: &v1beta1.TaskRunStatus{
-							Status: duckv1beta1.Status{
-								Conditions: []apis.Condition{{
-									Type:   apis.ConditionSucceeded,
-									Status: corev1.ConditionFalse,
-									Reason: v1beta1.TaskRunReasonCancelled.String(),
-								}},
-							},
-						},
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{},
+		},
+	}}
+
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		prs[0].Status.ChildReferences = append(prs[0].Status.ChildReferences, v1beta1.ChildStatusReference{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: v1beta1.SchemeGroupVersion.String(),
+				Kind:       "TaskRun",
+			},
+			Name:             "test-pipeline-run-cancelled-run-finally-hello-world",
+			PipelineTaskName: "hello-world-1",
+		})
+	}
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		prs[0].Status.TaskRuns = map[string]*v1beta1.PipelineRunTaskRunStatus{
+			"test-pipeline-run-cancelled-run-finally-hello-world": {
+				PipelineTaskName: "hello-world-1",
+				Status: &v1beta1.TaskRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+							Reason: v1beta1.TaskRunReasonCancelled.String(),
+						}},
 					},
 				},
 			},
-		},
-	}}
+		}
+	}
 
 	// TaskRun exists for DAG task "hello-world-1" that has failed with reason of cancellation
 	trs := []*v1beta1.TaskRun{createHelloWorldTaskRunWithStatus(t, "test-pipeline-run-cancelled-run-finally-hello-world", "foo",
@@ -2233,7 +2133,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 		})}
 
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
+	cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -2258,123 +2158,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 	}
 
 	// There should be two task runs (failed dag task and one triggered for the finally task)
-	if len(reconciledRun.Status.TaskRuns) != 2 {
-		t.Errorf("Expected PipelineRun status to have exactly two task runs, but was %v", len(reconciledRun.Status.TaskRuns))
-	}
-
-}
-
-func TestReconcileCancelledRunFinallyFailsTaskRunCancellation(t *testing.T) {
-	// TestReconcileCancelledRunFinallyFailsTaskRunCancellation runs "Reconcile" on a PipelineRun with a single TaskRun.
-	// The TaskRun cannot be cancelled. Check that the pipelinerun graceful cancel fails, that reconcile fails and
-	// an event is generated
-	names.TestingSeed()
-	ptName := "hello-world-1"
-	prName := "test-pipeline-fails-to-cancel"
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(prName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-			Status:      v1beta1.PipelineRunSpecStatusCancelledRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionUnknown,
-						Reason:  v1beta1.PipelineRunReasonRunning.String(),
-						Message: "running...",
-					},
-				},
-			},
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					prName + ptName: {
-						PipelineTaskName: ptName,
-						Status:           &v1beta1.TaskRunStatus{},
-					},
-				},
-				StartTime: &metav1.Time{Time: now},
-			},
-		},
-	}}
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{
-		simpleHelloWorldTask,
-	}
-	trs := []*v1beta1.TaskRun{
-		getTaskRun(
-			t,
-			"test-pipeline-fails-to-cancelhello-world-1",
-			prName,
-			"test-pipeline",
-			"hello-world",
-			corev1.ConditionUnknown,
-		),
-	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-		ConfigMaps:   cms,
-	}
-
-	testAssets, cancel := getPipelineRunController(t, d)
-	defer cancel()
-	c := testAssets.Controller
-	clients := testAssets.Clients
-	failingReactorActivated := true
-
-	// Make the patch call fail, i.e. make it so that the controller fails to cancel the TaskRun
-	clients.Pipeline.PrependReactor("patch", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
-		return failingReactorActivated, nil, fmt.Errorf("i'm sorry Dave, i'm afraid i can't do that")
-	})
-
-	err := c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-to-cancel")
-	if err == nil {
-		t.Errorf("Expected to see error returned from reconcile after failing to cancel TaskRun but saw none!")
-	}
-
-	// Check that the PipelineRun is still running with correct error message
-	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(testAssets.Ctx, "test-pipeline-fails-to-cancel", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
-	}
-
-	// The PipelineRun should not be cancelled b/c we couldn't cancel the TaskRun
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if !condition.IsUnknown() {
-		t.Errorf("Expected PipelineRun to still be running since the TaskRun could not be cancelled but succeeded condition is %v", condition.Status)
-	}
-	if condition.Reason != ReasonCouldntCancel {
-		t.Errorf("Expected PipelineRun condition to indicate the cancellation failed but reason was %s", condition.Reason)
-	}
-	// The event here is "Normal" because in case we fail to cancel we leave the condition to unknown
-	// Further reconcile might converge then the status of the pipeline.
-	// See https://github.com/tektoncd/pipeline/issues/2647 for further details.
-	wantEvents := []string{
-		"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
-		"Warning InternalError 1 error occurred",
-	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
-	if !(err == nil) {
-		t.Errorf(err.Error())
-	}
-
-	// Turn off failing reactor and retry reconciliation
-	failingReactorActivated = false
-
-	err = c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-to-cancel")
-	if err == nil {
-		// No error is ok
-	} else if ok, _ := controller.IsRequeueKey(err); !ok { // Requeue is also fine.
-		t.Errorf("Expected to cancel TaskRun successfully!")
-	}
-
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 2)
 }
 
 func TestReconcileTaskResolutionError(t *testing.T) {
@@ -2472,259 +2256,165 @@ func TestReconcileTaskResolutionError(t *testing.T) {
 	}
 }
 
-func TestReconcileOnStoppedRunFinallyPipelineRun(t *testing.T) {
-	// TestReconcileOnStoppedRunFinallyPipelineRun runs "Reconcile" on a PipelineRun that has been gracefully stopped
-	// and waits for all running tasks to be completed, before cancelling the run.
-	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-stopped-run-finally", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusStoppedRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-			},
-		},
-	}}
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
+func TestReconcileOnStoppedPipelineRun(t *testing.T) {
+	basePRYAML := fmt.Sprintf(`
+metadata:
+  name: "test-pipeline-run-stopped-run-finally"
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  status: %s
+status:
+  startTime: %s`, v1beta1.PipelineRunSpecStatusStoppedRunFinally, now.Format(time.RFC3339))
 
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled",
-	}
-	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-stopped-run-finally", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
-	}
-
-	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
-
-	if len(reconciledRun.Status.TaskRuns) != 0 {
-		t.Fatalf("Expected no TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
-	}
-
-	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "hello-world-1",
-	}}
-
-	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
-		t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
-	}
-
-}
-
-func TestReconcileOnStoppedRunFinallyPipelineRunWithRunningTask(t *testing.T) {
-	// TestReconcileOnStoppedRunFinallyPipelineRunWithRunningTask runs "Reconcile" on a PipelineRun that has been gracefully stopped
-	// and waits for all running tasks to be completed, before cancelling the run.
-	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-stopped-run-finally", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusStoppedRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"test-pipeline-run-stopped-run-finally-hello-world": {
-						PipelineTaskName: "hello-world-1",
-						Status:           &v1beta1.TaskRunStatus{},
-					},
+	testCases := []struct {
+		name                 string
+		pipeline             *v1beta1.Pipeline
+		taskRuns             []*v1beta1.TaskRun
+		initialTaskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus
+		expectedEvents       []string
+		hasNilCompletionTime bool
+		isFailed             bool
+		trInStatusCount      int
+		skippedTasks         []string
+	}{
+		{
+			name:                 "stopped PipelineRun",
+			pipeline:             simpleHelloWorldPipeline,
+			taskRuns:             nil,
+			initialTaskRunStatus: nil,
+			expectedEvents:       []string{"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled"},
+			hasNilCompletionTime: false,
+			isFailed:             true,
+			trInStatusCount:      0,
+			skippedTasks:         []string{"hello-world-1"},
+		}, {
+			name:     "with running task",
+			pipeline: simpleHelloWorldPipeline,
+			taskRuns: []*v1beta1.TaskRun{getTaskRun(
+				t,
+				"test-pipeline-run-stopped-run-finally-hello-world",
+				"test-pipeline-run-stopped-run-finally",
+				"test-pipeline",
+				"hello-world",
+				corev1.ConditionUnknown,
+			)},
+			initialTaskRunStatus: map[string]*v1beta1.PipelineRunTaskRunStatus{
+				"test-pipeline-run-stopped-run-finally-hello-world": {
+					PipelineTaskName: "hello-world-1",
+					Status:           &v1beta1.TaskRunStatus{},
 				},
 			},
-		},
-	}}
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{
-		getTaskRun(
-			t,
-			"test-pipeline-run-stopped-run-finally-hello-world",
-			"test-pipeline-run-stopped-run-finally",
-			"test-pipeline",
-			"hello-world",
-			corev1.ConditionUnknown,
-		),
-	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Normal Started",
-	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-stopped-run-finally", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime != nil {
-		t.Errorf("Expected a CompletionTime to be nil on incomplete PipelineRun but was %v", reconciledRun.Status.CompletionTime)
-	}
-
-	// This PipelineRun should still be complete and unknown, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
-		t.Errorf("Expected PipelineRun status to be complete and unknown, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
-
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Fatalf("Expected 1 TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
-	}
-
-	actions := clients.Pipeline.Actions()
-	patchCount := 0
-	for _, action := range actions {
-		if _, ok := action.(ktesting.PatchAction); ok {
-			patchCount++
-		}
-	}
-	if patchCount != 0 {
-		t.Errorf("Expected no patch action, but was %v", patchCount)
-	}
-}
-
-func TestReconcileOnStoppedPipelineRunWithCompletedTask(t *testing.T) {
-	// TestReconcileOnStoppedPipelineRunWithCompletedTask runs "Reconcile" on a PipelineRun that has been gracefully stopped
-	// and waits for all running tasks to be completed, before stopping the run.
-	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-stopped", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusStoppedRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"test-pipeline-run-stopped-hello-world": {
-						PipelineTaskName: "hello-world-1",
-						Status:           &v1beta1.TaskRunStatus{},
-					},
+			expectedEvents:       []string{"Normal Started"},
+			hasNilCompletionTime: true,
+			isFailed:             false,
+			trInStatusCount:      1,
+			skippedTasks:         nil,
+		}, {
+			name:     "with completed task",
+			pipeline: helloWorldPipelineWithRunAfter(t),
+			taskRuns: []*v1beta1.TaskRun{getTaskRun(
+				t,
+				"test-pipeline-run-stopped-run-finally-hello-world",
+				"test-pipeline-run-stopped-run-finally",
+				"test-pipeline",
+				"hello-world",
+				corev1.ConditionTrue,
+			)},
+			initialTaskRunStatus: map[string]*v1beta1.PipelineRunTaskRunStatus{
+				"test-pipeline-run-stopped-run-finally-hello-world": {
+					PipelineTaskName: "hello-world-1",
+					Status:           &v1beta1.TaskRunStatus{},
 				},
 			},
+			expectedEvents:       []string{"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled"},
+			hasNilCompletionTime: false,
+			isFailed:             true,
+			trInStatusCount:      1,
+			skippedTasks:         []string{"hello-world-2"},
 		},
-	}}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					RunAfter: []string{"hello-world-1"},
-				},
-			},
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-	trs := []*v1beta1.TaskRun{
-		getTaskRun(
-			t,
-			"test-pipeline-run-stopped-hello-world",
-			"test-pipeline-run-stopped",
-			"test-pipeline",
-			"hello-world",
-			corev1.ConditionTrue,
-		),
-	}
-	cms := getConfigMapsWithEnabledAlphaAPIFields()
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		TaskRuns:     trs,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-stopped\" was cancelled",
-	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-stopped", wantEvents, false)
-
-	if reconciledRun.Status.CompletionTime == nil {
-		t.Errorf("Expected a CompletionTime on invalid PipelineRun but was nil")
 	}
 
-	// This PipelineRun should still be complete and false, and the status should reflect that
-	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-		t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := parse.MustParsePipelineRun(t, basePRYAML)
+			if tc.initialTaskRunStatus != nil {
+				pr.Status.TaskRuns = tc.initialTaskRunStatus
+			}
+			ps := []*v1beta1.Pipeline{tc.pipeline}
+			ts := []*v1beta1.Task{simpleHelloWorldTask}
+			d := test.Data{
+				PipelineRuns: []*v1beta1.PipelineRun{pr},
+				Pipelines:    ps,
+				Tasks:        ts,
+				TaskRuns:     tc.taskRuns,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
 
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Fatalf("Expected 1 TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
-	}
+			var wantEvents []string
 
-	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "hello-world-2",
-	}}
+			for _, we := range tc.expectedEvents {
+				wantEvents = append(wantEvents, we)
+			}
 
-	if d := cmp.Diff(expectedSkippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
-		t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
-	}
+			reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-stopped-run-finally", wantEvents, false)
 
-	actions := clients.Pipeline.Actions()
-	patchCount := 0
-	for _, action := range actions {
-		if _, ok := action.(ktesting.PatchAction); ok {
-			patchCount++
-		}
-	}
-	if patchCount != 0 {
-		t.Errorf("Expected no patch action, but was %v", patchCount)
+			if (reconciledRun.Status.CompletionTime == nil) != tc.hasNilCompletionTime {
+				t.Errorf("Expected CompletionTime == nil to be %t on invalid PipelineRun but was %t", tc.hasNilCompletionTime, reconciledRun.Status.CompletionTime == nil)
+			}
+
+			if tc.isFailed && !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+				t.Errorf("Expected PipelineRun status to be complete and false, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+			} else if !tc.isFailed && !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
+				t.Errorf("Expected PipelineRun status to be complete and unknown, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+			}
+
+			if len(reconciledRun.Status.TaskRuns) != tc.trInStatusCount {
+				t.Fatalf("Expected %d TaskRuns in status but got %d", tc.trInStatusCount, len(reconciledRun.Status.TaskRuns))
+			}
+
+			var expectedSkipped []v1beta1.SkippedTask
+			for _, st := range tc.skippedTasks {
+				expectedSkipped = append(expectedSkipped, v1beta1.SkippedTask{Name: st})
+			}
+
+			if d := cmp.Diff(expectedSkipped, reconciledRun.Status.SkippedTasks); d != "" {
+				t.Fatalf("Didn't get the expected list of skipped tasks. Diff: %s", diff.PrintWantGot(d))
+			}
+
+			actions := clients.Pipeline.Actions()
+			patchCount := 0
+			for _, action := range actions {
+				if _, ok := action.(ktesting.PatchAction); ok {
+					patchCount++
+				}
+			}
+			if patchCount != 0 {
+				t.Errorf("Expected no patch action, but was %v", patchCount)
+			}
+		})
 	}
 }
 
 func TestReconcileOnPendingPipelineRun(t *testing.T) {
 	// TestReconcileOnPendingPipelineRun runs "Reconcile" on a PipelineRun that is pending.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-pending", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusPending,
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-pending
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  status: PipelineRunPending
+`)}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	ts := []*v1beta1.Task{}
-	trs := []*v1beta1.TaskRun{}
+	var ts []*v1beta1.Task
+	var trs []*v1beta1.TaskRun
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -2735,13 +2425,10 @@ func TestReconcileOnPendingPipelineRun(t *testing.T) {
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
 
-	wantEvents := []string{}
+	var wantEvents []string
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-pending", wantEvents, false)
 
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if !condition.IsUnknown() || condition.Reason != ReasonPending {
-		t.Errorf("Expected PipelineRun condition to indicate the pending failed but reason was %s", condition.Reason)
-	}
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonPending.String())
 
 	if reconciledRun.Status.StartTime != nil {
 		t.Errorf("Start time should be nil, not: %s", reconciledRun.Status.StartTime)
@@ -2752,19 +2439,18 @@ func TestReconcileWithTimeout(t *testing.T) {
 	// TestReconcileWithTimeout runs "Reconcile" on a PipelineRun that has timed out.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-with-timeout", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Timeout:            &metav1.Duration{Duration: 12 * time.Hour},
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now.AddDate(0, 0, -1)},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-timeout
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  timeout: 12h0m0s
+status:
+  startTime: "2021-12-31T00:00:00Z"
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
 	d := test.Data{
@@ -2789,13 +2475,8 @@ func TestReconcileWithTimeout(t *testing.T) {
 		t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 	}
 
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
-
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)[0]
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
 
 	// The TaskRun timeout should be less than or equal to the PipelineRun timeout.
 	if actual.Spec.Timeout.Duration > prs[0].Spec.Timeout.Duration {
@@ -2806,32 +2487,28 @@ func TestReconcileWithTimeout(t *testing.T) {
 func TestReconcileWithoutPVC(t *testing.T) {
 	// TestReconcileWithoutPVC runs "Reconcile" on a PipelineRun that has two unrelated tasks.
 	// It verifies that reconcile is successful and that no PVC is created
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-			},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+`)}
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
 	d := test.Data{
@@ -2861,204 +2538,170 @@ func TestReconcileWithoutPVC(t *testing.T) {
 }
 
 func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
-	// TestReconcileCancelledFailsTaskRunCancellation runs "Reconcile" on a PipelineRun with a single TaskRun.
-	// The TaskRun cannot be cancelled. Check that the pipelinerun cancel fails, that reconcile fails and
-	// an event is generated
-	names.TestingSeed()
-	ptName := "hello-world-1"
 	prName := "test-pipeline-fails-to-cancel"
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(prName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-			Status:      v1beta1.PipelineRunSpecStatusCancelled,
+
+	testCases := []struct {
+		name       string
+		specStatus v1beta1.PipelineRunSpecStatus
+	}{
+		{
+			name:       "cancelled",
+			specStatus: v1beta1.PipelineRunSpecStatusCancelled,
 		},
-		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionUnknown,
-						Reason:  v1beta1.PipelineRunReasonRunning.String(),
-						Message: "running...",
-					},
-				},
-			},
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					prName + ptName: {
-						PipelineTaskName: ptName,
-						Status:           &v1beta1.TaskRunStatus{},
-					},
-				},
-				StartTime: &metav1.Time{Time: now},
-			},
+		{
+			name:       "cancelled run finally",
+			specStatus: v1beta1.PipelineRunSpecStatusCancelledRunFinally,
 		},
-	}}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-			},
-		},
-	}}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
 	}
 
-	testAssets, cancel := getPipelineRunController(t, d)
-	defer cancel()
-	c := testAssets.Controller
-	clients := testAssets.Clients
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
 
-	// Make the patch call fail, i.e. make it so that the controller fails to cancel the TaskRun
-	clients.Pipeline.PrependReactor("patch", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
-		return true, nil, fmt.Errorf("i'm sorry Dave, i'm afraid i can't do that")
-	})
+			// TestReconcileCancelledFailsTaskRunCancellation runs "Reconcile" on a PipelineRun with a single TaskRun.
+			// The TaskRun cannot be cancelled. Check that the pipelinerun cancel fails, that reconcile fails and
+			// an event is generated
+			names.TestingSeed()
+			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline-fails-to-cancel
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  status: %s
+status:
+  conditions:
+  - message: running...
+    reason: Running
+    status: Unknown
+    type: Succeeded
+  startTime: "2022-01-01T00:00:00Z"
+  taskRuns:
+    test-pipeline-fails-to-cancelhello-world-1:
+      pipelineTaskName: hello-world-1
+`, tc.specStatus))}
+			ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+`)}
+			tasks := []*v1beta1.Task{simpleHelloWorldTask}
+			taskRuns := []*v1beta1.TaskRun{
+				getTaskRun(
+					t,
+					"test-pipeline-fails-to-cancelhello-world-1",
+					prName,
+					"test-pipeline",
+					"hello-world",
+					corev1.ConditionUnknown,
+				),
+			}
 
-	err := c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-to-cancel")
-	if err == nil {
-		t.Errorf("Expected to see error returned from reconcile after failing to cancel TaskRun but saw none!")
-	}
+			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
 
-	// Check that the PipelineRun is still running with correct error message
-	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(testAssets.Ctx, "test-pipeline-fails-to-cancel", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
-	}
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        tasks,
+				TaskRuns:     taskRuns,
+				ConfigMaps:   cms,
+			}
 
-	if val, ok := reconciledRun.GetLabels()[pipeline.PipelineLabelKey]; !ok {
-		t.Fatalf("expected pipeline label")
-	} else if d := cmp.Diff("test-pipeline", val); d != "" {
-		t.Errorf("expected to see pipeline label. Diff %s", diff.PrintWantGot(d))
-	}
+			testAssets, cancel := getPipelineRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+			failingReactorActivated := true
 
-	// The PipelineRun should not be cancelled b/c we couldn't cancel the TaskRun
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if !condition.IsUnknown() {
-		t.Errorf("Expected PipelineRun to still be running since the TaskRun could not be cancelled but succeeded condition is %v", condition.Status)
-	}
-	if condition.Reason != ReasonCouldntCancel {
-		t.Errorf("Expected PipelineRun condition to indicate the cancellation failed but reason was %s", condition.Reason)
-	}
-	// The event here is "Normal" because in case we fail to cancel we leave the condition to unknown
-	// Further reconcile might converge then the status of the pipeline.
-	// See https://github.com/tektoncd/pipeline/issues/2647 for further details.
-	wantEvents := []string{
-		"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
-		"Warning InternalError 1 error occurred",
-	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
-	if !(err == nil) {
-		t.Errorf(err.Error())
+			// Make the patch call fail, i.e. make it so that the controller fails to cancel the TaskRun
+			clients.Pipeline.PrependReactor("patch", "taskruns", func(action ktesting.Action) (bool, runtime.Object, error) {
+				return failingReactorActivated, nil, fmt.Errorf("i'm sorry Dave, i'm afraid i can't do that")
+			})
+
+			err := c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-to-cancel")
+			if err == nil {
+				t.Errorf("Expected to see error returned from reconcile after failing to cancel TaskRun but saw none!")
+			}
+
+			// Check that the PipelineRun is still running with correct error message
+			reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(testAssets.Ctx, "test-pipeline-fails-to-cancel", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+			}
+
+			if val, ok := reconciledRun.GetLabels()[pipeline.PipelineLabelKey]; !ok {
+				t.Fatalf("expected pipeline label")
+			} else if d := cmp.Diff("test-pipeline", val); d != "" {
+				t.Errorf("expected to see pipeline label. Diff %s", diff.PrintWantGot(d))
+			}
+
+			// The PipelineRun should not be cancelled b/c we couldn't cancel the TaskRun
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, ReasonCouldntCancel)
+			// The event here is "Normal" because in case we fail to cancel we leave the condition to unknown
+			// Further reconcile might converge then the status of the pipeline.
+			// See https://github.com/tektoncd/pipeline/issues/2647 for further details.
+			wantEvents := []string{
+				"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
+				"Warning InternalError 1 error occurred",
+			}
+			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+
+			// Turn off failing reactor and retry reconciliation
+			failingReactorActivated = false
+
+			err = c.Reconciler.Reconcile(testAssets.Ctx, "foo/test-pipeline-fails-to-cancel")
+			if err == nil {
+				// No error is ok
+			} else if ok, _ := controller.IsRequeueKey(err); !ok { // Requeue is also fine.
+				t.Errorf("Expected to cancel TaskRun successfully!")
+			}
+		})
 	}
 }
 
-func TestReconcileCancelledPipelineRun(t *testing.T) {
-	// TestReconcileCancelledPipelineRun runs "Reconcile" on a PipelineRun that has been cancelled.
-	// The PipelineRun had no TaskRun associated yet, and no TaskRun should have been created.
-	// It verifies that reconcile is successful, the pipeline status updated and events generated.
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "hello-world-1",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "hello-world",
-				},
-				Retries: 1,
-			}},
-		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-cancelled", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-			Status:      v1beta1.PipelineRunSpecStatusCancelled,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				StartTime: &metav1.Time{Time: now},
-			},
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Warning Failed PipelineRun \"test-pipeline-run-cancelled\" was cancelled",
-	}
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-cancelled", wantEvents, false)
-	actions := clients.Pipeline.Actions()
-
-	// The PipelineRun should be still cancelled.
-	if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != ReasonCancelled {
-		t.Errorf("Expected PipelineRun to be cancelled, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
-	}
-
-	// Check that no TaskRun is created or run
-	for _, action := range actions {
-		actionType := fmt.Sprintf("%T", action)
-		if !(actionType == "testing.UpdateActionImpl" || actionType == "testing.GetActionImpl") {
-			t.Errorf("Expected a TaskRun to be get/updated, but it was %s", actionType)
-		}
-	}
-}
-
-func TestReconcilePropagateLabels(t *testing.T) {
+func TestReconcilePropagateLabelsAndAnnotations(t *testing.T) {
 	names.TestingSeed()
 
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-with-labels",
-			Namespace: "foo",
-			Labels: map[string]string{
-				"PipelineRunLabel":        "PipelineRunValue",
-				pipeline.PipelineLabelKey: "WillNotBeUsed",
-			},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  labels:
+    PipelineRunLabel: PipelineRunValue
+    tekton.dev/pipeline: WillNotBeUsed
+  name: test-pipeline-run-with-labels
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
-	expectedObjectMeta := taskRunObjectMeta("test-pipeline-run-with-labels-hello-world-1", "foo", "test-pipeline-run-with-labels", "test-pipeline", "hello-world-1", false)
+	expectedObjectMeta := taskRunObjectMeta("test-pipeline-run-with-labels-hello-world-1", "foo", "test-pipeline-run-with-labels",
+		"test-pipeline", "hello-world-1", false)
 	expectedObjectMeta.Labels["PipelineRunLabel"] = "PipelineRunValue"
-	expected := &v1beta1.TaskRun{
-		ObjectMeta: expectedObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
+	expectedObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
+	expected := mustParseTaskRunWithObjectMeta(t, expectedObjectMeta, `
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+`)
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -3069,140 +2712,109 @@ func TestReconcilePropagateLabels(t *testing.T) {
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)[0]
-	if d := cmp.Diff(actual, expected); d != "" {
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	// We're ignoring TypeMeta here because parse.MustParseTaskRun populates that, but ktesting does not, so actual does not have it.
+	if d := cmp.Diff(expected, actual, cmpopts.IgnoreTypes(metav1.TypeMeta{})); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, diff.PrintWantGot(d))
 	}
 }
 
-func TestReconcilePropagateLabelsPending(t *testing.T) {
-	names.TestingSeed()
-
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-with-labels",
-			Namespace: "foo",
-			Labels: map[string]string{
-				"PipelineRunLabel":        "PipelineRunValue",
-				pipeline.PipelineLabelKey: "WillNotBeUsed",
-			},
+func TestReconcilePropagateLabelsWithSpecStatus(t *testing.T) {
+	testCases := []struct {
+		name       string
+		specStatus v1beta1.PipelineRunSpecStatus
+	}{
+		{
+			name:       "pending",
+			specStatus: v1beta1.PipelineRunSpecStatusPending,
+		}, {
+			name:       "cancelled",
+			specStatus: v1beta1.PipelineRunSpecStatusCancelled,
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusPending,
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
-
-	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-labels", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("unexpected error when updating status: %v", err)
 	}
 
-	want := "test-pipeline"
-	got := reconciledRun.ObjectMeta.Labels["tekton.dev/pipeline"]
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("expected to see label %v created. Diff %s", want, diff.PrintWantGot(d))
-	}
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
 
-func TestReconcilePropagateLabelsCancelled(t *testing.T) {
-	names.TestingSeed()
+			ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
+			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  labels:
+    PipelineRunLabel: PipelineRunValue
+    tekton.dev/pipeline: WillNotBeUsed
+  name: test-pipeline-run-with-labels
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  status: %s
+`, tc.specStatus))}
 
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-with-labels",
-			Namespace: "foo",
-			Labels: map[string]string{
-				"PipelineRunLabel":        "PipelineRunValue",
-				pipeline.PipelineLabelKey: "WillNotBeUsed",
-			},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Status:             v1beta1.PipelineRunSpecStatusCancelled,
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
+			ts := []*v1beta1.Task{simpleHelloWorldTask}
 
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
 
-	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
+			_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
 
-	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-labels", metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("unexpected error when updating status: %v", err)
-	}
+			reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-labels", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("unexpected error when updating status: %v", err)
+			}
 
-	want := "test-pipeline"
-	got := reconciledRun.ObjectMeta.Labels["tekton.dev/pipeline"]
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("expected to see label %v created. Diff %s", want, diff.PrintWantGot(d))
+			want := "test-pipeline"
+			got := reconciledRun.ObjectMeta.Labels["tekton.dev/pipeline"]
+			if d := cmp.Diff(want, got); d != "" {
+				t.Errorf("expected to see label %v created. Diff %s", want, diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
 func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 	names.TestingSeed()
 
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-0",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world-task",
-					},
-				},
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world-task",
-					},
-				},
-			},
-		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-different-service-accs", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa-0",
-			ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{
-				TaskName:           "hello-world-1",
-				ServiceAccountName: "test-sa-1",
-			}},
-		},
-	}}
-	ts := []*v1beta1.Task{
-		{ObjectMeta: baseObjectMeta("hello-world-task", "foo")},
-	}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-0
+    taskRef:
+      name: hello-world-task
+  - name: hello-world-1
+    taskRef:
+      name: hello-world-task
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+  serviceAccountNames:
+  - serviceAccountName: test-sa-1
+    taskName: hello-world-1
+`)}
+	ts := []*v1beta1.Task{parse.MustParseTask(t, `
+metadata:
+  name: hello-world-task
+  namespace: foo
+`)}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -3217,36 +2829,35 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 	taskRunNames := []string{"test-pipeline-run-different-service-accs-hello-world-0", "test-pipeline-run-different-service-accs-hello-world-1"}
 
 	expectedTaskRuns := []*v1beta1.TaskRun{
-		{
-			ObjectMeta: taskRunObjectMeta(taskRunNames[0], "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "hello-world-0", false),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: "hello-world-task",
-				},
-				ServiceAccountName: "test-sa-0",
-				Resources:          &v1beta1.TaskRunResources{},
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-		},
-		{
-			ObjectMeta: taskRunObjectMeta(taskRunNames[1], "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "hello-world-1", false),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: "hello-world-task",
-				},
-				ServiceAccountName: "test-sa-1",
-				Resources:          &v1beta1.TaskRunResources{},
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-		},
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta(taskRunNames[0], "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "hello-world-0", false),
+			`
+spec:
+  resources: {}
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: hello-world-task
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta(taskRunNames[1], "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "hello-world-1", false),
+			`
+spec:
+  resources: {}
+  serviceAccountName: test-sa-1
+  taskRef:
+    name: hello-world-task
+  timeout: 1h0m0s
+`),
 	}
+
 	for i := range ps[0].Spec.Tasks {
 		// Check that the expected TaskRun was created
 		actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(prt.TestAssets.Ctx, taskRunNames[i], metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("Expected a TaskRun to be created, but it wasn't: %s", err)
 		}
-		if d := cmp.Diff(actual, expectedTaskRuns[i], ignoreResourceVersion); d != "" {
+		if d := cmp.Diff(actual, expectedTaskRuns[i], ignoreResourceVersion, ignoreTypeMeta); d != "" {
 			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i], diff.PrintWantGot(d))
 		}
 
@@ -3256,43 +2867,36 @@ func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 func TestReconcileCustomTasksWithDifferentServiceAccounts(t *testing.T) {
 	names.TestingSeed()
 
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name:    "hello-world-0",
-					TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-				},
-				{
-					Name:    "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-				},
-			},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-0
+    taskRef:
+      apiVersion: example.dev/v0
+      kind: Example
+  - name: hello-world-1
+    taskRef:
+      apiVersion: example.dev/v0
+      kind: Example
+`)}
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-different-service-accs", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa-0",
-			ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{
-				TaskName:           "hello-world-1",
-				ServiceAccountName: "test-sa-1",
-			}},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+  serviceAccountNames:
+  - serviceAccountName: test-sa-1
+    taskName: hello-world-1
+`)}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
-
+	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -3344,59 +2948,47 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ps := []*v1beta1.Pipeline{{
-				ObjectMeta: baseObjectMeta("test-pipeline-retry", "foo"),
-				Spec: v1beta1.PipelineSpec{
-					Tasks: []v1beta1.PipelineTask{{
-						Name: "hello-world-1",
-						TaskRef: &v1beta1.TaskRef{
-							Name: "hello-world",
-						},
-						Retries: tc.retries,
-					}},
-				},
-			}}
-			prs := []*v1beta1.PipelineRun{{
-				ObjectMeta: baseObjectMeta("test-pipeline-retry-run-with-timeout", "foo"),
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline-retry"},
-					ServiceAccountName: "test-sa",
-					Timeout:            &metav1.Duration{Duration: 12 * time.Hour},
-				},
-				Status: v1beta1.PipelineRunStatus{
-					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-						StartTime: &metav1.Time{Time: now.AddDate(0, 0, -1)},
-					},
-				},
-			}}
+			ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline-retry
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    retries: %d
+    taskRef:
+      name: hello-world
+`, tc.retries))}
+			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-retry-run-with-timeout
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline-retry
+  serviceAccountName: test-sa
+  timeout: 12h0m0s
+status:
+  startTime: "2021-12-31T00:00:00Z"
+`)}
 
 			ts := []*v1beta1.Task{
 				simpleHelloWorldTask,
 			}
-			trs := []*v1beta1.TaskRun{{
-				ObjectMeta: baseObjectMeta("hello-world-1", "foo"),
-				Status: v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: duckv1beta1.Conditions{
-							apis.Condition{
-								Type:   apis.ConditionSucceeded,
-								Status: corev1.ConditionFalse,
-							},
-						},
-					},
-					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-						PodName: "my-pod-name",
-						RetriesStatus: []v1beta1.TaskRunStatus{{
-							Status: duckv1beta1.Status{
-								Conditions: []apis.Condition{{
-									Type:   apis.ConditionSucceeded,
-									Status: corev1.ConditionFalse,
-								}},
-							},
-						}},
-					},
-				},
-			}}
+			trs := []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+metadata:
+  name: hello-world-1
+  namespace: foo
+status:
+  conditions:
+  - status: "False"
+    type: Succeeded
+  podName: my-pod-name
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
+`)}
 
 			prtrs := &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: "hello-world-1",
@@ -3427,82 +3019,21 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 	}
 }
 
-func TestReconcilePropagateAnnotations(t *testing.T) {
-	names.TestingSeed()
-
-	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-pipeline-run-with-annotations",
-			Namespace:   "foo",
-			Annotations: map[string]string{"PipelineRunAnnotation": "PipelineRunValue"},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-		},
-	}}
-	ts := []*v1beta1.Task{simpleHelloWorldTask}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-annotations", []string{}, false)
-
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
-
-	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)[0]
-	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-with-annotations-hello-world-1", "foo", "test-pipeline-run-with-annotations", "test-pipeline", "hello-world-1", false)
-	expectedTaskRunObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: expectedTaskRunObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
-
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
-	}
-}
-
 func TestGetTaskRunTimeout(t *testing.T) {
 	prName := "pipelinerun-timeouts"
 	ns := "foo"
 	p := "pipeline"
 
 	tcs := []struct {
-		name     string
-		pr       *v1beta1.PipelineRun
-		rprt     *resources.ResolvedPipelineRunTask
-		expected *metav1.Duration
+		name            string
+		timeoutDuration *metav1.Duration
+		timeoutFields   *v1beta1.TimeoutFields
+		startTime       time.Time
+		rprt            *resources.ResolvedPipelineRunTask
+		expected        *metav1.Duration
 	}{{
-		name: "nil timeout duration",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
-		},
+		name:      "nil timeout duration",
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
@@ -3510,19 +3041,9 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		},
 		expected: &metav1.Duration{Duration: 60 * time.Minute},
 	}, {
-		name: "timeout specified in pr",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeout:     &metav1.Duration{Duration: 20 * time.Minute},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
-		},
+		name:            "timeout specified in pr",
+		timeoutDuration: &metav1.Duration{Duration: 20 * time.Minute},
+		startTime:       now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
@@ -3530,19 +3051,9 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
-		name: "0 timeout duration",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeout:     &metav1.Duration{Duration: 0 * time.Minute},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
-		},
+		name:            "0 timeout duration",
+		timeoutDuration: &metav1.Duration{Duration: 0 * time.Minute},
+		startTime:       now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
@@ -3550,19 +3061,9 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		},
 		expected: &metav1.Duration{Duration: 0 * time.Minute},
 	}, {
-		name: "taskrun being created after timeout expired",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeout:     &metav1.Duration{Duration: 1 * time.Minute},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now.Add(-2 * time.Minute)},
-				},
-			},
-		},
+		name:            "taskrun being created after timeout expired",
+		timeoutDuration: &metav1.Duration{Duration: 1 * time.Minute},
+		startTime:       now.Add(-2 * time.Minute),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
@@ -3570,19 +3071,9 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		},
 		expected: &metav1.Duration{Duration: 1 * time.Second},
 	}, {
-		name: "taskrun being created with timeout for PipelineTask",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeout:     &metav1.Duration{Duration: 20 * time.Minute},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
-		},
+		name:            "taskrun being created with timeout for PipelineTask",
+		timeoutDuration: &metav1.Duration{Duration: 20 * time.Minute},
+		startTime:       now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
@@ -3590,19 +3081,9 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		},
 		expected: &metav1.Duration{Duration: 2 * time.Minute},
 	}, {
-		name: "0 timeout duration for PipelineRun, PipelineTask timeout still applied",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeout:     &metav1.Duration{Duration: 0 * time.Minute},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
-		},
+		name:            "0 timeout duration for PipelineRun, PipelineTask timeout still applied",
+		timeoutDuration: &metav1.Duration{Duration: 0 * time.Minute},
+		startTime:       now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
@@ -3611,20 +3092,10 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 2 * time.Minute},
 	}, {
 		name: "taskstimeout specified in pr",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Tasks: &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
@@ -3633,21 +3104,11 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
 		name: "40m timeout duration, 20m taskstimeout duration",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
-					Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
+			Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
@@ -3656,20 +3117,10 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
 		name: "taskrun being created with taskstimeout for PipelineTask",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Tasks: &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
@@ -3678,20 +3129,10 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 2 * time.Minute},
 	}, {
 		name: "tasks.timeout < pipeline.tasks[].timeout",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Tasks: &metav1.Duration{Duration: 1 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Tasks: &metav1.Duration{Duration: 1 * time.Minute},
 		},
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
@@ -3700,20 +3141,10 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 1 * time.Minute},
 	}, {
 		name: "taskrun with elapsed time; timeouts.tasks applies",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Tasks: &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now.Add(-10 * time.Minute),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 			TaskRun: &v1beta1.TaskRun{
@@ -3727,20 +3158,10 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 10 * time.Minute},
 	}, {
 		name: "taskrun with elapsed time; task.timeout applies",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Tasks: &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now.Add(-10 * time.Minute),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
@@ -3756,20 +3177,10 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 10 * time.Minute},
 	}, {
 		name: "taskrun with elapsed time; timeouts.pipeline applies",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Pipeline: &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now.Add(-10 * time.Minute),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
@@ -3783,12 +3194,24 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 		},
 		expected: &metav1.Duration{Duration: 10 * time.Minute},
-	},
-	}
+	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), tc.pr, tc.rprt, testClock), tc.expected); d != "" {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: baseObjectMeta(prName, ns),
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{Name: p},
+					Timeout:     tc.timeoutDuration,
+					Timeouts:    tc.timeoutFields,
+				},
+				Status: v1beta1.PipelineRunStatus{
+					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+						StartTime: &metav1.Time{Time: tc.startTime},
+					},
+				},
+			}
+			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), pr, tc.rprt, testClock), tc.expected); d != "" {
 				t.Errorf("Unexpected task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -3801,140 +3224,72 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 	p := "pipeline"
 
 	tcs := []struct {
-		name     string
-		pr       *v1beta1.PipelineRun
-		rprt     *resources.ResolvedPipelineRunTask
-		expected *metav1.Duration
+		name            string
+		timeoutDuration *metav1.Duration
+		timeoutFields   *v1beta1.TimeoutFields
+		startTime       time.Time
+		pr              *v1beta1.PipelineRun
+		rprt            *resources.ResolvedPipelineRunTask
+		expected        *metav1.Duration
 	}{{
-		name: "nil timeout duration",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeout:     nil,
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
-		},
+		name:      "nil timeout duration",
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 60 * time.Minute},
 	}, {
-		name: "timeout specified in pr",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeout:     &metav1.Duration{Duration: 20 * time.Minute},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
-		},
+		name:            "timeout specified in pr",
+		timeoutDuration: &metav1.Duration{Duration: 20 * time.Minute},
+		startTime:       now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
-		name: "taskrun being created after timeout expired",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeout:     &metav1.Duration{Duration: time.Minute},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now.Add(-2 * time.Minute)},
-				},
-			},
-		},
+		name:            "taskrun being created after timeout expired",
+		timeoutDuration: &metav1.Duration{Duration: 1 * time.Minute},
+		startTime:       now.Add(-2 * time.Minute),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 1 * time.Second},
 	}, {
 		name: "40m timeout duration, 20m taskstimeout duration",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
-					Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
+			Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
 		name: "only timeouts.finally set",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Finally: &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Finally: &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
 		name: "40m timeout duration, 20m taskstimeout duration, 20m finallytimeout duration",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
-					Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
-					Finally:  &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
+			Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
+			Finally:  &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
-		name: "use pipeline.finally[].timeout",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
-		},
+		name:      "use pipeline.finally[].timeout",
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
@@ -3943,21 +3298,11 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 2 * time.Minute},
 	}, {
 		name: "finally timeout < pipeline.finally[].timeout",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
-					Finally:  &metav1.Duration{Duration: 1 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Pipeline: &metav1.Duration{Duration: 40 * time.Minute},
+			Finally:  &metav1.Duration{Duration: 1 * time.Minute},
 		},
+		startTime: now,
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
@@ -3966,20 +3311,10 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 1 * time.Minute},
 	}, {
 		name: "finally taskrun with elapsed time; tasks.finally applies",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Finally: &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Finally: &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now.Add(-10 * time.Minute),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 			TaskRun: &v1beta1.TaskRun{
@@ -3993,20 +3328,10 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
 		name: "finally taskrun with elapsed time; task.timeout applies",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Finally: &metav1.Duration{Duration: 20 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Finally: &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now.Add(-10 * time.Minute),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
@@ -4022,21 +3347,11 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		expected: &metav1.Duration{Duration: 15 * time.Minute},
 	}, {
 		name: "finally taskrun with elapsed time; timeouts.pipeline applies",
-		pr: &v1beta1.PipelineRun{
-			ObjectMeta: baseObjectMeta(prName, ns),
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{Name: p},
-				Timeouts: &v1beta1.TimeoutFields{
-					Finally:  &metav1.Duration{Duration: 20 * time.Minute},
-					Pipeline: &metav1.Duration{Duration: 21 * time.Minute},
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{Time: now.Add(-10 * time.Minute)},
-				},
-			},
+		timeoutFields: &v1beta1.TimeoutFields{
+			Pipeline: &metav1.Duration{Duration: 21 * time.Minute},
+			Finally:  &metav1.Duration{Duration: 20 * time.Minute},
 		},
+		startTime: now.Add(-10 * time.Minute),
 		rprt: &resources.ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
@@ -4050,12 +3365,24 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			},
 		},
 		expected: &metav1.Duration{Duration: 11 * time.Minute},
-	},
-	}
+	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), tc.pr, tc.rprt, testClock)); d != "" {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: baseObjectMeta(prName, ns),
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{Name: p},
+					Timeout:     tc.timeoutDuration,
+					Timeouts:    tc.timeoutFields,
+				},
+				Status: v1beta1.PipelineRunStatus{
+					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+						StartTime: &metav1.Time{Time: tc.startTime},
+					},
+				},
+			}
+			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), pr, tc.rprt, testClock)); d != "" {
 				t.Errorf("Unexpected finally task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -4068,28 +3395,27 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        prName,
-			Namespace:   "foo",
-			Annotations: map[string]string{"PipelineRunAnnotation": "PipelineRunValue"},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
-				PipelineTaskName:       "hello-world-1",
-				TaskServiceAccountName: "custom-sa",
-				TaskPodTemplate: &pod.Template{
-					NodeSelector: map[string]string{
-						"workloadtype": "tekton",
-					},
-				},
-				StepOverrides:    []v1beta1.TaskRunStepOverride{{Name: "foo"}},
-				SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{Name: "bar"}},
-			}},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+    sidecarOverrides:
+    - name: bar
+    stepOverrides:
+    - name: foo
+    taskPodTemplate:
+      nodeSelector:
+        workloadtype: tekton
+    taskServiceAccountName: custom-sa
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
 	d := test.Data{
@@ -4101,36 +3427,28 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
-	actions := clients.Pipeline.Actions()
-
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)[0]
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
 	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-hello-world-1", "foo", "test-pipeline-run", "test-pipeline", "hello-world-1", false)
 	expectedTaskRunObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: expectedTaskRunObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-			ServiceAccountName: "custom-sa",
-			PodTemplate: &pod.Template{
-				NodeSelector: map[string]string{
-					"workloadtype": "tekton",
-				},
-			},
-			Resources:        &v1beta1.TaskRunResources{},
-			Timeout:          &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			StepOverrides:    []v1beta1.TaskRunStepOverride{{Name: "foo"}},
-			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{Name: "bar"}},
-		},
-	}
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
+spec:
+  podTemplate:
+    nodeSelector:
+      workloadtype: tekton
+  resources: {}
+  serviceAccountName: custom-sa
+  sidecarOverrides:
+  - name: bar
+  stepOverrides:
+  - name: foo
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+`)
 
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
+	if d := cmp.Diff(actual, expectedTaskRun, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see propagated custom ServiceAccountName and PodTemplate in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
@@ -4138,15 +3456,17 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 func TestReconcileCustomTasksWithTaskRunSpec(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "hello-world-1",
-				TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-			}},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      apiVersion: example.dev/v0
+      kind: Example
+`)}
 
 	serviceAccount := "custom-sa"
 	podTemplate := &pod.Template{
@@ -4154,28 +3474,23 @@ func TestReconcileCustomTasksWithTaskRunSpec(t *testing.T) {
 			"workloadtype": "tekton",
 		},
 	}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(prName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
-				PipelineTaskName:       "hello-world-1",
-				TaskServiceAccountName: serviceAccount,
-				TaskPodTemplate:        podTemplate,
-			}},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  taskRunSpecs:
+  - pipelineTaskName: hello-world-1
+    taskPodTemplate:
+      nodeSelector:
+        workloadtype: tekton
+    taskServiceAccountName: custom-sa
+`)}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
-
+	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -4208,76 +3523,59 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
 	conditions := []*v1alpha1.Condition{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cond-1",
-				Namespace: "foo",
-				Labels: map[string]string{
-					"label-1": "value-1",
-					"label-2": "value-2",
-				},
-				Annotations: map[string]string{
-					"annotation-1": "value-1",
-				},
-			},
-			Spec: v1alpha1.ConditionSpec{
-				Check: v1alpha1.Step{
-					Container: corev1.Container{
-						Image: "foo",
-						Args:  []string{"bar"},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "cond-2",
-				Namespace: "foo",
-				Labels: map[string]string{
-					"label-3": "value-3",
-					"label-4": "value-4",
-				},
-			},
-			Spec: v1alpha1.ConditionSpec{
-				Check: v1alpha1.Step{
-					Container: corev1.Container{
-						Image: "foo",
-						Args:  []string{"bar"},
-					},
-				},
-			},
-		},
+		parse.MustParseCondition(t, `
+metadata:
+  annotations:
+    annotation-1: value-1
+  labels:
+    label-1: value-1
+    label-2: value-2
+  name: cond-1
+  namespace: foo
+spec:
+  check:
+    args:
+    - bar
+    image: foo
+`),
+		parse.MustParseCondition(t, `
+metadata:
+  labels:
+    label-3: value-3
+    label-4: value-4
+  name: cond-2
+  namespace: foo
+spec:
+  check:
+    args:
+    - bar
+    image: foo
+`),
 	}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "hello-world-1",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "hello-world",
-				},
-				Conditions: []v1beta1.PipelineTaskCondition{
-					{
-						ConditionRef: "cond-1",
-					},
-					{
-						ConditionRef: "cond-2",
-					},
-				},
-			}},
-		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        prName,
-			Namespace:   "foo",
-			Annotations: map[string]string{"PipelineRunAnnotation": "PipelineRunValue"},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - conditions:
+    - conditionRef: cond-1
+    - conditionRef: cond-2
+    name: hello-world-1
+    taskRef:
+      name: hello-world
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
 	d := test.Data{
@@ -4305,13 +3603,8 @@ func TestReconcileWithConditionChecks(t *testing.T) {
 		expectedConditionChecks[index] = makeExpectedTr(condition.Name, ccNames[condition.Name], condition.Labels, condition.Annotations)
 	}
 
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 3 {
-		t.Fatalf("Expected client to have at least three action implementation but it has %d", len(actions))
-	}
-
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 3)
 	if d := cmp.Diff(actual, expectedConditionChecks); d != "" {
 		t.Errorf("expected to see 2 ConditionCheck TaskRuns created. Diff %s", diff.PrintWantGot(d))
 	}
@@ -4322,20 +3615,16 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	// multiple conditions, some that fails. It verifies that reconcile is successful, taskruns are
 	// created and the status is updated. It checks that the correct events are sent.
 	names.TestingSeed()
-	conditions := []*v1alpha1.Condition{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "always-false",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.ConditionSpec{
-			Check: v1alpha1.Step{
-				Container: corev1.Container{
-					Image: "foo",
-					Args:  []string{"bar"},
-				},
-			},
-		},
-	}}
+	conditions := []*v1alpha1.Condition{parse.MustParseCondition(t, `
+metadata:
+  name: always-false
+  namespace: foo
+spec:
+  check:
+    args:
+    - bar
+    image: foo
+`)}
 	pipelineRunName := "test-pipeline-run-with-conditions"
 	prccs := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
 
@@ -4344,132 +3633,97 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 		ConditionName: "always-false-0",
 		Status:        &v1beta1.ConditionCheckStatus{},
 	}
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "task-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-				{
-					Name: "task-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Conditions: []v1beta1.PipelineTaskCondition{{
-						ConditionRef: "always-false",
-					}},
-				},
-				{
-					Name: "task-3",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					RunAfter: []string{"task-1"},
-				},
-			},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: task-1
+    taskRef:
+      name: hello-world
+  - conditions:
+    - conditionRef: always-false
+    name: task-2
+    taskRef:
+      name: hello-world
+  - name: task-3
+    runAfter:
+    - task-1
+    taskRef:
+      name: hello-world
+`)}
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-pipeline-run-with-conditions",
-			Namespace:   "foo",
-			Annotations: map[string]string{"PipelineRunAnnotation": "PipelineRunValue"},
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-		},
-		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionUnknown,
-						Reason:  v1beta1.PipelineRunReasonRunning.String(),
-						Message: "Not all Tasks in the Pipeline have finished executing",
-					},
-				},
-			},
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					pipelineRunName + "task-1": {
-						PipelineTaskName: "task-1",
-						Status:           &v1beta1.TaskRunStatus{},
-					},
-					pipelineRunName + "task-2": {
-						PipelineTaskName: "task-2",
-						Status:           &v1beta1.TaskRunStatus{},
-						ConditionChecks:  prccs,
-					},
-				},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  annotations:
+    PipelineRunAnnotation: PipelineRunValue
+  name: test-pipeline-run-with-conditions
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+status:
+  conditions:
+  - message: Not all Tasks in the Pipeline have finished executing
+    reason: Running
+    status: Unknown
+    type: Succeeded
+  taskRuns:
+    test-pipeline-run-with-conditionstask-1:
+      pipelineTaskName: task-1
+    test-pipeline-run-with-conditionstask-2:
+      conditionChecks:
+        test-pipeline-run-with-conditionstask-2-always-false:
+          conditionName: always-false-0
+          status:
+            check: {}
+      pipelineTaskName: task-2
+`)}
 
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	trs := []*v1beta1.TaskRun{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: pipelineRunName + "task-1",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "kind",
-					Name: "name",
-				}},
-				Namespace: "foo",
-				Labels: map[string]string{
-					pipeline.PipelineLabelKey:    "test-pipeine-run-with-conditions",
-					pipeline.PipelineRunLabelKey: "test-pipeline",
-					pipeline.MemberOfLabelKey:    v1beta1.PipelineTasks,
-				},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: "hello-world",
-				},
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						},
-					},
-				},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: conditionCheckName,
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "kind",
-					Name: "name",
-				}},
-				Namespace: "foo",
-				Labels: map[string]string{
-					pipeline.PipelineLabelKey:    "test-pipeine-run-with-conditions",
-					pipeline.PipelineRunLabelKey: "test-pipeline",
-					pipeline.ConditionCheckKey:   conditionCheckName,
-					pipeline.ConditionNameKey:    "always-false",
-				},
-			},
-			Spec: v1beta1.TaskRunSpec{TaskSpec: &v1beta1.TaskSpec{}},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionFalse,
-						},
-					},
-				},
-			},
-		},
+		parse.MustParseTaskRun(t, `
+metadata:
+  labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: test-pipeine-run-with-conditions
+    tekton.dev/pipelineRun: test-pipeline
+  name: test-pipeline-run-with-conditionstask-1
+  namespace: foo
+  ownerReferences:
+  - kind: kind
+    name: name
+spec:
+  taskRef:
+    name: hello-world
+status:
+  conditions:
+  - lastTransitionTime: null
+    status: "True"
+    type: Succeeded
+`),
+		parse.MustParseTaskRun(t, `
+metadata:
+  labels:
+    tekton.dev/conditionCheck: test-pipeline-run-with-conditionstask-2-always-false
+    tekton.dev/conditionName: always-false
+    tekton.dev/pipeline: test-pipeine-run-with-conditions
+    tekton.dev/pipelineRun: test-pipeline
+  name: test-pipeline-run-with-conditionstask-2-always-false
+  namespace: foo
+  ownerReferences:
+  - kind: kind
+    name: name
+spec:
+  taskSpec: {}
+status:
+  conditions:
+  - lastTransitionTime: null
+    status: "False"
+    type: Succeeded
+`),
 	}
 
 	d := test.Data{
@@ -4488,28 +3742,20 @@ func TestReconcileWithFailingConditionChecks(t *testing.T) {
 	}
 	_, clients := prt.reconcileRun("foo", pipelineRunName, wantEvents, false)
 
-	actions := clients.Pipeline.Actions()
-	if len(actions) < 2 {
-		t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
-	}
-
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, actions)[0]
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
 	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-with-conditions-task-3", "foo", "test-pipeline-run-with-conditions", "test-pipeline", "task-3", false)
 	expectedTaskRunObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: expectedTaskRunObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+`)
 
-	if d := cmp.Diff(actual, expectedTaskRun); d != "" {
+	if d := cmp.Diff(actual, expectedTaskRun, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see ConditionCheck TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
@@ -4534,11 +3780,9 @@ func makeExpectedTr(condName, ccName string, labels, annotations map[string]stri
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Name:  "condition-check-" + condName,
-						Image: "foo",
-						Args:  []string{"bar"},
-					},
+					Name:  "condition-check-" + condName,
+					Image: "foo",
+					Args:  []string{"bar"},
 				}},
 			},
 			ServiceAccountName: "test-sa",
@@ -4565,239 +3809,127 @@ func ensurePVCCreated(ctx context.Context, t *testing.T, clients test.Clients, n
 	}
 }
 
-func TestReconcileWithWhenExpressionsWithParameters(t *testing.T) {
-	names.TestingSeed()
-	prName := "test-pipeline-run"
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Params: []v1beta1.ParamSpec{{
-				Name: "run",
-				Type: v1beta1.ParamTypeString,
-			}},
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name:    "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{Name: "hello-world-1"},
-					WhenExpressions: []v1beta1.WhenExpression{
-						{
-							Input:    "foo",
-							Operator: selection.NotIn,
-							Values:   []string{"bar"},
-						},
-						{
-							Input:    "$(params.run)",
-							Operator: selection.In,
-							Values:   []string{"yes"},
-						},
-					},
-				},
-				{
-					Name:    "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{Name: "hello-world-2"},
-					WhenExpressions: []v1beta1.WhenExpression{{
-						Input:    "$(params.run)",
-						Operator: selection.NotIn,
-						Values:   []string{"yes"},
-					}},
-				},
-			},
+func TestReconcileWithWhenExpressionsWithTaskResultsAndParams(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
 		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        prName,
-			Namespace:   "foo",
-			Annotations: map[string]string{"PipelineRunAnnotation": "PipelineRunValue"},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa",
-			Params: []v1beta1.Param{{
-				Name:  "run",
-				Value: *v1beta1.NewArrayOrString("yes"),
-			}},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
 		},
-	}}
-	ts := []*v1beta1.Task{
-		{ObjectMeta: baseObjectMeta("hello-world-1", "foo")},
-		{ObjectMeta: baseObjectMeta("hello-world-2", "foo")},
-	}
-
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
-	wantEvents := []string{
-		"Normal Started",
-		"Normal Running Tasks Completed: 0 \\(Failed: 0, Cancelled 0\\), Incomplete: 1, Skipped: 1",
-	}
-	pipelineRun, clients := prt.reconcileRun("foo", prName, wantEvents, false)
-
-	// Check that the expected TaskRun was created
-	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
-		LabelSelector: "tekton.dev/pipelineTask=hello-world-1,tekton.dev/pipelineRun=test-pipeline-run",
-		Limit:         1,
-	})
-	if err != nil {
-		t.Fatalf("Failure to list TaskRun's %s", err)
-	}
-	if len(actual.Items) != 1 {
-		t.Fatalf("Expected 1 TaskRun got %d", len(actual.Items))
-	}
-	expectedTaskRunName := "test-pipeline-run-hello-world-1"
-	expectedTaskRunObjectMeta := taskRunObjectMeta(expectedTaskRunName, "foo", "test-pipeline-run", "test-pipeline", "hello-world-1", false)
-	expectedTaskRunObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: expectedTaskRunObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: "hello-world-1"},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
 		},
 	}
-	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
-		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
-	}
 
-	actualWhenExpressionsInTaskRun := pipelineRun.Status.PipelineRunStatusFields.TaskRuns[expectedTaskRunName].WhenExpressions
-	expectedWhenExpressionsInTaskRun := []v1beta1.WhenExpression{{
-		Input:    "foo",
-		Operator: "notin",
-		Values:   []string{"bar"},
-	}, {
-		Input:    "yes",
-		Operator: "in",
-		Values:   []string{"yes"},
-	}}
-	if d := cmp.Diff(expectedWhenExpressionsInTaskRun, actualWhenExpressionsInTaskRun); d != "" {
-		t.Errorf("expected to see When Expressions %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
-	}
-
-	actualSkippedTasks := pipelineRun.Status.SkippedTasks
-	expectedSkippedTasks := []v1beta1.SkippedTask{{
-		Name: "hello-world-2",
-		WhenExpressions: v1beta1.WhenExpressions{{
-			Input:    "yes",
-			Operator: "notin",
-			Values:   []string{"yes"},
-		}},
-	}}
-	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
-		t.Errorf("expected to find Skipped Tasks %v. Diff %s", expectedSkippedTasks, diff.PrintWantGot(d))
-	}
-
-	skippedTasks := []string{"hello-world-2"}
-	for _, skippedTask := range skippedTasks {
-		labelSelector := fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs", skippedTask)
-		actualSkippedTask, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
-			LabelSelector: labelSelector,
-			Limit:         1,
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileWithWhenExpressionsWithTaskResultsAndParams(t, tc.embeddedStatusVal)
 		})
-		if err != nil {
-			t.Fatalf("Failure to list TaskRun's %s", err)
-		}
-		if len(actualSkippedTask.Items) != 0 {
-			t.Fatalf("Expected 0 TaskRuns got %d", len(actualSkippedTask.Items))
-		}
 	}
 }
 
-func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
+func runTestReconcileWithWhenExpressionsWithTaskResultsAndParams(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name:    "a-task",
-					TaskRef: &v1beta1.TaskRef{Name: "a-task"},
-				},
-				{
-					Name:    "b-task",
-					TaskRef: &v1beta1.TaskRef{Name: "b-task"},
-					WhenExpressions: []v1beta1.WhenExpression{
-						{
-							Input:    "$(tasks.a-task.results.aResult)",
-							Operator: selection.In,
-							Values:   []string{"aResultValue"},
-						},
-						{
-							Input:    "aResultValue",
-							Operator: selection.In,
-							Values:   []string{"$(tasks.a-task.results.aResult)"},
-						},
-					},
-				},
-				{
-					Name:    "c-task",
-					TaskRef: &v1beta1.TaskRef{Name: "c-task"},
-					WhenExpressions: []v1beta1.WhenExpression{{
-						Input:    "$(tasks.a-task.results.aResult)",
-						Operator: selection.In,
-						Values:   []string{"missing"},
-					}},
-				},
-				{
-					Name:     "d-task",
-					TaskRef:  &v1beta1.TaskRef{Name: "d-task"},
-					RunAfter: []string{"c-task"},
-				},
-			},
-		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-different-service-accs", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa-0",
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  params:
+  - name: run
+    type: string
+  tasks:
+  - name: a-task
+    taskRef:
+      name: a-task
+  - name: b-task
+    taskRef:
+      name: b-task
+    when:
+    - input: $(tasks.a-task.results.aResult)
+      operator: in
+      values:
+      - aResultValue
+    - input: aResultValue
+      operator: in
+      values:
+      - $(tasks.a-task.results.aResult)
+    - input: $(params.run)
+      operator: in
+      values:
+      - "yes"
+  - name: c-task
+    taskRef:
+      name: c-task
+    when:
+    - input: $(tasks.a-task.results.aResult)
+      operator: in
+      values:
+      - missing
+    - input: $(params.run)
+      operator: notin
+      values:
+      - "yes"
+  - name: d-task
+    runAfter:
+    - c-task
+    taskRef:
+      name: d-task
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  params:
+  - name: run
+    value: "yes"
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+`)}
 	ts := []*v1beta1.Task{
 		{ObjectMeta: baseObjectMeta("a-task", "foo")},
 		{ObjectMeta: baseObjectMeta("b-task", "foo")},
 		{ObjectMeta: baseObjectMeta("c-task", "foo")},
 		{ObjectMeta: baseObjectMeta("d-task", "foo")},
 	}
-	trs := []*v1beta1.TaskRun{{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo",
-			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task",
-			true),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: "hello-world"},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					},
-				},
-			},
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				TaskRunResults: []v1beta1.TaskRunResult{{
-					Name:  "aResult",
-					Value: "aResultValue",
-				}},
-			},
-		},
-	}}
+	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo", "test-pipeline-run-different-service-accs",
+			"test-pipeline", "a-task", true),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  taskResults:
+  - name: aResult
+    value: aResultValue
+`)}
 
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
+		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -4809,15 +3941,16 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 	pipelineRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", wantEvents, false)
 
 	expectedTaskRunName := "test-pipeline-run-different-service-accs-b-task"
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: taskRunObjectMeta(expectedTaskRunName, "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: "b-task"},
-			ServiceAccountName: "test-sa-0",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(expectedTaskRunName, "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+  timeout: 1h0m0s
+`)
 	// Check that the expected TaskRun was created
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 		LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
@@ -4831,11 +3964,10 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
+	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 
-	actualWhenExpressionsInTaskRun := pipelineRun.Status.PipelineRunStatusFields.TaskRuns[expectedTaskRunName].WhenExpressions
 	expectedWhenExpressionsInTaskRun := []v1beta1.WhenExpression{{
 		Input:    "aResultValue",
 		Operator: "in",
@@ -4844,10 +3976,12 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 		Input:    "aResultValue",
 		Operator: "in",
 		Values:   []string{"aResultValue"},
+	}, {
+		Input:    "yes",
+		Operator: "in",
+		Values:   []string{"yes"},
 	}}
-	if d := cmp.Diff(expectedWhenExpressionsInTaskRun, actualWhenExpressionsInTaskRun); d != "" {
-		t.Errorf("expected to see When Expressions %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
-	}
+	verifyTaskRunStatusesWhenExpressions(t, embeddedStatus, pipelineRun.Status, expectedTaskRunName, expectedWhenExpressionsInTaskRun)
 
 	actualSkippedTasks := pipelineRun.Status.SkippedTasks
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
@@ -4856,6 +3990,10 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 			Input:    "aResultValue",
 			Operator: "in",
 			Values:   []string{"missing"},
+		}, {
+			Input:    "yes",
+			Operator: "notin",
+			Values:   []string{"yes"},
 		}},
 	}}
 	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
@@ -4878,98 +4016,98 @@ func TestReconcileWithWhenExpressionsWithTaskResults(t *testing.T) {
 	}
 }
 
-func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
+func TestReconcileWithWhenExpressions(t *testing.T) {
 	//		(b)
 	//		/
 	//	(a) ———— (c) ———— (d)
 	//		\
 	//		(e) ———— (f)
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				// a-task is skipped because its when expressions evaluate to false
-				{
-					Name:    "a-task",
-					TaskRef: &v1beta1.TaskRef{Name: "a-task"},
-					WhenExpressions: []v1beta1.WhenExpression{{
-						Input:    "foo",
-						Operator: selection.In,
-						Values:   []string{"bar"},
-					}},
-				},
-				// b-task is executed regardless of running after skipped a-task because when expressions are scoped to task
-				{
-					Name:     "b-task",
-					TaskRef:  &v1beta1.TaskRef{Name: "b-task"},
-					RunAfter: []string{"a-task"},
-				},
-				// c-task is skipped because its when expressions evaluate to false (not because it's parent a-task is skipped)
-				{
-					Name:    "c-task",
-					TaskRef: &v1beta1.TaskRef{Name: "c-task"},
-					WhenExpressions: []v1beta1.WhenExpression{{
-						Input:    "foo",
-						Operator: selection.In,
-						Values:   []string{"bar"},
-					}},
-					RunAfter: []string{"a-task"},
-				},
-				// d-task is executed regardless of running after skipped parent c-task (and skipped grandparent a-task)
-				// because when expressions are scoped to task
-				{
-					Name:     "d-task",
-					TaskRef:  &v1beta1.TaskRef{Name: "d-task"},
-					RunAfter: []string{"c-task"},
-				},
-				// e-task is attempted regardless of running after skipped a-task because when expressions are scoped to task
-				// but then get skipped because of missing result references from a-task
-				{
-					Name:    "e-task",
-					TaskRef: &v1beta1.TaskRef{Name: "e-task"},
-					WhenExpressions: []v1beta1.WhenExpression{{
-						Input:    "$(tasks.a-task.results.aResult)",
-						Operator: selection.In,
-						Values:   []string{"aResultValue"},
-					}},
-				},
-				// f-task is skipped because its parent task e-task is skipped because of missing result reference from a-task
-				{
-					Name:     "f-task",
-					TaskRef:  &v1beta1.TaskRef{Name: "f-task"},
-					RunAfter: []string{"e-task"},
-				},
-			},
-		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-different-service-accs", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa-0",
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+# a-task is skipped because its when expressions evaluate to false
+  - name: a-task
+    taskRef:
+      name: a-task
+    when:
+    - input: foo
+      operator: in
+      values:
+      - bar
+# b-task is executed regardless of running after skipped a-task because when expressions are scoped to task
+  - name: b-task
+    runAfter:
+    - a-task
+    taskRef:
+      name: b-task
+# c-task is skipped because its when expressions evaluate to false (not because it's parent a-task is skipped)
+  - name: c-task
+    runAfter:
+    - a-task
+    taskRef:
+      name: c-task
+    when:
+    - input: foo
+      operator: in
+      values:
+      - bar
+# d-task is executed regardless of running after skipped parent c-task (and skipped grandparent a-task)
+# because when expressions are scoped to task
+  - name: d-task
+    runAfter:
+    - c-task
+    taskRef:
+      name: d-task
+# e-task is attempted regardless of running after skipped a-task because when expressions are scoped to task
+# but then get skipped because of missing result references from a-task
+  - name: e-task
+    taskRef:
+      name: e-task
+    when:
+    - input: $(tasks.a-task.results.aResult)
+      operator: in
+      values:
+      - aResultValue
+# f-task is skipped because its parent task e-task is skipped because of missing result reference from a-task
+  - name: f-task
+    runAfter:
+    - e-task
+    taskRef:
+      name: f-task
+`)}
 	// initialize the pipelinerun with the skipped a-task
-	prs[0].Status.SkippedTasks = append(prs[0].Status.SkippedTasks, v1beta1.SkippedTask{
-		Name: "a-task",
-		WhenExpressions: v1beta1.WhenExpressions{{
-			Input:    "foo",
-			Operator: selection.In,
-			Values:   []string{"bar"},
-		}},
-	})
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+status:
+  skippedTasks:
+  - name: a-task
+    whenExpressions:
+    - input: foo
+      operator: in
+      values:
+      - bar
+`)}
 	// initialize the tasks used in the pipeline
 	ts := []*v1beta1.Task{
-		{
-			ObjectMeta: baseObjectMeta("a-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Results: []v1beta1.TaskResult{{
-					Name:        "aResult",
-					Description: "a result",
-				}},
-			},
-		},
+		parse.MustParseTask(t, `
+metadata:
+  name: a-task
+  namespace: foo
+spec:
+  results:
+  - description: a result
+    name: aResult
+`),
 		{ObjectMeta: baseObjectMeta("b-task", "foo")},
 		{ObjectMeta: baseObjectMeta("c-task", "foo")},
 		{ObjectMeta: baseObjectMeta("d-task", "foo")},
@@ -4977,21 +4115,10 @@ func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
 		{ObjectMeta: baseObjectMeta("f-task", "foo")},
 	}
 
-	// set the scope of when expressions to task -- execution of dependent tasks is unblocked
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"scope-when-expressions-to-task": "true",
-			},
-		},
-	}
-
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
-		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -5003,16 +4130,17 @@ func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
 	pipelineRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", wantEvents, false)
 
 	taskRunExists := func(taskName string, taskRunName string) {
-		expectedTaskRun := &v1beta1.TaskRun{
-			ObjectMeta: taskRunObjectMeta(taskRunName, "foo", "test-pipeline-run-different-service-accs",
+		expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta(taskRunName, "foo", "test-pipeline-run-different-service-accs",
 				"test-pipeline", taskName, false),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: taskName},
-				ServiceAccountName: "test-sa-0",
-				Resources:          &v1beta1.TaskRunResources{},
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-		}
+			fmt.Sprintf(`
+spec:
+  resources: {}
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: %s
+  timeout: 1h0m0s
+`, taskName))
 
 		actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("tekton.dev/pipelineTask=%s,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs", taskName),
@@ -5026,7 +4154,7 @@ func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
 			t.Fatalf("Expected 1 TaskRun got %d", len(actual.Items))
 		}
 		actualTaskRun := actual.Items[0]
-		if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
+		if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 			t.Errorf("expected to see TaskRun %v created. Diff %s", taskRunName, diff.PrintWantGot(d))
 		}
 	}
@@ -5083,99 +4211,81 @@ func TestReconcileWithWhenExpressionsScopedToTask(t *testing.T) {
 	}
 }
 
-func TestReconcileWithWhenExpressionsScopedToTaskWitResultRefs(t *testing.T) {
+func TestReconcileWithWhenExpressionsWithResultRefs(t *testing.T) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				// a-task is executed and produces a result aResult with value aResultValue
-				{
-					Name:    "a-task",
-					TaskRef: &v1beta1.TaskRef{Name: "a-task"},
-				},
-				// b-task is skipped because it has when expressions, with result reference to a-task, that evaluate to false
-				{
-					Name:    "b-task",
-					TaskRef: &v1beta1.TaskRef{Name: "b-task"},
-					WhenExpressions: []v1beta1.WhenExpression{{
-						Input:    "$(tasks.a-task.results.aResult)",
-						Operator: selection.In,
-						Values:   []string{"notResultValue"},
-					}},
-				},
-				// c-task is executed regardless of running after skipped b-task because when expressions are scoped to task
-				{
-					Name:     "c-task",
-					TaskRef:  &v1beta1.TaskRef{Name: "c-task"},
-					RunAfter: []string{"b-task"},
-				},
-			},
-		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-different-service-accs", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa-0",
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+# a-task is executed and produces a result aResult with value aResultValue
+  - name: a-task
+    taskRef:
+      name: a-task
+# b-task is skipped because it has when expressions, with result reference to a-task, that evaluate to false
+  - name: b-task
+    taskRef:
+      name: b-task
+    when:
+    - input: $(tasks.a-task.results.aResult)
+      operator: in
+      values:
+      - notResultValue
+# c-task is executed regardless of running after skipped b-task because when expressions are scoped to task
+  - name: c-task
+    runAfter:
+    - b-task
+    taskRef:
+      name: c-task
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+`)}
 	ts := []*v1beta1.Task{
-		{
-			ObjectMeta: baseObjectMeta("a-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Results: []v1beta1.TaskResult{{
-					Name:        "aResult",
-					Description: "a result",
-				}},
-			},
-		},
+		parse.MustParseTask(t, `
+metadata:
+  name: a-task
+  namespace: foo
+spec:
+  results:
+  - description: a result
+    name: aResult
+`),
 		{ObjectMeta: baseObjectMeta("b-task", "foo")},
 		{ObjectMeta: baseObjectMeta("c-task", "foo")},
 	}
-	trs := []*v1beta1.TaskRun{{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo",
+	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo",
 			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task",
 			true),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: "hello-world"},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					},
-				},
-			},
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				TaskRunResults: []v1beta1.TaskRunResult{{
-					Name:  "aResult",
-					Value: "aResultValue",
-				}},
-			},
-		},
-	}}
-	// set the scope of when expressions to task -- execution of dependent tasks is unblocked
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"scope-when-expressions-to-task": "true",
-			},
-		},
-	}
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  taskResults:
+  - name: aResult
+    value: aResultValue
+`)}
 
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
-		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -5235,81 +4345,58 @@ func TestReconcileWithWhenExpressionsScopedToTaskWitResultRefs(t *testing.T) {
 func TestReconcileWithAffinityAssistantStatefulSet(t *testing.T) {
 	workspaceName := "ws1"
 	workspaceName2 := "ws2"
-	emptyDirWorkspace := "emptyDirWorkspace"
 	pipelineRunName := "test-pipeline-run"
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{
-				{Name: workspaceName},
-				{Name: workspaceName2},
-				{Name: emptyDirWorkspace},
-			},
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: workspaceName,
-					}},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: workspaceName2,
-					}},
-				},
-				{
-					Name: "hello-world-3",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: emptyDirWorkspace,
-					}},
-				},
-			},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      workspace: ws1
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      workspace: ws2
+  - name: hello-world-3
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      workspace: emptyDirWorkspace
+  workspaces:
+  - name: ws1
+  - name: ws2
+  - name: emptyDirWorkspace
+`)}
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(pipelineRunName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-			Workspaces: []v1beta1.WorkspaceBinding{
-				{
-					Name: workspaceName,
-					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "myclaim",
-						},
-						Spec: corev1.PersistentVolumeClaimSpec{},
-					},
-				},
-				{
-					Name: workspaceName2,
-					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "myclaim2",
-						},
-						Spec: corev1.PersistentVolumeClaimSpec{},
-					},
-				},
-				{
-					Name:     emptyDirWorkspace,
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
-				},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  workspaces:
+  - name: ws1
+    volumeClaimTemplate:
+      metadata:
+        creationTimestamp: null
+        name: myclaim
+  - name: ws2
+    volumeClaimTemplate:
+      metadata:
+        creationTimestamp: null
+        name: myclaim2
+  - emptyDir: {}
+    name: emptyDirWorkspace
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
 	d := test.Data{
@@ -5390,51 +4477,40 @@ func TestReconcileWithAffinityAssistantStatefulSet(t *testing.T) {
 // TestReconcileWithVolumeClaimTemplateWorkspace tests that given a pipeline with volumeClaimTemplate workspace,
 // a PVC is created and that the workspace appears as a PersistentVolumeClaim workspace for TaskRuns.
 func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
-	workspaceName := "ws1"
-	claimName := "myclaim"
 	pipelineRunName := "test-pipeline-run"
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: workspaceName,
-					}},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-				},
-			},
-			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
-				Name: workspaceName,
-			}},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      workspace: ws1
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+  workspaces:
+  - name: ws1
+`)}
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(pipelineRunName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-			Workspaces: []v1beta1.WorkspaceBinding{{
-				Name: workspaceName,
-				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: claimName,
-					},
-					Spec: corev1.PersistentVolumeClaimSpec{},
-				},
-			}},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  workspaces:
+  - name: ws1
+    volumeClaimTemplate:
+      metadata:
+        creationTimestamp: null
+        name: myclaim
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
 	d := test.Data{
@@ -5501,103 +4577,73 @@ func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 // TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths tests that given a pipeline with volumeClaimTemplate workspace and
 // multiple instances of the same task, but using different subPaths in the volume - is seen as taskRuns with expected subPaths.
 func TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths(t *testing.T) {
-	workspaceName := "ws1"
-	workspaceNameWithSubPath := "ws2"
 	subPath1 := "customdirectory"
 	subPath2 := "otherdirecory"
 	pipelineRunWsSubPath := "mypath"
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Workspaces: []v1beta1.PipelineWorkspaceDeclaration{
-				{Name: workspaceName},
-				{Name: workspaceNameWithSubPath},
-			},
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: workspaceName,
-						SubPath:   subPath1,
-					}},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: workspaceName,
-						SubPath:   subPath2,
-					}},
-				},
-				{
-					Name: "hello-world-3",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: workspaceName,
-					}},
-				},
-				{
-					Name: "hello-world-4",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: workspaceNameWithSubPath,
-					}},
-				},
-				{
-					Name: "hello-world-5",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "hello-world",
-					},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "taskWorkspaceName",
-						Workspace: workspaceNameWithSubPath,
-						SubPath:   subPath1,
-					}},
-				},
-			},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      subPath: customdirectory
+      workspace: ws1
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      subPath: otherdirecory
+      workspace: ws1
+  - name: hello-world-3
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      workspace: ws1
+  - name: hello-world-4
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      workspace: ws2
+  - name: hello-world-5
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      subPath: customdirectory
+      workspace: ws2
+  workspaces:
+  - name: ws1
+  - name: ws2
+`)}
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-			Workspaces: []v1beta1.WorkspaceBinding{
-				{
-					Name: workspaceName,
-					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "myclaim",
-						},
-						Spec: corev1.PersistentVolumeClaimSpec{},
-					},
-				},
-				{
-					Name:    workspaceNameWithSubPath,
-					SubPath: pipelineRunWsSubPath,
-					VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "myclaim",
-						},
-						Spec: corev1.PersistentVolumeClaimSpec{},
-					},
-				},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  workspaces:
+  - name: ws1
+    volumeClaimTemplate:
+      metadata:
+        creationTimestamp: null
+        name: myclaim
+  - name: ws2
+    subPath: mypath
+    volumeClaimTemplate:
+      metadata:
+        creationTimestamp: null
+        name: myclaim
+`)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
 	d := test.Data{
@@ -5680,75 +4726,67 @@ func TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths(t *testing.T) {
 
 func TestReconcileWithTaskResults(t *testing.T) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "a-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "a-task",
-					},
-				},
-				{
-					Name: "b-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "b-task",
-					},
-					Params: []v1beta1.Param{{
-						Name:  "bParam",
-						Value: *v1beta1.NewArrayOrString("$(tasks.a-task.results.aResult)"),
-					}},
-				},
-			},
-		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-different-service-accs", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa-0",
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: a-task
+    taskRef:
+      name: a-task
+  - name: b-task
+    params:
+    - name: bParam
+      value: $(tasks.a-task.results.aResult)
+    taskRef:
+      name: b-task
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+`)}
 	ts := []*v1beta1.Task{
-		{ObjectMeta: baseObjectMeta("a-task", "foo")},
-		{
-			ObjectMeta: baseObjectMeta("b-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "bParam",
-					Type: v1beta1.ParamTypeString,
-				}},
-			},
-		},
+		parse.MustParseTask(t, `
+metadata:
+  name: a-task
+  namespace: foo
+spec: {}
+`),
+		parse.MustParseTask(t, `
+metadata:
+  name: b-task
+  namespace: foo
+spec:
+  params:
+  - name: bParam
+    type: string
+`),
 	}
-	trs := []*v1beta1.TaskRun{{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo",
-			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task",
-			true),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: "hello-world"},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					},
-				},
-			},
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				TaskRunResults: []v1beta1.TaskRunResult{{
-					Name:  "aResult",
-					Value: "aResultValue",
-				}},
-			},
-		},
-	}}
+	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task-xxyyy", "foo",
+			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task", true),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - lastTransitionTime: null
+    status: "True"
+    type: Succeeded
+  taskResults:
+  - name: aResult
+    value: aResultValue
+`)}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -5762,20 +4800,20 @@ func TestReconcileWithTaskResults(t *testing.T) {
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
 
 	expectedTaskRunName := "test-pipeline-run-different-service-accs-b-task"
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: taskRunObjectMeta(expectedTaskRunName, "foo", "test-pipeline-run-different-service-accs",
-			"test-pipeline", "b-task", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: "b-task"},
-			ServiceAccountName: "test-sa-0",
-			Params: []v1beta1.Param{{
-				Name:  "bParam",
-				Value: *v1beta1.NewArrayOrString("aResultValue"),
-			}},
-			Resources: &v1beta1.TaskRunResources{},
-			Timeout:   &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-service-accs-b-task", "foo",
+			"test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
+		`
+spec:
+  params:
+  - name: bParam
+    value: aResultValue
+  resources: {}
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: b-task
+  timeout: 1h0m0s
+`)
 	// Check that the expected TaskRun was created
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 		LabelSelector: "tekton.dev/pipelineTask=b-task,tekton.dev/pipelineRun=test-pipeline-run-different-service-accs",
@@ -5789,61 +4827,55 @@ func TestReconcileWithTaskResults(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
+	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 }
 
 func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 	names.TestingSeed()
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-different-service-accs", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "foo",
-					Type: v1beta1.ParamTypeString,
-				}},
-				Tasks: []v1beta1.PipelineTask{
-					{
-						Name:    "a-task",
-						TaskRef: &v1beta1.TaskRef{Name: "a-task"},
-					},
-					{
-						Name:    "b-task",
-						TaskRef: &v1beta1.TaskRef{Name: "b-task"},
-						Params: []v1beta1.Param{{
-							Name:  "bParam",
-							Value: *v1beta1.NewArrayOrString("$(params.foo)/baz@$(tasks.a-task.results.A_RESULT)"),
-						}},
-					},
-				},
-			},
-			Params: []v1beta1.Param{{
-				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("bar"),
-			}},
-			ServiceAccountName: "test-sa-0",
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  params:
+  - name: foo
+    value: bar
+  pipelineSpec:
+    params:
+    - name: foo
+      type: string
+    tasks:
+    - name: a-task
+      taskRef:
+        name: a-task
+    - name: b-task
+      params:
+      - name: bParam
+        value: $(params.foo)/baz@$(tasks.a-task.results.A_RESULT)
+      taskRef:
+        name: b-task
+  serviceAccountName: test-sa-0
+`)}
 	ts := []*v1beta1.Task{
-		{
-			ObjectMeta: baseObjectMeta("a-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Results: []v1beta1.TaskResult{{
-					Name: "A_RESULT",
-				}},
-			},
-		},
-		{
-			ObjectMeta: baseObjectMeta("b-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "bParam",
-					Type: v1beta1.ParamTypeString,
-				}},
-			},
-		},
+		parse.MustParseTask(t, `
+metadata:
+  name: a-task
+  namespace: foo
+spec:
+  results:
+  - name: A_RESULT
+`),
+		parse.MustParseTask(t, `
+metadata:
+  name: b-task
+  namespace: foo
+spec:
+  params:
+  - name: bParam
+    type: string
+`),
 	}
 
 	d := test.Data{
@@ -5860,20 +4892,18 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 	}
 
 	// Since b-task is dependent on a-task, via the results, only a-task should run
-	expectedTaskRunName := "test-pipeline-run-different-service-accs-a-task"
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: taskRunObjectMeta(expectedTaskRunName, "foo", "test-pipeline-run-different-service-accs",
-			"test-pipeline-run-different-service-accs", "a-task", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "a-task",
-				Kind: v1beta1.NamespacedTaskKind,
-			},
-			ServiceAccountName: "test-sa-0",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task", "foo",
+			"test-pipeline-run-different-service-accs", "test-pipeline-run-different-service-accs", "a-task", false),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa-0
+  taskRef:
+    kind: Task
+    name: a-task
+  timeout: 1h0m0s
+`)
 	// Check that the expected TaskRun was created (only)
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
@@ -5883,112 +4913,122 @@ func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(expectedTaskRun, &actualTaskRun, ignoreResourceVersion); d != "" {
+	if d := cmp.Diff(expectedTaskRun, &actualTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 }
 
 func TestReconcileWithPipelineResults(t *testing.T) {
+	testCases := []struct {
+		name        string
+		embeddedVal string
+	}{
+		{
+			name:        "default embedded status",
+			embeddedVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:        "full embedded status",
+			embeddedVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:        "both embedded status",
+			embeddedVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:        "minimal embedded status",
+			embeddedVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileWithPipelineResults(t, tc.embeddedVal)
+		})
+	}
+}
+
+func runTestReconcileWithPipelineResults(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "a-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "a-task",
-					},
-				},
-				{
-					Name: "b-task",
-					TaskRef: &v1beta1.TaskRef{
-						Name: "b-task",
-					},
-					Params: []v1beta1.Param{{
-						Name:  "bParam",
-						Value: *v1beta1.NewArrayOrString("$(tasks.a-task.results.aResult)"),
-					}},
-				},
-			},
-			Results: []v1beta1.PipelineResult{{
-				Name:        "result",
-				Value:       "$(tasks.a-task.results.aResult)",
-				Description: "pipeline result",
-			}},
-		},
-	}}
-	trs := []*v1beta1.TaskRun{{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task", "foo",
-			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task",
-			true),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef:            &v1beta1.TaskRef{Name: "hello-world"},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					},
-				},
-			},
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				TaskRunResults: []v1beta1.TaskRunResult{{
-					Name:  "aResult",
-					Value: "aResultValue",
-				}},
-			},
-		},
-	}}
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta("test-pipeline-run-different-service-accs", "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa-0",
-		},
-		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionTrue,
-						Reason:  v1beta1.PipelineRunReasonSuccessful.String(),
-						Message: "All Tasks have completed executing",
-					},
-				},
-			},
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				PipelineResults: []v1beta1.PipelineRunResult{{
-					Name:  "result",
-					Value: "aResultValue",
-				}},
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					trs[0].Name: {
-						PipelineTaskName: "a-task",
-						Status:           &trs[0].Status,
-					},
-				},
-				StartTime:      &metav1.Time{Time: now.AddDate(0, 0, -1)},
-				CompletionTime: &metav1.Time{Time: now},
-			},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  results:
+  - description: pipeline result
+    name: result
+    value: $(tasks.a-task.results.aResult)
+  tasks:
+  - name: a-task
+    taskRef:
+      name: a-task
+  - name: b-task
+    params:
+    - name: bParam
+      value: $(tasks.a-task.results.aResult)
+    taskRef:
+      name: b-task
+`)}
+	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-different-service-accs-a-task", "foo",
+			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task", true),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  taskResults:
+  - name: aResult
+    value: aResultValue
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-different-service-accs
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+status:
+  completionTime: "2022-01-01T00:00:00Z"
+  conditions:
+  - message: All Tasks have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  pipelineResults:
+  - name: result
+    value: aResultValue
+  startTime: "2021-12-31T00:00:00Z"
+  taskRuns:
+    test-pipeline-run-different-service-accs-a-task:
+      pipelineTaskName: a-task
+      status:
+        conditions:
+        - status: "True"
+          type: Succeeded
+        taskResults:
+        - name: aResult
+          value: aResultValue
+`)}
 	ts := []*v1beta1.Task{
 		{ObjectMeta: baseObjectMeta("a-task", "foo")},
-		{
-			ObjectMeta: baseObjectMeta("b-task", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "bParam",
-					Type: v1beta1.ParamTypeString,
-				}},
-			},
-		},
+		parse.MustParseTask(t, `
+metadata:
+  name: b-task
+  namespace: foo
+spec:
+  params:
+  - name: bParam
+    type: string
+`),
 	}
 
 	d := test.Data{
@@ -5996,6 +5036,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
+		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -6075,6 +5116,39 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	// the reconciler is able to coverge back to a consistent state with the orphaned
 	// TaskRuns back in the PipelineRun status.
 	// For more details, see https://github.com/tektoncd/pipeline/issues/2558
+
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileOutOfSyncPipelineRun(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcileOutOfSyncPipelineRun(t *testing.T, embeddedStatus string) {
+	ctx := context.Background()
+
 	prOutOfSyncName := "test-pipeline-run-out-of-sync"
 	helloWorldTask := simpleHelloWorldTask
 
@@ -6110,131 +5184,87 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 			},
 		},
 	}
-	testPipeline := &v1beta1.Pipeline{
-		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{
-				{
-					Name: "hello-world-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name: helloWorldTask.Name,
-					},
-				},
-				{
-					Name: "hello-world-2",
-					TaskRef: &v1beta1.TaskRef{
-						Name: helloWorldTask.Name,
-					},
-				},
-				{
-					Name: "hello-world-3",
-					TaskRef: &v1beta1.TaskRef{
-						Name: helloWorldTask.Name,
-					},
-					Conditions: []v1beta1.PipelineTaskCondition{{
-						ConditionRef: "always-true",
-					}},
-				},
-				{
-					Name: "hello-world-4",
-					TaskRef: &v1beta1.TaskRef{
-						Name: helloWorldTask.Name,
-					},
-					Conditions: []v1beta1.PipelineTaskCondition{{
-						ConditionRef: "always-true",
-					}},
-				},
-				{
-					Name:    "hello-world-5",
-					TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-				},
-			},
-		},
-	}
+	testPipeline := parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+  - conditions:
+    - conditionRef: always-true
+    name: hello-world-3
+    taskRef:
+      name: hello-world
+  - conditions:
+    - conditionRef: always-true
+    name: hello-world-4
+    taskRef:
+      name: hello-world
+  - name: hello-world-5
+    taskRef:
+      apiVersion: example.dev/v0
+      kind: Example
+`)
 
 	// This taskrun is in the pipelinerun status. It completed successfully.
-	taskRunDone := &v1beta1.TaskRun{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-out-of-sync-hello-world-1", "foo", prOutOfSyncName, testPipeline.Name, "hello-world-1", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					},
-				},
-			},
-		},
-	}
+	taskRunDone := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-out-of-sync-hello-world-1", "foo", prOutOfSyncName, testPipeline.Name, "hello-world-1", false),
+		`
+spec:
+  taskRef:
+    name: hello-world
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+`)
 
 	// This taskrun is *not* in the pipelinerun status. It's still running.
-	taskRunOrphaned := &v1beta1.TaskRun{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-out-of-sync-hello-world-2", "foo", prOutOfSyncName, testPipeline.Name, "hello-world-2", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionUnknown,
-					},
-				},
-			},
-		},
-	}
+	taskRunOrphaned := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-out-of-sync-hello-world-2", "foo", prOutOfSyncName, testPipeline.Name, "hello-world-2", false),
+		`
+spec:
+  taskRef:
+    name: hello-world
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`)
 
 	// This taskrun has a condition attached. The condition is in the pipelinerun, but the taskrun
 	// itself is *not* in the pipelinerun status. It's still running.
-	taskRunWithCondition := &v1beta1.TaskRun{
-		ObjectMeta: taskRunObjectMeta("test-pipeline-run-out-of-sync-hello-world-3", "foo", prOutOfSyncName, testPipeline.Name, "hello-world-3", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "hello-world",
-			},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionUnknown,
-					},
-				},
-			},
-		},
-	}
+	taskRunWithCondition := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-out-of-sync-hello-world-3", "foo", prOutOfSyncName, testPipeline.Name, "hello-world-3", false),
+		`
+spec:
+  taskRef:
+    name: hello-world
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`)
 
 	taskRunForConditionOfOrphanedTaskRunObjectMeta := taskRunObjectMeta(conditionCheckName3, "foo", prOutOfSyncName, testPipeline.Name, "hello-world-3", false)
 	taskRunForConditionOfOrphanedTaskRunObjectMeta.Labels[pipeline.ConditionCheckKey] = conditionCheckName3
 	taskRunForConditionOfOrphanedTaskRunObjectMeta.Labels[pipeline.ConditionNameKey] = "always-true"
 
-	taskRunForConditionOfOrphanedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: taskRunForConditionOfOrphanedTaskRunObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "always-true-0",
-			},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionUnknown,
-					},
-				},
-			},
-		},
-	}
+	taskRunForConditionOfOrphanedTaskRun := mustParseTaskRunWithObjectMeta(t, taskRunForConditionOfOrphanedTaskRunObjectMeta, `
+spec:
+  taskRef:
+    name: always-true-0
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`)
 
 	// This taskrun has a condition attached. The condition is *not* the in pipelinerun, and it's still
 	// running. The taskrun itself was not created yet.
@@ -6243,119 +5273,100 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 	taskRunForOrphanedConditionObjectMeta.Labels[pipeline.ConditionCheckKey] = conditionCheckName4
 	taskRunForOrphanedConditionObjectMeta.Labels[pipeline.ConditionNameKey] = "always-true"
 
-	taskRunForOrphanedCondition := &v1beta1.TaskRun{
-		ObjectMeta: taskRunForOrphanedConditionObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "always-true-0",
+	taskRunForOrphanedCondition := mustParseTaskRunWithObjectMeta(t, taskRunForOrphanedConditionObjectMeta, `
+spec:
+  taskRef:
+    name: always-true-0
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`)
+
+	orphanedRun := mustParseRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-out-of-sync-hello-world-5", "foo", prOutOfSyncName, testPipeline.Name,
+			"hello-world-5", true),
+		`
+spec:
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`)
+
+	prOutOfSync := parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-out-of-sync
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+`)
+
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		prOutOfSync.Status.TaskRuns = map[string]*v1beta1.PipelineRunTaskRunStatus{
+			taskRunDone.Name: {
+				PipelineTaskName: "hello-world-1",
+				Status:           &v1beta1.TaskRunStatus{},
 			},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionUnknown,
-					},
+			taskRunWithCondition.Name: {
+				PipelineTaskName: "hello-world-3",
+				Status:           nil,
+				ConditionChecks:  prccs3,
+			},
+		}
+	}
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		prOutOfSync.Status.ChildReferences = []v1beta1.ChildStatusReference{
+			{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: v1beta1.SchemeGroupVersion.String(),
+					Kind:       "TaskRun",
 				},
+				Name:             taskRunDone.Name,
+				PipelineTaskName: "hello-world-1",
 			},
-		},
+			{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: v1beta1.SchemeGroupVersion.String(),
+					Kind:       "TaskRun",
+				},
+				Name:             taskRunWithCondition.Name,
+				PipelineTaskName: "hello-world-3",
+				ConditionChecks: []*v1beta1.PipelineRunChildConditionCheckStatus{{
+					PipelineRunConditionCheckStatus: *prccs3[conditionCheckName3],
+					ConditionCheckName:              conditionCheckName3,
+				}},
+			},
+		}
 	}
 
-	orphanedRun := &v1alpha1.Run{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-out-of-sync-hello-world-5",
-			Namespace: "foo",
-			OwnerReferences: []metav1.OwnerReference{{
-				Kind: "PipelineRun",
-				Name: prOutOfSyncName,
-			}},
-			Labels: map[string]string{
-				pipeline.PipelineLabelKey:     testPipeline.Name,
-				pipeline.PipelineRunLabelKey:  prOutOfSyncName,
-				pipeline.PipelineTaskLabelKey: "hello-world-5",
-			},
-			Annotations: map[string]string{},
-		},
-		Spec: v1alpha1.RunSpec{
-			Ref: &v1beta1.TaskRef{
-				APIVersion: "example.dev/v0",
-				Kind:       "Example",
-			},
-		},
-		Status: v1alpha1.RunStatus{
-			Status: duckv1.Status{
-				Conditions: []apis.Condition{
-					{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionUnknown,
-					},
-				},
-			},
-		},
-	}
-
-	prOutOfSync := &v1beta1.PipelineRun{
-		ObjectMeta: baseObjectMeta(prOutOfSyncName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: testPipeline.Name},
-			ServiceAccountName: "test-sa",
-		},
-		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionUnknown,
-						Reason:  "",
-						Message: "",
-					},
-				},
-			},
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					taskRunDone.Name: {
-						PipelineTaskName: "hello-world-1",
-						Status:           &v1beta1.TaskRunStatus{},
-					},
-					taskRunWithCondition.Name: {
-						PipelineTaskName: "hello-world-3",
-						Status:           nil,
-						ConditionChecks:  prccs3,
-					},
-				},
-			},
-		},
-	}
 	prs := []*v1beta1.PipelineRun{prOutOfSync}
 	ps := []*v1beta1.Pipeline{testPipeline}
 	ts := []*v1beta1.Task{helloWorldTask}
 	trs := []*v1beta1.TaskRun{taskRunDone, taskRunOrphaned, taskRunWithCondition,
 		taskRunForOrphanedCondition, taskRunForConditionOfOrphanedTaskRun}
 	runs := []*v1alpha1.Run{orphanedRun}
-	cs := []*v1alpha1.Condition{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "always-true",
-			Namespace: "foo",
-		},
-		Spec: v1alpha1.ConditionSpec{
-			Check: v1alpha1.Step{
-				Container: corev1.Container{
-					Image: "foo",
-					Args:  []string{"bar"},
-				},
-			},
-		},
-	}}
+	cs := []*v1alpha1.Condition{parse.MustParseCondition(t, `
+metadata:
+  name: always-true
+  namespace: foo
+spec:
+  check:
+    args:
+    - bar
+    image: foo
+`)}
 
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-custom-tasks": "true",
-			},
-		},
-	}
+	cms := []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -6473,41 +5484,123 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 		},
 	}
 
-	if d := cmp.Diff(reconciledRun.Status.TaskRuns, expectedTaskRunsStatus); d != "" {
-		t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		if d := cmp.Diff(expectedTaskRunsStatus, reconciledRun.Status.TaskRuns); d != "" {
+			t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+		}
+		if d := cmp.Diff(expectedRunsStatus, reconciledRun.Status.Runs); d != "" {
+			t.Fatalf("Expected PipelineRun status to match Run(s) status, but got a mismatch: %s", d)
+		}
 	}
-	if d := cmp.Diff(reconciledRun.Status.Runs, expectedRunsStatus); d != "" {
-		t.Fatalf("Expected PipelineRun status to match Run(s) status, but got a mismatch: %s", d)
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		taskRunsStatus := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+		runsStatus := make(map[string]*v1beta1.PipelineRunRunStatus)
+
+		for _, cr := range reconciledRun.Status.ChildReferences {
+			if cr.Kind == "TaskRun" {
+				trStatusForPipelineRun := &v1beta1.PipelineRunTaskRunStatus{
+					PipelineTaskName: cr.PipelineTaskName,
+					WhenExpressions:  cr.WhenExpressions,
+				}
+
+				for _, cc := range cr.ConditionChecks {
+					if trStatusForPipelineRun.ConditionChecks == nil {
+						trStatusForPipelineRun.ConditionChecks = make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
+					}
+					trStatusForPipelineRun.ConditionChecks[cc.ConditionCheckName] = &v1beta1.PipelineRunConditionCheckStatus{
+						ConditionName: cc.ConditionName,
+						Status:        cc.Status,
+					}
+				}
+
+				tr, _ := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(ctx, cr.Name, metav1.GetOptions{})
+				if tr != nil {
+					trStatusForPipelineRun.Status = &tr.Status
+				}
+
+				taskRunsStatus[cr.Name] = trStatusForPipelineRun
+			} else if cr.Kind == "Run" {
+				rStatusForPipelineRun := &v1beta1.PipelineRunRunStatus{
+					PipelineTaskName: cr.PipelineTaskName,
+					WhenExpressions:  cr.WhenExpressions,
+				}
+
+				r, _ := clients.Pipeline.TektonV1alpha1().Runs("foo").Get(ctx, cr.Name, metav1.GetOptions{})
+				if r != nil {
+					rStatusForPipelineRun.Status = &r.Status
+				}
+
+				runsStatus[cr.Name] = rStatusForPipelineRun
+			}
+		}
+		if d := cmp.Diff(expectedTaskRunsStatus, taskRunsStatus); d != "" {
+			t.Fatalf("Expected PipelineRun status to match TaskRun(s) status, but got a mismatch: %s", d)
+		}
+		if d := cmp.Diff(expectedRunsStatus, runsStatus); d != "" {
+			t.Fatalf("Expected PipelineRun status to match Run(s) status, but got a mismatch: %s", d)
+		}
 	}
 }
 
 func TestUpdatePipelineRunStatusFromInformer(t *testing.T) {
-	names.TestingSeed()
-
-	pr := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run",
-			Namespace: "foo",
-			Labels:    map[string]string{"mylabel": "myvale"},
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
 		},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "unit-test-task-spec",
-					TaskSpec: &v1beta1.EmbeddedTask{
-						TaskSpec: v1beta1.TaskSpec{
-							Steps: []v1beta1.Step{{Container: corev1.Container{
-								Name:  "mystep",
-								Image: "myimage"}}},
-						},
-					},
-				}},
-			},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
 		},
 	}
 
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestUpdatePipelineRunStatusFromInformer(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestUpdatePipelineRunStatusFromInformer(t *testing.T, embeddedStatus string) {
+	names.TestingSeed()
+
+	pr := parse.MustParsePipelineRun(t, `
+metadata:
+  labels:
+    mylabel: myvale
+  name: test-pipeline-run
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+    - name: unit-test-task-spec
+      taskSpec:
+        steps:
+        - image: myimage
+          name: mystep
+    - name: custom-task-ref
+      taskRef:
+        apiVersion: example.dev/v0
+        kind: Example
+        name: some-custom-task
+`)
+
+	cms := []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
+
 	d := test.Data{
 		PipelineRuns: []*v1beta1.PipelineRun{pr},
+		ConfigMaps:   cms,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -6520,14 +5613,44 @@ func TestUpdatePipelineRunStatusFromInformer(t *testing.T) {
 	// Reconcile the PipelineRun.  This creates a Taskrun.
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run", wantEvents, false)
 
-	// Save the name of the TaskRun that was created.
+	// Save the name of the TaskRun and Run that were created.
 	taskRunName := ""
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Fatalf("Expected 1 TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
+	runName := ""
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		if len(reconciledRun.Status.TaskRuns) != 1 {
+			t.Fatalf("Expected 1 TaskRun but got %d", len(reconciledRun.Status.TaskRuns))
+		}
+		for k := range reconciledRun.Status.TaskRuns {
+			taskRunName = k
+			break
+		}
+		if len(reconciledRun.Status.Runs) != 1 {
+			t.Fatalf("Expected 1 Run but got %d", len(reconciledRun.Status.Runs))
+		}
+		for k := range reconciledRun.Status.Runs {
+			runName = k
+			break
+		}
 	}
-	for k := range reconciledRun.Status.TaskRuns {
-		taskRunName = k
-		break
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		if len(reconciledRun.Status.ChildReferences) != 2 {
+			t.Fatalf("Expected 2 ChildReferences but got %d", len(reconciledRun.Status.ChildReferences))
+		}
+		for _, cr := range reconciledRun.Status.ChildReferences {
+			if cr.Kind == "TaskRun" {
+				taskRunName = cr.Name
+			}
+			if cr.Kind == "Run" {
+				runName = cr.Name
+			}
+		}
+	}
+
+	if taskRunName == "" {
+		t.Fatal("expected to find a TaskRun name, but didn't")
+	}
+	if runName == "" {
+		t.Fatal("expected to find a Run name, but didn't")
 	}
 
 	// Add a label to the PipelineRun.  This tests a scenario in issue 3126 which could prevent the reconciler
@@ -6548,359 +5671,11 @@ func TestUpdatePipelineRunStatusFromInformer(t *testing.T) {
 
 	reconciledRun, _ = prt.reconcileRun("foo", "test-pipeline-run", wantEvents, false)
 
-	// Verify that the reconciler found the existing TaskRun instead of creating a new one.
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Fatalf("Expected 1 TaskRun after label change but got %d", len(reconciledRun.Status.TaskRuns))
-	}
-	for k := range reconciledRun.Status.TaskRuns {
-		if k != taskRunName {
-			t.Fatalf("Status has unexpected taskrun %s", k)
-		}
-	}
-}
-
-func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
-
-	prUID := types.UID("11111111-1111-1111-1111-111111111111")
-	otherPrUID := types.UID("22222222-2222-2222-2222-222222222222")
-
-	// PipelineRunConditionCheckStatus recovered by updatePipelineRunStatusFromTaskRuns
-	// It does not include the status, which is then retrieved via the regular reconcile
-	prccs2Recovered := map[string]*v1beta1.PipelineRunConditionCheckStatus{
-		"pr-task-2-running-condition-check-xxyyy": {
-			ConditionName: "running-condition-0",
-		},
-	}
-	prccs3Recovered := map[string]*v1beta1.PipelineRunConditionCheckStatus{
-		"pr-task-3-successful-condition-check-xxyyy": {
-			ConditionName: "successful-condition-0",
-		},
-	}
-	prccs4Recovered := map[string]*v1beta1.PipelineRunConditionCheckStatus{
-		"pr-task-4-failed-condition-check-xxyyy": {
-			ConditionName: "failed-condition-0",
-		},
-	}
-
-	// PipelineRunConditionCheckStatus full is used to test the behaviour of updatePipelineRunStatusFromTaskRuns
-	// when no orphan TaskRuns are found, to check we don't alter good ones
-	prccs2Full := map[string]*v1beta1.PipelineRunConditionCheckStatus{
-		"pr-task-2-running-condition-check-xxyyy": {
-			ConditionName: "running-condition-0",
-			Status: &v1beta1.ConditionCheckStatus{
-				ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
-					Check: corev1.ContainerState{
-						Running: &corev1.ContainerStateRunning{},
-					},
-				},
-				Status: duckv1beta1.Status{
-					Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionUnknown}},
-				},
-			},
-		},
-	}
-	prccs3Full := map[string]*v1beta1.PipelineRunConditionCheckStatus{
-		"pr-task-3-successful-condition-check-xxyyy": {
-			ConditionName: "successful-condition-0",
-			Status: &v1beta1.ConditionCheckStatus{
-				ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
-					Check: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
-					},
-				},
-				Status: duckv1beta1.Status{
-					Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}},
-				},
-			},
-		},
-	}
-	prccs4Full := map[string]*v1beta1.PipelineRunConditionCheckStatus{
-		"pr-task-4-failed-condition-check-xxyyy": {
-			ConditionName: "failed-condition-0",
-			Status: &v1beta1.ConditionCheckStatus{
-				ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
-					Check: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
-					},
-				},
-				Status: duckv1beta1.Status{
-					Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
-				},
-			},
-		},
-	}
-
-	prRunningStatus := duckv1beta1.Status{
-		Conditions: []apis.Condition{
-			{
-				Type:    "Succeeded",
-				Status:  "Unknown",
-				Reason:  "Running",
-				Message: "Not all Tasks in the Pipeline have finished executing",
-			},
-		},
-	}
-
-	prStatusWithCondition := v1beta1.PipelineRunStatus{
-		Status: prRunningStatus,
-		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-				"pr-task-1-xxyyy": {
-					PipelineTaskName: "task-1",
-					Status:           &v1beta1.TaskRunStatus{},
-				},
-				"pr-task-2-xxyyy": {
-					PipelineTaskName: "task-2",
-					Status:           nil,
-					ConditionChecks:  prccs2Full,
-				},
-				"pr-task-3-xxyyy": {
-					PipelineTaskName: "task-3",
-					Status:           &v1beta1.TaskRunStatus{},
-					ConditionChecks:  prccs3Full,
-				},
-				"pr-task-4-xxyyy": {
-					PipelineTaskName: "task-4",
-					Status:           nil,
-					ConditionChecks:  prccs4Full,
-				},
-			},
-		},
-	}
-
-	prStatusWithEmptyTaskRuns := v1beta1.PipelineRunStatus{
-		Status: prRunningStatus,
-		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{},
-		},
-	}
-
-	prStatusWithOrphans := v1beta1.PipelineRunStatus{
-		Status: duckv1beta1.Status{
-			Conditions: []apis.Condition{
-				{
-					Type:    "Succeeded",
-					Status:  "Unknown",
-					Reason:  "Running",
-					Message: "Not all Tasks in the Pipeline have finished executing",
-				},
-			},
-		},
-		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{},
-		},
-	}
-
-	prStatusRecovered := v1beta1.PipelineRunStatus{
-		Status: prRunningStatus,
-		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-				"pr-task-1-xxyyy": {
-					PipelineTaskName: "task-1",
-					Status:           &v1beta1.TaskRunStatus{},
-				},
-				"orphaned-taskruns-pr-task-2-xxyyy": {
-					PipelineTaskName: "task-2",
-					Status:           nil,
-					ConditionChecks:  prccs2Recovered,
-				},
-				"pr-task-3-xxyyy": {
-					PipelineTaskName: "task-3",
-					Status:           &v1beta1.TaskRunStatus{},
-					ConditionChecks:  prccs3Recovered,
-				},
-				"orphaned-taskruns-pr-task-4-xxyyy": {
-					PipelineTaskName: "task-4",
-					Status:           nil,
-					ConditionChecks:  prccs4Recovered,
-				},
-			},
-		},
-	}
-
-	prStatusRecoveredSimple := v1beta1.PipelineRunStatus{
-		Status: prRunningStatus,
-		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-				"pr-task-1-xxyyy": {
-					PipelineTaskName: "task-1",
-					Status:           &v1beta1.TaskRunStatus{},
-				},
-			},
-		},
-	}
-
-	allTaskRuns := []*v1beta1.TaskRun{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pr-task-1-xxyyy",
-				Labels: map[string]string{
-					pipeline.PipelineTaskLabelKey: "task-1",
-				},
-				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pr-task-2-running-condition-check-xxyyy",
-				Labels: map[string]string{
-					pipeline.PipelineTaskLabelKey: "task-2",
-					pipeline.ConditionCheckKey:    "pr-task-2-running-condition-check-xxyyy",
-					pipeline.ConditionNameKey:     "running-condition",
-				},
-				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pr-task-3-xxyyy",
-				Labels: map[string]string{
-					pipeline.PipelineTaskLabelKey: "task-3",
-				},
-				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pr-task-3-successful-condition-check-xxyyy",
-				Labels: map[string]string{
-					pipeline.PipelineTaskLabelKey: "task-3",
-					pipeline.ConditionCheckKey:    "pr-task-3-successful-condition-check-xxyyy",
-					pipeline.ConditionNameKey:     "successful-condition",
-				},
-				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pr-task-4-failed-condition-check-xxyyy",
-				Labels: map[string]string{
-					pipeline.PipelineTaskLabelKey: "task-4",
-					pipeline.ConditionCheckKey:    "pr-task-4-failed-condition-check-xxyyy",
-					pipeline.ConditionNameKey:     "failed-condition",
-				},
-				OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
-			},
-		},
-	}
-
-	taskRunsFromAnotherPR := []*v1beta1.TaskRun{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pr-task-1-xxyyy",
-				Labels: map[string]string{
-					pipeline.PipelineTaskLabelKey: "task-1",
-				},
-				OwnerReferences: []metav1.OwnerReference{{UID: otherPrUID}},
-			},
-		},
-	}
-
-	tcs := []struct {
-		prName           string
-		prStatus         v1beta1.PipelineRunStatus
-		trs              []*v1beta1.TaskRun
-		expectedPrStatus v1beta1.PipelineRunStatus
-	}{
-		{
-			prName:           "no-status-no-taskruns",
-			prStatus:         v1beta1.PipelineRunStatus{},
-			trs:              nil,
-			expectedPrStatus: v1beta1.PipelineRunStatus{},
-		}, {
-			prName:           "status-no-taskruns",
-			prStatus:         prStatusWithCondition,
-			trs:              nil,
-			expectedPrStatus: prStatusWithCondition,
-		}, {
-			prName:   "status-nil-taskruns",
-			prStatus: prStatusWithEmptyTaskRuns,
-			trs: []*v1beta1.TaskRun{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "pr-task-1-xxyyy",
-						Labels: map[string]string{
-							pipeline.PipelineTaskLabelKey: "task-1",
-						},
-						OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
-					},
-				},
-			},
-			expectedPrStatus: prStatusRecoveredSimple,
-		}, {
-			prName:   "status-missing-taskruns",
-			prStatus: prStatusWithCondition,
-			trs: []*v1beta1.TaskRun{
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "pr-task-3-xxyyy",
-						Labels: map[string]string{
-							pipeline.PipelineTaskLabelKey: "task-3",
-						},
-						OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
-					},
-				},
-				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "pr-task-3-successful-condition-check-xxyyy",
-						Labels: map[string]string{
-							pipeline.PipelineTaskLabelKey: "task-3",
-							pipeline.ConditionCheckKey:    "pr-task-3-successful-condition-check-xxyyy",
-							pipeline.ConditionNameKey:     "successful-condition",
-						},
-						OwnerReferences: []metav1.OwnerReference{{UID: prUID}},
-					},
-				},
-			},
-			expectedPrStatus: prStatusWithCondition,
-		}, {
-			prName:           "status-matching-taskruns-pr",
-			prStatus:         prStatusWithCondition,
-			trs:              allTaskRuns,
-			expectedPrStatus: prStatusWithCondition,
-		}, {
-			prName:           "orphaned-taskruns-pr",
-			prStatus:         prStatusWithOrphans,
-			trs:              allTaskRuns,
-			expectedPrStatus: prStatusRecovered,
-		}, {
-			prName:           "tr-from-another-pr",
-			prStatus:         prStatusWithEmptyTaskRuns,
-			trs:              taskRunsFromAnotherPR,
-			expectedPrStatus: prStatusWithEmptyTaskRuns,
-		},
-	}
-
-	for _, tc := range tcs {
-		t.Run(tc.prName, func(t *testing.T) {
-			logger := logtesting.TestLogger(t)
-
-			pr := &v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Name: tc.prName, UID: prUID},
-				Status:     tc.prStatus,
-			}
-
-			updatePipelineRunStatusFromTaskRuns(logger, pr, tc.trs)
-			actualPrStatus := pr.Status
-
-			// The TaskRun keys for recovered taskruns will contain a new random key, appended to the
-			// base name that we expect. Replace the random part so we can diff the whole structure
-			actualTaskRuns := actualPrStatus.PipelineRunStatusFields.TaskRuns
-			if actualTaskRuns != nil {
-				fixedTaskRuns := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-				re := regexp.MustCompile(`^[a-z\-]*?-task-[0-9]`)
-				for k, v := range actualTaskRuns {
-					newK := re.FindString(k)
-					fixedTaskRuns[newK+"-xxyyy"] = v
-				}
-				actualPrStatus.PipelineRunStatusFields.TaskRuns = fixedTaskRuns
-			}
-
-			if d := cmp.Diff(tc.expectedPrStatus, actualPrStatus); d != "" {
-				t.Errorf("expected the PipelineRun status to match %#v. Diff %s", tc.expectedPrStatus, diff.PrintWantGot(d))
-			}
-		})
-	}
+	// Verify that the reconciler found the existing TaskRun and Run instead of creating new ones.
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 1)
+	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, taskRunName)
+	verifyRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 1)
+	verifyRunStatusesNames(t, embeddedStatus, reconciledRun.Status, runName)
 }
 
 func TestReconcilePipeline_FinalTasks(t *testing.T) {
@@ -7413,6 +6188,7 @@ spec:
 			},
 		},
 	}
+	t.Logf("config maps: %s", cms)
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -7430,31 +6206,52 @@ spec:
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipelinerun", wantEvents, false)
 
 	// This PipelineRun is in progress now and the status should reflect that
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil || condition.Status != corev1.ConditionUnknown {
-		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
-	}
-	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
-		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
-	}
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Errorf("Expected PipelineRun status to include the TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
-	}
+	verifyTaskRunStatusesCount(t, cms[0].Data[embeddedStatusFeatureFlag], reconciledRun.Status, 1)
 
 	wantCloudEvents := []string{
 		`(?s)dev.tekton.event.pipelinerun.started.v1.*test-pipelinerun`,
 		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	err := eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents)
-	if !(err == nil) {
+	if err := eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents); err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
 // this test validates taskSpec metadata is embedded into task run
 func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcilePipelineTaskSpecMetadata(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcilePipelineTaskSpecMetadata(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
 
 	prs := []*v1beta1.PipelineRun{
@@ -7498,6 +6295,7 @@ spec:
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
+		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -7545,9 +6343,7 @@ spec:
 		t.Fatalf("Expected TaskRuns to match, but got a mismatch: %s", d)
 	}
 
-	if len(reconciledRun.Status.TaskRuns) != 2 {
-		t.Errorf("Expected PipelineRun status to include both TaskRun status items that can run immediately: %v", reconciledRun.Status.TaskRuns)
-	}
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 2)
 }
 
 func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
@@ -7556,71 +6352,61 @@ func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
 	pipelineName := "p-pipelinetask-status"
 	pipelineRunName := "pr-pipelinetask-status"
 
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: baseObjectMeta(pipelineName, "foo"),
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name: "task1",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "mytask",
-				},
-			}},
-			Finally: []v1beta1.PipelineTask{{
-				Name: "finaltask",
-				TaskRef: &v1beta1.TaskRef{
-					Name: "finaltask",
-				},
-				Params: []v1beta1.Param{{
-					Name:  "pipelineRun-tasks-task1",
-					Value: *v1beta1.NewArrayOrString("$(tasks.task1.status)"),
-				}},
-			}},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: p-pipelinetask-status
+  namespace: foo
+spec:
+  finally:
+  - name: finaltask
+    params:
+    - name: pipelineRun-tasks-task1
+      value: $(tasks.task1.status)
+    taskRef:
+      name: finaltask
+  tasks:
+  - name: task1
+    taskRef:
+      name: mytask
+`)}
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(pipelineRunName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: pipelineName},
-			ServiceAccountName: "test-sa",
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr-pipelinetask-status
+  namespace: foo
+spec:
+  pipelineRef:
+    name: p-pipelinetask-status
+  serviceAccountName: test-sa
+`)}
 
 	ts := []*v1beta1.Task{
 		{ObjectMeta: baseObjectMeta("mytask", "foo")},
-		{
-			ObjectMeta: baseObjectMeta("finaltask", "foo"),
-			Spec: v1beta1.TaskSpec{
-				Params: []v1beta1.ParamSpec{{
-					Name: "pipelineRun-tasks-task1",
-					Type: v1beta1.ParamTypeString,
-				}},
-			},
-		},
-	}
+		parse.MustParseTask(t, `
+metadata:
+  name: finaltask
+  namespace: foo
+spec:
+  params:
+  - name: pipelineRun-tasks-task1
+    type: string
+`)}
 
-	trs := []*v1beta1.TaskRun{{
-		ObjectMeta: taskRunObjectMeta(pipelineRunName+"-task1-xxyy", "foo", pipelineRunName, pipelineName, "task1", false),
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "mytask",
-			},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-						Reason: v1beta1.TaskRunReasonFailed.String(),
-					},
-				},
-			},
-		},
-	}}
+	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta(pipelineRunName+"-task1-xxyy", "foo", pipelineRunName, pipelineName, "task1", false),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+status:
+  conditions:
+  - reason: Failed
+    status: "False"
+    type: Succeeded
+`)}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -7636,21 +6422,17 @@ func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
 	expectedTaskRunName := pipelineRunName + "-finaltask"
 	expectedTaskRunObjectMeta := taskRunObjectMeta(expectedTaskRunName, "foo", pipelineRunName, pipelineName, "finaltask", false)
 	expectedTaskRunObjectMeta.Labels[pipeline.MemberOfLabelKey] = v1beta1.PipelineFinallyTasks
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: expectedTaskRunObjectMeta,
-		Spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "finaltask",
-			},
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			Params: []v1beta1.Param{{
-				Name:  "pipelineRun-tasks-task1",
-				Value: *v1beta1.NewArrayOrString("Failed"),
-			}},
-		},
-	}
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
+spec:
+  params:
+  - name: pipelineRun-tasks-task1
+    value: Failed
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: finaltask
+  timeout: 1h0m0s
+`)
 	// Check that the expected TaskRun was created
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
 		LabelSelector: "tekton.dev/pipelineTask=finaltask,tekton.dev/pipelineRun=" + pipelineRunName,
@@ -7664,7 +6446,7 @@ func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion); d != "" {
+	if d := cmp.Diff(&actualTaskRun, expectedTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 }
@@ -7672,184 +6454,137 @@ func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
 func TestReconcileWithTaskResultsInFinalTasks(t *testing.T) {
 	names.TestingSeed()
 
-	ps := []*v1beta1.Pipeline{{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline", Namespace: "foo"},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "dag-task-1",
-				TaskRef: &v1beta1.TaskRef{Name: "dag-task"},
-			}, {
-				Name:    "dag-task-2",
-				TaskRef: &v1beta1.TaskRef{Name: "dag-task"},
-			}},
-			Finally: []v1beta1.PipelineTask{{
-				Name:    "final-task-1",
-				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
-				Params: []v1beta1.Param{{
-					Name: "finalParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      "string",
-						StringVal: "$(tasks.dag-task-1.results.aResult)",
-					}},
-				},
-			}, {
-				Name:    "final-task-2",
-				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
-				Params: []v1beta1.Param{{
-					Name: "finalParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      "string",
-						StringVal: "$(tasks.dag-task-2.results.aResult)",
-					}},
-				},
-			}, {
-				// final task skipped because when expressions evaluated to false
-				Name:    "final-task-3",
-				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
-				Params: []v1beta1.Param{{
-					Name: "finalParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      "string",
-						StringVal: "param",
-					}},
-				},
-				WhenExpressions: v1beta1.WhenExpressions{{
-					Input:    "$(tasks.dag-task-1.results.aResult)",
-					Operator: selection.NotIn,
-					Values:   []string{"aResultValue"},
-				}},
-			}, {
-				// final task executed because when expressions evaluated to true
-				Name:    "final-task-4",
-				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
-				Params: []v1beta1.Param{{
-					Name: "finalParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      "string",
-						StringVal: "param",
-					}},
-				},
-				WhenExpressions: v1beta1.WhenExpressions{{
-					Input:    "$(tasks.dag-task-1.results.aResult)",
-					Operator: selection.In,
-					Values:   []string{"aResultValue"},
-				}},
-			}, {
-				// final task skipped because of missing result reference in when expressions
-				Name:    "final-task-5",
-				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
-				Params: []v1beta1.Param{{
-					Name: "finalParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      "string",
-						StringVal: "param",
-					}},
-				},
-				WhenExpressions: v1beta1.WhenExpressions{{
-					Input:    "$(tasks.dag-task-2.results.aResult)",
-					Operator: selection.NotIn,
-					Values:   []string{"aResultValue"},
-				}},
-			}, {
-				// final task skipped because of missing result reference in params
-				// even though its when expressions has a valid result that would have evaluated to true
-				Name:    "final-task-6",
-				TaskRef: &v1beta1.TaskRef{Name: "final-task"},
-				Params: []v1beta1.Param{{
-					Name: "finalParam",
-					Value: v1beta1.ArrayOrString{
-						Type:      "string",
-						StringVal: "$(tasks.dag-task-2.results.aResult)",
-					}},
-				},
-				WhenExpressions: v1beta1.WhenExpressions{{
-					Input:    "$(tasks.dag-task-1.results.aResult)",
-					Operator: selection.In,
-					Values:   []string{"aResultValue"},
-				}},
-			}},
-		},
-	}}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  finally:
+  - name: final-task-1
+    params:
+    - name: finalParam
+      value: $(tasks.dag-task-1.results.aResult)
+    taskRef:
+      name: final-task
+  - name: final-task-2
+    params:
+    - name: finalParam
+      value: $(tasks.dag-task-2.results.aResult)
+    taskRef:
+      name: final-task
+  - name: final-task-3
+    params:
+    - name: finalParam
+      value: param
+    taskRef:
+      name: final-task
+    when:
+    - input: $(tasks.dag-task-1.results.aResult)
+      operator: notin
+      values:
+      - aResultValue
+  - name: final-task-4
+    params:
+    - name: finalParam
+      value: param
+    taskRef:
+      name: final-task
+    when:
+    - input: $(tasks.dag-task-1.results.aResult)
+      operator: in
+      values:
+      - aResultValue
+  - name: final-task-5
+    params:
+    - name: finalParam
+      value: param
+    taskRef:
+      name: final-task
+    when:
+    - input: $(tasks.dag-task-2.results.aResult)
+      operator: notin
+      values:
+      - aResultValue
+  - name: final-task-6
+    params:
+    - name: finalParam
+      value: $(tasks.dag-task-2.results.aResult)
+    taskRef:
+      name: final-task
+    when:
+    - input: $(tasks.dag-task-1.results.aResult)
+      operator: in
+      values:
+      - aResultValue
+  tasks:
+  - name: dag-task-1
+    taskRef:
+      name: dag-task
+  - name: dag-task-2
+    taskRef:
+      name: dag-task
+`)}
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-final-task-results", Namespace: "foo"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline"},
-			ServiceAccountName: "test-sa-0",
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-final-task-results
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+`)}
 
-	ts := []*v1beta1.Task{{
-		ObjectMeta: metav1.ObjectMeta{Name: "dag-task", Namespace: "foo"},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{Name: "final-task", Namespace: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Params: []v1beta1.ParamSpec{{
-				Name: "finalParam",
-				Type: v1beta1.ParamTypeString,
-			}},
-		},
-	}}
+	ts := []*v1beta1.Task{
+		parse.MustParseTask(t, `
+metadata:
+  name: dag-task
+  namespace: foo
+`),
+		parse.MustParseTask(t, `
+metadata:
+  name: final-task
+  namespace: foo
+spec:
+  params:
+  - name: finalParam
+    type: string
+`),
+	}
 
-	trs := []*v1beta1.TaskRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-final-task-results-dag-task-1-xxyyy",
-			Namespace: "foo",
-			OwnerReferences: []metav1.OwnerReference{{
-				Kind:       "PipelineRun",
-				Name:       "test-pipeline-run-final-task-results",
-				APIVersion: "tekton.dev/v1beta1",
-			}},
-			Labels: map[string]string{
-				"tekton.dev/pipeline":     "test-pipeline",
-				"tekton.dev/pipelineRun":  "test-pipeline-run-final-task-results",
-				"tekton.dev/pipelineTask": "dag-task-1",
-			},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			ServiceAccountName: "test-sa",
-			TaskRef:            &v1beta1.TaskRef{Name: "hello-world"},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-					Reason: v1beta1.PipelineRunReasonSuccessful.String(),
-				}},
-			},
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				TaskRunResults: []v1beta1.TaskRunResult{{Name: "aResult", Value: "aResultValue"}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-pipeline-run-final-task-results-dag-task-2-xxyyy",
-			Namespace: "foo",
-			OwnerReferences: []metav1.OwnerReference{{
-				Kind:       "PipelineRun",
-				Name:       "test-pipeline-run-final-task-results",
-				APIVersion: "tekton.dev/v1beta1",
-			}},
-			Labels: map[string]string{
-				"tekton.dev/pipeline":     "test-pipeline",
-				"tekton.dev/pipelineRun":  "test-pipeline-run-final-task-results",
-				"tekton.dev/pipelineTask": "dag-task-2",
-			},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			ServiceAccountName: "test-sa",
-			TaskRef:            &v1beta1.TaskRef{Name: "hello-world"},
-		},
-		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{apis.Condition{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionFalse,
-				}},
-			},
-		},
-	}}
+	trs := []*v1beta1.TaskRun{
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("test-pipeline-run-final-task-results-dag-task-1-xxyyy", "foo",
+				"test-pipeline-run-final-task-results", "test-pipeline", "dag-task-1", false),
+			`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+status:
+  conditions:
+  - reason: Succeeded
+    status: "True"
+    type: Succeeded
+  taskResults:
+  - name: aResult
+    value: aResultValue
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("test-pipeline-run-final-task-results-dag-task-2-xxyyy", "foo",
+				"test-pipeline-run-final-task-results", "test-pipeline", "dag-task-2", false),
+			`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+status:
+  conditions:
+  - lastTransitionTime: null
+    status: "False"
+    type: Succeeded
+`),
+	}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -7863,33 +6598,20 @@ func TestReconcileWithTaskResultsInFinalTasks(t *testing.T) {
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-final-task-results", []string{}, false)
 
 	expectedTaskRunName := "test-pipeline-run-final-task-results-final-task-1"
-	expectedTaskRun := v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      expectedTaskRunName,
-			Namespace: "foo",
-			OwnerReferences: []metav1.OwnerReference{{
-				Kind:               "PipelineRun",
-				Name:               "test-pipeline-run-final-task-results",
-				APIVersion:         "tekton.dev/v1beta1",
-				Controller:         &trueb,
-				BlockOwnerDeletion: &trueb,
-			}},
-			Labels: map[string]string{
-				"tekton.dev/pipeline":     "test-pipeline",
-				"tekton.dev/pipelineRun":  "test-pipeline-run-final-task-results",
-				"tekton.dev/pipelineTask": "final-task-1",
-				pipeline.MemberOfLabelKey: v1beta1.PipelineFinallyTasks,
-			},
-			Annotations: map[string]string{},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			ServiceAccountName: "test-sa-0",
-			TaskRef:            &v1beta1.TaskRef{Name: "final-task"},
-			Params:             []v1beta1.Param{{Name: "finalParam", Value: v1beta1.ArrayOrString{Type: "string", StringVal: "aResultValue"}}},
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}
+	expectedTaskRunObjectMeta := taskRunObjectMeta("test-pipeline-run-final-task-results-final-task-1", "foo",
+		"test-pipeline-run-final-task-results", "test-pipeline", "final-task-1", true)
+	expectedTaskRunObjectMeta.Labels[pipeline.MemberOfLabelKey] = v1beta1.PipelineFinallyTasks
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
+spec:
+  params:
+  - name: finalParam
+    value: aResultValue
+  resources: {}
+  serviceAccountName: test-sa-0
+  taskRef:
+    name: final-task
+  timeout: 1h0m0s
+`)
 
 	// Check that the expected TaskRun was created
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
@@ -7904,7 +6626,7 @@ func TestReconcileWithTaskResultsInFinalTasks(t *testing.T) {
 		t.Fatalf("Expected 1 TaskRuns got %d", len(actual.Items))
 	}
 	actualTaskRun := actual.Items[0]
-	if d := cmp.Diff(expectedTaskRun, actualTaskRun, ignoreResourceVersion); d != "" {
+	if d := cmp.Diff(*expectedTaskRun, actualTaskRun, ignoreResourceVersion, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRunName, diff.PrintWantGot(d))
 	}
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
@@ -7977,16 +6699,41 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 }
 
 func TestReconcile_RemotePipelineRef(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileRemotePipelineRef(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcileRemotePipelineRef(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
 
 	ctx := context.Background()
 	cfg := config.NewStore(logtesting.TestLogger(t))
-	cfg.OnConfigChanged(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-tekton-oci-bundles": "true",
-		},
-	})
+	cfg.OnConfigChanged(withOCIBundles(newFeatureFlagsConfigMap()))
 	ctx = cfg.ToContext(ctx)
 
 	// Set up a fake registry to push an image to.
@@ -7999,42 +6746,36 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 
 	ref := u.Host + "/testreconcile_remotepipelineref"
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-success", Namespace: "foo"},
-		Spec: v1beta1.PipelineRunSpec{
-			ServiceAccountName: "test-sa",
-			PipelineRef:        &v1beta1.PipelineRef{Name: "test-pipeline", Bundle: ref},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-		},
-	}}
-	ps := &v1beta1.Pipeline{
-		TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "Pipeline"},
-		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline", Namespace: "foo"},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
-				Name:    "unit-test-1",
-				TaskRef: &v1beta1.TaskRef{Name: "unit-test-task", Bundle: ref}},
-			},
-		},
-	}
-	cms := []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"enable-tekton-oci-bundles": "true",
-			},
-		},
-	}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline-run-success
+  namespace: foo
+spec:
+  pipelineRef:
+    bundle: %s
+    name: test-pipeline
+  serviceAccountName: test-sa
+  timeout: 1h0m0s
+`, ref))}
+	ps := parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: unit-test-1
+    taskRef:
+      bundle: %s
+      name: unit-test-task
+`, ref))
+	cms := []*corev1.ConfigMap{withOCIBundles(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
 
 	// This task will be uploaded along with the pipeline definition.
-	remoteTask := &v1beta1.Task{
-		ObjectMeta: baseObjectMeta("unit-test-task", "foo"),
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "tekton.dev/v1beta1",
-			Kind:       "Task",
-		},
-		Spec: v1beta1.TaskSpec{},
-	}
+	remoteTask := parse.MustParseTask(t, `
+metadata:
+  name: unit-test-task
+  namespace: foo
+`)
 
 	// Create a bundle from our pipeline and tasks.
 	if _, err := test.CreateImage(ref, ps, remoteTask); err != nil {
@@ -8059,104 +6800,95 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 	}
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
 
-	if len(clients.Pipeline.Actions()) == 0 {
-		t.Fatalf("Expected client to have been used to create a TaskRun but it wasn't")
-	}
-
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions())[0]
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-pipeline-run-success-unit-test-1",
-			Namespace:   "foo",
-			Annotations: map[string]string{},
-			Labels: map[string]string{
-				"tekton.dev/pipeline":         "test-pipeline",
-				"tekton.dev/pipelineRun":      "test-pipeline-run-success",
-				pipeline.PipelineTaskLabelKey: "unit-test-1",
-				pipeline.MemberOfLabelKey:     v1beta1.PipelineTasks,
-			},
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion:         "tekton.dev/v1beta1",
-				Kind:               "PipelineRun",
-				Name:               "test-pipeline-run-success",
-				Controller:         &trueb,
-				BlockOwnerDeletion: &trueb,
-			}},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			TaskRef: &v1beta1.TaskRef{
-				Kind:   "Task",
-				Name:   "unit-test-task",
-				Bundle: ref,
-			},
-		},
-	}
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success",
+			"test-pipeline", "unit-test-1", false),
+		fmt.Sprintf(`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    bundle: %s
+    kind: Task
+    name: unit-test-task
+  timeout: 1h0m0s
+`, ref))
 
-	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
 	// This PipelineRun is in progress now and the status should reflect that
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil || condition.Status != corev1.ConditionUnknown {
-		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
-	}
-	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
-		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
-	}
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Errorf("Expected PipelineRun status to include the TaskRun status item that ran immediately: %v", reconciledRun.Status.TaskRuns)
-	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1"]; !exists {
-		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
-	}
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 1)
+	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, "test-pipeline-run-success-unit-test-1")
 }
 
 // TestReconcile_OptionalWorkspacesOmitted checks that an optional workspace declared by
 // a Task and a Pipeline can be omitted by a PipelineRun and the run will still start
 // successfully without an error.
 func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileOptionalWorkspacesOmitted(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcileOptionalWorkspacesOmitted(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
 
 	ctx := context.Background()
 	cfg := config.NewStore(logtesting.TestLogger(t))
 	ctx = cfg.ToContext(ctx)
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-success", Namespace: "foo"},
-		Spec: v1beta1.PipelineRunSpec{
-			ServiceAccountName: "test-sa",
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
-					Name:     "optional-workspace",
-					Optional: true,
-				}},
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "unit-test-1",
-					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-						Workspaces: []v1beta1.WorkspaceDeclaration{{
-							Name:     "ws",
-							Optional: true,
-						}},
-						Steps: []v1beta1.Step{{
-							Container: corev1.Container{
-								Image: "foo:latest",
-							},
-						}},
-					}},
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "ws",
-						Workspace: "optional-workspace",
-					}},
-				}},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-success
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+    - name: unit-test-1
+      taskSpec:
+        steps:
+        - image: foo:latest
+        workspaces:
+        - name: ws
+          optional: true
+      workspaces:
+      - name: ws
+        workspace: optional-workspace
+    workspaces:
+    - name: optional-workspace
+      optional: true
+  serviceAccountName: test-sa
+`)}
 
 	// Unlike the tests above, we do *not* locally define our pipeline or unit-test task.
 	d := test.Data{
@@ -8164,6 +6896,7 @@ func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: prs[0].Spec.ServiceAccountName, Namespace: "foo"},
 		}},
+		ConfigMaps: []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 
 	prt := newPipelineRunTest(d, t)
@@ -8172,62 +6905,32 @@ func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", nil, false)
 
 	// Check that the expected TaskRun was created
-	actual := getTaskRunCreations(t, clients.Pipeline.Actions())[0]
-	expectedTaskRun := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-pipeline-run-success-unit-test-1",
-			Namespace:   "foo",
-			Annotations: map[string]string{},
-			Labels: map[string]string{
-				"tekton.dev/pipeline":         "test-pipeline-run-success",
-				"tekton.dev/pipelineRun":      "test-pipeline-run-success",
-				pipeline.PipelineTaskLabelKey: "unit-test-1",
-				pipeline.MemberOfLabelKey:     v1beta1.PipelineTasks,
-			},
-			OwnerReferences: []metav1.OwnerReference{{
-				APIVersion: "tekton.dev/v1beta1",
-				Kind:       "PipelineRun",
-				Name:       "test-pipeline-run-success", Controller: &trueb,
-				BlockOwnerDeletion: &trueb,
-			}},
-		},
-		Spec: v1beta1.TaskRunSpec{
-			ServiceAccountName: "test-sa",
-			Resources:          &v1beta1.TaskRunResources{},
-			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			TaskSpec: &v1beta1.TaskSpec{
-				Workspaces: []v1beta1.WorkspaceDeclaration{{
-					Name:     "ws",
-					Optional: true,
-				}},
-				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Image: "foo:latest",
-					},
-				}},
-			},
-		},
-	}
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success",
+			"test-pipeline-run-success", "unit-test-1", false),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskSpec:
+    steps:
+    - image: foo:latest
+    workspaces:
+    - name: ws
+      optional: true
+  timeout: 1h0m0s
+`)
 
-	if d := cmp.Diff(expectedTaskRun, actual, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
 	// This PipelineRun is in progress now and the status should reflect that
-	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
-	if condition == nil || condition.Status != corev1.ConditionUnknown {
-		t.Errorf("Expected PipelineRun status to be in progress, but was %v", condition)
-	}
-	if condition != nil && condition.Reason != v1beta1.PipelineRunReasonRunning.String() {
-		t.Errorf("Expected reason %q but was %s", v1beta1.PipelineRunReasonRunning.String(), condition.Reason)
-	}
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 
-	if len(reconciledRun.Status.TaskRuns) != 1 {
-		t.Errorf("Expected PipelineRun status to include the TaskRun status item that ran immediately: %v", reconciledRun.Status.TaskRuns)
-	}
-	if _, exists := reconciledRun.Status.TaskRuns["test-pipeline-run-success-unit-test-1"]; !exists {
-		t.Errorf("Expected PipelineRun status to include TaskRun status but was %v", reconciledRun.Status.TaskRuns)
-	}
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 1)
+	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, "test-pipeline-run-success-unit-test-1")
 }
 
 func TestReconcile_DependencyValidationsImmediatelyFailPipelineRun(t *testing.T) {
@@ -8237,108 +6940,71 @@ func TestReconcile_DependencyValidationsImmediatelyFailPipelineRun(t *testing.T)
 	cfg := config.NewStore(logtesting.TestLogger(t))
 	ctx = cfg.ToContext(ctx)
 
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pipelinerun-param-invalid-result-variable",
-			Namespace: "foo",
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			ServiceAccountName: "test-sa",
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "pt0",
-					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1beta1.Step{{
-							Container: corev1.Container{
-								Image: "foo:latest",
-							},
-						}},
-					}},
-				}, {
-					Name: "pt1",
-					Params: []v1beta1.Param{{
-						Name:  "p",
-						Value: *v1beta1.NewArrayOrString("$(tasks.pt0.results.r1)"),
-					}},
-					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-						Params: []v1beta1.ParamSpec{{
-							Name: "p",
-						}},
-						Steps: []v1beta1.Step{{
-							Container: corev1.Container{
-								Image: "foo:latest",
-							},
-						}},
-					}},
-				}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pipelinerun-pipeline-result-invalid-result-variable",
-			Namespace: "foo",
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			ServiceAccountName: "test-sa",
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "pt0",
-					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1beta1.Step{{
-							Container: corev1.Container{
-								Image: "foo:latest",
-							},
-						}},
-					}},
-				}, {
-					Name: "pt1",
-					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1beta1.Step{{
-							Container: corev1.Container{
-								Image: "foo:latest",
-							},
-						}},
-					}},
-				}},
-				Results: []v1beta1.PipelineResult{{
-					Name:  "pr",
-					Value: "$(tasks.pt0.results.r)",
-				}},
-			},
-		},
-	}, {
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pipelinerun-with-optional-workspace-validation",
-			Namespace: "foo",
-		},
-		Spec: v1beta1.PipelineRunSpec{
-			ServiceAccountName: "test-sa",
-			PipelineSpec: &v1beta1.PipelineSpec{
-				Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
-					Name:     "optional-workspace",
-					Optional: true,
-				}},
-				Tasks: []v1beta1.PipelineTask{{
-					Name: "unit-test-1",
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "ws",
-						Workspace: "optional-workspace",
-					}},
-					TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
-						Workspaces: []v1beta1.WorkspaceDeclaration{{
-							Name:     "ws",
-							Optional: false,
-						}},
-						Steps: []v1beta1.Step{{
-							Container: corev1.Container{
-								Image: "foo:latest",
-							},
-						}},
-					}},
-				}},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{
+		parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipelinerun-param-invalid-result-variable
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+    - name: pt0
+      taskSpec:
+        steps:
+        - image: foo:latest
+    - name: pt1
+      params:
+      - name: p
+        value: $(tasks.pt0.results.r1)
+      taskSpec:
+        params:
+        - name: p
+        steps:
+        - image: foo:latest
+  serviceAccountName: test-sa
+`),
+		parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipelinerun-pipeline-result-invalid-result-variable
+  namespace: foo
+spec:
+  pipelineSpec:
+    results:
+    - name: pr
+      value: $(tasks.pt0.results.r)
+    tasks:
+    - name: pt0
+      taskSpec:
+        steps:
+        - image: foo:latest
+    - name: pt1
+      taskSpec:
+        steps:
+        - image: foo:latest
+  serviceAccountName: test-sa
+`),
+		parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipelinerun-with-optional-workspace-validation
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+    - name: unit-test-1
+      taskSpec:
+        steps:
+        - image: foo:latest
+        workspaces:
+        - name: ws
+      workspaces:
+      - name: ws
+        workspace: optional-workspace
+    workspaces:
+    - name: optional-workspace
+      optional: true
+  serviceAccountName: test-sa
+`),
+	}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -8377,6 +7043,84 @@ func TestReconcile_DependencyValidationsImmediatelyFailPipelineRun(t *testing.T)
 	}
 }
 
+// TestReconcileWithResolver checks that a PipelineRun with a populated Resolver
+// field creates a ResolutionRequest object for that Resolver's type, and
+// that when the request is successfully resolved the PipelineRun begins running.
+func TestReconcileWithResolver(t *testing.T) {
+	resolverName := "foobar"
+	pr := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    resolver: foobar
+  serviceAccountName: default
+`)
+
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+
+	d := test.Data{
+		ConfigMaps:   cms,
+		PipelineRuns: []*v1beta1.PipelineRun{pr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string(nil)
+	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
+	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, ReasonResolvingPipelineRef)
+
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error listing resource requests: %v", err)
+	}
+	numResolutionRequests := len(resolutionrequests.Items)
+	if numResolutionRequests != 1 {
+		t.Fatalf("expected exactly 1 resource request but found %d", numResolutionRequests)
+	}
+
+	resreq := &resolutionrequests.Items[0]
+	resolutionRequestType := resreq.ObjectMeta.Labels["resolution.tekton.dev/type"]
+	if resolutionRequestType != resolverName {
+		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
+	}
+
+	// Mock a successful resolution
+	var pipelineBytes = []byte(`
+          kind: Pipeline
+          apiVersion: tekton.dev/v1beta1
+          metadata:
+            name: foo
+          spec:
+            tasks:
+            - name: task1
+              taskSpec:
+                steps:
+                - name: step1
+                  image: ubuntu
+                  script: |
+                    echo "hello world!"
+        `)
+	resreq.Status.ResolutionRequestStatusFields.Data = base64.StdEncoding.Strict().EncodeToString(pipelineBytes)
+	resreq.Status.MarkSucceeded()
+	resreq, err = client.UpdateStatus(prt.TestAssets.Ctx, resreq, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error updating resource request with resolved pipeline data: %v", err)
+	}
+
+	// Check that the resolved pipeline was recognized by the
+	// PipelineRun reconciler and that the PipelineRun has now
+	// started executing.
+	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, false)
+	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+}
+
 func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]string) *v1beta1.TaskRun {
 	om := taskRunObjectMeta(tr, "foo", pr, p, t, false)
 	for k, v := range labels {
@@ -8389,10 +7133,8 @@ func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]
 		Spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Name:  "mystep",
-						Image: "myimage",
-					},
+					Name:  "mystep",
+					Image: "myimage",
 				}},
 			},
 			ServiceAccountName: config.DefaultServiceAccountValue,
@@ -8431,6 +7173,14 @@ func taskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName string
 	}
 	if !skipMemberOfLabel {
 		om.Labels[pipeline.MemberOfLabelKey] = v1beta1.PipelineTasks
+	}
+	return om
+}
+
+func taskRunObjectMetaWithAnnotations(trName, ns, prName, pipelineName, pipelineTaskName string, skipMemberOfLabel bool, annotations map[string]string) metav1.ObjectMeta {
+	om := taskRunObjectMeta(trName, ns, prName, pipelineName, pipelineTaskName, skipMemberOfLabel)
+	for k, v := range annotations {
+		om.Annotations[k] = v
 	}
 	return om
 }
@@ -8490,4 +7240,151 @@ spec:
   status: %s
 status:
   startTime: %s`, prName, specStatus, now.Format(time.RFC3339)))
+}
+
+func shouldHaveFullEmbeddedStatus(embeddedVal string) bool {
+	return embeddedVal == config.FullEmbeddedStatus || embeddedVal == config.BothEmbeddedStatus
+}
+
+func shouldHaveMinimalEmbeddedStatus(embeddedVal string) bool {
+	return embeddedVal == config.MinimalEmbeddedStatus || embeddedVal == config.BothEmbeddedStatus
+}
+
+func verifyTaskRunStatusesCount(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, taskCount int) {
+	t.Helper()
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) && len(prStatus.TaskRuns) != taskCount {
+		t.Errorf("Expected PipelineRun status to have exactly %d tasks, but was %d", taskCount, len(prStatus.TaskRuns))
+	}
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) && len(filterChildRefsForKind(prStatus.ChildReferences, "TaskRun")) != taskCount {
+		t.Errorf("Expected PipelineRun status ChildReferences to have %d tasks, but was %d", taskCount, len(filterChildRefsForKind(prStatus.ChildReferences, "TaskRun")))
+	}
+}
+
+func verifyTaskRunStatusesNames(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, taskNames ...string) {
+	t.Helper()
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		for _, tn := range taskNames {
+			if _, ok := prStatus.TaskRuns[tn]; !ok {
+				t.Errorf("Expected PipelineRun status to include TaskRun status for %s but was %v", tn, prStatus.TaskRuns)
+			}
+		}
+	}
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		tnMap := make(map[string]struct{})
+		for _, cr := range filterChildRefsForKind(prStatus.ChildReferences, "TaskRun") {
+			tnMap[cr.Name] = struct{}{}
+		}
+
+		for _, tn := range taskNames {
+			if _, ok := tnMap[tn]; !ok {
+				t.Errorf("Expected PipelineRun status to include TaskRun status for %s but was %v", tn, prStatus.ChildReferences)
+			}
+		}
+	}
+}
+
+func verifyRunStatusesCount(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, runCount int) {
+	t.Helper()
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) && len(prStatus.Runs) != runCount {
+		t.Errorf("Expected PipelineRun status to have exactly %d runs, but was %d", runCount, len(prStatus.Runs))
+	}
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) && len(filterChildRefsForKind(prStatus.ChildReferences, "Run")) != runCount {
+		t.Errorf("Expected PipelineRun status ChildReferences to have %d runs, but was %d", runCount, len(filterChildRefsForKind(prStatus.ChildReferences, "Run")))
+	}
+}
+
+func verifyRunStatusesNames(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, runNames ...string) {
+	t.Helper()
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		for _, rn := range runNames {
+			if _, ok := prStatus.Runs[rn]; !ok {
+				t.Errorf("Expected PipelineRun status to include Run status for %s but was %v", rn, prStatus.Runs)
+			}
+		}
+	}
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		rnMap := make(map[string]struct{})
+		for _, cr := range filterChildRefsForKind(prStatus.ChildReferences, "Run") {
+			rnMap[cr.Name] = struct{}{}
+		}
+
+		for _, rn := range runNames {
+			if _, ok := rnMap[rn]; !ok {
+				t.Errorf("Expected PipelineRun status to include Run status for %s but was %v", rn, prStatus.ChildReferences)
+			}
+		}
+	}
+}
+
+func verifyTaskRunStatusesWhenExpressions(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, trName string, expectedWhen []v1beta1.WhenExpression) {
+	t.Helper()
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		actualWhenExpressionsInTaskRun := prStatus.TaskRuns[trName].WhenExpressions
+		if d := cmp.Diff(expectedWhen, actualWhenExpressionsInTaskRun); d != "" {
+			t.Errorf("expected to see When Expressions %v created. Diff %s", trName, diff.PrintWantGot(d))
+		}
+	}
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		var actualWhenExpressionsInTaskRun []v1beta1.WhenExpression
+		for _, cr := range prStatus.ChildReferences {
+			if cr.Name == trName {
+				actualWhenExpressionsInTaskRun = append(actualWhenExpressionsInTaskRun, cr.WhenExpressions...)
+			}
+		}
+		if d := cmp.Diff(expectedWhen, actualWhenExpressionsInTaskRun); d != "" {
+			t.Errorf("expected to see When Expressions %v created. Diff %s", trName, diff.PrintWantGot(d))
+		}
+	}
+}
+
+func filterChildRefsForKind(childRefs []v1beta1.ChildStatusReference, kind string) []v1beta1.ChildStatusReference {
+	var filtered []v1beta1.ChildStatusReference
+	for _, cr := range childRefs {
+		if cr.Kind == kind {
+			filtered = append(filtered, cr)
+		}
+	}
+	return filtered
+}
+
+func mustParseTaskRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.TaskRun {
+	tr := parse.MustParseTaskRun(t, asYAML)
+	tr.ObjectMeta = objectMeta
+	return tr
+}
+
+func mustParseRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1alpha1.Run {
+	r := parse.MustParseRun(t, asYAML)
+	r.ObjectMeta = objectMeta
+	return r
+}
+
+func helloWorldPipelineWithRunAfter(t *testing.T) *v1beta1.Pipeline {
+	return parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: hello-world-1
+      taskRef:
+        name: hello-world
+    - name: hello-world-2
+      taskRef:
+        name: hello-world
+      runAfter:
+        - hello-world-1
+`)
+}
+
+func checkPipelineRunConditionStatusAndReason(t *testing.T, reconciledRun *v1beta1.PipelineRun, conditionStatus corev1.ConditionStatus, conditionReason string) {
+	t.Helper()
+
+	condition := reconciledRun.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Status != conditionStatus {
+		t.Errorf("Expected PipelineRun status to be %s, but was %v", conditionStatus, condition)
+	}
+	if condition != nil && condition.Reason != conditionReason {
+		t.Errorf("Expected reason %s but was %s", conditionReason, condition.Reason)
+	}
 }

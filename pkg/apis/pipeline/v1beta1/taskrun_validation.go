@@ -159,7 +159,7 @@ func validateNoDuplicateNames(names []string, byIndex bool) (errs *apis.FieldErr
 				errs = errs.Also(apis.ErrMultipleOneOf("name").ViaKey(n))
 			}
 		}
-		seen.Insert(n)
+		seen.Insert(strings.ToLower(n))
 	}
 	return errs
 }

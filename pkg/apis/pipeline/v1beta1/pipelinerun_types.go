@@ -204,14 +204,17 @@ type PipelineRunSpec struct {
 	// Resources is a list of bindings specifying which actual instances of
 	// PipelineResources to use for the resources the Pipeline has declared
 	// it needs.
+	// +listType=atomic
 	Resources []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
+	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Deprecated: use taskRunSpecs.ServiceAccountName instead
 	// +optional
+	// +listType=atomic
 	ServiceAccountNames []PipelineRunSpecServiceAccountName `json:"serviceAccountNames,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
@@ -234,9 +237,11 @@ type PipelineRunSpec struct {
 	// Workspaces holds a set of workspace bindings that must match names
 	// with those declared in the pipeline.
 	// +optional
+	// +listType=atomic
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
 	// TaskRunSpecs holds a set of runtime specs
 	// +optional
+	// +listType=atomic
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
 }
 
@@ -409,10 +414,27 @@ type ChildStatusReference struct {
 	// ConditionChecks is the the list of condition checks, including their names and statuses, for the PipelineTask.
 	// Deprecated: This field will be removed when conditions are removed.
 	// +optional
+	// +listType=atomic
 	ConditionChecks []*PipelineRunChildConditionCheckStatus `json:"conditionChecks,omitempty"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
+	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
+}
+
+// GetConditionChecks returns a map representation of this ChildStatusReference's ConditionChecks, in the same form
+// as PipelineRunTaskRunStatus.ConditionChecks.
+func (cr ChildStatusReference) GetConditionChecks() map[string]*PipelineRunConditionCheckStatus {
+	if len(cr.ConditionChecks) == 0 {
+		return nil
+	}
+	ccMap := make(map[string]*PipelineRunConditionCheckStatus)
+
+	for _, cc := range cr.ConditionChecks {
+		ccMap[cc.ConditionCheckName] = &cc.PipelineRunConditionCheckStatus
+	}
+
+	return ccMap
 }
 
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
@@ -439,6 +461,7 @@ type PipelineRunStatusFields struct {
 
 	// PipelineResults are the list of results written out by the pipeline task's containers
 	// +optional
+	// +listType=atomic
 	PipelineResults []PipelineRunResult `json:"pipelineResults,omitempty"`
 
 	// PipelineRunSpec contains the exact spec used to instantiate the run
@@ -446,10 +469,12 @@ type PipelineRunStatusFields struct {
 
 	// list of tasks that were skipped due to when expressions evaluating to false
 	// +optional
+	// +listType=atomic
 	SkippedTasks []SkippedTask `json:"skippedTasks,omitempty"`
 
 	// list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.
 	// +optional
+	// +listType=atomic
 	ChildReferences []ChildStatusReference `json:"childReferences,omitempty"`
 }
 
@@ -461,6 +486,7 @@ type SkippedTask struct {
 	Name string `json:"name"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
+	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
@@ -485,6 +511,7 @@ type PipelineRunTaskRunStatus struct {
 	ConditionChecks map[string]*PipelineRunConditionCheckStatus `json:"conditionChecks,omitempty"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
+	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
@@ -497,6 +524,7 @@ type PipelineRunRunStatus struct {
 	Status *runv1alpha1.RunStatus `json:"status,omitempty"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
+	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
@@ -542,11 +570,13 @@ type PipelineTaskRun struct {
 // PipelineTaskRunSpec  can be used to configure specific
 // specs for a concrete Task
 type PipelineTaskRunSpec struct {
-	PipelineTaskName       string                   `json:"pipelineTaskName,omitempty"`
-	TaskServiceAccountName string                   `json:"taskServiceAccountName,omitempty"`
-	TaskPodTemplate        *PodTemplate             `json:"taskPodTemplate,omitempty"`
-	StepOverrides          []TaskRunStepOverride    `json:"stepOverrides,omitempty"`
-	SidecarOverrides       []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
+	PipelineTaskName       string       `json:"pipelineTaskName,omitempty"`
+	TaskServiceAccountName string       `json:"taskServiceAccountName,omitempty"`
+	TaskPodTemplate        *PodTemplate `json:"taskPodTemplate,omitempty"`
+	// +listType=atomic
+	StepOverrides []TaskRunStepOverride `json:"stepOverrides,omitempty"`
+	// +listType=atomic
+	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given

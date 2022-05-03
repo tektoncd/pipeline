@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -33,22 +34,25 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 const (
-	helloworldResourceName    = "helloworldgit"
-	addFileTaskName           = "add-file-to-resource-task"
-	runFileTaskName           = "run-new-file-task"
-	bucketTestPipelineName    = "bucket-test-pipeline"
-	bucketTestPipelineRunName = "bucket-test-pipeline-run"
-	systemNamespace           = "tekton-pipelines"
-	bucketSecretName          = "bucket-secret"
-	bucketSecretKey           = "bucket-secret-key"
+	systemNamespace  = "tekton-pipelines"
+	bucketSecretName = "bucket-secret"
+	bucketSecretKey  = "bucket-secret-key"
 )
 
 // TestStorageBucketPipelineRun is an integration test that will verify a pipeline
 // can use a bucket for temporary storage of artifacts shared between tasks
 func TestStorageBucketPipelineRun(t *testing.T) {
+	var (
+		helloworldResourceName    = helpers.ObjectNameForTest(t)
+		addFileTaskName           = helpers.ObjectNameForTest(t)
+		runFileTaskName           = helpers.ObjectNameForTest(t)
+		bucketTestPipelineName    = helpers.ObjectNameForTest(t)
+		bucketTestPipelineRunName = helpers.ObjectNameForTest(t)
+	)
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -303,33 +307,33 @@ func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, co
 func runTaskToDeleteBucket(ctx context.Context, c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
 	deletelbuckettask := parse.MustParseAlphaTask(t, fmt.Sprintf(`
 metadata:
-  name: deletelbuckettask
+  name: %s
 spec:
   volumes:
   - name: bucket-secret-volume
     secret:
       secretName: %s
-`, bucketSecretName))
+`, helpers.ObjectNameForTest(t), bucketSecretName))
 
-	t.Logf("Creating Task %s", "deletelbuckettask")
+	t.Logf("Creating Task %s", deletelbuckettask.Name)
 	if _, err := c.TaskClient.Create(ctx, deletelbuckettask, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", "deletelbuckettask", err)
+		t.Fatalf("Failed to create Task `%s`: %s", deletelbuckettask.Name, err)
 	}
 
 	deletelbuckettaskrun := parse.MustParseAlphaTaskRun(t, fmt.Sprintf(`
 metadata:
-  name: deletelbuckettaskrun
+  name: %s
 spec:
   taskRef:
-    name: deletelbuckettask
-`))
+    name: %s
+`, helpers.ObjectNameForTest(t), deletelbuckettask.Name))
 
-	t.Logf("Creating TaskRun %s", "deletelbuckettaskrun")
+	t.Logf("Creating TaskRun %s", deletelbuckettaskrun.Name)
 	if _, err := c.TaskRunClient.Create(ctx, deletelbuckettaskrun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", "deletelbuckettaskrun", err)
+		t.Fatalf("Failed to create TaskRun `%s`: %s", deletelbuckettaskrun.Name, err)
 	}
 
-	if err := WaitForTaskRunState(ctx, c, "deletelbuckettaskrun", TaskRunSucceed("deletelbuckettaskrun"), "TaskRunSuccess"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", "deletelbuckettaskrun", err)
+	if err := WaitForTaskRunState(ctx, c, deletelbuckettaskrun.Name, TaskRunSucceed(deletelbuckettaskrun.Name), "TaskRunSuccess"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", deletelbuckettaskrun.Name, err)
 	}
 }

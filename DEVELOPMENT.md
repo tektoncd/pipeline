@@ -254,7 +254,7 @@ as follows.
 
 The recommended minimum development configuration is:
 
-- Kubernetes version 1.20 or later
+- Kubernetes version 1.21 or later
 - 4 (virtual) CPU nodes
   - 8 GB of (actual or virtualized) platform memory
 - Node autoscaling, up to 3 nodes
@@ -313,7 +313,7 @@ optional: As a convenience, the [Tekton plumbing project](https://github.com/tek
      --machine-type=n1-standard-4 \
      --image-type=cos \
      --num-nodes=1 \
-     --cluster-version=1.20
+     --cluster-version=1.21
     ```
 
     > **Note**: The recommended [GCE machine type](https://cloud.google.com/compute/docs/machine-types) is `'n1-standard-4'`.

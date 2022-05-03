@@ -92,36 +92,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Status: "PipelineRunCancell",
 			},
 		},
-		want: apis.ErrInvalidValue("PipelineRunCancell should be PipelineRunCancelled or PipelineRunPending", "spec.status"),
-	}, {
-		name: "wrong pipelinerun cancel with alpha features",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelinename",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "prname",
-				},
-				Status: "PipelineRunCancell",
-			},
-		},
 		want: apis.ErrInvalidValue("PipelineRunCancell should be Cancelled, CancelledRunFinally, StoppedRunFinally or PipelineRunPending", "spec.status"),
-		wc:   enableAlphaAPIFields,
-	}, {
-		name: "alpha pipelinerun graceful cancel",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelinename",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "prname",
-				},
-				Status: v1beta1.PipelineRunSpecStatusCancelled,
-			},
-		},
-		want: apis.ErrGeneric("graceful termination requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
 		name: "use of bundle without the feature flag set",
 		pr: v1beta1.PipelineRun{
@@ -259,12 +230,10 @@ func TestPipelineRun_Validate(t *testing.T) {
 								Type: v1beta1.ParamTypeArray,
 							}},
 							Steps: []v1beta1.Step{{
-								Container: corev1.Container{
-									Name:    "echo",
-									Image:   "ubuntu",
-									Command: []string{"echo"},
-									Args:    []string{"$(params.task-words[*])"},
-								},
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.task-words[*])"},
 							}},
 						}},
 					}},
@@ -311,7 +280,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: enableAlphaAPIFields,
 	}, {
 		name: "pipelinerun cancelled deprecated",
 		pr: v1beta1.PipelineRun{
@@ -338,7 +306,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: enableAlphaAPIFields,
 	}, {
 		name: "pipelinerun gracefully stopped",
 		pr: v1beta1.PipelineRun{
@@ -352,7 +319,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: enableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid resolver",
 		pr: v1beta1.PipelineRun{

@@ -32,7 +32,7 @@ import (
 )
 
 func TestFlagHandling(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
@@ -71,7 +71,7 @@ func TestFlagHandling(t *testing.T) {
 }
 
 func TestFlagHandlingTwice(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	fooDir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
@@ -121,7 +121,7 @@ func TestFlagHandlingTwice(t *testing.T) {
 }
 
 func TestFlagHandlingMissingFiles(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("not-found")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
@@ -135,7 +135,7 @@ func TestFlagHandlingMissingFiles(t *testing.T) {
 }
 
 func TestFlagHandlingURLCollision(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	dir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
@@ -224,7 +224,7 @@ func TestMatchingAnnotations(t *testing.T) {
 }
 
 func TestMultipleFlagHandling(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	fooDir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
@@ -301,7 +301,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 // TestNoAuthProvided confirms that providing zero secrets results in no docker
 // credential file being written to disk.
 func TestNoAuthProvided(t *testing.T) {
-	credentials.VolumePath, _ = ioutil.TempDir("", "")
+	credentials.VolumePath = t.TempDir()
 	fooDir := credentials.VolumeName("foo")
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)

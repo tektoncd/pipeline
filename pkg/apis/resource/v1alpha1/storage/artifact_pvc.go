@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/ptr"
 )
 
 var (
@@ -50,7 +51,7 @@ func (p *ArtifactPVC) StorageBasePath(pr *v1beta1.PipelineRun) string {
 
 // GetCopyFromStorageToSteps returns a container used to download artifacts from temporary storage.
 func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1beta1.Step {
-	return []v1beta1.Step{{Container: corev1.Container{
+	return []v1beta1.Step{{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
 		Image:   p.ShellImage,
 		Command: []string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath},
@@ -58,26 +59,36 @@ func (p *ArtifactPVC) GetCopyFromStorageToSteps(name, sourcePath, destinationPat
 			Name:  "TEKTON_RESOURCE_NAME",
 			Value: name,
 		}},
-	}}}
+	}}
 }
 
 // GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage.
 func (p *ArtifactPVC) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1beta1.Step {
-	return []v1beta1.Step{{Container: corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-mkdir-%s", name)),
-		Image:        p.ShellImage,
+	return []v1beta1.Step{{
+		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-mkdir-%s", name)),
+		Image: p.ShellImage,
+		// This requires us to run as root, and the ShellImage is nonroot
+		// by default.
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser: ptr.Int64(0),
+		},
 		Command:      []string{"mkdir", "-p", destinationPath},
 		VolumeMounts: []corev1.VolumeMount{GetPvcMount(p.Name)},
-	}}, {Container: corev1.Container{
-		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
-		Image:        p.ShellImage,
+	}, {
+		Name:  names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("source-copy-%s", name)),
+		Image: p.ShellImage,
+		// This requires us to run as root, and the ShellImage is nonroot
+		// by default.
+		SecurityContext: &corev1.SecurityContext{
+			RunAsUser: ptr.Int64(0),
+		},
 		Command:      []string{"cp", "-r", fmt.Sprintf("%s/.", sourcePath), destinationPath},
 		VolumeMounts: []corev1.VolumeMount{GetPvcMount(p.Name)},
 		Env: []corev1.EnvVar{{
 			Name:  "TEKTON_RESOURCE_NAME",
 			Value: name,
 		}},
-	}}}
+	}}
 }
 
 // GetPvcMount returns a mounting of the volume with the mount path /pvc.

@@ -67,22 +67,22 @@ var requiredResource = v1alpha1.TaskResource{
 	},
 }
 
-var validSteps = []v1alpha1.Step{{Container: corev1.Container{
+var validSteps = []v1alpha1.Step{{
 	Name:  "mystep",
 	Image: "myimage",
-}}}
+}}
 
-var invalidSteps = []v1alpha1.Step{{Container: corev1.Container{
+var invalidSteps = []v1alpha1.Step{{
 	Name:  "replaceImage",
 	Image: "myimage",
-}}}
+}}
 
 func TestTaskSpecValidate(t *testing.T) {
 	type fields struct {
 		Inputs       *v1alpha1.Inputs
 		Outputs      *v1alpha1.Outputs
 		Steps        []v1alpha1.Step
-		StepTemplate *corev1.Container
+		StepTemplate *v1alpha1.StepTemplate
 		Workspaces   []v1alpha1.WorkspaceDeclaration
 	}
 	tests := []struct {
@@ -91,11 +91,11 @@ func TestTaskSpecValidate(t *testing.T) {
 	}{{
 		name: "unnamed steps",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Image: "myimage",
-			}}, {Container: corev1.Container{
+			}, {
 				Image: "myotherimage",
-			}}},
+			}},
 		},
 	}, {
 		name: "valid inputs (type implied)",
@@ -206,12 +206,12 @@ func TestTaskSpecValidate(t *testing.T) {
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validResource},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "$(inputs.resources.source.url)",
 				Args:       []string{"--flag=$(inputs.params.baz) && $(input.params.foo-is-baz)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
-			}}},
+			}},
 		},
 	}, {
 		name: "valid array template variable",
@@ -229,13 +229,13 @@ func TestTaskSpecValidate(t *testing.T) {
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validResource},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "$(inputs.resources.source.url)",
 				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.params.foo-is-baz)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
-			}}},
+			}},
 		},
 	}, {
 		name: "valid star array template variable",
@@ -253,32 +253,32 @@ func TestTaskSpecValidate(t *testing.T) {
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validResource},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "$(inputs.resources.source.url)",
 				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"$(inputs.params.baz[*])", "middle string", "$(input.params.foo-is-baz[*])"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
-			}}},
+			}},
 		},
 	}, {
 		name: "valid legacy credential helper (creds-init) path variable",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:  "mystep",
 				Image: "echo",
 				Args:  []string{"$(credentials.path)"},
-			}}},
+			}},
 		},
 	}, {
 		name: "step template included in validation",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:    "astep",
 				Command: []string{"echo"},
 				Args:    []string{"hello"},
-			}}},
-			StepTemplate: &corev1.Container{
+			}},
+			StepTemplate: &v1alpha1.StepTemplate{
 				Image: "some-image",
 			},
 		},
@@ -286,9 +286,7 @@ func TestTaskSpecValidate(t *testing.T) {
 		name: "valid step with script",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image: "my-image",
-				},
+				Image: "my-image",
 				Script: `
 				#!/usr/bin/env bash
 				hello world`,
@@ -298,10 +296,8 @@ func TestTaskSpecValidate(t *testing.T) {
 		name: "valid step with script and args",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image: "my-image",
-					Args:  []string{"arg"},
-				},
+				Image: "my-image",
+				Args:  []string{"arg"},
 				Script: `
 				#!/usr/bin/env  bash
 				hello $1`,
@@ -310,22 +306,20 @@ func TestTaskSpecValidate(t *testing.T) {
 	}, {
 		name: "valid step with volumeMount under /tekton/home",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Image: "myimage",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "foo",
 					MountPath: "/tekton/home",
 				}},
-			}}},
+			}},
 		},
 	}, {
 		name: "valid workspace",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image: "my-image",
-					Args:  []string{"arg"},
-				},
+				Image: "my-image",
+				Args:  []string{"arg"},
 			}},
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name:        "foo-workspace",
@@ -360,7 +354,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 		Outputs      *v1alpha1.Outputs
 		Steps        []v1alpha1.Step
 		Volumes      []corev1.Volume
-		StepTemplate *corev1.Container
+		StepTemplate *v1alpha1.StepTemplate
 		Workspaces   []v1alpha1.WorkspaceDeclaration
 		// v1beta1
 		Params    []v1beta1.ParamSpec
@@ -566,11 +560,11 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}, {
 		name: "inexistent input param variable",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:  "mystep",
 				Image: "myimage",
 				Args:  []string{"--flag=$(inputs.params.inexistent)"},
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "--flag=$(inputs.params.inexistent)" for step arg[0]`,
@@ -592,13 +586,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validResource},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "$(inputs.params.baz)",
 				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `variable type invalid in "$(inputs.params.baz)" for step image`,
@@ -620,13 +614,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validResource},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "$(inputs.params.baz[*])",
 				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"$(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `variable type invalid in "$(inputs.params.baz[*])" for step image`,
@@ -648,13 +642,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validResource},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "someimage",
 				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"not isolated: $(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `variable is not properly isolated in "not isolated: $(inputs.params.baz)" for step arg[0]`,
@@ -676,13 +670,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validResource},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "someimage",
 				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"not isolated: $(inputs.params.baz[*])", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `variable is not properly isolated in "not isolated: $(inputs.params.baz[*])" for step arg[0]`,
@@ -691,10 +685,10 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}, {
 		name: "inexistent input resource variable",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:  "mystep",
 				Image: "myimage:$(inputs.resources.inputs)",
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "myimage:$(inputs.resources.inputs)" for step image`,
@@ -722,13 +716,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Outputs: &v1alpha1.Outputs{
 				Resources: []v1alpha1.TaskResource{validResource},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "someimage",
 				Command:    []string{"$(inputs.params.foo-is-baz)"},
 				Args:       []string{"not isolated: $(inputs.params.baz)", "middle string", "$(input.resources.foo.url)"},
 				WorkingDir: "/foo/bar/$(outputs.resources.source)",
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `variable is not properly isolated in "not isolated: $(inputs.params.baz)" for step arg[0]`,
@@ -737,10 +731,10 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}, {
 		name: "inexistent input resource variable",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:  "mystep",
 				Image: "myimage:$(inputs.resources.inputs)",
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "myimage:$(inputs.resources.inputs)" for step image`,
@@ -749,11 +743,11 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}, {
 		name: "inexistent output param variable",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:       "mystep",
 				Image:      "myimage",
 				WorkingDir: "/foo/bar/$(outputs.resources.inexistent)",
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "/foo/bar/$(outputs.resources.inexistent)" for step workingDir`,
@@ -772,11 +766,11 @@ func TestTaskSpecValidateError(t *testing.T) {
 					},
 				}},
 			},
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Name:  "mystep",
 				Image: "myimage",
 				Args:  []string{"$(inputs.params.foo) && $(inputs.params.inexistent)"},
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `non-existent variable in "$(inputs.params.foo) && $(inputs.params.inexistent)" for step arg[0]`,
@@ -800,11 +794,9 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "step with script and command",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image:   "myimage",
-					Command: []string{"command"},
-				},
-				Script: "script",
+				Image:   "myimage",
+				Command: []string{"command"},
+				Script:  "script",
 			}},
 		},
 		expectedError: apis.FieldError{
@@ -814,13 +806,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}, {
 		name: "step volume mounts under /tekton/",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Image: "myimage",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "foo",
 					MountPath: "/tekton/foo",
 				}},
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `step 0 volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
@@ -829,13 +821,13 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}, {
 		name: "step volume mount name starts with tekton-internal-",
 		fields: fields{
-			Steps: []v1alpha1.Step{{Container: corev1.Container{
+			Steps: []v1alpha1.Step{{
 				Image: "myimage",
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "tekton-internal-foo",
 					MountPath: "/this/is/fine",
 				}},
-			}}},
+			}},
 		},
 		expectedError: apis.FieldError{
 			Message: `step 0 volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
@@ -875,14 +867,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "workspace mount path already in volumeMounts",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image:   "myimage",
-					Command: []string{"command"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "my-mount",
-						MountPath: "/foo",
-					}},
-				},
+				Image:   "myimage",
+				Command: []string{"command"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "my-mount",
+					MountPath: "/foo",
+				}},
 			}},
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name:      "some-workspace",
@@ -897,14 +887,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name: "workspace default mount path already in volumeMounts",
 		fields: fields{
 			Steps: []v1alpha1.Step{{
-				Container: corev1.Container{
-					Image:   "myimage",
-					Command: []string{"command"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "my-mount",
-						MountPath: "/workspace/some-workspace/",
-					}},
-				},
+				Image:   "myimage",
+				Command: []string{"command"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "my-mount",
+					MountPath: "/workspace/some-workspace/",
+				}},
 			}},
 			Workspaces: []v1alpha1.WorkspaceDeclaration{{
 				Name: "some-workspace",
@@ -917,7 +905,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}, {
 		name: "workspace mount path already in stepTemplate",
 		fields: fields{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1alpha1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "my-mount",
 					MountPath: "/foo",
@@ -936,7 +924,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}, {
 		name: "workspace default mount path already in stepTemplate",
 		fields: fields{
-			StepTemplate: &corev1.Container{
+			StepTemplate: &v1alpha1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
 					Name:      "my-mount",
 					MountPath: "/workspace/some-workspace",

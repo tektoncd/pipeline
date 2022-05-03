@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -24,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+
 	"github.com/tektoncd/pipeline/test/parse"
 
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +34,7 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestTaskRunRetry tests that retries behave as expected, by creating multiple
@@ -43,9 +47,11 @@ func TestTaskRunRetry(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	embeddedStatus := GetEmbeddedStatus(ctx, t, c.KubeClient)
+
 	// Create a PipelineRun with a single TaskRun that can only fail,
 	// configured to retry 5 times.
-	pipelineRunName := "retry-pipeline"
+	pipelineRunName := helpers.ObjectNameForTest(t)
 	numRetries := 5
 	if _, err := c.PipelineRunClient.Create(ctx, parse.MustParsePipelineRun(t, fmt.Sprintf(`
 metadata:
@@ -74,12 +80,32 @@ spec:
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRunName, err)
 	}
 
-	// PipelineRunStatus should have 1 TaskRun status, and it should be failed.
-	if len(pr.Status.TaskRuns) != 1 {
-		t.Errorf("Got %d TaskRun statuses, wanted %d", len(pr.Status.TaskRuns), numRetries)
+	if embeddedStatus == config.FullEmbeddedStatus || embeddedStatus == config.BothEmbeddedStatus {
+		// PipelineRunStatus should have 1 TaskRun status, and it should be failed.
+		if len(pr.Status.TaskRuns) != 1 {
+			t.Errorf("Got %d TaskRun statuses, wanted %d", len(pr.Status.TaskRuns), numRetries)
+		}
+		for taskRunName, trs := range pr.Status.TaskRuns {
+			if !isFailed(t, taskRunName, trs.Status.Conditions) {
+				t.Errorf("TaskRun status %q is not failed", taskRunName)
+			}
+		}
 	}
-	for taskRunName, trs := range pr.Status.TaskRuns {
-		if !isFailed(t, taskRunName, trs.Status.Conditions) {
+	if embeddedStatus == config.MinimalEmbeddedStatus || embeddedStatus == config.BothEmbeddedStatus {
+		// PipelineRunStatus should have 1 child reference, and the TaskRun it refers to should be failed.
+		if len(pr.Status.ChildReferences) != 1 {
+			t.Fatalf("Got %d child references, wanted %d", len(pr.Status.ChildReferences), numRetries)
+		}
+		if pr.Status.ChildReferences[0].Kind != "TaskRun" {
+			t.Errorf("Got a child reference of kind %s, but expected TaskRun", pr.Status.ChildReferences[0].Kind)
+		}
+		taskRunName := pr.Status.ChildReferences[0].Name
+
+		tr, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("Failed to get TaskRun %q: %v", taskRunName, err)
+		}
+		if !isFailed(t, taskRunName, tr.Status.Conditions) {
 			t.Errorf("TaskRun status %q is not failed", taskRunName)
 		}
 	}

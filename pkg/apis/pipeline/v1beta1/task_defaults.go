@@ -34,6 +34,9 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 	for i := range ts.Params {
 		ts.Params[i].SetDefaults(ctx)
 	}
+	for i := range ts.Results {
+		ts.Results[i].SetDefaults(ctx)
+	}
 }
 
 // applyImplicitParams propagates implicit params from the parent context

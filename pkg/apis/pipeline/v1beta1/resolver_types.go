@@ -33,6 +33,7 @@ type ResolverRef struct {
 	// "repo" or "path" but the set of params ultimately depends on
 	// the chosen resolver.
 	// +optional
+	// +listType=atomic
 	Resource []ResolverParam `json:"resource,omitempty"`
 }
 
@@ -40,8 +41,8 @@ type ResolverRef struct {
 type ResolverParam struct {
 	// Name is the name of the parameter that will be passed to the
 	// resolver.
-	Name string
+	Name string `json:"name"`
 	// Value is the string value of the parameter that will be
 	// passed to the resolver.
-	Value string
+	Value string `json:"value"`
 }

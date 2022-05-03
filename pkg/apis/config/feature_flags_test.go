@@ -36,7 +36,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
-				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 				EnableAPIFields:                  "stable",
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 			},
@@ -49,7 +48,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RequireGitSSHSecretKnownHosts:    true,
 				EnableTektonOCIBundles:           true,
 				EnableCustomTasks:                true,
-				ScopeWhenExpressionsToTask:       true,
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
 				EmbeddedStatus:                   "both",
@@ -65,7 +63,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableCustomTasks:      true,
 
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
-				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
@@ -77,7 +74,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableCustomTasks:      true,
 
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
-				ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
@@ -97,7 +93,6 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
 		RunningInEnvWithInjectedSidecars: true,
-		ScopeWhenExpressionsToTask:       config.DefaultScopeWhenExpressionsToTask,
 		EnableAPIFields:                  "stable",
 		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 	}
@@ -144,8 +139,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-invalid-enable-api-fields",
 	}, {
 		fileName: "feature-flags-invalid-embedded-status",
-	}, {
-		fileName: "feature-flags-invalid-scope-when-expressions-to-task",
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)

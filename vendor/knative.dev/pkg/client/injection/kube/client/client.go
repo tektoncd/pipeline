@@ -35,6 +35,7 @@ import (
 	authorizationv1 "k8s.io/api/authorization/v1"
 	authorizationv1beta1 "k8s.io/api/authorization/v1beta1"
 	autoscalingv1 "k8s.io/api/autoscaling/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	autoscalingv2beta1 "k8s.io/api/autoscaling/v2beta1"
 	autoscalingv2beta2 "k8s.io/api/autoscaling/v2beta2"
 	apibatchv1 "k8s.io/api/batch/v1"
@@ -51,6 +52,7 @@ import (
 	apiextensionsv1beta1 "k8s.io/api/extensions/v1beta1"
 	apiflowcontrolv1alpha1 "k8s.io/api/flowcontrol/v1alpha1"
 	apiflowcontrolv1beta1 "k8s.io/api/flowcontrol/v1beta1"
+	apiflowcontrolv1beta2 "k8s.io/api/flowcontrol/v1beta2"
 	apinetworkingv1 "k8s.io/api/networking/v1"
 	apinetworkingv1beta1 "k8s.io/api/networking/v1beta1"
 	apinodev1 "k8s.io/api/node/v1"
@@ -80,6 +82,7 @@ import (
 	appsv1beta1 "k8s.io/client-go/applyconfigurations/apps/v1beta1"
 	v1beta2 "k8s.io/client-go/applyconfigurations/apps/v1beta2"
 	applyconfigurationsautoscalingv1 "k8s.io/client-go/applyconfigurations/autoscaling/v1"
+	v2 "k8s.io/client-go/applyconfigurations/autoscaling/v2"
 	v2beta1 "k8s.io/client-go/applyconfigurations/autoscaling/v2beta1"
 	v2beta2 "k8s.io/client-go/applyconfigurations/autoscaling/v2beta2"
 	batchv1 "k8s.io/client-go/applyconfigurations/batch/v1"
@@ -96,6 +99,7 @@ import (
 	extensionsv1beta1 "k8s.io/client-go/applyconfigurations/extensions/v1beta1"
 	flowcontrolv1alpha1 "k8s.io/client-go/applyconfigurations/flowcontrol/v1alpha1"
 	flowcontrolv1beta1 "k8s.io/client-go/applyconfigurations/flowcontrol/v1beta1"
+	flowcontrolv1beta2 "k8s.io/client-go/applyconfigurations/flowcontrol/v1beta2"
 	networkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	networkingv1beta1 "k8s.io/client-go/applyconfigurations/networking/v1beta1"
 	nodev1 "k8s.io/client-go/applyconfigurations/node/v1"
@@ -126,6 +130,7 @@ import (
 	typedauthorizationv1 "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	typedauthorizationv1beta1 "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
 	typedautoscalingv1 "k8s.io/client-go/kubernetes/typed/autoscaling/v1"
+	typedautoscalingv2 "k8s.io/client-go/kubernetes/typed/autoscaling/v2"
 	typedautoscalingv2beta1 "k8s.io/client-go/kubernetes/typed/autoscaling/v2beta1"
 	typedautoscalingv2beta2 "k8s.io/client-go/kubernetes/typed/autoscaling/v2beta2"
 	typedbatchv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
@@ -142,6 +147,7 @@ import (
 	typedextensionsv1beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	typedflowcontrolv1alpha1 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1alpha1"
 	typedflowcontrolv1beta1 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta1"
+	typedflowcontrolv1beta2 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta2"
 	typednetworkingv1 "k8s.io/client-go/kubernetes/typed/networking/v1"
 	typednetworkingv1beta1 "k8s.io/client-go/kubernetes/typed/networking/v1beta1"
 	typednodev1 "k8s.io/client-go/kubernetes/typed/node/v1"
@@ -3428,6 +3434,160 @@ func (w *wrapAutoscalingV1HorizontalPodAutoscalerImpl) UpdateStatus(ctx context.
 }
 
 func (w *wrapAutoscalingV1HorizontalPodAutoscalerImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+// AutoscalingV2 retrieves the AutoscalingV2Client
+func (w *wrapClient) AutoscalingV2() typedautoscalingv2.AutoscalingV2Interface {
+	return &wrapAutoscalingV2{
+		dyn: w.dyn,
+	}
+}
+
+type wrapAutoscalingV2 struct {
+	dyn dynamic.Interface
+}
+
+func (w *wrapAutoscalingV2) RESTClient() rest.Interface {
+	panic("RESTClient called on dynamic client!")
+}
+
+func (w *wrapAutoscalingV2) HorizontalPodAutoscalers(namespace string) typedautoscalingv2.HorizontalPodAutoscalerInterface {
+	return &wrapAutoscalingV2HorizontalPodAutoscalerImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "autoscaling",
+			Version:  "v2",
+			Resource: "horizontalpodautoscalers",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapAutoscalingV2HorizontalPodAutoscalerImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedautoscalingv2.HorizontalPodAutoscalerInterface = (*wrapAutoscalingV2HorizontalPodAutoscalerImpl)(nil)
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) Apply(ctx context.Context, in *v2.HorizontalPodAutoscalerApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv2.HorizontalPodAutoscaler, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) ApplyStatus(ctx context.Context, in *v2.HorizontalPodAutoscalerApplyConfiguration, opts metav1.ApplyOptions) (result *autoscalingv2.HorizontalPodAutoscaler, err error) {
+	panic("NYI")
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) Create(ctx context.Context, in *autoscalingv2.HorizontalPodAutoscaler, opts metav1.CreateOptions) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "autoscaling",
+		Version: "v2",
+		Kind:    "HorizontalPodAutoscaler",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &autoscalingv2.HorizontalPodAutoscaler{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &autoscalingv2.HorizontalPodAutoscaler{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) List(ctx context.Context, opts metav1.ListOptions) (*autoscalingv2.HorizontalPodAutoscalerList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &autoscalingv2.HorizontalPodAutoscalerList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *autoscalingv2.HorizontalPodAutoscaler, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &autoscalingv2.HorizontalPodAutoscaler{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) Update(ctx context.Context, in *autoscalingv2.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "autoscaling",
+		Version: "v2",
+		Kind:    "HorizontalPodAutoscaler",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &autoscalingv2.HorizontalPodAutoscaler{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) UpdateStatus(ctx context.Context, in *autoscalingv2.HorizontalPodAutoscaler, opts metav1.UpdateOptions) (*autoscalingv2.HorizontalPodAutoscaler, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "autoscaling",
+		Version: "v2",
+		Kind:    "HorizontalPodAutoscaler",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &autoscalingv2.HorizontalPodAutoscaler{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapAutoscalingV2HorizontalPodAutoscalerImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }
 
@@ -9081,6 +9241,291 @@ func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) UpdateStatus(ctx 
 }
 
 func (w *wrapFlowcontrolV1beta1PriorityLevelConfigurationImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+// FlowcontrolV1beta2 retrieves the FlowcontrolV1beta2Client
+func (w *wrapClient) FlowcontrolV1beta2() typedflowcontrolv1beta2.FlowcontrolV1beta2Interface {
+	return &wrapFlowcontrolV1beta2{
+		dyn: w.dyn,
+	}
+}
+
+type wrapFlowcontrolV1beta2 struct {
+	dyn dynamic.Interface
+}
+
+func (w *wrapFlowcontrolV1beta2) RESTClient() rest.Interface {
+	panic("RESTClient called on dynamic client!")
+}
+
+func (w *wrapFlowcontrolV1beta2) FlowSchemas() typedflowcontrolv1beta2.FlowSchemaInterface {
+	return &wrapFlowcontrolV1beta2FlowSchemaImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "flowcontrol.apiserver.k8s.io",
+			Version:  "v1beta2",
+			Resource: "flowschemas",
+		}),
+	}
+}
+
+type wrapFlowcontrolV1beta2FlowSchemaImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+}
+
+var _ typedflowcontrolv1beta2.FlowSchemaInterface = (*wrapFlowcontrolV1beta2FlowSchemaImpl)(nil)
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) Apply(ctx context.Context, in *flowcontrolv1beta2.FlowSchemaApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1beta2.FlowSchema, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) ApplyStatus(ctx context.Context, in *flowcontrolv1beta2.FlowSchemaApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1beta2.FlowSchema, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) Create(ctx context.Context, in *apiflowcontrolv1beta2.FlowSchema, opts metav1.CreateOptions) (*apiflowcontrolv1beta2.FlowSchema, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "flowcontrol.apiserver.k8s.io",
+		Version: "v1beta2",
+		Kind:    "FlowSchema",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.FlowSchema{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	return w.dyn.Delete(ctx, name, opts)
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	return w.dyn.DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiflowcontrolv1beta2.FlowSchema, error) {
+	uo, err := w.dyn.Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.FlowSchema{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiflowcontrolv1beta2.FlowSchemaList, error) {
+	uo, err := w.dyn.List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.FlowSchemaList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiflowcontrolv1beta2.FlowSchema, err error) {
+	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.FlowSchema{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) Update(ctx context.Context, in *apiflowcontrolv1beta2.FlowSchema, opts metav1.UpdateOptions) (*apiflowcontrolv1beta2.FlowSchema, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "flowcontrol.apiserver.k8s.io",
+		Version: "v1beta2",
+		Kind:    "FlowSchema",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.FlowSchema{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) UpdateStatus(ctx context.Context, in *apiflowcontrolv1beta2.FlowSchema, opts metav1.UpdateOptions) (*apiflowcontrolv1beta2.FlowSchema, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "flowcontrol.apiserver.k8s.io",
+		Version: "v1beta2",
+		Kind:    "FlowSchema",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.FlowSchema{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2FlowSchemaImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+func (w *wrapFlowcontrolV1beta2) PriorityLevelConfigurations() typedflowcontrolv1beta2.PriorityLevelConfigurationInterface {
+	return &wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "flowcontrol.apiserver.k8s.io",
+			Version:  "v1beta2",
+			Resource: "prioritylevelconfigurations",
+		}),
+	}
+}
+
+type wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+}
+
+var _ typedflowcontrolv1beta2.PriorityLevelConfigurationInterface = (*wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl)(nil)
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) Apply(ctx context.Context, in *flowcontrolv1beta2.PriorityLevelConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1beta2.PriorityLevelConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) ApplyStatus(ctx context.Context, in *flowcontrolv1beta2.PriorityLevelConfigurationApplyConfiguration, opts metav1.ApplyOptions) (result *apiflowcontrolv1beta2.PriorityLevelConfiguration, err error) {
+	panic("NYI")
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) Create(ctx context.Context, in *apiflowcontrolv1beta2.PriorityLevelConfiguration, opts metav1.CreateOptions) (*apiflowcontrolv1beta2.PriorityLevelConfiguration, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "flowcontrol.apiserver.k8s.io",
+		Version: "v1beta2",
+		Kind:    "PriorityLevelConfiguration",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.PriorityLevelConfiguration{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+	return w.dyn.Delete(ctx, name, opts)
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+	return w.dyn.DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) Get(ctx context.Context, name string, opts metav1.GetOptions) (*apiflowcontrolv1beta2.PriorityLevelConfiguration, error) {
+	uo, err := w.dyn.Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.PriorityLevelConfiguration{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) List(ctx context.Context, opts metav1.ListOptions) (*apiflowcontrolv1beta2.PriorityLevelConfigurationList, error) {
+	uo, err := w.dyn.List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.PriorityLevelConfigurationList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *apiflowcontrolv1beta2.PriorityLevelConfiguration, err error) {
+	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.PriorityLevelConfiguration{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) Update(ctx context.Context, in *apiflowcontrolv1beta2.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*apiflowcontrolv1beta2.PriorityLevelConfiguration, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "flowcontrol.apiserver.k8s.io",
+		Version: "v1beta2",
+		Kind:    "PriorityLevelConfiguration",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.PriorityLevelConfiguration{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) UpdateStatus(ctx context.Context, in *apiflowcontrolv1beta2.PriorityLevelConfiguration, opts metav1.UpdateOptions) (*apiflowcontrolv1beta2.PriorityLevelConfiguration, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "flowcontrol.apiserver.k8s.io",
+		Version: "v1beta2",
+		Kind:    "PriorityLevelConfiguration",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &apiflowcontrolv1beta2.PriorityLevelConfiguration{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapFlowcontrolV1beta2PriorityLevelConfigurationImpl) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }
 

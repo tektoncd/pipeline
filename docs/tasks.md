@@ -447,6 +447,8 @@ Parameter names:
 
 For example, `foo.Is-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
+> NOTE: Parameter names are **case insensitive**. For example, `APPLE` and `apple` will be treated as duplicate parameters. If they appear in the same taskspec's params, validation webhook will complain about that.
+
 Each declared parameter has a `type` field, which can be set to either `array` or `string`. `array` is useful in cases where the number
 of compilation flags being supplied to a task varies throughout the `Task's` execution. If not specified, the `type` field defaults to
 `string`. When the actual parameter value is supplied, its parsed type is validated against the `type` field.

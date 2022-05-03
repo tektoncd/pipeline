@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -28,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 func TestPipelineRunWithServiceAccounts(t *testing.T) {
@@ -115,7 +117,7 @@ func TestPipelineRunWithServiceAccounts(t *testing.T) {
 	// Create a Pipeline with multiple tasks
 	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
 metadata:
-  name: pipelinewithsas
+  name: %s
   namespace: %s
 spec:
   tasks:
@@ -134,7 +136,7 @@ spec:
       steps:
       - image: ubuntu
         script: echo task3
-`, namespace))
+`, helpers.ObjectNameForTest(t), namespace))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
@@ -142,11 +144,11 @@ spec:
 	// Create a PipelineRun that uses those ServiceAccount
 	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
 metadata:
-  name: pipelinerunwithasas
+  name: %s
   namespace: %s
 spec:
   pipelineRef:
-    name: pipelinewithsas
+    name: %s
   serviceAccountName: sa1
   serviceAccountNames:
   - serviceAccountName: sa2
@@ -154,7 +156,7 @@ spec:
   taskRunSpecs:
   - pipelineTaskName: task3
     taskServiceAccountName: sa3
-`, namespace))
+`, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
 
 	_, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 	if err != nil {
@@ -233,7 +235,7 @@ func TestPipelineRunWithServiceAccountNameAndTaskRunSpec(t *testing.T) {
 	// Create a Pipeline with multiple tasks
 	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
 metadata:
-  name: pipelinewithsas
+  name: %s
   namespace: %s
 spec:
   tasks:
@@ -243,7 +245,7 @@ spec:
       steps:
       - image: ubuntu
         script: echo task1
-`, namespace))
+`, helpers.ObjectNameForTest(t), namespace))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
@@ -252,17 +254,17 @@ spec:
 	// Create a PipelineRun that uses those ServiceAccount
 	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
 metadata:
-  name: pipelinerunwithasas
+  name: %s
   namespace: %s
 spec:
   pipelineRef:
-    name: pipelinewithsas
+    name: %s
   serviceAccountName: sa1
   taskRunSpecs:
   - pipelineTaskName: task1
     taskPodTemplate:
       dnsPolicy: %s
-`, namespace, dnsPolicy))
+`, helpers.ObjectNameForTest(t), namespace, pipeline.Name, dnsPolicy))
 
 	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)

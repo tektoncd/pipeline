@@ -24,13 +24,13 @@ import (
 )
 
 var (
-	prependStep = corev1.Container{
+	prependStep = v1beta1.Step{
 		Name:    "prepend-step",
 		Image:   "dummy",
 		Command: []string{"doit"},
 		Args:    []string{"stuff", "things"},
 	}
-	appendStep = corev1.Container{
+	appendStep = v1beta1.Step{
 		Name:    "append-step",
 		Image:   "dummy",
 		Command: []string{"doit"},
@@ -47,15 +47,11 @@ var (
 type TestTaskModifier struct{}
 
 func (tm *TestTaskModifier) GetStepsToPrepend() []v1beta1.Step {
-	return []v1beta1.Step{{
-		Container: prependStep,
-	}}
+	return []v1beta1.Step{prependStep}
 }
 
 func (tm *TestTaskModifier) GetStepsToAppend() []v1beta1.Step {
-	return []v1beta1.Step{{
-		Container: appendStep,
-	}}
+	return []v1beta1.Step{appendStep}
 }
 
 func (tm *TestTaskModifier) GetVolumes() []corev1.Volume {
@@ -84,11 +80,10 @@ func TestApplyTaskModifier(t *testing.T) {
 			}
 
 			expectedTaskSpec := v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{
-					Container: prependStep,
-				}, {
-					Container: appendStep,
-				}},
+				Steps: []v1beta1.Step{
+					prependStep,
+					appendStep,
+				},
 				Volumes: []corev1.Volume{
 					volume,
 				},
@@ -108,22 +103,22 @@ func TestApplyTaskModifier_AlreadyAdded(t *testing.T) {
 	}{{
 		name: "prepend already added",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: prependStep}},
+			Steps: []v1beta1.Step{prependStep},
 		},
 	}, {
 		name: "append already added",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: appendStep}},
+			Steps: []v1beta1.Step{appendStep},
 		},
 	}, {
 		name: "both steps already added",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: prependStep}, {Container: appendStep}},
+			Steps: []v1beta1.Step{prependStep, appendStep},
 		},
 	}, {
 		name: "both steps already added reverse order",
 		ts: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{Container: appendStep}, {Container: prependStep}},
+			Steps: []v1beta1.Step{appendStep, prependStep},
 		},
 	}, {
 		name: "volume with same name but diff content already added",

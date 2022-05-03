@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -157,10 +156,10 @@ func TestPipeline_Validate(t *testing.T) {
 					Name:    "foo",
 					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
 					TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1alpha1.Step{{Container: corev1.Container{
+						Steps: []v1alpha1.Step{{
 							Name:  "foo",
 							Image: "bar",
-						}}},
+						}},
 					}},
 				}},
 			},
@@ -186,10 +185,10 @@ func TestPipeline_Validate(t *testing.T) {
 				Tasks: []v1alpha1.PipelineTask{{
 					Name: "foo",
 					TaskSpec: &v1alpha1.TaskSpec{TaskSpec: v1beta1.TaskSpec{
-						Steps: []v1alpha1.Step{{Container: corev1.Container{
+						Steps: []v1alpha1.Step{{
 							Name:  "foo",
 							Image: "bar",
-						}}},
+						}},
 					}},
 				}},
 			},

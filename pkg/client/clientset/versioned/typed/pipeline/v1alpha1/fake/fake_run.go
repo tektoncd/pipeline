@@ -117,7 +117,7 @@ func (c *FakeRuns) UpdateStatus(ctx context.Context, run *v1alpha1.Run, opts v1.
 // Delete takes name of the run and deletes it. Returns an error if one occurs.
 func (c *FakeRuns) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(runsResource, c.ns, name), &v1alpha1.Run{})
+		Invokes(testing.NewDeleteActionWithOptions(runsResource, c.ns, name, opts), &v1alpha1.Run{})
 
 	return err
 }

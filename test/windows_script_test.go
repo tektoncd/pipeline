@@ -1,3 +1,4 @@
+//go:build e2e && windows_e2e
 // +build e2e,windows_e2e
 
 /*
@@ -27,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 func TestWindowsScript(t *testing.T) {
@@ -40,7 +42,7 @@ func TestWindowsScript(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskRunName := "windows-script-taskrun"
+	taskRunName := helpers.ObjectNameForTest(t)
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 
 	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
@@ -111,7 +113,7 @@ func TestWindowsScriptFailure(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskRunName := "failing-windows-taskrun"
+	taskRunName := helpers.ObjectNameForTest(t)
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 
 	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`

@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -32,7 +33,6 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
-	"github.com/ghodss/yaml"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -45,6 +45,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
+	"sigs.k8s.io/yaml"
 )
 
 var requireFeatureFlags = requireAnyGate(map[string]string{
@@ -63,9 +65,9 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskName := "hello-world"
-	pipelineName := "hello-world-pipeline"
-	pipelineRunName := "hello-world-piplinerun"
+	taskName := helpers.ObjectNameForTest(t)
+	pipelineName := helpers.ObjectNameForTest(t)
+	pipelineRunName := helpers.ObjectNameForTest(t)
 	repo := fmt.Sprintf("%s:5000/tektonbundlessimple", getRegistryServiceIP(ctx, t, c, namespace))
 
 	ref, err := name.ParseReference(repo)
@@ -201,9 +203,9 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskName := "hello-world-dne"
-	pipelineName := "hello-world-pipeline-dne"
-	pipelineRunName := "hello-world-piplinerun"
+	taskName := helpers.ObjectNameForTest(t)
+	pipelineName := helpers.ObjectNameForTest(t)
+	pipelineRunName := helpers.ObjectNameForTest(t)
 	repo := fmt.Sprintf("%s:5000/tektonbundlesregularimage", getRegistryServiceIP(ctx, t, c, namespace))
 
 	ref, err := name.ParseReference(repo)
@@ -284,9 +286,9 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskName := "hello-world"
-	pipelineName := "hello-world-pipeline"
-	pipelineRunName := "hello-world-piplinerun"
+	taskName := helpers.ObjectNameForTest(t)
+	pipelineName := helpers.ObjectNameForTest(t)
+	pipelineRunName := helpers.ObjectNameForTest(t)
 	repo := fmt.Sprintf("%s:5000/tektonbundlesimproperformat", getRegistryServiceIP(ctx, t, c, namespace))
 
 	ref, err := name.ParseReference(repo)

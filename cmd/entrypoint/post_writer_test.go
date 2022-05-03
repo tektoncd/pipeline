@@ -8,11 +8,7 @@ import (
 )
 
 func TestRealPostWriter_WriteFileContent(t *testing.T) {
-	testdir, err := ioutil.TempDir("", "post-writer")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(testdir)
+	testdir := t.TempDir()
 	tests := []struct {
 		name, file, content string
 	}{{

@@ -24,7 +24,6 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -42,9 +41,9 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name: "step1",
-				}}},
+				}},
 				Resources: &v1beta1.TaskResources{
 					Inputs: []v1beta1.TaskResource{{
 						ResourceDeclaration: v1beta1.ResourceDeclaration{
@@ -87,14 +86,14 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1beta1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{
 			Name: "step1",
-		}}, {Container: corev1.Container{
+		}, {
 			Name:    "image-digest-exporter-9l9zj",
 			Image:   "override-with-imagedigest-exporter-image:latest",
 			Command: []string{"/ko-app/imagedigestexporter"},
 			Args:    []string{"-images", "[{\"name\":\"source-image\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
-		}}},
+		}},
 	}, {
 		desc: "image resource in task with multiple steps",
 		task: &v1beta1.Task{
@@ -103,11 +102,11 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				Namespace: "marshmallow",
 			},
 			Spec: v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name: "step1",
-				}}, {Container: corev1.Container{
+				}, {
 					Name: "step2",
-				}}},
+				}},
 				Resources: &v1beta1.TaskResources{
 					Inputs: []v1beta1.TaskResource{{
 						ResourceDeclaration: v1beta1.ResourceDeclaration{
@@ -150,16 +149,16 @@ func TestAddOutputImageDigestExporter(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1beta1.Step{{Container: corev1.Container{
+		wantSteps: []v1beta1.Step{{
 			Name: "step1",
-		}}, {Container: corev1.Container{
+		}, {
 			Name: "step2",
-		}}, {Container: corev1.Container{
+		}, {
 			Name:    "image-digest-exporter-9l9zj",
 			Image:   "override-with-imagedigest-exporter-image:latest",
 			Command: []string{"/ko-app/imagedigestexporter"},
 			Args:    []string{"-images", "[{\"name\":\"source-image\",\"type\":\"image\",\"url\":\"gcr.io/some-image-1\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/source-image\"}]"},
-		}}},
+		}},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()

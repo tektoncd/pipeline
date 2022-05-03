@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -29,7 +30,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ghodss/yaml"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -39,6 +39,7 @@ import (
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/logging"
 	"knative.dev/pkg/test/logstream"
+	"sigs.k8s.io/yaml"
 
 	// Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"

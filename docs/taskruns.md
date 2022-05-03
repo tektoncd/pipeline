@@ -189,7 +189,7 @@ spec:
 
 ### Specifying `Parameters`
 
-If a `Task` has [`parameters`](tasks.md#parameters), you can use the `params` field to specify their values:
+If a `Task` has [`parameters`](tasks.md#specifying-parameters), you can use the `params` field to specify their values:
 
 ```yaml
 spec:

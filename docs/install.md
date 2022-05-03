@@ -32,7 +32,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 
 ## Before you begin
 
-1. You must have a Kubernetes cluster running version 1.20 or later.
+1. You must have a Kubernetes cluster running version 1.21 or later.
 
    If you don't already have a cluster, you can create one for testing with `kind`.
    [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and create a cluster by running [`kind create cluster`](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster). This
@@ -386,14 +386,10 @@ use of custom tasks in pipelines.
 most stable features to be used. Set it to "alpha" to allow [alpha
 features](#alpha-features) to be used.
 
-- `scope-when-expressions-to-task`: set this flag to "true" to scope `when` expressions to guard a `Task` only. Set it
-  to "false" to guard a `Task` and its dependent `Tasks`. It defaults to "true". For more information, see [guarding
-  `Task` execution using `when` expressions](pipelines.md#guard-task-execution-using-whenexpressions).
-
 - `embedded-status`: set this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the 
  `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the `PipelineRun` status with
   name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to 
-  do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses). **NOTE**: This functionality is not yet active.
+  do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses).
 
 For example:
 
@@ -420,7 +416,6 @@ Features currently in "alpha" are:
 | [`Runs` and `Custom Tasks`](./runs.md)                                                                | [TEP-0002](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md)                                | [v0.19.0](https://github.com/tektoncd/pipeline/releases/tag/v0.19.0) | `enable-custom-tasks`       |
 | [Isolated `Step` & `Sidecar` `Workspaces`](./workspaces.md#isolated-workspaces)                       | [TEP-0029](https://github.com/tektoncd/community/blob/main/teps/0029-step-workspaces.md)                             | [v0.24.0](https://github.com/tektoncd/pipeline/releases/tag/v0.24.0) |                             |
 | [Hermetic Execution Mode](./hermetic.md)                                                              | [TEP-0025](https://github.com/tektoncd/community/blob/main/teps/0025-hermekton.md)                                   | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                             |
-| [Graceful Termination](./pipelineruns.md#gracefully-cancelling-a-pipelinerun)                         | [TEP-0058](https://github.com/tektoncd/community/blob/main/teps/0058-graceful-pipeline-run-termination.md)           | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                             |
 | [`PipelineRun` Timeouts](./pipelineruns.md#configuring-a-failure-timeout)                             | [TEP-0046](https://github.com/tektoncd/community/blob/main/teps/0046-finallytask-execution-post-timeout.md)          | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                             |
 | [Implicit `Parameters`](./taskruns.md#implicit-parameters)                                            | [TEP-0023](https://github.com/tektoncd/community/blob/main/teps/0023-implicit-mapping.md)                            | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                             |
 | [Windows Scripts](./tasks.md#windows-scripts)                                                         | [TEP-0057](https://github.com/tektoncd/community/blob/main/teps/0057-windows-support.md)                             | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                             |

@@ -1,3 +1,4 @@
+//go:build conformance || e2e || examples
 // +build conformance e2e examples
 
 /*
@@ -29,7 +30,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ghodss/yaml"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -43,6 +43,7 @@ import (
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/logging" // Mysteriously by k8s libs, or they fail to create `KubeClient`s from config. Apparently just importing it is enough. @_@ side effects @_@. https://github.com/kubernetes/client-go/issues/242
 	"knative.dev/pkg/test/logstream"
+	"sigs.k8s.io/yaml"
 )
 
 var initMetrics sync.Once

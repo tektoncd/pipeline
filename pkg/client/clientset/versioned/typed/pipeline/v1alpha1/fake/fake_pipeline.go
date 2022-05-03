@@ -105,7 +105,7 @@ func (c *FakePipelines) Update(ctx context.Context, pipeline *v1alpha1.Pipeline,
 // Delete takes name of the pipeline and deletes it. Returns an error if one occurs.
 func (c *FakePipelines) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(pipelinesResource, c.ns, name), &v1alpha1.Pipeline{})
+		Invokes(testing.NewDeleteActionWithOptions(pipelinesResource, c.ns, name, opts), &v1alpha1.Pipeline{})
 
 	return err
 }

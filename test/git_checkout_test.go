@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -30,11 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
-)
-
-const (
-	gitSourceResourceName  = "git-source-resource"
-	gitTestPipelineRunName = "git-check-pipeline-run"
+	"knative.dev/pkg/test/helpers"
 )
 
 // TestGitPipelineRun is an integration test that will verify the source code
@@ -107,6 +104,9 @@ func TestGitPipelineRun(t *testing.T) {
 			c, namespace := setup(ctx, t)
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
+
+			gitSourceResourceName := helpers.ObjectNameForTest(t)
+			gitTestPipelineRunName := helpers.ObjectNameForTest(t)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
 			// Still using the struct here rather than YAML because we'd have to conditionally determine which fields to set in the YAML.
@@ -188,6 +188,9 @@ func TestGitPipelineRunFail(t *testing.T) {
 			c, namespace := setup(ctx, t)
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
+
+			gitSourceResourceName := helpers.ObjectNameForTest(t)
+			gitTestPipelineRunName := helpers.ObjectNameForTest(t)
 
 			t.Logf("Creating Git PipelineResource %s", gitSourceResourceName)
 			// Still using the struct here rather than YAML because we'd have to conditionally determine which fields to set in the YAML.

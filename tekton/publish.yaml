@@ -95,7 +95,7 @@ spec:
 
       # Combine Distroless with a Windows base image, used for the entrypoint image.
       COMBINED_BASE_IMAGE=$(go run ./vendor/github.com/tektoncd/plumbing/cmd/combine/main.go \
-        gcr.io/distroless/base:debug-nonroot \
+        gcr.io/distroless/static:nonroot \
         mcr.microsoft.com/windows/nanoserver:1809 \
         ${CONTAINER_REGISTRY}/$(params.package)/combined-base-image:latest)
 
@@ -108,9 +108,8 @@ spec:
         $(params.package)/cmd/nop: ${COMBINED_BASE_IMAGE}
         $(params.package)/cmd/workingdirinit: ${COMBINED_BASE_IMAGE}
 
-        $(params.package)/cmd/git-init: ${CONTAINER_REGISTRY}/$(params.package)/git-init-build-base:latest
-        # These match values configured in .ko.yaml
-        $(params.package)/cmd/pullrequest-init: ${CONTAINER_REGISTRY}/$(params.package)/pullrequest-init-build-base:latest
+        # This matches values configured in .ko.yaml
+        $(params.package)/cmd/git-init: ghcr.io/distroless/git
       EOF
 
       cat ${PROJECT_ROOT}/.ko.yaml

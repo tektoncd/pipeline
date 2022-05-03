@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -29,12 +30,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 const (
-	embedTaskName    = "helloworld"
-	embedTaskRunName = "helloworld-run"
-
 	// TODO(#127) Currently not reliable to retrieve this output
 	taskOutput = "do you want to build a snowman"
 )
@@ -51,17 +50,19 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	task := getEmbeddedTask(t, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)})
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(ctx, getEmbeddedTask(t, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)}), metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", embedTaskName, err)
+	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 	}
-	if _, err := c.TaskRunClient.Create(ctx, getEmbeddedTaskRun(t, namespace), metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", embedTaskRunName, err)
+	taskRun := getEmbeddedTaskRun(t, namespace, task.Name)
+	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", taskRun.Name, err)
 	}
 
-	t.Logf("Waiting for TaskRun %s in namespace %s to complete", embedTaskRunName, namespace)
-	if err := WaitForTaskRunState(ctx, c, embedTaskRunName, TaskRunSucceed(embedTaskRunName), "TaskRunSuccess"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", embedTaskRunName, err)
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", taskRun.Name, namespace)
+	if err := WaitForTaskRunState(ctx, c, taskRun.Name, TaskRunSucceed(taskRun.Name), "TaskRunSuccess"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", taskRun.Name, err)
 	}
 
 	// TODO(#127) Currently we have no reliable access to logs from the TaskRun so we'll assume successful
@@ -87,10 +88,10 @@ spec:
     args: ['-c', 'cat /workspace/docs/LICENSE']
   - image: busybox
     command: %s
-`, embedTaskName, fmt.Sprintf("[%s]", strings.Join(argsForYaml, ", "))))
+`, helpers.ObjectNameForTest(t), fmt.Sprintf("[%s]", strings.Join(argsForYaml, ", "))))
 }
 
-func getEmbeddedTaskRun(t *testing.T, namespace string) *v1alpha1.TaskRun {
+func getEmbeddedTaskRun(t *testing.T, namespace, taskName string) *v1alpha1.TaskRun {
 	return parse.MustParseAlphaTaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -106,5 +107,5 @@ spec:
           value: https://github.com/knative/docs
   taskRef:
     name: %s
-`, embedTaskRunName, namespace, embedTaskName))
+`, helpers.ObjectNameForTest(t), namespace, taskName))
 }

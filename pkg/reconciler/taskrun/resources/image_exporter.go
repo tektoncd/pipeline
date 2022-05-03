@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 	"github.com/tektoncd/pipeline/pkg/names"
-	corev1 "k8s.io/api/core/v1"
 )
 
 const imageDigestExporterContainerName = "image-digest-exporter"
@@ -91,12 +90,12 @@ func AddOutputImageDigestExporter(
 }
 
 func imageDigestExporterStep(imageDigestExporterImage string, imagesJSON []byte) v1beta1.Step {
-	return v1beta1.Step{Container: corev1.Container{
+	return v1beta1.Step{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(imageDigestExporterContainerName),
 		Image:   imageDigestExporterImage,
 		Command: []string{"/ko-app/imagedigestexporter"},
 		Args: []string{
 			"-images", string(imagesJSON),
 		},
-	}}
+	}
 }

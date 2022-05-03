@@ -63,6 +63,10 @@ rules:
   - apiGroups: ["apps"]
     resources: ["statefulsets"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  # Read-write access to ResolutionRequest for remote resolution.
+  - apiGroups: ["resolution.tekton.dev"]
+    resources: ["resolutionrequests"]
+    verbs: ["get", "list", "watch", "create", "delete"]
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1

@@ -21,54 +21,67 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// applyContainerReplacements applies variable interpolation on a Container (subset of a Step).
-func applyContainerReplacements(step *corev1.Container, stringReplacements map[string]string, arrayReplacements map[string][]string) {
-	step.Name = substitution.ApplyReplacements(step.Name, stringReplacements)
-	step.Image = substitution.ApplyReplacements(step.Image, stringReplacements)
-	step.ImagePullPolicy = corev1.PullPolicy(substitution.ApplyReplacements(string(step.ImagePullPolicy), stringReplacements))
+// applyStepReplacements returns a StepContainer with variable interpolation applied.
+func applyStepReplacements(step *Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+	c := step.ToK8sContainer()
+	applyContainerReplacements(c, stringReplacements, arrayReplacements)
+	step.SetContainerFields(*c)
+}
+
+// applySidecarReplacements returns a SidecarContainer with variable interpolation applied.
+func applySidecarReplacements(sidecar *Sidecar, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+	c := sidecar.ToK8sContainer()
+	applyContainerReplacements(c, stringReplacements, arrayReplacements)
+	sidecar.SetContainerFields(*c)
+}
+
+func applyContainerReplacements(c *corev1.Container, stringReplacements map[string]string, arrayReplacements map[string][]string) {
+	c.Name = substitution.ApplyReplacements(c.Name, stringReplacements)
+	c.Image = substitution.ApplyReplacements(c.Image, stringReplacements)
+	c.ImagePullPolicy = corev1.PullPolicy(substitution.ApplyReplacements(string(c.ImagePullPolicy), stringReplacements))
 
 	// Use ApplyArrayReplacements here, as additional args may be added via an array parameter.
 	var newArgs []string
-	for _, a := range step.Args {
+	for _, a := range c.Args {
 		newArgs = append(newArgs, substitution.ApplyArrayReplacements(a, stringReplacements, arrayReplacements)...)
 	}
-	step.Args = newArgs
+	c.Args = newArgs
 
-	for ie, e := range step.Env {
-		step.Env[ie].Value = substitution.ApplyReplacements(e.Value, stringReplacements)
-		if step.Env[ie].ValueFrom != nil {
+	for ie, e := range c.Env {
+		c.Env[ie].Value = substitution.ApplyReplacements(e.Value, stringReplacements)
+		if c.Env[ie].ValueFrom != nil {
 			if e.ValueFrom.SecretKeyRef != nil {
-				step.Env[ie].ValueFrom.SecretKeyRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, stringReplacements)
-				step.Env[ie].ValueFrom.SecretKeyRef.Key = substitution.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, stringReplacements)
+				c.Env[ie].ValueFrom.SecretKeyRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, stringReplacements)
+				c.Env[ie].ValueFrom.SecretKeyRef.Key = substitution.ApplyReplacements(e.ValueFrom.SecretKeyRef.Key, stringReplacements)
 			}
 			if e.ValueFrom.ConfigMapKeyRef != nil {
-				step.Env[ie].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, stringReplacements)
-				step.Env[ie].ValueFrom.ConfigMapKeyRef.Key = substitution.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, stringReplacements)
+				c.Env[ie].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, stringReplacements)
+				c.Env[ie].ValueFrom.ConfigMapKeyRef.Key = substitution.ApplyReplacements(e.ValueFrom.ConfigMapKeyRef.Key, stringReplacements)
 			}
 		}
 	}
 
-	for ie, e := range step.EnvFrom {
-		step.EnvFrom[ie].Prefix = substitution.ApplyReplacements(e.Prefix, stringReplacements)
+	for ie, e := range c.EnvFrom {
+		c.EnvFrom[ie].Prefix = substitution.ApplyReplacements(e.Prefix, stringReplacements)
 		if e.ConfigMapRef != nil {
-			step.EnvFrom[ie].ConfigMapRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ConfigMapRef.LocalObjectReference.Name, stringReplacements)
+			c.EnvFrom[ie].ConfigMapRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.ConfigMapRef.LocalObjectReference.Name, stringReplacements)
 		}
 		if e.SecretRef != nil {
-			step.EnvFrom[ie].SecretRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.SecretRef.LocalObjectReference.Name, stringReplacements)
+			c.EnvFrom[ie].SecretRef.LocalObjectReference.Name = substitution.ApplyReplacements(e.SecretRef.LocalObjectReference.Name, stringReplacements)
 		}
 	}
-	step.WorkingDir = substitution.ApplyReplacements(step.WorkingDir, stringReplacements)
+	c.WorkingDir = substitution.ApplyReplacements(c.WorkingDir, stringReplacements)
 
 	// Use ApplyArrayReplacements here, as additional commands may be added via an array parameter.
 	var newCommand []string
-	for _, c := range step.Command {
+	for _, c := range c.Command {
 		newCommand = append(newCommand, substitution.ApplyArrayReplacements(c, stringReplacements, arrayReplacements)...)
 	}
-	step.Command = newCommand
+	c.Command = newCommand
 
-	for iv, v := range step.VolumeMounts {
-		step.VolumeMounts[iv].Name = substitution.ApplyReplacements(v.Name, stringReplacements)
-		step.VolumeMounts[iv].MountPath = substitution.ApplyReplacements(v.MountPath, stringReplacements)
-		step.VolumeMounts[iv].SubPath = substitution.ApplyReplacements(v.SubPath, stringReplacements)
+	for iv, v := range c.VolumeMounts {
+		c.VolumeMounts[iv].Name = substitution.ApplyReplacements(v.Name, stringReplacements)
+		c.VolumeMounts[iv].MountPath = substitution.ApplyReplacements(v.MountPath, stringReplacements)
+		c.VolumeMounts[iv].SubPath = substitution.ApplyReplacements(v.SubPath, stringReplacements)
 	}
 }

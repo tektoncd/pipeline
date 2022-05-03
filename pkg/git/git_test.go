@@ -17,7 +17,6 @@ package git
 
 import (
 	"bufio"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -153,8 +152,7 @@ func TestValidateGitAuth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			observer, log := observer.New(zap.InfoLevel)
 			logger := zap.New(observer).Sugar()
-			credsDir, cleanup := createTempDir(t)
-			defer cleanup()
+			credsDir := t.TempDir()
 			if tt.wantSSHdir {
 				err := os.MkdirAll(filepath.Join(credsDir, ".ssh"), fileMode)
 				if err != nil {
@@ -188,8 +186,7 @@ func TestUserHasKnownHostsFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			homedir, cleanup := createTempDir(t)
-			defer cleanup()
+			homedir := t.TempDir()
 			if tt.wantKnownHostsFile {
 				os.MkdirAll(filepath.Join(homedir, ".ssh"), fileMode)
 				knownHostsFile := filepath.Join(homedir, sshKnownHostsUserPath)
@@ -232,14 +229,12 @@ func TestEnsureHomeEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			observer, _ := observer.New(zap.InfoLevel)
 			logger := zap.New(observer).Sugar()
-			homedir, cleanup := createTempDir(t)
-			defer cleanup()
+			homedir := t.TempDir()
 			var homeenv string
 			if tt.homeenvEqualsHomedir {
 				homeenv = homedir
 			} else {
-				homeenv, cleanup = createTempDir(t)
-				defer cleanup()
+				homeenv = t.TempDir()
 			}
 			if tt.homeenvSet {
 				cleanup := setEnv("HOME", homeenv, t)
@@ -332,18 +327,15 @@ func TestFetch(t *testing.T) {
 
 			submodPath := ""
 			if tt.spec.Submodules {
-				submodPath, cleanup := createTempDir(t)
-				defer cleanup()
+				submodPath := t.TempDir()
 				createTempGit(t, logger, submodPath, "")
 			}
 
-			gitDir, cleanup := createTempDir(t)
-			defer cleanup()
+			gitDir := t.TempDir()
 			createTempGit(t, logger, gitDir, submodPath)
 			tt.spec.URL = gitDir
 
-			targetPath, cleanup2 := createTempDir(t)
-			defer cleanup2()
+			targetPath := t.TempDir()
 			tt.spec.Path = targetPath
 
 			if err := Fetch(logger, tt.spec); (err != nil) != tt.wantErr {
@@ -376,18 +368,6 @@ func TestFetch(t *testing.T) {
 			}
 			checkLogMessage(tt.logMessage, log, logLine, t)
 		})
-	}
-}
-
-func createTempDir(t *testing.T) (string, func()) {
-	dir, err := ioutil.TempDir("", "git-init-")
-	if err != nil {
-		t.Fatalf("unexpected error creating temp directory: %v", err)
-	}
-	return dir, func() {
-		if err := os.RemoveAll(dir); err != nil {
-			t.Errorf("unexpected error cleaning up temp directory: %v", err)
-		}
 	}
 }
 

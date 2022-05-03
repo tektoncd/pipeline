@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -102,6 +103,9 @@ type testcase struct {
 const workspace = "/workspace"
 
 func containerTestCases(mode string) []testcase {
+	securityContext := &corev1.SecurityContext{
+		RunAsUser: ptr.Int64(0),
+	}
 	return []testcase{{
 		in: &pullrequest.Resource{
 			Name:                  "nocreds",
@@ -109,14 +113,15 @@ func containerTestCases(mode string) []testcase {
 			PRImage:               "override-with-pr:latest",
 			InsecureSkipTLSVerify: false,
 		},
-		out: []v1beta1.Step{{Container: corev1.Container{
-			Name:       "pr-source-nocreds-9l9zj",
-			Image:      "override-with-pr:latest",
-			WorkingDir: pipeline.WorkspaceDir,
-			Command:    []string{"/ko-app/pullrequest-init"},
-			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode},
-			Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "nocreds"}},
-		}}},
+		out: []v1beta1.Step{{
+			Name:            "pr-source-nocreds-9l9zj",
+			Image:           "override-with-pr:latest",
+			WorkingDir:      pipeline.WorkspaceDir,
+			Command:         []string{"/ko-app/pullrequest-init"},
+			Args:            []string{"-url", "https://example.com", "-path", workspace, "-mode", mode},
+			Env:             []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "nocreds"}},
+			SecurityContext: securityContext,
+		}},
 	}, {
 		in: &pullrequest.Resource{
 			Name:                  "creds",
@@ -130,7 +135,7 @@ func containerTestCases(mode string) []testcase {
 			PRImage:  "override-with-pr:latest",
 			Provider: "github",
 		},
-		out: []v1beta1.Step{{Container: corev1.Container{
+		out: []v1beta1.Step{{
 			Name:       "pr-source-creds-mz4c7",
 			Image:      "override-with-pr:latest",
 			WorkingDir: pipeline.WorkspaceDir,
@@ -149,7 +154,8 @@ func containerTestCases(mode string) []testcase {
 						},
 					},
 				}},
-		}}},
+			SecurityContext: securityContext,
+		}},
 	}, {
 		in: &pullrequest.Resource{
 			Name:                  "nocreds",
@@ -157,14 +163,15 @@ func containerTestCases(mode string) []testcase {
 			PRImage:               "override-with-pr:latest",
 			InsecureSkipTLSVerify: true,
 		},
-		out: []v1beta1.Step{{Container: corev1.Container{
-			Name:       "pr-source-nocreds-mssqb",
-			Image:      "override-with-pr:latest",
-			WorkingDir: pipeline.WorkspaceDir,
-			Command:    []string{"/ko-app/pullrequest-init"},
-			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode, "-insecure-skip-tls-verify=true"},
-			Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "nocreds"}},
-		}}},
+		out: []v1beta1.Step{{
+			Name:            "pr-source-nocreds-mssqb",
+			Image:           "override-with-pr:latest",
+			WorkingDir:      pipeline.WorkspaceDir,
+			Command:         []string{"/ko-app/pullrequest-init"},
+			Args:            []string{"-url", "https://example.com", "-path", workspace, "-mode", mode, "-insecure-skip-tls-verify=true"},
+			Env:             []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "nocreds"}},
+			SecurityContext: securityContext,
+		}},
 	}, {
 		in: &pullrequest.Resource{
 			Name:                      "strict-json-comments",
@@ -172,14 +179,15 @@ func containerTestCases(mode string) []testcase {
 			PRImage:                   "override-with-pr:latest",
 			DisableStrictJSONComments: true,
 		},
-		out: []v1beta1.Step{{Container: corev1.Container{
-			Name:       "pr-source-strict-json-comments-78c5n",
-			Image:      "override-with-pr:latest",
-			WorkingDir: pipeline.WorkspaceDir,
-			Command:    []string{"/ko-app/pullrequest-init"},
-			Args:       []string{"-url", "https://example.com", "-path", workspace, "-mode", mode, "-disable-strict-json-comments=true"},
-			Env:        []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "strict-json-comments"}},
-		}}},
+		out: []v1beta1.Step{{
+			Name:            "pr-source-strict-json-comments-78c5n",
+			Image:           "override-with-pr:latest",
+			WorkingDir:      pipeline.WorkspaceDir,
+			Command:         []string{"/ko-app/pullrequest-init"},
+			Args:            []string{"-url", "https://example.com", "-path", workspace, "-mode", mode, "-disable-strict-json-comments=true"},
+			Env:             []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "strict-json-comments"}},
+			SecurityContext: securityContext,
+		}},
 	}}
 }
 

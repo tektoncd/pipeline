@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -440,6 +441,11 @@ func (c *Impl) EnqueueKeyAfter(key types.NamespacedName, delay time.Duration) {
 	}
 }
 
+// Run runs the controller with it's configured Concurrency
+func (c *Impl) Run(ctx context.Context) error {
+	return c.RunContext(ctx, c.Concurrency)
+}
+
 // RunContext starts the controller's worker threads, the number of which is threadiness.
 // If the context has been decorated for LeaderElection, then an elector is built and run.
 // It then blocks until the context is cancelled, at which point it shuts down its
@@ -461,6 +467,13 @@ func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
 		le, err := kle.BuildElector(ctx, la, c.Name, c.MaybeEnqueueBucketKey)
 		if err != nil {
 			return err
+		}
+		if ib, ok := le.(kle.ElectorWithInitialBuckets); ok {
+			for _, b := range ib.InitialBuckets() {
+				// No need to provide an enq function since the controller
+				// is not processing items
+				la.Promote(b, nil)
+			}
 		}
 		sg.Add(1)
 		go func() {
@@ -485,19 +498,6 @@ func (c *Impl) RunContext(ctx context.Context, threadiness int) error {
 	c.logger.Info("Shutting down workers")
 
 	return nil
-}
-
-// Run runs the controller.
-//
-// Deprecated: Use RunContext instead.
-func (c *Impl) Run(threadiness int, stopCh <-chan struct{}) error {
-	// Create a context that is cancelled when the stopCh is called.
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-stopCh
-		cancel()
-	}()
-	return c.RunContext(ctx, threadiness)
 }
 
 // processNextWorkItem will read a single work item off the workqueue and
@@ -778,18 +778,17 @@ func WaitForCacheSyncQuick(stopCh <-chan struct{}, cacheSyncs ...cache.InformerS
 }
 
 // StartAll kicks off all of the passed controllers with DefaultThreadsPerController.
-func StartAll(ctx context.Context, controllers ...*Impl) {
-	wg := sync.WaitGroup{}
+func StartAll(ctx context.Context, controllers ...*Impl) error {
+	eg, egCtx := errgroup.WithContext(ctx)
+
 	// Start all of the controllers.
-	for _, ctrlr := range controllers {
-		wg.Add(1)
-		concurrency := ctrlr.Concurrency
-		go func(c *Impl) {
-			defer wg.Done()
-			c.RunContext(ctx, concurrency)
-		}(ctrlr)
+	for _, controller := range controllers {
+		c := controller
+		eg.Go(func() error {
+			return c.Run(egCtx)
+		})
 	}
-	wg.Wait()
+	return eg.Wait()
 }
 
 // This is attached to contexts passed to controller constructors to associate

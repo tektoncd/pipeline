@@ -34,6 +34,7 @@ type Template struct {
 
 	// If specified, the pod's tolerations.
 	// +optional
+	// +listType=atomic
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 
 	// If specified, the pod's scheduling constraints
@@ -50,6 +51,7 @@ type Template struct {
 	// +optional
 	// +patchMergeKey=name
 	// +patchStrategy=merge,retainKeys
+	// +listType=atomic
 	Volumes []corev1.Volume `json:"volumes,omitempty" patchStrategy:"merge,retainKeys" patchMergeKey:"name" protobuf:"bytes,1,rep,name=volumes"`
 
 	// RuntimeClassName refers to a RuntimeClass object in the node.k8s.io
@@ -99,11 +101,13 @@ type Template struct {
 
 	// ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified
 	// +optional
+	// +listType=atomic
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	// HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts
 	// file if specified. This is only valid for non-hostNetwork pods.
 	// +optional
+	// +listType=atomic
 	HostAliases []corev1.HostAlias `json:"hostAliases,omitempty"`
 
 	// HostNetwork specifies whether the pod may use the node network namespace

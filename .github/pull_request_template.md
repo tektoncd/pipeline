@@ -21,7 +21,8 @@ As the author of this PR, please check off the items in this checklist:
 - [ ] Follows the [commit message standard](https://github.com/tektoncd/community/blob/main/standards.md#commits)
 - [ ] Meets the [Tekton contributor standards](https://github.com/tektoncd/community/blob/main/standards.md) (including
   functionality, content, code)
-- [ ] Release notes block below has been filled in or deleted (only if no user facing changes)
+- [ ] Release notes block below has been filled in
+(if there are no user facing changes, use release note "NONE")
 
 # Release Notes
 

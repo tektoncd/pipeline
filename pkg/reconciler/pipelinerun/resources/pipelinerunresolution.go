@@ -300,7 +300,7 @@ func (t *ResolvedPipelineRunTask) skipBecauseWhenExpressionsEvaluatedToFalse(fac
 }
 
 // skipBecauseParentTaskWasSkipped loops through the parent tasks and checks if the parent task skipped:
-//    if yes, is it because of when expressions and are when expressions?
+//    if yes, is it because of when expressions?
 //        if yes, it ignores this parent skip and continue evaluating other parent tasks
 //        if no, it returns true to skip the current task because this parent task was skipped
 //    if no, it continues checking the other parent tasks
@@ -310,9 +310,9 @@ func (t *ResolvedPipelineRunTask) skipBecauseParentTaskWasSkipped(facts *Pipelin
 	for _, p := range node.Prev {
 		parentTask := stateMap[p.Task.HashKey()]
 		if parentSkipStatus := parentTask.Skip(facts); parentSkipStatus.IsSkipped {
-			// if the `when` expressions are scoped to task and the parent task was skipped due to its `when` expressions,
+			// if the parent task was skipped due to its `when` expressions,
 			// then we should ignore that and continue evaluating if we should skip because of other parent tasks
-			if parentSkipStatus.SkippingReason == WhenExpressionsSkip && facts.ScopeWhenExpressionsToTask {
+			if parentSkipStatus.SkippingReason == WhenExpressionsSkip {
 				continue
 			}
 			return true
@@ -502,14 +502,14 @@ func ResolvePipelineRunTask(
 	}
 	rprt.CustomTask = isCustomTask(ctx, rprt)
 	if rprt.IsCustomTask() {
-		rprt.RunName = getRunName(pipelineRun.Status.Runs, task.Name, pipelineRun.Name)
+		rprt.RunName = getRunName(pipelineRun.Status.Runs, pipelineRun.Status.ChildReferences, task.Name, pipelineRun.Name)
 		run, err := getRun(rprt.RunName)
 		if err != nil && !errors.IsNotFound(err) {
 			return nil, fmt.Errorf("error retrieving Run %s: %w", rprt.RunName, err)
 		}
 		rprt.Run = run
 	} else {
-		rprt.TaskRunName = GetTaskRunName(pipelineRun.Status.TaskRuns, task.Name, pipelineRun.Name)
+		rprt.TaskRunName = GetTaskRunName(pipelineRun.Status.TaskRuns, pipelineRun.Status.ChildReferences, task.Name, pipelineRun.Name)
 
 		// Find the Task that this PipelineTask is using
 		var (
@@ -560,7 +560,7 @@ func ResolvePipelineRunTask(
 
 		// Get all conditions that this pipelineTask will be using, if any
 		if len(task.Conditions) > 0 {
-			rcc, err := resolveConditionChecks(&task, pipelineRun.Status.TaskRuns, rprt.TaskRunName, getTaskRun, getCondition, providedResources)
+			rcc, err := resolveConditionChecks(&task, pipelineRun.Status.TaskRuns, pipelineRun.Status.ChildReferences, rprt.TaskRunName, getTaskRun, getCondition, providedResources)
 			if err != nil {
 				return nil, err
 			}
@@ -571,7 +571,16 @@ func ResolvePipelineRunTask(
 }
 
 // getConditionCheckName should return a unique name for a `ConditionCheck` if one has not already been defined, and the existing one otherwise.
-func getConditionCheckName(taskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus, trName, conditionRegisterName string) string {
+func getConditionCheckName(taskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, trName, conditionRegisterName string) string {
+	for _, cr := range childRefs {
+		if cr.Name == trName {
+			for _, cc := range cr.ConditionChecks {
+				if cc.ConditionName == conditionRegisterName {
+					return cc.ConditionCheckName
+				}
+			}
+		}
+	}
 	trStatus, ok := taskRunStatus[trName]
 	if ok && trStatus.ConditionChecks != nil {
 		for k, v := range trStatus.ConditionChecks {
@@ -585,7 +594,13 @@ func getConditionCheckName(taskRunStatus map[string]*v1beta1.PipelineRunTaskRunS
 }
 
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
-func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, ptName, prName string) string {
+func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
+	for _, cr := range childRefs {
+		if cr.Kind == "TaskRun" && cr.PipelineTaskName == ptName {
+			return cr.Name
+		}
+	}
+
 	for k, v := range taskRunsStatus {
 		if v.PipelineTaskName == ptName {
 			return k
@@ -597,16 +612,23 @@ func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 
 // getRunName should return a unique name for a `Run` if one has not already
 // been defined, and the existing one otherwise.
-func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, ptName, prName string) string {
+func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
+	for _, cr := range childRefs {
+		if cr.Kind == "Run" && cr.PipelineTaskName == ptName {
+			return cr.Name
+		}
+	}
+
 	for k, v := range runsStatus {
 		if v.PipelineTaskName == ptName {
 			return k
 		}
 	}
+
 	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 }
 
-func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus, taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition, providedResources map[string]*resourcev1alpha1.PipelineResource) ([]*ResolvedConditionCheck, error) {
+func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition, providedResources map[string]*resourcev1alpha1.PipelineResource) ([]*ResolvedConditionCheck, error) {
 	rccs := []*ResolvedConditionCheck{}
 	for i := range pt.Conditions {
 		ptc := pt.Conditions[i]
@@ -619,7 +641,7 @@ func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*
 				Msg:  err.Error(),
 			}
 		}
-		conditionCheckName := getConditionCheckName(taskRunStatus, taskRunName, crName)
+		conditionCheckName := getConditionCheckName(taskRunStatus, childRefs, taskRunName, crName)
 		// TODO(#3133): Also handle Custom Task Runs (getRun here)
 		cctr, err := getTaskRun(conditionCheckName)
 		if err != nil {

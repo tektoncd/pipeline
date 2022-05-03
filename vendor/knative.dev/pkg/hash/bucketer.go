@@ -98,10 +98,20 @@ func (bs *BucketSet) Owner(key string) string {
 	}
 	bs.mu.RLock()
 	defer bs.mu.RUnlock()
-	l := ChooseSubset(bs.buckets, 1 /*single query wanted*/, key)
-	ret := l.UnsortedList()[0]
-	bs.cache.Add(key, ret)
+	ret, ok := GetAny(ChooseSubset(bs.buckets, 1 /*single query wanted*/, key))
+	if ok {
+		bs.cache.Add(key, ret)
+	}
 	return ret
+}
+
+// Returns a single element from the set.
+func GetAny(s sets.String) (string, bool) {
+	for key := range s {
+		return key, true
+	}
+	var zeroValue string
+	return zeroValue, false
 }
 
 // HasBucket returns true if this BucketSet has the given bucket name.

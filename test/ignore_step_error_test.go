@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -20,6 +21,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/tektoncd/pipeline/test/parse"
@@ -27,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 func TestMissingResultWhenStepErrorIsIgnored(t *testing.T) {
@@ -37,9 +40,9 @@ func TestMissingResultWhenStepErrorIsIgnored(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	pipelineRun := parse.MustParsePipelineRun(t, `
+	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
 metadata:
-  name: pipelinerun-with-failing-step
+  name: %s
 spec:
   pipelineSpec:
     tasks:
@@ -67,7 +70,7 @@ spec:
         steps:
         - name: foo
           image: busybox
-          script: 'exit 0'`)
+          script: 'exit 0'`, helpers.ObjectNameForTest(t)))
 
 	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)

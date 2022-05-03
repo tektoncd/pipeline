@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -50,11 +51,6 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 				ctx, cancel := context.WithCancel(ctx)
 				defer cancel()
 				requirements := []func(context.Context, *testing.T, *clients, string){}
-				if specStatus == v1beta1.PipelineRunSpecStatusCancelled {
-					requirements = append(requirements, requireAnyGate(map[string]string{
-						"enable-api-fields": "alpha",
-					}))
-				}
 				c, namespace := setup(ctx, t, requirements...)
 				t.Parallel()
 

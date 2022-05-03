@@ -1153,7 +1153,7 @@ func TestValidateParamResults_Success(t *testing.T) {
 				Name: "output",
 			}},
 			Steps: []Step{{
-				Container: corev1.Container{Name: "foo", Image: "bar"},
+				Name: "foo", Image: "bar",
 			}},
 		}},
 		Name: "a-task",
@@ -3078,7 +3078,7 @@ func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
 func getTaskSpec() TaskSpec {
 	return TaskSpec{
 		Steps: []Step{{
-			Container: corev1.Container{Name: "foo", Image: "bar"},
+			Name: "foo", Image: "bar",
 		}},
 	}
 }

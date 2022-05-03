@@ -26,6 +26,7 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -167,12 +168,16 @@ func (s *Resource) getSteps(mode string, sourcePath string) []pipelinev1beta1.St
 		}
 	}
 
-	return []pipelinev1beta1.Step{{Container: corev1.Container{
+	return []pipelinev1beta1.Step{{
 		Name:       names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(prSource + "-" + s.Name),
 		Image:      s.PRImage,
 		Command:    []string{"/ko-app/pullrequest-init"},
 		Args:       args,
 		WorkingDir: pipeline.WorkspaceDir,
 		Env:        evs,
-	}}}
+		SecurityContext: &corev1.SecurityContext{
+			// The pullrequest pipeline resource only works when running as root.
+			RunAsUser: ptr.Int64(0),
+		},
+	}}
 }

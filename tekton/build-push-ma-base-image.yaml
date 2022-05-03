@@ -76,14 +76,6 @@ spec:
         --no-cache \
         $(workspaces.source.path)/images/git-init
 
-      #build multi-arch pullrequest-init build-base image
-      docker buildx build \
-        --platform "${PLATFORMS}" \
-        --tag ${IMAGE_REGISTRY}/${IMAGE_REGISTRY_PATH}/${PACKAGE}/pullrequest-init-build-base \
-        --push \
-        --no-cache \
-        $(workspaces.source.path)/images/pullrequest-init
-
     volumeMounts:
     - mountPath: /certs/client
       name: dind-certs

@@ -129,20 +129,15 @@ func validateSpecStatus(ctx context.Context, status PipelineRunSpecStatus) *apis
 	case PipelineRunSpecStatusCancelled,
 		PipelineRunSpecStatusCancelledRunFinally,
 		PipelineRunSpecStatusStoppedRunFinally:
-		return ValidateEnabledAPIFields(ctx, "graceful termination", "alpha")
+		return nil
 	}
 
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
-		return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s, %s, %s or %s", status,
-			PipelineRunSpecStatusCancelled,
-			PipelineRunSpecStatusCancelledRunFinally,
-			PipelineRunSpecStatusStoppedRunFinally,
-			PipelineRunSpecStatusPending), "status")
-	}
-	return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s or %s", status,
-		PipelineRunSpecStatusCancelledDeprecated,
+	return apis.ErrInvalidValue(fmt.Sprintf("%s should be %s, %s, %s or %s", status,
+		PipelineRunSpecStatusCancelled,
+		PipelineRunSpecStatusCancelledRunFinally,
+		PipelineRunSpecStatusStoppedRunFinally,
 		PipelineRunSpecStatusPending), "status")
+
 }
 
 func validateTimeoutDuration(field string, d *metav1.Duration) (errs *apis.FieldError) {

@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -32,13 +33,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 const (
-	kanikoTaskName          = "kanikotask"
-	kanikoTaskRunName       = "kanikotask-run"
-	kanikoGitResourceName   = "go-example-git"
-	kanikoImageResourceName = "go-example-image"
 	// This is a random revision chosen on 2020/10/09
 	revision = "a310cc6d1cd449f95cedd23393de766fdc649651"
 )
@@ -61,33 +59,37 @@ func TestKanikoTaskRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	t.Logf("Creating Git PipelineResource %s", kanikoGitResourceName)
-	if _, err := c.PipelineResourceClient.Create(ctx, getGitResource(t), metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
+	git := getGitResource(t)
+	t.Logf("Creating Git PipelineResource %s", git.Name)
+	if _, err := c.PipelineResourceClient.Create(ctx, git, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", git.Name, err)
 	}
 
+	image := getImageResource(t, repo)
 	t.Logf("Creating Image PipelineResource %s", repo)
-	if _, err := c.PipelineResourceClient.Create(ctx, getImageResource(t, repo), metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", kanikoGitResourceName, err)
+	if _, err := c.PipelineResourceClient.Create(ctx, image, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", git.Name, err)
 	}
 
-	t.Logf("Creating Task %s", kanikoTaskName)
-	if _, err := c.TaskClient.Create(ctx, getTask(t, repo, namespace), metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", kanikoTaskName, err)
+	task := getTask(t, repo, namespace)
+	t.Logf("Creating Task %s", task.Name)
+	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
 	}
 
-	t.Logf("Creating TaskRun %s", kanikoTaskRunName)
-	if _, err := c.TaskRunClient.Create(ctx, getTaskRun(t, namespace), metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", kanikoTaskRunName, err)
+	tr := getTaskRun(t, namespace, task.Name, git.Name, image.Name)
+	t.Logf("Creating TaskRun %s", tr.Name)
+	if _, err := c.TaskRunClient.Create(ctx, tr, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create TaskRun `%s`: %s", tr.Name, err)
 	}
 
 	// Verify status of TaskRun (wait for it)
 
-	if err := WaitForTaskRunState(ctx, c, kanikoTaskRunName, Succeed(kanikoTaskRunName), "TaskRunCompleted"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", kanikoTaskRunName, err)
+	if err := WaitForTaskRunState(ctx, c, tr.Name, Succeed(tr.Name), "TaskRunCompleted"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", tr.Name, err)
 	}
 
-	tr, err := c.TaskRunClient.Get(ctx, kanikoTaskRunName, metav1.GetOptions{})
+	tr, err := c.TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
@@ -143,7 +145,7 @@ spec:
     value: https://github.com/GoogleContainerTools/kaniko
   - name: Revision
     value: %s
-`, kanikoGitResourceName, revision))
+`, helpers.ObjectNameForTest(t), revision))
 }
 
 func getImageResource(t *testing.T, repo string) *v1alpha1.PipelineResource {
@@ -155,7 +157,7 @@ spec:
   params:
   - name: url
     value: %s
-`, kanikoImageResourceName, repo))
+`, helpers.ObjectNameForTest(t), repo))
 }
 
 func getTask(t *testing.T, repo, namespace string) *v1beta1.Task {
@@ -186,10 +188,10 @@ spec:
   sidecars:
   - name: registry
     image: %s
-`, kanikoTaskName, namespace, getTestImage(kanikoImage), repo, namespace, getTestImage(registryImage)))
+`, helpers.ObjectNameForTest(t), namespace, getTestImage(kanikoImage), repo, namespace, getTestImage(registryImage)))
 }
 
-func getTaskRun(t *testing.T, namespace string) *v1beta1.TaskRun {
+func getTaskRun(t *testing.T, namespace, task, git, image string) *v1beta1.TaskRun {
 	return parse.MustParseTaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -207,7 +209,7 @@ spec:
     - name: builtImage
       resourceRef:
         name: %s
-`, kanikoTaskRunName, namespace, kanikoTaskName, kanikoGitResourceName, kanikoImageResourceName))
+`, helpers.ObjectNameForTest(t), namespace, task, git, image))
 }
 
 // getRemoteDigest starts a pod to query the registry from the namespace itself, using skopeo (and jq).

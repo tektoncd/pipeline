@@ -71,17 +71,31 @@ func (ref *TaskRef) validateInTreeRef(ctx context.Context) (errs *apis.FieldErro
 // valid remote resource reference or a valid in-tree resource reference,
 // but not both.
 func (ref *TaskRef) validateAlphaRef(ctx context.Context) (errs *apis.FieldError) {
-	switch {
-	case ref.Resolver == "" && ref.Resource != nil:
-		errs = errs.Also(apis.ErrMissingField("resolver"))
-	case ref.Resolver == "":
-		errs = errs.Also(ref.validateInTreeRef(ctx))
-	default:
-		if ref.Name != "" {
+	hasResolver := ref.Resolver != ""
+	hasResource := ref.Resource != nil
+	hasName := ref.Name != ""
+	hasBundle := ref.Bundle != ""
+	if hasName {
+		if hasResolver {
 			errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
 		}
-		if ref.Bundle != "" {
+		if hasResource {
+			errs = errs.Also(apis.ErrMultipleOneOf("name", "resource"))
+		}
+	}
+	if hasBundle {
+		if hasResolver {
 			errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
+		}
+		if hasResource {
+			errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resource"))
+		}
+	}
+	if !hasResolver {
+		if hasResource {
+			errs = errs.Also(apis.ErrMissingField("resolver"))
+		} else {
+			errs = errs.Also(ref.validateInTreeRef(ctx))
 		}
 	}
 	return

@@ -117,7 +117,7 @@ func (c *FakeTaskRuns) UpdateStatus(ctx context.Context, taskRun *v1beta1.TaskRu
 // Delete takes name of the taskRun and deletes it. Returns an error if one occurs.
 func (c *FakeTaskRuns) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(taskrunsResource, c.ns, name), &v1beta1.TaskRun{})
+		Invokes(testing.NewDeleteActionWithOptions(taskrunsResource, c.ns, name, opts), &v1beta1.TaskRun{})
 
 	return err
 }

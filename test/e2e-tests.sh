@@ -19,9 +19,18 @@
 
 source $(git rev-parse --show-toplevel)/test/e2e-common.sh
 
+
+# Setting defaults
+PIPELINE_FEATURE_GATE=${PIPELINE_FEATURE_GATE:-stable}
+SKIP_INITIALIZE=${SKIP_INITIALIZE:="false"}
+RUN_YAML_TESTS=${RUN_YAML_TESTS:="true"}
+failed=0
+
 # Script entry point.
 
-initialize $@
+if [ "${SKIP_INITIALIZE}" != "true" ]; then
+  initialize $@
+fi
 
 header "Setting up environment"
 
@@ -49,17 +58,13 @@ function run_e2e() {
   # Run these _after_ the integration tests b/c they don't quite work all the way
   # and they cause a lot of noise in the logs, making it harder to debug integration
   # test failures.
-  go_test_e2e -tags=examples -timeout=20m ./test/ || failed=1
+  if [ "${RUN_YAML_TESTS}" == "true" ]; then
+    go_test_e2e -mod=readonly -tags=examples -timeout=20m ./test/ || failed=1
+  fi
 }
 
-if [ "$PIPELINE_FEATURE_GATE" == "" ]; then
-  set_feature_gate "stable"
-  run_e2e
-else
-  set_feature_gate "$PIPELINE_FEATURE_GATE"
-  run_e2e
-fi
-
+set_feature_gate "$PIPELINE_FEATURE_GATE"
+run_e2e
 
 (( failed )) && fail_test
 success

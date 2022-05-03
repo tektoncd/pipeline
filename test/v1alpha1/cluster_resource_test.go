@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -30,14 +31,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 func TestClusterResource(t *testing.T) {
 	secretName := "hw-secret"
 	configName := "hw-config"
-	resourceName := "helloworld-cluster"
-	taskName := "helloworld-cluster-task"
-	taskRunName := "helloworld-cluster-taskrun"
+	resourceName := helpers.ObjectNameForTest(t)
+	taskName := helpers.ObjectNameForTest(t)
+	taskRunName := helpers.ObjectNameForTest(t)
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)

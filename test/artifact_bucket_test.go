@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -34,17 +35,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 const (
-	helloworldResourceName    = "helloworldgit"
-	addFileTaskName           = "add-file-to-resource-task"
-	runFileTaskName           = "run-new-file-task"
-	bucketTestPipelineName    = "bucket-test-pipeline"
-	bucketTestPipelineRunName = "bucket-test-pipeline-run"
-	systemNamespace           = "tekton-pipelines"
-	bucketSecretName          = "bucket-secret"
-	bucketSecretKey           = "bucket-secret-key"
+	systemNamespace  = "tekton-pipelines"
+	bucketSecretName = "bucket-secret"
+	bucketSecretKey  = "bucket-secret-key"
 )
 
 // TestStorageBucketPipelineRun is an integration test that will verify a pipeline
@@ -64,6 +61,12 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
+	helloworldResourceName := helpers.ObjectNameForTest(t)
+	addFileTaskName := helpers.ObjectNameForTest(t)
+	runFileTaskName := helpers.ObjectNameForTest(t)
+	bucketTestPipelineName := helpers.ObjectNameForTest(t)
+	bucketTestPipelineRunName := helpers.ObjectNameForTest(t)
+
 	bucketName := fmt.Sprintf("build-pipeline-test-%s-%d", namespace, time.Now().Unix())
 
 	t.Logf("Creating Secret %s", bucketSecretName)
@@ -75,7 +78,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	t.Logf("Creating GCS bucket %s", bucketName)
 	createbuckettask := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
-  name: createbuckettask
+  name: %s
   namespace: %s
 spec:
   steps:
@@ -93,29 +96,29 @@ spec:
   - name: bucket-secret-volume
     secret:
       secretName: %s
-`, namespace, bucketName, bucketSecretName, bucketSecretName, bucketSecretKey, bucketSecretName))
+`, helpers.ObjectNameForTest(t), namespace, bucketName, bucketSecretName, bucketSecretName, bucketSecretKey, bucketSecretName))
 
-	t.Logf("Creating Task %s", "createbuckettask")
+	t.Logf("Creating Task %s", createbuckettask.Name)
 	if _, err := c.TaskClient.Create(ctx, createbuckettask, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", "createbuckettask", err)
+		t.Fatalf("Failed to create Task `%s`: %s", createbuckettask.Name, err)
 	}
 
 	createbuckettaskrun := parse.MustParseTaskRun(t, fmt.Sprintf(`
 metadata:
-  name: createbuckettaskrun
+  name: %s
   namespace: %s
 spec:
   taskRef:
-    name: createbuckettask
-`, namespace))
+    name: %s
+`, helpers.ObjectNameForTest(t), namespace, createbuckettask.Name))
 
-	t.Logf("Creating TaskRun %s", "createbuckettaskrun")
+	t.Logf("Creating TaskRun %s", createbuckettaskrun.Name)
 	if _, err := c.TaskRunClient.Create(ctx, createbuckettaskrun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", "createbuckettaskrun", err)
+		t.Fatalf("Failed to create TaskRun `%s`: %s", createbuckettaskrun.Name, err)
 	}
 
-	if err := WaitForTaskRunState(ctx, c, "createbuckettaskrun", TaskRunSucceed("createbuckettaskrun"), "TaskRunSuccess"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", "createbuckettaskrun", err)
+	if err := WaitForTaskRunState(ctx, c, createbuckettaskrun.Name, TaskRunSucceed(createbuckettaskrun.Name), "TaskRunSuccess"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", createbuckettaskrun.Name, err)
 	}
 
 	defer runTaskToDeleteBucket(ctx, c, t, namespace, bucketName, bucketSecretName, bucketSecretKey)
@@ -307,7 +310,7 @@ func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, co
 func runTaskToDeleteBucket(ctx context.Context, c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
 	deletelbuckettask := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
-  name: deletelbuckettask
+  name: %s
   namespace: %s
 spec:
   steps:
@@ -326,28 +329,28 @@ spec:
   - name: bucket-secret-volume
     secret:
       secretName: %s
-`, namespace, bucketName, bucketSecretName, bucketSecretKey, bucketSecretName, bucketSecretName))
+`, helpers.ObjectNameForTest(t), namespace, bucketName, bucketSecretName, bucketSecretKey, bucketSecretName, bucketSecretName))
 
-	t.Logf("Creating Task %s", "deletelbuckettask")
+	t.Logf("Creating Task %s", deletelbuckettask.Name)
 	if _, err := c.TaskClient.Create(ctx, deletelbuckettask, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Task `%s`: %s", "deletelbuckettask", err)
+		t.Fatalf("Failed to create Task `%s`: %s", deletelbuckettask.Name, err)
 	}
 
 	deletelbuckettaskrun := parse.MustParseTaskRun(t, fmt.Sprintf(`
 metadata:
-  name: deletelbuckettaskrun
+  name: %s
   namespace: %s
 spec:
   taskRef:
-    name: deletelbuckettask
-`, namespace))
+    name: %s
+`, helpers.ObjectNameForTest(t), namespace, deletelbuckettask.Name))
 
-	t.Logf("Creating TaskRun %s", "deletelbuckettaskrun")
+	t.Logf("Creating TaskRun %s", deletelbuckettaskrun.Name)
 	if _, err := c.TaskRunClient.Create(ctx, deletelbuckettaskrun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun `%s`: %s", "deletelbuckettaskrun", err)
+		t.Fatalf("Failed to create TaskRun `%s`: %s", deletelbuckettaskrun.Name, err)
 	}
 
-	if err := WaitForTaskRunState(ctx, c, "deletelbuckettaskrun", TaskRunSucceed("deletelbuckettaskrun"), "TaskRunSuccess"); err != nil {
-		t.Errorf("Error waiting for TaskRun %s to finish: %s", "deletelbuckettaskrun", err)
+	if err := WaitForTaskRunState(ctx, c, deletelbuckettaskrun.Name, TaskRunSucceed(deletelbuckettaskrun.Name), "TaskRunSuccess"); err != nil {
+		t.Errorf("Error waiting for TaskRun %s to finish: %s", deletelbuckettaskrun.Name, err)
 	}
 }

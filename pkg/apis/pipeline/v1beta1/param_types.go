@@ -106,7 +106,8 @@ var AllParamTypes = []ParamType{ParamTypeString, ParamTypeArray}
 type ArrayOrString struct {
 	Type      ParamType `json:"type"` // Represents the stored type of ArrayOrString.
 	StringVal string    `json:"stringVal"`
-	ArrayVal  []string  `json:"arrayVal"`
+	// +listType=atomic
+	ArrayVal []string `json:"arrayVal"`
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface.

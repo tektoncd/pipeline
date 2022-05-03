@@ -491,7 +491,10 @@ they are referenced in the `Pipeline` definition.
 For each `Task` in the `Pipeline`, you can specify the number of times Tekton
 should retry its execution when it fails. When a `Task` fails, the corresponding
 `TaskRun` sets its `Succeeded` `Condition` to `False`. The `retries` field
-instructs Tekton to retry executing the `Task` when this happens.
+instructs Tekton to retry executing the `Task` when this happens. `retries` are executed
+even when other `Task`s in the `Pipeline` have failed, unless the `PipelineRun` has
+been [cancelled](./pipelineruns.md#cancelling-a-pipelinerun) or
+[gracefully cancelled](./pipelineruns.md#gracefully-cancelling-a-pipelinerun).
 
 If you expect a `Task` to encounter problems during execution (for example,
 you know that there will be issues with network connectivity or missing
@@ -577,25 +580,6 @@ There are a lot of scenarios where `when` expressions can be really useful. Some
 - Checking if an optional Workspace has been provided
 
 #### Guarding a `Task` and its dependent `Tasks`
-
-> :warning: **Scoping `when` expressions to a `Task` and its dependent `Tasks` is deprecated.**
->
-> Consider migrating to scoping `when` expressions to the guarded `Task` only instead.
-> Read more in the [documentation](#guarding-a-task-only) and [TEP-0059: Skipping Strategies][tep-0059].
-> 
-[tep-0059]: https://github.com/tektoncd/community/blob/main/teps/0059-skipping-strategies.md
-
-To guard a `Task` and its dependent `Tasks`, set the global default scope of `when` expressions to `Task` using the
-`scope-when-expressions-to-task` field in [`config/config-feature-flags.yaml`](install.md#customizing-the-pipelines-controller-behavior)
-by changing it to "false".
-
-When  `when` expressions evaluate to `False`, and `scope-when-expressions-to-task` is set to "false", the `Task` and 
-its dependent `Tasks` will be skipped while the rest of the `Pipeline` will execute. Dependencies between `Tasks` can
-be either ordering ([`runAfter`](https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md#using-the-runafter-parameter))
-or resource (e.g. [`Results`](https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md#using-results))
-dependencies, as further described in [configuring execution order](#configuring-the-task-execution-order). The global
-default scope of `when` expressions is set to a `Task` only; `scope-when-expressions-to-task` field in 
-[`config/config-feature-flags.yaml`](install.md#customizing-the-pipelines-controller-behavior) defaults to "true".
 
 To guard a `Task` and its dependent Tasks:
 - cascade the `when` expressions to the specific dependent `Tasks` to be guarded as well
@@ -798,8 +782,8 @@ tasks:
     name: slack-msg
 ```
 
-With `when` expressions scoped to `Task`, if `manual-approval` is skipped, execution of its dependent `Tasks` 
-(`slack-msg`, `build-image` and `deploy-image`) would be unblocked regardless:
+If `manual-approval` is skipped, execution of its dependent `Tasks` (`slack-msg`, `build-image` and `deploy-image`) 
+would be unblocked regardless:
 - `build-image` and `deploy-image` should be executed successfully
 - `slack-msg` will be skipped because it is missing the `approver` `Result` from `manual-approval`
   - dependents of `slack-msg` would have been skipped too if it had any of them

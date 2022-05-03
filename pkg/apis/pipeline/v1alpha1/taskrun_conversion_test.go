@@ -111,9 +111,9 @@ func TestTaskRunConversion(t *testing.T) {
 			},
 			Spec: TaskRunSpec{
 				TaskSpec: &TaskSpec{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
+					Steps: []v1beta1.Step{{
 						Image: "foo",
-					}}},
+					}},
 				}},
 				ServiceAccountName: "sa",
 				Timeout:            &metav1.Duration{Duration: 1 * time.Minute},
@@ -156,9 +156,9 @@ func TestTaskRunConversion(t *testing.T) {
 			},
 			Spec: TaskRunSpec{
 				TaskSpec: &TaskSpec{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
+					Steps: []v1beta1.Step{{
 						Image: "foo",
-					}}},
+					}},
 				}},
 				ServiceAccountName: "sa",
 				Timeout:            &metav1.Duration{Duration: 1 * time.Minute},
@@ -193,9 +193,9 @@ func TestTaskRunConversion(t *testing.T) {
 			},
 			Spec: TaskRunSpec{
 				TaskSpec: &TaskSpec{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
+					Steps: []v1beta1.Step{{
 						Image: "foo",
-					}}},
+					}},
 				}},
 				ServiceAccountName: "sa",
 				Timeout:            &metav1.Duration{Duration: 1 * time.Minute},
@@ -238,9 +238,9 @@ func TestTaskRunConversion(t *testing.T) {
 			},
 			Spec: TaskRunSpec{
 				TaskSpec: &TaskSpec{TaskSpec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Container: corev1.Container{
+					Steps: []v1beta1.Step{{
 						Image: "foo",
-					}}},
+					}},
 				}},
 				ServiceAccountName: "sa",
 				Timeout:            &metav1.Duration{Duration: 1 * time.Minute},

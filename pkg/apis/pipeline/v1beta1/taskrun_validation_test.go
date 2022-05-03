@@ -207,10 +207,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Name: "taskrefname",
 			},
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "mystep",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("taskRef", "taskSpec"),
@@ -236,10 +236,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		name: "invalid taskspec",
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "invalid-name-with-$weird-char/%",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 		wantErr: &apis.FieldError{
@@ -248,7 +248,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
 		},
 	}, {
-		name: "invalid params",
+		name: "invalid params - exactly same names",
 		spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "myname",
@@ -260,6 +260,19 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
 		wantErr: apis.ErrMultipleOneOf("params[myname].name"),
+	}, {
+		name: "invalid params- same names but different case",
+		spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
+				Name:  "FOO",
+				Value: *v1beta1.NewArrayOrString("value"),
+			}, {
+				Name:  "foo",
+				Value: *v1beta1.NewArrayOrString("value"),
+			}},
+			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
+		},
+		wantErr: apis.ErrMultipleOneOf("params[foo].name"),
 	}, {
 		name: "use of bundle without the feature flag set",
 		spec: v1beta1.TaskRunSpec{
@@ -368,6 +381,38 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrMultipleOneOf("bundle", "resolver").ViaField("taskRef"),
 		wc:      enableAlphaAPIFields,
+	}, {
+		name: "taskref resource disallowed in conjunction with taskref name",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "bar",
+				ResolverRef: v1beta1.ResolverRef{
+					Resource: []v1beta1.ResolverParam{{
+						Name:  "foo",
+						Value: "bar",
+					}},
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("name", "resource").ViaField("taskRef").Also(
+			apis.ErrMissingField("resolver").ViaField("taskRef")),
+		wc: enableAlphaAPIFields,
+	}, {
+		name: "taskref resource disallowed in conjunction with taskref bundle",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Bundle: "bar",
+				ResolverRef: v1beta1.ResolverRef{
+					Resource: []v1beta1.ResolverParam{{
+						Name:  "foo",
+						Value: "bar",
+					}},
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf("bundle", "resource").ViaField("taskRef").Also(
+			apis.ErrMissingField("resolver").ViaField("taskRef")),
+		wc: enableAlphaAPIFields,
 	}, {
 		name: "stepOverride disallowed without alpha feature gate",
 		spec: v1beta1.TaskRunSpec{
@@ -479,10 +524,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		name: "taskspec without a taskRef",
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "mystep",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 	}, {
@@ -490,10 +535,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		spec: v1beta1.TaskRunSpec{
 			Timeout: &metav1.Duration{Duration: 0},
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "mystep",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 	}, {
@@ -505,10 +550,10 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("value"),
 			}},
 			TaskSpec: &v1beta1.TaskSpec{
-				Steps: []v1beta1.Step{{Container: corev1.Container{
+				Steps: []v1beta1.Step{{
 					Name:  "mystep",
 					Image: "myimage",
-				}}},
+				}},
 			},
 		},
 	}, {
@@ -516,10 +561,8 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 		spec: v1beta1.TaskRunSpec{
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
-					Container: corev1.Container{
-						Name:  "mystep",
-						Image: "myimage",
-					},
+					Name:   "mystep",
+					Image:  "myimage",
 					Script: `echo "creds-init writes to $(credentials.path)"`,
 				}},
 			},

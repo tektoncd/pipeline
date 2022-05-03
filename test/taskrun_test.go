@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -34,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
+	"knative.dev/pkg/test/helpers"
 )
 
 func TestTaskRunFailure(t *testing.T) {
@@ -47,12 +49,12 @@ func TestTaskRunFailure(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskRunName := "failing-taskrun"
+	taskRunName := helpers.ObjectNameForTest(t)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
-  name: failing-task
+  name: %s
   namespace: %s
 spec:
   steps:
@@ -65,7 +67,7 @@ spec:
   - image: busybox
     command: ['/bin/sh']
     args: ['-c', 'sleep 30s']
-`, namespace))
+`, helpers.ObjectNameForTest(t), namespace))
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
@@ -75,8 +77,8 @@ metadata:
   namespace: %s
 spec:
   taskRef:
-    name: failing-task
-`, taskRunName, namespace))
+    name: %s
+`, taskRunName, namespace, task.Name))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
@@ -143,21 +145,21 @@ func TestTaskRunStatus(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
-	taskRunName := "status-taskrun"
+	taskRunName := helpers.ObjectNameForTest(t)
 
 	fqImageName := getTestImage(busyboxImage)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
 	task := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
-  name: status-task
+  name: %s
   namespace: %s
 spec:
   steps:
   - image: %s
     command: ['/bin/sh']
     args: ['-c', 'echo hello']
-`, namespace, fqImageName))
+`, helpers.ObjectNameForTest(t), namespace, fqImageName))
 	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
@@ -167,8 +169,8 @@ metadata:
   namespace: %s
 spec:
   taskRef:
-    name: status-task
-`, taskRunName, namespace))
+    name: %s
+`, taskRunName, namespace, task.Name))
 	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}

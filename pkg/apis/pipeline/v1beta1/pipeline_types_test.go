@@ -310,6 +310,20 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 			TaskRef: &TaskRef{Name: "bar", Bundle: "docker.io/foo"},
 		},
 		expectedError: *apis.ErrDisallowedFields("taskref.bundle"),
+	}, {
+		name: "pipeline task - use of resolver",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
+		},
+		expectedError: *apis.ErrDisallowedFields("taskref.resolver"),
+	}, {
+		name: "pipeline task - use of resource",
+		task: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resource: []ResolverParam{{}}}},
+		},
+		expectedError: *apis.ErrDisallowedFields("taskref.resource"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -57,32 +57,32 @@ func (b *ArtifactBucket) StorageBasePath(pr *v1beta1.PipelineRun) string {
 func (b *ArtifactBucket) GetCopyFromStorageToSteps(name, sourcePath, destinationPath string) []v1beta1.Step {
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
-	return []v1beta1.Step{{Container: corev1.Container{
+	return []v1beta1.Step{{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-dest-mkdir-%s", name)),
 		Image:   b.ShellImage,
 		Command: []string{"mkdir", "-p", destinationPath},
-	}}, {Container: corev1.Container{
+	}, {
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-from-%s", name)),
 		Image:        b.GsutilImage,
 		Command:      []string{"gsutil"},
 		Args:         []string{"cp", "-P", "-r", fmt.Sprintf("%s/%s/*", b.Location, sourcePath), destinationPath},
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
-	}}}
+	}}
 }
 
 // GetCopyToStorageFromSteps returns a container used to upload artifacts for temporary storage
 func (b *ArtifactBucket) GetCopyToStorageFromSteps(name, sourcePath, destinationPath string) []v1beta1.Step {
 	envVars, secretVolumeMount := getSecretEnvVarsAndVolumeMounts("bucket", secretVolumeMountPath, b.Secrets)
 
-	return []v1beta1.Step{{Container: corev1.Container{
+	return []v1beta1.Step{{
 		Name:         names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(fmt.Sprintf("artifact-copy-to-%s", name)),
 		Image:        b.GsutilImage,
 		Command:      []string{"gsutil"},
 		Args:         []string{"cp", "-P", "-r", sourcePath, fmt.Sprintf("%s/%s", b.Location, destinationPath)},
 		Env:          envVars,
 		VolumeMounts: secretVolumeMount,
-	}}}
+	}}
 }
 
 // GetSecretsVolumes returns the list of volumes for secrets to be mounted
