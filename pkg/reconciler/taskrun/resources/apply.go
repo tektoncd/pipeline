@@ -248,10 +248,7 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 
 	// Apply variable expansion to stepTemplate fields.
 	if spec.StepTemplate != nil {
-		c := spec.StepTemplate.ToK8sContainer()
-		step := v1beta1.Step{}
-		step.SetContainerFields(*c)
-		v1beta1.ApplyStepReplacements(&step, stringReplacements, arrayReplacements)
+		v1beta1.ApplyStepTemplateReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
 	}
 
 	// Apply variable expansion to the build's volumes
