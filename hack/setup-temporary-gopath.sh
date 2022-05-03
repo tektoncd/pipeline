@@ -42,7 +42,7 @@ function shim_gopath() {
   # This will create a symlink from
   # (repo-root)/.gopath/src/github.com/tektoncd/pipeline
   # to the user's pipeline checkout.
-  ln -s "$REPO_DIR" "$TEMP_TEKTONCD"
+  ln -s "$REPO_DIR" "$TEMP_PIPELINE"
   echo "Moving to $TEMP_PIPELINE"
   cd "$TEMP_PIPELINE"
   export GOPATH="$TEMP_GOPATH"
