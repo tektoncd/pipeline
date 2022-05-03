@@ -450,7 +450,9 @@ Parameter names:
 
 For example, `foo.Is-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
-> NOTE: Parameter names are **case insensitive**. For example, `APPLE` and `apple` will be treated as duplicate parameters. If they appear in the same taskspec's params, validation webhook will complain about that.
+> NOTE: 
+> 1. Parameter names are **case insensitive**. For example, `APPLE` and `apple` will be treated as equal. If they appear in the same TaskSpec's params, it will be rejected as invalid.
+> 2. If a parameter name contains dots (.), it must be referenced by using the [bracket notation](#substituting-parameters-and-resources) with either single or double quotes i.e. `$(params['foo.bar'])`, `$(params["foo.bar"])`. See the following example for more information.
 
 Each declared parameter has a `type` field, which can be set to either `array` or `string`. `array` is useful in cases where the number
 of compilation flags being supplied to a task varies throughout the `Task's` execution. If not specified, the `type` field defaults to
@@ -473,6 +475,12 @@ spec:
       type: array
     - name: someURL
       type: string
+    - name: foo.bar
+      description: "the name contains dot character"
+      default: "test"
+  results:
+    - name: echo-output
+      description: "successful echo"
   steps:
     - name: build
       image: my-builder
@@ -481,9 +489,14 @@ spec:
         "$(params.flags[*])",
         # It would be equivalent to use $(params["someURL"]) here,
         # which is necessary when the parameter name contains '.'
-        # characters (e.g. `$(params["some.other.URL"])`)
+        # characters (e.g. `$(params["some.other.URL"])`). See the example in step "echo-param"
         'url=$(params.someURL)',
       ]
+    - name: echo-param
+      image: bash
+      script: |
+        set -e
+        echo $(params["foo.bar"]) | tee $(results.echo-output.path)
 ```
 
 The following `TaskRun` supplies a dynamic number of strings within the `flags` parameter:
