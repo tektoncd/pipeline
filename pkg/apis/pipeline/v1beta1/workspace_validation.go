@@ -88,5 +88,8 @@ func (b *WorkspaceBinding) numSources() int {
 	if b.Secret != nil {
 		n++
 	}
+	if b.CSI != nil {
+		n++
+	}
 	return n
 }
