@@ -49,8 +49,8 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}
 	errs = errs.Also(ValidateVolumes(ts.Volumes).ViaField("volumes"))
-	errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
-	errs = errs.Also(validateWorkspaceUsages(ctx, ts))
+	errs = errs.Also(ValidateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
+	errs = errs.Also(ValidateWorkspaceUsages(ctx, ts))
 	mergedSteps, err := MergeStepsWithStepTemplate(ts.StepTemplate, ts.Steps)
 	if err != nil {
 		errs = errs.Also(&apis.FieldError{
@@ -65,7 +65,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ValidateParameterTypes(ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ts.Steps, ts.Params))
 	errs = errs.Also(ValidateResourcesVariables(ts.Steps, ts.Resources))
-	errs = errs.Also(validateTaskContextVariables(ts.Steps))
+	errs = errs.Also(ValidateTaskContextVariables(ts.Steps))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
 	return errs
 }
@@ -77,9 +77,10 @@ func validateResults(ctx context.Context, results []TaskResult) (errs *apis.Fiel
 	return errs
 }
 
+// ValidateDeclaredWorkspaces validates that workspaces are correctly declared.
 // a mount path which conflicts with any other declared workspaces, with the explicitly
 // declared volume mounts, or with the stepTemplate. The names must also be unique.
-func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *StepTemplate) (errs *apis.FieldError) {
+func ValidateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *StepTemplate) (errs *apis.FieldError) {
 	mountPaths := sets.NewString()
 	for _, step := range steps {
 		for _, vm := range step.VolumeMounts {
@@ -110,12 +111,12 @@ func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step,
 	return errs
 }
 
-// validateWorkspaceUsages checks that all WorkspaceUsage objects in Steps
+// ValidateWorkspaceUsages checks that all WorkspaceUsage objects in Steps
 // refer to workspaces that are defined in the Task.
 //
 // This is an alpha feature and will fail validation if it's used by a step
 // or sidecar when the enable-api-fields feature gate is anything but "alpha".
-func validateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.FieldError) {
+func ValidateWorkspaceUsages(ctx context.Context, ts *TaskSpec) (errs *apis.FieldError) {
 	workspaces := ts.Workspaces
 	steps := ts.Steps
 	sidecars := ts.Sidecars
@@ -168,12 +169,13 @@ func validateSteps(ctx context.Context, steps []Step) (errs *apis.FieldError) {
 	// Task must not have duplicate step names.
 	names := sets.NewString()
 	for idx, s := range steps {
-		errs = errs.Also(validateStep(ctx, s, names).ViaIndex(idx))
+		errs = errs.Also(s.Validate(ctx, names).ViaIndex(idx))
 	}
 	return errs
 }
 
-func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
+// Validate a step and it's uniqueness
+func (s Step) Validate(ctx context.Context, names sets.String) (errs *apis.FieldError) {
 	if s.Image == "" {
 		errs = errs.Also(apis.ErrMissingField("Image"))
 	}
@@ -287,7 +289,8 @@ func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldErr
 	return errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 }
 
-func validateTaskContextVariables(steps []Step) *apis.FieldError {
+// ValidateTaskContextVariables validates all context.* variables names
+func ValidateTaskContextVariables(steps []Step) *apis.FieldError {
 	taskRunContextNames := sets.NewString().Insert(
 		"name",
 		"namespace",
