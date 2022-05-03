@@ -45,6 +45,7 @@ func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1
 		"params.%s",
 		"params[%q]",
 		"params['%s']",
+		"params[%s]",
 		// FIXME(vdemeester) Remove that with deprecating v1beta1
 		"inputs.params.%s",
 	}

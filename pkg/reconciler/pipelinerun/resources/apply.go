@@ -40,6 +40,7 @@ func ApplyParameters(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.
 		"params.%s",
 		"params[%q]",
 		"params['%s']",
+		"params[%s]",
 	}
 
 	// Set all the default stringReplacements
