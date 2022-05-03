@@ -29,7 +29,31 @@ import (
 
 const fileMode = 0755 // rwxr-xr-x
 
+func withTemporaryGitConfig(t *testing.T) func() {
+	gitConfigDir := t.TempDir()
+	key := "GIT_CONFIG_GLOBAL"
+	t.Helper()
+	oldValue, envVarExists := os.LookupEnv(key)
+	if err := os.Setenv(key, filepath.Join(gitConfigDir, "config")); err != nil {
+		t.Fatal(err)
+	}
+	clean := func() {
+		t.Helper()
+		if !envVarExists {
+			if err := os.Unsetenv(key); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+		if err := os.Setenv(key, oldValue); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return clean
+}
+
 func TestValidateGitSSHURLFormat(t *testing.T) {
+	withTemporaryGitConfig(t)
 	tests := []struct {
 		url  string
 		want bool
@@ -117,6 +141,7 @@ func TestValidateGitSSHURLFormat(t *testing.T) {
 }
 
 func TestValidateGitAuth(t *testing.T) {
+	withTemporaryGitConfig(t)
 	tests := []struct {
 		name       string
 		url        string
@@ -167,6 +192,7 @@ func TestValidateGitAuth(t *testing.T) {
 }
 
 func TestUserHasKnownHostsFile(t *testing.T) {
+	withTemporaryGitConfig(t)
 	tests := []struct {
 		name               string
 		want               bool
@@ -204,6 +230,7 @@ func TestUserHasKnownHostsFile(t *testing.T) {
 }
 
 func TestEnsureHomeEnv(t *testing.T) {
+	withTemporaryGitConfig(t)
 	tests := []struct {
 		name                 string
 		homeenvSet           bool
@@ -257,6 +284,7 @@ func TestEnsureHomeEnv(t *testing.T) {
 }
 
 func TestFetch(t *testing.T) {
+	withTemporaryGitConfig(t)
 	tests := []struct {
 		name       string
 		logMessage string
