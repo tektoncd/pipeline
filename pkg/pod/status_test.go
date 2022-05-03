@@ -52,7 +52,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 				Name: "step-bar1",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 3072) + `","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 2048) + `","resourceRef":{"name":"source-image"}}]`,
 					},
 				},
 			},
