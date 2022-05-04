@@ -50,6 +50,18 @@ func Process(args []string) error {
 		return nil
 	}
 	switch args[0] {
+	case InitCommand:
+		// If invoked in "init mode" (`entrypoint init <src> <dst> [<step-name>]`),
+		// it will copy the src path to the dst path (like CopyCommand), and initialize
+		// the /tekton/steps folder (like StepInitCommand)
+		if len(args) >= 3 {
+			src, dst := args[1], args[2]
+			steps := args[3:]
+			if err := entrypointInit(src, dst, steps); err != nil {
+				return SubcommandError{subcommand: InitCommand, message: err.Error()}
+			}
+			return SubcommandSuccessful{message: "Entrypoint initialization"}
+		}
 	case CopyCommand:
 		// If invoked in "cp mode" (`entrypoint cp <src> <dst>`), simply copy
 		// the src path to the dst path. This is used to place the entrypoint

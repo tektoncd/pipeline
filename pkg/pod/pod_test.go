@@ -85,13 +85,6 @@ func TestPodBuild(t *testing.T) {
 		Name:         "tekton-internal-secret-volume-multi-creds-9l9zj",
 		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "multi-creds"}},
 	}
-	placeToolsInit := corev1.Container{
-		Name:         "place-tools",
-		Image:        images.EntrypointImage,
-		WorkingDir:   "/",
-		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/bin/entrypoint"},
-		VolumeMounts: []corev1.VolumeMount{binMount},
-	}
 	runtimeClassName := "gvisor"
 	automountServiceAccountToken := false
 	dnsPolicy := corev1.DNSNone
@@ -121,7 +114,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -168,7 +161,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -213,7 +206,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -262,7 +255,7 @@ func TestPodBuild(t *testing.T) {
 		want: &corev1.PodSpec{
 			ServiceAccountName: "service-account",
 			RestartPolicy:      corev1.RestartPolicyNever,
-			InitContainers:     []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+			InitContainers:     []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -329,7 +322,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -386,7 +379,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "a-very-very-long-character-step-name-to-trigger-max-len----and-invalid-characters"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "a-very-very-long-character-step-name-to-trigger-max-len----and-invalid-characters"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-a-very-very-long-character-step-name-to-trigger-max-len", // step name trimmed.
 				Image:   "image",
@@ -428,7 +421,7 @@ func TestPodBuild(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "ends-with-invalid-%%__$$"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "ends-with-invalid-%%__$$"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-ends-with-invalid", // invalid suffix removed.
 				Image:   "image",
@@ -472,8 +465,7 @@ func TestPodBuild(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
-				placeToolsInit,
-				tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}}),
+				entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}}),
 				{
 					Name:         "working-dir-initializer",
 					Image:        images.WorkingDirInitImage,
@@ -530,7 +522,7 @@ func TestPodBuild(t *testing.T) {
 		wantAnnotations: map[string]string{},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "primary-name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "primary-name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-primary-name",
 				Image:   "primary-image",
@@ -585,8 +577,7 @@ func TestPodBuild(t *testing.T) {
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
-				placeToolsInit,
-				tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "primary-name"}}),
+				entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "primary-name"}}),
 				{
 					Name:         "place-scripts",
 					Image:        "busybox",
@@ -655,7 +646,7 @@ _EOF_
 		wantAnnotations: map[string]string{}, // no ready annotations on pod create since sidecars are present
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "primary-name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "primary-name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-primary-name",
 				Image:   "primary-image",
@@ -714,7 +705,7 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{
 				{Name: "unnamed-0"},
 				{Name: "unnamed-1"},
 			})},
@@ -813,7 +804,7 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{
 				{Name: "step1"},
 			})},
 			Containers: []corev1.Container{{
@@ -882,7 +873,7 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{
 				{Name: "step1"},
 			})},
 			Containers: []corev1.Container{{
@@ -954,7 +945,7 @@ _EOF_
 		wantAnnotations: map[string]string{},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "primary-name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "primary-name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-primary-name",
 				Image:   "primary-image",
@@ -1020,8 +1011,7 @@ print("Hello from Python")`,
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			InitContainers: []corev1.Container{
-				placeToolsInit,
-				tektonDirInit(images.EntrypointImage, []v1beta1.Step{
+				entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{
 					{Name: "one"},
 					{Name: "two"},
 					{Name: "regular-step"},
@@ -1147,8 +1137,7 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit,
-				tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "one"}}),
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "one"}}),
 				{
 					Name:    "place-scripts",
 					Image:   images.ShellImage,
@@ -1211,7 +1200,7 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "schedule-me"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "schedule-me"}})},
 			SchedulerName:  "there-scheduler",
 			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
@@ -1262,7 +1251,7 @@ _EOF_
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "image-pull"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "image-pull"}})},
 			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1313,7 +1302,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "host-aliases"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "host-aliases"}})},
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
 					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
@@ -1362,7 +1351,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "use-my-hostNetwork"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "use-my-hostNetwork"}})},
 				HostNetwork:    true,
 				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
 					Name:         "tekton-creds-init-home-0",
@@ -1406,7 +1395,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1454,7 +1443,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1501,7 +1490,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1541,7 +1530,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1591,7 +1580,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1657,7 +1646,7 @@ _EOF_
 			},
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1702,7 +1691,7 @@ _EOF_
 			wantPodName: "task-run-0123456789-01234560d38957287bb0283c59440df14069f59-pod",
 			want: &corev1.PodSpec{
 				RestartPolicy:  corev1.RestartPolicyNever,
-				InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 				Containers: []corev1.Container{{
 					Name:    "step-name",
 					Image:   "image",
@@ -1824,14 +1813,6 @@ _EOF_
 }
 
 func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
-	placeToolsInit := corev1.Container{
-		Name:         "place-tools",
-		Image:        images.EntrypointImage,
-		WorkingDir:   "/",
-		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", "/tekton/bin/entrypoint"},
-		VolumeMounts: []corev1.VolumeMount{binMount},
-	}
-
 	for _, c := range []struct {
 		desc            string
 		trs             v1beta1.TaskRunSpec
@@ -1855,7 +1836,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{placeToolsInit, tektonDirInit(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -2067,6 +2048,49 @@ func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
 			store.OnConfigChanged(tc.configMap)
 			if result := shouldAddReadyAnnotationOnPodCreate(store.ToContext(context.Background()), tc.sidecars); result != tc.expected {
 				t.Errorf("expected: %t Received: %t", tc.expected, result)
+			}
+		})
+	}
+}
+
+func TestPrepareInitContainers(t *testing.T) {
+	tcs := []struct {
+		name         string
+		steps        []v1beta1.Step
+		want         corev1.Container
+		featureFlags map[string]string
+	}{{
+		name: "nothing-special",
+		steps: []v1beta1.Step{{
+			Name: "foo",
+		}},
+		want: corev1.Container{
+			Name:         "prepare",
+			Image:        images.EntrypointImage,
+			WorkingDir:   "/",
+			Command:      []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo"},
+			VolumeMounts: []corev1.VolumeMount{binMount, internalStepsMount},
+		},
+	}, {
+		name: "nothing-special-two-steps",
+		steps: []v1beta1.Step{{
+			Name: "foo",
+		}, {
+			Name: "bar",
+		}},
+		want: corev1.Container{
+			Name:         "prepare",
+			Image:        images.EntrypointImage,
+			WorkingDir:   "/",
+			Command:      []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary, "step-foo", "step-bar"},
+			VolumeMounts: []corev1.VolumeMount{binMount, internalStepsMount},
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			container := entrypointInitContainer(images.EntrypointImage, tc.steps)
+			if d := cmp.Diff(tc.want, container); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
