@@ -57,7 +57,7 @@ func NewEntrypointCache(kubeclient kubernetes.Interface) (EntrypointCache, error
 // It also returns the digest associated with the given reference. If the
 // reference referred to an index, the returned digest will be the index's
 // digest, not any platform-specific image contained by the index.
-func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string, imagePullSecrets []corev1.LocalObjectReference) (*imageData, error) {
+func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string, imagePullSecrets []corev1.LocalObjectReference, hasArgs bool) (*imageData, error) {
 	// If image is specified by digest, check the local cache.
 	if digest, ok := ref.(name.Digest); ok {
 		if id, ok := e.lru.Get(digest.String()); ok {
@@ -102,7 +102,7 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 		if err != nil {
 			return nil, err
 		}
-		ep, plat, err := imageInfo(img)
+		ep, plat, err := imageInfo(img, hasArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -112,7 +112,7 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 		if err != nil {
 			return nil, err
 		}
-		id.commands, err = buildCommandMap(idx)
+		id.commands, err = buildCommandMap(idx, hasArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +126,7 @@ func (e *entrypointCache) get(ctx context.Context, ref name.Reference, namespace
 	return id, nil
 }
 
-func buildCommandMap(idx v1.ImageIndex) (map[string][]string, error) {
+func buildCommandMap(idx v1.ImageIndex, hasArgs bool) (map[string][]string, error) {
 	// Map platform strings to digest, to handle some ~malformed images
 	// that specify the same manifest multiple times.
 	platToDigest := map[string]v1.Hash{}
@@ -147,7 +147,7 @@ func buildCommandMap(idx v1.ImageIndex) (map[string][]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		cmds[plat], _, err = imageInfo(img)
+		cmds[plat], _, err = imageInfo(img, hasArgs)
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +155,7 @@ func buildCommandMap(idx v1.ImageIndex) (map[string][]string, error) {
 	return cmds, nil
 }
 
-func imageInfo(img v1.Image) (cmd []string, platform string, err error) {
+func imageInfo(img v1.Image, hasArgs bool) (cmd []string, platform string, err error) {
 	cf, err := img.ConfigFile()
 	if err != nil {
 		return nil, "", err
@@ -163,6 +163,9 @@ func imageInfo(img v1.Image) (cmd []string, platform string, err error) {
 	ep := cf.Config.Entrypoint
 	if len(ep) == 0 {
 		ep = cf.Config.Cmd
+	} else if !hasArgs {
+		// If no args, join Cmd to Entrypoint
+		ep = append(ep, cf.Config.Cmd...)
 	}
 
 	plat := platforms.Format(specs.Platform{

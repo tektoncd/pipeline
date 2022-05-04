@@ -143,7 +143,7 @@ type data struct {
 	seen bool // Whether the image has been looked up before.
 }
 
-func (f fakeCache) get(ctx context.Context, ref name.Reference, _, _ string, _ []corev1.LocalObjectReference) (*imageData, error) {
+func (f fakeCache) get(ctx context.Context, ref name.Reference, _, _ string, _ []corev1.LocalObjectReference, _ bool) (*imageData, error) {
 	if d, ok := ref.(name.Digest); ok {
 		if data, found := f[d.String()]; found {
 			return data.id, nil

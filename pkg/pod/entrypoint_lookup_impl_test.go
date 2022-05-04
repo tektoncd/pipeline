@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/registry"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -34,6 +35,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	remotetest "github.com/tektoncd/pipeline/test"
+	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakeclient "k8s.io/client-go/kubernetes/fake"
@@ -171,7 +173,7 @@ func TestGetImageWithImagePullSecrets(t *testing.T) {
 				t.Errorf("Creating entrypointCache with an error: %v", err)
 			}
 
-			i, err := entrypointCache.get(ctx, imgRef, nameSpace, "", tc.imagePullSecrets)
+			i, err := entrypointCache.get(ctx, imgRef, nameSpace, "", tc.imagePullSecrets, true)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("get() = %+v, %v, wantErr %t", i, err, tc.wantErr)
 			}
@@ -254,10 +256,54 @@ func TestBuildCommandMap(t *testing.T) {
 		wantErr: true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			_, err := buildCommandMap(c.idx)
+			_, err := buildCommandMap(c.idx, true)
 			gotErr := (err != nil)
 			if gotErr != c.wantErr {
 				t.Fatalf("got err: %v, want err: %t", err, c.wantErr)
+			}
+		})
+	}
+}
+
+func mustConfig(t *testing.T, cfg v1.Config) v1.Image {
+	t.Helper()
+	img, err := mutate.Config(empty.Image, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return img
+}
+
+func TestImageInfo(t *testing.T) {
+	for _, c := range []struct {
+		desc    string
+		img     v1.Image
+		hasArgs bool
+		wantCmd []string
+	}{{
+		desc:    "entrypoint-cmd-and-args",
+		hasArgs: true,
+		img: mustConfig(t, v1.Config{
+			Entrypoint: []string{"my", "entrypoint"},
+			Cmd:        []string{"my", "cmd"},
+		}),
+		wantCmd: []string{"my", "entrypoint"},
+	}, {
+		desc:    "entrypoint-cmd-and-no-args",
+		hasArgs: false,
+		img: mustConfig(t, v1.Config{
+			Entrypoint: []string{"my", "entrypoint"},
+			Cmd:        []string{"my", "cmd"},
+		}),
+		wantCmd: []string{"my", "entrypoint", "my", "cmd"},
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			cmd, _, err := imageInfo(c.img, c.hasArgs)
+			if err != nil {
+				t.Fatalf("got err: %v", err)
+			}
+			if d := cmp.Diff(c.wantCmd, cmd); d != "" {
+				t.Errorf("Diff cmd %s", diff.PrintWantGot(d))
 			}
 		})
 	}
