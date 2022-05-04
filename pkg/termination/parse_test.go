@@ -40,6 +40,15 @@ func TestParseMessage(t *testing.T) {
 			Value: "bar",
 		}},
 	}, {
+		desc: "invalid key in message",
+		msg:  `[{"invalid": "digest","value":"hereisthedigest"},{"key":"foo","value":"bar"}]`,
+		want: []v1beta1.PipelineResourceResult{{
+			Value: "hereisthedigest",
+		}, {
+			Key:   "foo",
+			Value: "bar",
+		}},
+	}, {
 		desc: "empty message",
 		msg:  "",
 		want: nil,

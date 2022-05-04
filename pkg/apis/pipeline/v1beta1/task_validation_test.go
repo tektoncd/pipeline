@@ -305,7 +305,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "valid result type",
+		name: "valid result type string",
 		fields: fields{
 			Steps: []v1beta1.Step{{
 				Image: "my-image",
@@ -314,6 +314,32 @@ func TestTaskSpecValidate(t *testing.T) {
 			Results: []v1beta1.TaskResult{{
 				Name:        "MY-RESULT",
 				Type:        "string",
+				Description: "my great result",
+			}},
+		},
+	}, {
+		name: "valid result type array",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Image: "my-image",
+				Args:  []string{"arg"},
+			}},
+			Results: []v1beta1.TaskResult{{
+				Name:        "MY-RESULT",
+				Type:        v1beta1.ResultsTypeArray,
+				Description: "my great result",
+			}},
+		},
+	}, {
+		name: "valid result type object",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Image: "my-image",
+				Args:  []string{"arg"},
+			}},
+			Results: []v1beta1.TaskResult{{
+				Name:        "MY-RESULT",
+				Type:        v1beta1.ResultsTypeObject,
 				Description: "my great result",
 			}},
 		},

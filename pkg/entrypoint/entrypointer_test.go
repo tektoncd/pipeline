@@ -31,7 +31,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/test/diff"
+	"knative.dev/pkg/logging"
 )
 
 func TestEntrypointerFailures(t *testing.T) {
@@ -244,6 +247,89 @@ func TestEntrypointer(t *testing.T) {
 			}
 			if err := os.Remove(terminationPath); err != nil {
 				t.Errorf("Could not remove termination path: %s", err)
+			}
+		})
+	}
+}
+
+func TestReadResultsFromDisk(t *testing.T) {
+	for _, c := range []struct {
+		desc          string
+		results       []string
+		resultContent []v1beta1.ArrayOrString
+		want          []v1beta1.PipelineResourceResult
+	}{{
+		desc:          "read string result file",
+		results:       []string{"results"},
+		resultContent: []v1beta1.ArrayOrString{*v1beta1.NewArrayOrString("hello world")},
+		want: []v1beta1.PipelineResourceResult{
+			{Value: `"hello world"`,
+				ResultType: 1}},
+	}, {
+		desc:          "read array result file",
+		results:       []string{"results"},
+		resultContent: []v1beta1.ArrayOrString{*v1beta1.NewArrayOrString("hello", "world")},
+		want: []v1beta1.PipelineResourceResult{
+			{Value: `["hello","world"]`,
+				ResultType: 1}},
+	}, {
+		desc:          "read string and array result files",
+		results:       []string{"resultsArray", "resultsString"},
+		resultContent: []v1beta1.ArrayOrString{*v1beta1.NewArrayOrString("hello", "world"), *v1beta1.NewArrayOrString("hello world")},
+		want: []v1beta1.PipelineResourceResult{
+			{Value: `["hello","world"]`,
+				ResultType: 1},
+			{Value: `"hello world"`,
+				ResultType: 1},
+		},
+	},
+	} {
+		t.Run(c.desc, func(t *testing.T) {
+			terminationPath := "termination"
+			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+				t.Fatalf("unexpected error creating temporary termination file: %v", err)
+			} else {
+				terminationPath = terminationFile.Name()
+				defer os.Remove(terminationFile.Name())
+			}
+			resultsFilePath := []string{}
+			for i, r := range c.results {
+				if resultsFile, err := ioutil.TempFile("", r); err != nil {
+					t.Fatalf("unexpected error creating temporary termination file: %v", err)
+				} else {
+					resultName := resultsFile.Name()
+					c.want[i].Key = resultName
+					resultsFilePath = append(resultsFilePath, resultName)
+					d, err := json.Marshal(c.resultContent[i])
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := ioutil.WriteFile(resultName, d, 0777); err != nil {
+						t.Fatal(err)
+					}
+					defer os.Remove(resultName)
+				}
+			}
+
+			e := Entrypointer{
+				Results:         resultsFilePath,
+				TerminationPath: terminationPath,
+			}
+			if err := e.readResultsFromDisk(""); err != nil {
+				t.Fatal(err)
+			}
+			msg, err := ioutil.ReadFile(terminationPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			logger, _ := logging.NewLogger("", "status")
+			got, _ := termination.ParseMessage(logger, string(msg))
+			for _, g := range got {
+				aos := v1beta1.ArrayOrString{}
+				aos.UnmarshalJSON([]byte(g.Value))
+			}
+			if d := cmp.Diff(got, c.want); d != "" {
+				t.Fatalf("Diff(-want,+got): %v", d)
 			}
 		})
 	}

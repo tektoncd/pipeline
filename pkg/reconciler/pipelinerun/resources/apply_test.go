@@ -791,7 +791,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {{
 				Name:  "foo",
-				Value: "bar",
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 		expected: nil,
@@ -804,7 +804,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {{
 				Name:  "foo",
-				Value: "bar",
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 		expected: nil,
@@ -827,7 +827,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"definitely-not-pt1": {{
 				Name:  "foo",
-				Value: "bar",
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 		expected: nil,
@@ -840,7 +840,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {{
 				Name:  "definitely-not-foo",
-				Value: "bar",
+				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
 		expected: nil,
@@ -864,7 +864,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt2": {{
 				Name:  "bar",
-				Value: "rae",
+				Value: *v1beta1.NewArrayOrString("rae"),
 			}},
 		},
 		expected: []v1beta1.PipelineRunResult{{
@@ -884,15 +884,15 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			"pt1": {
 				{
 					Name:  "foo",
-					Value: "do",
+					Value: *v1beta1.NewArrayOrString("do"),
 				}, {
 					Name:  "bar",
-					Value: "mi",
+					Value: *v1beta1.NewArrayOrString("mi"),
 				},
 			},
 			"pt2": {{
 				Name:  "baz",
-				Value: "rae",
+				Value: *v1beta1.NewArrayOrString("rae"),
 			}},
 		},
 		expected: []v1beta1.PipelineRunResult{{
@@ -969,7 +969,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"normaltask": {{
 				Name:  "baz",
-				Value: "rae",
+				Value: *v1beta1.NewArrayOrString("rae"),
 			}},
 		},
 		expected: []v1beta1.PipelineRunResult{{

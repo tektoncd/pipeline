@@ -184,7 +184,7 @@ func (e Entrypointer) Go() error {
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
 	// This creates an error when trying to open the result folder as a file.
 	if len(e.Results) >= 1 && e.Results[0] != "" {
-		if err := e.readResultsFromDisk(); err != nil {
+		if err := e.readResultsFromDisk(pipeline.DefaultResultPath); err != nil {
 			logger.Fatalf("Error while handling results: %s", err)
 		}
 	}
@@ -192,13 +192,13 @@ func (e Entrypointer) Go() error {
 	return err
 }
 
-func (e Entrypointer) readResultsFromDisk() error {
+func (e Entrypointer) readResultsFromDisk(resultDir string) error {
 	output := []v1beta1.PipelineResourceResult{}
 	for _, resultFile := range e.Results {
 		if resultFile == "" {
 			continue
 		}
-		fileContents, err := ioutil.ReadFile(filepath.Join(pipeline.DefaultResultPath, resultFile))
+		fileContents, err := ioutil.ReadFile(filepath.Join(resultDir, resultFile))
 		if os.IsNotExist(err) {
 			continue
 		} else if err != nil {

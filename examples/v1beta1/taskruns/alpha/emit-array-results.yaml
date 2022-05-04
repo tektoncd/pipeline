@@ -1,0 +1,39 @@
+kind: Task
+apiVersion: tekton.dev/v1beta1
+metadata:
+  name: write-array
+  annotations:
+    description: |
+      A simple task that writes array
+spec:
+  results:
+    - name: array-results
+      type: array
+      description: The array results
+  steps:
+    - name: write-array
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "[\"hello\",\"world\"]" | tee $(results.array-results.path)
+    - name: check-results-array
+      image: ubuntu
+      script: |
+        #!/bin/bash
+        VALUE=$(cat $(results.array-results.path))
+        EXPECTED=[\"hello\",\"world\"]
+        diff=$(diff <(printf "%s\n" "${VALUE[@]}") <(printf "%s\n" "${EXPECTED[@]}"))
+        if [[ -z "$diff" ]]; then
+            echo "TRUE"
+        else
+            echo "FALSE"
+        fi
+---
+kind: TaskRun
+apiVersion: tekton.dev/v1beta1
+metadata:
+  name: write-array-tr
+spec:
+  taskRef:
+    name: write-array
+    kind: task
