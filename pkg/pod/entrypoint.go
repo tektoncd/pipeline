@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -70,6 +71,10 @@ var (
 	binVolume = corev1.Volume{
 		Name:         binVolumeName,
 		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+	}
+	internalStepsMount = corev1.VolumeMount{
+		Name:      "tekton-internal-steps",
+		MountPath: pipeline.StepsDir,
 	}
 
 	// TODO(#1605): Signal sidecar readiness by injecting entrypoint,

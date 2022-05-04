@@ -50,7 +50,6 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -355,6 +354,10 @@ var (
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
+	internalStepsMount = corev1.VolumeMount{
+		Name:      "tekton-internal-steps",
+		MountPath: pipeline.StepsDir,
+	}
 
 	workspaceVolume = corev1.Volume{
 		Name: "tekton-internal-workspace",
@@ -394,21 +397,24 @@ var (
 		},
 	}
 
-	placeToolsInitContainer = corev1.Container{
-		Command: []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointLocation},
-		VolumeMounts: []corev1.VolumeMount{{
-			MountPath: "/tekton/bin",
-			Name:      "tekton-internal-bin",
-		}},
-		WorkingDir: "/",
-		Name:       "place-tools",
-		Image:      "override-with-entrypoint:latest",
-	}
 	fakeVersion                string
 	gitResourceSecurityContext = &corev1.SecurityContext{
 		RunAsUser: ptr.Int64(0),
 	}
 )
+
+func placeToolsInitContainer(steps []string) corev1.Container {
+	return corev1.Container{
+		Command: append([]string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointLocation}, steps...),
+		VolumeMounts: []corev1.VolumeMount{{
+			MountPath: "/tekton/bin",
+			Name:      "tekton-internal-bin",
+		}, internalStepsMount},
+		WorkingDir: "/",
+		Name:       "prepare",
+		Image:      "override-with-entrypoint:latest",
+	}
+}
 
 var testClock = clock.NewFakePassiveClock(now)
 
@@ -4083,6 +4089,10 @@ type stepForExpectedPod struct {
 }
 
 func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
+	stepNames := make([]string, 0, len(steps))
+	for _, s := range steps {
+		stepNames = append(stepNames, fmt.Sprintf("step-%s", s.name))
+	}
 	p := &corev1.Pod{
 		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, ns, isClusterTask),
 		Spec: corev1.PodSpec{
@@ -4094,24 +4104,12 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 				binVolume,
 				downwardVolume,
 			},
-			InitContainers:        []corev1.Container{placeToolsInitContainer},
+			InitContainers:        []corev1.Container{placeToolsInitContainer(stepNames)},
 			RestartPolicy:         corev1.RestartPolicyNever,
 			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			ServiceAccountName:    saName,
 		},
 	}
-
-	stepNames := make([]string, 0, len(steps))
-	for _, s := range steps {
-		stepNames = append(stepNames, fmt.Sprintf("step-%s", s.name))
-	}
-	p.Spec.InitContainers = []corev1.Container{placeToolsInitContainer, {
-		Name:         "step-init",
-		Image:        images.EntrypointImage,
-		Command:      append([]string{"/ko-app/entrypoint", "step-init"}, stepNames...),
-		WorkingDir:   "/",
-		VolumeMounts: []v1.VolumeMount{{Name: "tekton-internal-steps", MountPath: "/tekton/steps"}},
-	}}
 
 	for idx, s := range steps {
 		p.Spec.Volumes = append(p.Spec.Volumes, corev1.Volume{

@@ -23,8 +23,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"knative.dev/pkg/kmeta"
-
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -35,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/changeset"
+	"knative.dev/pkg/kmeta"
 )
 
 const (
@@ -147,6 +146,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		return nil, err
 	}
 
+	initContainers = []corev1.Container{
+		entrypointInitContainer(b.Images.EntrypointImage, steps),
+	}
+
 	// Convert any steps with Script to command+args.
 	// If any are found, append an init container to initialize scripts.
 	if alphaAPIEnabled {
@@ -154,15 +157,14 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	} else {
 		scriptsInit, stepContainers, sidecarContainers = convertScripts(b.Images.ShellImage, "", steps, sidecars, nil)
 	}
+
 	if scriptsInit != nil {
 		initContainers = append(initContainers, *scriptsInit)
 		volumes = append(volumes, scriptsVolume)
 	}
-
 	if alphaAPIEnabled && taskRun.Spec.Debug != nil {
 		volumes = append(volumes, debugScriptsVolume, debugInfoVolume)
 	}
-
 	// Initialize any workingDirs under /workspace.
 	if workingDirInit := workingDirInit(b.Images.WorkingDirInitImage, stepContainers); workingDirInit != nil {
 		initContainers = append(initContainers, *workingDirInit)
@@ -181,22 +183,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		return nil, err
 	}
 
-	// Rewrite steps with entrypoint binary. Append the entrypoint init
-	// container to place the entrypoint binary. Also add timeout flags
-	// to entrypoint binary.
-	entrypointInit := corev1.Container{
-		Name:  "place-tools",
-		Image: b.Images.EntrypointImage,
-		// Rewrite default WorkingDir from "/home/nonroot" to "/"
-		// as suggested at https://github.com/GoogleContainerTools/distroless/issues/718
-		// to avoid permission errors with nonroot users not equal to `65532`
-		WorkingDir: "/",
-		// Invoke the entrypoint binary in "cp mode" to copy itself
-		// into the correct location for later steps.
-		Command:      []string{"/ko-app/entrypoint", "cp", "/ko-app/entrypoint", entrypointBinary},
-		VolumeMounts: []corev1.VolumeMount{binMount},
-	}
-
 	if alphaAPIEnabled {
 		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug)
 	} else {
@@ -205,12 +191,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if err != nil {
 		return nil, err
 	}
-	// place the entrypoint first in case other init containers rely on its
-	// features (e.g. decode-script).
-	initContainers = append([]corev1.Container{
-		entrypointInit,
-		tektonDirInit(b.Images.EntrypointImage, steps),
-	}, initContainers...)
 	volumes = append(volumes, binVolume, downwardVolume)
 
 	// Add implicit env vars.
@@ -421,21 +401,29 @@ func runVolume(i int) corev1.Volume {
 	}
 }
 
-func tektonDirInit(image string, steps []v1beta1.Step) corev1.Container {
-	cmd := make([]string, 0, len(steps)+2)
-	cmd = append(cmd, "/ko-app/entrypoint", "step-init")
+// prepareInitContainers generates a few init containers based of a set of command (in images) and volumes to run
+// This should effectively merge multiple command and volumes together.
+func entrypointInitContainer(image string, steps []v1beta1.Step) corev1.Container {
+	// Invoke the entrypoint binary in "cp mode" to copy itself
+	// into the correct location for later steps and initialize steps folder
+	command := []string{"/ko-app/entrypoint", "init", "/ko-app/entrypoint", entrypointBinary}
 	for i, s := range steps {
-		cmd = append(cmd, StepName(s.Name, i))
+		command = append(command, StepName(s.Name, i))
 	}
+	volumeMounts := []corev1.VolumeMount{binMount, internalStepsMount}
 
-	return corev1.Container{
-		Name:       "step-init",
-		Image:      image,
-		WorkingDir: "/",
-		Command:    cmd,
-		VolumeMounts: []corev1.VolumeMount{{
-			Name:      "tekton-internal-steps",
-			MountPath: pipeline.StepsDir,
-		}},
+	// Rewrite steps with entrypoint binary. Append the entrypoint init
+	// container to place the entrypoint binary. Also add timeout flags
+	// to entrypoint binary.
+	prepareInitContainer := corev1.Container{
+		Name:  "prepare",
+		Image: image,
+		// Rewrite default WorkingDir from "/home/nonroot" to "/"
+		// as suggested at https://github.com/GoogleContainerTools/distroless/issues/718
+		// to avoid permission errors with nonroot users not equal to `65532`
+		WorkingDir:   "/",
+		Command:      command,
+		VolumeMounts: volumeMounts,
 	}
+	return prepareInitContainer
 }
