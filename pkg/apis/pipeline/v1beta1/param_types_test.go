@@ -228,6 +228,10 @@ func TestArrayOrString_UnmarshalJSON(t *testing.T) {
 		result v1beta1.ArrayOrString
 	}{
 		{
+			input:  map[string]interface{}{"val": 123},
+			result: *v1beta1.NewArrayOrString("123"),
+		},
+		{
 			input:  map[string]interface{}{"val": "123"},
 			result: *v1beta1.NewArrayOrString("123"),
 		},
@@ -278,6 +282,49 @@ func TestArrayOrString_UnmarshalJSON(t *testing.T) {
 			if !reflect.DeepEqual(result.AOrS, c.result) {
 				t.Errorf("expected %+v, got %+v", c.result, result)
 			}
+		}
+	}
+}
+
+func TestArrayOrString_UnmarshalJSON_Directly(t *testing.T) {
+	cases := []struct {
+		desc     string
+		input    string
+		expected v1beta1.ArrayOrString
+	}{
+		{desc: "empty value", input: ``, expected: *v1beta1.NewArrayOrString("")},
+		{desc: "int value", input: `1`, expected: *v1beta1.NewArrayOrString("1")},
+		{desc: "int array", input: `[1,2,3]`, expected: *v1beta1.NewArrayOrString("[1,2,3]")},
+		{desc: "nested array", input: `[1,\"2\",3]`, expected: *v1beta1.NewArrayOrString(`[1,\"2\",3]`)},
+		{desc: "string value", input: `hello`, expected: *v1beta1.NewArrayOrString("hello")},
+		{desc: "array value", input: `["hello","world"]`, expected: *v1beta1.NewArrayOrString("hello", "world")},
+		{desc: "object value", input: `{"hello":"world"}`, expected: *v1beta1.NewObject(map[string]string{"hello": "world"})},
+	}
+
+	for _, c := range cases {
+		aos := v1beta1.ArrayOrString{}
+		if err := aos.UnmarshalJSON([]byte(c.input)); err != nil {
+			t.Errorf("Failed to unmarshal input '%v': %v", c.input, err)
+		}
+		if !reflect.DeepEqual(aos, c.expected) {
+			t.Errorf("Failed to unmarshal input '%v': expected %+v, got %+v", c.input, c.expected, aos)
+		}
+	}
+}
+
+func TestArrayOrString_UnmarshalJSON_Error(t *testing.T) {
+	cases := []struct {
+		desc  string
+		input string
+	}{
+		{desc: "empty value", input: "{\"val\": }"},
+		{desc: "wrong beginning value", input: "{\"val\": @}"},
+	}
+
+	for _, c := range cases {
+		var result ArrayOrStringHolder
+		if err := json.Unmarshal([]byte(c.input), &result); err == nil {
+			t.Errorf("Should return err but got nil '%v'", c.input)
 		}
 	}
 }

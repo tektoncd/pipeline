@@ -2605,8 +2605,8 @@
         },
         "value": {
           "description": "Value the given value of the result",
-          "type": "string",
-          "default": ""
+          "default": {},
+          "$ref": "#/definitions/v1beta1.ArrayOrString"
         }
       }
     },

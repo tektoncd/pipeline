@@ -330,7 +330,7 @@ steps:
       echo "I am supposed to sleep for 60 seconds!"
       sleep 60
     timeout: 5s
-``` 
+```
 
 #### Specifying `onError` for a `step`
 
@@ -450,7 +450,7 @@ Parameter names:
 
 For example, `foo.Is-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
 
-> NOTE: 
+> NOTE:
 > 1. Parameter names are **case insensitive**. For example, `APPLE` and `apple` will be treated as equal. If they appear in the same TaskSpec's params, it will be rejected as invalid.
 > 2. If a parameter name contains dots (.), it must be referenced by using the [bracket notation](#substituting-parameters-and-resources) with either single or double quotes i.e. `$(params['foo.bar'])`, `$(params["foo.bar"])`. See the following example for more information.
 
@@ -684,6 +684,30 @@ or [at the `Pipeline` level](./pipelines.md#configuring-execution-results-at-the
 **Note:** The maximum size of a `Task's` results is limited by the container termination message feature of Kubernetes,
 as results are passed back to the controller via this mechanism. At present, the limit is
 ["4096 bytes"](https://github.com/kubernetes/kubernetes/blob/96e13de777a9eb57f87889072b68ac40467209ac/pkg/kubelet/container/runtime.go#L632).
+
+**Note:**  The result type currently support `string` and `array` (`array` is alpha gated feature), you can write `array` results via JSON escaped format. In the example below, the task specifies one files in the `results` field and write `array` to the file. And `array` is currently supported in Task level not in Pipeline level.
+
+```
+kind: Task
+apiVersion: tekton.dev/v1beta1
+metadata:
+  name: write-array
+  annotations:
+    description: |
+      A simple task that writes array
+spec:
+  results:
+    - name: array-results
+      type: array
+      description: The array results
+  steps:
+    - name: write-array
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n "[\"hello\",\"world\"]" | tee $(results.array-results.path)
+```
+
 Results are written to the termination message encoded as JSON objects and Tekton uses those objects
 to pass additional information to the controller. As such, `Task` results are best suited for holding
 small amounts of data, such as commit SHAs, branch names, ephemeral namespaces, and so on.
@@ -1181,10 +1205,10 @@ log into the `Pod` and add a `Step` that pauses the `Task` at the desired stage.
 
 ### Running Step Containers as a Non Root User
 
-All steps that do not require to be run as a root user should make use of TaskRun features to 
-designate the container for a step runs as a user without root permissions. As a best practice, 
-running containers as non root should be built into the container image to avoid any possibility 
-of the container being run as root. However, as a further measure of enforcing this practice, 
+All steps that do not require to be run as a root user should make use of TaskRun features to
+designate the container for a step runs as a user without root permissions. As a best practice,
+running containers as non root should be built into the container image to avoid any possibility
+of the container being run as root. However, as a further measure of enforcing this practice,
 steps can make use of a `securityContext` to specify how the container should run.
 
 An example of running Task steps as a non root user is shown below:
@@ -1228,17 +1252,17 @@ spec:
       runAsUser: 1001
 ```
 
-In the example above, the step `show-user-2000` specifies via a `securityContext` that the container 
-for the step should run as user 2000. A `securityContext` must still be specified via a TaskRun `podTemplate` 
-for this TaskRun to run in a Kubernetes environment that enforces running containers as non root as a requirement. 
+In the example above, the step `show-user-2000` specifies via a `securityContext` that the container
+for the step should run as user 2000. A `securityContext` must still be specified via a TaskRun `podTemplate`
+for this TaskRun to run in a Kubernetes environment that enforces running containers as non root as a requirement.
 
-The `runAsNonRoot` property specified via the `podTemplate` above validates that steps part of this TaskRun are 
-running as non root users and will fail to start any step container that attempts to run as root. Only specifying 
-`runAsNonRoot: true` will not actually run containers as non root as the property simply validates that steps are not 
+The `runAsNonRoot` property specified via the `podTemplate` above validates that steps part of this TaskRun are
+running as non root users and will fail to start any step container that attempts to run as root. Only specifying
+`runAsNonRoot: true` will not actually run containers as non root as the property simply validates that steps are not
 running as root. It is the `runAsUser` property that is actually used to set the non root user ID for the container.
 
-If a step defines its own `securityContext`, it will be applied for the step container over the `securityContext` 
-specified at the pod level via the TaskRun `podTemplate`. 
+If a step defines its own `securityContext`, it will be applied for the step container over the `securityContext`
+specified at the pod level via the TaskRun `podTemplate`.
 
 More information about Pod and Container Security Contexts can be found via the [Kubernetes website](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod).
 

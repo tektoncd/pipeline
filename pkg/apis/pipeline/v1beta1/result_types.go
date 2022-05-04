@@ -39,7 +39,7 @@ type TaskRunResult struct {
 	Type ResultsType `json:"type,omitempty"`
 
 	// Value the given value of the result
-	Value string `json:"value"`
+	Value ArrayOrString `json:"value"`
 }
 
 // ResultsType indicates the type of a result;
@@ -54,7 +54,9 @@ type ResultsType string
 // Valid ResultsType:
 const (
 	ResultsTypeString ResultsType = "string"
+	ResultsTypeArray  ResultsType = "array"
+	ResultsTypeObject ResultsType = "object"
 )
 
 // AllResultsTypes can be used for ResultsTypes validation.
-var AllResultsTypes = []ResultsType{ResultsTypeString}
+var AllResultsTypes = []ResultsType{ResultsTypeString, ResultsTypeArray, ResultsTypeObject}

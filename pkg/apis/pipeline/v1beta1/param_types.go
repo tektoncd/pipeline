@@ -141,17 +141,43 @@ type ArrayOrString struct {
 
 // UnmarshalJSON implements the json.Unmarshaller interface.
 func (arrayOrString *ArrayOrString) UnmarshalJSON(value []byte) error {
-	switch value[0] {
-	case '[':
-		arrayOrString.Type = ParamTypeArray
-		return json.Unmarshal(value, &arrayOrString.ArrayVal)
-	case '{':
-		arrayOrString.Type = ParamTypeObject
-		return json.Unmarshal(value, &arrayOrString.ObjectVal)
-	default:
+	// ArrayOrString is used for Results Value as well, the results can be any kind of
+	// data so we need to check if it is empty.
+	if len(value) == 0 {
 		arrayOrString.Type = ParamTypeString
-		return json.Unmarshal(value, &arrayOrString.StringVal)
+		return nil
 	}
+	if value[0] == '[' {
+		// We're trying to Unmarshal to []string, but for cases like []int or other types
+		// of nested array which we don't support yet, we should continue and Unmarshal
+		// it to String. If the Type being set doesn't match what it actually should be,
+		// it will be captured by validation in reconciler.
+		// if failed to unmarshal to array, we will convert the value to string and marshal it to string
+		var a []string
+		if err := json.Unmarshal(value, &a); err == nil {
+			arrayOrString.Type = ParamTypeArray
+			arrayOrString.ArrayVal = a
+			return nil
+		}
+	}
+	if value[0] == '{' {
+		// if failed to unmarshal to map, we will convert the value to string and marshal it to string
+		var m map[string]string
+		if err := json.Unmarshal(value, &m); err == nil {
+			arrayOrString.Type = ParamTypeObject
+			arrayOrString.ObjectVal = m
+			return nil
+		}
+	}
+
+	// By default we unmarshal to string
+	arrayOrString.Type = ParamTypeString
+	if err := json.Unmarshal(value, &arrayOrString.StringVal); err == nil {
+		return nil
+	}
+	arrayOrString.StringVal = string(value)
+
+	return nil
 }
 
 // MarshalJSON implements the json.Marshaller interface.

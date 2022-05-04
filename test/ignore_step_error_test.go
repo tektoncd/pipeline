@@ -100,7 +100,7 @@ spec:
 	}
 
 	for _, r := range taskrunItem.Status.TaskRunResults {
-		if r.Name == "result1" && r.Value != "123" {
+		if r.Name == "result1" && r.Value.StringVal != "123" {
 			t.Fatalf("task1 should have initialized a result \"result1\" to \"123\"")
 		}
 	}

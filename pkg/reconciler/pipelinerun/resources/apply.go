@@ -182,6 +182,8 @@ func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]st
 // and omitted from the returned slice. A nil slice is returned if no results are passed in or all
 // results are invalid.
 func ApplyTaskResultsToPipelineResults(
+	// TODO(#4723): Change PipelineResult Value to support array, so we can update
+	// PipelineResults, right now we only update the StringVal from TaskResults to PipelineResults
 	results []v1beta1.PipelineResult,
 	taskRunResults map[string][]v1beta1.TaskRunResult,
 	customTaskResults map[string][]v1alpha1.RunResult) []v1beta1.PipelineRunResult {
@@ -231,7 +233,7 @@ func ApplyTaskResultsToPipelineResults(
 func taskResultValue(taskName string, resultName string, taskResults map[string][]v1beta1.TaskRunResult) *string {
 	for _, trResult := range taskResults[taskName] {
 		if trResult.Name == resultName {
-			return &trResult.Value
+			return &trResult.Value.StringVal
 		}
 	}
 	return nil

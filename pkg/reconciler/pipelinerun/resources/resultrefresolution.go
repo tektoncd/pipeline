@@ -138,11 +138,13 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 		return nil, resultRef.PipelineTask, fmt.Errorf("task %q referenced by result was not successful", referencedPipelineTask.PipelineTask.Name)
 	}
 
-	var runName, taskRunName, resultValue string
+	var runName, runValue, taskRunName string
+	var resultValue v1beta1.ArrayOrString
 	var err error
 	if referencedPipelineTask.IsCustomTask() {
 		runName = referencedPipelineTask.Run.Name
-		resultValue, err = findRunResultForParam(referencedPipelineTask.Run, resultRef)
+		runValue, err = findRunResultForParam(referencedPipelineTask.Run, resultRef)
+		resultValue = *v1beta1.NewArrayOrString(runValue)
 		if err != nil {
 			return nil, resultRef.PipelineTask, err
 		}
@@ -155,7 +157,7 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	}
 
 	return &ResolvedResultRef{
-		Value:           *v1beta1.NewArrayOrString(resultValue),
+		Value:           resultValue,
 		FromTaskRun:     taskRunName,
 		FromRun:         runName,
 		ResultReference: *resultRef,
@@ -172,14 +174,14 @@ func findRunResultForParam(run *v1alpha1.Run, reference *v1beta1.ResultRef) (str
 	return "", fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
 }
 
-func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultRef) (string, error) {
+func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultRef) (v1beta1.ArrayOrString, error) {
 	results := taskRun.Status.TaskRunStatusFields.TaskRunResults
 	for _, result := range results {
 		if result.Name == reference.Result {
 			return result.Value, nil
 		}
 	}
-	return "", fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
+	return v1beta1.ArrayOrString{}, fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
 }
 
 func (rs ResolvedResultRefs) getStringReplacements() map[string]string {

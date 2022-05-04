@@ -4670,15 +4670,16 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunResult(ref common.ReferenceCallback
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the given value of the result",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ArrayOrString"),
 						},
 					},
 				},
 				Required: []string{"name", "value"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ArrayOrString"},
 	}
 }
 

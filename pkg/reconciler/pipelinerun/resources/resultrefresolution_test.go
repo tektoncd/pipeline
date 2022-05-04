@@ -43,7 +43,7 @@ var pipelineRunState = PipelineRunState{{
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "aResult",
-					Value: "aResultValue",
+					Value: *v1beta1.NewArrayOrString("aResultValue"),
 				}},
 			},
 		},
@@ -159,7 +159,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
 							Name:  "aResult",
-							Value: "aResultValue",
+							Value: *v1beta1.NewArrayOrString("aResultValue"),
 						}},
 					},
 				},
@@ -195,7 +195,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
 							Name:  "aResult",
-							Value: "aResultValue",
+							Value: *v1beta1.NewArrayOrString("aResultValue"),
 						}},
 					},
 				},
@@ -215,7 +215,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
 							Name:  "bResult",
-							Value: "bResultValue",
+							Value: *v1beta1.NewArrayOrString("bResultValue"),
 						}},
 					},
 				},
@@ -258,7 +258,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
 							Name:  "aResult",
-							Value: "aResultValue",
+							Value: *v1beta1.NewArrayOrString("aResultValue"),
 						}},
 					},
 				},

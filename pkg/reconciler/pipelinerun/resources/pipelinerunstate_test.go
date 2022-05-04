@@ -2426,10 +2426,10 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					TaskRunResults: []v1beta1.TaskRunResult{{
 						Name:  "foo",
-						Value: "oof",
+						Value: *v1beta1.NewArrayOrString("oof"),
 					}, {
 						Name:  "bar",
-						Value: "rab",
+						Value: *v1beta1.NewArrayOrString("rab"),
 					}},
 				},
 			},
@@ -2462,7 +2462,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					TaskRunResults: []v1beta1.TaskRunResult{{
 						Name:  "fail-foo",
-						Value: "fail-oof",
+						Value: *v1beta1.NewArrayOrString("fail-oof"),
 					}},
 				},
 			},
@@ -2481,7 +2481,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					TaskRunResults: []v1beta1.TaskRunResult{{
 						Name:  "unknown-foo",
-						Value: "unknown-oof",
+						Value: *v1beta1.NewArrayOrString("unknown-oof"),
 					}},
 				},
 			},
@@ -2578,10 +2578,10 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 	expectedTaskResults := map[string][]v1beta1.TaskRunResult{
 		"successful-task-with-results-1": {{
 			Name:  "foo",
-			Value: "oof",
+			Value: *v1beta1.NewArrayOrString("oof"),
 		}, {
 			Name:  "bar",
-			Value: "rab",
+			Value: *v1beta1.NewArrayOrString("rab"),
 		}},
 		"successful-task-without-results-1": nil,
 	}
