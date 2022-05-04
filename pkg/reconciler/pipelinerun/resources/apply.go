@@ -17,18 +17,21 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
-func ApplyParameters(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
+func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
 	// This assumes that the PipelineRun inputs have been validated against what the Pipeline requests.
 
 	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
@@ -69,19 +72,19 @@ func ApplyParameters(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.
 		}
 	}
 
-	return ApplyReplacements(p, stringReplacements, arrayReplacements)
+	return ApplyReplacements(ctx, p, stringReplacements, arrayReplacements)
 }
 
 // ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
 // Currently supports only name substitution. Uses "" as a default if name is not specified.
-func ApplyContexts(spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
+func ApplyContexts(ctx context.Context, spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
 	replacements := map[string]string{
 		"context.pipelineRun.name":      pr.Name,
 		"context.pipeline.name":         pipelineName,
 		"context.pipelineRun.namespace": pr.Namespace,
 		"context.pipelineRun.uid":       string(pr.ObjectMeta.UID),
 	}
-	return ApplyReplacements(spec, replacements, map[string][]string{})
+	return ApplyReplacements(ctx, spec, replacements, map[string][]string{})
 }
 
 // ApplyPipelineTaskContexts applies the substitution from $(context.pipelineTask.*) with the specified values.
@@ -129,7 +132,7 @@ func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[stri
 
 // ApplyWorkspaces replaces workspace variables in the given pipeline spec with their
 // concrete values.
-func ApplyWorkspaces(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
+func ApplyWorkspaces(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
 	p = p.DeepCopy()
 	replacements := map[string]string{}
 	for _, declaredWorkspace := range p.Workspaces {
@@ -140,11 +143,11 @@ func ApplyWorkspaces(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.
 		key := fmt.Sprintf("workspaces.%s.bound", boundWorkspace.Name)
 		replacements[key] = "true"
 	}
-	return ApplyReplacements(p, replacements, map[string][]string{})
+	return ApplyReplacements(ctx, p, replacements, map[string][]string{})
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
-func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string) *v1beta1.PipelineSpec {
+func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string) *v1beta1.PipelineSpec {
 	p = p.DeepCopy()
 
 	for i := range p.Tasks {
@@ -158,6 +161,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 			c.Params = replaceParamValues(c.Params, replacements, arrayReplacements)
 		}
 		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
+		p.Tasks[i], replacements, arrayReplacements = propagateParams(ctx, p.Tasks[i], replacements, arrayReplacements)
 	}
 
 	for i := range p.Finally {
@@ -167,6 +171,33 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 	}
 
 	return p
+}
+
+func propagateParams(ctx context.Context, t v1beta1.PipelineTask, replacements map[string]string, arrayReplacements map[string][]string) (v1beta1.PipelineTask, map[string]string, map[string][]string) {
+	if t.TaskSpec != nil && config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+		patterns := []string{
+			"params.%s",
+			"params[%q]",
+			"params['%s']",
+		}
+		// check if there are task parameters defined that match the params at pipeline level
+		if len(t.Params) > 0 {
+			for _, par := range t.Params {
+				for _, pattern := range patterns {
+					checkName := fmt.Sprintf(pattern, par.Name)
+					// Scoping. Task Params will replace Pipeline Params
+					if _, ok := replacements[checkName]; ok {
+						replacements[checkName] = par.Value.StringVal
+					}
+					if _, ok := arrayReplacements[checkName]; ok {
+						arrayReplacements[checkName] = par.Value.ArrayVal
+					}
+				}
+			}
+		}
+		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, replacements, arrayReplacements)
+	}
+	return t, replacements, arrayReplacements
 }
 
 func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]string, arrayReplacements map[string][]string) []v1beta1.Param {

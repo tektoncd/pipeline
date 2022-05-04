@@ -76,9 +76,9 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
-	errs = errs.Also(ValidateParameterVariables(ts.Steps, ts.Params))
-	errs = errs.Also(ValidateResourcesVariables(ts.Steps, ts.Resources))
-	errs = errs.Also(validateTaskContextVariables(ts.Steps))
+	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
+	errs = errs.Also(ValidateResourcesVariables(ctx, ts.Steps, ts.Resources))
+	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
 	return errs
 }
@@ -317,7 +317,7 @@ func (p ParamSpec) ValidateObjectType() *apis.FieldError {
 }
 
 // ValidateParameterVariables validates all variables within a slice of ParamSpecs against a slice of Steps
-func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldError {
+func ValidateParameterVariables(ctx context.Context, steps []Step, params []ParamSpec) *apis.FieldError {
 	parameterNames := sets.NewString()
 	arrayParameterNames := sets.NewString()
 	objectParamSpecs := []ParamSpec{}
@@ -336,12 +336,12 @@ func ValidateParameterVariables(steps []Step, params []ParamSpec) *apis.FieldErr
 		}
 	}
 
-	errs = errs.Also(validateVariables(steps, "params", parameterNames))
+	errs = errs.Also(validateVariables(ctx, steps, "params", parameterNames))
 	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
-	return errs.Also(validateObjectUsage(steps, objectParamSpecs))
+	return errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
 }
 
-func validateTaskContextVariables(steps []Step) *apis.FieldError {
+func validateTaskContextVariables(ctx context.Context, steps []Step) *apis.FieldError {
 	taskRunContextNames := sets.NewString().Insert(
 		"name",
 		"namespace",
@@ -351,12 +351,12 @@ func validateTaskContextVariables(steps []Step) *apis.FieldError {
 		"name",
 		"retry-count",
 	)
-	errs := validateVariables(steps, "context\\.taskRun", taskRunContextNames)
-	return errs.Also(validateVariables(steps, "context\\.task", taskContextNames))
+	errs := validateVariables(ctx, steps, "context\\.taskRun", taskRunContextNames)
+	return errs.Also(validateVariables(ctx, steps, "context\\.task", taskContextNames))
 }
 
 // ValidateResourcesVariables validates all variables within a TaskResources against a slice of Steps
-func ValidateResourcesVariables(steps []Step, resources *TaskResources) *apis.FieldError {
+func ValidateResourcesVariables(ctx context.Context, steps []Step, resources *TaskResources) *apis.FieldError {
 	if resources == nil {
 		return nil
 	}
@@ -371,7 +371,7 @@ func ValidateResourcesVariables(steps []Step, resources *TaskResources) *apis.Fi
 			resourceNames.Insert(r.Name)
 		}
 	}
-	return validateVariables(steps, "resources.(?:inputs|outputs)", resourceNames)
+	return validateVariables(ctx, steps, "resources.(?:inputs|outputs)", resourceNames)
 }
 
 // TODO (@chuangw6): Make sure an object param is not used as a whole when providing values for strings.
@@ -379,7 +379,7 @@ func ValidateResourcesVariables(steps []Step, resources *TaskResources) *apis.Fi
 // "When providing values for strings, Task and Pipeline authors can access
 // individual attributes of an object param; they cannot access the object
 // as whole (we could add support for this later)."
-func validateObjectUsage(steps []Step, params []ParamSpec) (errs *apis.FieldError) {
+func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) (errs *apis.FieldError) {
 	objectParameterNames := sets.NewString()
 	for _, p := range params {
 		// collect all names of object type params
@@ -396,7 +396,7 @@ func validateObjectUsage(steps []Step, params []ParamSpec) (errs *apis.FieldErro
 		}
 
 		// check if the object's key names are referenced correctly i.e. param.objectParam.key1
-		errs = errs.Also(validateVariables(steps, fmt.Sprintf("params\\.%s", p.Name), objectKeys))
+		errs = errs.Also(validateVariables(ctx, steps, fmt.Sprintf("params\\.%s", p.Name), objectKeys))
 	}
 
 	return errs
@@ -450,7 +450,7 @@ func validateStepArrayUsage(step Step, prefix string, vars sets.String) *apis.Fi
 	return errs
 }
 
-func validateVariables(steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
+func validateVariables(ctx context.Context, steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
 	// validate that the variable name format follows the rules
 	// - Must only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)
 	// - Must begin with a letter or an underscore (_)
@@ -474,16 +474,18 @@ func validateVariables(steps []Step, prefix string, vars sets.String) (errs *api
 
 	// We've checked param name format. Now, we want to check if param names are referenced correctly in each step
 	for idx, step := range steps {
-		errs = errs.Also(validateStepVariables(step, prefix, vars).ViaFieldIndex("steps", idx))
+		errs = errs.Also(validateStepVariables(ctx, step, prefix, vars).ViaFieldIndex("steps", idx))
 	}
 	return errs
 }
 
-func validateStepVariables(step Step, prefix string, vars sets.String) *apis.FieldError {
+func validateStepVariables(ctx context.Context, step Step, prefix string, vars sets.String) *apis.FieldError {
 	errs := validateTaskVariable(step.Name, prefix, vars).ViaField("name")
 	errs = errs.Also(validateTaskVariable(step.Image, prefix, vars).ViaField("image"))
 	errs = errs.Also(validateTaskVariable(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	errs = errs.Also(validateTaskVariable(step.Script, prefix, vars).ViaField("script"))
+	if !(config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" && prefix == "params") {
+		errs = errs.Also(validateTaskVariable(step.Script, prefix, vars).ViaField("script"))
+	}
 	for i, cmd := range step.Command {
 		errs = errs.Also(validateTaskVariable(cmd, prefix, vars).ViaFieldIndex("command", i))
 	}

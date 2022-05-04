@@ -14,6 +14,7 @@ weight: 300
   - [Tekton Bundles](#tekton-bundles)
   - [Remote Tasks](#remote-tasks)
   - [Specifying `Parameters`](#specifying-parameters)
+    - [Propagated Parameters](#propagated-parameters)
     - [Extra Parameters](#extra-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Resource` limits](#specifying-resource-limits)
@@ -196,6 +197,73 @@ spec:
 ```
 
 **Note:** If a parameter does not have an implicit default value, you must explicitly set its value.
+
+#### Propagated Parameters
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+When using an inlined `taskSpec`, parameters from the parent `TaskRun` will be
+available to the `Task` without needing to be explicitly defined.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: hello-
+spec:
+  params:
+    - name: message
+      value: "hello world!"
+  taskSpec:
+    # There are no explicit params defined here.
+    # They are derived from the TaskRun params above.
+    steps:
+    - name: default
+      image: ubuntu
+      script: |
+        echo $(params.message)
+```
+
+On executing the task run, the parameters will be interpolated during resolution.
+The specifications are not mutated before storage and so it remains the same.
+The status is updated.
+
+```yaml
+kind: TaskRun
+metadata:
+  name: hello-dlqm9
+  ...
+spec:
+  params:
+  - name: message
+    value: hello world!
+  serviceAccountName: default
+  taskSpec:
+    steps:
+    - image: ubuntu
+      name: default
+      resources: {}
+      script: |
+        echo $(params.message)
+status:
+  conditions:
+  - lastTransitionTime: "2022-05-20T15:24:41Z"
+    message: All Steps have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  ... 
+  steps:
+  - container: step-default
+    ...  
+  taskSpec:
+    steps:
+    - image: ubuntu
+      name: default
+      resources: {}
+      script: |
+        echo "hello world!"
+```
 
 #### Extra Parameters
 

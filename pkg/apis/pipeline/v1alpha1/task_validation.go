@@ -130,7 +130,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	if err := v1beta1.ValidateParameterVariables(ts.Steps, ts.Params); err != nil {
+	if err := v1beta1.ValidateParameterVariables(ctx, ts.Steps, ts.Params); err != nil {
 		return err
 	}
 	// Deprecated
@@ -138,7 +138,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
-	if err := v1beta1.ValidateResourcesVariables(ts.Steps, ts.Resources); err != nil {
+	if err := v1beta1.ValidateResourcesVariables(ctx, ts.Steps, ts.Resources); err != nil {
 		return err
 	}
 	// Deprecated
