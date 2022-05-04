@@ -36,7 +36,7 @@ type EntrypointCache interface {
 	// the reference referred to an index, the returned digest will be the
 	// index's digest, not any platform-specific image contained by the
 	// index.
-	get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string, imagePullSecrets []corev1.LocalObjectReference) (*imageData, error)
+	get(ctx context.Context, ref name.Reference, namespace, serviceAccountName string, imagePullSecrets []corev1.LocalObjectReference, hasArgs bool) (*imageData, error)
 }
 
 // imageData contains information looked up about an image or multi-platform image index.
@@ -62,6 +62,7 @@ func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, s
 		if len(s.Command) > 0 {
 			continue
 		}
+		hasArgs := len(s.Args) > 0
 
 		ref, err := name.ParseReference(s.Image, name.WeakValidation)
 		if err != nil {
@@ -72,7 +73,7 @@ func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, s
 			id = cid
 		} else {
 			// Look it up for real.
-			lid, err := cache.get(ctx, ref, namespace, serviceAccountName, imagePullSecrets)
+			lid, err := cache.get(ctx, ref, namespace, serviceAccountName, imagePullSecrets, hasArgs)
 			if err != nil {
 				return nil, err
 			}
