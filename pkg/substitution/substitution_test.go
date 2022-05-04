@@ -62,7 +62,7 @@ func TestValidateVariables(t *testing.T) {
 	}, {
 		name: "multiple variables",
 		args: args{
-			input:        "--flag=$(inputs.params.baz) $(input.params.foo)",
+			input:        "--flag=$(inputs.params.baz) $(inputs.params.foo)",
 			prefix:       "inputs.params",
 			locationName: "step",
 			path:         "taskspec.steps",
@@ -95,14 +95,14 @@ func TestValidateVariables(t *testing.T) {
 	}, {
 		name: "undefined variable and defined variable",
 		args: args{
-			input:        "--flag=$(inputs.params.baz) $(input.params.foo)",
+			input:        "--flag=$(inputs.params.baz) $(inputs.params.foo)",
 			prefix:       "inputs.params",
 			locationName: "step",
 			path:         "taskspec.steps",
 			vars:         sets.NewString("foo"),
 		},
 		expectedError: &apis.FieldError{
-			Message: `non-existent variable in "--flag=$(inputs.params.baz) $(input.params.foo)" for step somefield`,
+			Message: `non-existent variable in "--flag=$(inputs.params.baz) $(inputs.params.foo)" for step somefield`,
 			Paths:   []string{"taskspec.steps.somefield"},
 		},
 	}} {
@@ -116,6 +116,93 @@ func TestValidateVariables(t *testing.T) {
 	}
 }
 
+func TestValidateVariablePs(t *testing.T) {
+	type args struct {
+		input  string
+		prefix string
+		vars   sets.String
+	}
+	for _, tc := range []struct {
+		name          string
+		args          args
+		expectedError *apis.FieldError
+	}{{
+		name: "valid variable",
+		args: args{
+			input:  "--flag=$(inputs.params.baz)",
+			prefix: "inputs.params",
+			vars:   sets.NewString("baz"),
+		},
+		expectedError: nil,
+	}, {
+		name: "valid variable with double quote bracket",
+		args: args{
+			input:  "--flag=$(inputs.params[\"baz\"])",
+			prefix: "inputs.params",
+			vars:   sets.NewString("baz"),
+		},
+		expectedError: nil,
+	}, {
+		name: "valid variable with single quotebracket",
+		args: args{
+			input:  "--flag=$(inputs.params['baz'])",
+			prefix: "inputs.params",
+			vars:   sets.NewString("baz"),
+		},
+		expectedError: nil,
+	}, {
+		name: "valid variable contains diffetent chars",
+		args: args{
+			input:  "--flag=$(inputs.params['ba-_9z'])",
+			prefix: "inputs.params",
+			vars:   sets.NewString("ba-_9z"),
+		},
+		expectedError: nil,
+	}, {
+		name: "valid variable uid",
+		args: args{
+			input:  "--flag=$(context.taskRun.uid)",
+			prefix: "context.taskRun",
+			vars:   sets.NewString("uid"),
+		},
+		expectedError: nil,
+	}, {
+		name: "multiple variables",
+		args: args{
+			input:  "--flag=$(inputs.params.baz) $(inputs.params.foo)",
+			prefix: "inputs.params",
+			vars:   sets.NewString("baz", "foo"),
+		},
+		expectedError: nil,
+	}, {
+		name: "different context and prefix",
+		args: args{
+			input:  "--flag=$(something.baz)",
+			prefix: "something",
+			vars:   sets.NewString("baz"),
+		},
+		expectedError: nil,
+	}, {
+		name: "undefined variable",
+		args: args{
+			input:  "--flag=$(inputs.params.baz)",
+			prefix: "inputs.params",
+			vars:   sets.NewString("foo"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `non-existent variable in "--flag=$(inputs.params.baz)"`,
+			Paths:   []string{""},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := substitution.ValidateVariableP(tc.args.input, tc.args.prefix, tc.args.vars)
+
+			if d := cmp.Diff(got, tc.expectedError, cmp.AllowUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("ValidateVariableP() error did not match expected error %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
 func TestApplyReplacements(t *testing.T) {
 	type args struct {
 		input        string
