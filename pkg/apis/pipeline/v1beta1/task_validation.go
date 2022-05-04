@@ -52,6 +52,15 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}
+
+	if config.IsSubstituted(ctx) {
+		// Validate the task's workspaces only.
+		errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
+		errs = errs.Also(validateWorkspaceUsages(ctx, ts))
+
+		return errs
+	}
+
 	errs = errs.Also(ValidateVolumes(ts.Volumes).ViaField("volumes"))
 	errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
 	errs = errs.Also(validateWorkspaceUsages(ctx, ts))
