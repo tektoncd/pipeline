@@ -17,10 +17,12 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -35,6 +37,7 @@ func TestApplyParameters(t *testing.T) {
 		original v1beta1.PipelineSpec
 		params   []v1beta1.Param
 		expected v1beta1.PipelineSpec
+		alpha    bool
 	}{{
 		name: "single parameter",
 		original: v1beta1.PipelineSpec{
@@ -64,6 +67,230 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
+	}, {
+		name: "parameter propagation string no task or task default winner pipeline",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewArrayOrString("hello param!")}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "hello param!"`,
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "parameter propagation array no task or task default winner pipeline",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO[*])"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewArrayOrString("hello", "param", "!!!")}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello", "param", "!!!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "parameter propagation with task default but no task winner pipeline",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewArrayOrString("default param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewArrayOrString("pipeline param!")}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewArrayOrString("default param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "pipeline param!"`,
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "parameter propagation array with task default but no task winner pipeline",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewArrayOrString("default", "param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewArrayOrString("pipeline", "param!")}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewArrayOrString("default", "param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline", "param!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "parameter propagation array with task default and task winner task",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "HELLO", Value: *v1beta1.NewArrayOrString("task", "param!")},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewArrayOrString("default", "param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewArrayOrString("pipeline", "param!")}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "HELLO", Value: *v1beta1.NewArrayOrString("task", "param!")},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewArrayOrString("default", "param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "task", "param!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "parameter propagation with task default and task winner task",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "HELLO", Value: *v1beta1.NewArrayOrString("task param!")},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewArrayOrString("default param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewArrayOrString("pipeline param!")}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "HELLO", Value: *v1beta1.NewArrayOrString("task param!")},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewArrayOrString("default param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "task param!"`,
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
 	}, {
 		name: "single parameter with when expression",
 		original: v1beta1.PipelineSpec{
@@ -349,6 +576,12 @@ func TestApplyParameters(t *testing.T) {
 		},
 	},
 	} {
+		ctx := context.Background()
+		if tt.alpha {
+			cfg := config.FromContextOrDefaults(ctx)
+			cfg.FeatureFlags = &config.FeatureFlags{EnableAPIFields: "alpha"}
+			ctx = config.ToContext(ctx, cfg)
+		}
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -357,7 +590,7 @@ func TestApplyParameters(t *testing.T) {
 					Params: tt.params,
 				},
 			}
-			got := ApplyParameters(&tt.original, run)
+			got := ApplyParameters(ctx, &tt.original, run)
 			if d := cmp.Diff(&tt.expected, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -590,6 +823,7 @@ func TestApplyTaskResults_Conditions(t *testing.T) {
 }
 
 func TestContext(t *testing.T) {
+	ctx := context.Background()
 	for _, tc := range []struct {
 		description string
 		pr          *v1beta1.PipelineRun
@@ -655,7 +889,7 @@ func TestContext(t *testing.T) {
 					}},
 				},
 			}
-			got := ApplyContexts(&orig.Spec, orig.Name, tc.pr)
+			got := ApplyContexts(ctx, &orig.Spec, orig.Name, tc.pr)
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Params[0]); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
@@ -728,6 +962,7 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 }
 
 func TestApplyWorkspaces(t *testing.T) {
+	ctx := context.Background()
 	for _, tc := range []struct {
 		description         string
 		declarations        []v1beta1.PipelineWorkspaceDeclaration
@@ -769,7 +1004,7 @@ func TestApplyWorkspaces(t *testing.T) {
 					Workspaces: tc.bindings,
 				},
 			}
-			p2 := ApplyWorkspaces(&p1, pr)
+			p2 := ApplyWorkspaces(ctx, &p1, pr)
 			str := p2.Tasks[0].Params[0].Value.StringVal
 			if str != tc.expectedReplacement {
 				t.Errorf("expected %q, received %q", tc.expectedReplacement, str)

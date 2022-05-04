@@ -15,6 +15,10 @@ weight: 500
       - [Remote Pipelines](#remote-pipelines)
     - [Specifying <code>Resources</code>](#specifying-resources)
     - [Specifying <code>Parameters</code>](#specifying-parameters)
+      - [Propagated Parameters](#propagated-parameters)
+        - [Scope and Precedence](#scope-and-precedence)
+        - [Default Values](#default-values)
+        - [Referenced Resources](#referenced-resources)
     - [Specifying custom <code>ServiceAccount</code> credentials](#specifying-custom-serviceaccount-credentials)
     - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
     - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
@@ -282,6 +286,348 @@ You can pass in extra `Parameters` if needed depending on your use cases. An exa
 case is when your CI system autogenerates `PipelineRuns` and it has `Parameters` it wants to
 provide to all `PipelineRuns`. Because you can pass in extra `Parameters`, you don't have to
 go through the complexity of checking each `Pipeline` and providing only the required params.
+
+#### Propagated Parameters
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+When using an inlined spec, parameters from the parent `PipelineRun` will be
+propagated to any inlined specs without needing to be explicitly defined. This
+allows authors to simplify specs by automatically propagating top-level
+parameters down to other inlined resources.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-echo-
+spec:
+  params:
+    - name: HELLO
+      value: "Hello World!"
+    - name: BYE
+      value: "Bye World!"
+  pipelineSpec:
+    tasks:
+      - name: echo-hello
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: |
+                #!/usr/bin/env bash
+                echo "$(params.HELLO)"
+      - name: echo-bye
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: |
+                #!/usr/bin/env bash
+                echo "$(params.BYE)"
+```
+
+On executing the pipeline run, the parameters will be interpolated during resolution.
+The specifications are not mutated before storage and so it remains the same.
+The status is updated.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-echo-szzs9
+  ...
+spec:
+  params:
+  - name: HELLO
+    value: Hello World!
+  - name: BYE
+    value: Bye World!
+  pipelineSpec:
+    tasks:
+    - name: echo-hello
+      taskSpec:
+        steps:
+        - image: ubuntu
+          name: echo
+          script: |
+            #!/usr/bin/env bash
+            echo "$(params.HELLO)"
+    - name: echo-bye
+      taskSpec:
+        steps:
+        - image: ubuntu
+          name: echo
+          script: |
+            #!/usr/bin/env bash
+            echo "$(params.BYE)"
+status:
+  conditions:
+  - lastTransitionTime: "2022-04-07T12:34:58Z"
+    message: 'Tasks Completed: 2 (Failed: 0, Canceled 0), Skipped: 0'
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  pipelineSpec:
+    ...
+  taskRuns:
+    pr-echo-szzs9-echo-hello:
+      pipelineTaskName: echo-hello
+      status:
+        ...
+        taskSpec:
+          steps:
+          - image: ubuntu
+            name: echo
+            resources: {}
+            script: |
+              #!/usr/bin/env bash
+              echo "Hello World!"
+    pr-echo-szzs9-echo-bye:
+      pipelineTaskName: echo-bye
+      status:
+        ...
+        taskSpec:
+          steps:
+          - image: ubuntu
+            name: echo
+            resources: {}
+            script: |
+              #!/usr/bin/env bash
+              echo "Bye World!"
+```
+
+##### Scope and Precedence
+
+When Parameters names conflict, the inner scope would take precedence as shown in this example:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-echo-
+spec:
+  params:
+  - name: HELLO
+    value: "Hello World!"
+  - name: BYE
+    value: "Bye World!"
+  pipelineSpec:
+    tasks:
+      - name: echo-hello
+        params:
+        - name: HELLO
+          value: "Sasa World!"
+        taskSpec:
+          params:
+            - name: HELLO
+              type: string
+          steps:
+            - name: echo
+              image: ubuntu
+              script: |
+                #!/usr/bin/env bash
+                echo "$(params.HELLO)"
+    ...
+```
+
+resolves to
+
+```yaml
+# Successful execution of the above PipelineRun
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-echo-szzs9
+  ...
+spec:
+  ...
+status:
+  conditions:
+    - lastTransitionTime: "2022-04-07T12:34:58Z"
+      message: 'Tasks Completed: 2 (Failed: 0, Canceled 0), Skipped: 0'
+      reason: Succeeded
+      status: "True"
+      type: Succeeded
+  ...
+  taskRuns:
+    pr-echo-szzs9-echo-hello:
+      pipelineTaskName: echo-hello
+      status:
+        conditions:
+          - lastTransitionTime: "2022-04-07T12:34:57Z"
+            message: All Steps have completed executing
+            reason: Succeeded
+            status: "True"
+            type: Succeeded
+        taskSpec:
+          steps:
+            - image: ubuntu
+              name: echo
+              resources: {}
+              script: |
+                #!/usr/bin/env bash
+                echo "Sasa World!"
+          ...
+```
+
+##### Default Values
+
+When `Parameter` specifications have default values, the `Parameter` value provided at runtime would take precedence to give users control, as shown in this example:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-echo-
+spec:
+  params:
+  - name: HELLO
+    value: "Hello World!"
+  - name: BYE
+    value: "Bye World!"
+  pipelineSpec:
+    tasks:
+      - name: echo-hello
+        taskSpec:
+          params:
+          - name: HELLO
+            type: string
+            default: "Sasa World!"
+          steps:
+            - name: echo
+              image: ubuntu
+              script: |
+                #!/usr/bin/env bash
+                echo "$(params.HELLO)"
+    ...
+```
+
+resolves to
+
+```yaml
+# Successful execution of the above PipelineRun
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-echo-szzs9
+  ...
+spec:
+  ...
+status:
+  conditions:
+    - lastTransitionTime: "2022-04-07T12:34:58Z"
+      message: 'Tasks Completed: 2 (Failed: 0, Canceled 0), Skipped: 0'
+      reason: Succeeded
+      status: "True"
+      type: Succeeded
+  ...
+  taskRuns:
+    pr-echo-szzs9-echo-hello:
+      pipelineTaskName: echo-hello
+      status:
+        conditions:
+          - lastTransitionTime: "2022-04-07T12:34:57Z"
+            message: All Steps have completed executing
+            reason: Succeeded
+            status: "True"
+            type: Succeeded
+        taskSpec:
+          steps:
+            - image: ubuntu
+              name: echo
+              resources: {}
+              script: |
+                #!/usr/bin/env bash
+                echo "Hello World!"
+          ...
+```
+
+##### Referenced Resources
+
+When a PipelineRun definition has referenced specifications but does not explicitly pass Parameters, the PipelineRun will be created but the execution will fail because of missing Parameters.
+
+```yaml
+# Invalid PipelineRun attempting to propagate Parameters to referenced Tasks
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-echo-
+spec:
+  params:
+  - name: HELLO
+    value: "Hello World!"
+  - name: BYE
+    value: "Bye World!"
+  pipelineSpec:
+    tasks:
+      - name: echo-hello
+        taskRef:
+          name: echo-hello
+      - name: echo-bye
+        taskRef:
+          name: echo-bye
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echo-hello
+spec:
+  steps:
+    - name: echo
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        echo "$(params.HELLO)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: echo-bye
+spec:
+  steps:
+    - name: echo
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        echo "$(params.BYE)"
+```
+
+Fails as follows:
+
+```yaml
+# Failed execution of the above PipelineRun
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pr-echo-24lmf
+  ...
+spec:
+  params:
+  - name: HELLO
+    value: Hello World!
+  - name: BYE
+    value: Bye World!
+  pipelineSpec:
+    tasks:
+    - name: echo-hello
+      taskRef:
+        kind: Task
+        name: echo-hello
+    - name: echo-bye
+      taskRef:
+        kind: Task
+        name: echo-bye
+status:
+  conditions:
+  - lastTransitionTime: "2022-04-07T20:24:51Z"
+    message: 'invalid input params for task echo-hello: missing values for
+              these params which have no default values: [HELLO]'
+    reason: PipelineValidationFailed
+    status: "False"
+    type: Succeeded
+  ...
+```
 
 ### Specifying custom `ServiceAccount` credentials
 
