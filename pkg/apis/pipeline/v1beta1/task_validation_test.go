@@ -1041,13 +1041,7 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 				Sidecars:   tt.fields.Sidecars,
 				Workspaces: tt.fields.Workspaces,
 			}
-			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-				"enable-api-fields": "alpha",
-			})
-			cfg := &config.Config{
-				FeatureFlags: featureFlags,
-			}
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := getContextBasedOnFeatureFlag("alpha")
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1104,14 +1098,7 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 				Sidecars: tt.fields.Sidecars,
 			}
 
-			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-				"enable-api-fields": "alpha",
-			})
-			cfg := &config.Config{
-				FeatureFlags: featureFlags,
-			}
-
-			ctx := config.ToContext(context.Background(), cfg)
+			ctx := getContextBasedOnFeatureFlag("alpha")
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -1231,14 +1218,7 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 			testName := fmt.Sprintf("(using %s) %s", version, tt.name)
 			t.Run(testName, func(t *testing.T) {
 				ts := tt.spec
-				featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-					"enable-api-fields": version,
-				})
-				cfg := &config.Config{
-					FeatureFlags: featureFlags,
-				}
-
-				ctx := config.ToContext(context.Background(), cfg)
+				ctx := getContextBasedOnFeatureFlag(version)
 
 				ts.SetDefaults(ctx)
 				err := ts.Validate(ctx)
@@ -1253,4 +1233,15 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 			})
 		}
 	}
+}
+
+func getContextBasedOnFeatureFlag(featureFlag string) context.Context {
+	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields": featureFlag,
+	})
+	cfg := &config.Config{
+		FeatureFlags: featureFlags,
+	}
+
+	return config.ToContext(context.Background(), cfg)
 }
