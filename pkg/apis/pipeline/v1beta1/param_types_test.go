@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"reflect"
@@ -168,23 +169,56 @@ type ArrayOrStringHolder struct {
 
 func TestArrayOrString_UnmarshalJSON(t *testing.T) {
 	cases := []struct {
-		input  string
+		input  map[string]interface{}
 		result v1beta1.ArrayOrString
 	}{
-		{"{\"val\": \"123\"}", *v1beta1.NewArrayOrString("123")},
-		{"{\"val\": \"\"}", *v1beta1.NewArrayOrString("")},
-		{"{\"val\":[]}", v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}}},
-		{"{\"val\":[\"oneelement\"]}", v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"oneelement"}}},
-		{"{\"val\":[\"multiple\", \"elements\"]}", *v1beta1.NewArrayOrString("multiple", "elements")},
+		{
+			input:  map[string]interface{}{"val": "123"},
+			result: *v1beta1.NewArrayOrString("123"),
+		},
+		{
+			input:  map[string]interface{}{"val": ""},
+			result: *v1beta1.NewArrayOrString(""),
+		},
+		{
+			input:  map[string]interface{}{"val": nil},
+			result: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: nil},
+		},
+		{
+			input:  map[string]interface{}{"val": []string{}},
+			result: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}},
+		},
+		{
+			input:  map[string]interface{}{"val": []string{"oneelement"}},
+			result: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"oneelement"}},
+		},
+		{
+			input:  map[string]interface{}{"val": []string{"multiple", "elements"}},
+			result: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"multiple", "elements"}},
+		},
 	}
 
 	for _, c := range cases {
-		var result ArrayOrStringHolder
-		if err := json.Unmarshal([]byte(c.input), &result); err != nil {
-			t.Errorf("Failed to unmarshal input '%v': %v", c.input, err)
-		}
-		if !reflect.DeepEqual(result.AOrS, c.result) {
-			t.Errorf("Failed to unmarshal input '%v': expected %+v, got %+v", c.input, c.result, result)
+		for _, opts := range []func(enc *json.Encoder){
+			// Default encoding
+			func(enc *json.Encoder) {},
+			// Multiline encoding
+			func(enc *json.Encoder) { enc.SetIndent("", "  ") },
+		} {
+			b := new(bytes.Buffer)
+			enc := json.NewEncoder(b)
+			opts(enc)
+			if err := enc.Encode(c.input); err != nil {
+				t.Fatalf("error encoding json: %v", err)
+			}
+
+			var result ArrayOrStringHolder
+			if err := json.Unmarshal(b.Bytes(), &result); err != nil {
+				t.Errorf("Failed to unmarshal input '%v': %v", c.input, err)
+			}
+			if !reflect.DeepEqual(result.AOrS, c.result) {
+				t.Errorf("expected %+v, got %+v", c.result, result)
+			}
 		}
 	}
 }
