@@ -70,59 +70,78 @@ func validateResources(requiredResources []v1beta1.TaskResource, providedResourc
 }
 
 func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) error {
-	var neededParams []string
-	paramTypes := make(map[string]v1beta1.ParamType)
-	neededParams = make([]string, 0, len(paramSpecs))
+	neededParamsNames, neededParamsTypes := neededParamsNamesAndTypes(paramSpecs)
+	providedParamsNames := providedParamsNames(params)
+	if missingParamsNames := missingParamsNames(neededParamsNames, providedParamsNames, paramSpecs); len(missingParamsNames) != 0 {
+		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
+	}
+	if extraParamsNames := extraParamsNames(ctx, neededParamsNames, providedParamsNames); len(extraParamsNames) != 0 {
+		return fmt.Errorf("didn't need these params but they were provided anyway: %s", extraParamsNames)
+	}
+	if wrongTypeParamNames := wrongTypeParamsNames(params, neededParamsTypes); len(wrongTypeParamNames) != 0 {
+		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
+	}
+
+	return nil
+}
+
+func neededParamsNamesAndTypes(paramSpecs []v1beta1.ParamSpec) ([]string, map[string]v1beta1.ParamType) {
+	var neededParamsNames []string
+	neededParamsTypes := make(map[string]v1beta1.ParamType)
+	neededParamsNames = make([]string, 0, len(paramSpecs))
 	for _, inputResourceParam := range paramSpecs {
-		neededParams = append(neededParams, inputResourceParam.Name)
-		paramTypes[inputResourceParam.Name] = inputResourceParam.Type
+		neededParamsNames = append(neededParamsNames, inputResourceParam.Name)
+		neededParamsTypes[inputResourceParam.Name] = inputResourceParam.Type
 	}
-	providedParams := make([]string, 0, len(params))
+	return neededParamsNames, neededParamsTypes
+}
+
+func providedParamsNames(params []v1beta1.Param) []string {
+	providedParamsNames := make([]string, 0, len(params))
 	for _, param := range params {
-		providedParams = append(providedParams, param.Name)
+		providedParamsNames = append(providedParamsNames, param.Name)
 	}
-	missingParams := list.DiffLeft(neededParams, providedParams)
-	var missingParamsNoDefaults []string
-	for _, param := range missingParams {
+	return providedParamsNames
+}
+
+func missingParamsNames(neededParams []string, providedParams []string, paramSpecs []v1beta1.ParamSpec) []string {
+	missingParamsNames := list.DiffLeft(neededParams, providedParams)
+	var missingParamsNamesWithNoDefaults []string
+	for _, param := range missingParamsNames {
 		for _, inputResourceParam := range paramSpecs {
 			if inputResourceParam.Name == param && inputResourceParam.Default == nil {
-				missingParamsNoDefaults = append(missingParamsNoDefaults, param)
+				missingParamsNamesWithNoDefaults = append(missingParamsNamesWithNoDefaults, param)
 			}
 		}
 	}
-	if len(missingParamsNoDefaults) > 0 {
-		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNoDefaults)
-	}
+	return missingParamsNamesWithNoDefaults
+}
+
+func extraParamsNames(ctx context.Context, neededParams []string, providedParams []string) []string {
 	// If alpha features are enabled, disable checking for extra params.
 	// Extra params are needed to support
 	// https://github.com/tektoncd/community/blob/main/teps/0023-implicit-mapping.md
 	// So that parent params can be passed down to subresources (even if they
 	// are not explicitly used).
 	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != "alpha" {
-		extraParams := list.DiffLeft(providedParams, neededParams)
-		if len(extraParams) != 0 {
-			return fmt.Errorf("didn't need these params but they were provided anyway: %s", extraParams)
-		}
+		return list.DiffLeft(providedParams, neededParams)
 	}
+	return nil
+}
 
-	// Now that we have checked against missing/extra params, make sure each param's actual type matches
-	// the user-specified type.
+func wrongTypeParamsNames(params []v1beta1.Param, neededParamsTypes map[string]v1beta1.ParamType) []string {
 	var wrongTypeParamNames []string
 	for _, param := range params {
-		if _, ok := paramTypes[param.Name]; !ok {
+		if _, ok := neededParamsTypes[param.Name]; !ok {
 			// Ignore any missing params - this happens when extra params were
 			// passed to the task that aren't being used.
 			continue
 		}
-		if param.Value.Type != paramTypes[param.Name] {
+		if param.Value.Type != neededParamsTypes[param.Name] {
 			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
 		}
 	}
-	if len(wrongTypeParamNames) != 0 {
-		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
-	}
-
-	return nil
+	return wrongTypeParamNames
 }
 
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
