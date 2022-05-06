@@ -115,7 +115,7 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 			},
 		},
 	}
-	if err := ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, []v1beta1.Param{}, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating valid resolved TaskRun but saw %v", err)
 	}
 }
@@ -138,6 +138,10 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 					Name: "bar",
 					Type: v1beta1.ParamTypeString,
 				},
+				{
+					Name: "zoo",
+					Type: v1beta1.ParamTypeString,
+				},
 			},
 		},
 	}
@@ -151,7 +155,11 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 		Name:  "bar",
 		Value: *v1beta1.NewArrayOrString("somethinggood"),
 	}}
-	if err := ValidateResolvedTaskResources(ctx, p, rtr); err != nil {
+	m := []v1beta1.Param{{
+		Name:  "zoo",
+		Value: *v1beta1.NewArrayOrString("a", "b", "c"),
+	}}
+	if err := ValidateResolvedTaskResources(ctx, p, m, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 	}
 
@@ -161,7 +169,11 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 			Name:  "extra",
 			Value: *v1beta1.NewArrayOrString("i am an extra param"),
 		}
-		if err := ValidateResolvedTaskResources(ctx, append(p, extra), rtr); err != nil {
+		extraarray := v1beta1.Param{
+			Name:  "extraarray",
+			Value: *v1beta1.NewArrayOrString("i", "am", "an", "extra", "array", "param"),
+		}
+		if err := ValidateResolvedTaskResources(ctx, append(p, extra), append(m, extraarray), rtr); err != nil {
 			t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 		}
 	})
@@ -180,6 +192,9 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 				{
 					Name: "foo",
 					Type: v1beta1.ParamTypeString,
+				}, {
+					Name: "bar",
+					Type: v1beta1.ParamTypeArray,
 				},
 			},
 		},
@@ -188,6 +203,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		name   string
 		rtr    *resources.ResolvedTaskResources
 		params []v1beta1.Param
+		matrix []v1beta1.Param
 	}{{
 		name: "missing-params",
 		rtr: &resources.ResolvedTaskResources{
@@ -197,10 +213,32 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 			Name:  "foobar",
 			Value: *v1beta1.NewArrayOrString("somethingfun"),
 		}},
+		matrix: []v1beta1.Param{{
+			Name:  "barfoo",
+			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+		}},
+	}, {
+		name: "invalid-type-in-params",
+		rtr: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+		params: []v1beta1.Param{{
+			Name:  "foo",
+			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+		}},
+	}, {
+		name: "invalid-type-in-matrix",
+		rtr: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+		matrix: []v1beta1.Param{{
+			Name:  "bar",
+			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+		}},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateResolvedTaskResources(ctx, tc.params, tc.rtr); err == nil {
+			if err := ValidateResolvedTaskResources(ctx, tc.params, tc.matrix, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
 			}
 		})
@@ -408,7 +446,7 @@ func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, tc.rtr); err == nil {
+			if err := ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, []v1beta1.Param{}, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun but saw none")
 			}
 		})
