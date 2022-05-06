@@ -332,7 +332,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := ValidateResolvedTaskResources(ctx, tr.Spec.Params, rtr); err != nil {
+	if err := ValidateResolvedTaskResources(ctx, tr.Spec.Params, []v1beta1.Param{}, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)

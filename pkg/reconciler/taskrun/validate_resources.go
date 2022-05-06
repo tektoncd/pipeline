@@ -69,16 +69,16 @@ func validateResources(requiredResources []v1beta1.TaskResource, providedResourc
 	return nil
 }
 
-func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) error {
+func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param, matrix []v1beta1.Param) error {
 	neededParamsNames, neededParamsTypes := neededParamsNamesAndTypes(paramSpecs)
-	providedParamsNames := providedParamsNames(params)
+	providedParamsNames := providedParamsNames(append(params, matrix...))
 	if missingParamsNames := missingParamsNames(neededParamsNames, providedParamsNames, paramSpecs); len(missingParamsNames) != 0 {
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
 	}
 	if extraParamsNames := extraParamsNames(ctx, neededParamsNames, providedParamsNames); len(extraParamsNames) != 0 {
 		return fmt.Errorf("didn't need these params but they were provided anyway: %s", extraParamsNames)
 	}
-	if wrongTypeParamNames := wrongTypeParamsNames(params, neededParamsTypes); len(wrongTypeParamNames) != 0 {
+	if wrongTypeParamNames := wrongTypeParamsNames(params, matrix, neededParamsTypes); len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
 	}
 
@@ -129,7 +129,7 @@ func extraParamsNames(ctx context.Context, neededParams []string, providedParams
 	return nil
 }
 
-func wrongTypeParamsNames(params []v1beta1.Param, neededParamsTypes map[string]v1beta1.ParamType) []string {
+func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, neededParamsTypes map[string]v1beta1.ParamType) []string {
 	var wrongTypeParamNames []string
 	for _, param := range params {
 		if _, ok := neededParamsTypes[param.Name]; !ok {
@@ -141,12 +141,22 @@ func wrongTypeParamsNames(params []v1beta1.Param, neededParamsTypes map[string]v
 			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
 		}
 	}
+	for _, param := range matrix {
+		if _, ok := neededParamsTypes[param.Name]; !ok {
+			// Ignore any missing params - this happens when extra params were
+			// passed to the task that aren't being used.
+			continue
+		}
+		if neededParamsTypes[param.Name] != v1beta1.ParamTypeString {
+			wrongTypeParamNames = append(wrongTypeParamNames, param.Name)
+		}
+	}
 	return wrongTypeParamNames
 }
 
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
-func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, rtr *resources.ResolvedTaskResources) error {
-	if err := validateParams(ctx, rtr.TaskSpec.Params, params); err != nil {
+func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, matrix []v1beta1.Param, rtr *resources.ResolvedTaskResources) error {
+	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix); err != nil {
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}
 	inputs := []v1beta1.TaskResource{}
