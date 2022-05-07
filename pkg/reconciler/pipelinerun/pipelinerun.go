@@ -665,7 +665,7 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	// when expressions, so reset the skipped cache
 	pipelineRunFacts.ResetSkippedCache()
 
-	// GetFinalTasks only returns tasks when a DAG is complete
+	// GetFinalTasks only returns final tasks when a DAG is complete
 	fnextRprts := pipelineRunFacts.GetFinalTasks()
 	if len(fnextRprts) != 0 {
 		// apply the runtime context just before creating taskRuns for final tasks in queue

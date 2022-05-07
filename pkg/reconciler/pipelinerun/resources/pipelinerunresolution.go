@@ -209,6 +209,15 @@ func (t ResolvedPipelineRunTask) isCancelled() bool {
 	}
 }
 
+// isScheduled returns true when the PipelineRunTask itself has a TaskRun
+// or Run associated.
+func (t ResolvedPipelineRunTask) isScheduled() bool {
+	if t.IsCustomTask() {
+		return t.Run != nil
+	}
+	return t.TaskRun != nil
+}
+
 // isStarted returns true only if the PipelineRunTask itself has a TaskRun or
 // Run associated that has a Succeeded-type condition.
 func (t ResolvedPipelineRunTask) isStarted() bool {
@@ -249,7 +258,7 @@ func (t *ResolvedPipelineRunTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 	var skippingReason v1beta1.SkippingReason
 
 	switch {
-	case facts.isFinalTask(t.PipelineTask.Name) || t.isStarted():
+	case facts.isFinalTask(t.PipelineTask.Name) || t.isScheduled():
 		skippingReason = v1beta1.None
 	case facts.IsStopping():
 		skippingReason = v1beta1.StoppingSkip
@@ -349,7 +358,7 @@ func (t *ResolvedPipelineRunTask) IsFinallySkipped(facts *PipelineRunFacts) Task
 	var skippingReason v1beta1.SkippingReason
 
 	switch {
-	case t.isStarted():
+	case t.isScheduled():
 		skippingReason = v1beta1.None
 	case facts.checkDAGTasksDone() && facts.isFinalTask(t.PipelineTask.Name):
 		switch {

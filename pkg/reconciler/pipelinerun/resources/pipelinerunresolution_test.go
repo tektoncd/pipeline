@@ -190,6 +190,12 @@ var matrixedPipelineTask = &v1beta1.PipelineTask{
 	}},
 }
 
+func makeScheduled(tr v1beta1.TaskRun) *v1beta1.TaskRun {
+	newTr := newTaskRun(tr)
+	newTr.Status = v1beta1.TaskRunStatus{ /* explicitly empty */ }
+	return newTr
+}
+
 func makeStarted(tr v1beta1.TaskRun) *v1beta1.TaskRun {
 	newTr := newTaskRun(tr)
 	newTr.Status.Conditions[0].Status = corev1.ConditionUnknown
@@ -375,6 +381,22 @@ var oneFailedState = PipelineRunState{{
 	},
 }}
 
+var finalScheduledState = PipelineRunState{{
+	PipelineTask: &pts[0],
+	TaskRunName:  "pipelinerun-mytask1",
+	TaskRun:      makeSucceeded(trs[0]),
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[1],
+	TaskRunName:  "pipelinerun-mytask2",
+	TaskRun:      makeScheduled(trs[1]),
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
 var allFinishedState = PipelineRunState{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
@@ -545,6 +567,13 @@ func TestIsSkipped(t *testing.T) {
 		state: taskCancelled,
 		expected: map[string]bool{
 			"mytask5": false,
+		},
+	}, {
+		name:  "tasks-scheduled",
+		state: finalScheduledState,
+		expected: map[string]bool{
+			"mytask1": false,
+			"mytask2": false,
 		},
 	}, {
 		name: "tasks-parent-failed",
@@ -2653,6 +2682,132 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 				t.Fatalf("Didn't get expected isFinallySkipped from finally task %s: %s", finallyTaskName, diff.PrintWantGot(d))
 			}
 		}
+	}
+}
+
+func TestResolvedPipelineRunTask_IsFinallySkippedByCondition(t *testing.T) {
+	task := &ResolvedPipelineRunTask{
+		TaskRunName: "dag-task",
+		TaskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "dag-task",
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+			},
+		},
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "dag-task",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		},
+	}
+	for _, tc := range []struct {
+		name  string
+		state PipelineRunState
+		want  TaskSkipStatus
+	}{{
+		name: "task started",
+		state: PipelineRunState{
+			task,
+			{
+				TaskRun: &v1beta1.TaskRun{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "final-task",
+					},
+					Status: v1beta1.TaskRunStatus{
+						Status: duckv1beta1.Status{
+							Conditions: []apis.Condition{{
+								Type:   apis.ConditionSucceeded,
+								Status: corev1.ConditionUnknown,
+							}},
+						},
+					},
+				},
+				PipelineTask: &v1beta1.PipelineTask{
+					Name:    "final-task",
+					TaskRef: &v1beta1.TaskRef{Name: "task"},
+					WhenExpressions: []v1beta1.WhenExpression{
+						{
+							Input:    "$(tasks.dag-task.status)",
+							Operator: selection.In,
+							Values:   []string{"Succeeded"},
+						},
+					},
+				},
+			},
+		},
+		want: TaskSkipStatus{
+			IsSkipped:      false,
+			SkippingReason: v1beta1.None,
+		},
+	}, {
+		name: "task scheduled",
+		state: PipelineRunState{
+			task,
+			{
+				TaskRunName: "final-task",
+				TaskRun: &v1beta1.TaskRun{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "final-task",
+					},
+					Status: v1beta1.TaskRunStatus{
+						Status: duckv1beta1.Status{
+							Conditions: []apis.Condition{ /* explicitly empty */ },
+						},
+					},
+				},
+				PipelineTask: &v1beta1.PipelineTask{
+					Name:    "final-task",
+					TaskRef: &v1beta1.TaskRef{Name: "task"},
+					WhenExpressions: []v1beta1.WhenExpression{
+						{
+							Input:    "$(tasks.dag-task.status)",
+							Operator: selection.In,
+							Values:   []string{"Succeeded"},
+						},
+					},
+				},
+			}},
+		want: TaskSkipStatus{
+			IsSkipped:      false,
+			SkippingReason: v1beta1.None,
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			tasks := v1beta1.PipelineTaskList([]v1beta1.PipelineTask{*tc.state[0].PipelineTask})
+			d, err := dag.Build(tasks, tasks.Deps())
+			if err != nil {
+				t.Fatalf("Could not get a dag from the dag tasks %#v: %v", tc.state[0], err)
+			}
+
+			// build graph with finally tasks
+			var pts v1beta1.PipelineTaskList
+			for _, state := range tc.state[1:] {
+				pts = append(pts, *state.PipelineTask)
+			}
+			dfinally, err := dag.Build(pts, map[string][]string{})
+			if err != nil {
+				t.Fatalf("Could not get a dag from the finally tasks %#v: %v", pts, err)
+			}
+
+			facts := &PipelineRunFacts{
+				State:           tc.state,
+				TasksGraph:      d,
+				FinalTasksGraph: dfinally,
+			}
+
+			for _, state := range tc.state[1:] {
+				got := state.IsFinallySkipped(facts)
+				if d := cmp.Diff(tc.want, got); d != "" {
+					t.Errorf("IsFinallySkipped: %s", diff.PrintWantGot(d))
+				}
+			}
+		})
 	}
 }
 

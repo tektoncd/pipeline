@@ -267,6 +267,11 @@ func TestIsBeforeFirstTaskRun_WithStartedRun(t *testing.T) {
 		t.Fatalf("Expected state to be after first taskrun (Run test)")
 	}
 }
+func TestIsBeforeFirstTaskRun_WithSucceededTask(t *testing.T) {
+	if finalScheduledState.IsBeforeFirstTaskRun() {
+		t.Fatalf("Expected state to be after first taskrun")
+	}
+}
 
 func TestGetNextTasks(t *testing.T) {
 	tcs := []struct {
@@ -354,6 +359,26 @@ func TestGetNextTasks(t *testing.T) {
 		state:        oneFailedState,
 		candidates:   sets.NewString("mytask1", "mytask2"),
 		expectedNext: []*ResolvedPipelineRunTask{oneFailedState[1]},
+	}, {
+		name:         "final-task-scheduled-no-candidates",
+		state:        finalScheduledState,
+		candidates:   sets.NewString(),
+		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "final-task-finished-one-candidate",
+		state:        finalScheduledState,
+		candidates:   sets.NewString("mytask1"),
+		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "final-task-finished-other-candidate",
+		state:        finalScheduledState,
+		candidates:   sets.NewString("mytask2"),
+		expectedNext: []*ResolvedPipelineRunTask{},
+	}, {
+		name:         "final-task-finished-both-candidate",
+		state:        finalScheduledState,
+		candidates:   sets.NewString("mytask1", "mytask2"),
+		expectedNext: []*ResolvedPipelineRunTask{},
 	}, {
 		name:         "all-finished-no-candidates",
 		state:        allFinishedState,
@@ -1160,6 +1185,15 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{oneFinishedState[1]},
+	}, {
+		// tasks: [ mytask1]
+		// finally: [mytask2]
+		name:               "06 - DAG tasks succeeded, final tasks scheduled - no final tasks",
+		desc:               "DAG task (mytask1) finished successfully - final task (mytask2) scheduled - no final tasks",
+		state:              finalScheduledState,
+		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[1]},
+		expectedFinalTasks: PipelineRunState{},
 	}}
 	for _, tc := range tcs {
 		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks), v1beta1.PipelineTaskList(tc.DAGTasks).Deps())

@@ -412,7 +412,7 @@ func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 	if facts.checkDAGTasksDone() {
 		// return list of tasks with all final tasks
 		for _, t := range facts.State {
-			if facts.isFinalTask(t.PipelineTask.Name) && !t.isSuccessful() {
+			if facts.isFinalTask(t.PipelineTask.Name) && !t.isScheduled() {
 				finalCandidates.Insert(t.PipelineTask.Name)
 			}
 		}
