@@ -988,6 +988,46 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
 		},
+	}, {
+		desc: "when pod is pending because of pulling image then the error should bubble up to taskrun status",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Name: "step-first",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodPending,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-first",
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "ImagePullBackOff",
+							Message: "Back-off pulling image xxxxxxx",
+						},
+					},
+				}},
+			},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusPending("PullImageFailed", `build step "step-first" is pending with reason "Back-off pulling image xxxxxxx"`),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason:  "ImagePullBackOff",
+							Message: "Back-off pulling image xxxxxxx",
+						},
+					},
+					Name:          "first",
+					ContainerName: "step-first",
+				}},
+				Sidecars: []v1beta1.SidecarState{},
+			},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			now := metav1.Now()
