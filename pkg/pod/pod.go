@@ -371,7 +371,7 @@ func makeLabels(s *v1beta1.TaskRun) map[string]string {
 	return labels
 }
 
-// shouldAddReadyAnnotationonPodCreate returns a bool indicating whether the
+// shouldAddReadyAnnotationOnPodCreate returns a bool indicating whether the
 // controller should add the `Ready` annotation when creating the Pod. We cannot
 // add the annotation if Tekton is running in a cluster with injected sidecars
 // or if the Task specifies any sidecars.
@@ -401,7 +401,7 @@ func runVolume(i int) corev1.Volume {
 	}
 }
 
-// prepareInitContainers generates a few init containers based of a set of command (in images) and volumes to run
+// entrypointInitContainer generates a few init containers based of a set of command (in images) and volumes to run
 // This should effectively merge multiple command and volumes together.
 func entrypointInitContainer(image string, steps []v1beta1.Step) corev1.Container {
 	// Invoke the entrypoint binary in "cp mode" to copy itself

@@ -1813,6 +1813,69 @@ _EOF_
 }
 
 func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
+
+	placeScriptsContainer := corev1.Container{
+		Name:         "place-scripts",
+		Image:        "busybox",
+		Command:      []string{"sh"},
+		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
+		Args: []string{"-c", `tmpfile="/tekton/debug/scripts/debug-continue"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'debug-continue-heredoc-randomly-generated-9l9zj'
+#!/bin/sh
+set -e
+
+numberOfSteps=1
+debugInfo=/tekton/debug/info
+tektonRun=/tekton/run
+
+postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
+stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
+
+if [ $stepNumber -lt $numberOfSteps ]; then
+	touch ${tektonRun}/${stepNumber}/out # Mark step as success
+	echo "0" > ${tektonRun}/${stepNumber}/out.breakpointexit
+	echo "Executing step $stepNumber..."
+else
+	echo "Last step (no. $stepNumber) has already been executed, breakpoint exiting !"
+	exit 0
+fi
+debug-continue-heredoc-randomly-generated-9l9zj
+tmpfile="/tekton/debug/scripts/debug-fail-continue"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'debug-fail-continue-heredoc-randomly-generated-mz4c7'
+#!/bin/sh
+set -e
+
+numberOfSteps=1
+debugInfo=/tekton/debug/info
+tektonRun=/tekton/run
+
+postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
+stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
+
+if [ $stepNumber -lt $numberOfSteps ]; then
+	touch ${tektonRun}/${stepNumber}/out.err # Mark step as a failure
+	echo "1" > ${tektonRun}/${stepNumber}/out.breakpointexit
+	echo "Executing step $stepNumber..."
+else
+	echo "Last step (no. $stepNumber) has already been executed, breakpoint exiting !"
+	exit 0
+fi
+debug-fail-continue-heredoc-randomly-generated-mz4c7
+`},
+	}
+
+	containersVolumeMounts := append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+		Name:      "tekton-creds-init-home-0",
+		MountPath: "/tekton/creds",
+	}}, implicitVolumeMounts...)
+	containersVolumeMounts = append(containersVolumeMounts, debugScriptsVolumeMount)
+	containersVolumeMounts = append(containersVolumeMounts, corev1.VolumeMount{
+		Name:      debugInfoVolumeName,
+		MountPath: filepath.Join(debugInfoDir, fmt.Sprintf("%d", 0)),
+	})
+
 	for _, c := range []struct {
 		desc            string
 		trs             v1beta1.TaskRunSpec
@@ -1836,7 +1899,7 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 		},
 		want: &corev1.PodSpec{
 			RestartPolicy:  corev1.RestartPolicyNever,
-			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+			InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}}), placeScriptsContainer},
 			Containers: []corev1.Container{{
 				Name:    "step-name",
 				Image:   "image",
@@ -1856,13 +1919,10 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
-					Name:      "tekton-creds-init-home-0",
-					MountPath: "/tekton/creds",
-				}}, implicitVolumeMounts...),
+				VolumeMounts:           containersVolumeMounts,
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, debugScriptsVolume, debugInfoVolume, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, debugScriptsVolume, debugInfoVolume, binVolume, scriptsVolume, runVolume(0), downwardVolume, corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),

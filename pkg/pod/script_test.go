@@ -227,6 +227,7 @@ script-3`,
 	}}, []v1beta1.Sidecar{}, &v1beta1.TaskRunDebug{
 		Breakpoint: []string{breakpointOnFailure},
 	})
+
 	wantInit := &corev1.Container{
 		Name:    "place-scripts",
 		Image:   images.ShellImage,
@@ -296,19 +297,24 @@ debug-fail-continue-heredoc-randomly-generated-6nl7g
 `},
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
 	}
+
 	want := []corev1.Container{{
 		Image:   "step-1",
 		Command: []string{"/tekton/scripts/script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{scriptsVolumeMount, debugScriptsVolumeMount,
-			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/0"}},
+		VolumeMounts: []corev1.VolumeMount{debugScriptsVolumeMount,
+			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/0"}, scriptsVolumeMount},
 	}, {
 		Image: "step-2",
+		VolumeMounts: []corev1.VolumeMount{
+			debugScriptsVolumeMount, {Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/1"},
+		},
 	}, {
 		Image:   "step-3",
 		Command: []string{"/tekton/scripts/script-2-mz4c7"},
 		Args:    []string{"my", "args"},
-		VolumeMounts: append(preExistingVolumeMounts, scriptsVolumeMount, debugScriptsVolumeMount,
-			corev1.VolumeMount{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/2"}),
+		VolumeMounts: append(preExistingVolumeMounts, debugScriptsVolumeMount,
+			corev1.VolumeMount{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/2"},
+			scriptsVolumeMount),
 	}, {
 		Image:   "step-3",
 		Command: []string{"/tekton/scripts/script-3-mssqb"},
@@ -316,13 +322,16 @@ debug-fail-continue-heredoc-randomly-generated-6nl7g
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
 			{Name: "another-one", MountPath: "/another/one"},
-			scriptsVolumeMount, debugScriptsVolumeMount,
+			debugScriptsVolumeMount,
 			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/3"},
+			scriptsVolumeMount,
 		},
 	}}
+
 	if d := cmp.Diff(wantInit, gotInit); d != "" {
 		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
 	}
+
 	if d := cmp.Diff(want, gotSteps); d != "" {
 		t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
 	}
