@@ -115,7 +115,7 @@ spec:
       cat ${PROJECT_ROOT}/.ko.yaml
 
   - name: run-ko
-    image: gcr.io/tekton-releases/dogfooding/ko@sha256:017286320827046fbdfc5e072faf4603d85287609a17ab1827f1210ac9edfc72
+    image: gcr.io/tekton-releases/dogfooding/ko@sha256:aafcfa5c22281f9e882664c3e5f234a2069a0050674c0c8d9908ccae6f0e8457
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
