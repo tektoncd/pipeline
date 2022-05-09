@@ -46,6 +46,7 @@ type Step struct {
 	// Cannot be updated.
 	// +optional
 	WorkingDir string `json:"workingDir,omitempty" protobuf:"bytes,5,opt,name=workingDir"`
+	// Deprecated. This field will be removed in a future release.
 	// List of ports to expose from the container. Exposing a port here gives
 	// the system additional information about the network connections a
 	// container uses, but is primarily informational. Not specifying a port here
@@ -94,18 +95,21 @@ type Step struct {
 	// +optional
 	// +listType=atomic
 	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
+	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container liveness.
 	// Container will be restarted if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
 	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty" protobuf:"bytes,10,opt,name=livenessProbe"`
+	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container service readiness.
 	// Container will be removed from service endpoints if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty" protobuf:"bytes,11,opt,name=readinessProbe"`
+	// Deprecated. This field will be removed in a future release.
 	// StartupProbe indicates that the Pod has successfully initialized.
 	// If specified, no other probes are executed until this completes successfully.
 	// If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
@@ -115,10 +119,12 @@ type Step struct {
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
 	StartupProbe *corev1.Probe `json:"startupProbe,omitempty" protobuf:"bytes,22,opt,name=startupProbe"`
+	// Deprecated. This field will be removed in a future release.
 	// Actions that the management system should take in response to container lifecycle events.
 	// Cannot be updated.
 	// +optional
 	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty" protobuf:"bytes,12,opt,name=lifecycle"`
+	// Deprecated. This field will be removed in a future release.
 	// Optional: Path at which the file to which the container's termination message
 	// will be written is mounted into the container's filesystem.
 	// Message written is intended to be brief final status, such as an assertion failure message.
@@ -128,6 +134,7 @@ type Step struct {
 	// Cannot be updated.
 	// +optional
 	TerminationMessagePath string `json:"terminationMessagePath,omitempty" protobuf:"bytes,13,opt,name=terminationMessagePath"`
+	// Deprecated. This field will be removed in a future release.
 	// Indicate how the termination message should be populated. File will use the contents of
 	// terminationMessagePath to populate the container status message on both success and failure.
 	// FallbackToLogsOnError will use the last chunk of container log output if the termination
@@ -153,11 +160,13 @@ type Step struct {
 	// Variables for interactive containers, these have very specialized use-cases (e.g. debugging)
 	// and shouldn't be used for general purpose containers.
 
+	// Deprecated. This field will be removed in a future release.
 	// Whether this container should allocate a buffer for stdin in the container runtime. If this
 	// is not set, reads from stdin in the container will always result in EOF.
 	// Default is false.
 	// +optional
 	Stdin bool `json:"stdin,omitempty" protobuf:"varint,16,opt,name=stdin"`
+	// Deprecated. This field will be removed in a future release.
 	// Whether the container runtime should close the stdin channel after it has been opened by
 	// a single attach. When stdin is true the stdin stream will remain open across multiple attach
 	// sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the
@@ -167,6 +176,7 @@ type Step struct {
 	// Default is false
 	// +optional
 	StdinOnce bool `json:"stdinOnce,omitempty" protobuf:"varint,17,opt,name=stdinOnce"`
+	// Deprecated. This field will be removed in a future release.
 	// Whether this container should allocate a TTY for itself, also requires 'stdin' to be true.
 	// Default is false.
 	// +optional
@@ -256,6 +266,7 @@ func (s *Step) SetContainerFields(c corev1.Container) {
 // StepTemplate is a template for a Step
 type StepTemplate struct {
 
+	// Deprecated. This field will be removed in a future release.
 	// Name of the container specified as a DNS_LABEL.
 	// Each container in a pod must have a unique name (DNS_LABEL).
 	// Cannot be updated.
@@ -294,6 +305,7 @@ type StepTemplate struct {
 	// Cannot be updated.
 	// +optional
 	WorkingDir string `json:"workingDir,omitempty" protobuf:"bytes,5,opt,name=workingDir"`
+	// Deprecated. This field will be removed in a future release.
 	// List of ports to expose from the container. Exposing a port here gives
 	// the system additional information about the network connections a
 	// container uses, but is primarily informational. Not specifying a port here
@@ -342,18 +354,21 @@ type StepTemplate struct {
 	// +optional
 	// +listType=atomic
 	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
+	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container liveness.
 	// Container will be restarted if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
 	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty" protobuf:"bytes,10,opt,name=livenessProbe"`
+	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container service readiness.
 	// Container will be removed from service endpoints if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty" protobuf:"bytes,11,opt,name=readinessProbe"`
+	// Deprecated. This field will be removed in a future release.
 	// StartupProbe indicates that the Pod has successfully initialized.
 	// If specified, no other probes are executed until this completes successfully.
 	// If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
@@ -363,10 +378,12 @@ type StepTemplate struct {
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
 	StartupProbe *corev1.Probe `json:"startupProbe,omitempty" protobuf:"bytes,22,opt,name=startupProbe"`
+	// Deprecated. This field will be removed in a future release.
 	// Actions that the management system should take in response to container lifecycle events.
 	// Cannot be updated.
 	// +optional
 	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty" protobuf:"bytes,12,opt,name=lifecycle"`
+	// Deprecated. This field will be removed in a future release.
 	// Optional: Path at which the file to which the container's termination message
 	// will be written is mounted into the container's filesystem.
 	// Message written is intended to be brief final status, such as an assertion failure message.
@@ -376,6 +393,7 @@ type StepTemplate struct {
 	// Cannot be updated.
 	// +optional
 	TerminationMessagePath string `json:"terminationMessagePath,omitempty" protobuf:"bytes,13,opt,name=terminationMessagePath"`
+	// Deprecated. This field will be removed in a future release.
 	// Indicate how the termination message should be populated. File will use the contents of
 	// terminationMessagePath to populate the container status message on both success and failure.
 	// FallbackToLogsOnError will use the last chunk of container log output if the termination
@@ -401,11 +419,13 @@ type StepTemplate struct {
 	// Variables for interactive containers, these have very specialized use-cases (e.g. debugging)
 	// and shouldn't be used for general purpose containers.
 
+	// Deprecated. This field will be removed in a future release.
 	// Whether this container should allocate a buffer for stdin in the container runtime. If this
 	// is not set, reads from stdin in the container will always result in EOF.
 	// Default is false.
 	// +optional
 	Stdin bool `json:"stdin,omitempty" protobuf:"varint,16,opt,name=stdin"`
+	// Deprecated. This field will be removed in a future release.
 	// Whether the container runtime should close the stdin channel after it has been opened by
 	// a single attach. When stdin is true the stdin stream will remain open across multiple attach
 	// sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the
@@ -415,6 +435,7 @@ type StepTemplate struct {
 	// Default is false
 	// +optional
 	StdinOnce bool `json:"stdinOnce,omitempty" protobuf:"varint,17,opt,name=stdinOnce"`
+	// Deprecated. This field will be removed in a future release.
 	// Whether this container should allocate a TTY for itself, also requires 'stdin' to be true.
 	// Default is false.
 	// +optional
