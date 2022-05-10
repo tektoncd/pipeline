@@ -70,6 +70,7 @@ A `PipelineRun` definition supports the following fields:
     object that supplies specific execution credentials for the `Pipeline`.
   - [`serviceAccountNames`](#mapping-serviceaccount-credentials-to-tasks) - Maps specific `serviceAccountName` values
     to `Tasks` in the `Pipeline`. This overrides the credentials set for the entire `Pipeline`.
+  - [`status`](#cancelling-a-pipelinerun) - Specifies options for cancelling a `PipelineRun`. 
   - [`taskRunSpecs`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName` and [`Pod` template](./podtemplates.md) for each task. This overrides the `Pod` template set for the entire `Pipeline`.
   - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeout` is deprecated and will eventually be removed, so consider using `timeouts` instead.
   - [`timeouts`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeouts` allows more granular timeout configuration, at the pipeline, tasks, and finally levels
