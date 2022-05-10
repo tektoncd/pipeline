@@ -786,7 +786,189 @@ func TestDAGExecutionQueue(t *testing.T) {
 	}
 }
 
-func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
+// TestDAGExecutionQueueSequentialTasks tests the DAGExecutionQueue function for sequential TaskRuns
+// in different states for a running or stopping PipelineRun.
+func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
+	firstTask := ResolvedPipelineRunTask{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "task-1",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		},
+		TaskRunName: "task-1",
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}
+	secondTask := ResolvedPipelineRunTask{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:     "task-2",
+			TaskRef:  &v1beta1.TaskRef{Name: "task"},
+			RunAfter: []string{"task-1"},
+		},
+		TaskRunName: "task-2",
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}
+
+	tcs := []struct {
+		name          string
+		firstTaskRun  *v1beta1.TaskRun
+		secondTaskRun *v1beta1.TaskRun
+		specStatus    v1beta1.PipelineRunSpecStatus
+		wantFirst     bool
+		wantSecond    bool
+	}{{
+		name:      "not started",
+		wantFirst: true,
+	}, {
+		name:         "first task running",
+		firstTaskRun: newTaskRun(trs[0]),
+	}, {
+		name:         "first task succeeded",
+		firstTaskRun: makeSucceeded(trs[0]),
+		wantSecond:   true,
+	}, {
+		name:         "first task failed",
+		firstTaskRun: makeFailed(trs[0]),
+	}, {
+		name:          "first task succeeded, second task running",
+		firstTaskRun:  makeSucceeded(trs[0]),
+		secondTaskRun: newTaskRun(trs[1]),
+	}, {
+		name:          "first task succeeded, second task succeeded",
+		firstTaskRun:  makeSucceeded(trs[0]),
+		secondTaskRun: makeSucceeded(trs[1]),
+	}, {
+		name:          "first task succeeded, second task failed",
+		firstTaskRun:  makeSucceeded(trs[0]),
+		secondTaskRun: makeFailed(trs[1]),
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			firstTask.TaskRun = tc.firstTaskRun
+			defer func() { firstTask.TaskRun = nil }()
+			secondTask.TaskRun = tc.secondTaskRun
+			defer func() { secondTask.TaskRun = nil }()
+			state := PipelineRunState{&firstTask, &secondTask}
+			d, err := dagFromState(state)
+			if err != nil {
+				t.Fatalf("Unexpected error while building DAG for state %v: %v", state, err)
+			}
+			facts := PipelineRunFacts{
+				State:           state,
+				SpecStatus:      tc.specStatus,
+				TasksGraph:      d,
+				FinalTasksGraph: &dag.Graph{},
+			}
+			queue, err := facts.DAGExecutionQueue()
+			if err != nil {
+				t.Errorf("unexpected error getting DAG execution queue but got error %s", err)
+			}
+			var expectedQueue PipelineRunState
+			if tc.wantFirst {
+				expectedQueue = append(expectedQueue, &firstTask)
+			}
+			if tc.wantSecond {
+				expectedQueue = append(expectedQueue, &secondTask)
+			}
+			if d := cmp.Diff(expectedQueue, queue, cmpopts.EquateEmpty()); d != "" {
+				t.Errorf("Didn't get expected execution queue: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+// TestDAGExecutionQueueSequentialRuns tests the DAGExecutionQueue function for sequential Runs
+// in different states for a running or stopping PipelineRun.
+func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
+	firstRun := ResolvedPipelineRunTask{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "task-1",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		},
+		RunName:    "task-1",
+		CustomTask: true,
+	}
+	secondRun := ResolvedPipelineRunTask{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:     "task-2",
+			TaskRef:  &v1beta1.TaskRef{Name: "task"},
+			RunAfter: []string{"task-1"},
+		},
+		RunName:    "task-2",
+		CustomTask: true,
+	}
+
+	tcs := []struct {
+		name       string
+		firstRun   *v1alpha1.Run
+		secondRun  *v1alpha1.Run
+		specStatus v1beta1.PipelineRunSpecStatus
+		wantFirst  bool
+		wantSecond bool
+	}{{
+		name:      "not started",
+		wantFirst: true,
+	}, {
+		name:     "first run running",
+		firstRun: newRun(runs[0]),
+	}, {
+		name:       "first run succeeded",
+		firstRun:   makeRunSucceeded(runs[0]),
+		wantSecond: true,
+	}, {
+		name:     "first run failed",
+		firstRun: makeRunFailed(runs[0]),
+	}, {
+		name:      "first run succeeded, second run running",
+		firstRun:  makeRunSucceeded(runs[0]),
+		secondRun: newRun(runs[1]),
+	}, {
+		name:      "first run succeeded, second run succeeded",
+		firstRun:  makeRunSucceeded(runs[0]),
+		secondRun: makeRunSucceeded(runs[1]),
+	}, {
+		name:      "first run succeeded, second run failed",
+		firstRun:  makeRunSucceeded(runs[0]),
+		secondRun: makeRunFailed(runs[1]),
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			firstRun.Run = tc.firstRun
+			defer func() { firstRun.Run = nil }()
+			secondRun.Run = tc.secondRun
+			defer func() { secondRun.Run = nil }()
+			state := PipelineRunState{&firstRun, &secondRun}
+			d, err := dagFromState(state)
+			if err != nil {
+				t.Fatalf("Unexpected error while building DAG for state %v: %v", state, err)
+			}
+			facts := PipelineRunFacts{
+				State:           state,
+				SpecStatus:      tc.specStatus,
+				TasksGraph:      d,
+				FinalTasksGraph: &dag.Graph{},
+			}
+			queue, err := facts.DAGExecutionQueue()
+			if err != nil {
+				t.Errorf("unexpected error getting DAG execution queue but got error %s", err)
+			}
+			var expectedQueue PipelineRunState
+			if tc.wantFirst {
+				expectedQueue = append(expectedQueue, &firstRun)
+			}
+			if tc.wantSecond {
+				expectedQueue = append(expectedQueue, &secondRun)
+			}
+			if d := cmp.Diff(expectedQueue, queue, cmpopts.EquateEmpty()); d != "" {
+				t.Errorf("Didn't get expected execution queue: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 	largePipelineState := buildPipelineStateWithLargeDepencyGraph(t)
 	tcs := []struct {
 		name          string
@@ -823,7 +1005,7 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 	}, {
 		name:          "one-task-failed",
 		state:         oneFailedState,
-		expectedNames: []string{pts[1].Name},
+		expectedNames: []string{pts[0].Name, pts[1].Name},
 	}, {
 		name:          "all-finished",
 		state:         allFinishedState,
@@ -849,7 +1031,7 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 		name: "conditional task skipped as the condition execution resulted in failure but the other pipeline task" +
 			"not skipped since it failed",
 		state:         conditionCheckFailedWithOthersFailedState,
-		expectedNames: []string{pts[5].Name},
+		expectedNames: []string{pts[5].Name, pts[0].Name},
 	}, {
 		name:          "large deps, not started",
 		state:         largePipelineState,
@@ -865,7 +1047,7 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 	}, {
 		name:          "one-run-failed",
 		state:         oneRunFailedState,
-		expectedNames: []string{pts[13].Name},
+		expectedNames: []string{pts[12].Name, pts[13].Name},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -879,7 +1061,7 @@ func TestPipelineRunState_SuccessfulOrSkippedDAGTasks(t *testing.T) {
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
 			}
-			names := facts.successfulOrSkippedDAGTasks()
+			names := facts.completedOrSkippedDAGTasks()
 			if d := cmp.Diff(names, tc.expectedNames); d != "" {
 				t.Errorf("Expected to get completed names %v but got something different %s", tc.expectedNames, diff.PrintWantGot(d))
 			}
