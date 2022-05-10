@@ -90,12 +90,11 @@ func Build(tasks Tasks, deps map[string][]string) (*Graph, error) {
 	return d, nil
 }
 
-// GetSchedulable returns a set of PipelineTask names that can be scheduled,
-// given a list of successfully finished doneTasks. It returns tasks which have
-// all dependencies marked as done, and thus can be scheduled. If the specified
+// GetCandidateTasks returns a set of names of PipelineTasks whose ancestors are all completed,
+// given a list of finished doneTasks. If the specified
 // doneTasks are invalid (i.e. if it is indicated that a Task is done, but the
 // previous Tasks are not done), an error is returned.
-func GetSchedulable(g *Graph, doneTasks ...string) (sets.String, error) {
+func GetCandidateTasks(g *Graph, doneTasks ...string) (sets.String, error) {
 	roots := getRoots(g)
 	tm := sets.NewString(doneTasks...)
 	d := sets.NewString()

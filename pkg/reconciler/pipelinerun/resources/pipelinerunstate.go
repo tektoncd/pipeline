@@ -429,7 +429,7 @@ func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 	}
 	// candidateTasks is initialized to DAG root nodes to start pipeline execution
 	// candidateTasks is derived based on successfully finished tasks and/or skipped tasks
-	candidateTasks, err := dag.GetSchedulable(facts.TasksGraph, facts.successfulOrSkippedDAGTasks()...)
+	candidateTasks, err := dag.GetCandidateTasks(facts.TasksGraph, facts.completedOrSkippedDAGTasks()...)
 	if err != nil {
 		return tasks, err
 	}
@@ -624,13 +624,13 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 	return tStatus
 }
 
-// successfulOrSkippedTasks returns a list of the names of all of the PipelineTasks in state
-// which have successfully completed or skipped
-func (facts *PipelineRunFacts) successfulOrSkippedDAGTasks() []string {
+// completedOrSkippedTasks returns a list of the names of all of the PipelineTasks in state
+// which have completed or skipped
+func (facts *PipelineRunFacts) completedOrSkippedDAGTasks() []string {
 	tasks := []string{}
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.IsSuccessful() || t.Skip(facts).IsSkipped {
+			if t.IsDone(facts) {
 				tasks = append(tasks, t.PipelineTask.Name)
 			}
 		}

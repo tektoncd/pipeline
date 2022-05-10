@@ -75,7 +75,7 @@ func TestGetSchedulable(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			tasks, err := dag.GetSchedulable(g, tc.finished...)
+			tasks, err := dag.GetCandidateTasks(g, tc.finished...)
 			if err != nil {
 				t.Fatalf("Didn't expect error when getting next tasks for %v but got %v", tc.finished, err)
 			}
@@ -115,7 +115,7 @@ func TestGetSchedulable_Invalid(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := dag.GetSchedulable(g, tc.finished...)
+			_, err := dag.GetCandidateTasks(g, tc.finished...)
 			if err == nil {
 				t.Fatalf("Expected error for invalid done tasks %v but got none", tc.finished)
 			}
