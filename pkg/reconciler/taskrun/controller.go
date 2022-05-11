@@ -30,6 +30,9 @@ import (
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
+	resolutionclient "github.com/tektoncd/resolution/pkg/client/injection/client"
+	resolutioninformer "github.com/tektoncd/resolution/pkg/client/injection/informers/resolution/v1alpha1/resolutionrequest"
+	resolution "github.com/tektoncd/resolution/pkg/resource"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -50,6 +53,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		podInformer := filteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey)
 		resourceInformer := resourceinformer.Get(ctx)
 		limitrangeInformer := limitrangeinformer.Get(ctx)
+		resolutionInformer := resolutioninformer.Get(ctx)
 		configStore := config.NewStore(logger.Named("config-store"), taskrunmetrics.MetricsOnStore(logger))
 		configStore.WatchConfigs(cmw)
 
@@ -59,17 +63,18 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		}
 
 		c := &Reconciler{
-			KubeClientSet:     kubeclientset,
-			PipelineClientSet: pipelineclientset,
-			Images:            opts.Images,
-			Clock:             clock,
-			taskRunLister:     taskRunInformer.Lister(),
-			resourceLister:    resourceInformer.Lister(),
-			limitrangeLister:  limitrangeInformer.Lister(),
-			cloudEventClient:  cloudeventclient.Get(ctx),
-			metrics:           taskrunmetrics.Get(ctx),
-			entrypointCache:   entrypointCache,
-			pvcHandler:        volumeclaim.NewPVCHandler(kubeclientset, logger),
+			KubeClientSet:       kubeclientset,
+			PipelineClientSet:   pipelineclientset,
+			Images:              opts.Images,
+			Clock:               clock,
+			taskRunLister:       taskRunInformer.Lister(),
+			resourceLister:      resourceInformer.Lister(),
+			limitrangeLister:    limitrangeInformer.Lister(),
+			cloudEventClient:    cloudeventclient.Get(ctx),
+			metrics:             taskrunmetrics.Get(ctx),
+			entrypointCache:     entrypointCache,
+			pvcHandler:          volumeclaim.NewPVCHandler(kubeclientset, logger),
+			resolutionRequester: resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
 		}
 		impl := taskrunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{

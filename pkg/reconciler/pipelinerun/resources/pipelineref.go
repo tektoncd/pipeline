@@ -76,7 +76,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			for _, p := range pr.Resource {
 				params[p.Name] = p.Value
 			}
-			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), params)
+			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", params)
 			return resolvePipeline(ctx, resolver, name)
 		}, nil
 	default:

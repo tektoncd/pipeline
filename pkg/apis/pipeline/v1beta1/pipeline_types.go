@@ -277,6 +277,7 @@ func (pt PipelineTask) validateBundle() (errs *apis.FieldError) {
 
 // validateTask validates a pipeline task or a final task for taskRef and taskSpec
 func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError) {
+	cfg := config.FromContextOrDefaults(ctx)
 	// Validate TaskSpec if it's present
 	if pt.TaskSpec != nil {
 		errs = errs.Also(pt.TaskSpec.Validate(ctx).ViaField("taskSpec"))
@@ -287,21 +288,21 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 			if errSlice := validation.IsQualifiedName(pt.TaskRef.Name); len(errSlice) != 0 {
 				errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
 			}
-		} else {
+		} else if pt.TaskRef.Resolver == "" {
 			errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
 		}
 		// fail if bundle is present when EnableTektonOCIBundles feature flag is off (as it won't be allowed nor used)
-		if pt.TaskRef.Bundle != "" {
+		if !cfg.FeatureFlags.EnableTektonOCIBundles && pt.TaskRef.Bundle != "" {
 			errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
 		}
-		// fail if resolver or resource are present regardless
-		// of enabled api fields because remote resolution is
-		// not implemented yet for PipelineTasks.
-		if pt.TaskRef.Resolver != "" {
-			errs = errs.Also(apis.ErrDisallowedFields("taskref.resolver"))
-		}
-		if len(pt.TaskRef.Resource) > 0 {
-			errs = errs.Also(apis.ErrDisallowedFields("taskref.resource"))
+		if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
+			// fail if resolver or resource are present when enable-api-fields is false.
+			if pt.TaskRef.Resolver != "" {
+				errs = errs.Also(apis.ErrDisallowedFields("taskref.resolver"))
+			}
+			if len(pt.TaskRef.Resource) > 0 {
+				errs = errs.Also(apis.ErrDisallowedFields("taskref.resource"))
+			}
 		}
 	}
 	return errs

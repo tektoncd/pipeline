@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -26,9 +27,14 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/oci"
+	"github.com/tektoncd/pipeline/pkg/remote/resolution"
+	remoteresource "github.com/tektoncd/resolution/pkg/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/kmeta"
 )
 
 // This error is defined in etcd at
@@ -50,7 +56,7 @@ func GetTaskKind(taskrun *v1beta1.TaskRun) v1beta1.TaskKind {
 // also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
-func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, taskrun *v1beta1.TaskRun) (GetTask, error) {
+func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, taskrun *v1beta1.TaskRun) (GetTask, error) {
 	// if the spec is already in the status, do not try to fetch it again, just use it as source of truth
 	if taskrun.Status.TaskSpec != nil {
 		return func(_ context.Context, name string) (v1beta1.TaskObject, error) {
@@ -63,14 +69,15 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 			}, nil
 		}, nil
 	}
-	return GetTaskFunc(ctx, k8s, tekton, taskrun.Spec.TaskRef, taskrun.Namespace, taskrun.Spec.ServiceAccountName)
+	return GetTaskFunc(ctx, k8s, tekton, requester, taskrun, taskrun.Spec.TaskRef, taskrun.Name, taskrun.Namespace, taskrun.Spec.ServiceAccountName)
 }
 
 // GetTaskFunc is a factory function that will use the given TaskRef as context to return a valid GetTask function. It
 // also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
-func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, tr *v1beta1.TaskRef, namespace, saName string) (GetTask, error) {
+func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester,
+	owner kmeta.OwnerRefable, tr *v1beta1.TaskRef, trName string, namespace, saName string) (GetTask, error) {
 	cfg := config.FromContextOrDefaults(ctx)
 	kind := v1alpha1.NamespacedTaskKind
 	if tr != nil && tr.Kind != "" {
@@ -92,37 +99,21 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			}
 			resolver := oci.NewResolver(tr.Bundle, kc)
 
-			// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
-			// don't accidentally return a Task with the same name but different kind.
-			obj, err := resolver.Get(ctx, strings.TrimSuffix(strings.ToLower(string(kind)), "s"), name)
-			if err != nil {
-				return nil, err
-			}
-
-			// If the resolved object is already a v1beta1.{Cluster}Task, it should be returnable as a
-			// v1beta1.TaskObject.
-			if ti, ok := obj.(v1beta1.TaskObject); ok {
-				ti.SetDefaults(ctx)
-				return ti, nil
-			}
-
-			// If this object is not already a v1beta1 object, figure out what type it is actually and try to coerce it
-			// into a v1beta1.TaskInterface compatible object.
-			switch tt := obj.(type) {
-			case *v1alpha1.Task:
-				betaTask := &v1beta1.Task{}
-				err := tt.ConvertTo(ctx, betaTask)
-				betaTask.SetDefaults(ctx)
-				return betaTask, err
-			case *v1alpha1.ClusterTask:
-				betaTask := &v1beta1.ClusterTask{}
-				err := tt.ConvertTo(ctx, betaTask)
-				betaTask.SetDefaults(ctx)
-				return betaTask, err
-			}
-
-			return nil, fmt.Errorf("failed to convert obj %s into Task", obj.GetObjectKind().GroupVersionKind().String())
+			return resolveTask(ctx, resolver, name, kind)
 		}, nil
+	case cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields && tr != nil && tr.Resolver != "" && requester != nil:
+		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
+		// casting it to a TaskObject.
+		return func(ctx context.Context, name string) (v1beta1.TaskObject, error) {
+			params := map[string]string{}
+			for _, p := range tr.Resource {
+				params[p.Name] = p.Value
+			}
+			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, params)
+
+			return resolveTask(ctx, resolver, name, kind)
+		}, nil
+
 	default:
 		// Even if there is no task ref, we should try to return a local resolver.
 		local := &LocalTaskRefResolver{
@@ -132,6 +123,53 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 		}
 		return local.GetTask, nil
 	}
+}
+
+// resolveTask accepts an impl of remote.Resolver and attempts to
+// fetch a task with given name. An error is returned if the
+// remoteresource doesn't work or the returned data isn't a valid
+// v1beta1.TaskObject.
+func resolveTask(ctx context.Context, resolver remote.Resolver, name string, kind v1beta1.TaskKind) (v1beta1.TaskObject, error) {
+	// Because the resolver will only return references with the same kind (eg ClusterTask), this will ensure we
+	// don't accidentally return a Task with the same name but different kind.
+	obj, err := resolver.Get(ctx, strings.TrimSuffix(strings.ToLower(string(kind)), "s"), name)
+	if err != nil {
+		return nil, err
+	}
+	taskObj, err := readRuntimeObjectAsTask(ctx, obj)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert obj %s into Task", obj.GetObjectKind().GroupVersionKind().String())
+	}
+	return taskObj, nil
+}
+
+// readRuntimeObjectAsTask tries to convert a generic runtime.Object
+// into a v1beta1.TaskObject type so that its meta and spec fields
+// can be read. An error is returned if the given object is not a
+// TaskObject or if there is an error validating or upgrading an
+// older TaskObject into its v1beta1 equivalent.
+func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object) (v1beta1.TaskObject, error) {
+	if task, ok := obj.(v1beta1.TaskObject); ok {
+		task.SetDefaults(ctx)
+		return task, nil
+	}
+
+	// If this object is not already a v1beta1 object, figure out what type it is actually and try to coerce it
+	// into a v1beta1.TaskInterface compatible object.
+	switch tt := obj.(type) {
+	case *v1alpha1.Task:
+		betaTask := &v1beta1.Task{}
+		err := tt.ConvertTo(ctx, betaTask)
+		betaTask.SetDefaults(ctx)
+		return betaTask, err
+	case *v1alpha1.ClusterTask:
+		betaTask := &v1beta1.ClusterTask{}
+		err := tt.ConvertTo(ctx, betaTask)
+		betaTask.SetDefaults(ctx)
+		return betaTask, err
+	}
+
+	return nil, errors.New("resource is not a task")
 }
 
 // LocalTaskRefResolver uses the current cluster to resolve a task reference.
