@@ -31,29 +31,33 @@ import (
 // is used to make async requests for resources like pipelines from
 // remote places like git repos.
 type Resolver struct {
-	requester    remoteresource.Requester
-	owner        kmeta.OwnerRefable
-	resolverName string
-	params       map[string]string
+	requester       remoteresource.Requester
+	owner           kmeta.OwnerRefable
+	resolverName    string
+	params          map[string]string
+	targetName      string
+	targetNamespace string
 }
 
 var _ remote.Resolver = &Resolver{}
 
 // NewResolver returns an implementation of remote.Resolver capable
 // of performing asynchronous remote resolution.
-func NewResolver(requester remoteresource.Requester, owner kmeta.OwnerRefable, resolverName string, params map[string]string) remote.Resolver {
+func NewResolver(requester remoteresource.Requester, owner kmeta.OwnerRefable, resolverName string, targetName string, targetNamespace string, params map[string]string) remote.Resolver {
 	return &Resolver{
-		requester:    requester,
-		owner:        owner,
-		resolverName: resolverName,
-		params:       params,
+		requester:       requester,
+		owner:           owner,
+		resolverName:    resolverName,
+		params:          params,
+		targetName:      targetName,
+		targetNamespace: targetNamespace,
 	}
 }
 
 // Get implements remote.Resolver.
 func (resolver *Resolver) Get(ctx context.Context, _, _ string) (runtime.Object, error) {
 	resolverName := remoteresource.ResolverName(resolver.resolverName)
-	req, err := buildRequest(resolver.resolverName, resolver.owner, resolver.params)
+	req, err := buildRequest(resolver.resolverName, resolver.owner, resolver.targetName, resolver.targetNamespace, resolver.params)
 	if err != nil {
 		return nil, fmt.Errorf("error building request for remote resource: %w", err)
 	}
@@ -83,9 +87,11 @@ func (resolver *Resolver) List(_ context.Context) ([]remote.ResolvedObject, erro
 	return nil, nil
 }
 
-func buildRequest(resolverName string, owner kmeta.OwnerRefable, params map[string]string) (*resolutionRequest, error) {
-	name := owner.GetObjectMeta().GetName()
-	namespace := owner.GetObjectMeta().GetNamespace()
+func buildRequest(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params map[string]string) (*resolutionRequest, error) {
+	if name == "" {
+		name = owner.GetObjectMeta().GetName()
+		namespace = owner.GetObjectMeta().GetNamespace()
+	}
 	if namespace == "" {
 		namespace = "default"
 	}

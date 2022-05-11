@@ -23,8 +23,6 @@ import (
 	"reflect"
 	"strings"
 
-	"go.uber.org/zap"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -44,9 +42,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
 	"github.com/tektoncd/pipeline/pkg/workspace"
+	resolution "github.com/tektoncd/resolution/pkg/resource"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,13 +71,14 @@ type Reconciler struct {
 	Clock             clock.PassiveClock
 
 	// listers index properties about resources
-	taskRunLister    listers.TaskRunLister
-	resourceLister   resourcelisters.PipelineResourceLister
-	limitrangeLister corev1Listers.LimitRangeLister
-	cloudEventClient cloudevent.CEClient
-	entrypointCache  podconvert.EntrypointCache
-	metrics          *taskrunmetrics.Recorder
-	pvcHandler       volumeclaim.PvcHandler
+	taskRunLister       listers.TaskRunLister
+	resourceLister      resourcelisters.PipelineResourceLister
+	limitrangeLister    corev1Listers.LimitRangeLister
+	cloudEventClient    cloudevent.CEClient
+	entrypointCache     podconvert.EntrypointCache
+	metrics             *taskrunmetrics.Recorder
+	pvcHandler          volumeclaim.PvcHandler
+	resolutionRequester resolution.Requester
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
@@ -282,7 +284,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
 
-	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, tr)
+	getTaskfunc, err := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr)
 	if err != nil {
 		logger.Errorf("Failed to fetch task reference %s: %v", tr.Spec.TaskRef.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
@@ -290,18 +292,23 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	}
 
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
-	if err != nil {
+	switch {
+	case errors.Is(err, remote.ErrorRequestInProgress):
+		message := fmt.Sprintf("TaskRun %s/%s awaiting remote resource", tr.Namespace, tr.Name)
+		tr.Status.MarkResourceOngoing(v1beta1.TaskRunReasonResolvingTaskRef, message)
+		return nil, nil, err
+	case err != nil:
 		logger.Errorf("Failed to determine Task spec to use for taskrun %s: %v", tr.Name, err)
 		if resources.IsGetTaskErrTransient(err) {
 			return nil, nil, err
 		}
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
 		return nil, nil, controller.NewPermanentError(err)
-	}
-
-	// Store the fetched TaskSpec on the TaskRun for auditing
-	if err := storeTaskSpecAndMergeMeta(tr, taskSpec, taskMeta); err != nil {
-		logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+	default:
+		// Store the fetched TaskSpec on the TaskRun for auditing
+		if err := storeTaskSpecAndMergeMeta(tr, taskSpec, taskMeta); err != nil {
+			logger.Errorf("Failed to store TaskSpec on TaskRun.Statusfor taskrun %s: %v", tr.Name, err)
+		}
 	}
 
 	inputs := []v1beta1.TaskResourceBinding{}

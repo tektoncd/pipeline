@@ -140,6 +140,9 @@ const (
 	TaskRunReasonCancelled TaskRunReason = "TaskRunCancelled"
 	// TaskRunReasonTimedOut is the reason set when the Taskrun has timed out
 	TaskRunReasonTimedOut TaskRunReason = "TaskRunTimeout"
+	// TaskRunReasonResolvingTaskRef indicates that the TaskRun is waiting for
+	// its taskRef to be asynchronously resolved.
+	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
 )
 
 func (t TaskRunReason) String() string {

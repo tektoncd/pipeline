@@ -7178,6 +7178,84 @@ spec:
 	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 }
 
+// TestReconcileWithTaskResolver checks that a PipelineRun with a populated Resolver
+// field for a Task creates a ResolutionRequest object for that Resolver's type, and
+// that when the request is successfully resolved the PipelineRun begins running.
+func TestReconcileWithTaskResolver(t *testing.T) {
+	resolverName := "foobar"
+	pr := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineSpec:
+    tasks:
+    - name: some-task
+      taskRef:
+        resolver: foobar
+  serviceAccountName: default
+`)
+
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+
+	d := test.Data{
+		ConfigMaps:   cms,
+		PipelineRuns: []*v1beta1.PipelineRun{pr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string(nil)
+	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
+	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, v1beta1.TaskRunReasonResolvingTaskRef)
+
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error listing resource requests: %v", err)
+	}
+	numResolutionRequests := len(resolutionrequests.Items)
+	if numResolutionRequests != 1 {
+		t.Fatalf("expected exactly 1 resource request but found %d", numResolutionRequests)
+	}
+
+	resreq := &resolutionrequests.Items[0]
+	resolutionRequestType := resreq.ObjectMeta.Labels["resolution.tekton.dev/type"]
+	if resolutionRequestType != resolverName {
+		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
+	}
+
+	taskBytes := []byte(`
+kind: Task
+apiVersion: tekton.dev/v1beta1
+metadata:
+  name: foo
+spec:
+  steps:
+  - name: step1
+    image: ubuntu
+    script: |
+      echo "hello world!"
+`)
+
+	resreq.Status.ResolutionRequestStatusFields.Data = base64.StdEncoding.Strict().EncodeToString(taskBytes)
+	resreq.Status.MarkSucceeded()
+	resreq, err = client.UpdateStatus(prt.TestAssets.Ctx, resreq, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error updating resource request with resolved pipeline data: %v", err)
+	}
+
+	// Check that the resolved pipeline was recognized by the
+	// PipelineRun reconciler and that the PipelineRun has now
+	// started executing.
+	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, false)
+	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+}
+
 func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]string) *v1beta1.TaskRun {
 	om := taskRunObjectMeta(tr, "foo", pr, p, t, false)
 	for k, v := range labels {

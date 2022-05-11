@@ -277,7 +277,10 @@ func (c *Reconciler) resolvePipelineState(
 	pst := resources.PipelineRunState{}
 	// Resolve each task individually because they each could have a different reference context (remote or local).
 	for _, task := range tasks {
-		fn, err := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, task.TaskRef, pr.Namespace, pr.Spec.ServiceAccountName)
+		// We need the TaskRun name to ensure that we don't perform an additional remote resolution request for a PipelineTask
+		// in the TaskRun reconciler.
+		trName := resources.GetTaskRunName(pr.Status.TaskRuns, pr.Status.ChildReferences, task.Name, pr.Name)
+		fn, err := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
 			pr.Status.MarkFailed(ReasonCouldntGetTask, "Pipeline %s/%s can't be Run; task %s could not be fetched: %s",
@@ -301,6 +304,9 @@ func (c *Reconciler) resolvePipelineState(
 		)
 		if err != nil {
 			if tresources.IsGetTaskErrTransient(err) {
+				return nil, err
+			}
+			if errors.Is(err, remote.ErrorRequestInProgress) {
 				return nil, err
 			}
 			switch err := err.(type) {
@@ -467,8 +473,14 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		tasks = append(tasks, pipelineSpec.Finally...)
 	}
 	pipelineRunState, err := c.resolvePipelineState(ctx, tasks, pipelineMeta, pr, providedResources)
-	if err != nil {
+	switch {
+	case errors.Is(err, remote.ErrorRequestInProgress):
+		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
+		pr.Status.MarkRunning(v1beta1.TaskRunReasonResolvingTaskRef, message)
+		return nil
+	case err != nil:
 		return err
+	default:
 	}
 
 	// Build PipelineRunFacts with a list of resolved pipeline tasks,

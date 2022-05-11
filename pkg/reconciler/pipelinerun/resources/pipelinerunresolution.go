@@ -18,10 +18,9 @@ package resources
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
-
-	"knative.dev/pkg/kmeta"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -29,8 +28,10 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/tektoncd/pipeline/pkg/remote"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/kmeta"
 )
 
 const (
@@ -482,7 +483,7 @@ func ResolvePipelineRunTask(
 	if rprt.IsCustomTask() {
 		rprt.RunName = getRunName(pipelineRun.Status.Runs, pipelineRun.Status.ChildReferences, task.Name, pipelineRun.Name)
 		run, err := getRun(rprt.RunName)
-		if err != nil && !errors.IsNotFound(err) {
+		if err != nil && !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("error retrieving Run %s: %w", rprt.RunName, err)
 		}
 		rprt.Run = run
@@ -500,7 +501,7 @@ func ResolvePipelineRunTask(
 
 		taskRun, err := getTaskRun(rprt.TaskRunName)
 		if err != nil {
-			if !errors.IsNotFound(err) {
+			if !kerrors.IsNotFound(err) {
 				return nil, fmt.Errorf("error retrieving TaskRun %s: %w", rprt.TaskRunName, err)
 			}
 		}
@@ -515,14 +516,18 @@ func ResolvePipelineRunTask(
 				taskName = task.TaskRef.Name
 			} else {
 				t, err = getTask(ctx, task.TaskRef.Name)
-				if err != nil {
+				switch {
+				case errors.Is(err, remote.ErrorRequestInProgress):
+					return nil, err
+				case err != nil:
 					return nil, &TaskNotFoundError{
 						Name: task.TaskRef.Name,
 						Msg:  err.Error(),
 					}
+				default:
+					spec = t.TaskSpec()
+					taskName = t.TaskMetadata().Name
 				}
-				spec = t.TaskSpec()
-				taskName = t.TaskMetadata().Name
 			}
 			kind = task.TaskRef.Kind
 		} else {
@@ -623,7 +628,7 @@ func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*
 		// TODO(#3133): Also handle Custom Task Runs (getRun here)
 		cctr, err := getTaskRun(conditionCheckName)
 		if err != nil {
-			if !errors.IsNotFound(err) {
+			if !kerrors.IsNotFound(err) {
 				return nil, fmt.Errorf("error retrieving ConditionCheck %s for taskRun name %s : %w", conditionCheckName, taskRunName, err)
 			}
 		}

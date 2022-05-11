@@ -243,8 +243,10 @@ func TestPipelineTask_ValidateBundle_Failure(t *testing.T) {
 
 func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	tests := []struct {
-		name  string
-		tasks PipelineTask
+		name            string
+		tasks           PipelineTask
+		enableAPIFields bool
+		enableBundles   bool
 	}{{
 		name: "pipeline task - valid taskRef name",
 		tasks: PipelineTask{
@@ -257,10 +259,40 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 			Name:     "foo",
 			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 		},
+	}, {
+		name: "pipeline task - use of resolver with the feature flag set",
+		tasks: PipelineTask{
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
+		},
+		enableAPIFields: true,
+	}, {
+		name: "pipeline task - use of resource with the feature flag set",
+		tasks: PipelineTask{
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resource: []ResolverParam{{}}}},
+		},
+		enableAPIFields: true,
+	}, {
+		name: "pipeline task - use of bundle with the feature flag set",
+		tasks: PipelineTask{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "bar", Bundle: "docker.io/foo"},
+		},
+		enableBundles: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.tasks.validateTask(context.Background())
+			ctx := context.Background()
+			cfg := &config.Config{
+				FeatureFlags: &config.FeatureFlags{},
+			}
+			if tt.enableAPIFields {
+				cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+			}
+			if tt.enableBundles {
+				cfg.FeatureFlags.EnableTektonOCIBundles = true
+			}
+			ctx = config.ToContext(ctx, cfg)
+			err := tt.tasks.validateTask(ctx)
 			if err != nil {
 				t.Errorf("PipelineTask.validateTask() returned error for valid pipeline task: %v", err)
 			}
@@ -311,16 +343,14 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		},
 		expectedError: *apis.ErrDisallowedFields("taskref.bundle"),
 	}, {
-		name: "pipeline task - use of resolver",
+		name: "pipeline task - use of resolver without the feature flag set",
 		task: PipelineTask{
-			Name:    "foo",
 			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
 		},
 		expectedError: *apis.ErrDisallowedFields("taskref.resolver"),
 	}, {
-		name: "pipeline task - use of resource",
+		name: "pipeline task - use of resource without the feature flag set",
 		task: PipelineTask{
-			Name:    "foo",
 			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resource: []ResolverParam{{}}}},
 		},
 		expectedError: *apis.ErrDisallowedFields("taskref.resource"),
