@@ -478,3 +478,98 @@ func TestApplyArrayReplacements(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractParamsExpressions(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  []string
+	}{{
+		name:  "normal string",
+		input: "hello world",
+		want:  nil,
+	}, {
+		name:  "param reference",
+		input: "$(params.paramName)",
+		want:  nil,
+	}, {
+		name:  "param star reference",
+		input: "$(params.paramName[*])",
+		want:  nil,
+	}, {
+		name:  "param index reference",
+		input: "$(params.paramName[1])",
+		want:  []string{"$(params.paramName[1])"},
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := substitution.ExtractParamsExpressions(tt.input)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestExtractIntIndex(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{{
+		name:  "normal string",
+		input: "hello world",
+		want:  "",
+	}, {
+		name:  "param reference",
+		input: "$(params.paramName)",
+		want:  "",
+	}, {
+		name:  "param star reference",
+		input: "$(params.paramName[*])",
+		want:  "",
+	}, {
+		name:  "param index reference",
+		input: "$(params.paramName[1])",
+		want:  "[1]",
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := substitution.ExtractIndexString(tt.input)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTrimSquareBrackets(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  int
+	}{{
+		name:  "normal string",
+		input: "hello world",
+		want:  0,
+	}, {
+		name:  "star in square bracket",
+		input: "[*]",
+		want:  0,
+	}, {
+		name:  "index in square bracket",
+		input: "[1]",
+		want:  1,
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _ := substitution.ExtractIndex(tt.input)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}

@@ -447,6 +447,15 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return controller.NewPermanentError(err)
 	}
 
+	// Ensure that the array reference is not out of bound
+	if err := resources.ValidateParamArrayIndex(ctx, pipelineSpec, pr); err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.MarkFailed(ReasonObjectParameterMissKeys,
+			"PipelineRun %s/%s parameters is missing object keys required by Pipeline %s/%s's parameters: %s",
+			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
+		return controller.NewPermanentError(err)
+	}
+
 	// Ensure that the workspaces expected by the Pipeline are provided by the PipelineRun.
 	if err := resources.ValidateWorkspaceBindings(pipelineSpec, pr); err != nil {
 		pr.Status.MarkFailed(ReasonInvalidWorkspaceBinding,

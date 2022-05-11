@@ -17,11 +17,15 @@ limitations under the License.
 package resources
 
 import (
+	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/tektoncd/pipeline/pkg/substitution"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // ValidateParamTypesMatching validate that parameters in PipelineRun override corresponding parameters in Pipeline of the same type.
@@ -83,4 +87,108 @@ func ValidateObjectParamRequiredKeys(pipelineParameters []v1beta1.ParamSpec, pip
 	}
 
 	return nil
+}
+
+// ValidateParamArrayIndex validate if the array indexing param reference  target is existent
+func ValidateParamArrayIndex(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
+		return nil
+	}
+
+	arrayParams := extractParamIndexes(p.Params, pr.Spec.Params)
+
+	outofBoundParams := sets.String{}
+
+	// collect all the references
+	for i := range p.Tasks {
+		findInvalidParamArrayReferences(p.Tasks[i].Params, arrayParams, &outofBoundParams)
+		findInvalidParamArrayReferences(p.Tasks[i].Matrix, arrayParams, &outofBoundParams)
+		for j := range p.Tasks[i].Workspaces {
+			findInvalidParamArrayReference(p.Tasks[i].Workspaces[j].SubPath, arrayParams, &outofBoundParams)
+		}
+		for _, wes := range p.Tasks[i].WhenExpressions {
+			findInvalidParamArrayReference(wes.Input, arrayParams, &outofBoundParams)
+			for _, v := range wes.Values {
+				findInvalidParamArrayReference(v, arrayParams, &outofBoundParams)
+			}
+		}
+	}
+
+	for i := range p.Finally {
+		findInvalidParamArrayReferences(p.Finally[i].Params, arrayParams, &outofBoundParams)
+		findInvalidParamArrayReferences(p.Finally[i].Matrix, arrayParams, &outofBoundParams)
+		for _, wes := range p.Finally[i].WhenExpressions {
+			for _, v := range wes.Values {
+				findInvalidParamArrayReference(v, arrayParams, &outofBoundParams)
+			}
+		}
+	}
+
+	if outofBoundParams.Len() > 0 {
+		return fmt.Errorf("non-existent param references:%v", outofBoundParams.List())
+	}
+	return nil
+}
+
+func extractParamIndexes(defaults []v1beta1.ParamSpec, params []v1beta1.Param) map[string]int {
+	// Collect all array params
+	arrayParams := make(map[string]int)
+
+	patterns := []string{
+		"$(params.%s)",
+		"$(params[%q])",
+		"$(params['%s'])",
+	}
+
+	// Collect array params lengths from defaults
+	for _, p := range defaults {
+		if p.Default != nil {
+			if p.Default.Type == v1beta1.ParamTypeArray {
+				for _, pattern := range patterns {
+					for i := 0; i < len(p.Default.ArrayVal); i++ {
+						arrayParams[fmt.Sprintf(pattern, p.Name)] = len(p.Default.ArrayVal)
+					}
+				}
+			}
+		}
+	}
+
+	// Collect array params lengths from pipelinerun or taskrun
+	for _, p := range params {
+		if p.Value.Type == v1beta1.ParamTypeArray {
+			for _, pattern := range patterns {
+				for i := 0; i < len(p.Value.ArrayVal); i++ {
+					arrayParams[fmt.Sprintf(pattern, p.Name)] = len(p.Value.ArrayVal)
+				}
+			}
+		}
+	}
+	return arrayParams
+}
+
+func findInvalidParamArrayReferences(params []v1beta1.Param, arrayParams map[string]int, outofBoundParams *sets.String) {
+	for i := range params {
+		findInvalidParamArrayReference(params[i].Value.StringVal, arrayParams, outofBoundParams)
+		for _, v := range params[i].Value.ArrayVal {
+			findInvalidParamArrayReference(v, arrayParams, outofBoundParams)
+		}
+		for _, v := range params[i].Value.ObjectVal {
+			findInvalidParamArrayReference(v, arrayParams, outofBoundParams)
+		}
+	}
+}
+
+func findInvalidParamArrayReference(paramReference string, arrayParams map[string]int, outofBoundParams *sets.String) {
+	list := substitution.ExtractParamsExpressions(paramReference)
+	for _, val := range list {
+		indexString := substitution.ExtractIndexString(paramReference)
+		idx, _ := substitution.ExtractIndex(indexString)
+		v := substitution.TrimArrayIndex(val)
+		if paramLength, ok := arrayParams[v]; ok {
+			if idx >= paramLength {
+				outofBoundParams.Insert(val)
+			}
+		}
+	}
 }

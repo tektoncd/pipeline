@@ -954,6 +954,315 @@ func TestApplyParameters(t *testing.T) {
 	}
 }
 
+func TestApplyParameters_ArrayIndexing(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	for _, tt := range []struct {
+		name     string
+		original v1beta1.PipelineSpec
+		params   []v1beta1.Param
+		expected v1beta1.PipelineSpec
+	}{{
+		name: "single parameter",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.first-param[1])")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("$(params.second-param[0])")},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("default-value-again")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("second-value")},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+			}},
+		},
+	}, {
+		name: "single parameter with when expression",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "$(params.first-param[1])",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param[0])"},
+				}},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "default-value-again",
+					Operator: selection.In,
+					Values:   []string{"second-value"},
+				}},
+			}},
+		},
+	}, {
+		name: "pipeline parameter nested inside task parameter",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("$(input.workspace.$(params.first-param[0]))")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("$(input.workspace.$(params.second-param[1]))")},
+				},
+			}},
+		},
+		params: nil, // no parameter values.
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("$(input.workspace.default-value)")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("$(input.workspace.default-value-again)")},
+				},
+			}},
+		},
+	}, {
+		name: "array parameter",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default", "array", "value")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("firstelement", "$(params.first-param)")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("firstelement", "$(params.second-param[0])")},
+				},
+			}},
+		},
+		params: []v1beta1.Param{
+			{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value", "array")},
+		},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default", "array", "value")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("firstelement", "default", "array", "value")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("firstelement", "second-value")},
+				},
+			}},
+		},
+	}, {
+		name: "parameter evaluation with final tasks",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.first-param[0])")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("$(params.second-param[1])")},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(params.first-param[0])",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param[1])"},
+				}},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("second-value-again")},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "default-value",
+					Operator: selection.In,
+					Values:   []string{"second-value-again"},
+				}},
+			}},
+		},
+	}, {
+		name: "parameter evaluation with both tasks and final tasks",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.first-param[0])")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("$(params.second-param[1])")},
+				},
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.first-param[0])")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("$(params.second-param[1])")},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(params.first-param[0])",
+					Operator: selection.In,
+					Values:   []string{"$(params.second-param[1])"},
+				}},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("second-value-again")},
+				},
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("second-value-again")},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "default-value",
+					Operator: selection.In,
+					Values:   []string{"second-value-again"},
+				}},
+			}},
+		},
+	}, {
+		name: "parameter references with bracket notation and special characters",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first.param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second/param", Type: v1beta1.ParamTypeArray},
+				{Name: "third.param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "fourth/param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString(`$(params["first.param"][0])`)},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString(`$(params["second/param"][0])`)},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString(`$(params['third.param'][1])`)},
+					{Name: "first-task-fourth-param", Value: *v1beta1.NewArrayOrString(`$(params['fourth/param'][1])`)},
+					{Name: "first-task-fifth-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+			}},
+		},
+		params: []v1beta1.Param{
+			{Name: "second/param", Value: *v1beta1.NewArrayOrString("second-value", "second-value-again")},
+			{Name: "fourth/param", Value: *v1beta1.NewArrayOrString("fourth-value", "fourth-value-again")},
+		},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first.param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second/param", Type: v1beta1.ParamTypeArray},
+				{Name: "third.param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "fourth/param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("second-value")},
+					{Name: "first-task-third-param", Value: *v1beta1.NewArrayOrString("default-value-again")},
+					{Name: "first-task-fourth-param", Value: *v1beta1.NewArrayOrString("fourth-value-again")},
+					{Name: "first-task-fifth-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+			}},
+		},
+	}, {
+		name: "single parameter in workspace subpath",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.first-param[0])")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "$(params.second-param[1])",
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value", "second-value-again")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("default-value")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "second-value-again",
+					},
+				},
+			}},
+		},
+	},
+	} {
+		tt := tt // capture range variable
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			run := &v1beta1.PipelineRun{
+				Spec: v1beta1.PipelineRunSpec{
+					Params: tt.params,
+				},
+			}
+			got := ApplyParameters(ctx, &tt.original, run)
+			if d := cmp.Diff(&tt.expected, got); d != "" {
+				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 	for _, tt := range []struct {
 		name               string

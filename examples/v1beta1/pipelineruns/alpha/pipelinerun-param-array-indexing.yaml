@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: deploy
+spec:
+  params:
+    - name: environments
+      type: array
+  tasks:
+    - name: deploy
+      params:
+        - name: environment1
+          value: '$(params.environments[0])'
+        - name: environment2
+          value: '$(params.environments[1])'
+      taskSpec:
+        params:
+          - name: environment1
+            type: string
+          - name: environment2
+            type: string
+        steps:
+          # this step should echo "staging"
+          - name: echo-params-1
+            image: bash:3.2
+            args: [
+              "echo",
+              "$(params.environment1)",
+            ]
+          # this step should echo "staging"
+          - name: echo-params-2
+            image: ubuntu
+            script: |
+              #!/bin/bash
+              VALUE=$(params.environment2)
+              EXPECTED="qa"
+              diff=$(diff <(printf "%s\n" "${VALUE[@]}") <(printf "%s\n" "${EXPECTED[@]}"))
+              if [[ -z "$diff" ]]; then
+                  echo "Get expected: ${VALUE}"
+                  exit 0
+              else
+                  echo "Want: ${EXPECTED} Got: ${VALUE}"
+                  exit 1
+              fi
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: deployrun
+spec:
+  pipelineRef:
+    name: deploy
+  params:
+    - name: environments
+      value:
+        - 'staging'
+        - 'qa'
+        - 'prod'
