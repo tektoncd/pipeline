@@ -1,0 +1,37 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: params-array-indexing
+spec:
+  params:
+    - name: array-to-echo
+      value:
+        - "foo"
+        - "bar"
+  taskSpec:
+    params:
+      - name: array-to-echo
+        type: array
+    steps:
+      # this step should echo "foo"
+      - name: echo-params-1
+        image: bash:3.2
+        args: [
+          "echo",
+          "$(params.array-to-echo[0])",
+        ]
+      # this step should echo "bar"
+      - name: echo-params-2
+        image: ubuntu
+        script: |
+          #!/bin/bash
+          VALUE=$(params.array-to-echo[1])
+          EXPECTED="bar"
+          diff=$(diff <(printf "%s\n" "${VALUE[@]}") <(printf "%s\n" "${EXPECTED[@]}"))
+          if [[ -z "$diff" ]]; then
+              echo "Get expected: ${VALUE}"
+              exit 0
+          else
+              echo "Want: ${EXPECTED} Got: ${VALUE}"
+              exit 1
+          fi

@@ -344,6 +344,180 @@ var (
 		}},
 	}
 
+	simpleTaskSpecArrayIndexing = &v1beta1.TaskSpec{
+		Sidecars: []v1beta1.Sidecar{{
+			Name:  "foo",
+			Image: `$(params["myimage"][0])`,
+			Env: []corev1.EnvVar{{
+				Name:  "foo",
+				Value: "$(params['FOO'][1])",
+			}},
+		}},
+		StepTemplate: &v1beta1.StepTemplate{
+			Env: []corev1.EnvVar{{
+				Name:  "template-var",
+				Value: `$(params["FOO"][1])`,
+			}},
+			Image: "$(params.myimage[0])",
+		},
+		Steps: []v1beta1.Step{{
+			Name:  "foo",
+			Image: "$(params.myimage[0])",
+		}, {
+			Name:       "baz",
+			Image:      "bat",
+			WorkingDir: "$(inputs.resources.workspace.path)",
+			Args:       []string{"$(inputs.resources.workspace.url)"},
+		}, {
+			Name:  "qux",
+			Image: "$(params.something[0])",
+			Args:  []string{"$(outputs.resources.imageToUse.url)"},
+		}, {
+			Name:  "foo",
+			Image: `$(params["myimage"][0])`,
+		}, {
+			Name:       "baz",
+			Image:      "$(params.somethingelse)",
+			WorkingDir: "$(inputs.resources.workspace.path)",
+			Args:       []string{"$(inputs.resources.workspace.url)"},
+		}, {
+			Name:  "qux",
+			Image: "quux",
+			Args:  []string{"$(outputs.resources.imageToUse.url)"},
+		}, {
+			Name:  "foo",
+			Image: "busybox:$(params.FOO[1])",
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "$(params.FOO[1])",
+				MountPath: "path/to/$(params.FOO[1])",
+				SubPath:   "sub/$(params.FOO[1])/path",
+			}},
+		}, {
+			Name:  "foo",
+			Image: "busybox:$(params.FOO[1])",
+			Env: []corev1.EnvVar{{
+				Name:  "foo",
+				Value: "value-$(params.FOO[1])",
+			}, {
+				Name: "bar",
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(params.FOO[1])"},
+						Key:                  "config-key-$(params.FOO[1])",
+					},
+				},
+			}, {
+				Name: "baz",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(params.FOO[1])"},
+						Key:                  "secret-key-$(params.FOO[1])",
+					},
+				},
+			}},
+			EnvFrom: []corev1.EnvFromSource{{
+				Prefix: "prefix-0-$(params.FOO[1])",
+				ConfigMapRef: &corev1.ConfigMapEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "config-$(params.FOO[1])"},
+				},
+			}, {
+				Prefix: "prefix-1-$(params.FOO[1])",
+				SecretRef: &corev1.SecretEnvSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(params.FOO[1])"},
+				},
+			}},
+		}, {
+			Name:  "outputs-resources-path-ab",
+			Image: "$(outputs.resources.imageToUse-ab.path)",
+		}, {
+			Name:  "outputs-resources-path-re",
+			Image: "$(outputs.resources.imageToUse-re.path)",
+		}},
+		Volumes: []corev1.Volume{{
+			Name: "$(params.FOO[1])",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "$(params.FOO[1])",
+					},
+					Items: []corev1.KeyToPath{{
+						Key:  "$(params.FOO[1])",
+						Path: "$(params.FOO[1])",
+					}},
+				},
+			},
+		}, {
+			Name: "some-secret",
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "$(params.FOO[1])",
+					Items: []corev1.KeyToPath{{
+						Key:  "$(params.FOO[1])",
+						Path: "$(params.FOO[1])",
+					}},
+				},
+			},
+		}, {
+			Name: "some-pvc",
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: "$(params.FOO[1])",
+				},
+			},
+		}, {
+			Name: "some-projected-volumes",
+			VolumeSource: corev1.VolumeSource{
+				Projected: &corev1.ProjectedVolumeSource{
+					Sources: []corev1.VolumeProjection{{
+						ConfigMap: &corev1.ConfigMapProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "$(params.FOO[1])",
+							},
+						},
+						Secret: &corev1.SecretProjection{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "$(params.FOO[1])",
+							},
+						},
+						ServiceAccountToken: &corev1.ServiceAccountTokenProjection{
+							Audience: "$(params.FOO[1])",
+						},
+					}},
+				},
+			},
+		}, {
+			Name: "some-csi",
+			VolumeSource: corev1.VolumeSource{
+				CSI: &corev1.CSIVolumeSource{
+					VolumeAttributes: map[string]string{
+						"secretProviderClass": "$(params.FOO[1])",
+					},
+					NodePublishSecretRef: &corev1.LocalObjectReference{
+						Name: "$(params.FOO[1])",
+					},
+				},
+			},
+		}},
+		Resources: &v1beta1.TaskResources{
+			Inputs: []v1beta1.TaskResource{{
+				ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name: "workspace",
+				},
+			}},
+			Outputs: []v1beta1.TaskResource{{
+				ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name:       "imageToUse-ab",
+					TargetPath: "/foo/builtImage",
+				},
+			}, {
+				ResourceDeclaration: v1beta1.ResourceDeclaration{
+					Name:       "imageToUse-re",
+					TargetPath: "foo/builtImage",
+				},
+			}},
+		},
+	}
+
 	gcsTaskSpec = &v1beta1.TaskSpec{
 		Steps: []v1beta1.Step{{
 			Name:  "foobar",
@@ -697,7 +871,7 @@ func TestApplyArrayParameters(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := resources.ApplyParameters(tt.args.ts, tt.args.tr, tt.args.dp...)
+			got := resources.ApplyParameters(context.Background(), tt.args.ts, tt.args.tr, tt.args.dp...)
 			if d := cmp.Diff(tt.want, got); d != "" {
 				t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 			}
@@ -768,7 +942,80 @@ func TestApplyParameters(t *testing.T) {
 		spec.Sidecars[0].Image = "bar"
 		spec.Sidecars[0].Env[0].Value = "world"
 	})
-	got := resources.ApplyParameters(simpleTaskSpec, tr, dp...)
+	got := resources.ApplyParameters(context.Background(), simpleTaskSpec, tr, dp...)
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestApplyParameters_ArrayIndexing(t *testing.T) {
+	tr := &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Params: []v1beta1.Param{{
+				Name:  "myimage",
+				Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			}, {
+				Name:  "FOO",
+				Value: *v1beta1.NewArrayOrString("hello", "world"),
+			}},
+		},
+	}
+	dp := []v1beta1.ParamSpec{{
+		Name:    "something",
+		Default: v1beta1.NewArrayOrString("mydefault", "mydefault2"),
+	}, {
+		Name:    "somethingelse",
+		Default: v1beta1.NewArrayOrString(""),
+	}}
+	want := applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
+		spec.StepTemplate.Env[0].Value = "world"
+		spec.StepTemplate.Image = "bar"
+
+		spec.Steps[0].Image = "bar"
+		spec.Steps[2].Image = "mydefault"
+		spec.Steps[3].Image = "bar"
+		spec.Steps[4].Image = ""
+
+		spec.Steps[6].VolumeMounts[0].Name = "world"
+		spec.Steps[6].VolumeMounts[0].SubPath = "sub/world/path"
+		spec.Steps[6].VolumeMounts[0].MountPath = "path/to/world"
+		spec.Steps[6].Image = "busybox:world"
+
+		spec.Steps[7].Env[0].Value = "value-world"
+		spec.Steps[7].Env[1].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "config-world"
+		spec.Steps[7].Env[1].ValueFrom.ConfigMapKeyRef.Key = "config-key-world"
+		spec.Steps[7].Env[2].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "secret-world"
+		spec.Steps[7].Env[2].ValueFrom.SecretKeyRef.Key = "secret-key-world"
+		spec.Steps[7].EnvFrom[0].Prefix = "prefix-0-world"
+		spec.Steps[7].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "config-world"
+		spec.Steps[7].EnvFrom[1].Prefix = "prefix-1-world"
+		spec.Steps[7].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
+		spec.Steps[7].Image = "busybox:world"
+		spec.Steps[8].Image = "$(outputs.resources.imageToUse-ab.path)"
+		spec.Steps[9].Image = "$(outputs.resources.imageToUse-re.path)"
+
+		spec.Volumes[0].Name = "world"
+		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
+		spec.Volumes[0].VolumeSource.ConfigMap.Items[0].Key = "world"
+		spec.Volumes[0].VolumeSource.ConfigMap.Items[0].Path = "world"
+		spec.Volumes[1].VolumeSource.Secret.SecretName = "world"
+		spec.Volumes[1].VolumeSource.Secret.Items[0].Key = "world"
+		spec.Volumes[1].VolumeSource.Secret.Items[0].Path = "world"
+		spec.Volumes[2].VolumeSource.PersistentVolumeClaim.ClaimName = "world"
+		spec.Volumes[3].VolumeSource.Projected.Sources[0].ConfigMap.Name = "world"
+		spec.Volumes[3].VolumeSource.Projected.Sources[0].Secret.Name = "world"
+		spec.Volumes[3].VolumeSource.Projected.Sources[0].ServiceAccountToken.Audience = "world"
+		spec.Volumes[4].VolumeSource.CSI.VolumeAttributes["secretProviderClass"] = "world"
+		spec.Volumes[4].VolumeSource.CSI.NodePublishSecretRef.Name = "world"
+
+		spec.Sidecars[0].Image = "bar"
+		spec.Sidecars[0].Env[0].Value = "world"
+	})
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	got := resources.ApplyParameters(ctx, simpleTaskSpecArrayIndexing, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}
@@ -834,7 +1081,7 @@ func TestApplyObjectParameters(t *testing.T) {
 		spec.Volumes[3].VolumeSource.CSI.VolumeAttributes["secretProviderClass"] = "taskrun-value-for-key1"
 		spec.Volumes[3].VolumeSource.CSI.NodePublishSecretRef.Name = "taskrun-value-for-key1"
 	})
-	got := resources.ApplyParameters(objectParamTaskSpec, tr, dp...)
+	got := resources.ApplyParameters(context.Background(), objectParamTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
 	}

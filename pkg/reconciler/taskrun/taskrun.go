@@ -372,6 +372,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if err := validateParamArrayIndex(ctx, tr.Spec.Params, rtr.TaskSpec); err != nil {
+		logger.Errorf("TaskRun %q Param references are invalid: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
 	if err := c.updateTaskRunWithDefaultWorkspaces(ctx, tr, taskSpec); err != nil {
 		logger.Errorf("Failed to update taskrun %s with default workspace: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
@@ -418,7 +424,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 
-	ts := updateTaskSpecParamsContextsResults(tr, rtr)
+	ts := updateTaskSpecParamsContextsResults(ctx, tr, rtr)
 	tr.Status.TaskSpec = ts
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
@@ -740,14 +746,14 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 	return pod, err
 }
 
-func updateTaskSpecParamsContextsResults(tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) *v1beta1.TaskSpec {
+func updateTaskSpecParamsContextsResults(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) *v1beta1.TaskSpec {
 	ts := rtr.TaskSpec.DeepCopy()
 	var defaults []v1beta1.ParamSpec
 	if len(ts.Params) > 0 {
 		defaults = append(defaults, ts.Params...)
 	}
 	// Apply parameter substitution from the taskrun.
-	ts = resources.ApplyParameters(ts, tr, defaults...)
+	ts = resources.ApplyParameters(ctx, ts, tr, defaults...)
 
 	// Apply context substitution from the taskrun
 	ts = resources.ApplyContexts(ts, rtr.TaskName, tr)
