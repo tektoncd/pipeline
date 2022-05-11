@@ -39,6 +39,7 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
 	objectReplacements := map[string]map[string]string{}
+	cfg := config.FromContextOrDefaults(ctx)
 
 	patterns := []string{
 		"params.%s",
@@ -55,6 +56,12 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 			switch p.Default.Type {
 			case v1beta1.ParamTypeArray:
 				for _, pattern := range patterns {
+					// array indexing for param is alpha feature
+					if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+						for i := 0; i < len(p.Default.ArrayVal); i++ {
+							stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
+						}
+					}
 					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
 				}
 			case v1beta1.ParamTypeObject:
@@ -76,6 +83,12 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 		switch p.Value.Type {
 		case v1beta1.ParamTypeArray:
 			for _, pattern := range patterns {
+				// array indexing for param is alpha feature
+				if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+					for i := 0; i < len(p.Value.ArrayVal); i++ {
+						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Value.ArrayVal[i]
+					}
+				}
 				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
 			}
 		case v1beta1.ParamTypeObject:

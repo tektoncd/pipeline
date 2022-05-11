@@ -19,6 +19,9 @@ For instructions on using variable substitutions see the relevant section of [th
 | `params.<param name>` | The value of the parameter at runtime. |
 | `params['<param name>']` | (see above) |
 | `params["<param name>"]` | (see above) |
+| `params.<param name>[i]` | Get the i-th element of param array. This is alpha feature, set `enable-api-fields` to `alpha`  to use it.|
+| `params['<param name>'][i]` | (see above) |
+| `params["<param name>"][i]` | (see above) |
 | `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
 | `tasks.<taskName>.results['<resultName>']` | (see above)) |
 | `tasks.<taskName>.results["<resultName>"]` | (see above)) |

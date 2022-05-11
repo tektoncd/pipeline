@@ -231,6 +231,13 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 		},
 		expectedOutput: v1beta1.NewArrayOrString("a", "b", "c"),
 	}, {
+		name: "array indexing replacement on string val",
+		args: args{
+			input:              v1beta1.NewArrayOrString("$(params.myarray[0])"),
+			stringReplacements: map[string]string{"params.myarray[0]": "a", "params.myarray[1]": "b"},
+		},
+		expectedOutput: v1beta1.NewArrayOrString("a"),
+	}, {
 		name: "object replacement on string val",
 		args: args{
 			input: v1beta1.NewArrayOrString("$(params.object)"),
