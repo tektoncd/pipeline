@@ -25,8 +25,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-const parameterSubstitution = `[_a-zA-Z][_a-zA-Z0-9.-]*(\[\*\])?`
-
+const parameterSubstitution = `.*?(\[\*\])?`
 const braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\['(?P<var3>%s)'\\])\\)))"
 
 // ValidateVariable makes sure all variables in the provided string are known
