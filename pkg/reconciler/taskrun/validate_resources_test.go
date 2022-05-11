@@ -18,14 +18,19 @@ package taskrun
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
@@ -819,6 +824,202 @@ func TestValidateResult(t *testing.T) {
 			err := validateTaskRunResults(tc.tr, tc.rtr)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("expected err: %t, but got err %s", tc.wantErr, err)
+			}
+		})
+	}
+
+}
+
+func TestValidateParamArrayIndex(t *testing.T) {
+	stepsInvalidReferences := []string{}
+	for i := 10; i <= 26; i++ {
+		stepsInvalidReferences = append(stepsInvalidReferences, fmt.Sprintf("$(params.array-params[%d])", i))
+	}
+	volumesInvalidReferences := []string{}
+	for i := 10; i <= 22; i++ {
+		volumesInvalidReferences = append(volumesInvalidReferences, fmt.Sprintf("$(params.array-params[%d])", i))
+	}
+
+	tcs := []struct {
+		name          string
+		params        []v1beta1.Param
+		taskspec      *v1beta1.TaskSpec
+		expectedError error
+	}{{
+		name: "steps reference invalid",
+		params: []v1beta1.Param{{
+			Name:  "array-params",
+			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+		}},
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewArrayOrString("bar", "foo"),
+			}},
+			Steps: []v1beta1.Step{{
+				Name:    "$(params.array-params[10])",
+				Image:   "$(params.array-params[11])",
+				Command: []string{"$(params.array-params[12])"},
+				Args:    []string{"$(params.array-params[13])"},
+				Script:  "echo $(params.array-params[14])",
+				Env: []v1.EnvVar{{
+					Value: "$(params.array-params[15])",
+					ValueFrom: &v1.EnvVarSource{
+						SecretKeyRef: &v1.SecretKeySelector{
+							Key: "$(params.array-params[16])",
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: "$(params.array-params[17])",
+							},
+						},
+						ConfigMapKeyRef: &v1.ConfigMapKeySelector{
+							Key: "$(params.array-params[18])",
+							LocalObjectReference: v1.LocalObjectReference{
+								Name: "$(params.array-params[19])",
+							},
+						},
+					},
+				}},
+				EnvFrom: []v1.EnvFromSource{{
+					Prefix: "$(params.array-params[20])",
+					ConfigMapRef: &v1.ConfigMapEnvSource{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: "$(params.array-params[21])",
+						},
+					},
+					SecretRef: &v1.SecretEnvSource{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: "$(params.array-params[22])",
+						},
+					},
+				}},
+				WorkingDir: "$(params.array-params[23])",
+				VolumeMounts: []v1.VolumeMount{{
+					Name:      "$(params.array-params[24])",
+					MountPath: "$(params.array-params[25])",
+					SubPath:   "$(params.array-params[26])",
+				}},
+			}},
+		},
+		expectedError: fmt.Errorf("non-existent param references:[%v]", strings.Join(stepsInvalidReferences, " ")),
+	}, {
+		name: "stepTemplate reference invalid",
+		params: []v1beta1.Param{{
+			Name:  "array-params",
+			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+		}},
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewArrayOrString("bar", "foo"),
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
+				Image: "$(params.array-params[3])",
+			},
+		},
+		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
+	}, {
+		name: "volumes reference invalid",
+		params: []v1beta1.Param{{
+			Name:  "array-params",
+			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+		}},
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewArrayOrString("bar", "foo"),
+			}},
+			Volumes: []v1.Volume{{
+				Name: "$(params.array-params[10])",
+				VolumeSource: v1.VolumeSource{
+					ConfigMap: &v1.ConfigMapVolumeSource{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: "$(params.array-params[11])",
+						},
+						Items: []v1.KeyToPath{{
+							Key:  "$(params.array-params[12])",
+							Path: "$(params.array-params[13])",
+						},
+						},
+					},
+					Secret: &v1.SecretVolumeSource{
+						SecretName: "$(params.array-params[14])",
+						Items: []v1.KeyToPath{{
+							Key:  "$(params.array-params[15])",
+							Path: "$(params.array-params[16])",
+						}},
+					},
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "$(params.array-params[17])",
+					},
+					Projected: &v1.ProjectedVolumeSource{
+						Sources: []v1.VolumeProjection{{
+							ConfigMap: &v1.ConfigMapProjection{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "$(params.array-params[18])",
+								},
+							},
+							Secret: &v1.SecretProjection{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: "$(params.array-params[19])",
+								},
+							},
+							ServiceAccountToken: &v1.ServiceAccountTokenProjection{
+								Audience: "$(params.array-params[20])",
+							},
+						}},
+					},
+					CSI: &v1.CSIVolumeSource{
+						NodePublishSecretRef: &v1.LocalObjectReference{
+							Name: "$(params.array-params[21])",
+						},
+						VolumeAttributes: map[string]string{"key": "$(params.array-params[22])"},
+					},
+				},
+			},
+			},
+		},
+		expectedError: fmt.Errorf("non-existent param references:[%v]", strings.Join(volumesInvalidReferences, " ")),
+	}, {
+		name: "workspaces reference invalid",
+		params: []v1beta1.Param{{
+			Name:  "array-params",
+			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+		}},
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewArrayOrString("bar", "foo"),
+			}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				MountPath: "$(params.array-params[3])",
+			}},
+		},
+		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
+	}, {
+		name: "sidecar reference invalid",
+		params: []v1beta1.Param{{
+			Name:  "array-params",
+			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+		}},
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewArrayOrString("bar", "foo"),
+			}},
+			Sidecars: []v1beta1.Sidecar{{
+				Script: "$(params.array-params[3])",
+			},
+			},
+		},
+		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
+	},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
+			err := validateParamArrayIndex(ctx, tc.params, tc.taskspec)
+			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
+				t.Errorf("validateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

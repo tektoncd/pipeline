@@ -2297,7 +2297,7 @@ spec:
 		Kind:     "Task",
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
-	taskSpec := updateTaskSpecParamsContextsResults(taskRun, rtr)
+	taskSpec := updateTaskSpecParamsContextsResults(context.Background(), taskRun, rtr)
 	pod, err := r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr)
 
 	if err != nil {
@@ -2401,7 +2401,7 @@ spec:
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
 
-	taskSpec := updateTaskSpecParamsContextsResults(taskRun, rtr)
+	taskSpec := updateTaskSpecParamsContextsResults(context.Background(), taskRun, rtr)
 	_, err := r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr)
 
 	if err == nil || err.Error() != expectedError {

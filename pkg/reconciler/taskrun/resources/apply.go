@@ -33,13 +33,14 @@ import (
 )
 
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
-func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1beta1.ParamSpec) *v1beta1.TaskSpec {
+func ApplyParameters(ctx context.Context, spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1beta1.ParamSpec) *v1beta1.TaskSpec {
 	// This assumes that the TaskRun inputs have been validated against what the Task requests.
 
 	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
 	// that need to be further processed.
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
+	cfg := config.FromContextOrDefaults(ctx)
 
 	patterns := []string{
 		"params.%s",
@@ -58,6 +59,12 @@ func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1
 			switch p.Default.Type {
 			case v1beta1.ParamTypeArray:
 				for _, pattern := range patterns {
+					// array indexing for param is alpha feature
+					if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+						for i := 0; i < len(p.Default.ArrayVal); i++ {
+							stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
+						}
+					}
 					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
 				}
 			case v1beta1.ParamTypeObject:
@@ -76,6 +83,12 @@ func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1
 		switch p.Value.Type {
 		case v1beta1.ParamTypeArray:
 			for _, pattern := range patterns {
+				// array indexing for param is alpha feature
+				if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+					for i := 0; i < len(p.Value.ArrayVal); i++ {
+						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Value.ArrayVal[i]
+					}
+				}
 				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
 			}
 		case v1beta1.ParamTypeObject:
