@@ -706,7 +706,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: validSteps,
 		},
 		expectedError: apis.FieldError{
-			Message: fmt.Sprintf("Required key(s) %s for the parameter %s are not provided in default.", []string{"key2"}, "myobjectParam"),
+			Message: fmt.Sprintf("Required key(s) %s are missing in the value provider.", []string{"key2"}),
 			Paths:   []string{"myobjectParam.properties", "myobjectParam.default"},
 		},
 	}, {
