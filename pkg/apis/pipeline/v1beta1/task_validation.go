@@ -338,6 +338,7 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 
 	errs = errs.Also(validateVariables(ctx, steps, "params", parameterNames))
 	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
+	errs = errs.Also(validateObjectDefault(objectParamSpecs))
 	return errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
 }
 
@@ -391,10 +392,6 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 			objectKeys.Insert(key)
 		}
 
-		if p.Default != nil && p.Default.ObjectVal != nil {
-			errs = errs.Also(validateObjectKeysInDefault(p.Default.ObjectVal, objectKeys, p.Name))
-		}
-
 		// check if the object's key names are referenced correctly i.e. param.objectParam.key1
 		errs = errs.Also(validateVariables(ctx, steps, fmt.Sprintf("params\\.%s", p.Name), objectKeys))
 	}
@@ -402,21 +399,42 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 	return errs
 }
 
-// validate if object keys defined in properties are all provided in default
-func validateObjectKeysInDefault(defaultObject map[string]string, neededObjectKeys sets.String, paramName string) (errs *apis.FieldError) {
-	neededObjectKeysInSpec := neededObjectKeys.List()
-	providedObjectKeysInDefault := []string{}
-	for k := range defaultObject {
-		providedObjectKeysInDefault = append(providedObjectKeysInDefault, k)
+// validateObjectDefault validates the keys of all the object params within a
+// slice of ParamSpecs are provided in default iff the default section is provided.
+func validateObjectDefault(objectParams []ParamSpec) (errs *apis.FieldError) {
+	for _, p := range objectParams {
+		errs = errs.Also(validateObjectKeys(p.Properties, p.Default).ViaField(p.Name))
+	}
+	return errs
+}
+
+// validateObjectKeys validates if object keys defined in properties are all provided in its value provider iff the provider is not nil.
+func validateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ArrayOrString) (errs *apis.FieldError) {
+	if propertiesProvider == nil || propertiesProvider.ObjectVal == nil {
+		return nil
 	}
 
-	missingObjectKeys := list.DiffLeft(neededObjectKeysInSpec, providedObjectKeysInDefault)
-	if len(missingObjectKeys) != 0 {
+	neededKeys := []string{}
+	providedKeys := []string{}
+
+	// collect all needed keys
+	for key := range properties {
+		neededKeys = append(neededKeys, key)
+	}
+
+	// collect all provided keys
+	for key := range propertiesProvider.ObjectVal {
+		providedKeys = append(providedKeys, key)
+	}
+
+	missings := list.DiffLeft(neededKeys, providedKeys)
+	if len(missings) != 0 {
 		return &apis.FieldError{
-			Message: fmt.Sprintf("Required key(s) %s for the parameter %s are not provided in default.", missingObjectKeys, paramName),
-			Paths:   []string{fmt.Sprintf("%s.properties", paramName), fmt.Sprintf("%s.default", paramName)},
+			Message: fmt.Sprintf("Required key(s) %s are missing in the value provider.", missings),
+			Paths:   []string{fmt.Sprintf("properties"), fmt.Sprintf("default")},
 		}
 	}
+
 	return nil
 }
 
