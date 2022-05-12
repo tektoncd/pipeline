@@ -3632,7 +3632,7 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 					},
 					"startupProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Description: "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
 							Ref:         ref("k8s.io/api/core/v1.Probe"),
 						},
 					},
@@ -3685,7 +3685,7 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 					},
 					"tty": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+							Description: "Deprecated. This field will be removed in a future release. Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
@@ -3798,7 +3798,7 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
+							Description: "Deprecated. This field will be removed in a future release. DeprecatedName of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
 							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
@@ -3986,7 +3986,7 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 					},
 					"startupProbe": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Description: "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
 							Ref:         ref("k8s.io/api/core/v1.Probe"),
 						},
 					},
@@ -4039,7 +4039,7 @@ func schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref common.ReferenceCallback)
 					},
 					"tty": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Deprecated. This field will be removed in a future release. Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+							Description: "Deprecated. This field will be removed in a future release. Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.",
 							Type:        []string{"boolean"},
 							Format:      "",
 						},

@@ -60,7 +60,7 @@ type Step struct {
 	// +listType=map
 	// +listMapKey=containerPort
 	// +listMapKey=protocol
-	Ports []corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
+	DeprecatedPorts []corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
 	// List of sources to populate environment variables in the container.
 	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 	// will be reported as an event when the container is starting. When a key exists in multiple
@@ -101,16 +101,16 @@ type Step struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
-	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty" protobuf:"bytes,10,opt,name=livenessProbe"`
+	DeprecatedLivenessProbe *corev1.Probe `json:"livenessProbe,omitempty" protobuf:"bytes,10,opt,name=livenessProbe"`
 	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container service readiness.
 	// Container will be removed from service endpoints if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
-	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty" protobuf:"bytes,11,opt,name=readinessProbe"`
+	DeprecatedReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty" protobuf:"bytes,11,opt,name=readinessProbe"`
 	// Deprecated. This field will be removed in a future release.
-	// StartupProbe indicates that the Pod has successfully initialized.
+	// DeprecatedStartupProbe indicates that the Pod has successfully initialized.
 	// If specified, no other probes are executed until this completes successfully.
 	// If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
 	// This can be used to provide different probe parameters at the beginning of a Pod's lifecycle,
@@ -118,12 +118,12 @@ type Step struct {
 	// This cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
-	StartupProbe *corev1.Probe `json:"startupProbe,omitempty" protobuf:"bytes,22,opt,name=startupProbe"`
+	DeprecatedStartupProbe *corev1.Probe `json:"startupProbe,omitempty" protobuf:"bytes,22,opt,name=startupProbe"`
 	// Deprecated. This field will be removed in a future release.
 	// Actions that the management system should take in response to container lifecycle events.
 	// Cannot be updated.
 	// +optional
-	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty" protobuf:"bytes,12,opt,name=lifecycle"`
+	DeprecatedLifecycle *corev1.Lifecycle `json:"lifecycle,omitempty" protobuf:"bytes,12,opt,name=lifecycle"`
 	// Deprecated. This field will be removed in a future release.
 	// Optional: Path at which the file to which the container's termination message
 	// will be written is mounted into the container's filesystem.
@@ -133,7 +133,7 @@ type Step struct {
 	// Defaults to /dev/termination-log.
 	// Cannot be updated.
 	// +optional
-	TerminationMessagePath string `json:"terminationMessagePath,omitempty" protobuf:"bytes,13,opt,name=terminationMessagePath"`
+	DeprecatedTerminationMessagePath string `json:"terminationMessagePath,omitempty" protobuf:"bytes,13,opt,name=terminationMessagePath"`
 	// Deprecated. This field will be removed in a future release.
 	// Indicate how the termination message should be populated. File will use the contents of
 	// terminationMessagePath to populate the container status message on both success and failure.
@@ -143,7 +143,7 @@ type Step struct {
 	// Defaults to File.
 	// Cannot be updated.
 	// +optional
-	TerminationMessagePolicy corev1.TerminationMessagePolicy `json:"terminationMessagePolicy,omitempty" protobuf:"bytes,20,opt,name=terminationMessagePolicy,casttype=TerminationMessagePolicy"`
+	DeprecatedTerminationMessagePolicy corev1.TerminationMessagePolicy `json:"terminationMessagePolicy,omitempty" protobuf:"bytes,20,opt,name=terminationMessagePolicy,casttype=TerminationMessagePolicy"`
 	// Image pull policy.
 	// One of Always, Never, IfNotPresent.
 	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
@@ -165,7 +165,7 @@ type Step struct {
 	// is not set, reads from stdin in the container will always result in EOF.
 	// Default is false.
 	// +optional
-	Stdin bool `json:"stdin,omitempty" protobuf:"varint,16,opt,name=stdin"`
+	DeprecatedStdin bool `json:"stdin,omitempty" protobuf:"varint,16,opt,name=stdin"`
 	// Deprecated. This field will be removed in a future release.
 	// Whether the container runtime should close the stdin channel after it has been opened by
 	// a single attach. When stdin is true the stdin stream will remain open across multiple attach
@@ -175,12 +175,12 @@ type Step struct {
 	// flag is false, a container processes that reads from stdin will never receive an EOF.
 	// Default is false
 	// +optional
-	StdinOnce bool `json:"stdinOnce,omitempty" protobuf:"varint,17,opt,name=stdinOnce"`
+	DeprecatedStdinOnce bool `json:"stdinOnce,omitempty" protobuf:"varint,17,opt,name=stdinOnce"`
 	// Deprecated. This field will be removed in a future release.
-	// Whether this container should allocate a TTY for itself, also requires 'stdin' to be true.
+	// Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true.
 	// Default is false.
 	// +optional
-	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
+	DeprecatedTTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
 
 	// Script is the contents of an executable file to execute.
 	//
@@ -219,22 +219,22 @@ func (s *Step) ToK8sContainer() *corev1.Container {
 		Command:                s.Command,
 		Args:                   s.Args,
 		WorkingDir:             s.WorkingDir,
-		Ports:                  s.Ports,
+		Ports:                  s.DeprecatedPorts,
 		EnvFrom:                s.EnvFrom,
 		Env:                    s.Env,
 		Resources:              s.Resources,
 		VolumeMounts:           s.VolumeMounts,
 		VolumeDevices:          s.VolumeDevices,
-		LivenessProbe:          s.LivenessProbe,
-		ReadinessProbe:         s.ReadinessProbe,
-		StartupProbe:           s.StartupProbe,
-		Lifecycle:              s.Lifecycle,
-		TerminationMessagePath: s.TerminationMessagePath,
+		LivenessProbe:          s.DeprecatedLivenessProbe,
+		ReadinessProbe:         s.DeprecatedReadinessProbe,
+		StartupProbe:           s.DeprecatedStartupProbe,
+		Lifecycle:              s.DeprecatedLifecycle,
+		TerminationMessagePath: s.DeprecatedTerminationMessagePath,
 		ImagePullPolicy:        s.ImagePullPolicy,
 		SecurityContext:        s.SecurityContext,
-		Stdin:                  s.Stdin,
-		StdinOnce:              s.StdinOnce,
-		TTY:                    s.TTY,
+		Stdin:                  s.DeprecatedStdin,
+		StdinOnce:              s.DeprecatedStdinOnce,
+		TTY:                    s.DeprecatedTTY,
 	}
 }
 
@@ -245,32 +245,32 @@ func (s *Step) SetContainerFields(c corev1.Container) {
 	s.Command = c.Command
 	s.Args = c.Args
 	s.WorkingDir = c.WorkingDir
-	s.Ports = c.Ports
+	s.DeprecatedPorts = c.Ports
 	s.EnvFrom = c.EnvFrom
 	s.Env = c.Env
 	s.Resources = c.Resources
 	s.VolumeMounts = c.VolumeMounts
 	s.VolumeDevices = c.VolumeDevices
-	s.LivenessProbe = c.LivenessProbe
-	s.ReadinessProbe = c.ReadinessProbe
-	s.StartupProbe = c.StartupProbe
-	s.Lifecycle = c.Lifecycle
-	s.TerminationMessagePath = c.TerminationMessagePath
+	s.DeprecatedLivenessProbe = c.LivenessProbe
+	s.DeprecatedReadinessProbe = c.ReadinessProbe
+	s.DeprecatedStartupProbe = c.StartupProbe
+	s.DeprecatedLifecycle = c.Lifecycle
+	s.DeprecatedTerminationMessagePath = c.TerminationMessagePath
 	s.ImagePullPolicy = c.ImagePullPolicy
 	s.SecurityContext = c.SecurityContext
-	s.Stdin = c.Stdin
-	s.StdinOnce = c.StdinOnce
-	s.TTY = c.TTY
+	s.DeprecatedStdin = c.Stdin
+	s.DeprecatedStdinOnce = c.StdinOnce
+	s.DeprecatedTTY = c.TTY
 }
 
 // StepTemplate is a template for a Step
 type StepTemplate struct {
 
 	// Deprecated. This field will be removed in a future release.
-	// Name of the container specified as a DNS_LABEL.
+	// DeprecatedName of the container specified as a DNS_LABEL.
 	// Each container in a pod must have a unique name (DNS_LABEL).
 	// Cannot be updated.
-	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
+	DeprecatedName string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Docker image name.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
 	// This field is optional to allow higher level config management to default or override
@@ -319,7 +319,7 @@ type StepTemplate struct {
 	// +listType=map
 	// +listMapKey=containerPort
 	// +listMapKey=protocol
-	Ports []corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
+	DeprecatedPorts []corev1.ContainerPort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"containerPort" protobuf:"bytes,6,rep,name=ports"`
 	// List of sources to populate environment variables in the container.
 	// The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 	// will be reported as an event when the container is starting. When a key exists in multiple
@@ -360,16 +360,16 @@ type StepTemplate struct {
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
-	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty" protobuf:"bytes,10,opt,name=livenessProbe"`
+	DeprecatedLivenessProbe *corev1.Probe `json:"livenessProbe,omitempty" protobuf:"bytes,10,opt,name=livenessProbe"`
 	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container service readiness.
 	// Container will be removed from service endpoints if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
-	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty" protobuf:"bytes,11,opt,name=readinessProbe"`
+	DeprecatedReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty" protobuf:"bytes,11,opt,name=readinessProbe"`
 	// Deprecated. This field will be removed in a future release.
-	// StartupProbe indicates that the Pod has successfully initialized.
+	// DeprecatedStartupProbe indicates that the Pod has successfully initialized.
 	// If specified, no other probes are executed until this completes successfully.
 	// If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
 	// This can be used to provide different probe parameters at the beginning of a Pod's lifecycle,
@@ -377,12 +377,12 @@ type StepTemplate struct {
 	// This cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	// +optional
-	StartupProbe *corev1.Probe `json:"startupProbe,omitempty" protobuf:"bytes,22,opt,name=startupProbe"`
+	DeprecatedStartupProbe *corev1.Probe `json:"startupProbe,omitempty" protobuf:"bytes,22,opt,name=startupProbe"`
 	// Deprecated. This field will be removed in a future release.
 	// Actions that the management system should take in response to container lifecycle events.
 	// Cannot be updated.
 	// +optional
-	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty" protobuf:"bytes,12,opt,name=lifecycle"`
+	DeprecatedLifecycle *corev1.Lifecycle `json:"lifecycle,omitempty" protobuf:"bytes,12,opt,name=lifecycle"`
 	// Deprecated. This field will be removed in a future release.
 	// Optional: Path at which the file to which the container's termination message
 	// will be written is mounted into the container's filesystem.
@@ -392,7 +392,7 @@ type StepTemplate struct {
 	// Defaults to /dev/termination-log.
 	// Cannot be updated.
 	// +optional
-	TerminationMessagePath string `json:"terminationMessagePath,omitempty" protobuf:"bytes,13,opt,name=terminationMessagePath"`
+	DeprecatedTerminationMessagePath string `json:"terminationMessagePath,omitempty" protobuf:"bytes,13,opt,name=terminationMessagePath"`
 	// Deprecated. This field will be removed in a future release.
 	// Indicate how the termination message should be populated. File will use the contents of
 	// terminationMessagePath to populate the container status message on both success and failure.
@@ -402,7 +402,7 @@ type StepTemplate struct {
 	// Defaults to File.
 	// Cannot be updated.
 	// +optional
-	TerminationMessagePolicy corev1.TerminationMessagePolicy `json:"terminationMessagePolicy,omitempty" protobuf:"bytes,20,opt,name=terminationMessagePolicy,casttype=TerminationMessagePolicy"`
+	DeprecatedTerminationMessagePolicy corev1.TerminationMessagePolicy `json:"terminationMessagePolicy,omitempty" protobuf:"bytes,20,opt,name=terminationMessagePolicy,casttype=TerminationMessagePolicy"`
 	// Image pull policy.
 	// One of Always, Never, IfNotPresent.
 	// Defaults to Always if :latest tag is specified, or IfNotPresent otherwise.
@@ -424,7 +424,7 @@ type StepTemplate struct {
 	// is not set, reads from stdin in the container will always result in EOF.
 	// Default is false.
 	// +optional
-	Stdin bool `json:"stdin,omitempty" protobuf:"varint,16,opt,name=stdin"`
+	DeprecatedStdin bool `json:"stdin,omitempty" protobuf:"varint,16,opt,name=stdin"`
 	// Deprecated. This field will be removed in a future release.
 	// Whether the container runtime should close the stdin channel after it has been opened by
 	// a single attach. When stdin is true the stdin stream will remain open across multiple attach
@@ -434,63 +434,63 @@ type StepTemplate struct {
 	// flag is false, a container processes that reads from stdin will never receive an EOF.
 	// Default is false
 	// +optional
-	StdinOnce bool `json:"stdinOnce,omitempty" protobuf:"varint,17,opt,name=stdinOnce"`
+	DeprecatedStdinOnce bool `json:"stdinOnce,omitempty" protobuf:"varint,17,opt,name=stdinOnce"`
 	// Deprecated. This field will be removed in a future release.
-	// Whether this container should allocate a TTY for itself, also requires 'stdin' to be true.
+	// Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true.
 	// Default is false.
 	// +optional
-	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
+	DeprecatedTTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
 }
 
 // SetContainerFields sets the fields of the Step to the values of the corresponding fields in the Container
 func (s *StepTemplate) SetContainerFields(c corev1.Container) {
-	s.Name = c.Name
+	s.DeprecatedName = c.Name
 	s.Image = c.Image
 	s.Command = c.Command
 	s.Args = c.Args
 	s.WorkingDir = c.WorkingDir
-	s.Ports = c.Ports
+	s.DeprecatedPorts = c.Ports
 	s.EnvFrom = c.EnvFrom
 	s.Env = c.Env
 	s.Resources = c.Resources
 	s.VolumeMounts = c.VolumeMounts
 	s.VolumeDevices = c.VolumeDevices
-	s.LivenessProbe = c.LivenessProbe
-	s.ReadinessProbe = c.ReadinessProbe
-	s.StartupProbe = c.StartupProbe
-	s.Lifecycle = c.Lifecycle
-	s.TerminationMessagePath = c.TerminationMessagePath
+	s.DeprecatedLivenessProbe = c.LivenessProbe
+	s.DeprecatedReadinessProbe = c.ReadinessProbe
+	s.DeprecatedStartupProbe = c.StartupProbe
+	s.DeprecatedLifecycle = c.Lifecycle
+	s.DeprecatedTerminationMessagePath = c.TerminationMessagePath
 	s.ImagePullPolicy = c.ImagePullPolicy
 	s.SecurityContext = c.SecurityContext
-	s.Stdin = c.Stdin
-	s.StdinOnce = c.StdinOnce
-	s.TTY = c.TTY
+	s.DeprecatedStdin = c.Stdin
+	s.DeprecatedStdinOnce = c.StdinOnce
+	s.DeprecatedTTY = c.TTY
 }
 
 // ToK8sContainer converts the StepTemplate to a Kubernetes Container struct
 func (s *StepTemplate) ToK8sContainer() *corev1.Container {
 	return &corev1.Container{
-		Name:                   s.Name,
+		Name:                   s.DeprecatedName,
 		Image:                  s.Image,
 		Command:                s.Command,
 		Args:                   s.Args,
 		WorkingDir:             s.WorkingDir,
-		Ports:                  s.Ports,
+		Ports:                  s.DeprecatedPorts,
 		EnvFrom:                s.EnvFrom,
 		Env:                    s.Env,
 		Resources:              s.Resources,
 		VolumeMounts:           s.VolumeMounts,
 		VolumeDevices:          s.VolumeDevices,
-		LivenessProbe:          s.LivenessProbe,
-		ReadinessProbe:         s.ReadinessProbe,
-		StartupProbe:           s.StartupProbe,
-		Lifecycle:              s.Lifecycle,
-		TerminationMessagePath: s.TerminationMessagePath,
+		LivenessProbe:          s.DeprecatedLivenessProbe,
+		ReadinessProbe:         s.DeprecatedReadinessProbe,
+		StartupProbe:           s.DeprecatedStartupProbe,
+		Lifecycle:              s.DeprecatedLifecycle,
+		TerminationMessagePath: s.DeprecatedTerminationMessagePath,
 		ImagePullPolicy:        s.ImagePullPolicy,
 		SecurityContext:        s.SecurityContext,
-		Stdin:                  s.Stdin,
-		StdinOnce:              s.StdinOnce,
-		TTY:                    s.TTY,
+		Stdin:                  s.DeprecatedStdin,
+		StdinOnce:              s.DeprecatedStdinOnce,
+		TTY:                    s.DeprecatedTTY,
 	}
 }
 

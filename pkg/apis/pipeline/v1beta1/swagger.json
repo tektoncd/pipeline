@@ -2042,7 +2042,7 @@
           "$ref": "#/definitions/v1.SecurityContext"
         },
         "startupProbe": {
-          "description": "Deprecated. This field will be removed in a future release. StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "description": "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
           "$ref": "#/definitions/v1.Probe"
         },
         "stdin": {
@@ -2066,7 +2066,7 @@
           "$ref": "#/definitions/v1.Duration"
         },
         "tty": {
-          "description": "Deprecated. This field will be removed in a future release. Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+          "description": "Deprecated. This field will be removed in a future release. Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.",
           "type": "boolean"
         },
         "volumeDevices": {
@@ -2195,7 +2195,7 @@
           "$ref": "#/definitions/v1.Probe"
         },
         "name": {
-          "description": "Deprecated. This field will be removed in a future release. Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
+          "description": "Deprecated. This field will be removed in a future release. DeprecatedName of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
           "type": "string",
           "default": ""
         },
@@ -2228,7 +2228,7 @@
           "$ref": "#/definitions/v1.SecurityContext"
         },
         "startupProbe": {
-          "description": "Deprecated. This field will be removed in a future release. StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "description": "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
           "$ref": "#/definitions/v1.Probe"
         },
         "stdin": {
@@ -2248,7 +2248,7 @@
           "type": "string"
         },
         "tty": {
-          "description": "Deprecated. This field will be removed in a future release. Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+          "description": "Deprecated. This field will be removed in a future release. Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.",
           "type": "boolean"
         },
         "volumeDevices": {
