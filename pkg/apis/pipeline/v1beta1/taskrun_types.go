@@ -77,6 +77,8 @@ type TaskRunSpec struct {
 	// +optional
 	// +listType=atomic
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
+	// Compute resources to use for this TaskRun
+	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide

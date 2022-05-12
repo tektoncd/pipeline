@@ -1041,6 +1041,11 @@ func (in *PipelineTaskRunSpec) DeepCopyInto(out *PipelineTaskRunSpec) {
 		*out = new(PipelineTaskMetadata)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ComputeResources != nil {
+		in, out := &in.ComputeResources, &out.ComputeResources
+		*out = new(v1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -1877,6 +1882,11 @@ func (in *TaskRunSpec) DeepCopyInto(out *TaskRunSpec) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.ComputeResources != nil {
+		in, out := &in.ComputeResources, &out.ComputeResources
+		*out = new(v1.ResourceRequirements)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

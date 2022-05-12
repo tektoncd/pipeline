@@ -42,7 +42,10 @@ request will be 6.
 Since the sidecar container has no CPU limit, this is treated as the highest CPU limit.
 Therefore, the pod will have no effective CPU limit.
 
-## Task Resource Requirements
+## Task-level Compute Resources Configuration
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+(This feature is under development and not functional yet. Stay tuned!)
 
 Tekton allows users to specify resource requirements of [`Steps`](./tasks.md#defining-steps),
 which run sequentially. However, the pod's effective resource requirements are still the
@@ -51,6 +54,86 @@ requirements for `Step` containers, they must be treated as if they are running 
 
 Tekton adjusts `Step` resource requirements to comply with [LimitRanges](#limitrange-support).
 [ResourceQuotas](#resourcequota-support) are not currently supported.
+
+Instead of specifying resource requirements on each `Step`, users can choose to specify resource requirements at the Task-level. If users specify a Task-level resource request, it will ensure that the kubelet reserves only that amount of resources to execute the `Task`'s `Steps`.
+If users specify a Task-level resource limit, no `Step` may use more than that amount of resources.
+
+Each of these details is explained in more depth below.
+
+Some points to note:
+
+- Task-level resource requests and limits do not apply to sidecars which can be configured separately.
+- Users may not configure the Task-level and Step-level resource requirements (requests/limits)  simultaneously.
+
+### Configure Task-level Compute Resources
+
+Task-level resource requirements can be configured in `TaskRun.ComputeResources`, or `PipelineRun.TaskRunSpecs.ComputeResources`.
+
+e.g.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: foo 
+spec:
+  computeResources:
+    requests:
+      cpu: 1 
+    limits:
+      cpu: 2
+```
+
+The following TaskRun will be rejected, because it configures both step-level and task-level compute resource requirements:
+
+```yaml
+kind: TaskRun
+spec:
+  stepOverrides:
+    - name: foo
+      resources:
+        requests:
+          cpu: 1
+  computeResources:
+    requests:
+      cpu: 2 
+```
+
+```yaml
+kind: PipelineRun
+spec:
+  taskRunSpecs:
+    - pipelineTaskName: foo
+      stepOverrides:
+        - name: foo 
+          resources:
+            requests:
+              cpu: 1 
+      computeResources:
+        requests:
+          cpu: 2
+```
+
+### Configure Resource Requirements with Sidecar
+
+Users can specify compute resources separately for a sidecar while configuring task-level resource requirements on TaskRun.
+
+e.g.
+
+```yaml
+kind: TaskRun
+spec:
+  sidecarOverrides:
+    - name: sidecar
+      resources:
+        requests:
+          cpu: 750m
+        limits:
+          cpu: 1
+  computeResources:
+    requests:
+      cpu: 2
+```
 
 ## LimitRange Support
 

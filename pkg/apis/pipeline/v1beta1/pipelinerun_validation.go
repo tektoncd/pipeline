@@ -195,6 +195,9 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 		if trs.SidecarOverrides != nil {
 			errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
 		}
+		if trs.ComputeResources != nil {
+			errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepOverrides))
+		}
 	} else {
 		if trs.StepOverrides != nil {
 			errs = errs.Also(apis.ErrDisallowedFields("stepOverrides"))

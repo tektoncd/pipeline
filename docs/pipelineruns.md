@@ -14,6 +14,7 @@ weight: 500
       - [Tekton Bundles](#tekton-bundles)
       - [Remote Pipelines](#remote-pipelines)
     - [Specifying <code>Resources</code>](#specifying-resources)
+    - [Specifying Task-level `ComputeResources`](#specifying-task-level-computeresources)
     - [Specifying <code>Parameters</code>](#specifying-parameters)
       - [Propagated Parameters](#propagated-parameters)
         - [Scope and Precedence](#scope-and-precedence)
@@ -259,6 +260,40 @@ spec:
 **Note:** All `persistentVolumeClaims` specified within a `PipelineRun` are bound
 until their respective `Pods` or the entire `PipelineRun` are deleted. This also applies
 to all `persistentVolumeClaims` generated internally.
+
+### Specifying Task-level `ComputeResources`
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+(This feature is under development and not functional yet. Stay tuned!)
+
+Task-level compute resources can be configured in `PipelineRun.TaskRunSpecs.ComputeResources` or `TaskRun.ComputeResources`.
+
+e.g.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline
+spec:
+  tasks:
+    - name: task
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun 
+spec:
+  pipelineRef:
+    name: pipeline
+  taskRunSpecs:
+    - pipelineTaskName: task
+      computeResources:
+        requests:
+          cpu: 2
+```
+
+Further details and examples could be found in [Compute Resources in Tekton](https://github.com/tektoncd/pipeline/blob/main/docs/compute-resources.md).
 
 ### Specifying `Parameters`
 

@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
@@ -66,6 +67,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ts.StepOverrides != nil {
 		errs = errs.Also(ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
 		errs = errs.Also(validateStepOverrides(ts.StepOverrides).ViaField("stepOverrides"))
+		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepOverrides))
 	}
 	if ts.SidecarOverrides != nil {
 		errs = errs.Also(ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
@@ -136,6 +138,19 @@ func validateStepOverrides(overrides []TaskRunStepOverride) (errs *apis.FieldErr
 	}
 	errs = errs.Also(validateNoDuplicateNames(names, true))
 	return errs
+}
+
+// validateTaskRunComputeResources ensures that compute resources are not configured at both the step level and the task level
+func validateTaskRunComputeResources(computeResources *corev1.ResourceRequirements, overrides []TaskRunStepOverride) (errs *apis.FieldError) {
+	for _, override := range overrides {
+		if override.Resources.Size() != 0 && computeResources != nil {
+			return apis.ErrMultipleOneOf(
+				"stepOverrides.resources",
+				"computeResources",
+			)
+		}
+	}
+	return nil
 }
 
 func validateSidecarOverrides(overrides []TaskRunSidecarOverride) (errs *apis.FieldError) {
