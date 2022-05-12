@@ -273,7 +273,7 @@ func (ue *unopposedElector) Run(ctx context.Context) {
 
 func (ue *unopposedElector) InitialBuckets() []reconciler.Bucket {
 	return []reconciler.Bucket{
-		reconciler.UniversalBucket(),
+		ue.bkt,
 	}
 }
 

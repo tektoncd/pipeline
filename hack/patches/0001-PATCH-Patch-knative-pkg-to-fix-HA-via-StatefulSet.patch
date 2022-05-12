@@ -1,0 +1,34 @@
+From 053e194e6c5dee6545cb25f3b6c22096924a1e30 Mon Sep 17 00:00:00 2001
+From: Andrea Frittoli <andrea.frittoli@uk.ibm.com>
+Date: Thu, 12 May 2022 11:23:31 +0100
+Subject: [PATCH] [PATCH] Patch knative/pkg to fix HA via StatefulSet
+
+Tekton uses a version of knative/pkg in between a regression on
+the HA via StatefulSet and its fix. Cherry-pick the patch for
+a minor release. We shall pick-up a newer version of knative/pkg
+for the next major release instead.
+
+Original Knative PR: https://github.com/knative/pkg/pull/2483
+Tekton Issue: https://github.com/tektoncd/pipeline/issues/3404
+
+Signed-off-by: Andrea Frittoli <andrea.frittoli@uk.ibm.com>
+---
+ vendor/knative.dev/pkg/leaderelection/context.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/vendor/knative.dev/pkg/leaderelection/context.go b/vendor/knative.dev/pkg/leaderelection/context.go
+index 9e4a91822..f52733ea3 100644
+--- a/vendor/knative.dev/pkg/leaderelection/context.go
++++ b/vendor/knative.dev/pkg/leaderelection/context.go
+@@ -273,7 +273,7 @@ func (ue *unopposedElector) Run(ctx context.Context) {
+ 
+ func (ue *unopposedElector) InitialBuckets() []reconciler.Bucket {
+ 	return []reconciler.Bucket{
+-		reconciler.UniversalBucket(),
++		ue.bkt,
+ 	}
+ }
+ 
+-- 
+2.29.2
+
