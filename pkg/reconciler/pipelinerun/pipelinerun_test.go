@@ -7523,3 +7523,117 @@ func checkPipelineRunConditionStatusAndReason(t *testing.T, reconciledRun *v1bet
 		t.Errorf("Expected reason %s but was %s", conditionReason, condition.Reason)
 	}
 }
+
+func TestGetTaskrunWorkspaces_Failure(t *testing.T) {
+	tests := []struct {
+		name          string
+		pr            *v1beta1.PipelineRun
+		rprt          *resources.ResolvedPipelineRunTask
+		expectedError string
+	}{{
+		name: "failure declaring workspace with different name",
+		pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source`),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "resolved-pipelinetask",
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+					Name:      "my-task-workspace",
+					Workspace: "not-source",
+				}},
+			},
+		},
+		expectedError: `expected workspace "not-source" to be provided by pipelinerun for pipeline task "resolved-pipelinetask"`,
+	},
+		{
+			name: "failure mapping workspace with different name",
+			pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source
+ `),
+			rprt: &resources.ResolvedPipelineRunTask{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "resolved-pipelinetask",
+					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+						Name:      "not-source",
+						Workspace: "",
+					}},
+				},
+			},
+			expectedError: `expected workspace "not-source" to be provided by pipelinerun for pipeline task "resolved-pipelinetask"`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
+
+			if err == nil {
+				t.Errorf("Pipeline.getTaskrunWorkspaces() did not return error for invalid workspace")
+			} else if d := cmp.Diff(tt.expectedError, err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Pipeline.getTaskrunWorkspaces() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+
+}
+
+func TestGetTaskrunWorkspaces_Success(t *testing.T) {
+	tests := []struct {
+		name string
+		pr   *v1beta1.PipelineRun
+		rprt *resources.ResolvedPipelineRunTask
+	}{{
+		name: "valid declaration of workspace names",
+		pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source`),
+		rprt: &resources.ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "resolved-pipelinetask",
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+					Name:      "my-task-workspace",
+					Workspace: "source",
+				}},
+			},
+		},
+	},
+		{
+			name: "valid mapping with same workspace names",
+			pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source`),
+			rprt: &resources.ResolvedPipelineRunTask{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "resolved-pipelinetask",
+					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+						Name:      "source",
+						Workspace: "",
+					}},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
+
+			if err != nil {
+				t.Errorf("Pipeline.getTaskrunWorkspaces() returned error for valid pipeline: %v", err)
+			}
+		})
+	}
+
+}

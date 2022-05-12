@@ -1701,21 +1701,41 @@ func TestValidatePipelineWorkspacesDeclarations_Success(t *testing.T) {
 }
 
 func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
-	desc := "unused pipeline spec workspaces do not cause an error"
-	workspaces := []PipelineWorkspaceDeclaration{{
-		Name: "foo",
+	tests := []struct {
+		name       string
+		workspaces []PipelineWorkspaceDeclaration
+		tasks      []PipelineTask
+	}{{
+		name: "unused pipeline spec workspaces do not cause an error",
+		workspaces: []PipelineWorkspaceDeclaration{{
+			Name: "foo",
+		}, {
+			Name: "bar",
+		}},
+		tasks: []PipelineTask{{
+			Name: "foo", TaskRef: &TaskRef{Name: "foo"},
+		}},
 	}, {
-		Name: "bar",
+		name: "valid mapping pipeline-task workspace name with pipeline workspace name",
+		workspaces: []PipelineWorkspaceDeclaration{{
+			Name: "pipelineWorkspaceName",
+		}},
+		tasks: []PipelineTask{{
+			Name: "foo", TaskRef: &TaskRef{Name: "foo"},
+			Workspaces: []WorkspacePipelineTaskBinding{{
+				Name:      "pipelineWorkspaceName",
+				Workspace: "",
+			}},
+		}},
 	}}
-	tasks := []PipelineTask{{
-		Name: "foo", TaskRef: &TaskRef{Name: "foo"},
-	}}
-	t.Run(desc, func(t *testing.T) {
-		err := validatePipelineWorkspacesUsage(workspaces, tasks)
-		if err != nil {
-			t.Errorf("Pipeline.validatePipelineWorkspacesUsage() returned error for valid pipeline workspaces: %v", err)
-		}
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := validatePipelineWorkspacesUsage(tt.workspaces, tt.tasks).ViaField("tasks")
+			if errs != nil {
+				t.Errorf("Pipeline.validatePipelineWorkspacesUsage() returned error for valid pipeline workspaces: %v", errs)
+			}
+		})
+	}
 }
 
 func TestValidatePipelineWorkspacesDeclarations_Failure(t *testing.T) {
@@ -1784,6 +1804,22 @@ func TestValidatePipelineWorkspacesUsage_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `invalid value: pipeline task "foo" expects workspace with name "pipelineWorkspaceName" but none exists in pipeline spec`,
+			Paths:   []string{"tasks[0].workspaces[0]"},
+		},
+	}, {
+		name: "invalid mapping workspace with different name",
+		workspaces: []PipelineWorkspaceDeclaration{{
+			Name: "pipelineWorkspaceName",
+		}},
+		tasks: []PipelineTask{{
+			Name: "foo", TaskRef: &TaskRef{Name: "foo"},
+			Workspaces: []WorkspacePipelineTaskBinding{{
+				Name:      "taskWorkspaceName",
+				Workspace: "",
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: pipeline task "foo" expects workspace with name "taskWorkspaceName" but none exists in pipeline spec`,
 			Paths:   []string{"tasks[0].workspaces[0]"},
 		},
 	}}

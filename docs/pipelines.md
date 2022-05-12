@@ -6,8 +6,9 @@ weight: 400
 -->
 # Pipelines
 
-- [Overview](#pipelines)
-- [Configuring a `Pipeline`](#configuring-a-pipeline)
+- [Pipelines](#pipelines)
+  - [Overview](#overview)
+  - [Configuring a `Pipeline`](#configuring-a-pipeline)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Parameters`](#specifying-parameters)
@@ -177,10 +178,38 @@ spec:
           workspace: pipeline-ws1
 ```
 
+For simplicity you can also map the name of the `Workspace` in `PipelineTask` to match with 
+the `Workspace` from the `Pipeline`.
+For example:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source
+  tasks:
+    - name: gen-code
+      taskRef:
+        name: gen-code # gen-code expects a Workspace named "source"
+      workspaces:
+        - name: source # <- mapping workspace name 
+    - name: commit
+      taskRef:
+        name: commit # commit expects a Workspace named "source"
+      workspaces:
+        - name: source # <- mapping workspace name 
+      runAfter:
+        - gen-code
+```
+
 For more information, see:
 - [Using `Workspaces` in `Pipelines`](workspaces.md#using-workspaces-in-pipelines)
 - The [`Workspaces` in a `PipelineRun`](../examples/v1beta1/pipelineruns/workspaces.yaml) code example
 - The [variables available in a `PipelineRun`](variables.md#variables-available-in-a-pipeline), including `workspaces.<name>.bound`.
+- [Mapping `Workspaces`](https://github.com/tektoncd/community/blob/main/teps/0108-mapping-workspaces.md)
 
 ## Specifying `Parameters`
 

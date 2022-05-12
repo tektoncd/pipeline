@@ -105,7 +105,8 @@ type WorkspacePipelineTaskBinding struct {
 	// Name is the name of the workspace as declared by the task
 	Name string `json:"name"`
 	// Workspace is the name of the workspace declared by the pipeline
-	Workspace string `json:"workspace"`
+	// +optional
+	Workspace string `json:"workspace,omitempty"`
 	// SubPath is optionally a directory on the volume which should be used
 	// for this binding (i.e. the volume will be mounted at this sub directory).
 	// +optional
