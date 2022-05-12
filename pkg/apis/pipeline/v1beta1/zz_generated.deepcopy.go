@@ -1465,8 +1465,8 @@ func (in *Step) DeepCopyInto(out *Step) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Ports != nil {
-		in, out := &in.Ports, &out.Ports
+	if in.DeprecatedPorts != nil {
+		in, out := &in.DeprecatedPorts, &out.DeprecatedPorts
 		*out = make([]v1.ContainerPort, len(*in))
 		copy(*out, *in)
 	}
@@ -1497,23 +1497,23 @@ func (in *Step) DeepCopyInto(out *Step) {
 		*out = make([]v1.VolumeDevice, len(*in))
 		copy(*out, *in)
 	}
-	if in.LivenessProbe != nil {
-		in, out := &in.LivenessProbe, &out.LivenessProbe
+	if in.DeprecatedLivenessProbe != nil {
+		in, out := &in.DeprecatedLivenessProbe, &out.DeprecatedLivenessProbe
 		*out = new(v1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ReadinessProbe != nil {
-		in, out := &in.ReadinessProbe, &out.ReadinessProbe
+	if in.DeprecatedReadinessProbe != nil {
+		in, out := &in.DeprecatedReadinessProbe, &out.DeprecatedReadinessProbe
 		*out = new(v1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.StartupProbe != nil {
-		in, out := &in.StartupProbe, &out.StartupProbe
+	if in.DeprecatedStartupProbe != nil {
+		in, out := &in.DeprecatedStartupProbe, &out.DeprecatedStartupProbe
 		*out = new(v1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Lifecycle != nil {
-		in, out := &in.Lifecycle, &out.Lifecycle
+	if in.DeprecatedLifecycle != nil {
+		in, out := &in.DeprecatedLifecycle, &out.DeprecatedLifecycle
 		*out = new(v1.Lifecycle)
 		(*in).DeepCopyInto(*out)
 	}
@@ -1575,8 +1575,8 @@ func (in *StepTemplate) DeepCopyInto(out *StepTemplate) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Ports != nil {
-		in, out := &in.Ports, &out.Ports
+	if in.DeprecatedPorts != nil {
+		in, out := &in.DeprecatedPorts, &out.DeprecatedPorts
 		*out = make([]v1.ContainerPort, len(*in))
 		copy(*out, *in)
 	}
@@ -1607,23 +1607,23 @@ func (in *StepTemplate) DeepCopyInto(out *StepTemplate) {
 		*out = make([]v1.VolumeDevice, len(*in))
 		copy(*out, *in)
 	}
-	if in.LivenessProbe != nil {
-		in, out := &in.LivenessProbe, &out.LivenessProbe
+	if in.DeprecatedLivenessProbe != nil {
+		in, out := &in.DeprecatedLivenessProbe, &out.DeprecatedLivenessProbe
 		*out = new(v1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.ReadinessProbe != nil {
-		in, out := &in.ReadinessProbe, &out.ReadinessProbe
+	if in.DeprecatedReadinessProbe != nil {
+		in, out := &in.DeprecatedReadinessProbe, &out.DeprecatedReadinessProbe
 		*out = new(v1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.StartupProbe != nil {
-		in, out := &in.StartupProbe, &out.StartupProbe
+	if in.DeprecatedStartupProbe != nil {
+		in, out := &in.DeprecatedStartupProbe, &out.DeprecatedStartupProbe
 		*out = new(v1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
-	if in.Lifecycle != nil {
-		in, out := &in.Lifecycle, &out.Lifecycle
+	if in.DeprecatedLifecycle != nil {
+		in, out := &in.DeprecatedLifecycle, &out.DeprecatedLifecycle
 		*out = new(v1.Lifecycle)
 		(*in).DeepCopyInto(*out)
 	}

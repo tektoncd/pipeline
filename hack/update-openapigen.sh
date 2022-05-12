@@ -41,7 +41,7 @@ go run k8s.io/kube-openapi/cmd/openapi-gen \
     --go-header-file hack/boilerplate/boilerplate.go.txt \
     -r "${TMP_DIFFROOT}/api-report"
 
-violations=$(diff --changed-group-format='%>' --unchanged-group-format='' "hack/ignored-openapi-violations.list" "${TMP_DIFFROOT}/api-report" || echo "")
+violations=$(diff --changed-group-format='%>' --unchanged-group-format='' <(sort "hack/ignored-openapi-violations.list") <(sort "${TMP_DIFFROOT}/api-report") || echo "")
 if [ -n "${violations}" ]; then
   echo ""
   echo "New API rule violations found which are not present in hack/ignored-openapi-violations.list. Please fix these violations:"
