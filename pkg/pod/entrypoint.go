@@ -213,6 +213,11 @@ func init() {
 // UpdateReady updates the Pod's annotations to signal the first step to start
 // by projecting the ready annotation via the Downward API.
 func UpdateReady(ctx context.Context, kubeclient kubernetes.Interface, pod corev1.Pod) error {
+	// Don't PATCH if the annotation is already Ready.
+	if pod.Annotations[readyAnnotation] == readyAnnotationValue {
+		return nil
+	}
+
 	// PATCH the Pod's annotations to replace the ready annotation with the
 	// "READY" value, to signal the first step to start.
 	_, err := kubeclient.CoreV1().Pods(pod.Namespace).Patch(ctx, pod.Name, types.JSONPatchType, replaceReadyPatchBytes, metav1.PatchOptions{})
