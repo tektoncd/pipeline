@@ -3095,8 +3095,7 @@
       "description": "WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be mapped to a task's declared workspace.",
       "type": "object",
       "required": [
-        "name",
-        "workspace"
+        "name"
       ],
       "properties": {
         "name": {
@@ -3110,8 +3109,7 @@
         },
         "workspace": {
           "description": "Workspace is the name of the workspace declared by the pipeline",
-          "type": "string",
-          "default": ""
+          "type": "string"
         }
       }
     },

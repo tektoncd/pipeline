@@ -5597,7 +5597,6 @@ func schema_pkg_apis_pipeline_v1beta1_WorkspacePipelineTaskBinding(ref common.Re
 					"workspace": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Workspace is the name of the workspace declared by the pipeline",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5610,7 +5609,7 @@ func schema_pkg_apis_pipeline_v1beta1_WorkspacePipelineTaskBinding(ref common.Re
 						},
 					},
 				},
-				Required: []string{"name", "workspace"},
+				Required: []string{"name"},
 			},
 		},
 	}

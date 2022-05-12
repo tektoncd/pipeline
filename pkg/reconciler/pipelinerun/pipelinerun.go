@@ -888,9 +888,16 @@ func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipel
 	}
 	for _, ws := range rprt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
-		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspaceName]; hasBinding {
+
+		pipelineWorkspace := pipelineWorkspaceName
+
+		if pipelineWorkspaceName == "" {
+			pipelineWorkspace = taskWorkspaceName
+		}
+
+		if b, hasBinding := pipelineRunWorkspaces[pipelineWorkspace]; hasBinding {
 			if b.PersistentVolumeClaim != nil || b.VolumeClaimTemplate != nil {
-				pipelinePVCWorkspaceName = pipelineWorkspaceName
+				pipelinePVCWorkspaceName = pipelineWorkspace
 			}
 			workspaces = append(workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, *kmeta.NewControllerRef(pr)))
 		} else {
@@ -904,9 +911,10 @@ func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipel
 				}
 			}
 			if !workspaceIsOptional {
-				return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspaceName, rprt.PipelineTask.Name)
+				return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspace, rprt.PipelineTask.Name)
 			}
 		}
+
 	}
 	return workspaces, pipelinePVCWorkspaceName, nil
 }

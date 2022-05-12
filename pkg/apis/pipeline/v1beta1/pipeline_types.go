@@ -406,7 +406,14 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 
 func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *apis.FieldError) {
 	for i, ws := range pt.Workspaces {
-		if !workspaceNames.Has(ws.Workspace) {
+		if ws.Workspace == "" {
+			if !workspaceNames.Has(ws.Name) {
+				errs = errs.Also(apis.ErrInvalidValue(
+					fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", pt.Name, ws.Name),
+					"",
+				).ViaFieldIndex("workspaces", i))
+			}
+		} else if !workspaceNames.Has(ws.Workspace) {
 			errs = errs.Also(apis.ErrInvalidValue(
 				fmt.Sprintf("pipeline task %q expects workspace with name %q but none exists in pipeline spec", pt.Name, ws.Workspace),
 				"",
