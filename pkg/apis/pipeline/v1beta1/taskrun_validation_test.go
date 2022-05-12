@@ -515,7 +515,31 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrMissingField("sidecarOverrides[0].name"),
 		wc:      enableAlphaAPIFields,
+	}, {
+		name: "invalid both step-level (stepOverrides.resources) and task-level (spec.computeResources) resource requirements",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			StepOverrides: []v1beta1.TaskRunStepOverride{{
+				Name: "stepOverride",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: corev1resources.MustParse("1Gi"),
+					},
+				},
+			}},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf(
+			"stepOverrides.resources",
+			"computeResources",
+		),
+		wc: enableAlphaAPIFields,
 	}}
+
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -534,6 +558,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 	tests := []struct {
 		name string
 		spec v1beta1.TaskRunSpec
+		wc   func(context.Context) context.Context
 	}{{
 		name: "taskspec without a taskRef",
 		spec: v1beta1.TaskRunSpec{
@@ -581,10 +606,45 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid task-level (spec.resources) resource requirements",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
+				},
+			},
+		},
+		wc: enableAlphaAPIFields,
+	}, {
+		name: "valid sidecar and task-level (spec.resources) resource requirements",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
+				},
+			},
+			SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+				Name: "sidecar",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: corev1resources.MustParse("4Gi"),
+					},
+				},
+			}},
+		},
+		wc: enableAlphaAPIFields,
 	}}
+
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			if err := ts.spec.Validate(context.Background()); err != nil {
+			ctx := context.Background()
+			if ts.wc != nil {
+				ctx = ts.wc(ctx)
+			}
+			if err := ts.spec.Validate(ctx); err != nil {
 				t.Error(err)
 			}
 		})

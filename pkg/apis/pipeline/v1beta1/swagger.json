@@ -1394,6 +1394,10 @@
       "description": "PipelineTaskRunSpec  can be used to configure specific specs for a concrete Task",
       "type": "object",
       "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "metadata": {
           "$ref": "#/definitions/v1beta1.PipelineTaskMetadata"
         },
@@ -2433,6 +2437,10 @@
       "description": "TaskRunSpec defines the desired state of TaskRun",
       "type": "object",
       "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "debug": {
           "$ref": "#/definitions/v1beta1.TaskRunDebug"
         },

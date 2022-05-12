@@ -18,6 +18,7 @@ weight: 300
     - [Extra Parameters](#extra-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Resource` limits](#specifying-resource-limits)
+  - [Specifying Task-level `ComputeResources`](#specifying-task-level-computeresources)
   - [Specifying a `Pod` template](#specifying-a-pod-template)
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Sidecars`](#specifying-sidecars)
@@ -322,6 +323,40 @@ spec:
 Each Step in a Task can specify its resource requirements. See
 [Defining `Steps`](tasks.md#defining-steps). Resource requirements defined in Steps and Sidecars
 may be overridden by a TaskRun's StepOverrides and SidecarOverrides.
+
+### Specifying Task-level `ComputeResources`
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+(This feature is under development and not functional yet. Stay tuned!)
+
+Task-level compute resources can be configured in `TaskRun.ComputeResources`, or `PipelineRun.TaskRunSpecs.ComputeResources`.
+
+e.g.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: task
+spec:
+  steps:
+    - name: foo
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: taskrun 
+spec:
+  taskRef:
+    name: task
+  computeResources:
+    requests:
+      cpu: 1 
+    limits:
+      cpu: 2
+```
+
+Further details and examples could be found in [Compute Resources in Tekton](https://github.com/tektoncd/pipeline/blob/main/docs/compute-resources.md).
 
 ### Specifying a `Pod` template
 

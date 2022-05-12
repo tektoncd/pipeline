@@ -610,7 +610,32 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr:     apis.ErrMissingField("taskRunSpecs[0].sidecarOverrides[0].name"),
 		withContext: enableAlphaAPIFields,
+	}, {
+		name: "invalid both step-level (stepOverrides.resources) and task-level (taskRunSpecs.resources) resource requirements configured",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "pipeline"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "pipelineTask",
+					StepOverrides: []v1beta1.TaskRunStepOverride{{
+						Name: "stepOverride",
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+						}},
+					},
+					ComputeResources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+					},
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf(
+			"taskRunSpecs[0].stepOverrides.resources",
+			"taskRunSpecs[0].computeResources",
+		),
+		withContext: enableAlphaAPIFields,
 	}}
+
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -627,8 +652,9 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 
 func TestPipelineRunSpec_Validate(t *testing.T) {
 	tests := []struct {
-		name string
-		spec v1beta1.PipelineRunSpec
+		name        string
+		spec        v1beta1.PipelineRunSpec
+		withContext func(context.Context) context.Context
 	}{{
 		name: "PipelineRun without pipelineRef",
 		spec: v1beta1.PipelineRunSpec{
@@ -641,10 +667,53 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "valid task-level (taskRunSpecs.resources) resource requirements configured",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "pipeline"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+				PipelineTaskName: "pipelineTask",
+				StepOverrides: []v1beta1.TaskRunStepOverride{{
+					Name: "stepOverride",
+				}},
+				ComputeResources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+				},
+			}},
+		},
+		withContext: enableAlphaAPIFields,
+	}, {
+		name: "valid sidecar and task-level (taskRunSpecs.resources) resource requirements configured",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "pipeline"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
+				PipelineTaskName: "pipelineTask",
+				StepOverrides: []v1beta1.TaskRunStepOverride{{
+					Name: "stepOverride",
+				}},
+				ComputeResources: &corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+				},
+				SidecarOverrides: []v1beta1.TaskRunSidecarOverride{{
+					Name: "sidecar",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceMemory: corev1resources.MustParse("4Gi"),
+						},
+					},
+				}},
+			}},
+		},
+		withContext: enableAlphaAPIFields,
 	}}
+
 	for _, ps := range tests {
 		t.Run(ps.name, func(t *testing.T) {
-			if err := ps.spec.Validate(context.Background()); err != nil {
+			ctx := context.Background()
+			if ps.withContext != nil {
+				ctx = ps.withContext(ctx)
+			}
+			if err := ps.spec.Validate(ctx); err != nil {
 				t.Error(err)
 			}
 		})
