@@ -435,14 +435,20 @@ func TestUpdateReady(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
+			patchCalled := false
 			kubeclient.PrependReactor("patch", "pods", func(a k8stesting.Action) (bool, runtime.Object, error) {
 				if !c.wantPatch {
 					t.Fatal("Pod was patched unexpectedly")
 				}
+				patchCalled = true
 				return false, nil, nil
 			})
 			if err := UpdateReady(ctx, kubeclient, c.pod); (err != nil) != c.wantErr {
 				t.Errorf("UpdateReady (wantErr=%t): %v", c.wantErr, err)
+			}
+
+			if c.wantPatch && !patchCalled {
+				t.Fatal("Pod was not patched")
 			}
 
 			got, err := kubeclient.CoreV1().Pods(c.pod.Namespace).Get(ctx, c.pod.Name, metav1.GetOptions{})
