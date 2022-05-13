@@ -1349,7 +1349,8 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validatePipelineParameterVariables(tt.tasks, tt.params)
+			ctx := context.Background()
+			err := validatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err != nil {
 				t.Errorf("Pipeline.validatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)
 			}
@@ -1487,7 +1488,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `invalid value: invalidtype`,
-			Paths:   []string{"params[foo].type"},
+			Paths:   []string{"params.foo.type"},
 		},
 	}, {
 		name: "array parameter mismatching default type",
@@ -1500,7 +1501,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `"array" type does not match default value's type: "string"`,
-			Paths:   []string{"params[foo].default.type", "params[foo].type"},
+			Paths:   []string{"params.foo.default.type", "params.foo.type"},
 		},
 	}, {
 		name: "string parameter mismatching default type",
@@ -1513,7 +1514,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params[foo].default.type", "params[foo].type"},
+			Paths:   []string{"params.foo.default.type", "params.foo.type"},
 		},
 	}, {
 		name: "array parameter used as string",
@@ -1529,7 +1530,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params[baz].default.type", "params[baz].type"},
+			Paths:   []string{"params.baz.default.type", "params.baz.type"},
 		},
 	}, {
 		name: "star array parameter used as string",
@@ -1545,7 +1546,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params[baz].default.type", "params[baz].type"},
+			Paths:   []string{"params.baz.default.type", "params.baz.type"},
 		},
 	}, {
 		name: "array parameter string template not isolated",
@@ -1561,7 +1562,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params[baz].default.type", "params[baz].type"},
+			Paths:   []string{"params.baz.default.type", "params.baz.type"},
 		},
 	}, {
 		name: "star array parameter string template not isolated",
@@ -1577,7 +1578,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `"string" type does not match default value's type: "array"`,
-			Paths:   []string{"params[baz].default.type", "params[baz].type"},
+			Paths:   []string{"params.baz.default.type", "params.baz.type"},
 		},
 	}, {
 		name: "multiple string parameters with the same name",
@@ -1674,7 +1675,8 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validatePipelineParameterVariables(tt.tasks, tt.params)
+			ctx := context.Background()
+			err := validatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err == nil {
 				t.Errorf("Pipeline.validatePipelineParameterVariables() did not return error for invalid pipeline parameters")
 			}

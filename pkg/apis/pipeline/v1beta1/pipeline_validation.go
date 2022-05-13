@@ -59,8 +59,8 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateGraph(ps.Tasks))
 	errs = errs.Also(validateParamResults(ps.Tasks))
 	// The parameter variables should be valid
-	errs = errs.Also(validatePipelineParameterVariables(ps.Tasks, ps.Params).ViaField("tasks"))
-	errs = errs.Also(validatePipelineParameterVariables(ps.Finally, ps.Params).ViaField("finally"))
+	errs = errs.Also(validatePipelineParameterVariables(ctx, ps.Tasks, ps.Params).ViaField("tasks"))
+	errs = errs.Also(validatePipelineParameterVariables(ctx, ps.Finally, ps.Params).ViaField("finally"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
@@ -125,28 +125,14 @@ func validatePipelineWorkspacesUsage(wss []PipelineWorkspaceDeclaration, pts []P
 // validatePipelineParameterVariables validates parameters with those specified by each pipeline task,
 // (1) it validates the type of parameter is either string or array (2) parameter default value matches
 // with the type of that param (3) ensures that the referenced param variable is defined is part of the param declarations
-func validatePipelineParameterVariables(tasks []PipelineTask, params []ParamSpec) (errs *apis.FieldError) {
+func validatePipelineParameterVariables(ctx context.Context, tasks []PipelineTask, params []ParamSpec) (errs *apis.FieldError) {
 	parameterNames := sets.NewString()
 	arrayParameterNames := sets.NewString()
 
+	// validates all the types within a slice of ParamSpecs
+	errs = errs.Also(ValidateParameterTypes(ctx, params).ViaField("params"))
+
 	for _, p := range params {
-		// Verify that p is a valid type.
-		validType := false
-		for _, allowedType := range AllParamTypes {
-			if p.Type == allowedType {
-				validType = true
-			}
-		}
-		if !validType {
-			errs = errs.Also(apis.ErrInvalidValue(string(p.Type), "type").ViaFieldKey("params", p.Name))
-		}
-
-		// If a default value is provided, ensure its type matches param's declared type.
-		if (p.Default != nil) && (p.Default.Type != p.Type) {
-			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("\"%v\" type does not match default value's type: \"%v\"", p.Type, p.Default.Type),
-				"type", "default.type").ViaFieldKey("params", p.Name))
-		}
-
 		if parameterNames.Has(p.Name) {
 			errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", p.Name))
 		}
