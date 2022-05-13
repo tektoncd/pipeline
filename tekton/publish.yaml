@@ -119,8 +119,6 @@ spec:
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
-    - name: GO111MODULE
-      value: "off"
     - name: GOFLAGS
       value: "-mod=vendor"
     script: |
