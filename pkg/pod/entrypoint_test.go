@@ -27,7 +27,9 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
 
 var volumeMount = corev1.VolumeMount{
@@ -353,6 +355,7 @@ func TestUpdateReady(t *testing.T) {
 		pod             corev1.Pod
 		wantAnnotations map[string]string
 		wantErr         bool
+		wantPatch       bool // Whether we expect PATCH to be called on the pod.
 	}{{
 		desc: "Pod without any annotations fails",
 		pod: corev1.Pod{
@@ -361,7 +364,8 @@ func TestUpdateReady(t *testing.T) {
 				Annotations: nil,
 			},
 		},
-		wantErr: true, // Nothing to replace.
+		wantErr:   true, // Nothing to replace.
+		wantPatch: true,
 	}, {
 		desc: "Pod without ready annotation adds it",
 		pod: corev1.Pod{
@@ -376,6 +380,7 @@ func TestUpdateReady(t *testing.T) {
 			"something":     "else",
 			readyAnnotation: "READY",
 		},
+		wantPatch: true,
 	}, {
 		desc: "Pod with empty annotation value has it replaced",
 		pod: corev1.Pod{
@@ -391,6 +396,7 @@ func TestUpdateReady(t *testing.T) {
 			"something":     "else",
 			readyAnnotation: readyAnnotationValue,
 		},
+		wantPatch: true,
 	}, {
 		desc: "Pod with other annotation value has it replaced",
 		pod: corev1.Pod{
@@ -406,12 +412,35 @@ func TestUpdateReady(t *testing.T) {
 			"something":     "else",
 			readyAnnotation: readyAnnotationValue,
 		},
+		wantPatch: true,
+	}, {
+		desc: "Pod with READY annotation already set isn't patched",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pod",
+				Annotations: map[string]string{
+					"something":     "else",
+					readyAnnotation: readyAnnotationValue,
+				},
+			},
+		},
+		wantAnnotations: map[string]string{
+			"something":     "else",
+			readyAnnotation: readyAnnotationValue,
+		},
+		wantPatch: false,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			kubeclient := fakek8s.NewSimpleClientset(&c.pod)
+			kubeclient.PrependReactor("patch", "pods", func(a k8stesting.Action) (bool, runtime.Object, error) {
+				if !c.wantPatch {
+					t.Fatal("Pod was patched unexpectedly")
+				}
+				return false, nil, nil
+			})
 			if err := UpdateReady(ctx, kubeclient, c.pod); (err != nil) != c.wantErr {
 				t.Errorf("UpdateReady (wantErr=%t): %v", c.wantErr, err)
 			}
