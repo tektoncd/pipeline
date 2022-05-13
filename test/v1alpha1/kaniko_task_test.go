@@ -193,7 +193,7 @@ metadata:
 spec:
   taskRef:
     name: %s
-  timeout: 2m
+  timeout: 5m
   inputs:
     resources:
     - name: gitsource
