@@ -45,6 +45,7 @@ spec:
   names:
     kind: Condition
     plural: conditions
+    singular: condition
     categories:
       - tekton
       - tekton-pipelines

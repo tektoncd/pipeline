@@ -64,6 +64,7 @@ spec:
   names:
     kind: Pipeline
     plural: pipelines
+    singular: pipeline
     categories:
     - tekton
     - tekton-pipelines

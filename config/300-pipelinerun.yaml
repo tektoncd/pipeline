@@ -90,6 +90,7 @@ spec:
   names:
     kind: PipelineRun
     plural: pipelineruns
+    singular: pipelineruns
     categories:
     - tekton
     - tekton-pipelines

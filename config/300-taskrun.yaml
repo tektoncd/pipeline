@@ -90,6 +90,7 @@ spec:
   names:
     kind: TaskRun
     plural: taskruns
+    singular: taskrun
     categories:
     - tekton
     - tekton-pipelines
