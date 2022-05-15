@@ -59,6 +59,7 @@ spec:
   names:
     kind: Run
     plural: runs
+    singular: run
     categories:
     - tekton
     - tekton-pipelines

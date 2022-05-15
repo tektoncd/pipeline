@@ -64,6 +64,7 @@ spec:
   names:
     kind: ClusterTask
     plural: clustertasks
+    singular: clustertask
     categories:
     - tekton
     - tekton-pipelines

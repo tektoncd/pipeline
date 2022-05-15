@@ -45,6 +45,7 @@ spec:
   names:
     kind: PipelineResource
     plural: pipelineresources
+    singular: pipelineresource
     categories:
     - tekton
     - tekton-pipelines
