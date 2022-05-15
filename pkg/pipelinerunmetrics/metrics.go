@@ -255,7 +255,7 @@ func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun) error {
 // returns an error if its failed to log the metrics
 func (r *Recorder) RunningPipelineRuns(lister listers.PipelineRunLister) error {
 	r.mutex.Lock()
-	r.mutex.Unlock()
+	defer r.mutex.Unlock()
 
 	if !r.initialized {
 		return errors.New("ignoring the metrics recording, failed to initialize the metrics recorder")
