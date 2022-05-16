@@ -1525,10 +1525,15 @@
       "required": [
         "pipelineTask",
         "result",
-        "resultsIndex"
+        "resultsIndex",
+        "property"
       ],
       "properties": {
         "pipelineTask": {
+          "type": "string",
+          "default": ""
+        },
+        "property": {
           "type": "string",
           "default": ""
         },

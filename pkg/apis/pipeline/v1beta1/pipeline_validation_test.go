@@ -1102,6 +1102,10 @@ func TestValidatePipelineResults_Success(t *testing.T) {
 		Name:        "my-pipeline-result",
 		Description: "this is my pipeline result",
 		Value:       "$(tasks.a-task.results.output)",
+	}, {
+		Name:        "my-pipeline-object-result",
+		Description: "this is my pipeline result",
+		Value:       "$(tasks.a-task.results.gitrepo.commit)",
 	}}
 	if err := validatePipelineResults(results); err != nil {
 		t.Errorf("Pipeline.validatePipelineResults() returned error for valid pipeline: %s: %v", desc, err)
@@ -1118,10 +1122,10 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
-			Value:       "$(tasks.a-task.results.output.output)",
+			Value:       "$(tasks.a-task.results.output.key1.extra)",
 		}},
 		expectedError: apis.FieldError{
-			Message: `invalid value: expected all of the expressions [tasks.a-task.results.output.output] to be result expressions but only [] were`,
+			Message: `invalid value: expected all of the expressions [tasks.a-task.results.output.key1.extra] to be result expressions but only [] were`,
 			Paths:   []string{"results[0].value"},
 		},
 	}, {

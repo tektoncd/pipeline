@@ -2691,8 +2691,15 @@ func schema_pkg_apis_pipeline_v1beta1_ResultRef(ref common.ReferenceCallback) co
 							Format:  "int32",
 						},
 					},
+					"property": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
 				},
-				Required: []string{"pipelineTask", "result", "resultsIndex"},
+				Required: []string{"pipelineTask", "result", "resultsIndex", "property"},
 			},
 		},
 	}
