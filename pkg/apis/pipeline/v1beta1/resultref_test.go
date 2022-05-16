@@ -52,6 +52,17 @@ func TestNewResultReference(t *testing.T) {
 			Result:       "sumResult",
 		}},
 	}, {
+		name: "Test valid expression with single object result property",
+		param: v1beta1.Param{
+			Name:  "param",
+			Value: *v1beta1.NewArrayOrString("$(tasks.sumTask.results.sumResult.key1)"),
+		},
+		want: []*v1beta1.ResultRef{{
+			PipelineTask: "sumTask",
+			Result:       "sumResult",
+			Property:     "key1",
+		}},
+	}, {
 		name: "refer array indexing result",
 		param: v1beta1.Param{
 			Name:  "param",
@@ -61,6 +72,21 @@ func TestNewResultReference(t *testing.T) {
 			PipelineTask: "sumTask",
 			Result:       "sumResult",
 			ResultsIndex: 1,
+		}},
+	}, {
+		name: "Test valid expression with multiple object result properties",
+		param: v1beta1.Param{
+			Name:  "param",
+			Value: *v1beta1.NewArrayOrString("$(tasks.sumTask.results.imageresult.digest), and another one $(tasks.sumTask.results.imageresult.tag)"),
+		},
+		want: []*v1beta1.ResultRef{{
+			PipelineTask: "sumTask",
+			Result:       "imageresult",
+			Property:     "digest",
+		}, {
+			PipelineTask: "sumTask",
+			Result:       "imageresult",
+			Property:     "tag",
 		}},
 	}, {
 		name: "substitution within string",
@@ -76,7 +102,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "multiple substitution",
 		param: v1beta1.Param{
 			Name:  "param",
-			Value: *v1beta1.NewArrayOrString("$(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult)"),
+			Value: *v1beta1.NewArrayOrString("$(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult), last one $(tasks.sumTask3.results.sumResult.key1)"),
 		},
 		want: []*v1beta1.ResultRef{{
 			PipelineTask: "sumTask1",
@@ -84,12 +110,16 @@ func TestNewResultReference(t *testing.T) {
 		}, {
 			PipelineTask: "sumTask2",
 			Result:       "sumResult",
+		}, {
+			PipelineTask: "sumTask3",
+			Result:       "sumResult",
+			Property:     "key1",
 		}},
 	}, {
 		name: "multiple substitution with param",
 		param: v1beta1.Param{
 			Name:  "param",
-			Value: *v1beta1.NewArrayOrString("$(params.param) $(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult)"),
+			Value: *v1beta1.NewArrayOrString("$(params.param) $(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult), last one $(tasks.sumTask3.results.sumResult.key1)"),
 		},
 		want: []*v1beta1.ResultRef{{
 			PipelineTask: "sumTask1",
@@ -97,6 +127,10 @@ func TestNewResultReference(t *testing.T) {
 		}, {
 			PipelineTask: "sumTask2",
 			Result:       "sumResult",
+		}, {
+			PipelineTask: "sumTask3",
+			Result:       "sumResult",
+			Property:     "key1",
 		}},
 	}, {
 		name: "first separator typo",
@@ -110,6 +144,13 @@ func TestNewResultReference(t *testing.T) {
 		param: v1beta1.Param{
 			Name:  "param",
 			Value: *v1beta1.NewArrayOrString("$(tasks.sumTasks.result.sumResult)"),
+		},
+		want: nil,
+	}, {
+		name: "more than 5 dot-separated components",
+		param: v1beta1.Param{
+			Name:  "param",
+			Value: *v1beta1.NewArrayOrString("$(tasks.sumTasks.result.sumResult.key.extra)"),
 		},
 		want: nil,
 	}, {
@@ -208,6 +249,26 @@ func TestHasResultReference(t *testing.T) {
 		wantRef: []*v1beta1.ResultRef{{
 			PipelineTask: "sumTask2",
 			Result:       "sumResult2",
+		}},
+	}, {
+		name: "Test valid expression in object",
+		param: v1beta1.Param{
+			Name: "param",
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1": "$(tasks.sumTask1.results.sumResult1)",
+				"key2": "$(tasks.sumTask2.results.sumResult2) and another one $(tasks.sumTask3.results.sumResult3)",
+				"key3": "no ref here",
+			}),
+		},
+		wantRef: []*v1beta1.ResultRef{{
+			PipelineTask: "sumTask1",
+			Result:       "sumResult1",
+		}, {
+			PipelineTask: "sumTask2",
+			Result:       "sumResult2",
+		}, {
+			PipelineTask: "sumTask3",
+			Result:       "sumResult3",
 		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
