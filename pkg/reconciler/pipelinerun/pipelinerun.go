@@ -83,6 +83,9 @@ const (
 	// parameter(s) declared in the PipelineRun do not have the some declared type as the
 	// parameters(s) declared in the Pipeline that they are supposed to override.
 	ReasonParameterTypeMismatch = "ParameterTypeMismatch"
+	// ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec
+	// misses some keys required for the object param declared in Pipeline spec.
+	ReasonObjectParameterMissKeys = "ObjectParameterMissKeys"
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
 	ReasonCouldntGetTask = "CouldntGetTask"
@@ -428,11 +431,19 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 
 	// Ensure that the parameters from the PipelineRun are overriding Pipeline parameters with the same type.
 	// Weird substitution issues can occur if this is not validated (ApplyParameters() does not verify type).
-	err = resources.ValidateParamTypesMatching(pipelineSpec, pr)
-	if err != nil {
+	if err = resources.ValidateParamTypesMatching(pipelineSpec, pr); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(ReasonParameterTypeMismatch,
 			"PipelineRun %s/%s parameters have mismatching types with Pipeline %s/%s's parameters: %s",
+			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
+		return controller.NewPermanentError(err)
+	}
+
+	// Ensure that the keys of an object param declared in PipelineSpec are not missed in the PipelineRunSpec
+	if err = resources.ValidateObjectParamRequiredKeys(pipelineSpec.Params, pr.Spec.Params); err != nil {
+		// This Run has failed, so we need to mark it as failed and stop reconciling it
+		pr.Status.MarkFailed(ReasonObjectParameterMissKeys,
+			"PipelineRun %s/%s parameters is missing object keys required by Pipeline %s/%s's parameters: %s",
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
 	}

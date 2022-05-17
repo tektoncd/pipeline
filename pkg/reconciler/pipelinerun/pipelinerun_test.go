@@ -919,6 +919,18 @@ spec:
 `, v1beta1.ParamTypeArray)),
 		parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
+  name: a-task-that-needs-object-params
+  namespace: foo
+spec:
+  params:
+    - name: some-param
+      type: %s
+      properties:
+        key1: {}
+        key2: {}
+`, v1beta1.ParamTypeObject)),
+		parse.MustParseTask(t, fmt.Sprintf(`
+metadata:
   name: a-task-that-needs-a-resource
   namespace: foo
 spec:
@@ -993,6 +1005,22 @@ spec:
       taskRef:
         name: a-task-that-needs-array-params
 `, v1beta1.ParamTypeArray)),
+		parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: a-pipeline-with-object-params
+  namespace: foo
+spec:
+  params:
+    - name: some-param
+      type: %s
+      properties:
+        key1: {type: string}
+        key2: {type: string}
+  tasks:
+    - name: some-task
+      taskRef:
+        name: a-task-that-needs-object-params
+`, v1beta1.ParamTypeObject)),
 	}
 
 	for _, tc := range []struct {
@@ -1121,6 +1149,26 @@ spec:
 		wantEvents: []string{
 			"Normal Started",
 			"Warning Failed PipelineRun foo/pipeline-mismatching-param-type parameters have mismatching types",
+		},
+	}, {
+		name: "invalid-pipeline-missing-object-keys",
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline-missing-object-param-keys
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-with-object-params
+  params:
+    - name: some-param
+      value:
+        key1: "a"
+`),
+		reason:         ReasonObjectParameterMissKeys,
+		permanentError: true,
+		wantEvents: []string{
+			"Normal Started",
+			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: PipelineRun missing object keys for parameters",
 		},
 	}, {
 		name: "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
@@ -1258,10 +1306,13 @@ spec:
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
+			cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pipelineRun},
 				Pipelines:    ps,
 				Tasks:        ts,
+				ConfigMaps:   cms,
 			}
 			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
@@ -7343,7 +7394,7 @@ spec:
   - pipelineTaskName: hello-world-1
     metadata:
       labels:
-        PipelineTaskRunSpecLabel: PipelineTaskRunSpecValue 	
+        PipelineTaskRunSpecLabel: PipelineTaskRunSpecValue
       annotations:
         PipelineTaskRunSpecAnnotation: PipelineTaskRunSpecValue
     taskServiceAccountName: custom-sa
@@ -7394,7 +7445,7 @@ spec:
             image: foo-image
         metadata:
           labels:
-            TestPrecedenceLabel: PipelineTaskSpecValue 
+            TestPrecedenceLabel: PipelineTaskSpecValue
           annotations:
             TestPrecedenceAnnotation: PipelineTaskSpecValue
 `)}
@@ -7404,9 +7455,9 @@ metadata:
   namespace: foo
   metadata:
     labels:
-      TestPrecedenceLabel: PipelineRunValue 
+      TestPrecedenceLabel: PipelineRunValue
     annotations:
-      TestPrecedenceAnnotation: PipelineRunValue 
+      TestPrecedenceAnnotation: PipelineRunValue
 spec:
   pipelineRef:
     name: test-pipeline
@@ -7414,7 +7465,7 @@ spec:
   - pipelineTaskName: hello-world-1
     metadata:
       labels:
-        TestPrecedenceLabel: PipelineTaskRunSpecValue 
+        TestPrecedenceLabel: PipelineTaskRunSpecValue
       annotations:
         TestPrecedenceAnnotation: PipelineTaskRunSpecValue
     taskServiceAccountName: custom-sa
