@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -539,6 +540,7 @@ func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.Tas
 		// If we are struggling to create the pod, then it hasn't started.
 		tr.Status.StartTime = nil
 		tr.Status.MarkResourceOngoing(podconvert.ReasonExceededResourceQuota, fmt.Sprint("TaskRun Pod exceeded available resources: ", err))
+		return controller.NewRequeueAfter(time.Minute)
 	case isTaskRunValidationFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 	default:
