@@ -188,3 +188,110 @@ func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateObjectParamRequiredKeys_Invalid(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		pp   []v1beta1.ParamSpec
+		prp  []v1beta1.Param
+	}{{
+		name: "miss all required keys",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "an-object-param",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {Type: "string"},
+					"key2": {Type: "string"},
+				},
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "an-object-param",
+				Value: *v1beta1.NewObject(map[string]string{
+					"foo": "val1",
+				})},
+		},
+	}, {
+		name: "miss one of the required keys",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "an-object-param",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {Type: "string"},
+					"key2": {Type: "string"},
+				},
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "an-object-param",
+				Value: *v1beta1.NewObject(map[string]string{
+					"key1": "foo",
+				})},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateObjectParamRequiredKeys(tc.pp, tc.prp); err == nil {
+				t.Errorf("Expected to see error when validating invalid object parameter keys but saw none")
+			}
+		})
+	}
+}
+
+func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		pp   []v1beta1.ParamSpec
+		prp  []v1beta1.Param
+	}{{
+		name: "all keys are provided with a value",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "an-object-param",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {Type: "string"},
+					"key2": {Type: "string"},
+				},
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "an-object-param",
+				Value: *v1beta1.NewObject(map[string]string{
+					"key1": "val1",
+					"key2": "val2",
+				})},
+		},
+	}, {
+		name: "extra keys are provided",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "an-object-param",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {Type: "string"},
+					"key2": {Type: "string"},
+				},
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "an-object-param",
+				Value: *v1beta1.NewObject(map[string]string{
+					"key1": "val1",
+					"key2": "val2",
+					"key3": "val3",
+				})},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateObjectParamRequiredKeys(tc.pp, tc.prp); err != nil {
+				t.Errorf("Didn't expect to see error when validating invalid object parameter keys but got: %v", err)
+			}
+		})
+	}
+}
