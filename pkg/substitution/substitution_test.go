@@ -151,6 +151,52 @@ func TestValidateVariablePs(t *testing.T) {
 		},
 		expectedError: nil,
 	}, {
+		name: "valid variable with double quote bracket and dots",
+		args: args{
+			input:  "--flag=$(params[\"foo.bar.baz\"])",
+			prefix: "params",
+			vars:   sets.NewString("foo.bar.baz"),
+		},
+		expectedError: nil,
+	}, {
+		name: "valid variable with single quote bracket and dots",
+		args: args{
+			input:  "--flag=$(params['foo.bar.baz'])",
+			prefix: "params",
+			vars:   sets.NewString("foo.bar.baz"),
+		},
+		expectedError: nil,
+	}, {
+		name: "invalid variable with only dots referencing parameters",
+		args: args{
+			input:  "--flag=$(params.foo.bar.baz)",
+			prefix: "params",
+			vars:   sets.NewString("foo.bar.baz"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `Invalid referencing of parameters in --flag=$(params.foo.bar.baz) !!! You can only use the dots inside single or double quotes. eg. $(params["org.foo.blah"]) or $(params['org.foo.blah']) are valid references but NOT $params.org.foo.blah.`,
+			Paths:   []string{""},
+		},
+	}, {
+		name: "valid variable with dots referencing resources",
+		args: args{
+			input:  "--flag=$(resources.inputs.foo.bar)",
+			prefix: "resources.(?:inputs|outputs)",
+			vars:   sets.NewString("foo"),
+		},
+		expectedError: nil,
+	}, {
+		name: "invalid variable with dots referencing resources",
+		args: args{
+			input:  "--flag=$(resources.inputs.foo.bar.baz)",
+			prefix: "resources.(?:inputs|outputs)",
+			vars:   sets.NewString("foo.bar"),
+		},
+		expectedError: &apis.FieldError{
+			Message: `Invalid referencing of parameters in --flag=$(resources.inputs.foo.bar.baz) !!! resources.* can only have 4 components (eg. resources.inputs.foo.bar). Found more than 4 components.`,
+			Paths:   []string{""},
+		},
+	}, {
 		name: "valid variable contains diffetent chars",
 		args: args{
 			input:  "--flag=$(inputs.params['ba-_9z'])",

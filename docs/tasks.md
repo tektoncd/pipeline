@@ -833,8 +833,10 @@ variable values as follows:
 - To reference a parameter in a `Task`, use the following syntax, where `<name>` is the name of the parameter:
   ```shell
   # dot notation
-  $(params.<name>)
+  # Here, the name cannot contain dots (eg. foo.bar is not allowed). If the name contains `dots`, it can only be accessed via the bracket notation.
+  $(params.<name> )
   # or bracket notation (wrapping <name> with either single or double quotes):
+  # Here, the name can contain dots (eg. foo.bar is allowed).
   $(params['<name>'])
   $(params["<name>"])
   ```

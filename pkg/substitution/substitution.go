@@ -26,11 +26,12 @@ import (
 )
 
 const parameterSubstitution = `[_a-zA-Z][_a-zA-Z0-9.-]*(\[\*\])?`
+
 const braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\['(?P<var3>%s)'\\])\\)))"
 
 // ValidateVariable makes sure all variables in the provided string are known
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, prefix); present {
+	if vs, present, _ := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
 			if !vars.Has(v) {
@@ -46,7 +47,14 @@ func ValidateVariable(name, value, prefix, locationName, path string, vars sets.
 
 // ValidateVariableP makes sure all variables for a parameter in the provided string are known
 func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, prefix); present {
+	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+		if errString != "" {
+			return &apis.FieldError{
+				Message: errString,
+				Paths:   []string{""},
+			}
+
+		}
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
 			if !vars.Has(v) {
@@ -63,7 +71,7 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 
 // ValidateVariableProhibited verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, prefix); present {
+	if vs, present, _ := extractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
 			if vars.Has(v) {
@@ -79,7 +87,14 @@ func ValidateVariableProhibited(name, value, prefix, locationName, path string, 
 
 // ValidateVariableProhibitedP verifies that variables for a parameter matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, prefix); present {
+	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+		if errString != "" {
+			return &apis.FieldError{
+				Message: errString,
+				Paths:   []string{""},
+			}
+
+		}
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
 			if vars.Has(v) {
@@ -96,7 +111,7 @@ func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.F
 
 // ValidateVariableIsolated verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, prefix); present {
+	if vs, present, _ := extractVariablesFromString(value, prefix); present {
 		firstMatch, _ := extractExpressionFromString(value, prefix)
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
@@ -115,7 +130,14 @@ func ValidateVariableIsolated(name, value, prefix, locationName, path string, va
 
 // ValidateVariableIsolatedP verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present := extractVariablesFromString(value, prefix); present {
+	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+		if errString != "" {
+			return &apis.FieldError{
+				Message: errString,
+				Paths:   []string{""},
+			}
+
+		}
 		firstMatch, _ := extractExpressionFromString(value, prefix)
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
@@ -145,28 +167,49 @@ func extractExpressionFromString(s, prefix string) (string, bool) {
 	return match[0], true
 }
 
-func extractVariablesFromString(s, prefix string) ([]string, bool) {
+func extractVariablesFromString(s, prefix string) ([]string, bool, string) {
 	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(s, -1)
+	errString := ""
 	if len(matches) == 0 {
-		return []string{}, false
+		return []string{}, false, ""
 	}
 	vars := make([]string, len(matches))
 	for i, match := range matches {
 		groups := matchGroups(match, re)
-		// foo -> foo
-		// foo.bar -> foo
-		// foo.bar.baz -> foo
-		for _, v := range []string{"var1", "var2", "var3"} {
-			val := strings.SplitN(groups[v], ".", 2)[0]
-			if strings.SplitN(groups[v], ".", 2)[0] != "" {
+		for j, v := range []string{"var1", "var2", "var3"} {
+			val := groups[v]
+			// if using the dot notation
+			if j == 0 && strings.Contains(val, ".") {
+				switch prefix {
+				case "params":
+					// params can only have a maximum of two components in the dot notation otherwise it needs to use the bracket notation.
+					if len(strings.Split(val, ".")) > 0 {
+						errString = fmt.Sprintf(`Invalid referencing of parameters in %s !!! You can only use the dots inside single or double quotes. eg. $(params["org.foo.blah"]) or $(params['org.foo.blah']) are valid references but NOT $params.org.foo.blah.`, s)
+						return vars, true, errString
+					}
+				case "resources.(?:inputs|outputs)":
+					// resources can only have a maximum of 4 components.
+					if len(strings.Split(val, ".")) > 2 {
+						errString = fmt.Sprintf(`Invalid referencing of parameters in %s !!! resources.* can only have 4 components (eg. resources.inputs.foo.bar). Found more than 4 components.`, s)
+						return vars, true, errString
+					}
+					vars[i] = strings.SplitN(val, ".", 2)[0]
+				default:
+					// for backwards compatibality
+					vars[i] = strings.SplitN(val, ".", 2)[0]
+				}
+				break
+			}
+			if groups[v] != "" {
 				vars[i] = val
 				break
 			}
+
 		}
 	}
-	return vars, true
+	return vars, true, errString
 }
 
 func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
