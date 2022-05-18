@@ -48,6 +48,7 @@ import (
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
+	resolutioncommon "github.com/tektoncd/resolution/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -1343,6 +1344,96 @@ spec:
 	}
 	if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
 		t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
+	}
+}
+
+// TestReconcileWithFailingResolver checks that a TaskRun with a failing Resolver
+// field creates a ResolutionRequest object for that Resolver's type, and
+// that when the request fails, the TaskRun fails.
+func TestReconcileWithFailingResolver(t *testing.T) {
+	resolverName := "foobar"
+	tr := parse.MustParseTaskRun(t, `
+metadata:
+  name: tr
+  namespace: default
+spec:
+  taskRef:
+    resolver: foobar
+  serviceAccountName: default
+`)
+
+	cms := []*corev1.ConfigMap{{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-api-fields": config.AlphaAPIFields,
+		},
+	}}
+
+	d := test.Data{
+		ConfigMaps: cms,
+		TaskRuns:   []*v1beta1.TaskRun{tr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: tr.Spec.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	saName := "default"
+	if _, err := clients.Kube.CoreV1().ServiceAccounts(tr.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      saName,
+			Namespace: tr.Namespace,
+		},
+	}, metav1.CreateOptions{}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err == nil {
+		t.Error("Wanted a resource request in progress error, but got nil.")
+	} else if controller.IsPermanentError(err) {
+		t.Errorf("expected no error. Got error %v", err)
+	}
+
+	client := testAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	resolutionrequests, err := client.List(testAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error listing resource requests: %v", err)
+	}
+	numResolutionRequests := len(resolutionrequests.Items)
+	if numResolutionRequests != 1 {
+		t.Fatalf("expected exactly 1 resource request but found %d", numResolutionRequests)
+	}
+
+	resreq := &resolutionrequests.Items[0]
+	resolutionRequestType := resreq.ObjectMeta.Labels["resolution.tekton.dev/type"]
+	if resolutionRequestType != resolverName {
+		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
+	}
+
+	resreq.Status.MarkFailed(resolutioncommon.ReasonResolutionTimedOut, "resolution took longer than global timeout of 1 minute")
+	resreq, err = client.UpdateStatus(testAssets.Ctx, resreq, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error updating resource request with resolved pipeline data: %v", err)
+	}
+
+	// Check that the TaskRun fails.
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err == nil {
+		t.Fatalf("expected an error")
+	}
+
+	updatedTR, err := clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting updated taskrun: %v", err)
+	}
+	condition := updatedTR.Status.GetCondition(apis.ConditionSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionFalse {
+		t.Errorf("Expected fresh TaskRun to have failed, but had %v", condition)
+	}
+	if condition != nil && condition.Reason != podconvert.ReasonFailedResolution {
+		t.Errorf("Expected reason %q but was %s", podconvert.ReasonFailedResolution, condition.Reason)
 	}
 }
 
