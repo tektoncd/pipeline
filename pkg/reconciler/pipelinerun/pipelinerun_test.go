@@ -45,6 +45,7 @@ import (
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
+	resolutioncommon "github.com/tektoncd/resolution/pkg/common"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -7176,6 +7177,127 @@ spec:
 	// started executing.
 	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, false)
 	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+}
+
+// TestReconcileWithFailingResolver checks that a PipelineRun with a failing Resolver
+// field creates a ResolutionRequest object for that Resolver's type, and
+// that when the request fails, the PipelineRun fails.
+func TestReconcileWithFailingResolver(t *testing.T) {
+	resolverName := "does-not-exist"
+	pr := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineRef:
+    resolver: does-not-exist
+  serviceAccountName: default
+`)
+
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+
+	d := test.Data{
+		ConfigMaps:   cms,
+		PipelineRuns: []*v1beta1.PipelineRun{pr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string(nil)
+	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
+	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, ReasonResolvingPipelineRef)
+
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error listing resource requests: %v", err)
+	}
+	numResolutionRequests := len(resolutionrequests.Items)
+	if numResolutionRequests != 1 {
+		t.Fatalf("expected exactly 1 resource request but found %d", numResolutionRequests)
+	}
+
+	resreq := &resolutionrequests.Items[0]
+	resolutionRequestType := resreq.ObjectMeta.Labels["resolution.tekton.dev/type"]
+	if resolutionRequestType != resolverName {
+		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
+	}
+
+	resreq.Status.MarkFailed(resolutioncommon.ReasonResolutionTimedOut, "resolution took longer than global timeout of 1 minute")
+	resreq, err = client.UpdateStatus(prt.TestAssets.Ctx, resreq, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error updating resource request with resolved pipeline data: %v", err)
+	}
+
+	// Check that the pipeline fails with the appropriate reason.
+	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, true)
+	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionFalse, ReasonCouldntGetPipeline)
+}
+
+// TestReconcileWithFailingTaskResolver checks that a PipelineRun with a failing Resolver
+// field for a Task creates a ResolutionRequest object for that Resolver's type, and
+// that when the request fails, the PipelineRun fails.
+func TestReconcileWithFailingTaskResolver(t *testing.T) {
+	resolverName := "foobar"
+	pr := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr
+  namespace: default
+spec:
+  pipelineSpec:
+    tasks:
+    - name: some-task
+      taskRef:
+        resolver: foobar
+  serviceAccountName: default
+`)
+
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+
+	d := test.Data{
+		ConfigMaps:   cms,
+		PipelineRuns: []*v1beta1.PipelineRun{pr},
+		ServiceAccounts: []*corev1.ServiceAccount{{
+			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
+		}},
+	}
+
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string(nil)
+	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
+	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, v1beta1.TaskRunReasonResolvingTaskRef)
+
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error listing resource requests: %v", err)
+	}
+	numResolutionRequests := len(resolutionrequests.Items)
+	if numResolutionRequests != 1 {
+		t.Fatalf("expected exactly 1 resource request but found %d", numResolutionRequests)
+	}
+
+	resreq := &resolutionrequests.Items[0]
+	resolutionRequestType := resreq.ObjectMeta.Labels["resolution.tekton.dev/type"]
+	if resolutionRequestType != resolverName {
+		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
+	}
+
+	resreq.Status.MarkFailed(resolutioncommon.ReasonResolutionTimedOut, "resolution took longer than global timeout of 1 minute")
+	resreq, err = client.UpdateStatus(prt.TestAssets.Ctx, resreq, metav1.UpdateOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error updating resource request with resolved pipeline data: %v", err)
+	}
+
+	// Check that the pipeline fails.
+	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, true)
+	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionFalse, ReasonCouldntGetTask)
 }
 
 // TestReconcileWithTaskResolver checks that a PipelineRun with a populated Resolver
