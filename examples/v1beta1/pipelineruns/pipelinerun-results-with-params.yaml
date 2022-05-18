@@ -1,8 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: test-case
-  name: test-case-run
+  generateName: test-case-
 spec:
   params:
   - name: prefix
