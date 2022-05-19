@@ -391,6 +391,10 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	defer c.durationAndCountMetrics(ctx, tr)
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
+
+	ts := updateTaskSpecParamsContextsResults(tr, rtr)
+	tr.Status.TaskSpec = ts
+
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
 	var pod *corev1.Pod
 	var err error
@@ -440,8 +444,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 			// This is used by createPod below. Changes to the Spec are not updated.
 			tr.Spec.Workspaces = taskRunWorkspaces
 		}
-
-		pod, err = c.createPod(ctx, tr, rtr)
+		pod, err = c.createPod(ctx, ts, tr, rtr)
 		if err != nil {
 			newErr := c.handlePodCreationError(ctx, tr, err)
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
@@ -617,9 +620,8 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
-func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
+func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
 	logger := logging.FromContext(ctx)
-	ts := rtr.TaskSpec.DeepCopy()
 	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)
 	if err != nil {
 		logger.Errorf("Failed to initialize input resources: %v", err)
@@ -650,16 +652,6 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		return nil, err
 	}
 
-	var defaults []v1beta1.ParamSpec
-	if len(ts.Params) > 0 {
-		defaults = append(defaults, ts.Params...)
-	}
-	// Apply parameter substitution from the taskrun.
-	ts = resources.ApplyParameters(ts, tr, defaults...)
-
-	// Apply context substitution from the taskrun
-	ts = resources.ApplyContexts(ts, rtr.TaskName, tr)
-
 	// Apply bound resource substitution from the taskrun.
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
@@ -670,13 +662,7 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	// Apply workspace resource substitution
 	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
-	// Apply task result substitution
-	ts = resources.ApplyTaskResults(ts)
-
-	// Apply step exitCode path substitution
-	ts = resources.ApplyStepExitCodePath(ts)
-
-	if validateErr := ts.Validate(config.WithinSubstituted(ctx)); validateErr != nil {
+	if validateErr := ts.Validate(ctx); validateErr != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
 		return nil, validateErr
 	}
@@ -710,6 +696,27 @@ func (c *Reconciler) createPod(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 	}
 	return pod, err
+}
+
+func updateTaskSpecParamsContextsResults(tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) *v1beta1.TaskSpec {
+	ts := rtr.TaskSpec.DeepCopy()
+	var defaults []v1beta1.ParamSpec
+	if len(ts.Params) > 0 {
+		defaults = append(defaults, ts.Params...)
+	}
+	// Apply parameter substitution from the taskrun.
+	ts = resources.ApplyParameters(ts, tr, defaults...)
+
+	// Apply context substitution from the taskrun
+	ts = resources.ApplyContexts(ts, rtr.TaskName, tr)
+
+	// Apply task result substitution
+	ts = resources.ApplyTaskResults(ts)
+
+	// Apply step exitCode path substitution
+	ts = resources.ApplyStepExitCodePath(ts)
+
+	return ts
 }
 
 func isExceededResourceQuotaError(err error) bool {

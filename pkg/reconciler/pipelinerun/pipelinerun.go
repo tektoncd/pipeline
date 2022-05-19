@@ -476,6 +476,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	pipelineSpec = resources.ApplyParameters(ctx, pipelineSpec, pr)
 	pipelineSpec = resources.ApplyContexts(ctx, pipelineSpec, pipelineMeta.Name, pr)
 	pipelineSpec = resources.ApplyWorkspaces(ctx, pipelineSpec, pr)
+	// Update pipelinespec of pipelinerun's status field
+	pr.Status.PipelineSpec = pipelineSpec
 
 	// pipelineState holds a list of pipeline tasks after resolving conditions and pipeline resources
 	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
