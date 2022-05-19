@@ -2079,8 +2079,8 @@ spec:
 		Kind:     "Task",
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
-
-	pod, err := r.createPod(testAssets.Ctx, taskRun, rtr)
+	taskSpec := updateTaskSpecParamsContextsResults(taskRun, rtr)
+	pod, err := r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr)
 
 	if err != nil {
 		t.Fatalf("create pod threw error %v", err)
@@ -2183,7 +2183,8 @@ spec:
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
 
-	_, err := r.createPod(testAssets.Ctx, taskRun, rtr)
+	taskSpec := updateTaskSpecParamsContextsResults(taskRun, rtr)
+	_, err := r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr)
 
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected to fail validation for duplicate Workspace mount paths, error was %v", err)
