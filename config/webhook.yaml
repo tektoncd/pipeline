@@ -31,7 +31,8 @@ metadata:
     # labels below are related to istio and should not be used for resource lookup
     version: "devel"
 spec:
-  replicas: 1
+  # replicas is unset, webhook will be autoscaled using HPA in webhook-hpa.yaml
+  # See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#migrating-deployments-and-statefulsets-to-horizontal-autoscaling
   selector:
     matchLabels:
       app.kubernetes.io/name: webhook
