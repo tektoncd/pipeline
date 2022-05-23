@@ -1239,7 +1239,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(baz) and $(foo-is-baz)"},
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.baz) and $(params.foo-is-baz)"},
 			}},
 		}},
 	}, {
@@ -1289,7 +1289,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(baz)", "and", "$(foo-is-baz)"}},
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"}},
 			}},
 		}},
 	}, {
@@ -1303,7 +1303,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(baz[*])", "and", "$(foo-is-baz[*])"}},
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
 			}},
 		}},
 	}, {
@@ -1315,7 +1315,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(input.workspace.$(baz))"},
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(input.workspace.$(params.baz))"},
 			}},
 		}},
 	}, {
@@ -1329,7 +1329,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(baz)", "and", "$(foo-is-baz)"}},
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"}},
 			}},
 		}},
 	}, {
@@ -1343,7 +1343,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(baz[*])", "and", "$(foo-is-baz[*])"}},
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
 			}},
 		}},
 	}}
