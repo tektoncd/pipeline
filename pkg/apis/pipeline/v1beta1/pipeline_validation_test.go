@@ -1327,10 +1327,152 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
 			}},
 		}},
+	}, {
+		name: "array param - using the whole variable as a param's value that is intended to be array type",
+		params: []ParamSpec{{
+			Name: "myArray",
+			Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param-intended-to-be-array", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myArray[*])"},
+			}},
+		}},
+	}, {
+		name: "object param - using single individual variable in string param",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-string-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject.key1)"},
+			}},
+		}},
+	}, {
+		name: "object param - using multiple individual variables in string param",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-string-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject.key1) and $(params.myObject.key2)"},
+			}},
+		}},
+	}, {
+		name: "object param - using individual variables in array param",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "an-array-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)", "another one $(params.myObject.key2)"}},
+			}},
+		}},
+	}, {
+		name: "object param - using individual variables and string param as the value of other object individual keys",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}, {
+			Name: "myString",
+			Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "an-object-param", Value: ArrayOrString{Type: ParamTypeObject, ObjectVal: map[string]string{
+					"url":    "$(params.myObject.key1)",
+					"commit": "$(params.myString)",
+				}},
+			}},
+		}},
+	}, {
+		name: "object param - using individual variables in matrix",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)", "and", "$(params.myObject.key2)"}},
+			}},
+		}},
+	}, {
+		name: "object param - using the whole variable as a param's value that is intended to be object type",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param-intended-to-be-object", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject[*])"},
+			}},
+		}},
+	}, {
+		name: "object param - using individual variable in input of when expression, and using both object individual variable and array reference in values of when expression",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}, {
+			Name: "foo", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "$(params.myObject.key1)",
+				Operator: selection.In,
+				Values:   []string{"$(params.foo[*])", "$(params.myObject.key2)"},
+			}},
+		}},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := config.EnableAlphaAPIFields(context.Background())
 			err := validatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err != nil {
 				t.Errorf("Pipeline.validatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)
@@ -1653,10 +1795,148 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.does-not-exist)"`,
 			Paths:   []string{"[0].matrix[b-param].value[0]"},
 		},
+	}, {
+		name: "invalid object key in the input of the when expression",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "$(params.myObject.non-exist-key)",
+				Operator: selection.In,
+				Values:   []string{"foo"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
+			Paths:   []string{"[0].when[0].input"},
+		},
+	}, {
+		name: "invalid object key in the Values of the when expression",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			WhenExpressions: []WhenExpression{{
+				Input:    "bax",
+				Operator: selection.In,
+				Values:   []string{"$(params.myObject.non-exist-key)"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
+			Paths:   []string{"[0].when[0].values"},
+		},
+	}, {
+		name: "invalid object key is used to provide values for array params",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.non-exist-key)", "last"}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
+			Paths:   []string{"[0].params[a-param].value[0]"},
+		},
+	}, {
+		name: "invalid object key is used to provide values for string params",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject.non-exist-key)"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
+			Paths:   []string{"[0].params[a-param]"},
+		},
+	}, {
+		name: "invalid object key is used to provide values for object params",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}, {
+			Name: "myString",
+			Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "an-object-param", Value: ArrayOrString{Type: ParamTypeObject, ObjectVal: map[string]string{
+					"url":    "$(params.myObject.non-exist-key)",
+					"commit": "$(params.myString)",
+				}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
+			Paths:   []string{"[0].params[an-object-param].properties[url]"},
+		},
+	}, {
+		name: "invalid object key is used to provide values for matrix params",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: []Param{{
+				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)"}},
+			}, {
+				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.non-exist-key)"}},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
+			Paths:   []string{"[0].matrix[b-param].value[0]"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := config.EnableAlphaAPIFields(context.Background())
 			err := validatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err == nil {
 				t.Errorf("Pipeline.validatePipelineParameterVariables() did not return error for invalid pipeline parameters")

@@ -128,6 +128,7 @@ func validatePipelineWorkspacesUsage(wss []PipelineWorkspaceDeclaration, pts []P
 func validatePipelineParameterVariables(ctx context.Context, tasks []PipelineTask, params []ParamSpec) (errs *apis.FieldError) {
 	parameterNames := sets.NewString()
 	arrayParameterNames := sets.NewString()
+	objectParameterNameKeys := map[string][]string{}
 
 	// validates all the types within a slice of ParamSpecs
 	errs = errs.Also(ValidateParameterTypes(ctx, params).ViaField("params"))
@@ -141,16 +142,21 @@ func validatePipelineParameterVariables(ctx context.Context, tasks []PipelineTas
 		if p.Type == ParamTypeArray {
 			arrayParameterNames.Insert(p.Name)
 		}
-	}
 
-	return errs.Also(validatePipelineParametersVariables(tasks, "params", parameterNames, arrayParameterNames))
+		if p.Type == ParamTypeObject {
+			for k := range p.Properties {
+				objectParameterNameKeys[p.Name] = append(objectParameterNameKeys[p.Name], k)
+			}
+		}
+	}
+	return errs.Also(validatePipelineParametersVariables(tasks, "params", parameterNames, arrayParameterNames, objectParameterNameKeys))
 }
 
-func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String) (errs *apis.FieldError) {
+func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	for idx, task := range tasks {
-		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames).ViaIndex(idx))
-		errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix, prefix, paramNames, arrayParamNames).ViaIndex(idx))
-		errs = errs.Also(task.WhenExpressions.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames).ViaIndex(idx))
+		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
+		errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
+		errs = errs.Also(task.WhenExpressions.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 	}
 	return errs
 }
