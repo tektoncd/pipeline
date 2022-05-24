@@ -38,10 +38,3 @@ func (ts *TaskSpec) SetDefaults(ctx context.Context) {
 		ts.Results[i].SetDefaults(ctx)
 	}
 }
-
-// applyImplicitParams propagates implicit params from the parent context
-// through the Task.
-func (ts *TaskSpec) applyImplicitParams(ctx context.Context) {
-	ctx = addContextParamSpec(ctx, ts.Params)
-	ts.Params = getContextParamSpecs(ctx)
-}
