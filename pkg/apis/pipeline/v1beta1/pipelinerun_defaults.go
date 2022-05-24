@@ -53,8 +53,5 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 
 	if prs.PipelineSpec != nil {
 		prs.PipelineSpec.SetDefaults(ctx)
-		if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
-			prs.PipelineSpec.applyImplicitParams(addContextParams(ctx, prs.Params))
-		}
 	}
 }
