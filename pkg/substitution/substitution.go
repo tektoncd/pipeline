@@ -25,8 +25,12 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-const parameterSubstitution = `.*?(\[\*\])?`
-const braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\['(?P<var3>%s)'\\])\\)))"
+const (
+	parameterSubstitution = `.*?(\[\*\])?`
+
+	// braceMatchingRegex is a regex for parameter references including dot notation, bracket notation with single and double quotes.
+	braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\['(?P<var3>%s)'\\])\\)))"
+)
 
 // ValidateVariable makes sure all variables in the provided string are known
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
@@ -177,6 +181,29 @@ func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.Fie
 		}
 	}
 	return nil
+}
+
+// ValidateWholeArrayOrObjectRefInStringVariable validates if a single string field uses references to the whole array/object appropriately
+// valid example: "$(params.myObject[*])"
+// invalid example: "$(params.name-not-exist[*])"
+func ValidateWholeArrayOrObjectRefInStringVariable(name, value, prefix string, vars sets.String) (isIsolated bool, errs *apis.FieldError) {
+	nameSubstitution := `[_a-zA-Z0-9.-]+\[\*\]`
+
+	// a regex to check if the stringValue is an isolated reference to the whole array/object param without extra string literal.
+	isolatedVariablePattern := fmt.Sprintf(fmt.Sprintf("^%s$", braceMatchingRegex), prefix, nameSubstitution, nameSubstitution, nameSubstitution)
+	isolatedVariableRegex, err := regexp.Compile(isolatedVariablePattern)
+	if err != nil {
+		return false, &apis.FieldError{
+			Message: fmt.Sprint("Fail to parse the regex: ", err),
+			Paths:   []string{fmt.Sprintf("%s.%s", prefix, name)},
+		}
+	}
+
+	if isolatedVariableRegex.MatchString(value) {
+		return true, ValidateVariableP(value, prefix, vars).ViaFieldKey(prefix, name)
+	}
+
+	return false, nil
 }
 
 // Extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
