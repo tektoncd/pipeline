@@ -62,8 +62,11 @@ func (we *WhenExpression) applyReplacements(replacements map[string]string, arra
 	for _, val := range we.Values {
 		// arrayReplacements holds a list of array parameters with a pattern - params.arrayParam1
 		// array params are referenced using $(params.arrayParam1[*])
+		// array results are referenced using $(results.resultname[*])
 		// check if the param exist in the arrayReplacements to replace it with a list of values
 		if _, ok := arrayReplacements[fmt.Sprintf("%s.%s", ParamsPrefix, ArrayReference(val))]; ok {
+			replacedValues = append(replacedValues, substitution.ApplyArrayReplacements(val, replacements, arrayReplacements)...)
+		} else if _, ok := arrayReplacements[ResultsArrayReference(val)]; ok {
 			replacedValues = append(replacedValues, substitution.ApplyArrayReplacements(val, replacements, arrayReplacements)...)
 		} else {
 			replacedValues = append(replacedValues, substitution.ApplyReplacements(val, replacements))

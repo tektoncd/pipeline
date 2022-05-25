@@ -249,6 +249,43 @@ func TestApplyReplacements(t *testing.T) {
 			Values:   []string{"barfoo"},
 		},
 	}, {
+		name: "replace array results variables",
+		original: &WhenExpression{
+			Input:    "$(tasks.foo.results.bar)",
+			Operator: selection.In,
+			Values:   []string{"$(tasks.aTask.results.aResult[*])"},
+		},
+		replacements: map[string]string{
+			"tasks.foo.results.bar": "foobar",
+		},
+		arrayReplacements: map[string][]string{
+			"tasks.aTask.results.aResult": {"dev", "stage"},
+		},
+		expected: &WhenExpression{
+			Input:    "foobar",
+			Operator: selection.In,
+			Values:   []string{"dev", "stage"},
+		},
+	}, {
+		name: "invaliad array results replacements",
+		original: &WhenExpression{
+			Input:    "$(tasks.foo.results.bar)",
+			Operator: selection.In,
+			Values:   []string{"$(tasks.aTask.results.aResult[invalid])"},
+		},
+		replacements: map[string]string{
+			"tasks.foo.results.bar":          "foobar",
+			"tasks.aTask.results.aResult[*]": "barfoo",
+		},
+		arrayReplacements: map[string][]string{
+			"tasks.aTask.results.aResult[*]": {"dev", "stage"},
+		},
+		expected: &WhenExpression{
+			Input:    "foobar",
+			Operator: selection.In,
+			Values:   []string{"$(tasks.aTask.results.aResult[invalid])"},
+		},
+	}, {
 		name: "replace array params",
 		original: &WhenExpression{
 			Input:    "$(params.path)",

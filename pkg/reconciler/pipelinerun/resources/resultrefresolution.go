@@ -215,6 +215,18 @@ func (rs ResolvedResultRefs) getStringReplacements() map[string]string {
 	return replacements
 }
 
+func (rs ResolvedResultRefs) getArrayReplacements() map[string][]string {
+	replacements := map[string][]string{}
+	for _, r := range rs {
+		if r.Value.Type == v1beta1.ParamType(v1beta1.ResultsTypeArray) {
+			for _, target := range r.getReplaceTarget() {
+				replacements[target] = r.Value.ArrayVal
+			}
+		}
+	}
+	return replacements
+}
+
 func (r *ResolvedResultRef) getReplaceTarget() []string {
 	return []string{
 		fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result),

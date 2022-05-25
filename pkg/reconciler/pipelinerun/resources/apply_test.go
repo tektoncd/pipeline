@@ -1052,6 +1052,38 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 		}},
 	}, {
+		name: "Test array result substitution on minimal variable substitution expression - params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "a.Result",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name: "bParam",
+					Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray,
+						ArrayVal: []string{`$(tasks.aTask.results["a.Result"][*])`},
+					},
+				}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name:  "bParam",
+					Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+				}},
+			},
+		}},
+	}, {
 		name: "Test result substitution on minimal variable substitution expression - matrix",
 		resolvedResultRefs: ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("aResultValue"),
@@ -1138,6 +1170,39 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				Matrix: []v1beta1.Param{{
 					Name:  "bParam",
 					Value: *v1beta1.NewArrayOrString(`$(tasks.aTask.results["a.Result"][3])`),
+				}},
+			},
+		}},
+	}, {
+		name: "Test array result substitution on minimal variable substitution expression - when expressions",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				WhenExpressions: []v1beta1.WhenExpression{{
+					// Note that Input doesn't support array replacement.
+					Input:    "anInput",
+					Operator: selection.In,
+					Values:   []string{"$(tasks.aTask.results.aResult[*])"},
+				}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "anInput",
+					Operator: selection.In,
+					Values:   []string{"arrayResultValueOne", "arrayResultValueTwo"},
 				}},
 			},
 		}},
