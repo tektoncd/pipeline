@@ -141,6 +141,9 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 					Name: "zoo",
 					Type: v1beta1.ParamTypeString,
 				}, {
+					Name: "arrayResultRef",
+					Type: v1beta1.ParamTypeArray,
+				}, {
 					Name: "myobj",
 					Type: v1beta1.ParamTypeObject,
 					Properties: map[string]v1beta1.PropertySpec{
@@ -160,6 +163,9 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	}, {
 		Name:  "bar",
 		Value: *v1beta1.NewArrayOrString("somethinggood"),
+	}, {
+		Name:  "arrayResultRef",
+		Value: *v1beta1.NewArrayOrString("$(results.resultname[*])"),
 	}, {
 		Name: "myobj",
 		Value: *v1beta1.NewObject(map[string]string{

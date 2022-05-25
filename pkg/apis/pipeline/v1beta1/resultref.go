@@ -53,7 +53,8 @@ const (
 	ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
 )
 
-var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
+// VariableSubstitutionRegex is a regex to find all result matching substitutions
+var VariableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
 var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
 
@@ -131,7 +132,7 @@ func GetVarSubstitutionExpressionsForPipelineResult(result PipelineResult) ([]st
 }
 
 func validateString(value string) []string {
-	expressions := variableSubstitutionRegex.FindAllString(value, -1)
+	expressions := VariableSubstitutionRegex.FindAllString(value, -1)
 	if expressions == nil {
 		return nil
 	}

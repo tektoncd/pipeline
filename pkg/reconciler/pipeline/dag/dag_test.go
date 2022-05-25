@@ -292,6 +292,7 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 	c := v1beta1.PipelineTask{Name: "c"}
 	d := v1beta1.PipelineTask{Name: "d"}
 	e := v1beta1.PipelineTask{Name: "e"}
+	f := v1beta1.PipelineTask{Name: "f"}
 	xDependsOnA := v1beta1.PipelineTask{
 		Name: "x",
 		Params: []v1beta1.Param{{
@@ -314,27 +315,38 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 			Value: *v1beta1.NewArrayOrString("$(tasks.d.results.resultD) $(tasks.e.results.resultE)"),
 		}},
 	}
+	wDependsOnF := v1beta1.PipelineTask{
+		Name: "w",
+		Params: []v1beta1.Param{{
+			Name:  "paramw",
+			Value: *v1beta1.NewArrayOrString("$(tasks.f.results.resultF[*])"),
+		}},
+	}
 
-	//   a  b   c  d   e
-	//   |   \ /    \ /
-	//   x    y      z
+	//   a  b   c  d   e  f
+	//   |   \ /    \ /   |
+	//   x    y      z    w
 	nodeA := &dag.Node{Task: a}
 	nodeB := &dag.Node{Task: b}
 	nodeC := &dag.Node{Task: c}
 	nodeD := &dag.Node{Task: d}
 	nodeE := &dag.Node{Task: e}
+	nodeF := &dag.Node{Task: f}
 	nodeX := &dag.Node{Task: xDependsOnA}
 	nodeY := &dag.Node{Task: yDependsOnBRunsAfterC}
 	nodeZ := &dag.Node{Task: zDependsOnDAndE}
+	nodeW := &dag.Node{Task: wDependsOnF}
 
 	nodeA.Next = []*dag.Node{nodeX}
 	nodeB.Next = []*dag.Node{nodeY}
 	nodeC.Next = []*dag.Node{nodeY}
 	nodeD.Next = []*dag.Node{nodeZ}
 	nodeE.Next = []*dag.Node{nodeZ}
+	nodeF.Next = []*dag.Node{nodeW}
 	nodeX.Prev = []*dag.Node{nodeA}
 	nodeY.Prev = []*dag.Node{nodeB, nodeC}
 	nodeZ.Prev = []*dag.Node{nodeD, nodeE}
+	nodeW.Prev = []*dag.Node{nodeF}
 
 	expectedDAG := &dag.Graph{
 		Nodes: map[string]*dag.Node{
@@ -343,15 +355,17 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 			"c": nodeC,
 			"d": nodeD,
 			"e": nodeE,
+			"f": nodeF,
 			"x": nodeX,
 			"y": nodeY,
 			"z": nodeZ,
+			"w": nodeW,
 		},
 	}
 	p := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{a, b, c, d, e, xDependsOnA, yDependsOnBRunsAfterC, zDependsOnDAndE},
+			Tasks: []v1beta1.PipelineTask{a, b, c, d, e, f, xDependsOnA, yDependsOnBRunsAfterC, zDependsOnDAndE, wDependsOnF},
 		},
 	}
 	tasks := v1beta1.PipelineTaskList(p.Spec.Tasks)
