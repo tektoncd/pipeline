@@ -3980,6 +3980,21 @@ func schema_pkg_apis_pipeline_v1beta1_TaskResult(ref common.ReferenceCallback) c
 							Format:      "",
 						},
 					},
+					"properties": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Properties is the JSON Schema properties to support key-value pairs results.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec"),
+									},
+								},
+							},
+						},
+					},
 					"description": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Description is a human-readable description of the result",
@@ -3992,6 +4007,8 @@ func schema_pkg_apis_pipeline_v1beta1_TaskResult(ref common.ReferenceCallback) c
 				Required: []string{"name"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec"},
 	}
 }
 

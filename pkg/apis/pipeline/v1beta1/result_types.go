@@ -23,6 +23,10 @@ type TaskResult struct {
 	// +optional
 	Type ResultsType `json:"type,omitempty"`
 
+	// Properties is the JSON Schema properties to support key-value pairs results.
+	// +optional
+	Properties map[string]PropertySpec `json:"properties,omitempty"`
+
 	// Description is a human-readable description of the result
 	// +optional
 	Description string `json:"description"`
