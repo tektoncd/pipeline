@@ -2254,6 +2254,14 @@
           "type": "string",
           "default": ""
         },
+        "properties": {
+          "description": "Properties is the JSON Schema properties to support key-value pairs results.",
+          "type": "object",
+          "additionalProperties": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.PropertySpec"
+          }
+        },
         "type": {
           "description": "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
           "type": "string"

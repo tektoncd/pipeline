@@ -549,3 +549,272 @@ func TestValidateOverrides(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateResult(t *testing.T) {
+	tcs := []struct {
+		name    string
+		tr      *v1beta1.TaskRun
+		rtr     *v1beta1.TaskSpec
+		wantErr bool
+	}{{
+		name: "valid taskrun spec results",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{
+						{
+							Name: "string-result",
+							Type: v1beta1.ResultsTypeString,
+						},
+						{
+							Name: "array-result",
+							Type: v1beta1.ResultsTypeArray,
+						},
+						{
+							Name:       "object-result",
+							Type:       v1beta1.ResultsTypeObject,
+							Properties: map[string]v1beta1.PropertySpec{"hello": {Type: "string"}},
+						},
+					},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "string-result",
+							Type:  v1beta1.ResultsTypeString,
+							Value: *v1beta1.NewArrayOrString("hello"),
+						},
+						{
+							Name:  "array-result",
+							Type:  v1beta1.ResultsTypeArray,
+							Value: *v1beta1.NewArrayOrString("hello", "world"),
+						},
+						{
+							Name:  "object-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{},
+		},
+		wantErr: false,
+	}, {
+		name: "valid taskspec results",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{
+						{
+							Name: "string-result",
+							Type: v1beta1.ResultsTypeString,
+						},
+						{
+							Name: "array-result",
+							Type: v1beta1.ResultsTypeArray,
+						},
+						{
+							Name: "object-result",
+							Type: v1beta1.ResultsTypeObject,
+						},
+					},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "string-result",
+							Type:  v1beta1.ResultsTypeString,
+							Value: *v1beta1.NewArrayOrString("hello"),
+						},
+						{
+							Name:  "array-result",
+							Type:  v1beta1.ResultsTypeArray,
+							Value: *v1beta1.NewArrayOrString("hello", "world"),
+						},
+						{
+							Name:  "object-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{},
+		},
+		wantErr: false,
+	}, {
+		name: "invalid taskrun spec results types",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{
+						{
+							Name: "string-result",
+							Type: v1beta1.ResultsTypeString,
+						},
+						{
+							Name: "array-result",
+							Type: v1beta1.ResultsTypeArray,
+						},
+						{
+							Name:       "object-result",
+							Type:       v1beta1.ResultsTypeObject,
+							Properties: map[string]v1beta1.PropertySpec{"hello": {Type: "string"}},
+						},
+					},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "string-result",
+							Type:  v1beta1.ResultsTypeArray,
+							Value: *v1beta1.NewArrayOrString("hello", "world"),
+						},
+						{
+							Name:  "array-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+						{
+							Name:  "object-result",
+							Type:  v1beta1.ResultsTypeString,
+							Value: *v1beta1.NewArrayOrString("hello"),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{},
+		},
+		wantErr: true,
+	}, {
+		name: "invalid taskspec results types",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "string-result",
+							Type:  v1beta1.ResultsTypeArray,
+							Value: *v1beta1.NewArrayOrString("hello", "world"),
+						},
+						{
+							Name:  "array-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+						{
+							Name:  "object-result",
+							Type:  v1beta1.ResultsTypeString,
+							Value: *v1beta1.NewArrayOrString("hello"),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{
+				{
+					Name: "string-result",
+					Type: v1beta1.ResultsTypeString,
+				},
+				{
+					Name: "array-result",
+					Type: v1beta1.ResultsTypeArray,
+				},
+				{
+					Name:       "object-result",
+					Type:       v1beta1.ResultsTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{"hello": {Type: "string"}},
+				},
+			},
+		},
+		wantErr: true,
+	}, {
+		name: "invalid taskrun spec results object properties",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{
+						{
+							Name:       "object-result",
+							Type:       v1beta1.ResultsTypeObject,
+							Properties: map[string]v1beta1.PropertySpec{"world": {Type: "string"}},
+						},
+					},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "object-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{},
+		},
+		wantErr: true,
+	}, {
+		name: "invalid taskspec results object properties",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "object-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{
+				{
+					Name:       "object-result",
+					Type:       v1beta1.ResultsTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{"world": {Type: "string"}},
+				},
+			},
+		},
+		wantErr: true,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateTaskRunResults(tc.tr, tc.rtr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("expected err: %t, but got err %s", tc.wantErr, err)
+			}
+		})
+	}
+
+}

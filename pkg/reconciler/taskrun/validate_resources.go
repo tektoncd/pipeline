@@ -180,18 +180,18 @@ func MissingKeysObjectParamNames(paramSpecs []v1beta1.ParamSpec, params []v1beta
 		}
 	}
 
-	return validateObjectKeys(neededKeys, providedKeys)
+	return findMissingKeys(neededKeys, providedKeys)
 }
 
-// validateObjectKeys checks if objects have missing keys in its provider (either taskrun value or result value)
-func validateObjectKeys(neededObjectKeys, providedObjectKeys map[string][]string) map[string][]string {
+// findMissingKeys checks if objects have missing keys in its provider (either taskrun value or result value)
+func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]string {
 	missings := map[string][]string{}
-	for p, keys := range providedObjectKeys {
-		if _, ok := neededObjectKeys[p]; !ok {
+	for p, keys := range providedKeys {
+		if _, ok := neededKeys[p]; !ok {
 			// Ignore any missing objects - this happens when object param is provided with default
 			continue
 		}
-		missedKeys := list.DiffLeft(neededObjectKeys[p], keys)
+		missedKeys := list.DiffLeft(neededKeys[p], keys)
 		if len(missedKeys) != 0 {
 			missings[p] = missedKeys
 		}
@@ -280,4 +280,67 @@ func validateSidecarOverrides(ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) er
 		}
 	}
 	return err
+}
+
+// validateResults checks the emitted results type and object properties against the ones defined in spec.
+func validateTaskRunResults(tr *v1beta1.TaskRun, resolvedTaskSpec *v1beta1.TaskSpec) error {
+	specResults := []v1beta1.TaskResult{}
+	if tr.Spec.TaskSpec != nil {
+		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
+	}
+
+	if resolvedTaskSpec != nil {
+		specResults = append(specResults, resolvedTaskSpec.Results...)
+	}
+
+	// When get the results, check if the type of result is the expected one
+	if missmatchedTypes := mismatchedTypesResults(tr, specResults); len(missmatchedTypes) != 0 {
+		return fmt.Errorf("missmatched Types for these results, %v", missmatchedTypes)
+	}
+
+	// When get the results, for object value need to check if they have missing keys.
+	if missingKeysObjectNames := missingKeysofObjectResults(tr, specResults); len(missingKeysObjectNames) != 0 {
+		return fmt.Errorf("missing keys for these results which are required in TaskResult's properties %v", missingKeysObjectNames)
+	}
+	return nil
+}
+
+// mismatchedTypesResults checks and returns all the mismatched types of emitted results against specified results.
+func mismatchedTypesResults(tr *v1beta1.TaskRun, specResults []v1beta1.TaskResult) map[string][]string {
+	neededTypes := make(map[string][]string)
+	providedTypes := make(map[string][]string)
+	// collect needed keys for object results
+	for _, r := range specResults {
+		neededTypes[r.Name] = append(neededTypes[r.Name], string(r.Type))
+	}
+
+	// collect provided keys for object results
+	for _, trr := range tr.Status.TaskRunResults {
+		providedTypes[trr.Name] = append(providedTypes[trr.Name], string(trr.Type))
+	}
+	return findMissingKeys(neededTypes, providedTypes)
+}
+
+// missingKeysofObjectResults checks and returns the missing keys of object results.
+func missingKeysofObjectResults(tr *v1beta1.TaskRun, specResults []v1beta1.TaskResult) map[string][]string {
+	neededKeys := make(map[string][]string)
+	providedKeys := make(map[string][]string)
+	// collect needed keys for object results
+	for _, r := range specResults {
+		if string(r.Type) == string(v1beta1.ParamTypeObject) {
+			for key := range r.Properties {
+				neededKeys[r.Name] = append(neededKeys[r.Name], key)
+			}
+		}
+	}
+
+	// collect provided keys for object results
+	for _, trr := range tr.Status.TaskRunResults {
+		if trr.Value.Type == v1beta1.ParamTypeObject {
+			for key := range trr.Value.ObjectVal {
+				providedKeys[trr.Name] = append(providedKeys[trr.Name], key)
+			}
+		}
+	}
+	return findMissingKeys(neededKeys, providedKeys)
 }

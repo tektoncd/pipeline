@@ -496,6 +496,10 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		return err
 	}
 
+	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
+		return err
+	}
+
 	logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, tr.Status.GetCondition(apis.ConditionSucceeded))
 	return nil
 }
