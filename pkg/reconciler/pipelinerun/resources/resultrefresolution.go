@@ -43,7 +43,7 @@ func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelin
 	if err != nil {
 		return nil, pt, err
 	}
-	return removeDup(resolvedResultRefs), "", nil
+	return validateArrayResultsIndex(removeDup(resolvedResultRefs))
 }
 
 // ResolveResultRefs resolves any ResultReference that are found in the target ResolvedPipelineRunTask
@@ -56,7 +56,19 @@ func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunSta
 		}
 		allResolvedResultRefs = append(allResolvedResultRefs, resolvedResultRefs...)
 	}
-	return removeDup(allResolvedResultRefs), "", nil
+	return validateArrayResultsIndex(removeDup(allResolvedResultRefs))
+}
+
+// validateArrayResultsIndex checks if the result array indexing reference is out of bound of the array size
+func validateArrayResultsIndex(allResolvedResultRefs ResolvedResultRefs) (ResolvedResultRefs, string, error) {
+	for _, r := range allResolvedResultRefs {
+		if r.Value.Type == v1beta1.ParamTypeArray {
+			if r.ResultReference.ResultsIndex >= len(r.Value.ArrayVal) {
+				return nil, "", fmt.Errorf("Array Result Index %d for Task %s Result %s is out of bound of size %d", r.ResultReference.ResultsIndex, r.ResultReference.PipelineTask, r.ResultReference.Result, len(r.Value.ArrayVal))
+			}
+		}
+	}
+	return allResolvedResultRefs, "", nil
 }
 
 // extractResultRefs resolves any ResultReference that are found in param or pipeline result
@@ -187,8 +199,17 @@ func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultR
 func (rs ResolvedResultRefs) getStringReplacements() map[string]string {
 	replacements := map[string]string{}
 	for _, r := range rs {
-		for _, target := range r.getReplaceTarget() {
-			replacements[target] = r.Value.StringVal
+		switch r.Value.Type {
+		case v1beta1.ParamTypeArray:
+			for i := 0; i < len(r.Value.ArrayVal); i++ {
+				for _, target := range r.getReplaceTargetfromArrayIndex(i) {
+					replacements[target] = r.Value.ArrayVal[i]
+				}
+			}
+		default:
+			for _, target := range r.getReplaceTarget() {
+				replacements[target] = r.Value.StringVal
+			}
 		}
 	}
 	return replacements
@@ -199,5 +220,13 @@ func (r *ResolvedResultRef) getReplaceTarget() []string {
 		fmt.Sprintf("%s.%s.%s.%s", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result),
 		fmt.Sprintf("%s.%s.%s[%q]", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result),
 		fmt.Sprintf("%s.%s.%s['%s']", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result),
+	}
+}
+
+func (r *ResolvedResultRef) getReplaceTargetfromArrayIndex(idx int) []string {
+	return []string{
+		fmt.Sprintf("%s.%s.%s.%s[%d]", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result, idx),
+		fmt.Sprintf("%s.%s.%s[%q][%d]", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result, idx),
+		fmt.Sprintf("%s.%s.%s['%s'][%d]", v1beta1.ResultTaskPart, r.ResultReference.PipelineTask, v1beta1.ResultResultPart, r.ResultReference.Result, idx),
 	}
 }

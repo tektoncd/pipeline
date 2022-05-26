@@ -19,6 +19,7 @@ package v1beta1
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -26,6 +27,7 @@ import (
 type ResultRef struct {
 	PipelineTask string `json:"pipelineTask"`
 	Result       string `json:"result"`
+	ResultsIndex int    `json:"resultsIndex"`
 }
 
 const (
@@ -35,13 +37,17 @@ const (
 	// ResultResultPart Constant used to define the "results" part of a pipeline result reference
 	ResultResultPart = "results"
 	// TODO(#2462) use one regex across all substitutions
-	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*\)`
+	// variableSubstitutionFormat matches format like $result.resultname, $result.resultname[int] and $result.resultname[*]
+	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9])*\*?\])?\)`
+	// arrayIndexing will match all `[int]` and `[*]` for parseExpression
+	arrayIndexing = `\[([0-9])*\*?\]`
 	// ResultNameFormat Constant used to define the the regex Result.Name should follow
 	ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
 )
 
 var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
+var arrayIndexingRegex = regexp.MustCompile(arrayIndexing)
 
 // NewResultRefs extracts all ResultReferences from a param or a pipeline result.
 // If the ResultReference can be extracted, they are returned. Expressions which are not
@@ -49,7 +55,7 @@ var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
 func NewResultRefs(expressions []string) []*ResultRef {
 	var resultRefs []*ResultRef
 	for _, expression := range expressions {
-		pipelineTask, result, err := parseExpression(expression)
+		pipelineTask, result, index, err := parseExpression(expression)
 		// If the expression isn't a result but is some other expression,
 		// parseExpression will return an error, in which case we just skip that expression,
 		// since although it's not a result ref, it might be some other kind of reference
@@ -57,6 +63,7 @@ func NewResultRefs(expressions []string) []*ResultRef {
 			resultRefs = append(resultRefs, &ResultRef{
 				PipelineTask: pipelineTask,
 				Result:       result,
+				ResultsIndex: index,
 			})
 		}
 	}
@@ -122,12 +129,19 @@ func stripVarSubExpression(expression string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(expression, "$("), ")")
 }
 
-func parseExpression(substitutionExpression string) (string, string, error) {
+func parseExpression(substitutionExpression string) (string, string, int, error) {
 	subExpressions := strings.Split(substitutionExpression, ".")
 	if len(subExpressions) != 4 || subExpressions[0] != ResultTaskPart || subExpressions[2] != ResultResultPart {
-		return "", "", fmt.Errorf("Must be of the form %q", resultExpressionFormat)
+		return "", "", 0, fmt.Errorf("Must be of the form %q", resultExpressionFormat)
 	}
-	return subExpressions[1], subExpressions[3], nil
+
+	stringIdx := strings.TrimSuffix(strings.TrimPrefix(arrayIndexingRegex.FindString(subExpressions[3]), "["), "]")
+	subExpressions[3] = arrayIndexingRegex.ReplaceAllString(subExpressions[3], "")
+	if stringIdx != "" {
+		intIdx, _ := strconv.Atoi(stringIdx)
+		return subExpressions[1], subExpressions[3], intIdx, nil
+	}
+	return subExpressions[1], subExpressions[3], 0, nil
 }
 
 // PipelineTaskResultRefs walks all the places a result reference can be used

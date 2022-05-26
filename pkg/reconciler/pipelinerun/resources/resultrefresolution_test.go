@@ -120,6 +120,58 @@ var pipelineRunState = PipelineRunState{{
 			Value: *v1beta1.NewArrayOrString("$(tasks.aCustomPipelineTask.results.aResult)"),
 		}},
 	},
+}, {
+	TaskRunName: "cTaskRun",
+	TaskRun: &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "cTaskRun",
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{successCondition},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				TaskRunResults: []v1beta1.TaskRunResult{{
+					Name:  "cResult",
+					Value: *v1beta1.NewArrayOrString("arrayResultOne", "arrayResultTwo"),
+				}},
+			},
+		},
+	},
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "cTask",
+		TaskRef: &v1beta1.TaskRef{Name: "cTask"},
+		Params: []v1beta1.Param{{
+			Name:  "cParam",
+			Value: *v1beta1.NewArrayOrString("$(tasks.cTask.results.cResult[1])"),
+		}},
+	},
+}, {
+	TaskRunName: "dTaskRun",
+	TaskRun: &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "dTaskRun",
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{successCondition},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				TaskRunResults: []v1beta1.TaskRunResult{{
+					Name:  "dResult",
+					Value: *v1beta1.NewArrayOrString("arrayResultOne", "arrayResultTwo"),
+				}},
+			},
+		},
+	},
+	PipelineTask: &v1beta1.PipelineTask{
+		Name:    "dTask",
+		TaskRef: &v1beta1.TaskRef{Name: "dTask"},
+		Params: []v1beta1.Param{{
+			Name:  "dParam",
+			Value: *v1beta1.NewArrayOrString("$(tasks.dTask.results.dResult[3])"),
+		}},
+	},
 }}
 
 func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
@@ -479,6 +531,30 @@ func TestResolveResultRefs(t *testing.T) {
 			FromTaskRun: "aTaskRun",
 		}},
 		wantErr: false,
+	}, {
+		name:             "Test successful array result references resolution - params",
+		pipelineRunState: pipelineRunState,
+		targets: PipelineRunState{
+			pipelineRunState[7],
+		},
+		want: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultOne", "arrayResultTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "cTask",
+				Result:       "cResult",
+				ResultsIndex: 1,
+			},
+			FromTaskRun: "cTaskRun",
+		}},
+		wantErr: false,
+	}, {
+		name:             "Test unsuccessful result references resolution - params",
+		pipelineRunState: pipelineRunState,
+		targets: PipelineRunState{
+			pipelineRunState[8],
+		},
+		want:    nil,
+		wantErr: true,
 	}, {
 		name:             "Test successful result references resolution - when expressions",
 		pipelineRunState: pipelineRunState,

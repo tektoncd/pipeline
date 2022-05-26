@@ -1524,7 +1524,8 @@
       "type": "object",
       "required": [
         "pipelineTask",
-        "result"
+        "result",
+        "resultsIndex"
       ],
       "properties": {
         "pipelineTask": {
@@ -1534,6 +1535,11 @@
         "result": {
           "type": "string",
           "default": ""
+        },
+        "resultsIndex": {
+          "type": "integer",
+          "format": "int32",
+          "default": 0
         }
       }
     },
