@@ -602,6 +602,67 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 		}},
 	}, {
+		name: "Test array indexing result substitution on minimal variable substitution expression - params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "a.Result",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name:  "bParam",
+					Value: *v1beta1.NewArrayOrString(`$(tasks.aTask.results["a.Result"][1])`),
+				}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name:  "bParam",
+					Value: *v1beta1.NewArrayOrString("arrayResultValueTwo"),
+				}},
+			},
+		}},
+	}, {
+		name: "Test array indexing result substitution out of bound - params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "a.Result",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name:  "bParam",
+					Value: *v1beta1.NewArrayOrString(`$(tasks.aTask.results["a.Result"][3])`),
+				}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name: "bParam",
+					// index validation is done in ResolveResultRefs() before ApplyTaskResults()
+					Value: *v1beta1.NewArrayOrString(`$(tasks.aTask.results["a.Result"][3])`),
+				}},
+			},
+		}},
+	}, {
 		name: "Test result substitution on minimal variable substitution expression - when expressions",
 		resolvedResultRefs: ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("aResultValue"),
@@ -630,6 +691,38 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 					Input:    "aResultValue",
 					Operator: selection.In,
 					Values:   []string{"aResultValue"},
+				}},
+			},
+		}},
+	}, {
+		name: "Test array indexing result substitution on minimal variable substitution expression - when expressions",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "$(tasks.aTask.results.aResult[1])",
+					Operator: selection.In,
+					Values:   []string{"$(tasks.aTask.results.aResult[0])"},
+				}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "arrayResultValueTwo",
+					Operator: selection.In,
+					Values:   []string{"arrayResultValueOne"},
 				}},
 			},
 		}},
@@ -680,6 +773,36 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			},
 		}},
 	}, {
+		name: "Test array indexing result substitution on embedded variable substitution expression - params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name:  "bParam",
+					Value: *v1beta1.NewArrayOrString("Result value --> $(tasks.aTask.results.aResult[0])"),
+				}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name:  "bParam",
+					Value: *v1beta1.NewArrayOrString("Result value --> arrayResultValueOne"),
+				}},
+			},
+		}},
+	}, {
 		name: "Test result substitution on embedded variable substitution expression - when expressions",
 		resolvedResultRefs: ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("aResultValue"),
@@ -710,6 +833,40 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 					Input:    "Result value --> aResultValue",
 					Operator: selection.In,
 					Values:   []string{"Result value --> aResultValue"},
+				}},
+			},
+		}},
+	}, {
+		name: "Test array indexing result substitution on embedded variable substitution expression - when expressions",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				WhenExpressions: []v1beta1.WhenExpression{
+					{
+						Input:    "Result value --> $(tasks.aTask.results.aResult[1])",
+						Operator: selection.In,
+						Values:   []string{"Result value --> $(tasks.aTask.results.aResult[0])"},
+					},
+				},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "Result value --> arrayResultValueTwo",
+					Operator: selection.In,
+					Values:   []string{"Result value --> arrayResultValueOne"},
 				}},
 			},
 		}},

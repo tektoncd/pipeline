@@ -42,6 +42,27 @@ func TestNewResultReference(t *testing.T) {
 			Result:       "sumResult",
 		}},
 	}, {
+		name: "refer whole array result",
+		param: v1beta1.Param{
+			Name:  "param",
+			Value: *v1beta1.NewArrayOrString("$(tasks.sumTask.results.sumResult[*])"),
+		},
+		want: []*v1beta1.ResultRef{{
+			PipelineTask: "sumTask",
+			Result:       "sumResult",
+		}},
+	}, {
+		name: "refer array indexing result",
+		param: v1beta1.Param{
+			Name:  "param",
+			Value: *v1beta1.NewArrayOrString("$(tasks.sumTask.results.sumResult[1])"),
+		},
+		want: []*v1beta1.ResultRef{{
+			PipelineTask: "sumTask",
+			Result:       "sumResult",
+			ResultsIndex: 1,
+		}},
+	}, {
 		name: "substitution within string",
 		param: v1beta1.Param{
 			Name:  "param",

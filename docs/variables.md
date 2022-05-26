@@ -22,6 +22,9 @@ For instructions on using variable substitutions see the relevant section of [th
 | `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
 | `tasks.<taskName>.results['<resultName>']` | (see above)) |
 | `tasks.<taskName>.results["<resultName>"]` | (see above)) |
+| `tasks.<taskName>.results.<resultName>[i]` | The ith value of the `Task's` array result. Can alter `Task` execution order within a `Pipeline`.) |
+| `tasks.<taskName>.results['<resultName>'][i]` | (see above)) |
+| `tasks.<taskName>.results["<resultName>"][i]` | (see above)) |
 | `workspaces.<workspaceName>.bound` | Whether a `Workspace` has been bound or not. "false" if the `Workspace` declaration has `optional: true` and the Workspace binding was omitted by the PipelineRun. |
 | `context.pipelineRun.name` | The name of the `PipelineRun` that this `Pipeline` is running in. |
 | `context.pipelineRun.namespace` | The namespace of the `PipelineRun` that this `Pipeline` is running in. |

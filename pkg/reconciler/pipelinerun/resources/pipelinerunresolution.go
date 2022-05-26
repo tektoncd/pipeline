@@ -281,8 +281,10 @@ func (t *ResolvedPipelineRunTask) skipBecauseResultReferencesAreMissing(facts *P
 	if t.checkParentsDone(facts) && t.hasResultReferences() {
 		resolvedResultRefs, pt, err := ResolveResultRefs(facts.State, PipelineRunState{t})
 		rprt := facts.State.ToMap()[pt]
-		if err != nil && (t.IsFinalTask(facts) || rprt.Skip(facts).SkippingReason == v1beta1.WhenExpressionsSkip) {
-			return true
+		if rprt != nil {
+			if err != nil && (t.IsFinalTask(facts) || rprt.Skip(facts).SkippingReason == v1beta1.WhenExpressionsSkip) {
+				return true
+			}
 		}
 		ApplyTaskResults(PipelineRunState{t}, resolvedResultRefs)
 		facts.ResetSkippedCache()
