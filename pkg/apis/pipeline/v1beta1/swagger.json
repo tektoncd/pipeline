@@ -1610,7 +1610,6 @@
       "type": "object",
       "properties": {
         "metadata": {
-          "default": {},
           "$ref": "#/definitions/v1beta1.PipelineTaskMetadata"
         },
         "pipelineTaskName": {

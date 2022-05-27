@@ -1024,7 +1024,9 @@ func combineTaskRunAndTaskSpecLabels(pr *v1beta1.PipelineRun, pipelineTask *v1be
 	labels := make(map[string]string)
 
 	taskRunSpec := pr.GetTaskRunSpec(pipelineTask.Name)
-	addMetadataByPrecedence(labels, taskRunSpec.Metadata.Labels)
+	if taskRunSpec.Metadata != nil {
+		addMetadataByPrecedence(labels, taskRunSpec.Metadata.Labels)
+	}
 
 	addMetadataByPrecedence(labels, getTaskrunLabels(pr, pipelineTask.Name, true))
 
@@ -1039,7 +1041,9 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 	annotations := make(map[string]string)
 
 	taskRunSpec := pr.GetTaskRunSpec(pipelineTask.Name)
-	addMetadataByPrecedence(annotations, taskRunSpec.Metadata.Annotations)
+	if taskRunSpec.Metadata != nil {
+		addMetadataByPrecedence(annotations, taskRunSpec.Metadata.Annotations)
+	}
 
 	addMetadataByPrecedence(annotations, getTaskrunAnnotations(pr))
 
