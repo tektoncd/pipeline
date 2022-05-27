@@ -46,6 +46,7 @@ var (
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	timeout             = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
 	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
+	taskRunName         = flag.String("task_run_name", "", "taskRuns's name")
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
 	stepMetadataDir = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
@@ -133,6 +134,7 @@ func main() {
 		PostWriter:          &realPostWriter{},
 		Results:             strings.Split(*results, ","),
 		Timeout:             timeout,
+		TaskRunName:         *taskRunName,
 		BreakpointOnFailure: *breakpointOnFailure,
 		OnError:             *onError,
 		StepMetadataDir:     *stepMetadataDir,

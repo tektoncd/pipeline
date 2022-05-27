@@ -108,7 +108,7 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug) ([]corev1.Container, error) {
+func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskRunName string, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug) ([]corev1.Container, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("No steps specified")
 	}
@@ -126,6 +126,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				"-post_file", filepath.Join(runDir, idx, "out"),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
+				"-task_run_name", taskRunName,
 			}
 		default:
 			// All other steps wait for previous file, write next file.
@@ -134,6 +135,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				"-post_file", filepath.Join(runDir, idx, "out"),
 				"-termination_path", terminationPath,
 				"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
+				"-task_run_name", taskRunName,
 			}
 		}
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)

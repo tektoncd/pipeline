@@ -184,9 +184,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	if alphaAPIEnabled {
-		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, taskRun.Spec.Debug)
+		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, taskRun.ObjectMeta.Name, &taskSpec, taskRun.Spec.Debug)
 	} else {
-		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, &taskSpec, nil)
+		stepContainers, err = orderContainers(credEntrypointArgs, stepContainers, taskRun.ObjectMeta.Name, &taskSpec, nil)
 	}
 	if err != nil {
 		return nil, err

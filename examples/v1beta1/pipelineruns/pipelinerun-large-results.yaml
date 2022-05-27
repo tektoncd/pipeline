@@ -1,0 +1,81 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: gen-random-text
+spec:
+  results:
+    - name: text
+      description: large randomly generated string
+  steps:
+    - name: add
+      image: alpine
+      command: ["/bin/sh", "-c"]
+      args:
+        - cat /dev/urandom | head -c 3009 | base64 | tee $(results.text.path);
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: concat-text
+spec:
+  params:
+    - name: first
+      description: the first operand
+    - name: second
+      description: the second operand
+  results:
+    - name: concatenated-text
+      description: concatenate strings
+  steps:
+    - name: concat
+      image: alpine
+      command: ["/bin/sh", "-c"]
+      args:
+        - cat $(params.first) $(params.second) | tee $(results.concatenated-text.path) ;
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: concat-text-pipeline
+spec:
+  params:
+    - name: first
+      description: the first operand
+    - name: second
+      description: the second operand
+  tasks:
+    - name: first-task
+      taskRef:
+        name: gen-random-text
+    - name: second-task
+      runAfter:
+        - first-task
+      taskRef:
+        name: gen-random-text
+    - name: third-task
+      runAfter:
+        - second-task
+      params:
+        - name: first
+          value: $(tasks.first-task.results.text)
+        - name: second
+          value: $(tasks.second-task.results.text)
+      taskRef:
+        name: concat-text
+  results:
+    - name: sum
+      description: the concat of all texts
+      value: $(tasks.third-task.results.concatenated-text)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: concat-text-pipeline-run
+spec:
+  pipelineRef:
+    name: concat-text-pipeline
+  params:
+    - name: first
+      value: "2"
+    - name: second
+      value: "10"

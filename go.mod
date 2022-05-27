@@ -3,6 +3,7 @@ module github.com/tektoncd/pipeline
 go 1.17
 
 require (
+	github.com/IBM/ibm-cos-sdk-go v1.8.0
 	github.com/cloudevents/sdk-go/v2 v2.5.0
 	github.com/containerd/containerd v1.5.10
 	github.com/google/go-cmp v0.5.7
