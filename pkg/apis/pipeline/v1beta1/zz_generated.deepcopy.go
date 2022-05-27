@@ -1226,7 +1226,11 @@ func (in *PipelineTaskRunSpec) DeepCopyInto(out *PipelineTaskRunSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	in.Metadata.DeepCopyInto(&out.Metadata)
+	if in.Metadata != nil {
+		in, out := &in.Metadata, &out.Metadata
+		*out = new(PipelineTaskMetadata)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

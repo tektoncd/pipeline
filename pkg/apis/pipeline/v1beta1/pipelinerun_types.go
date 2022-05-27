@@ -602,7 +602,7 @@ type PipelineTaskRunSpec struct {
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 
 	// +optional
-	Metadata PipelineTaskMetadata `json:"metadata,omitempty"`
+	Metadata *PipelineTaskMetadata `json:"metadata,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given
