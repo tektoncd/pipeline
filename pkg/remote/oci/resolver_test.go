@@ -61,6 +61,24 @@ func TestOCIResolver(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// setup to many objects in oci bundle test
+	toManyObjErr := fmt.Sprintf("contained more than the maximum %d allow objects", oci.MaximumBundleObjects)
+
+	var toManyObj []runtime.Object
+	for i := 0; i <= oci.MaximumBundleObjects; i++ {
+		name := fmt.Sprintf("%d-task", i)
+		obj := v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       "Task",
+			},
+		}
+		toManyObj = append(toManyObj, &obj)
+	}
+
 	testcases := []struct {
 		name         string
 		objs         []runtime.Object
@@ -129,111 +147,11 @@ func TestOCIResolver(t *testing.T) {
 			},
 		},
 		{
-			name: "too-many-objects",
-			objs: []runtime.Object{
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "first-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "second-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "third-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "fourth-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "fifth-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "sixth-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "seventh-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eighth-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "ninth-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "tenth-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-				&v1beta1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "eleventh-task",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1beta1",
-						Kind:       "Task",
-					},
-				},
-			},
+			name:         "too-many-objects",
+			objs:         toManyObj,
 			mapper:       test.DefaultObjectAnnotationMapper,
 			listExpected: []remote.ResolvedObject{},
-			wantErr:      "contained more than the maximum 10 allow objects",
+			wantErr:      toManyObjErr,
 		},
 		{
 			name:         "single-task-no-version",

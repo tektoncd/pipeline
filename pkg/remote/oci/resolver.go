@@ -42,7 +42,7 @@ const (
 	// TitleAnnotation is an OCI annotation for the bundle title
 	TitleAnnotation = "dev.tekton.image.name"
 	// MaximumBundleObjects defines the maximum number of objects in a bundle
-	MaximumBundleObjects = 10
+	MaximumBundleObjects = 20
 )
 
 // Resolver implements the Resolver interface using OCI images.
