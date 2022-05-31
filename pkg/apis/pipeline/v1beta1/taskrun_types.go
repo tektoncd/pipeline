@@ -143,6 +143,8 @@ const (
 	// TaskRunReasonResolvingTaskRef indicates that the TaskRun is waiting for
 	// its taskRef to be asynchronously resolved.
 	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
+	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
+	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
 )
 
 func (t TaskRunReason) String() string {

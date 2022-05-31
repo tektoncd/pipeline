@@ -560,6 +560,7 @@ False|\[Error message\]|No|The TaskRun encountered a non-permanent error, and it
 False|\[Error message\]|Yes|The TaskRun failed with a permanent error (usually validation).
 False|TaskRunCancelled|Yes|The TaskRun was cancelled successfully.
 False|TaskRunTimeout|Yes|The TaskRun timed out.
+False|TaskRunImagePullFailed|Yes|The TaskRun failed due to one of its steps not being able to pull the image. 
 
 When a `TaskRun` changes status, [events](events.md#taskruns) are triggered accordingly.
 

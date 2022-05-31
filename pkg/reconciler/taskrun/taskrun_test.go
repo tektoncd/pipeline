@@ -1884,6 +1884,62 @@ status:
 	}
 }
 
+func TestReconcilePodFailures(t *testing.T) {
+	taskRun := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-imagepull-fail
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+    - image: whatever
+status:
+  steps:
+  - container: step-unnamed-0
+    name: unnamed-0
+    waiting:
+      message: Back-off pulling image "whatever"
+      reason: ImagePullBackOff
+  taskSpec:
+    steps:
+    - image: whatever
+`)
+	expectedStatus := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  "TaskRunImagePullFailed",
+		Message: `A step in TaskRun "test-imagepull-fail" failed to pull the image. The pod errored with the message: "Back-off pulling image "whatever"."`,
+	}
+
+	wantEvents := []string{
+		"Normal Started ",
+		`Warning Failed A step in TaskRun "test-imagepull-fail" failed to pull the image. The pod errored with the message: "Back-off pulling image "whatever".`,
+	}
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+	condition := newTr.Status.GetCondition(apis.ConditionSucceeded)
+	if d := cmp.Diff(expectedStatus, condition, ignoreLastTransitionTime); d != "" {
+		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
+	}
+	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, taskRun.Name, wantEvents)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
 func TestReconcileTimeouts(t *testing.T) {
 	type testCase struct {
 		name           string

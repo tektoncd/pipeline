@@ -155,6 +155,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
+	// Check for Pod Failures
+	if failed, message := c.checkPodFailures(ctx, tr); failed {
+		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonImagePullFailed, message)
+		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+	}
+
 	// prepare fetches all required resources, validates them together with the
 	// taskrun, runs API conversions. In case of error we update, emit events and return.
 	_, rtr, err := c.prepare(ctx, tr)
@@ -186,6 +192,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		return controller.NewRequeueAfter(tr.GetTimeout(ctx) - elapsed)
 	}
 	return nil
+}
+
+func (c *Reconciler) checkPodFailures(ctx context.Context, tr *v1beta1.TaskRun) (bool, string) {
+	for _, step := range tr.Status.Steps {
+		if step.Waiting != nil && step.Waiting.Reason == "ImagePullBackOff" {
+			message := fmt.Sprintf(`A step in TaskRun %q failed to pull the image. The pod errored with the message: "%s."`, tr.Name, step.Waiting.Message)
+			return true, message
+		}
+	}
+	return false, ""
 }
 
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.TaskRun) {
