@@ -645,8 +645,19 @@ a `results` field but it's the responsibility of the `Task` to generate its cont
 It's important to note that Tekton does not perform any processing on the contents of results; they are emitted
 verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
 precise string you want returned from your `Task` into the `/tekton/results/` files that your `Task` creates.
-You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-task)
+You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-task)**
 to avoid having to hardcode this path.
+
+Note: Tekton uses [termination
+messages](https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/#writing-and-reading-a-termination-message). As
+written in
+[tektoncd/pipeline#4808](https://github.com/tektoncd/pipeline/issues/4808),
+this has some *shortcomings*. The main point here is that the more
+containers we have in our pod, *the smaller the allowed size of each container's
+message*, which translates in Tekton to the **more steps you
+have in a Task, the smaller the result for each step can be**. Be aware that the number of
+steps in a Task affects the maximum size of a Result. *For example, if
+you have 10 steps, the size of each step's Result will have a maximum of less than 1KB*.
 
 In the example below, the `Task` specifies two files in the `results` field:
 `current-date-unix-timestamp` and `current-date-human-readable`.
