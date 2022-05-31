@@ -393,7 +393,11 @@ spec:
 `"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
 
 You may also specify your `Task` reference using a `Tekton Bundle`. A `Tekton Bundle` is an OCI artifact that
-contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.
+contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.  
+
+There is currently a hard limit of 20 objects in a bundle.
+
+
 
  ```yaml
  spec:
