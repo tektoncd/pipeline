@@ -11,6 +11,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 )
 
 func TestCreateVolumes(t *testing.T) {
@@ -685,6 +686,67 @@ func TestApply(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.workspaces)
 			ts, err := workspace.Apply(context.Background(), tc.ts, tc.workspaces, vols)
+			if err != nil {
+				t.Fatalf("Did not expect error but got %v", err)
+			}
+			if d := cmp.Diff(tc.expectedTaskSpec, *ts); d != "" {
+				t.Errorf("Didn't get expected TaskSpec modifications %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestApply_PropagatedWorkspacesFromWorkspaceBindingToDeclarations(t *testing.T) {
+	names.TestingSeed()
+	for _, tc := range []struct {
+		name             string
+		ts               v1beta1.TaskSpec
+		workspaces       []v1beta1.WorkspaceBinding
+		expectedTaskSpec v1beta1.TaskSpec
+	}{{
+		name: "propagate workspaces",
+		ts: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name: "workspace1",
+			}},
+		},
+		workspaces: []v1beta1.WorkspaceBinding{{
+			Name: "workspace2",
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "mypvc",
+			},
+		}},
+		expectedTaskSpec: v1beta1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "ws-9l9zj",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "mypvc",
+					},
+				},
+			}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:      "workspace1",
+				MountPath: "",
+				ReadOnly:  false,
+			}, {
+				Name:      "workspace2",
+				MountPath: "",
+				ReadOnly:  false,
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
+				VolumeMounts: []v1.VolumeMount{{Name: "ws-9l9zj", MountPath: "/workspace/workspace2"}},
+			},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					EnableAPIFields: "alpha",
+				},
+			})
+			vols := workspace.CreateVolumes(tc.workspaces)
+			ts, err := workspace.Apply(ctx, tc.ts, tc.workspaces, vols)
 			if err != nil {
 				t.Fatalf("Did not expect error but got %v", err)
 			}

@@ -142,6 +142,16 @@ func TestValidateBindingsInvalid(t *testing.T) {
 			Name:                  "beth",
 			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{},
 		}},
+	}, {
+		name: "Mismatch between declarations and bindings",
+		declarations: []v1beta1.WorkspaceDeclaration{{
+			Name:     "Notbeth",
+			Optional: true,
+		}},
+		bindings: []v1beta1.WorkspaceBinding{{
+			Name:     "beth",
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := ValidateBindings(context.Background(), tc.declarations, tc.bindings); err == nil {

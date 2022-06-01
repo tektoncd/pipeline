@@ -95,6 +95,9 @@ var (
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
+	// By this time, params and workspaces should not be propagated for embedded tasks so we cannot
+	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
+	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 
 	// Read the initial condition
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
@@ -389,7 +392,22 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := workspace.ValidateBindings(ctx, taskSpec.Workspaces, tr.Spec.Workspaces); err != nil {
+	var workspaceDeclarations []v1beta1.WorkspaceDeclaration
+	// Propagating workspaces allows users to skip declarations
+	// In order to validate the workspace bindings we create declarations based on
+	// the workspaces provided in the task run spec. This logic is hidden behind the
+	// alpha feature gate since propagating workspaces is behind that feature gate.
+	// In addition, we only allow this feature for embedded taskSpec.
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields && tr.Spec.TaskSpec != nil {
+		for _, ws := range tr.Spec.Workspaces {
+			wspaceDeclaration := v1beta1.WorkspaceDeclaration{Name: ws.Name}
+			workspaceDeclarations = append(workspaceDeclarations, wspaceDeclaration)
+		}
+		workspaceDeclarations = append(workspaceDeclarations, taskSpec.Workspaces...)
+	} else {
+		workspaceDeclarations = taskSpec.Workspaces
+	}
+	if err := workspace.ValidateBindings(ctx, workspaceDeclarations, tr.Spec.Workspaces); err != nil {
 		logger.Errorf("TaskRun %q workspaces are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -428,13 +446,20 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	defer c.durationAndCountMetrics(ctx, tr)
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
+	var err error
 
-	ts := updateTaskSpecParamsContextsResults(ctx, tr, rtr)
+	// Get the randomized volume names assigned to workspace bindings
+	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
+
+	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, tr, rtr, workspaceVolumes)
+	if err != nil {
+		logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
+		return err
+	}
 	tr.Status.TaskSpec = ts
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
 	var pod *corev1.Pod
-	var err error
 
 	if tr.Status.PodName != "" {
 		pod, err = c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
@@ -480,7 +505,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 			// This is used by createPod below. Changes to the Spec are not updated.
 			tr.Spec.Workspaces = taskRunWorkspaces
 		}
-		pod, err = c.createPod(ctx, ts, tr, rtr)
+		pod, err = c.createPod(ctx, ts, tr, rtr, workspaceVolumes)
 		if err != nil {
 			newErr := c.handlePodCreationError(tr, err)
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
@@ -664,7 +689,7 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
-func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) (*corev1.Pod, error) {
+func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources, workspaceVolumes map[string]corev1.Volume) (*corev1.Pod, error) {
 	logger := logging.FromContext(ctx)
 	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)
 	if err != nil {
@@ -700,12 +725,6 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
-	// Get the randomized volume names assigned to workspace bindings
-	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
-
-	// Apply workspace resource substitution
-	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
-
 	// By this time, params and workspaces should be propagated down so we can
 	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
 	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
@@ -715,6 +734,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 	}
 
 	ts, err = workspace.Apply(ctx, *ts, tr.Spec.Workspaces, workspaceVolumes)
+
 	if err != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to workspace error %v", tr.Name, err)
 		return nil, err
@@ -757,7 +777,8 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 	return pod, err
 }
 
-func updateTaskSpecParamsContextsResults(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) *v1beta1.TaskSpec {
+// applyParamsContextsResultsAndWorkspaces applies paramater, context, results and workspace substitutions to the TaskSpec.
+func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources, workspaceVolumes map[string]corev1.Volume) (*v1beta1.TaskSpec, error) {
 	ts := rtr.TaskSpec.DeepCopy()
 	var defaults []v1beta1.ParamSpec
 	if len(ts.Params) > 0 {
@@ -775,7 +796,30 @@ func updateTaskSpecParamsContextsResults(ctx context.Context, tr *v1beta1.TaskRu
 	// Apply step exitCode path substitution
 	ts = resources.ApplyStepExitCodePath(ts)
 
-	return ts
+	// Apply workspace resource substitution
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+		// propagate workspaces from taskrun to task.
+		twn := []string{}
+		for _, tw := range ts.Workspaces {
+			twn = append(twn, tw.Name)
+		}
+
+		for _, trw := range tr.Spec.Workspaces {
+			skip := false
+			for _, tw := range twn {
+				if tw == trw.Name {
+					skip = true
+					break
+				}
+			}
+			if !skip {
+				ts.Workspaces = append(ts.Workspaces, v1beta1.WorkspaceDeclaration{Name: trw.Name})
+			}
+		}
+	}
+	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
+
+	return ts, nil
 }
 
 func isExceededResourceQuotaError(err error) bool {

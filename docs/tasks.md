@@ -727,6 +727,10 @@ spec:
 For more information, see [Using `Workspaces` in `Tasks`](workspaces.md#using-workspaces-in-tasks)
 and the [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml) example YAML file.
 
+### Propagated `Workspaces`
+
+Workspaces can be propagated to embedded task specs, not referenced Tasks. For more information, see [Propagated Workspaces](taskruns.md#propagated-workspaces).
+
 ### Emitting `Results`
 
 A Task is able to emit string results that can be viewed by users and passed to other Tasks in a Pipeline. These
