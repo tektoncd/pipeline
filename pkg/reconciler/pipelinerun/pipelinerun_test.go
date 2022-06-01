@@ -7991,7 +7991,6 @@ func TestGetTaskrunWorkspaces_Failure(t *testing.T) {
 	tests := []struct {
 		name          string
 		pr            *v1beta1.PipelineRun
-		rprt          *resources.ResolvedPipelineTask
 		expectedError string
 	}{{
 		name: "failure declaring workspace with different name",
@@ -8000,16 +7999,15 @@ metadata:
   name: pipeline
 spec:
   workspaces:
-    - name: source`),
-		rprt: &resources.ResolvedPipelineTask{
-			PipelineTask: &v1beta1.PipelineTask{
-				Name: "resolved-pipelinetask",
-				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-					Name:      "my-task-workspace",
-					Workspace: "not-source",
-				}},
-			},
-		},
+    - name: source
+  pipelineSpec:
+    workspaces:
+      - name: source
+    tasks:
+      - name: resolved-pipelinetask
+        workspaces:
+          - name: not-source
+`),
 		expectedError: `expected workspace "not-source" to be provided by pipelinerun for pipeline task "resolved-pipelinetask"`,
 	},
 		{
@@ -8020,23 +8018,70 @@ metadata:
 spec:
   workspaces:
     - name: source
- `),
-			rprt: &resources.ResolvedPipelineTask{
-				PipelineTask: &v1beta1.PipelineTask{
-					Name: "resolved-pipelinetask",
-					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
-						Name:      "not-source",
-						Workspace: "",
-					}},
-				},
-			},
+  pipelineSpec:
+    workspaces:
+      - name: source
+    tasks:
+      - name: resolved-pipelinetask
+        workspaces:
+          - name: not-source
+            workspace: ""
+`),
+			expectedError: `expected workspace "not-source" to be provided by pipelinerun for pipeline task "resolved-pipelinetask"`,
+		},
+		{
+			name: "failure propagating workspaces using scripts",
+			pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source
+  pipelineSpec:
+    workspaces:
+      - name: source
+    tasks:
+      - name: resolved-pipelinetask
+        taskSpec:
+          steps:
+            - name: mystep
+              image: myimage
+              script: echo $(workspaces.not-source.path)
+`),
+			expectedError: `expected workspace "not-source" to be provided by pipelinerun for pipeline task "resolved-pipelinetask"`,
+		},
+		{
+			name: "failure propagating workspaces using args",
+			pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source
+  pipelineSpec:
+    workspaces:
+      - name: source
+    tasks:
+      - name: resolved-pipelinetask
+        taskSpec:
+          steps:
+            - name: mystep
+              image: myimage
+              command:
+                - /mycmd
+              args:
+                - echo $(workspaces.not-source.path)
+        workspaces:
+          - name: source
+`),
 			expectedError: `expected workspace "not-source" to be provided by pipelinerun for pipeline task "resolved-pipelinetask"`,
 		},
 	}
+	ctx := config.EnableAlphaAPIFields(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
-
+			rprt := &resources.ResolvedPipelineTask{PipelineTask: &tt.pr.Spec.PipelineSpec.Tasks[0]}
+			_, _, err := getTaskrunWorkspaces(ctx, tt.pr, rprt)
 			if err == nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() did not return error for invalid workspace")
 			} else if d := cmp.Diff(tt.expectedError, err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
@@ -8088,10 +8133,61 @@ spec:
 				},
 			},
 		},
+		{
+			name: "propagating workspaces using scripts",
+			pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source`),
+			rprt: &resources.ResolvedPipelineTask{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "resolved-pipelinetask",
+					TaskSpec: &v1beta1.EmbeddedTask{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:   "mystep",
+								Image:  "myimage",
+								Script: "echo $(workspaces.source.path)",
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "propagating workspaces using args",
+			pr: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pipeline
+spec:
+  workspaces:
+    - name: source`),
+			rprt: &resources.ResolvedPipelineTask{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "resolved-pipelinetask",
+					TaskSpec: &v1beta1.EmbeddedTask{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:    "mystep",
+								Image:   "myimage",
+								Command: []string{"/mycmd"},
+								Args:    []string{"echo $(workspaces.source.path)"},
+							}},
+						},
+					},
+					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+						Name: "source",
+					}},
+				},
+			},
+		},
 	}
+	ctx := config.EnableAlphaAPIFields(context.Background())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
+			_, _, err := getTaskrunWorkspaces(ctx, tt.pr, tt.rprt)
 
 			if err != nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() returned error for valid pipeline: %v", err)

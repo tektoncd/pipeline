@@ -50,7 +50,7 @@ var intIndexRegex = regexp.MustCompile(intIndex)
 
 // ValidateVariable makes sure all variables in the provided string are known
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
+	if vs, present, _ := ExtractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
 			if !vars.Has(v) {
@@ -66,7 +66,7 @@ func ValidateVariable(name, value, prefix, locationName, path string, vars sets.
 
 // ValidateVariableP makes sure all variables for a parameter in the provided string are known
 func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+	if vs, present, errString := ExtractVariablesFromString(value, prefix); present {
 		if errString != "" {
 			return &apis.FieldError{
 				Message: errString,
@@ -90,7 +90,7 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 
 // ValidateVariableProhibited verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
+	if vs, present, _ := ExtractVariablesFromString(value, prefix); present {
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
 			if vars.Has(v) {
@@ -106,7 +106,7 @@ func ValidateVariableProhibited(name, value, prefix, locationName, path string, 
 
 // ValidateVariableProhibitedP verifies that variables for a parameter matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+	if vs, present, errString := ExtractVariablesFromString(value, prefix); present {
 		if errString != "" {
 			return &apis.FieldError{
 				Message: errString,
@@ -155,7 +155,7 @@ func ValidateEntireVariableProhibitedP(value, prefix string, vars sets.String) *
 
 // ValidateVariableIsolated verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
+	if vs, present, _ := ExtractVariablesFromString(value, prefix); present {
 		firstMatch, _ := extractExpressionFromString(value, prefix)
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
@@ -174,7 +174,7 @@ func ValidateVariableIsolated(name, value, prefix, locationName, path string, va
 
 // ValidateVariableIsolatedP verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+	if vs, present, errString := ExtractVariablesFromString(value, prefix); present {
 		if errString != "" {
 			return &apis.FieldError{
 				Message: errString,
@@ -222,7 +222,7 @@ func ValidateWholeArrayOrObjectRefInStringVariable(name, value, prefix string, v
 	return false, nil
 }
 
-// Extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
+// extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
 // "" and false if nothing is found.
 func extractExpressionFromString(s, prefix string) (string, bool) {
 	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
@@ -234,11 +234,16 @@ func extractExpressionFromString(s, prefix string) (string, bool) {
 	return match[0], true
 }
 
-func extractVariablesFromString(s, prefix string) ([]string, bool, string) {
+// ExtractVariablesFromString extracts variables from an input string s with the given prefix via regex matching.
+// It returns a slice of strings which contains the extracted variables, a bool flag to indicate if matches were found
+// and the error string if the referencing of parameters is invalid.
+// If the string does not contain the input prefix then the output will contain an empty slice of strings.
+func ExtractVariablesFromString(s, prefix string) ([]string, bool, string) {
 	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(s, -1)
 	errString := ""
+	// Input string does not contain the prefix and therefore not matches are found.
 	if len(matches) == 0 {
 		return []string{}, false, ""
 	}

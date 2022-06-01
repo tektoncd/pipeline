@@ -606,3 +606,49 @@ func TestStripStarVarSubExpression(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractVariablesFromString(t *testing.T) {
+	tests := []struct {
+		name      string
+		s         string
+		prefix    string
+		want      []string
+		extracted bool
+		err       string
+	}{{
+		name:      "complete match",
+		s:         "--flag=$(inputs.params.baz)",
+		prefix:    "inputs.params",
+		want:      []string{"baz"},
+		extracted: true,
+		err:       "",
+	}, {
+		name:      "no match",
+		s:         "--flag=$(inputs.params.baz)",
+		prefix:    "outputs",
+		want:      []string{},
+		extracted: false,
+		err:       "",
+	}, {
+		name:      "too many dots",
+		s:         "--flag=$(inputs.params.foo.baz.bar)",
+		prefix:    "inputs.params",
+		want:      []string{""},
+		extracted: true,
+		err:       fmt.Sprintf(`Invalid referencing of parameters in "--flag=$(inputs.params.foo.baz.bar)"! Only two dot-separated components after the prefix "inputs.params" are allowed.`),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, extracted, err := substitution.ExtractVariablesFromString(tt.s, tt.prefix)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tt.extracted, extracted); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tt.err, err); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}

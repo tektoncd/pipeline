@@ -2181,9 +2181,10 @@ func TestValidatePipelineWorkspacesDeclarations_Success(t *testing.T) {
 
 func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
 	tests := []struct {
-		name       string
-		workspaces []PipelineWorkspaceDeclaration
-		tasks      []PipelineTask
+		name           string
+		workspaces     []PipelineWorkspaceDeclaration
+		tasks          []PipelineTask
+		skipValidation bool
 	}{{
 		name: "unused pipeline spec workspaces do not cause an error",
 		workspaces: []PipelineWorkspaceDeclaration{{
@@ -2194,6 +2195,7 @@ func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
 		tasks: []PipelineTask{{
 			Name: "foo", TaskRef: &TaskRef{Name: "foo"},
 		}},
+		skipValidation: false,
 	}, {
 		name: "valid mapping pipeline-task workspace name with pipeline workspace name",
 		workspaces: []PipelineWorkspaceDeclaration{{
@@ -2206,10 +2208,21 @@ func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
 				Workspace: "",
 			}},
 		}},
+		skipValidation: false,
+	}, {
+		name: "skip validating workspace usage",
+		workspaces: []PipelineWorkspaceDeclaration{{
+			Name: "pipelineWorkspaceName",
+		}},
+		tasks: []PipelineTask{{
+			Name: "foo", TaskRef: &TaskRef{Name: "foo"},
+		}},
+		skipValidation: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := validatePipelineWorkspacesUsage(tt.workspaces, tt.tasks).ViaField("tasks")
+			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), tt.skipValidation)
+			errs := validatePipelineWorkspacesUsage(ctx, tt.workspaces, tt.tasks).ViaField("tasks")
 			if errs != nil {
 				t.Errorf("Pipeline.validatePipelineWorkspacesUsage() returned error for valid pipeline workspaces: %v", errs)
 			}
@@ -2304,7 +2317,8 @@ func TestValidatePipelineWorkspacesUsage_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := validatePipelineWorkspacesUsage(tt.workspaces, tt.tasks).ViaField("tasks")
+			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
+			errs := validatePipelineWorkspacesUsage(ctx, tt.workspaces, tt.tasks).ViaField("tasks")
 			if errs == nil {
 				t.Errorf("Pipeline.validatePipelineWorkspacesUsage() did not return error for invalid pipeline workspaces")
 			}

@@ -26,6 +26,9 @@ weight: 500
     - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
     - [Specifying taskRunSpecs](#specifying-taskrunspecs)
     - [Specifying <code>Workspaces</code>](#specifying-workspaces)
+      - [Propagated Workspaces](#propagated-workspaces)
+        - [Referenced Resources](#workspace-referenced-resources)
+        - [Referenced TaskRuns within Embedded PipelineRuns](#referenced-taskruns-within-embedded-pipelineruns)
     - [Specifying <code>LimitRange</code> values](#specifying-limitrange-values)
     - [Configuring a failure timeout](#configuring-a-failure-timeout)
   - [<code>PipelineRun</code> status](#pipelinerun-status)
@@ -974,6 +977,311 @@ For more information, see the following topics:
 
 [`Custom tasks`](pipelines.md#using-custom-tasks) may or may not use workspaces.
 Consult the documentation of the custom task that you are using to determine whether it supports workspaces.
+
+#### Propagated Workspaces
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+When using an embedded spec, workspaces from the parent `PipelineRun` will be
+propagated to any inlined specs without needing to be explicitly defined. This
+allows authors to simplify specs by automatically propagating top-level
+workspaces down to other inlined resources.
+**Workspace substutions will only be made for `commands`, `args` and `script` fields of `steps`, `stepTemplates`, and `sidecars`.**
+
+```yaml
+# Inline specifications of a PipelineRun
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: recipe-time-
+spec:
+  workspaces:
+    - name: shared-data
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 16Mi
+          volumeMode: Filesystem
+  pipelineSpec:
+    #workspaces:
+    #  - name: shared-data
+    tasks:
+    - name: fetch-secure-data
+      # workspaces:
+      #   - name: shared-data 
+      taskSpec:
+        # workspaces:
+        #   - name: shared-data 
+        steps:
+        - name: fetch-and-write-secure
+          image: ubuntu
+          script: |
+            echo hi >> $(workspaces.shared-data.path)/recipe.txt
+    - name: print-the-recipe
+      # workspaces:
+      #   - name: shared-data 
+      runAfter:
+        - fetch-secure-data
+      taskSpec:
+        # workspaces:
+        #   - name: shared-data 
+        steps:
+        - name: print-secrets
+          image: ubuntu
+          script: cat $(workspaces.shared-data.path)/recipe.txt
+```
+
+On executing the pipeline run, the workspaces will be interpolated during resolution.
+
+```yaml
+# Successful execution of the above PipelineRun
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: recipe-time-
+  ...
+spec:
+  pipelineSpec:
+  ...
+status:
+  completionTime: "2022-06-02T18:17:02Z"
+  conditions:
+  - lastTransitionTime: "2022-06-02T18:17:02Z"
+    message: 'Tasks Completed: 2 (Failed: 0, Canceled 0), Skipped: 0'
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  pipelineSpec:
+    ...
+  taskRuns:
+    recipe-time-lslt9-fetch-secure-data:
+      pipelineTaskName: fetch-secure-data
+      status:
+        ...
+        taskSpec:
+          steps:
+          - image: ubuntu
+            name: fetch-and-write-secure
+            resources: {}
+            script: |
+              echo hi >> cat /workspace/shared-data/recipe.txt
+          workspaces:
+          - name: shared-data
+    recipe-time-lslt9-print-the-recipe:
+      pipelineTaskName: print-the-recipe
+      status:
+        ...
+        taskSpec:
+          steps:
+          - image: ubuntu
+            name: print-secrets
+            resources: {}
+            script: cat /workspace/shared-data/recipe.txt
+          workspaces:
+          - name: shared-data
+```
+
+##### Workspace Referenced Resources
+
+`Workspaces` cannot be propagated to referenced specifications. For example, the following Pipeline will fail when executed because the workspaces defined in the PipelineRun cannot be propagated to the referenced Pipeline.
+
+```yaml
+# PipelineRun attempting to propagate Workspaces to referenced Tasks
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-task-storage
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: fetch-and-print-recipe
+spec:
+  tasks:
+  - name: fetch-the-recipe
+    taskRef:
+      name: fetch-secure-data
+  - name: print-the-recipe
+    taskRef:
+      name: print-data
+    runAfter:
+      - fetch-the-recipe
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: recipe-time-
+spec:
+  pipelineRef:
+    name: fetch-and-print-recipe
+  workspaces:
+  - name: shared-data
+    persistentVolumeClaim:
+      claimName: shared-task-storage
+```
+
+Upon execution, this will cause failures:
+
+```yaml
+# Failed execution of the above PipelineRun
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: recipe-time-
+  ...
+spec:
+  pipelineRef:
+    name: fetch-and-print-recipe
+  workspaces:
+  - name: shared-data
+    persistentVolumeClaim:
+      claimName: shared-task-storage
+status:
+  completionTime: "2022-06-02T19:02:58Z"
+  conditions:
+  - lastTransitionTime: "2022-06-02T19:02:58Z"
+    message: 'Tasks Completed: 1 (Failed: 1, Canceled 0), Skipped: 1'
+    reason: Failed
+    status: "False"
+    type: Succeeded
+  pipelineSpec:
+    ...
+  taskRuns:
+    recipe-time-v5scg-fetch-the-recipe:
+      pipelineTaskName: fetch-the-recipe
+      status:
+        completionTime: "2022-06-02T19:02:58Z"
+        conditions:
+        - lastTransitionTime: "2022-06-02T19:02:58Z"
+          message: |
+            "step-fetch-and-write" exited with code 1 (image: "docker.io/library/ubuntu@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"); for logs run: kubectl -n default logs recipe-time-v5scg-fetch-the-recipe-pod -c step-fetch-and-write
+          reason: Failed
+          status: "False"
+          type: Succeeded
+        ...
+        taskSpec:
+          steps:
+          - image: ubuntu
+            name: fetch-and-write
+            resources: {}
+            script: | # See below: Replacements do not happen.
+      	      echo hi >> $(workspaces.shared-data.path)/recipe.txt
+```
+
+#### Referenced TaskRuns within Embedded PipelineRuns
+As mentioned in the [Workspace Referenced Resources](#workspace-referenced-resources), workspaces can only be propagated from PipelineRuns to embedded Pipeline specs, not Pipeline references. Similarly, workspaces can only be propagated from a Pipeline to embedded Task specs, not referenced Tasks. For example:
+
+```yaml
+# PipelineRun attempting to propagate Workspaces to referenced Tasks
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: fetch-secure-data
+spec:
+  workspaces: # If Referenced, Workspaces need to be explicitly declared
+  - name: shared-data
+  steps:
+  - name: fetch-and-write
+    image: ubuntu
+    script: |
+      echo $(workspaces.shared-data.path)      
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: recipe-time-
+spec:
+  workspaces:
+  - name: shared-data
+    persistentVolumeClaim:
+      claimName: shared-task-storage
+  pipelineSpec:
+    # workspaces: # Since this is embedded specs, Workspaces don’t need to be declared
+    #    ...
+    tasks:
+    - name: fetch-the-recipe
+      workspaces: # If referencing resources, Workspaces need to be explicitly declared
+      - name: shared-data
+      taskRef: # Referencing a resource
+        name: fetch-secure-data
+    - name: print-the-recipe
+      # workspaces: # Since this is embedded specs, Workspaces don’t need to be declared
+      #    ...
+      taskSpec:
+        # workspaces: # Since this is embedded specs, Workspaces don’t need to be declared
+        #    ...
+        steps:
+        - name: print-secrets
+          image: ubuntu
+          script: cat $(workspaces.shared-data.path)/recipe.txt
+      runAfter:
+        - fetch-the-recipe
+```
+
+The above pipelinerun successfully resolves to:
+
+```yaml
+# Successful execution of the above PipelineRun
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: recipe-time-
+  ...
+spec:
+  pipelineSpec:
+    ...
+  workspaces:
+  - name: shared-data
+    persistentVolumeClaim:
+      claimName: shared-task-storage
+status:
+  completionTime: "2022-06-09T18:42:14Z"
+  conditions:
+  - lastTransitionTime: "2022-06-09T18:42:14Z"
+    message: 'Tasks Completed: 2 (Failed: 0, Cancelled 0), Skipped: 0'
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  pipelineSpec:
+    ...
+  taskRuns:
+    recipe-time-pj6l7-fetch-the-recipe:
+      pipelineTaskName: fetch-the-recipe
+      status:
+        ...
+        taskSpec:
+          steps:
+          - image: ubuntu
+            name: fetch-and-write
+            resources: {}
+            script: |
+              echo /workspace/shared-data
+          workspaces:
+          - name: shared-data
+    recipe-time-pj6l7-print-the-recipe:
+      pipelineTaskName: print-the-recipe
+      status:
+       ...
+        taskSpec:
+          steps:
+          - image: ubuntu
+            name: print-secrets
+            resources: {}
+            script: cat /workspace/shared-data/recipe.txt
+          workspaces:
+          - name: shared-data
+```
 
 ### Specifying `LimitRange` values
 

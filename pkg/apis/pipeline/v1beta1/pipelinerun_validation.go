@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -71,6 +72,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate propagated parameters
 	errs = errs.Also(ps.validateInlineParameters(ctx))
+	// Validate propagated workspaces
+	errs = errs.Also(ps.validatePropagatedWorkspaces(ctx))
 
 	if ps.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
@@ -143,7 +146,35 @@ func (ps *PipelineRunSpec) validatePipelineRunParameters(ctx context.Context) (e
 			}
 		}
 	}
+	return errs
+}
 
+// validatePropagatedWorkspaces validates workspaces that are propagated.
+func (ps *PipelineRunSpec) validatePropagatedWorkspaces(ctx context.Context) (errs *apis.FieldError) {
+	if ps.PipelineSpec == nil {
+		return errs
+	}
+	workspaceNames := sets.NewString()
+	for _, w := range ps.Workspaces {
+		workspaceNames.Insert(w.Name)
+	}
+
+	for _, w := range ps.PipelineSpec.Workspaces {
+		workspaceNames.Insert(w.Name)
+	}
+
+	for i, pt := range ps.PipelineSpec.Tasks {
+		for _, w := range pt.Workspaces {
+			workspaceNames.Insert(w.Name)
+		}
+		errs = errs.Also(pt.validateWorkspaces(workspaceNames).ViaIndex(i))
+	}
+	for i, pt := range ps.PipelineSpec.Finally {
+		for _, w := range pt.Workspaces {
+			workspaceNames.Insert(w.Name)
+		}
+		errs = errs.Also(pt.validateWorkspaces(workspaceNames).ViaIndex(i))
+	}
 	return errs
 }
 
