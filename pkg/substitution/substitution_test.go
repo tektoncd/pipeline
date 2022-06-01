@@ -174,7 +174,7 @@ func TestValidateVariablePs(t *testing.T) {
 			vars:   sets.NewString("foo.bar.baz"),
 		},
 		expectedError: &apis.FieldError{
-			Message: `Invalid referencing of parameters in --flag=$(params.foo.bar.baz) !!! You can only use the dots inside single or double quotes. eg. $(params["org.foo.blah"]) or $(params['org.foo.blah']) are valid references but NOT $params.org.foo.blah.`,
+			Message: `fail to extract variables from string: invalid referencing of parameters in --flag=$(params.foo.bar.baz) !!! You can only use the dots inside single or double quotes. eg. $(params["org.foo.blah"]) or $(params['org.foo.blah']) are valid references but NOT $(params.org.foo.blah)`,
 			Paths:   []string{""},
 		},
 	}, {
@@ -193,7 +193,7 @@ func TestValidateVariablePs(t *testing.T) {
 			vars:   sets.NewString("foo.bar"),
 		},
 		expectedError: &apis.FieldError{
-			Message: `Invalid referencing of parameters in --flag=$(resources.inputs.foo.bar.baz) !!! resources.* can only have 4 components (eg. resources.inputs.foo.bar). Found more than 4 components.`,
+			Message: `fail to extract variables from string: invalid referencing of parameters in --flag=$(resources.inputs.foo.bar.baz) !!! resources.* can only have 4 components (eg. resources.inputs.foo.bar). Found more than 4 components`,
 			Paths:   []string{""},
 		},
 	}, {

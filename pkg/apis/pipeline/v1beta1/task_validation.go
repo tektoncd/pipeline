@@ -34,9 +34,14 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var _ apis.Validatable = (*Task)(nil)
-
+// This regex pattern makes sure the variable name format follows the rules
+// - Must only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)
+// - Must begin with a letter or an underscore (_)
 const variableNameFormat = "^[_a-zA-Z][_a-zA-Z0-9.-]*$"
+
+var paramNameFormatRegex = regexp.MustCompile(variableNameFormat)
+
+var _ apis.Validatable = (*Task)(nil)
 
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
@@ -451,15 +456,11 @@ func validateStepArrayUsage(step Step, prefix string, vars sets.String) *apis.Fi
 }
 
 func validateVariables(ctx context.Context, steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
-	// validate that the variable name format follows the rules
-	// - Must only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)
-	// - Must begin with a letter or an underscore (_)
-	re := regexp.MustCompile(variableNameFormat)
 	invalidNames := []string{}
 	// Converting to sorted list here rather than just looping map keys
 	// because we want the order of items in vars to be deterministic for purpose of unit testing
 	for _, name := range vars.List() {
-		if !re.MatchString(name) {
+		if !paramNameFormatRegex.MatchString(name) {
 			invalidNames = append(invalidNames, name)
 		}
 	}

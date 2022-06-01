@@ -31,14 +31,20 @@ const braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\
 
 // ValidateVariable makes sure all variables in the provided string are known
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if !vars.Has(v) {
-				return &apis.FieldError{
-					Message: fmt.Sprintf("non-existent variable in %q for %s %s", value, locationName, name),
-					Paths:   []string{path + "." + name},
-				}
+	vs, err := extractVariablesFromString(value, prefix)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("fail to extract variables from string: %v", err),
+			Paths:   []string{""},
+		}
+	}
+
+	for _, v := range vs {
+		v = strings.TrimSuffix(v, "[*]")
+		if !vars.Has(v) {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("non-existent variable in %q for %s %s", value, locationName, name),
+				Paths:   []string{path + "." + name},
 			}
 		}
 	}
@@ -47,22 +53,21 @@ func ValidateVariable(name, value, prefix, locationName, path string, vars sets.
 
 // ValidateVariableP makes sure all variables for a parameter in the provided string are known
 func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
-		if errString != "" {
-			return &apis.FieldError{
-				Message: errString,
-				Paths:   []string{""},
-			}
-
+	vs, err := extractVariablesFromString(value, prefix)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("fail to extract variables from string: %v", err),
+			Paths:   []string{""},
 		}
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if !vars.Has(v) {
-				return &apis.FieldError{
-					Message: fmt.Sprintf("non-existent variable in %q", value),
-					// Empty path is required to make the `ViaField`, … work
-					Paths: []string{""},
-				}
+	}
+
+	for _, v := range vs {
+		v = strings.TrimSuffix(v, "[*]")
+		if !vars.Has(v) {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("non-existent variable in %q", value),
+				// Empty path is required to make the `ViaField`, … work
+				Paths: []string{""},
 			}
 		}
 	}
@@ -71,14 +76,20 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 
 // ValidateVariableProhibited verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if vars.Has(v) {
-				return &apis.FieldError{
-					Message: fmt.Sprintf("variable type invalid in %q for %s %s", value, locationName, name),
-					Paths:   []string{path + "." + name},
-				}
+	vs, err := extractVariablesFromString(value, prefix)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("fail to extract variables from string: %v", err),
+			Paths:   []string{""},
+		}
+	}
+
+	for _, v := range vs {
+		v = strings.TrimSuffix(v, "[*]")
+		if vars.Has(v) {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("variable type invalid in %q for %s %s", value, locationName, name),
+				Paths:   []string{path + "." + name},
 			}
 		}
 	}
@@ -87,93 +98,107 @@ func ValidateVariableProhibited(name, value, prefix, locationName, path string, 
 
 // ValidateVariableProhibitedP verifies that variables for a parameter matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
-		if errString != "" {
-			return &apis.FieldError{
-				Message: errString,
-				Paths:   []string{""},
-			}
-
+	vs, err := extractVariablesFromString(value, prefix)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("fail to extract variables from string: %v", err),
+			Paths:   []string{""},
 		}
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if vars.Has(v) {
+	}
+
+	for _, v := range vs {
+		v = strings.TrimSuffix(v, "[*]")
+		if vars.Has(v) {
+			return &apis.FieldError{
+				Message: fmt.Sprintf("variable type invalid in %q", value),
+				// Empty path is required to make the `ViaField`, … work
+				Paths: []string{""},
+			}
+		}
+	}
+
+	return nil
+}
+
+// ValidateVariableIsolated verifies that variables matching the relevant string expressions are completely isolated if present.
+func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
+	vs, err := extractVariablesFromString(value, prefix)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("fail to extract variables from string: %v", err),
+			Paths:   []string{""},
+		}
+	}
+
+	firstMatch, _ := extractExpressionFromString(value, prefix)
+	for _, v := range vs {
+		v = strings.TrimSuffix(v, "[*]")
+		if vars.Has(v) {
+			if len(value) != len(firstMatch) {
 				return &apis.FieldError{
-					Message: fmt.Sprintf("variable type invalid in %q", value),
+					Message: fmt.Sprintf("variable is not properly isolated in %q for %s %s", value, locationName, name),
+					Paths:   []string{path + "." + name},
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// ValidateVariableIsolatedP verifies that variables matching the relevant string expressions are completely isolated if present.
+func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.FieldError {
+	vs, err := extractVariablesFromString(value, prefix)
+	if err != nil {
+		return &apis.FieldError{
+			Message: fmt.Sprintf("fail to extract variables from string: %v", err),
+			Paths:   []string{""},
+		}
+	}
+
+	firstMatch, _ := extractExpressionFromString(value, prefix)
+	for _, v := range vs {
+		v = strings.TrimSuffix(v, "[*]")
+		if vars.Has(v) {
+			if len(value) != len(firstMatch) {
+				return &apis.FieldError{
+					Message: fmt.Sprintf("variable is not properly isolated in %q", value),
 					// Empty path is required to make the `ViaField`, … work
 					Paths: []string{""},
 				}
 			}
 		}
 	}
-	return nil
-}
 
-// ValidateVariableIsolated verifies that variables matching the relevant string expressions are completely isolated if present.
-func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
-		firstMatch, _ := extractExpressionFromString(value, prefix)
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if vars.Has(v) {
-				if len(value) != len(firstMatch) {
-					return &apis.FieldError{
-						Message: fmt.Sprintf("variable is not properly isolated in %q for %s %s", value, locationName, name),
-						Paths:   []string{path + "." + name},
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// ValidateVariableIsolatedP verifies that variables matching the relevant string expressions are completely isolated if present.
-func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
-		if errString != "" {
-			return &apis.FieldError{
-				Message: errString,
-				Paths:   []string{""},
-			}
-
-		}
-		firstMatch, _ := extractExpressionFromString(value, prefix)
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if vars.Has(v) {
-				if len(value) != len(firstMatch) {
-					return &apis.FieldError{
-						Message: fmt.Sprintf("variable is not properly isolated in %q", value),
-						// Empty path is required to make the `ViaField`, … work
-						Paths: []string{""},
-					}
-				}
-			}
-		}
-	}
 	return nil
 }
 
 // Extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
-// "" and false if nothing is found.
-func extractExpressionFromString(s, prefix string) (string, bool) {
+// "" and nil if nothing is found.
+func extractExpressionFromString(s, prefix string) (string, error) {
 	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
-	re := regexp.MustCompile(pattern)
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return "", err
+	}
+
 	match := re.FindStringSubmatch(s)
 	if match == nil {
-		return "", false
+		return "", nil
 	}
-	return match[0], true
+	return match[0], nil
 }
 
-func extractVariablesFromString(s, prefix string) ([]string, bool, string) {
+func extractVariablesFromString(s, prefix string) ([]string, error) {
 	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
-	re := regexp.MustCompile(pattern)
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+
 	matches := re.FindAllStringSubmatch(s, -1)
-	errString := ""
 	if len(matches) == 0 {
-		return []string{}, false, ""
+		return []string{}, nil
 	}
 	vars := make([]string, len(matches))
 	for i, match := range matches {
@@ -186,14 +211,12 @@ func extractVariablesFromString(s, prefix string) ([]string, bool, string) {
 				case "params":
 					// params can only have a maximum of two components in the dot notation otherwise it needs to use the bracket notation.
 					if len(strings.Split(val, ".")) > 0 {
-						errString = fmt.Sprintf(`Invalid referencing of parameters in %s !!! You can only use the dots inside single or double quotes. eg. $(params["org.foo.blah"]) or $(params['org.foo.blah']) are valid references but NOT $params.org.foo.blah.`, s)
-						return vars, true, errString
+						return vars, fmt.Errorf(`invalid referencing of parameters in %s !!! You can only use the dots inside single or double quotes. eg. $(params["org.foo.blah"]) or $(params['org.foo.blah']) are valid references but NOT $(params.org.foo.blah)`, s)
 					}
 				case "resources.(?:inputs|outputs)":
 					// resources can only have a maximum of 4 components.
 					if len(strings.Split(val, ".")) > 2 {
-						errString = fmt.Sprintf(`Invalid referencing of parameters in %s !!! resources.* can only have 4 components (eg. resources.inputs.foo.bar). Found more than 4 components.`, s)
-						return vars, true, errString
+						return vars, fmt.Errorf(`invalid referencing of parameters in %s !!! resources.* can only have 4 components (eg. resources.inputs.foo.bar). Found more than 4 components`, s)
 					}
 					vars[i] = strings.SplitN(val, ".", 2)[0]
 				default:
@@ -209,7 +232,7 @@ func extractVariablesFromString(s, prefix string) ([]string, bool, string) {
 
 		}
 	}
-	return vars, true, errString
+	return vars, nil
 }
 
 func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
