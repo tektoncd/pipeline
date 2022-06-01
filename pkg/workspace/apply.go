@@ -125,6 +125,19 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 	}
 
 	for i := range wb {
+		if alphaAPIEnabled {
+			// Propagate missing Workspaces
+			addWorkspace := true
+			for _, ws := range ts.Workspaces {
+				if ws.Name == wb[i].Name {
+					addWorkspace = false
+					break
+				}
+			}
+			if addWorkspace {
+				ts.Workspaces = append(ts.Workspaces, v1beta1.WorkspaceDeclaration{Name: wb[i].Name})
+			}
+		}
 		w, err := getDeclaredWorkspace(wb[i].Name, ts.Workspaces)
 		if err != nil {
 			return nil, err

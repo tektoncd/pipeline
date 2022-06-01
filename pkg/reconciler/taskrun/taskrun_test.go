@@ -44,6 +44,7 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	eventstest "github.com/tektoncd/pipeline/test/events"
@@ -2467,6 +2468,50 @@ status:
 	}
 }
 
+func TestPropagatedWorkspaces(t *testing.T) {
+	taskRun := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-propagating-workspaces
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+    - args:
+      - replacedArgs - $(workspaces.tr-workspace.path)
+      command:
+      - echo
+      image: foo
+      name: simple-step
+  workspaces:
+  - emptyDir: {}
+    name: tr-workspace
+`)
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+	}
+	d.ConfigMaps = []*corev1.ConfigMap{{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-api-fields": config.AlphaAPIFields,
+		},
+	}}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+	c := testAssets.Controller
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+		t.Fatalf("Could not reconcile the taskrun: %v", err)
+	}
+	getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+
+	want := []v1beta1.WorkspaceDeclaration{{
+		Name: "tr-workspace",
+	}}
+	if c := cmp.Diff(want, getTaskRun.Status.TaskSpec.Workspaces); c != "" {
+		t.Errorf("TestPropagatedWorkspaces errored with: %s", diff.PrintWantGot(c))
+	}
+}
+
 func TestExpandMountPath(t *testing.T) {
 	expectedMountPath := "/temppath/replaced"
 	expectedReplacedArgs := fmt.Sprintf("replacedArgs - %s", expectedMountPath)
@@ -2545,8 +2590,14 @@ spec:
 		Kind:     "Task",
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
-	taskSpec := updateTaskSpecParamsContextsResults(context.Background(), taskRun, rtr)
-	pod, err := r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr)
+	ctx := config.EnableAlphaAPIFields(context.Background())
+	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
+	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
+	if err != nil {
+		t.Fatalf("update task spec threw error %v", err)
+	}
+
+	pod, err := r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr, workspaceVolumes)
 
 	if err != nil {
 		t.Fatalf("create pod threw error %v", err)
@@ -2649,8 +2700,13 @@ spec:
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
 	}
 
-	taskSpec := updateTaskSpecParamsContextsResults(context.Background(), taskRun, rtr)
-	_, err := r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr)
+	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
+	ctx := config.EnableAlphaAPIFields(context.Background())
+	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
+	if err != nil {
+		t.Errorf("update task spec threw an error: %v", err)
+	}
+	_, err = r.createPod(testAssets.Ctx, taskSpec, taskRun, rtr, workspaceVolumes)
 
 	if err == nil || err.Error() != expectedError {
 		t.Errorf("Expected to fail validation for duplicate Workspace mount paths, error was %v", err)

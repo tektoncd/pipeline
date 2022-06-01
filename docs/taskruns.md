@@ -21,6 +21,7 @@ weight: 300
   - [Specifying Task-level `ComputeResources`](#specifying-task-level-computeresources)
   - [Specifying a `Pod` template](#specifying-a-pod-template)
   - [Specifying `Workspaces`](#specifying-workspaces)
+    - [Propagated Workspaces](#propagated-workspaces)
   - [Specifying `Sidecars`](#specifying-sidecars)
   - [Overriding `Task` `Steps` and `Sidecars`](#overriding-task-steps-and-sidecars)
   - [Specifying `LimitRange` values](#specifying-limitrange-values)
@@ -421,6 +422,109 @@ For more information, see the following topics:
 - For information mapping `Workspaces` to `Volumes`, see [Using `Workspace` variables in `TaskRuns`](workspaces.md#using-workspace-variables-in-taskruns).
 - For a list of supported `Volume` types, see [Specifying `VolumeSources` in `Workspaces`](workspaces.md#specifying-volumesources-in-workspaces).
 - For an end-to-end example, see [`Workspaces` in a `TaskRun`](../examples/v1beta1/taskruns/workspace.yaml).
+
+#### Propagated Workspaces
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+When using an embedded spec, workspaces from the parent `TaskRun` will be
+propagated to any inlined specs without needing to be explicitly defined. This
+allows authors to simplify specs by automatically propagating top-level
+workspaces down to other inlined resources.
+**Workspace substutions will only be made for `commands`, `args` and `script` fields of `steps`, `stepTemplates`, and `sidecars`.**
+
+```yaml
+apiVersion: tekton.dev/v1beta1 
+kind: TaskRun                  
+metadata:
+  generateName: propagating-workspaces-
+spec:
+  taskSpec:                    
+    steps:                     
+      - name: simple-step      
+        image: ubuntu          
+        command:               
+          - echo               
+        args:                  
+          - $(workspaces.tr-workspace.path)
+  workspaces:                  
+  - emptyDir: {}               
+    name: tr-workspace
+```
+
+Upon execution, the workspaces will be interpolated during resolution through to the taskspec.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: propagating-workspaces-ndxnc
+  ...
+spec:
+  ...
+status:
+  ...
+  taskSpec:
+    steps:
+      ...
+    workspaces:
+    - name: tr-workspace
+
+```
+
+##### Propagating Workspaces to Referenced Tasks
+
+Workspaces can only be propagated to `embedded` task specs, not `referenced` Tasks. 
+
+```yaml
+apiVersion: tekton.dev/v1beta1 
+kind: Task                     
+metadata:
+  name: workspace-propagation
+spec:
+  steps:
+    - name: simple-step        
+      image: ubuntu            
+      command:                 
+        - echo                 
+      args:                    
+        - $(workspaces.tr-workspace.path)
+---
+apiVersion: tekton.dev/v1beta1 
+kind: TaskRun
+metadata:
+  generateName: propagating-workspaces-
+spec:
+  taskRef:                     
+    name: workspace-propagation
+  workspaces:                  
+  - emptyDir: {}               
+    name: tr-workspace 
+```
+
+Upon execution, the above taskrun will fail because the task is referenced and workspace is not propagated. It mist be explicitly defined in the `spec` of the defined Task.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  ...
+spec:
+  taskRef:
+    kind: Task
+    name: workspace-propagation
+  workspaces:
+  - emptyDir: {}
+    name: tr-workspace
+status:
+  conditions:
+  - lastTransitionTime: "2022-09-13T15:12:35Z"
+    message: workspace binding "tr-workspace" does not match any declared workspace
+    reason: TaskRunValidationFailed
+    status: "False"
+    type: Succeeded
+  ...
+```
 
 ### Specifying `Sidecars`
 
