@@ -255,18 +255,16 @@ func (e Entrypointer) Go() error {
 func (e Entrypointer) prefetchFilesWithLink(logger *zap.SugaredLogger, str1 string) (string, error) {
 	// Create client
 	// Variables
-	r := regexp.MustCompile(`cos://(?P<bucketName>[a-zA-Z0-9\-]+)/(?P<str>[a-zA-Z0-9\-]+)/(?P<key>.+)`)
+	r := regexp.MustCompile(`^cos://(?P<bucketName>[a-zA-Z0-9\-]+)/(?P<str>[a-zA-Z0-9\-]+)/(?P<key>.+)`)
 	if r.MatchString(str1) {
 		parsedString := r.FindStringSubmatch(str1)
 		bucketName := parsedString[1]
 		key := parsedString[2] + parsedString[3]
-		fileName := parsedString[3]
+		fileName := parsedString[3] + "-" + parsedString[2]
 		logger.Infof("Key: %s \n FileName: %s \nBucketName: %s", key, fileName, bucketName)
 		_, err := os.Open(fileName)
 		if err == nil {
 			return key, nil // i.e. it was already fetched.
-		} else {
-			logger.Infof("Key: %s not found... fetching it. %v", key, err)
 		}
 		// users will need to create bucket, key (flat string name)
 		Input := s3.GetObjectInput{
