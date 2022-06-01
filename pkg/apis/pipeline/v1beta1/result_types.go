@@ -19,7 +19,7 @@ type TaskResult struct {
 	Name string `json:"name"`
 
 	// Type is the user-specified type of the result. The possible type
-	// is currently "string" and will support "array" in following work.
+	// is currently "string", "array" and "object" are alpha feature.
 	// +optional
 	Type ResultsType `json:"type,omitempty"`
 
@@ -34,11 +34,38 @@ type TaskRunResult struct {
 	Name string `json:"name"`
 
 	// Type is the user-specified type of the result. The possible type
-	// is currently "string" and will support "array" in following work.
+	// is currently "string", "array" and "object" are alpha feature.
 	// +optional
 	Type ResultsType `json:"type,omitempty"`
 
 	// Value the given value of the result
+	Value ArrayOrString `json:"value"`
+}
+
+// PipelineResult used to describe the results of a pipeline
+type PipelineResult struct {
+	// Name the given name
+	Name string `json:"name"`
+
+	// Type is the user-specified type of the result. The possible type
+	// is currently "string", "array" and "object" are alpha feature.
+	// +optional
+	Type ResultsType `json:"type,omitempty"`
+
+	// Description is a human-readable description of the result
+	// +optional
+	Description string `json:"description"`
+
+	// Value the expression used to retrieve the value
+	Value ArrayOrString `json:"value"`
+}
+
+// PipelineRunResult used to describe the results of a pipeline
+type PipelineRunResult struct {
+	// Name is the result's name as declared by the Pipeline
+	Name string `json:"name"`
+
+	// Value is the result returned from the execution of this PipelineRun
 	Value ArrayOrString `json:"value"`
 }
 

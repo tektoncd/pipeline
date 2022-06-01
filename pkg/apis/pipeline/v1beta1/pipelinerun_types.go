@@ -491,15 +491,6 @@ const (
 	None SkippingReason = "None"
 )
 
-// PipelineRunResult used to describe the results of a pipeline
-type PipelineRunResult struct {
-	// Name is the result's name as declared by the Pipeline
-	Name string `json:"name"`
-
-	// Value is the result returned from the execution of this PipelineRun
-	Value string `json:"value"`
-}
-
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
 type PipelineRunTaskRunStatus struct {
 	// PipelineTaskName is the name of the PipelineTask.

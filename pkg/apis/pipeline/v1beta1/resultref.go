@@ -47,7 +47,7 @@ const (
 
 var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
-var arrayIndexingRegex = regexp.MustCompile(arrayIndexing)
+var ArrayIndexingRegex = regexp.MustCompile(arrayIndexing)
 
 // NewResultRefs extracts all ResultReferences from a param or a pipeline result.
 // If the ResultReference can be extracted, they are returned. Expressions which are not
@@ -109,7 +109,7 @@ func GetVarSubstitutionExpressionsForParam(param Param) ([]string, bool) {
 
 // GetVarSubstitutionExpressionsForPipelineResult extracts all the value between "$(" and ")"" for a pipeline result
 func GetVarSubstitutionExpressionsForPipelineResult(result PipelineResult) ([]string, bool) {
-	allExpressions := validateString(result.Value)
+	allExpressions := validateString(result.Value.StringVal)
 	return allExpressions, len(allExpressions) != 0
 }
 
@@ -134,9 +134,8 @@ func parseExpression(substitutionExpression string) (string, string, int, error)
 	if len(subExpressions) != 4 || subExpressions[0] != ResultTaskPart || subExpressions[2] != ResultResultPart {
 		return "", "", 0, fmt.Errorf("Must be of the form %q", resultExpressionFormat)
 	}
-
-	stringIdx := strings.TrimSuffix(strings.TrimPrefix(arrayIndexingRegex.FindString(subExpressions[3]), "["), "]")
-	subExpressions[3] = arrayIndexingRegex.ReplaceAllString(subExpressions[3], "")
+	stringIdx := strings.TrimSuffix(strings.TrimPrefix(ArrayIndexingRegex.FindString(subExpressions[3]), "["), "]")
+	subExpressions[3] = ArrayIndexingRegex.ReplaceAllString(subExpressions[3], "")
 	if stringIdx != "" {
 		intIdx, _ := strconv.Atoi(stringIdx)
 		return subExpressions[1], subExpressions[3], intIdx, nil

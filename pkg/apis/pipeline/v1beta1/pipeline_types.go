@@ -117,19 +117,6 @@ type PipelineSpec struct {
 	Finally []PipelineTask `json:"finally,omitempty"`
 }
 
-// PipelineResult used to describe the results of a pipeline
-type PipelineResult struct {
-	// Name the given name
-	Name string `json:"name"`
-
-	// Description is a human-readable description of the result
-	// +optional
-	Description string `json:"description"`
-
-	// Value the expression used to retrieve the value
-	Value string `json:"value"`
-}
-
 // PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask
 type PipelineTaskMetadata struct {
 	// +optional

@@ -386,7 +386,9 @@ func (in *PipelineSpec) DeepCopyInto(out *PipelineSpec) {
 	if in.Results != nil {
 		in, out := &in.Results, &out.Results
 		*out = make([]v1beta1.PipelineResult, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }

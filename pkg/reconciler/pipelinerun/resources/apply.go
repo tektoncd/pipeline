@@ -19,6 +19,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -29,6 +30,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
+
+const (
+	// array replacement e.g. : $(tasks.taskName.results.resultName[*]))
+	arrayReplacement = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)+\[\*\]\)`
+)
+
+var arrayReplacementRegex = regexp.MustCompile(arrayReplacement)
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
 func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
@@ -203,7 +211,6 @@ func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]st
 // and omitted from the returned slice. A nil slice is returned if no results are passed in or all
 // results are invalid.
 func ApplyTaskResultsToPipelineResults(
-	// TODO(#4723): Change PipelineResult Value to support array, so we can update
 	// PipelineResults, right now we only update the StringVal from TaskResults to PipelineResults
 	results []v1beta1.PipelineResult,
 	taskRunResults map[string][]v1beta1.TaskRunResult,
@@ -211,18 +218,42 @@ func ApplyTaskResultsToPipelineResults(
 
 	var runResults []v1beta1.PipelineRunResult
 	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
 	for _, pipelineResult := range results {
 		variablesInPipelineResult, _ := v1beta1.GetVarSubstitutionExpressionsForPipelineResult(pipelineResult)
+		// If pipelineResult is referring to whole array, change the type to array for better array replacements.
+		if pipelineResult.Value.Type == v1beta1.ParamTypeString && arrayReplacementRegex.MatchString(pipelineResult.Value.StringVal) {
+			pipelineResult.Value.Type = v1beta1.ParamTypeArray
+			pipelineResult.Value.ArrayVal = []string{pipelineResult.Value.StringVal}
+			pipelineResult.Value.StringVal = ""
+		}
 		validPipelineResult := true
 		for _, variable := range variablesInPipelineResult {
 			if _, isMemoized := stringReplacements[variable]; isMemoized {
 				continue
 			}
+			if _, isMemoized := arrayReplacements[variable]; isMemoized {
+				continue
+			}
+			// TODO(#4723): Need to consider object case.
+			// e.g.: tasks.taskname.results.resultname.objectket
 			variableParts := strings.Split(variable, ".")
 			if len(variableParts) == 4 && variableParts[0] == "tasks" && variableParts[2] == "results" {
 				taskName, resultName := variableParts[1], variableParts[3]
+				stringIdx := strings.TrimSuffix(strings.TrimPrefix(v1beta1.ArrayIndexingRegex.FindString(resultName), "["), "]")
+				resultName = v1beta1.ArrayIndexingRegex.ReplaceAllString(resultName, "")
 				if resultValue := taskResultValue(taskName, resultName, taskRunResults); resultValue != nil {
-					stringReplacements[variable] = *resultValue
+					switch resultValue.Type {
+					case v1beta1.ParamTypeString:
+						stringReplacements[variable] = resultValue.StringVal
+					case v1beta1.ParamTypeArray:
+						if stringIdx != "*" {
+							intIdx, _ := strconv.Atoi(stringIdx)
+							stringReplacements[variable] = resultValue.ArrayVal[intIdx]
+						} else {
+							arrayReplacements[variable] = resultValue.ArrayVal
+						}
+					}
 				} else if resultValue := runResultValue(taskName, resultName, customTaskResults); resultValue != nil {
 					stringReplacements[variable] = *resultValue
 				} else {
@@ -234,10 +265,7 @@ func ApplyTaskResultsToPipelineResults(
 		}
 		if validPipelineResult {
 			finalValue := pipelineResult.Value
-			for variable, value := range stringReplacements {
-				v := fmt.Sprintf("$(%s)", variable)
-				finalValue = strings.ReplaceAll(finalValue, v, value)
-			}
+			finalValue.ApplyReplacements(stringReplacements, arrayReplacements)
 			runResults = append(runResults, v1beta1.PipelineRunResult{
 				Name:  pipelineResult.Name,
 				Value: finalValue,
@@ -251,10 +279,10 @@ func ApplyTaskResultsToPipelineResults(
 // taskResultValue returns the result value for a given pipeline task name and result name in a map of TaskRunResults for
 // pipeline task names. It returns nil if either the pipeline task name isn't present in the map, or if there is no
 // result with the result name in the pipeline task name's slice of results.
-func taskResultValue(taskName string, resultName string, taskResults map[string][]v1beta1.TaskRunResult) *string {
+func taskResultValue(taskName string, resultName string, taskResults map[string][]v1beta1.TaskRunResult) *v1beta1.ArrayOrString {
 	for _, trResult := range taskResults[taskName] {
 		if trResult.Name == resultName {
-			return &trResult.Value.StringVal
+			return &trResult.Value
 		}
 	}
 	return nil

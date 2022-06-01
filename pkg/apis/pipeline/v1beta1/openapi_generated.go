@@ -1264,6 +1264,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResult(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the user-specified type of the result. The possible type is currently \"string\", \"array\" and \"object\" are alpha feature.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"description": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Description is a human-readable description of the result",
@@ -1275,15 +1282,16 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResult(ref common.ReferenceCallbac
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the expression used to retrieve the value",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ArrayOrString"),
 						},
 					},
 				},
 				Required: []string{"name", "value"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ArrayOrString"},
 	}
 }
 
@@ -1400,15 +1408,16 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunResult(ref common.ReferenceCall
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value is the result returned from the execution of this PipelineRun",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ArrayOrString"),
 						},
 					},
 				},
 				Required: []string{"name", "value"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ArrayOrString"},
 	}
 }
 
@@ -4015,7 +4024,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskResult(ref common.ReferenceCallback) c
 					},
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+							Description: "Type is the user-specified type of the result. The possible type is currently \"string\", \"array\" and \"object\" are alpha feature.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4317,7 +4326,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunResult(ref common.ReferenceCallback
 					},
 					"type": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+							Description: "Type is the user-specified type of the result. The possible type is currently \"string\", \"array\" and \"object\" are alpha feature.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
