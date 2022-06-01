@@ -12,6 +12,7 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func TestCreateVolumes(t *testing.T) {
@@ -1172,5 +1173,57 @@ func TestAddSidecarVolumeMount(t *testing.T) {
 		if d := cmp.Diff(tc.expectedSidecar, sidecar); d != "" {
 			t.Error(diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestFindWorkspacesUsedByTask(t *testing.T) {
+	tests := []struct {
+		name string
+		ts   *v1beta1.TaskSpec
+		want sets.String
+	}{{
+		name: "completespec",
+		ts: &v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Name:    "step-name",
+				Image:   "step-image",
+				Script:  "$(workspaces.step-script.path)",
+				Command: []string{"$(workspaces.step-command.path)"},
+				Args:    []string{"$(workspaces.step-args.path)"},
+			}},
+			Sidecars: []v1beta1.Sidecar{{
+				Name:    "sidecar-name",
+				Image:   "sidecar-image",
+				Script:  "$(workspaces.sidecar-script.path)",
+				Command: []string{"$(workspaces.sidecar-command.path)"},
+				Args:    []string{"$(workspaces.sidecar-args.path)"},
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
+				Image:   "steptemplate-image",
+				Command: []string{"$(workspaces.steptemplate-command.path)"},
+				Args:    []string{"$(workspaces.steptemplate-args.path)"},
+			},
+		},
+		want: sets.NewString(
+			"step-script",
+			"step-args",
+			"step-command",
+			"sidecar-script",
+			"sidecar-args",
+			"sidecar-command",
+			"steptemplate-args",
+			"steptemplate-command",
+		),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := workspace.FindWorkspacesUsedByTask(*tt.ts)
+			if err != nil {
+				t.Fatalf("Could not find workspaces: %v", err)
+			}
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
 	}
 }

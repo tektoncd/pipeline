@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
@@ -222,4 +223,67 @@ func AddSidecarVolumeMount(sidecar *v1beta1.Sidecar, volumeMount corev1.VolumeMo
 		}
 	}
 	sidecar.VolumeMounts = append(sidecar.VolumeMounts, volumeMount)
+}
+
+func findWorkspaceSubstitutionLocationsInSidecars(sidecars []v1beta1.Sidecar) sets.String {
+	locationsToCheck := sets.NewString()
+	for _, sidecar := range sidecars {
+		locationsToCheck.Insert(sidecar.Script)
+
+		for i := range sidecar.Args {
+			locationsToCheck.Insert(sidecar.Args[i])
+		}
+
+		for i := range sidecar.Command {
+			locationsToCheck.Insert(sidecar.Command[i])
+		}
+	}
+	return locationsToCheck
+}
+
+func findWorkspaceSubstitutionLocationsInSteps(steps []v1beta1.Step) sets.String {
+	locationsToCheck := sets.NewString()
+	for _, step := range steps {
+		locationsToCheck.Insert(step.Script)
+
+		for i := range step.Args {
+			locationsToCheck.Insert(step.Args[i])
+		}
+
+		for i := range step.Command {
+			locationsToCheck.Insert(step.Command[i])
+		}
+	}
+	return locationsToCheck
+}
+
+func findWorkspaceSubstitutionLocationsInStepTemplate(stepTemplate *v1beta1.StepTemplate) sets.String {
+	locationsToCheck := sets.NewString()
+
+	if stepTemplate != nil {
+		for i := range stepTemplate.Args {
+			locationsToCheck.Insert(stepTemplate.Args[i])
+		}
+		for i := range stepTemplate.Command {
+			locationsToCheck.Insert(stepTemplate.Command[i])
+		}
+	}
+	return locationsToCheck
+}
+
+// FindWorkspacesUsedByTask returns a set of all the workspaces that the TaskSpec uses.
+func FindWorkspacesUsedByTask(ts v1beta1.TaskSpec) (sets.String, error) {
+	locationsToCheck := sets.NewString()
+	locationsToCheck.Insert(findWorkspaceSubstitutionLocationsInSteps(ts.Steps).List()...)
+	locationsToCheck.Insert(findWorkspaceSubstitutionLocationsInSidecars(ts.Sidecars).List()...)
+	locationsToCheck.Insert(findWorkspaceSubstitutionLocationsInStepTemplate(ts.StepTemplate).List()...)
+	workspacesUsedInSteps := sets.NewString()
+	for item := range locationsToCheck {
+		workspacesUsed, _, errString := substitution.ExtractVariablesFromString(item, "workspaces")
+		if errString != "" {
+			return workspacesUsedInSteps, fmt.Errorf("Error while extracting workspace: %s", errString)
+		}
+		workspacesUsedInSteps.Insert(workspacesUsed...)
+	}
+	return workspacesUsedInSteps, nil
 }

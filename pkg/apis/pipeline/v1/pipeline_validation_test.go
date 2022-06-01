@@ -1593,7 +1593,7 @@ func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := validatePipelineWorkspacesUsage(tt.workspaces, tt.tasks).ViaField("tasks")
+			errs := validatePipelineWorkspacesUsage(context.Background(), tt.workspaces, tt.tasks).ViaField("tasks")
 			if errs != nil {
 				t.Errorf("Pipeline.validatePipelineWorkspacesUsage() returned error for valid pipeline workspaces: %v", errs)
 			}
@@ -1688,7 +1688,8 @@ func TestValidatePipelineWorkspacesUsage_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := validatePipelineWorkspacesUsage(tt.workspaces, tt.tasks).ViaField("tasks")
+			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
+			errs := validatePipelineWorkspacesUsage(ctx, tt.workspaces, tt.tasks).ViaField("tasks")
 			if errs == nil {
 				t.Errorf("Pipeline.validatePipelineWorkspacesUsage() did not return error for invalid pipeline workspaces")
 			}

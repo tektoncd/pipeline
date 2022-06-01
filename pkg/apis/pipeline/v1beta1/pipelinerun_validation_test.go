@@ -722,6 +722,140 @@ func TestPipelineRun_Validate(t *testing.T) {
 		},
 		wc: config.EnableAlphaAPIFields,
 	}, {
+		name: "propagating workspaces",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:     "ws",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}},
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(workspaces.ws.path)"},
+							}},
+						}},
+					}},
+					Finally: []v1beta1.PipelineTask{{
+						Name: "echoitifinally",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(workspaces.ws.path)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating workspaces partially defined",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:     "ws",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}},
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
+						Name: "ws",
+					}},
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(workspaces.ws.path)"},
+							}},
+						}},
+					}},
+					Finally: []v1beta1.PipelineTask{{
+						Name: "echoitfinally",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(workspaces.ws.path)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating workspaces fully defined",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Workspaces: []v1beta1.WorkspaceBinding{{
+					Name:     "ws",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				}},
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Workspaces: []v1beta1.PipelineWorkspaceDeclaration{{
+						Name: "ws",
+					}},
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+							Name:    "ws",
+							SubPath: "/foo",
+						}},
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Workspaces: []v1beta1.WorkspaceDeclaration{{
+								Name: "ws",
+							}},
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(workspaces.ws.path)"},
+							}},
+						}},
+					}},
+					Finally: []v1beta1.PipelineTask{{
+						Name: "echoitfinally",
+						Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+							Name:    "ws",
+							SubPath: "/foo",
+						}},
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Workspaces: []v1beta1.WorkspaceDeclaration{{
+								Name: "ws",
+							}},
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(workspaces.ws.path)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
 		name: "pipelinerun pending",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{

@@ -1,0 +1,44 @@
+# PipelineRun attempting to propagate Workspaces to referenced Tasks
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: fetch-secure-data
+spec:
+  workspaces: # If Referenced, Workspaces need to be explicitly declared
+  - name: shared-data
+  steps:
+  - name: fetch-and-write
+    image: ubuntu
+    script: |
+      echo hi >> $(workspaces.shared-data.path)/recipe.txt
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: recipe-time-
+spec:
+  workspaces:
+  - name: shared-data
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 16Mi
+        volumeMode: Filesystem
+  pipelineSpec:
+    tasks:
+    - name: fetch-the-recipe
+      workspaces: # If referencing resources, Workspaces need to be explicitly declared
+      - name: shared-data
+      taskRef: # Referencing a resource
+        name: fetch-secure-data
+    - name: print-the-recipe
+      taskSpec:
+        steps:
+        - name: print-secrets
+          image: ubuntu
+          script: cat $(workspaces.shared-data.path)/recipe.txt
+      runAfter:
+        - fetch-the-recipe

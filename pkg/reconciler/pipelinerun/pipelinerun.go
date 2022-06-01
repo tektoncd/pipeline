@@ -928,7 +928,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 	var pipelinePVCWorkspaceName string
 	var err error
-	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rpt)
+	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(ctx, pr, rpt)
 	if err != nil {
 		return nil, err
 	}
@@ -999,7 +999,7 @@ func (c *Reconciler) createRun(ctx context.Context, runName string, params []v1b
 	}
 	var pipelinePVCWorkspaceName string
 	var err error
-	r.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rpt)
+	r.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(ctx, pr, rpt)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,16 +1014,51 @@ func (c *Reconciler) createRun(ctx context.Context, runName string, params []v1b
 	return c.PipelineClientSet.TektonV1alpha1().Runs(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
 }
 
-func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1beta1.WorkspaceBinding, string, error) {
+// propagateWorkspaces identifies the workspaces that the pipeline task usess
+// It adds the additional workspaces to the pipeline task's workspaces after
+// creating workspace bindings. Finally, it returns the updated resolved pipeline task.
+func propagateWorkspaces(rpt *resources.ResolvedPipelineTask) (*resources.ResolvedPipelineTask, error) {
+	ts := rpt.PipelineTask.TaskSpec.TaskSpec
+
+	workspacesUsedInSteps, err := workspace.FindWorkspacesUsedByTask(ts)
+	if err != nil {
+		return rpt, err
+	}
+
+	ptw := sets.NewString()
+	for _, ws := range rpt.PipelineTask.Workspaces {
+		ptw.Insert(ws.Name)
+	}
+
+	for wSpace := range workspacesUsedInSteps {
+		if !ptw.Has(wSpace) {
+			rpt.PipelineTask.Workspaces = append(rpt.PipelineTask.Workspaces, v1beta1.WorkspacePipelineTaskBinding{Name: wSpace})
+		}
+	}
+	return rpt, nil
+}
+
+func getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1beta1.WorkspaceBinding, string, error) {
 	var workspaces []v1beta1.WorkspaceBinding
 	var pipelinePVCWorkspaceName string
 	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
 	for _, binding := range pr.Spec.Workspaces {
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
+
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+		// Propagate required workspaces from pipelineRun to the pipelineTasks
+		if rpt.PipelineTask.TaskSpec != nil {
+			var err error
+			rpt, err = propagateWorkspaces(rpt)
+			if err != nil {
+				return nil, "", err
+			}
+		}
+	}
+
 	for _, ws := range rpt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
-
 		pipelineWorkspace := pipelineWorkspaceName
 
 		if pipelineWorkspaceName == "" {
