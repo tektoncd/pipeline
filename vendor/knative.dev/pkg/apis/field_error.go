@@ -28,18 +28,54 @@ import (
 // a problem with the current field itself.
 const CurrentField = ""
 
+// DiagnosticLevel is used to signal the severity of a particular diagnostic
+// in the form of a FieldError.
+type DiagnosticLevel int
+
+const (
+	// ErrorLevel is used to signify fatal/blocking diagnostics, e.g. those
+	// that should block admission in a validating admission webhook.
+	ErrorLevel DiagnosticLevel = iota
+
+	// WarningLevel is used to signify information/non-blocking diagnostics,
+	// e.g. those that should be surfaced as warnings in a validating admission
+	// webhook.
+	WarningLevel
+)
+
+func (dl DiagnosticLevel) String() string {
+	switch dl {
+	case ErrorLevel:
+		return "Error"
+	case WarningLevel:
+		return "Warning"
+
+	default:
+		return fmt.Sprintf("<UNKNOWN: %d>", dl)
+	}
+}
+
 // FieldError is used to propagate the context of errors pertaining to
 // specific fields in a manner suitable for use in a recursive walk, so
 // that errors contain the appropriate field context.
 // FieldError methods are non-mutating.
 // +k8s:deepcopy-gen=true
 type FieldError struct {
+	// Message holds the main diagnostic message carried by this FieldError
 	Message string
-	Paths   []string
+
+	// Paths holds a list of paths to which this diagnostic pertains
+	Paths []string
+
+	// Level holds the severity of the diagnostic.
+	// If empty, this defaults to ErrorLevel.
+	Level DiagnosticLevel
+
 	// Details contains an optional longer payload.
 	// +optional
 	Details string
-	errors  []FieldError
+
+	errors []FieldError
 }
 
 // FieldError implements error
@@ -60,6 +96,7 @@ func (fe *FieldError) ViaField(prefix ...string) *FieldError {
 	// along using .Also().
 	newErr := &FieldError{
 		Message: fe.Message,
+		Level:   fe.Level,
 		Details: fe.Details,
 	}
 
@@ -105,6 +142,54 @@ func (fe *FieldError) ViaKey(key string) *FieldError {
 // ViaFieldKey is the short way to chain: err.ViaKey(bar).ViaField(foo)
 func (fe *FieldError) ViaFieldKey(field, key string) *FieldError {
 	return fe.ViaKey(key).ViaField(field)
+}
+
+// At is a way to alter the level of the diagnostics held in this FieldError.
+//    ErrMissingField("foo").At(WarningLevel)
+func (fe *FieldError) At(l DiagnosticLevel) *FieldError {
+	if fe == nil {
+		return nil
+	}
+	// Copy over message and details, paths will be updated and errors come
+	// along using .Also().
+	newErr := &FieldError{
+		Message: fe.Message,
+		Level:   l,
+		Details: fe.Details,
+		Paths:   fe.Paths,
+	}
+
+	for _, e := range fe.errors {
+		newErr = newErr.Also(e.At(l))
+	}
+	return newErr
+}
+
+// Filter is a way to access the set of diagnostics having a particular level.
+//    if err := x.Validate(ctx).Filter(ErrorLevel); err != nil {
+//       return err
+//    }
+func (fe *FieldError) Filter(l DiagnosticLevel) *FieldError {
+	if fe == nil {
+		return nil
+	}
+	var newErr *FieldError
+	if l == fe.Level {
+		newErr = &FieldError{
+			Message: fe.Message,
+			Level:   fe.Level,
+			Details: fe.Details,
+			Paths:   fe.Paths,
+		}
+	}
+
+	for _, e := range fe.errors {
+		newErr = newErr.Also(e.Filter(l))
+	}
+	if newErr.isEmpty() {
+		return nil
+	}
+	return newErr
 }
 
 // Also collects errors, returns a new collection of existing errors and new errors.
@@ -154,6 +239,7 @@ func (fe *FieldError) normalized() []*FieldError {
 	if fe.Message != "" {
 		errors = append(errors, &FieldError{
 			Message: fe.Message,
+			Level:   fe.Level,
 			Paths:   fe.Paths,
 			Details: fe.Details,
 		})
@@ -274,6 +360,9 @@ func merge(errs []*FieldError) []*FieldError {
 	// Sort the flattened map.
 	sort.Slice(newErrs, func(i, j int) bool {
 		if newErrs[i].Message == newErrs[j].Message {
+			if newErrs[i].Details == newErrs[j].Details {
+				return newErrs[i].Level < newErrs[j].Level
+			}
 			return newErrs[i].Details < newErrs[j].Details
 		}
 		return newErrs[i].Message < newErrs[j].Message
@@ -285,7 +374,7 @@ func merge(errs []*FieldError) []*FieldError {
 
 // key returns the key using the fields .Message and .Details.
 func key(err *FieldError) string {
-	return fmt.Sprintf("%s-%s", err.Message, err.Details)
+	return fmt.Sprintf("%s-%s-%s", err.Level, err.Message, err.Details)
 }
 
 // Public helpers ---

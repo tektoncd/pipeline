@@ -17,6 +17,7 @@ limitations under the License.
 package logging
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -134,6 +135,22 @@ func zapConfigFromJSON(configJSON string) (*zap.Config, error) {
 type Config struct {
 	LoggingConfig string
 	LoggingLevel  map[string]zapcore.Level
+}
+
+type lcfg struct{}
+
+// WithConfig associates a logging configuration with the context.
+func WithConfig(ctx context.Context, cfg *Config) context.Context {
+	return context.WithValue(ctx, lcfg{}, cfg)
+}
+
+// GetConfig gets the logging config from the provided context.
+func GetConfig(ctx context.Context) *Config {
+	untyped := ctx.Value(lcfg{})
+	if untyped == nil {
+		return nil
+	}
+	return untyped.(*Config)
 }
 
 func defaultConfig() *Config {

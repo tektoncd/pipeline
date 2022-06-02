@@ -1168,7 +1168,7 @@ k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20220329144915-0a1ec2e0d46c
+# knative.dev/pkg v0.0.0-20220524202603-19adf798efb8
 ## explicit; go 1.17
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
