@@ -32,7 +32,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 
 ## Before you begin
 
-1. You must have a Kubernetes cluster running version 1.21 or later.
+1. You must have a Kubernetes cluster running version 1.22 or later.
 
    If you don't already have a cluster, you can create one for testing with `kind`.
    [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and create a cluster by running [`kind create cluster`](https://kind.sigs.k8s.io/docs/user/quick-start/#creating-a-cluster). This
@@ -396,9 +396,9 @@ use of custom tasks in pipelines.
 most stable features to be used. Set it to "alpha" to allow [alpha
 features](#alpha-features) to be used.
 
-- `embedded-status`: set this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the 
+- `embedded-status`: set this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the
  `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the `PipelineRun` status with
-  name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to 
+  name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to
   do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses).
 
 For example:
