@@ -17,6 +17,7 @@ limitations under the License.
 package leaderelection
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -86,6 +87,24 @@ type Config struct {
 	RenewDeadline           time.Duration
 	RetryPeriod             time.Duration
 	LeaseNamesPrefixMapping map[string]string
+}
+
+type lecfg struct{}
+
+// WithConfig associates a leader election configuration with the
+// context.
+func WithConfig(ctx context.Context, cfg *Config) context.Context {
+	return context.WithValue(ctx, lecfg{}, cfg)
+}
+
+// GetConfig gets the leader election config from the provided
+// context.
+func GetConfig(ctx context.Context) *Config {
+	untyped := ctx.Value(lecfg{})
+	if untyped == nil {
+		return nil
+	}
+	return untyped.(*Config)
 }
 
 func (c *Config) GetComponentConfig(name string) ComponentConfig {
