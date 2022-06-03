@@ -36,10 +36,7 @@ func main() {
 	if resultNames == "" {
 		log.Fatal("result-names were not provided")
 	}
-	expectedResults := []string{}
-	for _, s := range strings.Split(resultNames, ",") {
-		expectedResults = append(expectedResults, s)
-	}
+	expectedResults := strings.Split(resultNames, ",")
 	err := sidecarlogresults.LookForResults(os.Stdout, pod.RunDir, resultsDir, expectedResults)
 	if err != nil {
 		log.Fatal(err)

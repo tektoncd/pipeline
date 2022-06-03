@@ -27,6 +27,7 @@ SKIP_INITIALIZE=${SKIP_INITIALIZE:="false"}
 RUN_YAML_TESTS=${RUN_YAML_TESTS:="true"}
 SKIP_GO_E2E_TESTS=${SKIP_GO_E2E_TESTS:="false"}
 E2E_GO_TEST_TIMEOUT=${E2E_GO_TEST_TIMEOUT:="20m"}
+RESULTS_FROM=${RESULTS_FROM:-termination-message}
 failed=0
 
 # Script entry point.
@@ -75,6 +76,18 @@ function set_embedded_status() {
   kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
+function set_result_extraction_method() {
+  local method="$1"
+  if [ "$method" != "termination-message" ] && [ "$method" != "sidecar-logs" ]; then
+    printf "Invalid value for results-from %s\n" ${method}
+    exit 255
+  fi
+  printf "Setting results-from to %s\n", ${method}
+  jsonpatch=$(printf "{\"data\": {\"results-from\": \"%s\"}}" $1)
+  echo "feature-flags ConfigMap patch: ${jsonpatch}"
+  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+}
+
 function run_e2e() {
   # Run the integration tests
   header "Running Go e2e tests"
@@ -93,6 +106,7 @@ function run_e2e() {
 
 set_feature_gate "$PIPELINE_FEATURE_GATE"
 set_embedded_status "$EMBEDDED_STATUS_GATE"
+set_result_extraction_method "$RESULTS_FROM"
 run_e2e
 
 (( failed )) && fail_test

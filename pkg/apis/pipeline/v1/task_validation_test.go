@@ -1298,6 +1298,52 @@ func TestTaskSpecValidateError(t *testing.T) {
 	}
 }
 
+func TestTaskSpecValidateErrorSidecarName(t *testing.T) {
+	tests := []struct {
+		name                   string
+		sidecars               []v1.Sidecar
+		resultExtractionMethod string
+		expectedError          apis.FieldError
+	}{{
+		name: "cannot use reserved sidecar name",
+		sidecars: []v1.Sidecar{{
+			Name:  "tekton-log-results",
+			Image: "my-image",
+		}},
+		resultExtractionMethod: "sidecar-logs",
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("Invalid sidecar name tekton-log-results. This is reserved by the controller because the results-from feature flag has been set to %v", config.ResultExtractionMethodSidecarLogs),
+			Paths:   []string{"sidecars"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.resultExtractionMethod != "" {
+				ctx = config.ToContext(ctx, &config.Config{
+					FeatureFlags: &config.FeatureFlags{
+						ResultExtractionMethod: tt.resultExtractionMethod,
+					},
+				})
+			}
+			ts := &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:  "does-not-matter",
+					Image: "does-not-matter",
+				}},
+				Sidecars: tt.sidecars,
+			}
+			err := ts.Validate(ctx)
+			if err == nil {
+				t.Fatalf("Expected an error, got nothing for %v", ts)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestStepAndSidecarWorkspaces(t *testing.T) {
 	type fields struct {
 		Steps      []v1.Step

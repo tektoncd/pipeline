@@ -1,0 +1,76 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: large-result-task
+spec:
+  results:
+    - name: result1
+    - name: result2
+    - name: result3
+    - name: result4
+    - name: result5
+  steps:
+    - name: step1
+      image: alpine
+      script: |
+        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result1.path);
+        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result2.path);
+        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result3.path);
+        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result4.path);
+        cat /dev/urandom | head -c 2500 | base64 | tee $(results.result5.path);
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: print-large-results
+spec:
+  params:
+    - name: param1
+    - name: param2
+    - name: param3
+    - name: param4
+    - name: param5
+  steps:
+    - name: step1
+      image: alpine
+      script: |
+        echo "$(params.param1)";
+        echo "$(params.param2)";
+        echo "$(params.param3)";
+        echo "$(params.param4)";
+        echo "$(params.param5)";
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: large-result-pipeline
+spec:
+  tasks:
+    - name: large-task
+      taskRef:
+        name: large-result-task
+    - name: print-results
+      params:
+        - name: param1
+          value: "$(tasks.large-task.results.result1)"
+        - name: param2
+          value: "$(tasks.large-task.results.result2)"
+        - name: param3
+          value: "$(tasks.large-task.results.result3)"
+        - name: param4
+          value: "$(tasks.large-task.results.result4)"
+        - name: param5
+          value: "$(tasks.large-task.results.result5)"
+      taskRef:
+        name: print-large-results
+  results:
+    - name: large-result
+      value: $(tasks.large-task.results.result1)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: large-result-pipeline-run
+spec:
+  pipelineRef:
+    name: large-result-pipeline
