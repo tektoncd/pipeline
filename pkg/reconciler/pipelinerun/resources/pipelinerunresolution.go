@@ -490,15 +490,6 @@ func ResolvePipelineRunTask(
 	} else {
 		rprt.TaskRunName = GetTaskRunName(pipelineRun.Status.TaskRuns, pipelineRun.Status.ChildReferences, task.Name, pipelineRun.Name)
 
-		// Find the Task that this PipelineTask is using
-		var (
-			t        v1beta1.TaskObject
-			err      error
-			spec     v1beta1.TaskSpec
-			taskName string
-			kind     v1beta1.TaskKind
-		)
-
 		taskRun, err := getTaskRun(rprt.TaskRunName)
 		if err != nil {
 			if !kerrors.IsNotFound(err) {
@@ -509,30 +500,12 @@ func ResolvePipelineRunTask(
 			rprt.TaskRun = taskRun
 		}
 
-		if task.TaskRef != nil {
-			// If the TaskRun has already a store TaskSpec in its status, use it as source of truth
-			if taskRun != nil && taskRun.Status.TaskSpec != nil {
-				spec = *taskRun.Status.TaskSpec
-				taskName = task.TaskRef.Name
-			} else {
-				t, err = getTask(ctx, task.TaskRef.Name)
-				switch {
-				case errors.Is(err, remote.ErrorRequestInProgress):
-					return nil, err
-				case err != nil:
-					return nil, &TaskNotFoundError{
-						Name: task.TaskRef.Name,
-						Msg:  err.Error(),
-					}
-				default:
-					spec = t.TaskSpec()
-					taskName = t.TaskMetadata().Name
-				}
-			}
-			kind = task.TaskRef.Kind
-		} else {
-			spec = task.TaskSpec.TaskSpec
+		// Find the Task that this PipelineTask is using
+		spec, taskName, kind, err := resolveTask(ctx, taskRun, getTask, task)
+		if err != nil {
+			return nil, err
 		}
+
 		spec.SetDefaults(ctx)
 		rtr, err := resolvePipelineTaskResources(task, &spec, taskName, kind, providedResources)
 		if err != nil {
@@ -551,6 +524,41 @@ func ResolvePipelineRunTask(
 		}
 	}
 	return &rprt, nil
+}
+
+func resolveTask(ctx context.Context, taskRun *v1beta1.TaskRun, getTask resources.GetTask, task v1beta1.PipelineTask) (v1beta1.TaskSpec, string, v1beta1.TaskKind, error) {
+	var (
+		t        v1beta1.TaskObject
+		err      error
+		spec     v1beta1.TaskSpec
+		taskName string
+		kind     v1beta1.TaskKind
+	)
+	if task.TaskRef != nil {
+		// If the TaskRun has already a stored TaskSpec in its status, use it as source of truth
+		if taskRun != nil && taskRun.Status.TaskSpec != nil {
+			spec = *taskRun.Status.TaskSpec
+			taskName = task.TaskRef.Name
+		} else {
+			t, err = getTask(ctx, task.TaskRef.Name)
+			switch {
+			case errors.Is(err, remote.ErrorRequestInProgress):
+				return v1beta1.TaskSpec{}, "", "", err
+			case err != nil:
+				return v1beta1.TaskSpec{}, "", "", &TaskNotFoundError{
+					Name: task.TaskRef.Name,
+					Msg:  err.Error(),
+				}
+			default:
+				spec = t.TaskSpec()
+				taskName = t.TaskMetadata().Name
+			}
+		}
+		kind = task.TaskRef.Kind
+	} else {
+		spec = task.TaskSpec.TaskSpec
+	}
+	return spec, taskName, kind, err
 }
 
 // getConditionCheckName should return a unique name for a `ConditionCheck` if one has not already been defined, and the existing one otherwise.
