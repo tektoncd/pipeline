@@ -104,27 +104,6 @@ spec:
         - name: source
           workspace: workarea
           subpath: git
-    - name: build-base-image
-      runAfter: [build, unit-tests]
-      taskRef:
-        name: build-multiarch-base-image
-      params:
-        - name: package
-          value: $(params.package)
-        - name: imageRegistry
-          value: $(params.imageRegistry)
-        - name: imageRegistryPath
-          value: $(params.imageRegistryPath)
-        - name: platforms
-          value: $(params.buildPlatforms)
-        - name: serviceAccountPath
-          value: $(params.serviceAccountPath)
-      workspaces:
-        - name: source
-          workspace: workarea
-          subpath: git
-        - name: release-secret
-          workspace: release-secret
     - name: publish-images
       runAfter: [build-base-image]
       taskRef:
