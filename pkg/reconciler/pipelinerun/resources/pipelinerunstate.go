@@ -145,47 +145,51 @@ func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[str
 			continue
 		}
 
-		var prtrs *v1beta1.PipelineRunTaskRunStatus
-		if rprt.TaskRun != nil {
-			prtrs = pr.Status.TaskRuns[rprt.TaskRun.Name]
-		}
-		if prtrs == nil {
-			prtrs = &v1beta1.PipelineRunTaskRunStatus{
-				PipelineTaskName: rprt.PipelineTask.Name,
-				WhenExpressions:  rprt.PipelineTask.WhenExpressions,
-			}
-		}
-
-		if rprt.TaskRun != nil {
-			prtrs.Status = &rprt.TaskRun.Status
-		}
-
-		if len(rprt.ResolvedConditionChecks) > 0 {
-			cStatus := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
-			for _, c := range rprt.ResolvedConditionChecks {
-				cStatus[c.ConditionCheckName] = &v1beta1.PipelineRunConditionCheckStatus{
-					ConditionName: c.ConditionRegisterName,
-				}
-				if c.ConditionCheck != nil {
-					cStatus[c.ConditionCheckName].Status = c.NewConditionCheckStatus()
-				}
-			}
-			prtrs.ConditionChecks = cStatus
-			if rprt.ResolvedConditionChecks.IsDone() && !rprt.ResolvedConditionChecks.IsSuccess() {
-				if prtrs.Status == nil {
-					prtrs.Status = &v1beta1.TaskRunStatus{}
-				}
-				prtrs.Status.SetCondition(&apis.Condition{
-					Type:    apis.ConditionSucceeded,
-					Status:  corev1.ConditionFalse,
-					Reason:  ReasonConditionCheckFailed,
-					Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", rprt.TaskRunName, pr.Name),
-				})
-			}
-		}
-		status[rprt.TaskRunName] = prtrs
+		status[rprt.TaskRunName] = rprt.getTaskRunStatus(rprt.TaskRunName, rprt.TaskRun, pr)
 	}
 	return status
+}
+
+func (rprt *ResolvedPipelineRunTask) getTaskRunStatus(taskRunName string, tr *v1beta1.TaskRun, pr *v1beta1.PipelineRun) *v1beta1.PipelineRunTaskRunStatus {
+	var prtrs *v1beta1.PipelineRunTaskRunStatus
+	if tr != nil {
+		prtrs = pr.Status.TaskRuns[tr.Name]
+	}
+	if prtrs == nil {
+		prtrs = &v1beta1.PipelineRunTaskRunStatus{
+			PipelineTaskName: rprt.PipelineTask.Name,
+			WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+		}
+	}
+
+	if tr != nil {
+		prtrs.Status = &tr.Status
+	}
+
+	if len(rprt.ResolvedConditionChecks) > 0 {
+		cStatus := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
+		for _, c := range rprt.ResolvedConditionChecks {
+			cStatus[c.ConditionCheckName] = &v1beta1.PipelineRunConditionCheckStatus{
+				ConditionName: c.ConditionRegisterName,
+			}
+			if c.ConditionCheck != nil {
+				cStatus[c.ConditionCheckName].Status = c.NewConditionCheckStatus()
+			}
+		}
+		prtrs.ConditionChecks = cStatus
+		if rprt.ResolvedConditionChecks.IsDone() && !rprt.ResolvedConditionChecks.IsSuccess() {
+			if prtrs.Status == nil {
+				prtrs.Status = &v1beta1.TaskRunStatus{}
+			}
+			prtrs.Status.SetCondition(&apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionFalse,
+				Reason:  ReasonConditionCheckFailed,
+				Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", taskRunName, pr.Name),
+			})
+		}
+	}
+	return prtrs
 }
 
 // GetTaskRunsResults returns a map of all successfully completed TaskRuns in the state, with the pipeline task name as
