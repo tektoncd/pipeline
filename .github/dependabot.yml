@@ -4,4 +4,7 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
     vendor: true
