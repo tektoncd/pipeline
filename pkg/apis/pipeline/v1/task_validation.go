@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -92,10 +93,23 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
+	errs = errs.Also(validateSidecarNames(ctx, ts.Sidecars))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
+	return errs
+}
+
+func validateSidecarNames(ctx context.Context, sidecars []Sidecar) (errs *apis.FieldError) {
+	for _, sc := range sidecars {
+		if config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs && sc.Name == pipeline.ReservedResultsSidecarName {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("Invalid sidecar name %v. This is reserved by the controller because the results-from feature flag has been set to %v", sc.Name, config.ResultExtractionMethodSidecarLogs),
+				Paths:   []string{"sidecars"},
+			})
+		}
+	}
 	return errs
 }
 
