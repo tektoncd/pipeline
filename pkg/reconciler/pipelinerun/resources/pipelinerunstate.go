@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -272,60 +273,64 @@ func (state PipelineRunState) GetChildReferences(taskRunVersion string, runVersi
 		if !rprt.CustomTask && rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
 			continue
 		}
-
-		var childAPIVersion string
-		var childTaskKind string
-		var childName string
-		var childConditions []*v1beta1.PipelineRunChildConditionCheckStatus
-
+		var childRef v1beta1.ChildStatusReference
 		if rprt.CustomTask {
-			childName = rprt.RunName
-			childTaskKind = "Run"
-
-			if rprt.Run != nil {
-				childAPIVersion = rprt.Run.APIVersion
-			} else {
-				childAPIVersion = runVersion
-			}
+			childRef = rprt.getChildRefForRun(runVersion)
 		} else {
-			childName = rprt.TaskRunName
-			childTaskKind = "TaskRun"
-
-			if rprt.TaskRun != nil {
-				childAPIVersion = rprt.TaskRun.APIVersion
-			} else {
-				childAPIVersion = taskRunVersion
-			}
-			if len(rprt.ResolvedConditionChecks) > 0 {
-				for _, c := range rprt.ResolvedConditionChecks {
-					condCheck := &v1beta1.PipelineRunChildConditionCheckStatus{
-						PipelineRunConditionCheckStatus: v1beta1.PipelineRunConditionCheckStatus{
-							ConditionName: c.ConditionRegisterName,
-						},
-						ConditionCheckName: c.ConditionCheckName,
-					}
-					if c.ConditionCheck != nil {
-						condCheck.Status = c.NewConditionCheckStatus()
-					}
-
-					childConditions = append(childConditions, condCheck)
-				}
-			}
+			childRef = rprt.getChildRefForTaskRun(taskRunVersion)
 		}
-
-		childRefs = append(childRefs, v1beta1.ChildStatusReference{
-			TypeMeta: runtime.TypeMeta{
-				APIVersion: childAPIVersion,
-				Kind:       childTaskKind,
-			},
-			Name:             childName,
-			PipelineTaskName: rprt.PipelineTask.Name,
-			WhenExpressions:  rprt.PipelineTask.WhenExpressions,
-			ConditionChecks:  childConditions,
-		})
-
+		childRefs = append(childRefs, childRef)
 	}
 	return childRefs
+}
+
+func (rprt *ResolvedPipelineRunTask) getChildRefForRun(runVersion string) v1beta1.ChildStatusReference {
+	if rprt.Run != nil {
+		runVersion = rprt.Run.APIVersion
+	}
+
+	return v1beta1.ChildStatusReference{
+		TypeMeta: runtime.TypeMeta{
+			APIVersion: runVersion,
+			Kind:       pipeline.RunControllerName,
+		},
+		Name:             rprt.RunName,
+		PipelineTaskName: rprt.PipelineTask.Name,
+		WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+	}
+}
+
+func (rprt *ResolvedPipelineRunTask) getChildRefForTaskRun(taskRunVersion string) v1beta1.ChildStatusReference {
+	if rprt.TaskRun != nil {
+		taskRunVersion = rprt.TaskRun.APIVersion
+	}
+
+	var childConditions []*v1beta1.PipelineRunChildConditionCheckStatus
+	if len(rprt.ResolvedConditionChecks) > 0 {
+		for _, c := range rprt.ResolvedConditionChecks {
+			condCheck := &v1beta1.PipelineRunChildConditionCheckStatus{
+				PipelineRunConditionCheckStatus: v1beta1.PipelineRunConditionCheckStatus{
+					ConditionName: c.ConditionRegisterName,
+				},
+				ConditionCheckName: c.ConditionCheckName,
+			}
+			if c.ConditionCheck != nil {
+				condCheck.Status = c.NewConditionCheckStatus()
+			}
+
+			childConditions = append(childConditions, condCheck)
+		}
+	}
+	return v1beta1.ChildStatusReference{
+		TypeMeta: runtime.TypeMeta{
+			APIVersion: taskRunVersion,
+			Kind:       pipeline.TaskRunControllerName,
+		},
+		Name:             rprt.TaskRunName,
+		PipelineTaskName: rprt.PipelineTask.Name,
+		WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+		ConditionChecks:  childConditions,
+	}
 }
 
 // getNextTasks returns a list of tasks which should be executed next i.e.
