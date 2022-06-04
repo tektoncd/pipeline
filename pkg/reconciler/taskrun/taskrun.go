@@ -197,10 +197,10 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.Ta
 		}
 		before := newTr.Status.GetCondition(apis.ConditionSucceeded)
 		go func(metrics *taskrunmetrics.Recorder) {
-			if err := metrics.DurationAndCount(tr, before); err != nil {
+			if err := metrics.DurationAndCount(ctx, tr, before); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}
-			if err := metrics.CloudEvents(tr); err != nil {
+			if err := metrics.CloudEvents(ctx, tr); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}
 		}(c.metrics)
@@ -460,7 +460,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *pod); err != nil {
 			return err
 		}
-		if err := c.metrics.RecordPodLatency(pod, tr); err != nil {
+		if err := c.metrics.RecordPodLatency(ctx, pod, tr); err != nil {
 			logger.Warnf("Failed to log the metrics : %v", err)
 		}
 	}
