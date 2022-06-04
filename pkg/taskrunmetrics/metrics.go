@@ -279,7 +279,7 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 // DurationAndCount logs the duration of TaskRun execution and
 // count for number of TaskRuns succeed or failed
 // returns an error if its failed to log the metrics
-func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun, beforeCondition *apis.Condition) error {
+func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition) error {
 
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
@@ -310,7 +310,7 @@ func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun, beforeCondition *apis.C
 
 	if ok, pipeline, pipelinerun := tr.IsPartOfPipeline(); ok {
 		ctx, err := tag.New(
-			context.Background(),
+			ctx,
 			append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
 				tag.Insert(statusTag, status)},
 				append(r.insertPipelineTag(pipeline, pipelinerun),
@@ -326,7 +326,7 @@ func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun, beforeCondition *apis.C
 	}
 
 	ctx, err := tag.New(
-		context.Background(),
+		ctx,
 		append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
 			tag.Insert(statusTag, status)},
 			r.insertTaskTag(taskName, tr.Name)...)...)
@@ -342,7 +342,7 @@ func (r *Recorder) DurationAndCount(tr *v1beta1.TaskRun, beforeCondition *apis.C
 
 // RunningTaskRuns logs the number of TaskRuns running right now
 // returns an error if its failed to log the metrics
-func (r *Recorder) RunningTaskRuns(lister listers.TaskRunLister) error {
+func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLister) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -362,9 +362,7 @@ func (r *Recorder) RunningTaskRuns(lister listers.TaskRunLister) error {
 		}
 	}
 
-	ctx, err := tag.New(
-		context.Background(),
-	)
+	ctx, err = tag.New(ctx)
 	if err != nil {
 		return err
 	}
@@ -385,7 +383,7 @@ func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.Tas
 
 		case <-time.After(r.ReportingPeriod):
 			// Every 30s surface a metric for the number of running tasks.
-			if err := r.RunningTaskRuns(lister); err != nil {
+			if err := r.RunningTaskRuns(ctx, lister); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
 			}
 		}
@@ -394,7 +392,7 @@ func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.Tas
 
 // RecordPodLatency logs the duration required to schedule the pod for TaskRun
 // returns an error if its failed to log the metrics
-func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error {
+func (r *Recorder) RecordPodLatency(ctx context.Context, pod *corev1.Pod, tr *v1beta1.TaskRun) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -414,7 +412,7 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error 
 	}
 
 	ctx, err := tag.New(
-		context.Background(),
+		ctx,
 		append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
 			tag.Insert(podTag, pod.Name)},
 			r.insertTaskTag(taskName, tr.Name)...)...)
@@ -429,7 +427,7 @@ func (r *Recorder) RecordPodLatency(pod *corev1.Pod, tr *v1beta1.TaskRun) error 
 
 // CloudEvents logs the number of cloud events sent for TaskRun
 // returns an error if it fails to log the metrics
-func (r *Recorder) CloudEvents(tr *v1beta1.TaskRun) error {
+func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -449,7 +447,7 @@ func (r *Recorder) CloudEvents(tr *v1beta1.TaskRun) error {
 
 	if ok, pipeline, pipelinerun := tr.IsPartOfPipeline(); ok {
 		ctx, err := tag.New(
-			context.Background(),
+			ctx,
 			append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
 				tag.Insert(statusTag, status)},
 				append(r.insertPipelineTag(pipeline, pipelinerun),
@@ -462,7 +460,7 @@ func (r *Recorder) CloudEvents(tr *v1beta1.TaskRun) error {
 	}
 
 	ctx, err := tag.New(
-		context.Background(),
+		ctx,
 		append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
 			tag.Insert(statusTag, status)},
 			r.insertTaskTag(taskName, tr.Name)...)...)

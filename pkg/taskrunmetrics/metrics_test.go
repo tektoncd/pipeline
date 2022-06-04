@@ -64,16 +64,18 @@ func TestUninitializedMetrics(t *testing.T) {
 		Status: corev1.ConditionUnknown,
 	}
 
-	if err := metrics.DurationAndCount(&v1beta1.TaskRun{}, beforeCondition); err == nil {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := metrics.DurationAndCount(ctx, &v1beta1.TaskRun{}, beforeCondition); err == nil {
 		t.Error("DurationCount recording expected to return error but got nil")
 	}
-	if err := metrics.RunningTaskRuns(nil); err == nil {
+	if err := metrics.RunningTaskRuns(ctx, nil); err == nil {
 		t.Error("Current TaskRunsCount recording expected to return error but got nil")
 	}
-	if err := metrics.RecordPodLatency(nil, nil); err == nil {
+	if err := metrics.RecordPodLatency(ctx, nil, nil); err == nil {
 		t.Error("Pod Latency recording expected to return error but got nil")
 	}
-	if err := metrics.CloudEvents(&v1beta1.TaskRun{}); err == nil {
+	if err := metrics.CloudEvents(ctx, &v1beta1.TaskRun{}); err == nil {
 		t.Error("Cloud Events recording expected to return error but got nil")
 	}
 }
@@ -361,7 +363,7 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				t.Fatalf("NewRecorder: %v", err)
 			}
 
-			if err := metrics.DurationAndCount(c.taskRun, c.beforeCondition); err != nil {
+			if err := metrics.DurationAndCount(ctx, c.taskRun, c.beforeCondition); err != nil {
 				t.Errorf("DurationAndCount: %v", err)
 			}
 			if c.expectedCountTags != nil {
@@ -414,7 +416,7 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 		t.Fatalf("NewRecorder: %v", err)
 	}
 
-	if err := metrics.RunningTaskRuns(informer.Lister()); err != nil {
+	if err := metrics.RunningTaskRuns(ctx, informer.Lister()); err != nil {
 		t.Errorf("RunningTaskRuns: %v", err)
 	}
 	metricstest.CheckLastValueData(t, "running_taskruns_count", map[string]string{}, 1)
@@ -478,7 +480,7 @@ func TestRecordPodLatency(t *testing.T) {
 				t.Fatalf("NewRecorder: %v", err)
 			}
 
-			if err := metrics.RecordPodLatency(td.pod, taskRun); td.expectingError && err == nil {
+			if err := metrics.RecordPodLatency(ctx, td.pod, taskRun); td.expectingError && err == nil {
 				t.Error("RecordPodLatency wanted error, got nil")
 			} else if !td.expectingError {
 				if err != nil {
@@ -635,7 +637,7 @@ func TestRecordCloudEvents(t *testing.T) {
 				t.Fatalf("NewRecorder: %v", err)
 			}
 
-			if err := metrics.CloudEvents(c.taskRun); err != nil {
+			if err := metrics.CloudEvents(ctx, c.taskRun); err != nil {
 				t.Fatalf("CloudEvents: %v", err)
 			}
 			metricstest.CheckSumData(t, "cloudevent_count", c.expectedTags, c.expectedCount)
