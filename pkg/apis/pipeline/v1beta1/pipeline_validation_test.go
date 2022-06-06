@@ -129,7 +129,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				Results: []PipelineResult{{
 					Name:        "pipeline-result",
 					Description: "this is my pipeline result",
-					Value:       "pipeline-result-default",
+					Value:       "$(tasks.my-task.results.my-result)",
 				}},
 			},
 		},
@@ -1204,22 +1204,41 @@ func TestValidatePipelineResults_Success(t *testing.T) {
 }
 
 func TestValidatePipelineResults_Failure(t *testing.T) {
-	desc := "invalid pipeline result reference"
-	results := []PipelineResult{{
-		Name:        "my-pipeline-result",
-		Description: "this is my pipeline result",
-		Value:       "$(tasks.a-task.results.output.output)",
+	tests := []struct {
+		desc          string
+		results       []PipelineResult
+		expectedError apis.FieldError
+	}{{
+		desc: "invalid pipeline result reference",
+		results: []PipelineResult{{
+			Name:        "my-pipeline-result",
+			Description: "this is my pipeline result",
+			Value:       "$(tasks.a-task.results.output.output)",
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expected all of the expressions [tasks.a-task.results.output.output] to be result expressions but only [] were`,
+			Paths:   []string{"results[0].value"},
+		},
+	}, {
+		desc: "invalid pipeline result value with static string",
+		results: []PipelineResult{{
+			Name:        "my-pipeline-result",
+			Description: "this is my pipeline result",
+			Value:       "foo.bar",
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expected pipeline results to be task result expressions but no expressions were found`,
+			Paths:   []string{"results[0].value"},
+		},
 	}}
-	expectedError := apis.FieldError{
-		Message: `invalid value: expected all of the expressions [tasks.a-task.results.output.output] to be result expressions but only [] were`,
-		Paths:   []string{"results[0].value"},
-	}
-	err := validatePipelineResults(results)
-	if err == nil {
-		t.Errorf("Pipeline.validatePipelineResults() did not return for invalid pipeline: %s", desc)
-	}
-	if d := cmp.Diff(expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-		t.Errorf("Pipeline.validateParamResults() errors diff %s", diff.PrintWantGot(d))
+	for _, tt := range tests {
+		err := validatePipelineResults(tt.results)
+		if err == nil {
+			t.Errorf("Pipeline.validatePipelineResults() did not return for invalid pipeline: %s", tt.desc)
+		}
+		if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+			t.Errorf("Pipeline.validateParamResults() errors diff %s", diff.PrintWantGot(d))
+		}
 	}
 }
 
