@@ -63,12 +63,6 @@ func validateDeclaredResources(ps *PipelineSpec) error {
 				required = append(required, output.Resource)
 			}
 		}
-
-		for _, condition := range t.Conditions {
-			for _, cr := range condition.Resources {
-				required = append(required, cr.Resource)
-			}
-		}
 	}
 
 	provided := make([]string, 0, len(ps.Resources))
@@ -108,10 +102,6 @@ func validateFrom(tasks []PipelineTask) *apis.FieldError {
 		inputResources := []PipelineTaskInputResource{}
 		if t.Resources != nil {
 			inputResources = append(inputResources, t.Resources.Inputs...)
-		}
-
-		for _, c := range t.Conditions {
-			inputResources = append(inputResources, c.Resources...)
 		}
 
 		for _, rd := range inputResources {

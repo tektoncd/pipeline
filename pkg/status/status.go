@@ -90,7 +90,6 @@ func GetFullPipelineTaskStatuses(ctx context.Context, client versioned.Interface
 
 			trStatuses[cr.Name] = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: cr.PipelineTaskName,
-				ConditionChecks:  cr.GetConditionChecks(),
 				WhenExpressions:  cr.WhenExpressions,
 			}
 

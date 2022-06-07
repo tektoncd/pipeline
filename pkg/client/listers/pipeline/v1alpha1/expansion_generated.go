@@ -22,14 +22,6 @@ package v1alpha1
 // ClusterTaskLister.
 type ClusterTaskListerExpansion interface{}
 
-// ConditionListerExpansion allows custom methods to be added to
-// ConditionLister.
-type ConditionListerExpansion interface{}
-
-// ConditionNamespaceListerExpansion allows custom methods to be added to
-// ConditionNamespaceLister.
-type ConditionNamespaceListerExpansion interface{}
-
 // PipelineListerExpansion allows custom methods to be added to
 // PipelineLister.
 type PipelineListerExpansion interface{}

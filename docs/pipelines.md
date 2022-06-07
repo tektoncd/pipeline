@@ -26,7 +26,6 @@ weight: 400
         - [Cascade `when` expressions to the specific dependent `Tasks`](#cascade-when-expressions-to-the-specific-dependent-tasks)
         - [Compose using Pipelines in Pipelines](#compose-using-pipelines-in-pipelines)
       - [Guarding a `Task` only](#guarding-a-task-only)
-    - [Guard `Task` execution using `Conditions`](#guard-task-execution-using-conditions)
     - [Configuring the failure timeout](#configuring-the-failure-timeout)
   - [Using variable substitution](#using-variable-substitution)
     - [Using the `retries` and `retry-count` variable substitutions](#using-the-retries-and-retry-count-variable-substitutions)
@@ -51,7 +50,6 @@ weight: 400
     - [Known Limitations](#known-limitations)
       - [Specifying `Resources` in `finally` tasks](#specifying-resources-in-finally-tasks)
       - [Cannot configure the `finally` task execution order](#cannot-configure-the-finally-task-execution-order)
-      - [Cannot specify execution `Conditions` in `finally` tasks](#cannot-specify-execution-conditions-in-finally-tasks)
       - [Cannot configure `Pipeline` result with `finally`](#cannot-configure-pipeline-result-with-finally)
   - [Using Custom Tasks](#using-custom-tasks)
     - [Specifying the target Custom Task](#specifying-the-target-custom-task)
@@ -101,8 +99,6 @@ A `Pipeline` definition supports the following fields:
         `Tasks` without output linking.
       - [`retries`](#using-the-retries-field) - Specifies the number of times to retry the execution of a `Task` after
         a failure. Does not apply to execution cancellations.
-      - [`conditions`](#guard-task-execution-using-conditions) - Specifies `Conditions` that only allow a `Task`
-        to execute if they successfully evaluate.
       - [`when`](#guard-finally-task-execution-using-when-expressions) - Specifies `when` expressions that guard
         the execution of a `Task`; allow execution only when all `when` expressions evaluate to true.
       - [`timeout`](#configuring-the-failure-timeout) - Specifies the timeout before a `Task` fails.
@@ -602,8 +598,6 @@ tasks:
 
 For an end-to-end example, see [PipelineRun with `when` expressions](../examples/v1beta1/pipelineruns/pipelinerun-with-when-expressions.yaml).
 
-When `when` expressions are specified in a `Task`, [`Conditions`](#guard-task-execution-using-conditions) should not be specified in the same `Task`. The `Pipeline` will be rejected as invalid if both `when` expressions and `Conditions` are included.
-
 There are a lot of scenarios where `when` expressions can be really useful. Some of these are:
 - Checking if the name of a git branch matches
 - Checking if the `Result` of a previous `Task` is as expected
@@ -822,72 +816,6 @@ would be unblocked regardless:
   - dependents of `slack-msg` would have been skipped too if it had any of them
   - if `manual-approval` specifies a default `approver` `Result`, such as "None", then `slack-msg` would be executed 
     ([supporting default `Results` is in progress](https://github.com/tektoncd/community/pull/240))
-
-### Guard `Task` execution using `Conditions`
-
-**Note:** `Conditions` are [deprecated](./deprecations.md), use [`when` expressions](#guard-task-execution-using-when-expressions) instead.
-
-To run a `Task` only when certain conditions are met, it is possible to _guard_ task execution using
-the `conditions` field. The `conditions` field allows you to list a series of references to
-[`Condition`](./conditions.md) resources. The declared `Conditions` are run before the `Task` is run.
-If all of the conditions successfully evaluate, the `Task` is run. If any of the conditions fails,
-the `Task` is not run and the `TaskRun` status field `ConditionSucceeded` is set to `False` with the
-reason set to `ConditionCheckFailed`.
-
-In this example, `is-master-branch` refers to a [Condition](conditions.md) resource. The `deploy`
-task will only be executed if the condition successfully evaluates.
-
-```yaml
-tasks:
-  - name: deploy-if-branch-is-master
-    conditions:
-      - conditionRef: is-master-branch
-        params:
-          - name: branch-name
-            value: my-value
-    taskRef:
-      name: deploy
-```
-
-Unlike regular task failures, condition failures do not automatically fail the entire `PipelineRun` --
-other tasks that are **not dependent** on the `Task` (via `from` or `runAfter`) are still run.
-
-In this example, `(task C)` has a `condition` set to _guard_ its execution. If the condition
-is **not** successfully evaluated, task `(task D)` will not be run, but all other tasks in the pipeline
-that not depend on `(task C)` will be executed and the `PipelineRun` will successfully complete.
-
-  ```
-         (task B) — (task E)
-       /
-   (task A)
-       \
-         (guarded task C) — (task D)
-  ```
-
-Resources in conditions can also use the [`from`](#using-the-from-field) field to indicate that they
-expect the output of a previous task as input. As with regular Pipeline Tasks, using `from`
-implies ordering --  if task has a condition that takes in an output resource from
-another task, the task producing the output resource will run first:
-
-```yaml
-tasks:
-  - name: first-create-file
-    taskRef:
-      name: create-file
-    resources:
-      outputs:
-        - name: workspace
-          resource: source-repo
-  - name: then-check
-    conditions:
-      - conditionRef: "file-exists"
-        resources:
-          - name: workspace
-            resource: source-repo
-            from: [first-create-file]
-    taskRef:
-      name: echo-hello
-```
 
 ### Configuring the failure timeout
 
@@ -1304,22 +1232,22 @@ With `finally`, `PipelineRun` status is calculated based on `PipelineTasks` unde
 
 Without `finally`:
 
-| `PipelineTasks` under `tasks`                                            | `PipelineRun` status | Reason      |
-|--------------------------------------------------------------------------|----------------------|-------------|
-| all `PipelineTasks` successful                                           | `true`               | `Succeeded` |
-| one or more `PipelineTasks` [skipped](conditions.md) and rest successful | `true`               | `Completed` |
-| single failure of `PipelineTask`                                         | `false`              | `failed`    |
+| `PipelineTasks` under `tasks`                                                                           | `PipelineRun` status | Reason      |
+|---------------------------------------------------------------------------------------------------------|----------------------|-------------|
+| all `PipelineTasks` successful                                                                          | `true`               | `Succeeded` |
+| one or more `PipelineTasks` [skipped](#guard-task-execution-using-when-expressions) and rest successful | `true`               | `Completed` |
+| single failure of `PipelineTask`                                                                        | `false`              | `failed`    |
 
 With `finally`:
 
-| `PipelineTasks` under `tasks`                                           | `finally` tasks                        | `PipelineRun` status | Reason      |
-|-------------------------------------------------------------------------|----------------------------------------|----------------------|-------------|
-| all `PipelineTask` successful                                           | all `finally` tasks successful         | `true`               | `Succeeded` |
-| all `PipelineTask` successful                                           | one or more failure of `finally` tasks | `false`              | `Failed`    |
-| one or more `PipelineTask` [skipped](conditions.md) and rest successful | all `finally` tasks successful         | `true`               | `Completed` |
-| one or more `PipelineTask` [skipped](conditions.md) and rest successful | one or more failure of `finally` tasks | `false`              | `Failed`    |
-| single failure of `PipelineTask`                                        | all `finally` tasks successful         | `false`              | `failed`    |
-| single failure of `PipelineTask`                                        | one or more failure of `finally` tasks | `false`              | `failed`    |
+| `PipelineTasks` under `tasks`                                                                          | `finally` tasks                        | `PipelineRun` status | Reason      |
+|--------------------------------------------------------------------------------------------------------|----------------------------------------|----------------------|-------------|
+| all `PipelineTask` successful                                                                          | all `finally` tasks successful         | `true`               | `Succeeded` |
+| all `PipelineTask` successful                                                                          | one or more failure of `finally` tasks | `false`              | `Failed`    |
+| one or more `PipelineTask` [skipped](#guard-task-execution-using-when-expressions) and rest successful | all `finally` tasks successful         | `true`               | `Completed` |
+| one or more `PipelineTask` [skipped](#guard-task-execution-using-when-expressions) and rest successful | one or more failure of `finally` tasks | `false`              | `Failed`    |
+| single failure of `PipelineTask`                                                                       | all `finally` tasks successful         | `false`              | `failed`    |
+| single failure of `PipelineTask`                                                                       | one or more failure of `finally` tasks | `false`              | `failed`    |
 
 Overall, `PipelineRun` state transitioning is explained below for respective scenarios:
 
@@ -1574,12 +1502,6 @@ It's not possible to configure or modify the execution order of the `finally` ta
 all `finally` tasks run simultaneously and start executing once all `PipelineTasks` under `tasks` have settled which means
 no `runAfter` can be specified in `finally` tasks.
 
-#### Cannot specify execution `Conditions` in `finally` tasks
-
-`Tasks` in a `Pipeline` can be configured to run only if some conditions are satisfied using `conditions`. But the
-`finally` tasks are guaranteed to be executed after all `PipelineTasks` therefore no `conditions` can be specified in
-`finally` tasks.
-
 #### Cannot configure `Pipeline` result with `finally`
 
 `finally` tasks can emit `Results` but results emitted from the `finally` tasks can not be configured in the
@@ -1749,7 +1671,6 @@ Pipelines do not support the following items with custom tasks:
 * Pipeline Resources
 * [`retries`](#using-the-retries-field)
 * [`timeout`](#configuring-the-failure-timeout)
-* Conditions (`Conditions` are deprecated.  Use [`when` expressions](#guard-task-execution-using-when-expressions) instead.)
 
 ## Code examples
 

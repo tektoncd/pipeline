@@ -893,7 +893,6 @@ Your `PipelineRun`'s `status` field can contain the following fields:
   - `childReferences` - A list of references to each `TaskRun` or `Run` in this `PipelineRun`, which can be used to look up the status of the underlying `TaskRun` or `Run`. Each entry contains the following:
     - [`kind`][kubernetes-overview] - Generally either `TaskRun` or `Run`.
     - [`apiVersion`][kubernetes-overview] - The API version for the underlying `TaskRun` or `Run`.
-    - `conditionChecks` - A list of [condition checks](conditions.md) performed for this `TaskRun`. `conditions` are deprecated and this will be removed in the future.
     - [`whenExpressions`](pipelines.md#guard-task-execution-using-when-expressions) - The list of when expressions guarding the execution of this task.
 
 ### Configuring usage of `TaskRun` and `Run` embedded statuses
@@ -915,7 +914,7 @@ information on feature flags. The possible values for `embedded-status` are:
 As your `PipelineRun` executes, its `status` field accumulates information on the execution of each `TaskRun`
 as well as the `PipelineRun` as a whole. This information includes the name of the pipeline `Task` associated
 to a `TaskRun`, the complete [status of the `TaskRun`](taskruns.md#monitoring-execution-status) and details
-about `Conditions` that may be associated to a `TaskRun`.
+about `whenExpressions` that may be associated to a `TaskRun`.
 
 The following example shows an extract from the `status` field of a `PipelineRun` that has executed successfully:
 

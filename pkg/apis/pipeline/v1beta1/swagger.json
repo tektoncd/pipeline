@@ -341,14 +341,6 @@
         "apiVersion": {
           "type": "string"
         },
-        "conditionChecks": {
-          "description": "ConditionChecks is the the list of condition checks, including their names and statuses, for the PipelineTask. Deprecated: This field will be removed when conditions are removed.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/v1beta1.PipelineRunChildConditionCheckStatus"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
         "kind": {
           "type": "string"
         },
@@ -462,109 +454,6 @@
         "metadata": {
           "default": {},
           "$ref": "#/definitions/v1.ListMeta"
-        }
-      }
-    },
-    "v1beta1.ConditionCheck": {
-      "description": "ConditionCheck represents a single evaluation of a Condition step.",
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-          "type": "string"
-        },
-        "kind": {
-          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-          "type": "string"
-        },
-        "metadata": {
-          "default": {},
-          "$ref": "#/definitions/v1.ObjectMeta"
-        },
-        "spec": {
-          "default": {},
-          "$ref": "#/definitions/v1beta1.TaskRunSpec"
-        },
-        "status": {
-          "default": {},
-          "$ref": "#/definitions/v1beta1.TaskRunStatus"
-        }
-      }
-    },
-    "v1beta1.ConditionCheckStatus": {
-      "description": "ConditionCheckStatus defines the observed state of ConditionCheck",
-      "type": "object",
-      "required": [
-        "podName"
-      ],
-      "properties": {
-        "annotations": {
-          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "default": ""
-          }
-        },
-        "check": {
-          "description": "Check describes the state of the check container.",
-          "default": {},
-          "$ref": "#/definitions/v1.ContainerState"
-        },
-        "completionTime": {
-          "description": "CompletionTime is the time the check pod completed.",
-          "$ref": "#/definitions/v1.Time"
-        },
-        "conditions": {
-          "description": "Conditions the latest available observations of a resource's current state.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/knative.Condition"
-          },
-          "x-kubernetes-patch-merge-key": "type",
-          "x-kubernetes-patch-strategy": "merge"
-        },
-        "observedGeneration": {
-          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
-          "type": "integer",
-          "format": "int64"
-        },
-        "podName": {
-          "description": "PodName is the name of the pod responsible for executing this condition check.",
-          "type": "string",
-          "default": ""
-        },
-        "startTime": {
-          "description": "StartTime is the time the check is actually started.",
-          "$ref": "#/definitions/v1.Time"
-        }
-      }
-    },
-    "v1beta1.ConditionCheckStatusFields": {
-      "description": "ConditionCheckStatusFields holds the fields of ConfigurationCheck's status. This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
-      "type": "object",
-      "required": [
-        "podName"
-      ],
-      "properties": {
-        "check": {
-          "description": "Check describes the state of the check container.",
-          "default": {},
-          "$ref": "#/definitions/v1.ContainerState"
-        },
-        "completionTime": {
-          "description": "CompletionTime is the time the check pod completed.",
-          "$ref": "#/definitions/v1.Time"
-        },
-        "podName": {
-          "description": "PodName is the name of the pod responsible for executing this condition check.",
-          "type": "string",
-          "default": ""
-        },
-        "startTime": {
-          "description": "StartTime is the time the check is actually started.",
-          "$ref": "#/definitions/v1.Time"
         }
       }
     },
@@ -947,37 +836,6 @@
         }
       }
     },
-    "v1beta1.PipelineRunChildConditionCheckStatus": {
-      "description": "PipelineRunChildConditionCheckStatus is used to record the status of condition checks within StatusChildReferences.",
-      "type": "object",
-      "properties": {
-        "conditionCheckName": {
-          "type": "string"
-        },
-        "conditionName": {
-          "description": "ConditionName is the name of the Condition",
-          "type": "string"
-        },
-        "status": {
-          "description": "Status is the ConditionCheckStatus for the corresponding ConditionCheck",
-          "$ref": "#/definitions/v1beta1.ConditionCheckStatus"
-        }
-      }
-    },
-    "v1beta1.PipelineRunConditionCheckStatus": {
-      "description": "PipelineRunConditionCheckStatus returns the condition check status",
-      "type": "object",
-      "properties": {
-        "conditionName": {
-          "description": "ConditionName is the name of the Condition",
-          "type": "string"
-        },
-        "status": {
-          "description": "Status is the ConditionCheckStatus for the corresponding ConditionCheck",
-          "$ref": "#/definitions/v1beta1.ConditionCheckStatus"
-        }
-      }
-    },
     "v1beta1.PipelineRunList": {
       "description": "PipelineRunList contains a list of PipelineRun",
       "type": "object",
@@ -1279,13 +1137,6 @@
       "description": "PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status",
       "type": "object",
       "properties": {
-        "conditionChecks": {
-          "description": "ConditionChecks maps the name of a condition check to its Status",
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v1beta1.PipelineRunConditionCheckStatus"
-          }
-        },
         "pipelineTaskName": {
           "description": "PipelineTaskName is the name of the PipelineTask.",
           "type": "string"
@@ -1373,15 +1224,6 @@
       "description": "PipelineTask defines a task in a Pipeline, passing inputs from both Params and from the output of previous tasks.",
       "type": "object",
       "properties": {
-        "conditions": {
-          "description": "Conditions is a list of conditions that need to be true for the task to run Conditions are deprecated, use WhenExpressions instead",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineTaskCondition"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
         "matrix": {
           "description": "Matrix declares parameters used to fan out this task.",
           "type": "array",
@@ -1448,38 +1290,6 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.WorkspacePipelineTaskBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
-        }
-      }
-    },
-    "v1beta1.PipelineTaskCondition": {
-      "description": "PipelineTaskCondition allows a PipelineTask to declare a Condition to be evaluated before the Task is run.",
-      "type": "object",
-      "required": [
-        "conditionRef"
-      ],
-      "properties": {
-        "conditionRef": {
-          "description": "ConditionRef is the name of the Condition to use for the conditionCheck",
-          "type": "string",
-          "default": ""
-        },
-        "params": {
-          "description": "Params declare parameters passed to this Condition",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "resources": {
-          "description": "Resources declare the resources provided to this Condition as input",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineTaskInputResource"
           },
           "x-kubernetes-list-type": "atomic"
         }

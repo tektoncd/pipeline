@@ -29,8 +29,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/test/diff"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -55,11 +53,6 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	c, namespace := setup(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
-
-	cond := getCondition(t, namespace)
-	if _, err := c.ConditionClient.Create(ctx, cond, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create Condition `%s`: %s", cond1Name, err)
-	}
 
 	task := getFailTask(t, namespace)
 	task.Spec.Results = append(task.Spec.Results, v1beta1.TaskResult{
@@ -202,8 +195,11 @@ spec:
   - name: dagtask3
     taskRef:
       name: %s
-    conditions:
-    - conditionRef: %s
+    when:
+    - input: banana
+      operator: in
+      values:
+      - apple
   - name: dagtask4
     taskRef:
       name: %s
@@ -222,7 +218,7 @@ spec:
 		taskConsumingResultInWhenExpression.Name, taskConsumingResultInWhenExpression.Name, taskConsumingResultInWhenExpression.Name,
 		taskConsumingResultInWhenExpression.Name,
 		// Tasks
-		task.Name, delayedTask.Name, successTask.Name, cond.Name, successTask.Name, taskProducingResult.Name))
+		task.Name, delayedTask.Name, successTask.Name, successTask.Name, taskProducingResult.Name))
 	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
@@ -247,9 +243,9 @@ spec:
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
 
-	// expecting taskRuns for dagtask1, dagtask2, dagtask3 (with condition failure), dagtask5, finaltask1, finaltask2,
+	// expecting taskRuns for dagtask1, dagtask2, dagtask5, finaltask1, finaltask2,
 	// finaltaskconsumingdagtask5, guardedfinaltaskusingdagtask5result1, guardedfinaltaskusingdagtask5status1
-	expectedTaskRunsCount := 9
+	expectedTaskRunsCount := 8
 	if len(taskrunList.Items) != expectedTaskRunsCount {
 		var s []string
 		for _, n := range taskrunList.Items {
@@ -349,6 +345,11 @@ spec:
 	expectedSkippedTasks := []v1beta1.SkippedTask{{
 		Name:   "dagtask3",
 		Reason: v1beta1.StoppingSkip,
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "banana",
+			Operator: "in",
+			Values:   []string{"apple"},
+		}},
 	}, {
 		Name:   "dagtask4",
 		Reason: v1beta1.StoppingSkip,
@@ -698,6 +699,7 @@ spec:
 }
 
 func isSuccessful(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) bool {
+	t.Helper()
 	for _, c := range conds {
 		if c.Type == apis.ConditionSucceeded {
 			if c.Status != corev1.ConditionTrue {
@@ -711,6 +713,7 @@ func isSuccessful(t *testing.T, taskRunName string, conds duckv1beta1.Conditions
 }
 
 func isCancelled(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) bool {
+	t.Helper()
 	for _, c := range conds {
 		if c.Type == apis.ConditionSucceeded {
 			return true
@@ -721,6 +724,7 @@ func isCancelled(t *testing.T, taskRunName string, conds duckv1beta1.Conditions)
 }
 
 func isSkipped(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) bool {
+	t.Helper()
 	for _, c := range conds {
 		if c.Type == apis.ConditionSucceeded {
 			if c.Status != corev1.ConditionFalse && c.Reason != resources.ReasonConditionCheckFailed {
@@ -826,18 +830,6 @@ spec:
   params:
   - name: %s
 `, helpers.ObjectNameForTest(t), namespace, paramName))
-}
-
-func getCondition(t *testing.T, namespace string) *v1alpha1.Condition {
-	return parse.MustParseCondition(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec: 
-  check:
-    image: ubuntu
-    script: 'exit 1'
-`, helpers.ObjectNameForTest(t), namespace))
 }
 
 func getPipelineRun(t *testing.T, namespace, p string) *v1beta1.PipelineRun {

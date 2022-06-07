@@ -48,7 +48,6 @@ var (
 	secretName = "secret"
 	saName     = "service-account"
 	task1Name  = "task1"
-	cond1Name  = "cond-1"
 )
 
 func TestPipelineRunStatusSpec(t *testing.T) {
@@ -259,39 +258,6 @@ spec:
 		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
 		expectedNumberOfEvents: 2,
 		pipelineRunFunc:        getHelloWorldPipelineRun,
-	}, {
-		name: "pipeline succeeds when task skipped due to failed condition",
-		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, _ int) (map[string]*v1alpha1.PipelineResource, *v1beta1.Pipeline) {
-			t.Helper()
-			cond := getFailingCondition(t)
-			if _, err := c.ConditionClient.Create(ctx, cond, metav1.CreateOptions{}); err != nil {
-				t.Fatalf("Failed to create Condition `%s`: %s", cond.Name, err)
-			}
-
-			task := parse.MustParseTask(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  steps:
-  - image: ubuntu
-    command: ['/bin/bash']
-    args: ['-c', 'echo hello, world']
-`, helpers.ObjectNameForTest(t), namespace))
-			if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
-				t.Fatalf("Failed to create Task `%s`: %s", task.Name, err)
-			}
-			p := getPipelineWithFailingCondition(t, namespace, task.Name, cond.Name)
-			if _, err := c.PipelineClient.Create(ctx, p, metav1.CreateOptions{}); err != nil {
-				t.Fatalf("Failed to create Pipeline `%s`: %s", p.Name, err)
-			}
-
-			return nil, p
-		},
-		expectedTaskRuns: []string{},
-		// 1 from PipelineRun; 0 from taskrun since it should not be executed due to condition failing
-		expectedNumberOfEvents: 1,
-		pipelineRunFunc:        getConditionalPipelineRun,
 	}, {
 		name: "pipelinerun succeeds with LimitRange minimum in namespace",
 		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) (map[string]*v1alpha1.PipelineResource, *v1beta1.Pipeline) {
@@ -1049,50 +1015,6 @@ func assertAnnotationsMatch(t *testing.T, expectedAnnotations, actualAnnotations
 			t.Errorf("Expected annotations containing %s=%s but annotations were %v", key, expectedVal, actualAnnotations)
 		}
 	}
-}
-
-func getPipelineWithFailingCondition(t *testing.T, namespace string, taskName, condName string) *v1beta1.Pipeline {
-	return parse.MustParsePipeline(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  tasks:
-  - name: %s
-    taskRef:
-      name: %s
-    conditions:
-    - conditionRef: %s
-  - name: task2
-    taskRef:
-      name: %s
-    runAfter: ['%s']
-`, helpers.ObjectNameForTest(t), namespace, task1Name, taskName, condName, taskName, task1Name))
-}
-
-func getFailingCondition(t *testing.T) *v1alpha1.Condition {
-	return parse.MustParseCondition(t, fmt.Sprintf(`
-metadata:
-  name: %s
-spec:
-  check:
-    image: ubuntu
-    command: ['/bin/bash']
-    args: ['exit 1']
-`, helpers.ObjectNameForTest(t)))
-}
-
-func getConditionalPipelineRun(t *testing.T, _ int, namespace string, pipelineName string, _ map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun {
-	return parse.MustParsePipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-  labels:
-    hello-world-key: hello-world-vaule
-spec:
-  pipelineRef:
-    name: %s
-`, helpers.ObjectNameForTest(t), namespace, pipelineName))
 }
 
 func getLimitRange(name, namespace, resourceCPU, resourceMemory, resourceEphemeralStorage string) *corev1.LimitRange {

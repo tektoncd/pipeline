@@ -29,7 +29,6 @@ import (
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	informersv1beta1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
-	fakeconditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition/fake"
 	fakeruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run/fake"
 	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask/fake"
 	fakepipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipeline/fake"
@@ -73,7 +72,6 @@ type Data struct {
 	Tasks             []*v1beta1.Task
 	ClusterTasks      []*v1beta1.ClusterTask
 	PipelineResources []*v1alpha1.PipelineResource
-	Conditions        []*v1alpha1.Condition
 	Runs              []*v1alpha1.Run
 	Pods              []*corev1.Pod
 	Namespaces        []*corev1.Namespace
@@ -100,7 +98,6 @@ type Informers struct {
 	Task              informersv1beta1.TaskInformer
 	ClusterTask       informersv1beta1.ClusterTaskInformer
 	PipelineResource  resourceinformersv1alpha1.PipelineResourceInformer
-	Condition         informersv1alpha1.ConditionInformer
 	Pod               coreinformers.PodInformer
 	ConfigMap         coreinformers.ConfigMapInformer
 	ServiceAccount    coreinformers.ServiceAccountInformer
@@ -184,7 +181,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		Task:              faketaskinformer.Get(ctx),
 		ClusterTask:       fakeclustertaskinformer.Get(ctx),
 		PipelineResource:  fakeresourceinformer.Get(ctx),
-		Condition:         fakeconditioninformer.Get(ctx),
 		Pod:               fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
 		ConfigMap:         fakeconfigmapinformer.Get(ctx),
 		ServiceAccount:    fakeserviceaccountinformer.Get(ctx),
@@ -234,13 +230,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, r := range d.PipelineResources {
 		r := r.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(ctx, r, metav1.CreateOptions{}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	c.Pipeline.PrependReactor("*", "conditions", AddToInformer(t, i.Condition.Informer().GetIndexer()))
-	for _, cond := range d.Conditions {
-		cond := cond.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1alpha1().Conditions(cond.Namespace).Create(ctx, cond, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

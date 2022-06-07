@@ -134,13 +134,6 @@ func parseExpression(substitutionExpression string) (string, string, error) {
 // in a PipelineTask and returns a list of any references that are found.
 func PipelineTaskResultRefs(pt *PipelineTask) []*ResultRef {
 	refs := []*ResultRef{}
-	for _, condition := range pt.Conditions {
-		for _, p := range condition.Params {
-			expressions, _ := GetVarSubstitutionExpressionsForParam(p)
-			refs = append(refs, NewResultRefs(expressions)...)
-		}
-	}
-
 	for _, p := range pt.Params {
 		expressions, _ := GetVarSubstitutionExpressionsForParam(p)
 		refs = append(refs, NewResultRefs(expressions)...)

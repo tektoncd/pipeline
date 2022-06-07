@@ -78,7 +78,6 @@ func (pt *PipelineTask) ConvertTo(ctx context.Context, sink *v1beta1.PipelineTas
 			return err
 		}
 	}
-	sink.Conditions = pt.Conditions
 	sink.Retries = pt.Retries
 	sink.RunAfter = pt.RunAfter
 	sink.Resources = pt.Resources
@@ -129,7 +128,6 @@ func (pt *PipelineTask) ConvertFrom(ctx context.Context, source v1beta1.Pipeline
 			return err
 		}
 	}
-	pt.Conditions = source.Conditions
 	pt.Retries = source.Retries
 	pt.RunAfter = source.RunAfter
 	pt.Resources = source.Resources

@@ -91,9 +91,4 @@ var (
 		Group:    GroupName,
 		Resource: "pipelineresources",
 	}
-	// ConditionResource represents a Tekton Condition
-	ConditionResource = schema.GroupResource{
-		Group:    GroupName,
-		Resource: "conditions",
-	}
 )

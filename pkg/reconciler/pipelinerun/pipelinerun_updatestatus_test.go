@@ -50,7 +50,7 @@ var (
 )
 
 type updateStatusTaskRunsData struct {
-	withConditions map[string]*v1beta1.PipelineRunTaskRunStatus
+	noTaskRuns     map[string]*v1beta1.PipelineRunTaskRunStatus
 	missingTaskRun map[string]*v1beta1.PipelineRunTaskRunStatus
 	foundTaskRun   map[string]*v1beta1.PipelineRunTaskRunStatus
 	recovered      map[string]*v1beta1.PipelineRunTaskRunStatus
@@ -63,69 +63,18 @@ pipelineTaskName: task-1
 status: {}
 `
 	prTask2Yaml := `
-conditionChecks:
-  pr-task-2-running-condition-check-xxyyy:
-    conditionName: running-condition-0
-    status:
-      check:
-        running: {}
-      conditions:
-      - status: Unknown
-        type: Succeeded
 pipelineTaskName: task-2
 `
 	prTask3Yaml := `
-conditionChecks:
-  pr-task-3-successful-condition-check-xxyyy:
-    conditionName: successful-condition-0
-    status:
-      check:
-        terminated:
-          exitCode: 0
-      conditions:
-      - status: "True"
-        type: Succeeded
 pipelineTaskName: task-3
 status: {}
 `
 
 	prTask4Yaml := `
-conditionChecks:
-  pr-task-4-failed-condition-check-xxyyy:
-    conditionName: failed-condition-0
-    status:
-      check:
-        terminated:
-          exitCode: 127
-      conditions:
-      - status: "False"
-        type: Succeeded
 pipelineTaskName: task-4
 `
 
-	prTask3NoStatusYaml := `
-conditionChecks:
-  pr-task-3-successful-condition-check-xxyyy:
-    conditionName: successful-condition-0
-pipelineTaskName: task-3
-status: {}
-`
-
-	orphanedPRTask2Yaml := `
-conditionChecks:
-  pr-task-2-running-condition-check-xxyyy:
-    conditionName: running-condition-0
-pipelineTaskName: task-2
-`
-
-	orphanedPRTask4Yaml := `
-conditionChecks:
-  pr-task-4-failed-condition-check-xxyyy:
-    conditionName: failed-condition-0
-pipelineTaskName: task-4
-`
-
-	withConditions := map[string]*v1beta1.PipelineRunTaskRunStatus{
+	noTaskRuns := map[string]*v1beta1.PipelineRunTaskRunStatus{
 		"pr-task-1-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask1Yaml),
 		"pr-task-2-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask2Yaml),
 		"pr-task-3-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask3Yaml),
@@ -141,15 +90,13 @@ pipelineTaskName: task-4
 	foundTaskRun := map[string]*v1beta1.PipelineRunTaskRunStatus{
 		"pr-task-1-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask1Yaml),
 		"pr-task-2-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask2Yaml),
-		"pr-task-3-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask3NoStatusYaml),
+		"pr-task-3-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask3Yaml),
 		"pr-task-4-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask4Yaml),
 	}
 
 	recovered := map[string]*v1beta1.PipelineRunTaskRunStatus{
-		"orphaned-taskruns-pr-task-2-xxyyy": mustParsePipelineRunTaskRunStatus(t, orphanedPRTask2Yaml),
-		"orphaned-taskruns-pr-task-4-xxyyy": mustParsePipelineRunTaskRunStatus(t, orphanedPRTask4Yaml),
-		"pr-task-1-xxyyy":                   mustParsePipelineRunTaskRunStatus(t, prTask1Yaml),
-		"pr-task-3-xxyyy":                   mustParsePipelineRunTaskRunStatus(t, prTask3NoStatusYaml),
+		"pr-task-1-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask1Yaml),
+		"pr-task-3-xxyyy": mustParsePipelineRunTaskRunStatus(t, prTask3Yaml),
 	}
 
 	simple := map[string]*v1beta1.PipelineRunTaskRunStatus{
@@ -157,7 +104,7 @@ pipelineTaskName: task-4
 	}
 
 	return updateStatusTaskRunsData{
-		withConditions: withConditions,
+		noTaskRuns:     noTaskRuns,
 		missingTaskRun: missingTaskRuns,
 		foundTaskRun:   foundTaskRun,
 		recovered:      recovered,
@@ -182,10 +129,10 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 		},
 	}
 
-	prStatusWithCondition := v1beta1.PipelineRunStatus{
+	prStatusWithNoTaskRuns := v1beta1.PipelineRunStatus{
 		Status: prRunningStatus,
 		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			TaskRuns: taskRunsPRStatusData.withConditions,
+			TaskRuns: taskRunsPRStatusData.noTaskRuns,
 		},
 	}
 
@@ -255,9 +202,9 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 			expectedPrStatus: v1beta1.PipelineRunStatus{},
 		}, {
 			prName:           "status-no-taskruns",
-			prStatus:         prStatusWithCondition,
+			prStatus:         prStatusWithNoTaskRuns,
 			trs:              nil,
-			expectedPrStatus: prStatusWithCondition,
+			expectedPrStatus: prStatusWithNoTaskRuns,
 		}, {
 			prName:   "status-nil-taskruns",
 			prStatus: prStatusWithEmptyTaskRuns,
@@ -282,23 +229,13 @@ metadata:
   ownerReferences:
   - uid: 11111111-1111-1111-1111-111111111111
 `),
-				parse.MustParseTaskRun(t, `
-metadata:
-  labels:
-    tekton.dev/conditionCheck: pr-task-3-successful-condition-check-xxyyy
-    tekton.dev/conditionName: successful-condition
-    tekton.dev/pipelineTask: task-3
-  name: pr-task-3-successful-condition-check-xxyyy
-  ownerReferences:
-  - uid: 11111111-1111-1111-1111-111111111111
-`),
 			},
 			expectedPrStatus: prStatusFoundTaskRun,
 		}, {
 			prName:           "status-matching-taskruns-pr",
-			prStatus:         prStatusWithCondition,
+			prStatus:         prStatusWithNoTaskRuns,
 			trs:              allTaskRuns,
-			expectedPrStatus: prStatusWithCondition,
+			expectedPrStatus: prStatusWithNoTaskRuns,
 		}, {
 			prName:           "orphaned-taskruns-pr",
 			prStatus:         prStatusWithOrphans,
@@ -500,7 +437,7 @@ metadata:
 }
 
 type updateStatusChildRefsData struct {
-	withConditions []v1beta1.ChildStatusReference
+	noTaskRuns     []v1beta1.ChildStatusReference
 	missingTaskRun []v1beta1.ChildStatusReference
 	foundTaskRun   []v1beta1.ChildStatusReference
 	missingRun     []v1beta1.ChildStatusReference
@@ -519,15 +456,6 @@ pipelineTaskName: task-1
 
 	prTask2Yaml := `
 apiVersion: tekton.dev/v1beta1
-conditionChecks:
-- conditionCheckName: pr-task-2-running-condition-check-xxyyy
-  conditionName: running-condition-0
-  status:
-    check:
-      running: {}
-    conditions:
-    - status: Unknown
-      type: Succeeded
 kind: TaskRun
 name: pr-task-2-xxyyy
 pipelineTaskName: task-2
@@ -535,16 +463,6 @@ pipelineTaskName: task-2
 
 	prTask3Yaml := `
 apiVersion: tekton.dev/v1beta1
-conditionChecks:
-- conditionCheckName: pr-task-3-successful-condition-check-xxyyy
-  conditionName: successful-condition-0
-  status:
-    check:
-      terminated:
-        exitCode: 0
-    conditions:
-    - status: "True"
-      type: Succeeded
 kind: TaskRun
 name: pr-task-3-xxyyy
 pipelineTaskName: task-3
@@ -552,16 +470,6 @@ pipelineTaskName: task-3
 
 	prTask4Yaml := `
 apiVersion: tekton.dev/v1beta1
-conditionChecks:
-- conditionCheckName: pr-task-4-failed-condition-check-xxyyy
-  conditionName: failed-condition-0
-  status:
-    check:
-      terminated:
-        exitCode: 127
-    conditions:
-    - status: "False"
-      type: Succeeded
 kind: TaskRun
 name: pr-task-4-xxyyy
 pipelineTaskName: task-4
@@ -576,35 +484,12 @@ pipelineTaskName: task-6
 
 	prTask3NoStatusYaml := `
 apiVersion: tekton.dev/v1beta1
-conditionChecks:
-- conditionCheckName: pr-task-3-successful-condition-check-xxyyy
-  conditionName: successful-condition-0
 kind: TaskRun
 name: pr-task-3-xxyyy
 pipelineTaskName: task-3
 `
 
-	orphanedPRTask2Yaml := `
-apiVersion: tekton.dev/v1beta1
-conditionChecks:
-- conditionCheckName: pr-task-2-running-condition-check-xxyyy
-  conditionName: running-condition-0
-kind: TaskRun
-name: orphaned-taskruns-pr-task-2-xxyyy
-pipelineTaskName: task-2
-`
-
-	orphanedPRTask4Yaml := `
-apiVersion: tekton.dev/v1beta1
-conditionChecks:
-- conditionCheckName: pr-task-4-failed-condition-check-xxyyy
-  conditionName: failed-condition-0
-kind: TaskRun
-name: orphaned-taskruns-pr-task-4-xxyyy
-pipelineTaskName: task-4
-`
-
-	withConditions := []v1beta1.ChildStatusReference{
+	noTaskRuns := []v1beta1.ChildStatusReference{
 		mustParseChildStatusReference(t, prTask1Yaml),
 		mustParseChildStatusReference(t, prTask2Yaml),
 		mustParseChildStatusReference(t, prTask3Yaml),
@@ -636,9 +521,7 @@ pipelineTaskName: task-4
 
 	recovered := []v1beta1.ChildStatusReference{
 		mustParseChildStatusReference(t, prTask1Yaml),
-		mustParseChildStatusReference(t, orphanedPRTask2Yaml),
 		mustParseChildStatusReference(t, prTask3NoStatusYaml),
-		mustParseChildStatusReference(t, orphanedPRTask4Yaml),
 		mustParseChildStatusReference(t, prTask6Yaml),
 	}
 
@@ -647,7 +530,7 @@ pipelineTaskName: task-4
 	simpleRun := []v1beta1.ChildStatusReference{mustParseChildStatusReference(t, prTask6Yaml)}
 
 	return updateStatusChildRefsData{
-		withConditions: withConditions,
+		noTaskRuns:     noTaskRuns,
 		missingTaskRun: missingTaskRun,
 		foundTaskRun:   foundTaskRun,
 		missingRun:     missingRun,
@@ -673,10 +556,10 @@ func TestUpdatePipelineRunStatusFromChildRefs(t *testing.T) {
 		},
 	}
 
-	prStatusWithCondition := v1beta1.PipelineRunStatus{
+	prStatusWithNoTaskRuns := v1beta1.PipelineRunStatus{
 		Status: prRunningStatus,
 		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-			ChildReferences: childRefsPRStatusData.withConditions,
+			ChildReferences: childRefsPRStatusData.noTaskRuns,
 		},
 	}
 
@@ -774,10 +657,10 @@ metadata:
 			expectedPrStatus: v1beta1.PipelineRunStatus{},
 		}, {
 			prName:           "status-no-taskruns-or-runs",
-			prStatus:         prStatusWithCondition,
+			prStatus:         prStatusWithNoTaskRuns,
 			trs:              nil,
 			runs:             nil,
-			expectedPrStatus: prStatusWithCondition,
+			expectedPrStatus: prStatusWithNoTaskRuns,
 		}, {
 			prName:   "status-nil-taskruns",
 			prStatus: prStatusWithEmptyChildRefs,
@@ -807,28 +690,18 @@ metadata:
   ownerReferences:
   - uid: 11111111-1111-1111-1111-111111111111
 `),
-				parse.MustParseTaskRun(t, `
-metadata:
-  labels:
-    tekton.dev/conditionCheck: pr-task-3-successful-condition-check-xxyyy
-    tekton.dev/conditionName: successful-condition
-    tekton.dev/pipelineTask: task-3
-  name: pr-task-3-successful-condition-check-xxyyy
-  ownerReferences:
-  - uid: 11111111-1111-1111-1111-111111111111
-`),
 			},
 			expectedPrStatus: prStatusFoundTaskRun,
 		}, {
 			prName:           "status-missing-runs",
 			prStatus:         prStatusMissingRun,
 			runs:             singleRun,
-			expectedPrStatus: prStatusWithCondition,
+			expectedPrStatus: prStatusWithNoTaskRuns,
 		}, {
 			prName:           "status-matching-taskruns-pr",
-			prStatus:         prStatusWithCondition,
+			prStatus:         prStatusWithNoTaskRuns,
 			trs:              allTaskRuns,
-			expectedPrStatus: prStatusWithCondition,
+			expectedPrStatus: prStatusWithNoTaskRuns,
 		}, {
 			prName:           "orphaned-taskruns-pr",
 			prStatus:         prStatusWithOrphans,
@@ -1302,38 +1175,8 @@ metadata:
 		parse.MustParseTaskRun(t, `
 metadata:
   labels:
-    tekton.dev/conditionCheck: pr-task-2-running-condition-check-xxyyy
-    tekton.dev/conditionName: running-condition
-    tekton.dev/pipelineTask: task-2
-  name: pr-task-2-running-condition-check-xxyyy
-  ownerReferences:
-  - uid: 11111111-1111-1111-1111-111111111111
-`),
-		parse.MustParseTaskRun(t, `
-metadata:
-  labels:
     tekton.dev/pipelineTask: task-3
   name: pr-task-3-xxyyy
-  ownerReferences:
-  - uid: 11111111-1111-1111-1111-111111111111
-`),
-		parse.MustParseTaskRun(t, `
-metadata:
-  labels:
-    tekton.dev/conditionCheck: pr-task-3-successful-condition-check-xxyyy
-    tekton.dev/conditionName: successful-condition
-    tekton.dev/pipelineTask: task-3
-  name: pr-task-3-successful-condition-check-xxyyy
-  ownerReferences:
-  - uid: 11111111-1111-1111-1111-111111111111
-`),
-		parse.MustParseTaskRun(t, `
-metadata:
-  labels:
-    tekton.dev/conditionCheck: pr-task-4-failed-condition-check-xxyyy
-    tekton.dev/conditionName: failed-condition
-    tekton.dev/pipelineTask: task-4
-  name: pr-task-4-failed-condition-check-xxyyy
   ownerReferences:
   - uid: 11111111-1111-1111-1111-111111111111
 `),

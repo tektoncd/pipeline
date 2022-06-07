@@ -103,12 +103,6 @@ func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
 func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResultRefs) {
 	stringReplacements := resolvedResultRefs.getStringReplacements()
 	for _, resolvedPipelineRunTask := range targets {
-		// also make substitution for resolved condition checks
-		for _, resolvedConditionCheck := range resolvedPipelineRunTask.ResolvedConditionChecks {
-			pipelineTaskCondition := resolvedConditionCheck.PipelineTaskCondition.DeepCopy()
-			pipelineTaskCondition.Params = replaceParamValues(pipelineTaskCondition.Params, stringReplacements, nil)
-			resolvedConditionCheck.PipelineTaskCondition = pipelineTaskCondition
-		}
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, nil)
@@ -155,10 +149,6 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 		p.Tasks[i].Matrix = replaceParamValues(p.Tasks[i].Matrix, replacements, arrayReplacements)
 		for j := range p.Tasks[i].Workspaces {
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
-		}
-		for j := range p.Tasks[i].Conditions {
-			c := p.Tasks[i].Conditions[j]
-			c.Params = replaceParamValues(c.Params, replacements, arrayReplacements)
 		}
 		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
 		p.Tasks[i], replacements, arrayReplacements = propagateParams(ctx, p.Tasks[i], replacements, arrayReplacements)

@@ -88,8 +88,7 @@ following fields:
 > Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
 > and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
-Resources can be used in [Tasks](./tasks.md) and
-[Conditions](./conditions.md#resources).
+Resources can be used in [Tasks](./tasks.md).
 
 Input resources, like source code (git) or artifacts, are dumped at path
 `/workspace/task_resource_name` within a mounted
@@ -102,7 +101,7 @@ refer to the local path to the mounted resource.
 
 ### Variable substitution
 
-`Task` and `Condition` specs can refer resource params as well as predefined
+`Task` specs can refer resource params as well as predefined
 variables such as `path` using the variable substitution syntax below where
 `<name>` is the resource's `name` and `<key>` is one of the resource's `params`:
 
@@ -114,14 +113,6 @@ Or for an output resource:
 
 ```shell
 $(outputs.resources.<name>.<key>)
-```
-
-#### In Condition Spec:
-
-Input resources can be accessed by:
-
-```shell
-$(resources.<name>.<key>)
 ```
 
 #### Accessing local path to resource
@@ -295,12 +286,10 @@ spec:
 ```
 
 You can refer to different examples demonstrating usage of optional resources in
-`Task`, `Condition`, and `Pipeline`:
+`Task` and `Pipeline`:
 
 -   [Task](../examples/v1beta1/taskruns/optional-resources.yaml)
 -   [Cluster Task](../examples/v1beta1/taskruns/optional-resources-with-clustertask.yaml)
--   [Condition](../examples/v1beta1/pipelineruns/conditional-pipelinerun-with-optional-resources.yaml)
--   [Pipeline](../examples/v1beta1/pipelineruns/demo-optional-resources.yaml)
 
 ## Resource Types
 

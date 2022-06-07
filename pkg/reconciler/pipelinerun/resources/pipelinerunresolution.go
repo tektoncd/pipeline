@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -56,16 +55,6 @@ func (e *TaskNotFoundError) Error() string {
 	return fmt.Sprintf("Couldn't retrieve Task %q: %s", e.Name, e.Msg)
 }
 
-// ConditionNotFoundError is used to track failures to the
-type ConditionNotFoundError struct {
-	Name string
-	Msg  string
-}
-
-func (e *ConditionNotFoundError) Error() string {
-	return fmt.Sprintf("Couldn't retrieve Condition %q: %s", e.Name, e.Msg)
-}
-
 // ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
 // exists. TaskRun can be nil to represent there being no TaskRun.
 type ResolvedPipelineRunTask struct {
@@ -78,7 +67,6 @@ type ResolvedPipelineRunTask struct {
 	PipelineTask          *v1beta1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
 	// ConditionChecks ~~TaskRuns but for evaling conditions
-	ResolvedConditionChecks TaskConditionCheckState // Could also be a TaskRun or maybe just a Pod?
 }
 
 // IsDone returns true only if the task is skipped, succeeded or failed
@@ -223,8 +211,6 @@ func (t *ResolvedPipelineRunTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 		skippingReason = v1beta1.GracefullyStoppedSkip
 	case t.skipBecauseParentTaskWasSkipped(facts):
 		skippingReason = v1beta1.ParentTasksSkip
-	case t.skipBecauseConditionsFailed():
-		skippingReason = v1beta1.ConditionsSkip
 	case t.skipBecauseResultReferencesAreMissing(facts):
 		skippingReason = v1beta1.MissingResultsSkip
 	case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
@@ -254,17 +240,6 @@ func (t *ResolvedPipelineRunTask) Skip(facts *PipelineRunFacts) TaskSkipStatus {
 		facts.SkipCache[t.PipelineTask.Name] = t.skip(facts)
 	}
 	return facts.SkipCache[t.PipelineTask.Name]
-}
-
-// skipBecauseConditionsFailed checks that the task has Conditions which have completed evaluating
-// it returns true if any of the Conditions fails
-func (t *ResolvedPipelineRunTask) skipBecauseConditionsFailed() bool {
-	if len(t.ResolvedConditionChecks) > 0 {
-		if t.ResolvedConditionChecks.IsDone() && !t.ResolvedConditionChecks.IsSuccess() {
-			return true
-		}
-	}
-	return false
 }
 
 // skipBecauseWhenExpressionsEvaluatedToFalse confirms that the when expressions have completed evaluating, and
@@ -471,7 +446,6 @@ func ResolvePipelineRunTask(
 	getTask resources.GetTask,
 	getTaskRun resources.GetTaskRun,
 	getRun GetRun,
-	getCondition GetCondition,
 	task v1beta1.PipelineTask,
 	providedResources map[string]*resourcev1alpha1.PipelineResource,
 ) (*ResolvedPipelineRunTask, error) {
@@ -513,15 +487,6 @@ func ResolvePipelineRunTask(
 		}
 
 		rprt.ResolvedTaskResources = rtr
-
-		// Get all conditions that this pipelineTask will be using, if any
-		if len(task.Conditions) > 0 {
-			rcc, err := resolveConditionChecks(&task, pipelineRun.Status.TaskRuns, pipelineRun.Status.ChildReferences, rprt.TaskRunName, getTaskRun, getCondition, providedResources)
-			if err != nil {
-				return nil, err
-			}
-			rprt.ResolvedConditionChecks = rcc
-		}
 	}
 	return &rprt, nil
 }
@@ -561,29 +526,6 @@ func resolveTask(ctx context.Context, taskRun *v1beta1.TaskRun, getTask resource
 	return spec, taskName, kind, err
 }
 
-// getConditionCheckName should return a unique name for a `ConditionCheck` if one has not already been defined, and the existing one otherwise.
-func getConditionCheckName(taskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, trName, conditionRegisterName string) string {
-	for _, cr := range childRefs {
-		if cr.Name == trName {
-			for _, cc := range cr.ConditionChecks {
-				if cc.ConditionName == conditionRegisterName {
-					return cc.ConditionCheckName
-				}
-			}
-		}
-	}
-	trStatus, ok := taskRunStatus[trName]
-	if ok && trStatus.ConditionChecks != nil {
-		for k, v := range trStatus.ConditionChecks {
-			// TODO(1022): Should  we allow multiple conditions of the same type?
-			if conditionRegisterName == v.ConditionName {
-				return k
-			}
-		}
-	}
-	return kmeta.ChildName(trName, fmt.Sprintf("-%s", conditionRegisterName))
-}
-
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
 func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
@@ -617,54 +559,6 @@ func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, childRefs [
 	}
 
 	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
-}
-
-func resolveConditionChecks(pt *v1beta1.PipelineTask, taskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, taskRunName string, getTaskRun resources.GetTaskRun, getCondition GetCondition, providedResources map[string]*resourcev1alpha1.PipelineResource) ([]*ResolvedConditionCheck, error) {
-	rccs := []*ResolvedConditionCheck{}
-	for i := range pt.Conditions {
-		ptc := pt.Conditions[i]
-		cName := ptc.ConditionRef
-		crName := fmt.Sprintf("%s-%s", cName, strconv.Itoa(i))
-		c, err := getCondition(cName)
-		if err != nil {
-			return nil, &ConditionNotFoundError{
-				Name: cName,
-				Msg:  err.Error(),
-			}
-		}
-		conditionCheckName := getConditionCheckName(taskRunStatus, childRefs, taskRunName, crName)
-		// TODO(#3133): Also handle Custom Task Runs (getRun here)
-		cctr, err := getTaskRun(conditionCheckName)
-		if err != nil {
-			if !kerrors.IsNotFound(err) {
-				return nil, fmt.Errorf("error retrieving ConditionCheck %s for taskRun name %s : %w", conditionCheckName, taskRunName, err)
-			}
-		}
-		conditionResources := map[string]*resourcev1alpha1.PipelineResource{}
-		for _, declared := range ptc.Resources {
-			if r, ok := providedResources[declared.Resource]; ok {
-				conditionResources[declared.Name] = r
-			} else {
-				for _, resource := range c.Spec.Resources {
-					if declared.Name == resource.Name && !resource.Optional {
-						return nil, fmt.Errorf("resources %s missing for condition %s in pipeline task %s", declared.Resource, cName, pt.Name)
-					}
-				}
-			}
-		}
-
-		rcc := ResolvedConditionCheck{
-			ConditionRegisterName: crName,
-			Condition:             c,
-			ConditionCheckName:    conditionCheckName,
-			ConditionCheck:        v1beta1.NewConditionCheck(cctr),
-			PipelineTaskCondition: &ptc,
-			ResolvedResources:     conditionResources,
-		}
-
-		rccs = append(rccs, &rcc)
-	}
-	return rccs, nil
 }
 
 // resolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the

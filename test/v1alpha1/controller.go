@@ -26,7 +26,6 @@ import (
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
 	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/clustertask/fake"
-	fakeconditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition/fake"
 	fakepipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipeline/fake"
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/pipelinerun/fake"
 	faketaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/task/fake"
@@ -53,7 +52,6 @@ type Data struct {
 	Tasks             []*v1alpha1.Task
 	ClusterTasks      []*v1alpha1.ClusterTask
 	PipelineResources []*v1alpha1.PipelineResource
-	Conditions        []*v1alpha1.Condition
 	Pods              []*corev1.Pod
 	Namespaces        []*corev1.Namespace
 }
@@ -73,7 +71,6 @@ type Informers struct {
 	Task             informersv1alpha1.TaskInformer
 	ClusterTask      informersv1alpha1.ClusterTaskInformer
 	PipelineResource resourceinformersv1alpha1.PipelineResourceInformer
-	Condition        informersv1alpha1.ConditionInformer
 	Pod              coreinformers.PodInformer
 }
 
@@ -100,7 +97,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		Task:             faketaskinformer.Get(ctx),
 		ClusterTask:      fakeclustertaskinformer.Get(ctx),
 		PipelineResource: fakeresourceinformer.Get(ctx),
-		Condition:        fakeconditioninformer.Get(ctx),
 		Pod:              fakefilteredpodinformer.Get(ctx, v1alpha1.ManagedByLabelKey),
 	}
 
@@ -149,14 +145,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 			t.Fatal(err)
 		}
 		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(ctx, r, metav1.CreateOptions{}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, cond := range d.Conditions {
-		if err := i.Condition.Informer().GetIndexer().Add(cond); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := c.Pipeline.TektonV1alpha1().Conditions(cond.Namespace).Create(ctx, cond, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

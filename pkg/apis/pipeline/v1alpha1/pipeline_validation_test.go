@@ -254,12 +254,6 @@ func TestPipeline_Validate(t *testing.T) {
 							Name: "wow-image", Resource: "wonderful-resource", From: []string{"bar"},
 						}},
 					},
-					Conditions: []v1alpha1.PipelineTaskCondition{{
-						ConditionRef: "some-condition-2",
-						Resources: []v1alpha1.PipelineTaskInputResource{{
-							Name: "wow-image", Resource: "wonderful-resource", From: []string{"bar"},
-						}},
-					}},
 				}, {
 					Name:    "bar",
 					TaskRef: &v1alpha1.TaskRef{Name: "bar-task"},
@@ -271,34 +265,6 @@ func TestPipeline_Validate(t *testing.T) {
 							Name: "some-image", Resource: "wonderful-resource",
 						}},
 					},
-					Conditions: []v1alpha1.PipelineTaskCondition{{
-						ConditionRef: "some-condition",
-						Resources: []v1alpha1.PipelineTaskInputResource{{
-							Name: "some-workspace", Resource: "great-resource",
-						}},
-					}},
-				}},
-			},
-		},
-		failureExpected: false,
-	}, {
-		name: "valid condition only resource",
-		p: &v1alpha1.Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: v1alpha1.PipelineSpec{
-				Resources: []v1alpha1.PipelineDeclaredResource{{
-					Name: "great-resource",
-					Type: v1alpha1.PipelineResourceTypeGit,
-				}},
-				Tasks: []v1alpha1.PipelineTask{{
-					Name:    "bar",
-					TaskRef: &v1alpha1.TaskRef{Name: "bar-task"},
-					Conditions: []v1alpha1.PipelineTaskCondition{{
-						ConditionRef: "some-condition",
-						Resources: []v1alpha1.PipelineTaskInputResource{{
-							Name: "some-workspace", Resource: "great-resource",
-						}},
-					}},
 				}},
 			},
 		},
@@ -507,45 +473,6 @@ func TestPipeline_Validate(t *testing.T) {
 							Name: "the-magic-resource", Resource: "great-resource",
 						}},
 					},
-				}},
-			},
-		},
-		failureExpected: true,
-	}, {
-		name: "invalid condition only resource",
-		p: &v1alpha1.Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: v1alpha1.PipelineSpec{
-				Tasks: []v1alpha1.PipelineTask{{
-					Name:    "bar",
-					TaskRef: &v1alpha1.TaskRef{Name: "bar-task"},
-					Conditions: []v1alpha1.PipelineTaskCondition{{
-						ConditionRef: "some-condition",
-						Resources: []v1alpha1.PipelineTaskInputResource{{
-							Name: "some-workspace", Resource: "missing-resource",
-						}},
-					}},
-				}},
-			},
-		},
-		failureExpected: true,
-	}, {
-		name: "invalid from in condition",
-		p: &v1alpha1.Pipeline{
-			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
-			Spec: v1alpha1.PipelineSpec{
-				Tasks: []v1alpha1.PipelineTask{{
-					Name:    "foo",
-					TaskRef: &v1alpha1.TaskRef{Name: "foo-task"},
-				}, {
-					Name:    "bar",
-					TaskRef: &v1alpha1.TaskRef{Name: "bar-task"},
-					Conditions: []v1alpha1.PipelineTaskCondition{{
-						ConditionRef: "some-condition",
-						Resources: []v1alpha1.PipelineTaskInputResource{{
-							Name: "some-workspace", Resource: "missing-resource", From: []string{"foo"},
-						}},
-					}},
 				}},
 			},
 		},

@@ -36,8 +36,6 @@ and then to the associated `Pods`. As for `Pipeline` and `PipelineRun`, if a lab
 propagate from the [referenced `Task`](taskruns.md#specifying-the-target-task), if one exists, to
 the corresponding `TaskRun`, and then to the associated `Pod`. The same as above applies.
 
-- For `Conditions`, labels propagate to the corresponding `TaskRuns`, and then to the associated `Pods`.
-
 ## Automatic labeling
 
 Tekton automatically adds labels to Tekton entities as described in the following table.
@@ -135,5 +133,3 @@ and then to the associated `Pods`. As for `Pipeline` and `PipelineRun`, if a ann
 - For standalone `TaskRuns` (that is, ones not executing as part of a `Pipeline`), annotations
 propagate from the [referenced `Task`](taskruns.md#specifying-the-target-task), if one exists, to
 the corresponding `TaskRun`, and then to the associated `Pod`. The same as above applies.
-
-- For `Conditions`, annotations propagate to the corresponding `TaskRuns`, and then to the associated `Pods`.

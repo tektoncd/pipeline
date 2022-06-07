@@ -26,8 +26,6 @@ import (
 type Interface interface {
 	// ClusterTasks returns a ClusterTaskInformer.
 	ClusterTasks() ClusterTaskInformer
-	// Conditions returns a ConditionInformer.
-	Conditions() ConditionInformer
 	// Pipelines returns a PipelineInformer.
 	Pipelines() PipelineInformer
 	// PipelineRuns returns a PipelineRunInformer.
@@ -54,11 +52,6 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // ClusterTasks returns a ClusterTaskInformer.
 func (v *version) ClusterTasks() ClusterTaskInformer {
 	return &clusterTaskInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
-}
-
-// Conditions returns a ConditionInformer.
-func (v *version) Conditions() ConditionInformer {
-	return &conditionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Pipelines returns a PipelineInformer.
