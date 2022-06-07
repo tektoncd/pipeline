@@ -92,6 +92,11 @@ func (t ResolvedPipelineRunTask) IsCustomTask() bool {
 	return t.CustomTask
 }
 
+// IsMatrixed return true if the PipelineTask has a Matrix.
+func (t ResolvedPipelineRunTask) IsMatrixed() bool {
+	return len(t.PipelineTask.Matrix) > 0
+}
+
 // IsSuccessful returns true only if the run has completed successfully
 func (t ResolvedPipelineRunTask) IsSuccessful() bool {
 	if t.IsCustomTask() {

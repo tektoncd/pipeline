@@ -2705,3 +2705,82 @@ func TestGetRunName(t *testing.T) {
 		})
 	}
 }
+
+func TestIsMatrixed(t *testing.T) {
+	pr := v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+	getTask := func(ctx context.Context, name string) (v1beta1.TaskObject, error) { return task, nil }
+	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return &trs[0], nil }
+	getRun := func(name string) (*v1alpha1.Run, error) { return &runs[0], nil }
+
+	for _, tc := range []struct {
+		name string
+		pt   v1beta1.PipelineTask
+		want bool
+	}{{
+		name: "custom task with matrix",
+		pt: v1beta1.PipelineTask{
+			TaskRef: &v1beta1.TaskRef{
+				APIVersion: "example.dev/v0",
+				Kind:       "Sample",
+			},
+			Matrix: []v1beta1.Param{{
+				Name:  "platform",
+				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			}},
+		},
+		want: true,
+	}, {
+		name: "custom task without matrix",
+		pt: v1beta1.PipelineTask{
+			TaskRef: &v1beta1.TaskRef{
+				APIVersion: "example.dev/v0",
+				Kind:       "Sample",
+			},
+		},
+		want: false,
+	}, {
+		name: "task with matrix",
+		pt: v1beta1.PipelineTask{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "my-task",
+			},
+			Matrix: []v1beta1.Param{{
+				Name:  "platform",
+				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			}},
+		},
+		want: true,
+	}, {
+		name: "task without matrix",
+		pt: v1beta1.PipelineTask{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "my-task",
+			},
+		},
+		want: false,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			cfg := config.NewStore(logtesting.TestLogger(t))
+			cfg.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+				Data: map[string]string{
+					"enable-api-fields": "alpha",
+				},
+			})
+			ctx = cfg.ToContext(ctx)
+			rprt, err := ResolvePipelineRunTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
+			if err != nil {
+				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
+			}
+			got := rprt.IsMatrixed()
+			if d := cmp.Diff(tc.want, got); d != "" {
+				t.Errorf("IsMatrixed: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
