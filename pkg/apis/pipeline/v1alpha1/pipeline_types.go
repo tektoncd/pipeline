@@ -121,10 +121,6 @@ type PipelineTask struct {
 	// +optional
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
-	// Conditions is a list of conditions that need to be true for the task to run
-	// +optional
-	Conditions []PipelineTaskCondition `json:"conditions,omitempty"`
-
 	// Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False
 	// +optional
 	Retries int `json:"retries,omitempty"`
@@ -168,21 +164,6 @@ func (pt PipelineTask) Deps() []string {
 			deps = append(deps, rd.From...)
 		}
 	}
-	// Add any dependents from conditional resources.
-	for _, cond := range pt.Conditions {
-		for _, rd := range cond.Resources {
-			deps = append(deps, rd.From...)
-		}
-		for _, param := range cond.Params {
-			expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param)
-			if ok {
-				resultRefs := v1beta1.NewResultRefs(expressions)
-				for _, resultRef := range resultRefs {
-					deps = append(deps, resultRef.PipelineTask)
-				}
-			}
-		}
-	}
 	// Add any dependents from task results
 	for _, param := range pt.Params {
 		expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param)
@@ -220,10 +201,6 @@ func (l PipelineTaskList) Deps() map[string][]string {
 
 // PipelineTaskParam is used to provide arbitrary string parameters to a Task.
 type PipelineTaskParam = v1beta1.PipelineTaskParam
-
-// PipelineTaskCondition allows a PipelineTask to declare a Condition to be evaluated before
-// the Task is run.
-type PipelineTaskCondition = v1beta1.PipelineTaskCondition
 
 // PipelineDeclaredResource is used by a Pipeline to declare the types of the
 // PipelineResources that it will required to run and names which can be used to

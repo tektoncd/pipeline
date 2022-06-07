@@ -59,11 +59,9 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 		}, {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt2",
-				Conditions: []v1beta1.PipelineTaskCondition{{
-					Params: []v1beta1.Param{{
-						Name:  "p",
-						Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.result)"),
-					}},
+				Params: []v1beta1.Param{{
+					Name:  "p",
+					Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.result)"),
 				}},
 			},
 		}},
@@ -78,11 +76,9 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 		}, {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt2",
-				Conditions: []v1beta1.PipelineTaskCondition{{
-					Params: []v1beta1.Param{{
-						Name:  "p",
-						Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.a-dynamic-custom-task-result)"),
-					}},
+				Params: []v1beta1.Param{{
+					Name:  "p",
+					Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.a-dynamic-custom-task-result)"),
 				}},
 			},
 		}},
@@ -110,19 +106,6 @@ func TestValidatePipelineTaskResults_IncorrectTaskName(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name:  "p1",
 					Value: *v1beta1.NewArrayOrString(missingPipelineTaskVariable),
-				}},
-			},
-		}},
-	}, {
-		desc: "invalid result reference in condition",
-		state: PipelineRunState{{
-			PipelineTask: &v1beta1.PipelineTask{
-				Name: "pt1",
-				Conditions: []v1beta1.PipelineTaskCondition{{
-					Params: []v1beta1.Param{{
-						Name:  "p1",
-						Value: *v1beta1.NewArrayOrString(missingPipelineTaskVariable),
-					}},
 				}},
 			},
 		}},
@@ -177,19 +160,6 @@ func TestValidatePipelineTaskResults_IncorrectResultName(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name:  "p1",
 					Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.result1)"),
-				}},
-			},
-		}},
-	}, {
-		desc: "invalid result reference in condition",
-		state: PipelineRunState{pt1, {
-			PipelineTask: &v1beta1.PipelineTask{
-				Name: "pt2",
-				Conditions: []v1beta1.PipelineTaskCondition{{
-					Params: []v1beta1.Param{{
-						Name:  "p1",
-						Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.result1)"),
-					}},
 				}},
 			},
 		}},

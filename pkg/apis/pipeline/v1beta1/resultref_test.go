@@ -559,13 +559,9 @@ func TestLooksLikeResultRefWhenExpressionFalse(t *testing.T) {
 // returns them all in the expected order.
 func TestPipelineTaskResultRefs(t *testing.T) {
 	pt := v1beta1.PipelineTask{
-		Conditions: []v1beta1.PipelineTaskCondition{{
-			Params: []v1beta1.Param{{
-				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.r1)"),
-			}},
-		}},
 		Params: []v1beta1.Param{{
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.r1)"),
+		}, {
 			Value: *v1beta1.NewArrayOrString("$(tasks.pt2.results.r2)"),
 		}},
 		WhenExpressions: []v1beta1.WhenExpression{{

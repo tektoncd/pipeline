@@ -1011,28 +1011,6 @@ func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 		state:         allFinishedState,
 		expectedNames: []string{pts[0].Name, pts[1].Name},
 	}, {
-		name:          "conditional task not skipped as the condition execution was successful",
-		state:         conditionCheckSuccessNoTaskStartedState,
-		expectedNames: []string{},
-	}, {
-		name:          "conditional task not skipped as the condition has not started executing yet",
-		state:         conditionCheckStartedState,
-		expectedNames: []string{},
-	}, {
-		name:          "conditional task skipped as the condition execution resulted in failure",
-		state:         conditionCheckFailedWithNoOtherTasksState,
-		expectedNames: []string{pts[5].Name},
-	}, {
-		name: "conditional task skipped as the condition execution resulted in failure but the other pipeline task" +
-			"not skipped since it finished execution successfully",
-		state:         conditionCheckFailedWithOthersPassedState,
-		expectedNames: []string{pts[5].Name, pts[0].Name},
-	}, {
-		name: "conditional task skipped as the condition execution resulted in failure but the other pipeline task" +
-			"not skipped since it failed",
-		state:         conditionCheckFailedWithOthersFailedState,
-		expectedNames: []string{pts[5].Name, pts[0].Name},
-	}, {
 		name:          "large deps, not started",
 		state:         largePipelineState,
 		expectedNames: []string{},
@@ -1182,98 +1160,6 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{oneFinishedState[1]},
-	}, {
-		// tasks: [ mytask6 with condition]
-		// finally: [mytask2]
-		name:               "06 - DAG task condition started, no final tasks",
-		desc:               "DAG task (mytask6) condition started - do not schedule final tasks (mytask1)",
-		state:              append(conditionCheckStartedState, noneStartedState[0]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[5]},
-		finalTasks:         []v1beta1.PipelineTask{pts[0]},
-		expectedFinalTasks: PipelineRunState{},
-	}, {
-		// tasks: [ mytask6 with condition]
-		// finally: [mytask2]
-		name:               "07 - DAG task condition done, no final tasks",
-		desc:               "DAG task (mytask6) condition finished, mytask6 not started - do not schedule final tasks (mytask2)",
-		state:              append(conditionCheckSuccessNoTaskStartedState, noneStartedState[0]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[5]},
-		finalTasks:         []v1beta1.PipelineTask{pts[0]},
-		expectedFinalTasks: PipelineRunState{},
-	}, {
-		// tasks: [ mytask6 with condition]
-		// finally: [mytask2]
-		name:               "08 - DAG task skipped, return final tasks",
-		desc:               "DAG task (mytask6) condition failed - schedule final tasks (mytask2) ",
-		state:              append(conditionCheckFailedWithNoOtherTasksState, noneStartedState[0]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[5]},
-		finalTasks:         []v1beta1.PipelineTask{pts[0]},
-		expectedFinalTasks: PipelineRunState{noneStartedState[0]},
-	}, {
-		// tasks: [ mytask1, mytask6 with condition]
-		// finally: [mytask2]
-		name:               "09 - DAG task succeeded/skipped, return final tasks ",
-		desc:               "DAG task (mytask1) finished, mytask6 condition failed - schedule final tasks (mytask2)",
-		state:              append(conditionCheckFailedWithOthersPassedState, noneStartedState[1]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[5], pts[0]},
-		finalTasks:         []v1beta1.PipelineTask{pts[1]},
-		expectedFinalTasks: PipelineRunState{noneStartedState[1]},
-	}, {
-		// tasks: [ mytask1, mytask6 with condition]
-		// finally: [mytask2]
-		name:               "10 - DAG task failed/skipped, return final tasks",
-		desc:               "DAG task (mytask1) failed, mytask6 condition failed - schedule final tasks (mytask2)",
-		state:              append(conditionCheckFailedWithOthersFailedState, noneStartedState[1]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[5], pts[0]},
-		finalTasks:         []v1beta1.PipelineTask{pts[1]},
-		expectedFinalTasks: PipelineRunState{noneStartedState[1]},
-	}, {
-		// tasks: [ mytask6 with condition, mytask7 runAfter mytask6]
-		// finally: [mytask2]
-		name:               "11 - DAG task skipped, return final tasks",
-		desc:               "DAG task (mytask6) condition failed, mytask6 and mytask7 skipped - schedule final tasks (mytask2)",
-		state:              append(taskWithParentSkippedState, noneStartedState[1]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[5], pts[6]},
-		finalTasks:         []v1beta1.PipelineTask{pts[1]},
-		expectedFinalTasks: PipelineRunState{noneStartedState[1]},
-	}, {
-		// tasks: [ mytask1, mytask6 with condition, mytask8 runAfter mytask6]
-		// finally: [mytask2]
-		name:               "12 - DAG task succeeded/skipped, return final tasks",
-		desc:               "DAG task (mytask1) finished - DAG task (mytask6) condition failed, mytask6 and mytask8 skipped - schedule final tasks (mytask2)",
-		state:              append(taskWithMultipleParentsSkippedState, noneStartedState[1]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[5], pts[7]},
-		finalTasks:         []v1beta1.PipelineTask{pts[1]},
-		expectedFinalTasks: PipelineRunState{noneStartedState[1]},
-	}, {
-		// tasks: [ mytask1, mytask6 with condition, mytask8 runAfter mytask6, mytask9 runAfter mytask1 and mytask6]
-		// finally: [mytask2]
-		name: "13 - DAG task succeeded/skipped - return final tasks",
-		desc: "DAG task (mytask1) finished - DAG task (mytask6) condition failed, mytask6, mytask8, and mytask9 skipped" +
-			"- schedule final tasks (mytask2)",
-		state:              append(taskWithGrandParentSkippedState, noneStartedState[1]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[5], pts[7], pts[8]},
-		finalTasks:         []v1beta1.PipelineTask{pts[1]},
-		expectedFinalTasks: PipelineRunState{noneStartedState[1]},
-	}, {
-		//tasks: [ mytask1, mytask6 with condition, mytask8 runAfter mytask6, mytask9 runAfter mytask1 and mytask6]
-		//finally: [mytask2]
-		name: "14 - DAG task succeeded, skipped - return final tasks",
-		desc: "DAG task (mytask1) finished - DAG task (mytask6) failed - mytask8 and mytask9 skipped" +
-			"- schedule final tasks (mytask2)",
-		state:              append(taskWithGrandParentsOneFailedState, noneStartedState[1]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[5], pts[7], pts[8]},
-		finalTasks:         []v1beta1.PipelineTask{pts[1]},
-		expectedFinalTasks: PipelineRunState{noneStartedState[1]},
-	}, {
-		//tasks: [ mytask1, mytask6 with condition, mytask8 runAfter mytask6, mytask9 runAfter mytask1 and mytask6]
-		//finally: [mytask2]
-		name:               "15 - DAG task succeeded/started - no final tasks",
-		desc:               "DAG task (mytask1) finished - DAG task (mytask6) started - do no schedule final tasks",
-		state:              append(taskWithGrandParentsOneNotRunState, noneStartedState[1]),
-		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[5], pts[7], pts[8]},
-		finalTasks:         []v1beta1.PipelineTask{pts[1]},
-		expectedFinalTasks: PipelineRunState{},
 	}}
 	for _, tc := range tcs {
 		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks), v1beta1.PipelineTaskList(tc.DAGTasks).Deps())
@@ -1352,10 +1238,9 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	// 1 runAfter the passed one, currently running
 	// 1 runAfter the failed one, which is marked as incomplete
 	var taskMultipleFailuresSkipRunning = PipelineRunState{{
-		TaskRunName:             "task0taskrun",
-		PipelineTask:            &pts[5],
-		TaskRun:                 makeSucceeded(trs[0]),
-		ResolvedConditionChecks: successTaskConditionCheckState,
+		TaskRunName:  "task0taskrun",
+		PipelineTask: &pts[5],
+		TaskRun:      makeSucceeded(trs[0]),
 	}, {
 		TaskRunName:  "runningTaskRun", // this is running
 		PipelineTask: &pts[6],
@@ -1370,10 +1255,9 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	taskMultipleFailuresOneCancel = append(taskMultipleFailuresOneCancel, cancelledTask[0])
 
 	var taskNotRunningWithSuccesfulParentsOneFailed = PipelineRunState{{
-		TaskRunName:             "task0taskrun",
-		PipelineTask:            &pts[5],
-		TaskRun:                 makeSucceeded(trs[0]),
-		ResolvedConditionChecks: successTaskConditionCheckState,
+		TaskRunName:  "task0taskrun",
+		PipelineTask: &pts[5],
+		TaskRun:      makeSucceeded(trs[0]),
 	}, {
 		TaskRunName:  "notRunningTaskRun", // runAfter pts[5], not started yet
 		PipelineTask: &pts[6],
@@ -1466,74 +1350,6 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedReason:     v1beta1.PipelineRunReasonRunning.String(),
 		expectedIncomplete: 1,
 	}, {
-		name:               "condition-success-no-task started",
-		state:              conditionCheckSuccessNoTaskStartedState,
-		expectedStatus:     corev1.ConditionUnknown,
-		expectedReason:     v1beta1.PipelineRunReasonRunning.String(),
-		expectedIncomplete: 1,
-	}, {
-		name:               "condition-check-in-progress",
-		state:              conditionCheckStartedState,
-		expectedStatus:     corev1.ConditionUnknown,
-		expectedReason:     v1beta1.PipelineRunReasonRunning.String(),
-		expectedIncomplete: 1,
-	}, {
-		name:               "condition-failed-no-other-tasks", // 1 task pipeline with a condition that fails
-		state:              conditionCheckFailedWithNoOtherTasksState,
-		expectedStatus:     corev1.ConditionTrue,
-		expectedReason:     v1beta1.PipelineRunReasonCompleted.String(),
-		expectedSkipped:    1,
-		expectedIncomplete: 1,
-	}, {
-		name:              "condition-failed-another-task-succeeded", // 1 task skipped due to condition, but others pass
-		state:             conditionCheckFailedWithOthersPassedState,
-		expectedStatus:    corev1.ConditionTrue,
-		expectedReason:    v1beta1.PipelineRunReasonCompleted.String(),
-		expectedSucceeded: 1,
-		expectedSkipped:   1,
-	}, {
-		name:            "condition-failed-another-task-failed", // 1 task skipped due to condition, but others failed
-		state:           conditionCheckFailedWithOthersFailedState,
-		expectedStatus:  corev1.ConditionFalse,
-		expectedReason:  v1beta1.PipelineRunReasonFailed.String(),
-		expectedFailed:  1,
-		expectedSkipped: 1,
-	}, {
-		name:            "task skipped due to condition failure in parent",
-		state:           taskWithParentSkippedState,
-		expectedStatus:  corev1.ConditionTrue,
-		expectedReason:  v1beta1.PipelineRunReasonCompleted.String(),
-		expectedSkipped: 2,
-	}, {
-		name:              "task with multiple parent tasks -> one of which is skipped",
-		state:             taskWithMultipleParentsSkippedState,
-		expectedStatus:    corev1.ConditionTrue,
-		expectedReason:    v1beta1.PipelineRunReasonCompleted.String(),
-		expectedSkipped:   2,
-		expectedSucceeded: 1,
-	}, {
-		name:              "task with grand parent task skipped",
-		state:             taskWithGrandParentSkippedState,
-		expectedStatus:    corev1.ConditionTrue,
-		expectedReason:    v1beta1.PipelineRunReasonCompleted.String(),
-		expectedSkipped:   3,
-		expectedSucceeded: 1,
-	}, {
-		name:              "task with grand parents; one parent failed",
-		state:             taskWithGrandParentsOneFailedState,
-		expectedStatus:    corev1.ConditionFalse,
-		expectedReason:    v1beta1.PipelineRunReasonFailed.String(),
-		expectedSucceeded: 1,
-		expectedSkipped:   2,
-		expectedFailed:    1,
-	}, {
-		name:               "task with grand parents; one not run yet",
-		state:              taskWithGrandParentsOneNotRunState,
-		expectedStatus:     corev1.ConditionUnknown,
-		expectedReason:     v1beta1.PipelineRunReasonRunning.String(),
-		expectedSucceeded:  1,
-		expectedIncomplete: 3,
-	}, {
 		name:              "task that was cancelled",
 		state:             taskCancelledFailed,
 		expectedReason:    v1beta1.PipelineRunReasonCancelled.String(),
@@ -1567,13 +1383,6 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedSucceeded: 1,
 		expectedFailed:    1,
 		expectedSkipped:   1,
-	}, {
-		name:               "task with grand parents; one not run yet",
-		state:              taskWithGrandParentsOneNotRunState,
-		expectedStatus:     corev1.ConditionUnknown,
-		expectedReason:     v1beta1.PipelineRunReasonRunning.String(),
-		expectedSucceeded:  1,
-		expectedIncomplete: 3,
 	}, {
 		name:              "cancelled task should result in cancelled pipeline",
 		state:             cancelledTask,
@@ -2354,93 +2163,6 @@ status:
 	}
 }
 
-// TestUpdateTaskRunStateWithConditionChecks runs "getTaskRunsStatus" and verifies how it updates a PipelineRun status
-// from several TaskRun with Conditions associated to the PipelineRun
-func TestUpdateTaskRunStateWithConditionChecks(t *testing.T) {
-	taskrunName := "task-run"
-
-	pipelineTask := v1beta1.PipelineTask{
-		TaskRef: &v1beta1.TaskRef{Name: "unit-test-task"},
-		Conditions: []v1beta1.PipelineTaskCondition{{
-			ConditionRef: "success-condition",
-		}, {
-			ConditionRef: "fail-condition",
-		}},
-	}
-
-	successrcc, successConditionCheckStatus, failingrcc, failingConditionCheckStatus := getConditionCheckStatusData(t)
-
-	failedTaskRunStatus := v1beta1.TaskRunStatus{
-		Status: duckv1beta1.Status{
-			Conditions: []apis.Condition{{
-				Type:    apis.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Reason:  ReasonConditionCheckFailed,
-				Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", taskrunName, "test-pipeline-run"),
-			}},
-		},
-	}
-
-	tcs := []struct {
-		name           string
-		rcc            TaskConditionCheckState
-		expectedStatus v1beta1.PipelineRunTaskRunStatus
-	}{{
-		name: "success-condition-checks",
-		rcc:  TaskConditionCheckState{&successrcc},
-		expectedStatus: v1beta1.PipelineRunTaskRunStatus{
-			ConditionChecks: map[string]*v1beta1.PipelineRunConditionCheckStatus{
-				successrcc.ConditionCheck.Name: successConditionCheckStatus,
-			},
-		},
-	}, {
-		name: "failing-condition-checks",
-		rcc:  TaskConditionCheckState{&failingrcc},
-		expectedStatus: v1beta1.PipelineRunTaskRunStatus{
-			Status: &failedTaskRunStatus,
-			ConditionChecks: map[string]*v1beta1.PipelineRunConditionCheckStatus{
-				failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
-			},
-		},
-	}, {
-		name: "multiple-condition-checks",
-		rcc:  TaskConditionCheckState{&successrcc, &failingrcc},
-		expectedStatus: v1beta1.PipelineRunTaskRunStatus{
-			Status: &failedTaskRunStatus,
-			ConditionChecks: map[string]*v1beta1.PipelineRunConditionCheckStatus{
-				successrcc.ConditionCheck.Name: successConditionCheckStatus,
-				failingrcc.ConditionCheck.Name: failingConditionCheckStatus,
-			},
-		},
-	}}
-
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			pr := parse.MustParsePipelineRun(t, `
-metadata:
-  name: test-pipeline-run
-  namespace: foo
-spec:
-  pipelineRef:
-    name: test-pipeline
-`)
-			state := PipelineRunState{{
-				PipelineTask:            &pipelineTask,
-				TaskRunName:             taskrunName,
-				ResolvedConditionChecks: tc.rcc,
-			}}
-			pr.Status.InitializeConditions(testClock)
-			status := state.GetTaskRunsStatus(pr)
-			expected := map[string]*v1beta1.PipelineRunTaskRunStatus{
-				taskrunName: &tc.expectedStatus,
-			}
-			if d := cmp.Diff(status, expected, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")); d != "" {
-				t.Fatalf("Did not get expected status for %s %s", tc.name, diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
 func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 	state := PipelineRunState{{
 		TaskRunName: "successful-task-with-results",
@@ -2638,8 +2360,6 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 }
 
 func TestPipelineRunState_GetChildReferences(t *testing.T) {
-	successrcc, successConditionCheckStatus, failingrcc, failingConditionCheckStatus := getConditionCheckStatusData(t)
-
 	testCases := []struct {
 		name      string
 		state     PipelineRunState
@@ -2722,39 +2442,6 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 					Operator: selection.In,
 					Values:   []string{"foo", "bar"},
 				}},
-			}},
-		},
-		{
-			name: "task-with-condition-check",
-			state: PipelineRunState{{
-				TaskRunName: "task-with-condition-check-run",
-				PipelineTask: &v1beta1.PipelineTask{
-					Name: "task-with-condition-check-1",
-					TaskRef: &v1beta1.TaskRef{
-						Name:       "task-with-condition-check",
-						Kind:       "Task",
-						APIVersion: "v1beta1",
-					},
-				},
-				ResolvedConditionChecks: TaskConditionCheckState{&successrcc, &failingrcc},
-			}},
-			childRefs: []v1beta1.ChildStatusReference{{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
-					Kind:       "TaskRun",
-				},
-				Name:             "task-with-condition-check-run",
-				PipelineTaskName: "task-with-condition-check-1",
-				ConditionChecks: []*v1beta1.PipelineRunChildConditionCheckStatus{
-					{
-						PipelineRunConditionCheckStatus: *successConditionCheckStatus,
-						ConditionCheckName:              successrcc.ConditionCheck.Name,
-					},
-					{
-						PipelineRunConditionCheckStatus: *failingConditionCheckStatus,
-						ConditionCheckName:              failingrcc.ConditionCheck.Name,
-					},
-				},
 			}},
 		},
 		{
@@ -2853,100 +2540,4 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 
 		})
 	}
-}
-
-// conditionCheckFromTaskRun takes a pointer to a TaskRun and wraps it into a ConditionCheck
-func conditionCheckFromTaskRun(tr *v1beta1.TaskRun) *v1beta1.ConditionCheck {
-	cc := v1beta1.ConditionCheck(*tr)
-	return &cc
-}
-
-func getConditionCheckStatusData(t *testing.T) (ResolvedConditionCheck, *v1beta1.PipelineRunConditionCheckStatus, ResolvedConditionCheck, *v1beta1.PipelineRunConditionCheckStatus) {
-	successConditionCheckName := "success-condition"
-	failingConditionCheckName := "fail-condition"
-
-	successCondition := parse.MustParseCondition(t, `
-metadata:
-  name: cond-1
-  namespace: foo
-`)
-
-	failingCondition := parse.MustParseCondition(t, `
-metadata:
-  name: cond-2
-  namespace: foo
-`)
-
-	successConditionCheck := parse.MustParseTaskRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: foo
-spec:
-status:
-  conditions:
-    - type: Succeeded
-      status: "True"
-  steps:
-    - container:
-      terminated:
-        exitCode: 0
-`, successConditionCheckName))
-
-	failingConditionCheck := parse.MustParseTaskRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: foo
-spec:
-status:
-  conditions:
-    - type: Succeeded
-      status: "False"
-  steps:
-    - container:
-      terminated:
-        exitCode: 127
-`, failingConditionCheckName))
-
-	successrcc := ResolvedConditionCheck{
-		ConditionRegisterName: successCondition.Name + "-0",
-		ConditionCheckName:    successConditionCheckName,
-		Condition:             successCondition,
-		ConditionCheck:        conditionCheckFromTaskRun(successConditionCheck),
-	}
-	failingrcc := ResolvedConditionCheck{
-		ConditionRegisterName: failingCondition.Name + "-0",
-		ConditionCheckName:    failingConditionCheckName,
-		Condition:             failingCondition,
-		ConditionCheck:        conditionCheckFromTaskRun(failingConditionCheck),
-	}
-
-	successConditionCheckStatus := &v1beta1.PipelineRunConditionCheckStatus{
-		ConditionName: successrcc.ConditionRegisterName,
-		Status: &v1beta1.ConditionCheckStatus{
-			ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
-				Check: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{ExitCode: 0},
-				},
-			},
-			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionTrue}},
-			},
-		},
-	}
-
-	failingConditionCheckStatus := &v1beta1.PipelineRunConditionCheckStatus{
-		ConditionName: failingrcc.ConditionRegisterName,
-		Status: &v1beta1.ConditionCheckStatus{
-			ConditionCheckStatusFields: v1beta1.ConditionCheckStatusFields{
-				Check: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{ExitCode: 127},
-				},
-			},
-			Status: duckv1beta1.Status{
-				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded, Status: corev1.ConditionFalse}},
-			},
-		},
-	}
-
-	return successrcc, successConditionCheckStatus, failingrcc, failingConditionCheckStatus
 }

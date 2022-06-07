@@ -29,7 +29,6 @@ import (
 type TektonV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClusterTasksGetter
-	ConditionsGetter
 	PipelinesGetter
 	PipelineRunsGetter
 	RunsGetter
@@ -44,10 +43,6 @@ type TektonV1alpha1Client struct {
 
 func (c *TektonV1alpha1Client) ClusterTasks() ClusterTaskInterface {
 	return newClusterTasks(c)
-}
-
-func (c *TektonV1alpha1Client) Conditions(namespace string) ConditionInterface {
-	return newConditions(c, namespace)
 }
 
 func (c *TektonV1alpha1Client) Pipelines(namespace string) PipelineInterface {

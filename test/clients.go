@@ -61,7 +61,6 @@ type clients struct {
 	TaskRunClient          v1beta1.TaskRunInterface
 	PipelineRunClient      v1beta1.PipelineRunInterface
 	PipelineResourceClient resourcev1alpha1.PipelineResourceInterface
-	ConditionClient        v1alpha1.ConditionInterface
 	RunClient              v1alpha1.RunInterface
 }
 
@@ -98,7 +97,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.TaskRunClient = cs.TektonV1beta1().TaskRuns(namespace)
 	c.PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)
 	c.PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
-	c.ConditionClient = cs.TektonV1alpha1().Conditions(namespace)
 	c.RunClient = cs.TektonV1alpha1().Runs(namespace)
 	return c
 }

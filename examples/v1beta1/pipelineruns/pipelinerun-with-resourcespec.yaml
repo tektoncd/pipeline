@@ -20,25 +20,6 @@ spec:
         - |
           ls -al $(resources.inputs.pipeline-git.path)
 ---
-# `Conditions` are deprecated, use `when` expressions instead
-# https://github.com/tektoncd/pipeline/blob/main/docs/pipelines.md#guard-task-execution-using-when-expressions
-apiVersion: tekton.dev/v1alpha1
-kind: Condition
-metadata:
-  name: always-true-sample-condition
-spec:
-  resources:
-    - name: pipeline-git
-      type: git
-  check:
-    image: ubuntu
-    command:
-      - bash
-    args:
-      - -c
-      - |
-        echo "Hello from Tekton Pipeline!"
----
 
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -55,21 +36,6 @@ spec:
     - name: list-files
       taskRef:
         name: task-to-list-files
-      resources:
-        inputs:
-          - name: pipeline-git
-            resource: pipeline-git
-        outputs:
-          - name: pipeline-git
-            resource: pipeline-git
-    - name: conditional-list-files
-      taskRef:
-        name: task-to-list-files
-      conditions:
-        - conditionRef: always-true-sample-condition
-          resources:
-            - name: pipeline-git
-              resource: pipeline-git
       resources:
         inputs:
           - name: pipeline-git

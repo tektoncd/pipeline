@@ -134,16 +134,6 @@ kind: PipelineResource
 	return &resource
 }
 
-// MustParseCondition takes YAML and parses it into a *v1alpha1.Condition
-func MustParseCondition(t *testing.T, yaml string) *v1alpha1.Condition {
-	var cond v1alpha1.Condition
-	yaml = `apiVersion: tekton.dev/v1alpha1
-kind: Condition
-` + yaml
-	mustParseYAML(t, yaml, &cond)
-	return &cond
-}
-
 func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
 		t.Fatalf("mustParseYAML (%s): %v", yaml, err)

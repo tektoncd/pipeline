@@ -23,24 +23,6 @@ spec:
 ---
 
 apiVersion: tekton.dev/v1alpha1
-kind: Condition
-metadata:
-  name: always-true-sample-condition
-spec:
-  resources:
-    - name: pipeline-git
-      type: git
-  check:
-    image: ubuntu
-    command:
-      - bash
-    args:
-      - -c
-      - |
-        echo "Hello from Tekton Pipeline!"
----
-
-apiVersion: tekton.dev/v1alpha1
 kind: Pipeline
 metadata:
   name: pipeline-to-list-files
@@ -62,14 +44,9 @@ spec:
         outputs:
           - name: pipeline-git
             resource: pipeline-git
-    - name: conditional-list-files
+    - name: second-list-files
       taskRef:
         name: task-to-list-files
-      conditions:
-        - conditionRef: always-true-sample-condition
-          resources:
-            - name: pipeline-git
-              resource: pipeline-git
       resources:
         inputs:
           - name: pipeline-git

@@ -171,19 +171,6 @@ func TestPipelineTask_ValidateCustomTask(t *testing.T) {
 			Paths:   []string{"taskRef.apiVersion"},
 		},
 	}, {
-		name: "custom task doesn't support conditions",
-		task: PipelineTask{
-			Name: "foo",
-			Conditions: []PipelineTaskCondition{{
-				ConditionRef: "some-condition",
-			}},
-			TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: custom tasks do not support conditions - use when expressions instead`,
-			Paths:   []string{"conditions"},
-		},
-	}, {
 		name: "custom task doesn't support pipeline resources",
 		task: PipelineTask{
 			Name:      "foo",

@@ -234,27 +234,6 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			Paths:   []string{"tasks[1].taskRef", "tasks[1].taskSpec"},
 		},
 	}, {
-		name: "invalid pipeline with one pipeline task having both conditions and when expressions",
-		ps: &PipelineSpec{
-			Description: "this is an invalid pipeline with invalid pipeline task",
-			Tasks: []PipelineTask{{
-				Name:    "invalid-pipeline-task",
-				TaskRef: &TaskRef{Name: "foo-task"},
-				WhenExpressions: []WhenExpression{{
-					Input:    "foo",
-					Operator: selection.In,
-					Values:   []string{"bar"},
-				}},
-				Conditions: []PipelineTaskCondition{{
-					ConditionRef: "some-condition",
-				}},
-			}},
-		},
-		expectedError: apis.FieldError{
-			Message: `expected exactly one, got both`,
-			Paths:   []string{"tasks[0].conditions", "tasks[0].when"},
-		},
-	}, {
 		name: "invalid pipeline with one pipeline task having when expression with invalid operator (not In/NotIn)",
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",
@@ -669,12 +648,6 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 						Name: "some-imagee", Resource: "missing-wonderful-resource",
 					}},
 				},
-				Conditions: []PipelineTaskCondition{{
-					ConditionRef: "some-condition",
-					Resources: []PipelineTaskInputResource{{
-						Name: "some-workspace", Resource: "missing-great-resource",
-					}},
-				}},
 			}, {
 				Name:    "foo",
 				TaskRef: &TaskRef{Name: "foo-task"},
@@ -683,16 +656,10 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 						Name: "some-image", Resource: "wonderful-resource",
 					}},
 				},
-				Conditions: []PipelineTaskCondition{{
-					ConditionRef: "some-condition-2",
-					Resources: []PipelineTaskInputResource{{
-						Name: "some-image", Resource: "wonderful-resource",
-					}},
-				}},
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: pipeline declared resources didn't match usage in Tasks: Didn't provide required values: [missing-great-resource missing-wonderful-resource missing-great-resource]`,
+			Message: `invalid value: pipeline declared resources didn't match usage in Tasks: Didn't provide required values: [missing-great-resource missing-wonderful-resource]`,
 			Paths:   []string{"resources"},
 		},
 	}, {
@@ -842,24 +809,6 @@ func TestValidateFrom_Failure(t *testing.T) {
 			Paths:   []string{"tasks[1].resources.inputs[0].from"},
 		},
 	}, {
-		name: "invalid pipeline task - pipeline task condition resource does not exist",
-		tasks: []PipelineTask{{
-			Name: "foo", TaskRef: &TaskRef{Name: "foo-task"},
-		}, {
-			Name:    "bar",
-			TaskRef: &TaskRef{Name: "bar-task"},
-			Conditions: []PipelineTaskCondition{{
-				ConditionRef: "some-condition",
-				Resources: []PipelineTaskInputResource{{
-					Name: "some-workspace", Resource: "missing-resource", From: []string{"foo"},
-				}},
-			}},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: the resource missing-resource from foo must be an output but is an input`,
-			Paths:   []string{"tasks[1].resources.inputs[0].from"},
-		},
-	}, {
 		name: "invalid pipeline task - from resource referring to a pipeline task which has no output",
 		tasks: []PipelineTask{{
 			Name:    "bar",
@@ -945,12 +894,6 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 					Name: "some-imagee", Resource: "wonderful-resource",
 				}},
 			},
-			Conditions: []PipelineTaskCondition{{
-				ConditionRef: "some-condition",
-				Resources: []PipelineTaskInputResource{{
-					Name: "some-workspace", Resource: "great-resource",
-				}},
-			}},
 		}, {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
@@ -959,27 +902,6 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 					Name: "some-image", Resource: "wonderful-resource", From: []string{"bar"},
 				}},
 			},
-			Conditions: []PipelineTaskCondition{{
-				ConditionRef: "some-condition-2",
-				Resources: []PipelineTaskInputResource{{
-					Name: "some-image", Resource: "wonderful-resource", From: []string{"bar"},
-				}},
-			}},
-		}},
-	}, {
-		name: "valid resource declaration with single reference in the pipeline task condition",
-		resources: []PipelineDeclaredResource{{
-			Name: "great-resource", Type: PipelineResourceTypeGit,
-		}},
-		tasks: []PipelineTask{{
-			Name:    "bar",
-			TaskRef: &TaskRef{Name: "bar-task"},
-			Conditions: []PipelineTaskCondition{{
-				ConditionRef: "some-condition",
-				Resources: []PipelineTaskInputResource{{
-					Name: "some-workspace", Resource: "great-resource",
-				}},
-			}},
 		}},
 	}, {
 		name: "valid resource declarations with extra resources, not used in any pipeline task",
@@ -1078,23 +1000,6 @@ func TestValidateDeclaredResources_Failure(t *testing.T) {
 					Name: "the-magic-resource", Resource: "great-resource",
 				}},
 			},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: pipeline declared resources didn't match usage in Tasks: Didn't provide required values: [missing-resource]`,
-			Paths:   []string{"resources"},
-		},
-	}, {
-		name: "invalid condition only resource -" +
-			" pipeline task condition referring to a resource which is missing from resource declarations",
-		tasks: []PipelineTask{{
-			Name:    "bar",
-			TaskRef: &TaskRef{Name: "bar-task"},
-			Conditions: []PipelineTaskCondition{{
-				ConditionRef: "some-condition",
-				Resources: []PipelineTaskInputResource{{
-					Name: "some-workspace", Resource: "missing-resource",
-				}},
-			}},
 		}},
 		expectedError: apis.FieldError{
 			Message: `invalid value: pipeline declared resources didn't match usage in Tasks: Didn't provide required values: [missing-resource]`,
@@ -1881,12 +1786,6 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 							Name: "some-image", Resource: "wonderful-resource",
 						}},
 					},
-					Conditions: []PipelineTaskCondition{{
-						ConditionRef: "some-condition",
-						Resources: []PipelineTaskInputResource{{
-							Name: "some-workspace", Resource: "great-resource",
-						}},
-					}},
 				}},
 				Finally: []PipelineTask{{
 					Name:    "foo",
@@ -2113,7 +2012,7 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 			Paths:   []string{"spec.finally[0].params[final-param]"},
 		},
 	}, {
-		name: "invalid pipeline with invalid final tasks with runAfter and conditions",
+		name: "invalid pipeline with invalid final tasks with runAfter",
 		p: &Pipeline{
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: PipelineSpec{
@@ -2125,21 +2024,12 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 					Name:     "final-task-1",
 					TaskRef:  &TaskRef{Name: "final-task"},
 					RunAfter: []string{"non-final-task"},
-				}, {
-					Name:    "final-task-2",
-					TaskRef: &TaskRef{Name: "final-task"},
-					Conditions: []PipelineTaskCondition{{
-						ConditionRef: "some-condition",
-					}},
 				}},
 			},
 		},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: `invalid value: no runAfter allowed under spec.finally, final task final-task-1 has runAfter specified`,
 			Paths:   []string{"spec.finally[0]"},
-		}).Also(&apis.FieldError{
-			Message: `invalid value: no conditions allowed under spec.finally, final task final-task-2 has conditions specified`,
-			Paths:   []string{"spec.finally[1]"},
 		}),
 	}, {
 		name: "invalid pipeline - workspace bindings in final task relying on a non-existent pipeline workspace",
@@ -2279,19 +2169,6 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 		}},
 		expectedError: apis.FieldError{
 			Message: `invalid value: no runAfter allowed under spec.finally, final task final-task has runAfter specified`,
-			Paths:   []string{"finally[0]"},
-		},
-	}, {
-		name: "invalid pipeline with final task specifying conditions",
-		finalTasks: []PipelineTask{{
-			Name:    "final-task",
-			TaskRef: &TaskRef{Name: "final-task"},
-			Conditions: []PipelineTaskCondition{{
-				ConditionRef: "some-condition",
-			}},
-		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: no conditions allowed under spec.finally, final task final-task has conditions specified`,
 			Paths:   []string{"finally[0]"},
 		},
 	}, {

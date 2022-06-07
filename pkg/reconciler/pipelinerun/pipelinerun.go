@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -132,7 +131,6 @@ type Reconciler struct {
 	taskRunLister       listers.TaskRunLister
 	runLister           listersv1alpha1.RunLister
 	resourceLister      resourcelisters.PipelineResourceLister
-	conditionLister     listersv1alpha1.ConditionLister
 	cloudEventClient    cloudevent.CEClient
 	metrics             *pipelinerunmetrics.Recorder
 	pvcHandler          volumeclaim.PvcHandler
@@ -309,9 +307,6 @@ func (c *Reconciler) resolvePipelineState(
 			func(name string) (*v1alpha1.Run, error) {
 				return c.runLister.Runs(pr.Namespace).Get(name)
 			},
-			func(name string) (*v1alpha1.Condition, error) {
-				return c.conditionLister.Conditions(pr.Namespace).Get(name)
-			},
 			task, providedResources,
 		)
 		if err != nil {
@@ -326,10 +321,6 @@ func (c *Reconciler) resolvePipelineState(
 				pr.Status.MarkFailed(ReasonCouldntGetTask,
 					"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
 					pipelineMeta.Namespace, pipelineMeta.Name, err)
-			case *resources.ConditionNotFoundError:
-				pr.Status.MarkFailed(ReasonCouldntGetCondition,
-					"PipelineRun %s/%s can't be Run; it contains Conditions that don't exist:  %s",
-					pipelineMeta.Namespace, pr.Name, err)
 			default:
 				pr.Status.MarkFailed(ReasonFailedValidation,
 					"PipelineRun %s/%s can't be Run; couldn't resolve all references: %s",
@@ -479,7 +470,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
 
-	// pipelineState holds a list of pipeline tasks after resolving conditions and pipeline resources
+	// pipelineState holds a list of pipeline tasks after resolving pipeline resources
 	// pipelineState also holds a taskRun for each pipeline task after the taskRun is created
 	// pipelineState is instantiated and updated on every reconcile cycle
 	// Resolve the set of tasks (and possibly task runs).
@@ -697,35 +688,25 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		if rprt == nil || rprt.Skip(pipelineRunFacts).IsSkipped || rprt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
 			continue
 		}
-		if rprt.ResolvedConditionChecks == nil || rprt.ResolvedConditionChecks.IsSuccess() {
-			if rprt.IsCustomTask() {
-				if rprt.IsFinalTask(pipelineRunFacts) {
-					rprt.Run, err = c.createRun(ctx, rprt, pr, getFinallyTaskRunTimeout)
-				} else {
-					rprt.Run, err = c.createRun(ctx, rprt, pr, getTaskRunTimeout)
-				}
-				if err != nil {
-					recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rprt.RunName, err)
-					return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rprt.RunName, rprt.PipelineTask.Name, pr.Name, err)
-				}
+		if rprt.IsCustomTask() {
+			if rprt.IsFinalTask(pipelineRunFacts) {
+				rprt.Run, err = c.createRun(ctx, rprt, pr, getFinallyTaskRunTimeout)
 			} else {
-				if rprt.IsFinalTask(pipelineRunFacts) {
-					rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr), getFinallyTaskRunTimeout)
-				} else {
-					rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr), getTaskRunTimeout)
-				}
-				if err != nil {
-					recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
-					return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
-				}
+				rprt.Run, err = c.createRun(ctx, rprt, pr, getTaskRunTimeout)
 			}
-		} else if !rprt.ResolvedConditionChecks.HasStarted() {
-			for _, rcc := range rprt.ResolvedConditionChecks {
-				rcc.ConditionCheck, err = c.makeConditionCheckContainer(ctx, rprt, rcc, pr)
-				if err != nil {
-					recorder.Eventf(pr, corev1.EventTypeWarning, "ConditionCheckCreationFailed", "Failed to create TaskRun %q: %v", rcc.ConditionCheckName, err)
-					return fmt.Errorf("error creating ConditionCheck container called %s for PipelineTask %s from PipelineRun %s: %w", rcc.ConditionCheckName, rprt.PipelineTask.Name, pr.Name, err)
-				}
+			if err != nil {
+				recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rprt.RunName, err)
+				return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rprt.RunName, rprt.PipelineTask.Name, pr.Name, err)
+			}
+		} else {
+			if rprt.IsFinalTask(pipelineRunFacts) {
+				rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr), getFinallyTaskRunTimeout)
+			} else {
+				rprt.TaskRun, err = c.createTaskRun(ctx, rprt, pr, as.StorageBasePath(pr), getTaskRunTimeout)
+			}
+			if err != nil {
+				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
+				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
 			}
 		}
 	}
@@ -736,7 +717,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 // When the "full" and "both" options are removed, updateTaskRunsStatusDirectly can be removed.
 func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 	for taskRunName := range pr.Status.TaskRuns {
-		// TODO(dibyom): Add conditionCheck statuses here
 		prtrs := pr.Status.TaskRuns[taskRunName]
 		tr, err := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
 		if err != nil {
@@ -1140,55 +1120,6 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1beta1
 	return newPr, nil
 }
 
-func (c *Reconciler) makeConditionCheckContainer(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, rcc *resources.ResolvedConditionCheck, pr *v1beta1.PipelineRun) (*v1beta1.ConditionCheck, error) {
-	labels := getTaskrunLabels(pr, rprt.PipelineTask.Name, true)
-	labels[pipeline.ConditionCheckKey] = rcc.ConditionCheckName
-	labels[pipeline.ConditionNameKey] = rcc.Condition.Name
-
-	for key, value := range rcc.Condition.ObjectMeta.Labels {
-		labels[key] = value
-	}
-
-	// Propagate annotations from PipelineRun to TaskRun.
-	annotations := getTaskrunAnnotations(pr)
-
-	for key, value := range rcc.Condition.ObjectMeta.Annotations {
-		annotations[key] = value
-	}
-
-	taskSpec, err := rcc.ConditionToTaskSpec()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get TaskSpec from Condition: %w", err)
-	}
-
-	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
-	tr := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            rcc.ConditionCheckName,
-			Namespace:       pr.Namespace,
-			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
-			Labels:          labels,
-			Annotations:     annotations,
-		},
-		Spec: v1beta1.TaskRunSpec{
-			TaskSpec:           taskSpec,
-			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
-			Params:             rcc.PipelineTaskCondition.Params,
-			Resources: &v1beta1.TaskRunResources{
-				Inputs: rcc.ToTaskResourceBindings(),
-			},
-			Timeout:     getTaskRunTimeout(ctx, pr, rprt, c.Clock),
-			PodTemplate: taskRunSpec.TaskPodTemplate,
-		}}
-
-	cctr, err := c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
-	if err != nil {
-		return nil, err
-	}
-	cc := v1beta1.ConditionCheck(*cctr)
-	return &cc, err
-}
-
 func storePipelineSpecAndMergeMeta(pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec, meta *metav1.ObjectMeta) error {
 	// Only store the PipelineSpec once, if it has never been set before.
 	if pr.Status.PipelineSpec == nil {
@@ -1327,10 +1258,9 @@ func validateChildObjectsInPipelineRunStatus(ctx context.Context, prs v1beta1.Pi
 	return err
 }
 
-// filterTaskRunsForPipelineRun returns TaskRuns owned by the PipelineRun and their condition checks
-func filterTaskRunsForPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun) ([]*v1beta1.TaskRun, map[string][]*v1beta1.TaskRun) {
-	var normalTaskRuns []*v1beta1.TaskRun
-	conditionTaskRuns := make(map[string][]*v1beta1.TaskRun)
+// filterTaskRunsForPipelineRun returns TaskRuns owned by the PipelineRun.
+func filterTaskRunsForPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun) []*v1beta1.TaskRun {
+	var ownedTaskRuns []*v1beta1.TaskRun
 
 	for _, tr := range trs {
 		// Only process TaskRuns that are owned by this PipelineRun.
@@ -1339,21 +1269,10 @@ func filterTaskRunsForPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.Pipelin
 			logger.Debugf("Found a TaskRun %s that is not owned by this PipelineRun", tr.Name)
 			continue
 		}
-		lbls := tr.GetLabels()
-		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
-		if _, ok := lbls[pipeline.ConditionCheckKey]; ok {
-			// Save condition for looping over them after this
-			if _, ok := conditionTaskRuns[pipelineTaskName]; !ok {
-				// If it's the first condition taskrun, initialise the slice
-				conditionTaskRuns[pipelineTaskName] = []*v1beta1.TaskRun{}
-			}
-			conditionTaskRuns[pipelineTaskName] = append(conditionTaskRuns[pipelineTaskName], tr)
-		} else {
-			normalTaskRuns = append(normalTaskRuns, tr)
-		}
+		ownedTaskRuns = append(ownedTaskRuns, tr)
 	}
 
-	return normalTaskRuns, conditionTaskRuns
+	return ownedTaskRuns
 }
 
 // filterRunsForPipelineRun filters the given slice of Runs, returning only those owned by the given PipelineRun.
@@ -1375,7 +1294,7 @@ func filterRunsForPipelineRun(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun
 }
 
 // updatePipelineRunStatusFromTaskRuns takes a PipelineRun and a list of TaskRuns within that PipelineRun, and updates
-// the PipelineRun's .Status.TaskRuns, including ensuring that any (deprecated) condition checks are represented.
+// the PipelineRun's .Status.TaskRuns.
 func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun) {
 	// If no TaskRun was found, nothing to be done. We never remove taskruns from the status
 	if len(trs) == 0 {
@@ -1386,7 +1305,7 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.
 		pr.Status.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
 	}
 
-	taskRuns, conditionTaskRuns := filterTaskRunsForPipelineRun(logger, pr, trs)
+	taskRuns := filterTaskRunsForPipelineRun(logger, pr, trs)
 
 	// Loop over all the TaskRuns associated to Tasks
 	for _, taskrun := range taskRuns {
@@ -1400,65 +1319,9 @@ func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.
 			pr.Status.TaskRuns[taskrun.Name] = &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: pipelineTaskName,
 				Status:           &taskrun.Status,
-				ConditionChecks:  nil,
 			}
 		}
 	}
-	// Then loop by pipelinetask name over all the TaskRuns associated to Conditions
-	for pipelineTaskName, actualConditionTaskRuns := range conditionTaskRuns {
-		// GetTaskRunName will look in first ChildReferences and then TaskRuns to see if there's already a TaskRun name
-		// for this pipelineTaskName, and if not, it will generate one.
-		taskRunName := resources.GetTaskRunName(pr.Status.TaskRuns, pr.Status.ChildReferences, pipelineTaskName, pr.Name)
-
-		if _, ok := pr.Status.TaskRuns[taskRunName]; !ok {
-			pr.Status.TaskRuns[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
-				PipelineTaskName: pipelineTaskName,
-				Status:           nil,
-				ConditionChecks:  nil,
-			}
-		}
-
-		// Add any new condition checks which we've found but weren't already present to the status's condition checks map
-		for k, v := range getNewConditionChecksForTaskRun(logger, pr.Status.TaskRuns[taskRunName].ConditionChecks, actualConditionTaskRuns) {
-			if pr.Status.TaskRuns[taskRunName].ConditionChecks == nil {
-				pr.Status.TaskRuns[taskRunName].ConditionChecks = make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
-			}
-
-			pr.Status.TaskRuns[taskRunName].ConditionChecks[k] = v
-		}
-	}
-}
-
-// getNewConditionChecksForTaskRun returns a map of condition task name to condition check status for each condition TaskRun
-// provided which isn't already present in the existing map of condition checks.
-func getNewConditionChecksForTaskRun(logger *zap.SugaredLogger, existingChecks map[string]*v1beta1.PipelineRunConditionCheckStatus,
-	actualConditionTaskRuns []*v1beta1.TaskRun) map[string]*v1beta1.PipelineRunConditionCheckStatus {
-	// If we don't have any condition task runs to process, just return nil.
-	if len(actualConditionTaskRuns) == 0 {
-		return nil
-	}
-
-	newChecks := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
-
-	for i, foundTaskRun := range actualConditionTaskRuns {
-		lbls := foundTaskRun.GetLabels()
-		if _, ok := existingChecks[foundTaskRun.Name]; !ok {
-			// The condition check was not found, so we need to add it
-			// We only add the condition name, the status can now be gathered by the
-			// normal reconcile process
-			if conditionName, ok := lbls[pipeline.ConditionNameKey]; ok {
-				newChecks[foundTaskRun.Name] = &v1beta1.PipelineRunConditionCheckStatus{
-					ConditionName: fmt.Sprintf("%s-%s", conditionName, strconv.Itoa(i)),
-				}
-			} else {
-				// The condition name label is missing, so we cannot recover this
-				logger.Warnf("found an orphaned condition taskrun %#v with missing %s label",
-					foundTaskRun, pipeline.ConditionNameKey)
-			}
-		}
-	}
-
-	return newChecks
 }
 
 func updatePipelineRunStatusFromRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, runs []*v1alpha1.Run) {
@@ -1498,7 +1361,7 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 		childRefByPipelineTask[pr.Status.ChildReferences[i].PipelineTaskName] = &pr.Status.ChildReferences[i]
 	}
 
-	taskRuns, conditionTaskRuns := filterTaskRunsForPipelineRun(logger, pr, trs)
+	taskRuns := filterTaskRunsForPipelineRun(logger, pr, trs)
 
 	// Loop over all the TaskRuns associated to Tasks
 	for _, tr := range taskRuns {
@@ -1541,32 +1404,6 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 				Name:             r.Name,
 				PipelineTaskName: pipelineTaskName,
 			}
-		}
-	}
-
-	// Then loop by pipelinetask name over all the TaskRuns associated to Conditions
-	for pipelineTaskName, actualConditionTaskRuns := range conditionTaskRuns {
-		// GetTaskRunName will look in first ChildReferences and then TaskRuns to see if there's already a TaskRun name
-		// for this pipelineTaskName, and if not, it will generate one.
-		taskRunName := resources.GetTaskRunName(pr.Status.TaskRuns, pr.Status.ChildReferences, pipelineTaskName, pr.Name)
-		if _, ok := childRefByPipelineTask[pipelineTaskName]; !ok {
-			childRefByPipelineTask[pipelineTaskName] = &v1beta1.ChildStatusReference{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: v1beta1.SchemeGroupVersion.String(),
-					Kind:       "TaskRun",
-				},
-				Name:             taskRunName,
-				PipelineTaskName: pipelineTaskName,
-			}
-		}
-
-		for k, v := range getNewConditionChecksForTaskRun(logger, childRefByPipelineTask[pipelineTaskName].GetConditionChecks(), actualConditionTaskRuns) {
-			// Just append any new condition checks to the relevant ChildStatusReference.ConditionChecks.
-			childRefByPipelineTask[pipelineTaskName].ConditionChecks = append(childRefByPipelineTask[pipelineTaskName].ConditionChecks,
-				&v1beta1.PipelineRunChildConditionCheckStatus{
-					PipelineRunConditionCheckStatus: *v,
-					ConditionCheckName:              k,
-				})
 		}
 	}
 

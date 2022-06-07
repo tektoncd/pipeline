@@ -23,7 +23,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
-	conditioninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/condition"
 	runinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run"
 	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
@@ -53,7 +52,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		runInformer := runinformer.Get(ctx)
 		pipelineRunInformer := pipelineruninformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
-		conditionInformer := conditioninformer.Get(ctx)
 		resolutionInformer := resolutioninformer.Get(ctx)
 		configStore := config.NewStore(logger.Named("config-store"), pipelinerunmetrics.MetricsOnStore(logger))
 		configStore.WatchConfigs(cmw)
@@ -67,7 +65,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			taskRunLister:       taskRunInformer.Lister(),
 			runLister:           runInformer.Lister(),
 			resourceLister:      resourceInformer.Lister(),
-			conditionLister:     conditionInformer.Lister(),
 			cloudEventClient:    cloudeventclient.Get(ctx),
 			metrics:             pipelinerunmetrics.Get(ctx),
 			pvcHandler:          volumeclaim.NewPVCHandler(kubeclientset, logger),

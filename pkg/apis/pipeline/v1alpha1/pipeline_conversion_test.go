@@ -77,9 +77,6 @@ func TestPipelineConversion_Success(t *testing.T) {
 					TaskRef: &TaskRef{
 						Name: "taskref",
 					},
-					Conditions: []PipelineTaskCondition{{
-						ConditionRef: "condition1",
-					}},
 					Retries:  10,
 					RunAfter: []string{"task1"},
 					Resources: &PipelineTaskResources{

@@ -30,5 +30,4 @@ func TestTypes(t *testing.T) {
 	var _ resourcesemantics.GenericCRD = (*v1alpha1.PipelineResource)(nil)
 	var _ resourcesemantics.GenericCRD = (*v1alpha1.Task)(nil)
 	var _ resourcesemantics.GenericCRD = (*v1alpha1.TaskRun)(nil)
-	var _ resourcesemantics.GenericCRD = (*v1alpha1.Condition)(nil)
 }

@@ -279,9 +279,6 @@ func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) (errs *
 		if len(f.RunAfter) != 0 {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("no runAfter allowed under spec.finally, final task %s has runAfter specified", f.Name), "").ViaFieldIndex("finally", idx))
 		}
-		if len(f.Conditions) != 0 {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("no conditions allowed under spec.finally, final task %s has conditions specified", f.Name), "").ViaFieldIndex("finally", idx))
-		}
 	}
 
 	ts := PipelineTaskList(tasks).Names()
@@ -346,20 +343,12 @@ func validateTasksInputFrom(tasks []PipelineTask) (errs *apis.FieldError) {
 
 func validateWhenExpressions(tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
 	for i, t := range tasks {
-		errs = errs.Also(validateOneOfWhenExpressionsOrConditions(t).ViaFieldIndex("tasks", i))
 		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("tasks", i))
 	}
 	for i, t := range finalTasks {
 		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("finally", i))
 	}
 	return errs
-}
-
-func validateOneOfWhenExpressionsOrConditions(t PipelineTask) *apis.FieldError {
-	if t.WhenExpressions != nil && t.Conditions != nil {
-		return apis.ErrMultipleOneOf("when", "conditions")
-	}
-	return nil
 }
 
 // validateDeclaredResources ensures that the specified resources have unique names and
@@ -383,11 +372,6 @@ func validateDeclaredResources(resources []PipelineDeclaredResource, tasks []Pip
 			}
 		}
 
-		for _, condition := range t.Conditions {
-			for _, cr := range condition.Resources {
-				required = append(required, cr.Resource)
-			}
-		}
 	}
 	for _, t := range finalTasks {
 		if t.Resources != nil {
@@ -436,10 +420,6 @@ func validateFrom(tasks []PipelineTask) (errs *apis.FieldError) {
 		inputResources := []PipelineTaskInputResource{}
 		if t.Resources != nil {
 			inputResources = append(inputResources, t.Resources.Inputs...)
-		}
-
-		for _, c := range t.Conditions {
-			inputResources = append(inputResources, c.Resources...)
 		}
 
 		for j, rd := range inputResources {

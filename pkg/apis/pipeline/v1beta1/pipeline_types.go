@@ -172,12 +172,6 @@ type PipelineTask struct {
 	// +optional
 	TaskSpec *EmbeddedTask `json:"taskSpec,omitempty"`
 
-	// Conditions is a list of conditions that need to be true for the task to run
-	// Conditions are deprecated, use WhenExpressions instead
-	// +optional
-	// +listType=atomic
-	Conditions []PipelineTaskCondition `json:"conditions,omitempty"`
-
 	// WhenExpressions is a list of when expressions that need to be true for the task to run
 	// +optional
 	WhenExpressions WhenExpressions `json:"when,omitempty"`
@@ -248,11 +242,6 @@ func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue("custom task spec must specify apiVersion", "taskSpec.apiVersion"))
 	}
 
-	// Conditions are deprecated so the effort to support them with custom tasks is not justified.
-	// When expressions should be used instead.
-	if len(pt.Conditions) > 0 {
-		errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support conditions - use when expressions instead", "conditions"))
-	}
 	// TODO(#3133): Support these features if possible.
 	if pt.Resources != nil {
 		errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support PipelineResources", "resources"))
@@ -493,13 +482,6 @@ func (pt PipelineTask) resourceDeps() []string {
 		}
 	}
 
-	// Add any dependents from conditional resources.
-	for _, cond := range pt.Conditions {
-		for _, rd := range cond.Resources {
-			resourceDeps = append(resourceDeps, rd.From...)
-		}
-	}
-
 	// Add any dependents from result references.
 	for _, ref := range PipelineTaskResultRefs(&pt) {
 		resourceDeps = append(resourceDeps, ref.PipelineTask)
@@ -571,22 +553,6 @@ func (l PipelineTaskList) Validate(ctx context.Context, taskNames sets.String, p
 type PipelineTaskParam struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
-}
-
-// PipelineTaskCondition allows a PipelineTask to declare a Condition to be evaluated before
-// the Task is run.
-type PipelineTaskCondition struct {
-	// ConditionRef is the name of the Condition to use for the conditionCheck
-	ConditionRef string `json:"conditionRef"`
-
-	// Params declare parameters passed to this Condition
-	// +optional
-	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
-
-	// Resources declare the resources provided to this Condition as input
-	// +listType=atomic
-	Resources []PipelineTaskInputResource `json:"resources,omitempty"`
 }
 
 // PipelineDeclaredResource is used by a Pipeline to declare the types of the

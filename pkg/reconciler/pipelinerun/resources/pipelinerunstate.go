@@ -58,7 +58,7 @@ type PipelineRunFacts struct {
 
 	// SkipCache is a hash of PipelineTask names that stores whether a task will be
 	// executed or not, because it's either not reachable via the DAG due to the pipeline
-	// state, or because it has failed conditions.
+	// state, or because it was skipped due to when expressions.
 	// We cache this data along the state, because it's expensive to compute, it requires
 	// traversing potentially the whole graph; this way it can built incrementally, when
 	// needed, via the `Skip` method in pipelinerunresolution.go
@@ -142,7 +142,8 @@ func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[str
 		if rprt.IsCustomTask() {
 			continue
 		}
-		if rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
+
+		if rprt.TaskRun == nil {
 			continue
 		}
 
@@ -167,29 +168,6 @@ func (rprt *ResolvedPipelineRunTask) getTaskRunStatus(taskRunName string, tr *v1
 		prtrs.Status = &tr.Status
 	}
 
-	if len(rprt.ResolvedConditionChecks) > 0 {
-		cStatus := make(map[string]*v1beta1.PipelineRunConditionCheckStatus)
-		for _, c := range rprt.ResolvedConditionChecks {
-			cStatus[c.ConditionCheckName] = &v1beta1.PipelineRunConditionCheckStatus{
-				ConditionName: c.ConditionRegisterName,
-			}
-			if c.ConditionCheck != nil {
-				cStatus[c.ConditionCheckName].Status = c.NewConditionCheckStatus()
-			}
-		}
-		prtrs.ConditionChecks = cStatus
-		if rprt.ResolvedConditionChecks.IsDone() && !rprt.ResolvedConditionChecks.IsSuccess() {
-			if prtrs.Status == nil {
-				prtrs.Status = &v1beta1.TaskRunStatus{}
-			}
-			prtrs.Status.SetCondition(&apis.Condition{
-				Type:    apis.ConditionSucceeded,
-				Status:  corev1.ConditionFalse,
-				Reason:  ReasonConditionCheckFailed,
-				Message: fmt.Sprintf("ConditionChecks failed for Task %s in PipelineRun %s", taskRunName, pr.Name),
-			})
-		}
-	}
 	return prtrs
 }
 
@@ -219,9 +197,6 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 		if !rprt.IsCustomTask() {
 			continue
 		}
-		if rprt.Run == nil && rprt.ResolvedConditionChecks == nil {
-			continue
-		}
 
 		var prrs *v1beta1.PipelineRunRunStatus
 		if rprt.Run != nil {
@@ -239,7 +214,6 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 			prrs.Status = &rprt.Run.Status
 		}
 
-		// TODO(#3133): Include any condition check taskResults here too.
 		status[rprt.RunName] = prrs
 	}
 	return status
@@ -268,18 +242,11 @@ func (state PipelineRunState) GetChildReferences(taskRunVersion string, runVersi
 	var childRefs []v1beta1.ChildStatusReference
 
 	for _, rprt := range state {
-		// If this is for a TaskRun, but there isn't yet a specified TaskRun and we haven't resolved condition checks yet,
-		// skip this entry.
-		if !rprt.CustomTask && rprt.TaskRun == nil && rprt.ResolvedConditionChecks == nil {
-			continue
-		}
-		var childRef v1beta1.ChildStatusReference
 		if rprt.CustomTask {
-			childRef = rprt.getChildRefForRun(runVersion)
-		} else {
-			childRef = rprt.getChildRefForTaskRun(taskRunVersion)
+			childRefs = append(childRefs, rprt.getChildRefForRun(runVersion))
+		} else if rprt.TaskRun != nil {
+			childRefs = append(childRefs, rprt.getChildRefForTaskRun(taskRunVersion))
 		}
-		childRefs = append(childRefs, childRef)
 	}
 	return childRefs
 }
@@ -305,22 +272,6 @@ func (rprt *ResolvedPipelineRunTask) getChildRefForTaskRun(taskRunVersion string
 		taskRunVersion = rprt.TaskRun.APIVersion
 	}
 
-	var childConditions []*v1beta1.PipelineRunChildConditionCheckStatus
-	if len(rprt.ResolvedConditionChecks) > 0 {
-		for _, c := range rprt.ResolvedConditionChecks {
-			condCheck := &v1beta1.PipelineRunChildConditionCheckStatus{
-				PipelineRunConditionCheckStatus: v1beta1.PipelineRunConditionCheckStatus{
-					ConditionName: c.ConditionRegisterName,
-				},
-				ConditionCheckName: c.ConditionCheckName,
-			}
-			if c.ConditionCheck != nil {
-				condCheck.Status = c.NewConditionCheckStatus()
-			}
-
-			childConditions = append(childConditions, condCheck)
-		}
-	}
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
 			APIVersion: taskRunVersion,
@@ -329,7 +280,6 @@ func (rprt *ResolvedPipelineRunTask) getChildRefForTaskRun(taskRunVersion string
 		Name:             rprt.TaskRunName,
 		PipelineTaskName: rprt.PipelineTask.Name,
 		WhenExpressions:  rprt.PipelineTask.WhenExpressions,
-		ConditionChecks:  childConditions,
 	}
 }
 
