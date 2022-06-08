@@ -66,7 +66,6 @@ type ResolvedPipelineRunTask struct {
 	Run                   *v1alpha1.Run
 	PipelineTask          *v1beta1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
-	// ConditionChecks ~~TaskRuns but for evaling conditions
 }
 
 // IsDone returns true only if the task is skipped, succeeded or failed
@@ -231,7 +230,6 @@ func (t *ResolvedPipelineRunTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 // (3) its parent task was skipped
 // (4) Pipeline is in stopping state (one of the PipelineTasks failed)
 // (5) Pipeline is gracefully cancelled or stopped
-// Note that this means Skip returns false if a conditionCheck is in progress
 func (t *ResolvedPipelineRunTask) Skip(facts *PipelineRunFacts) TaskSkipStatus {
 	if facts.SkipCache == nil {
 		facts.SkipCache = make(map[string]TaskSkipStatus)
