@@ -7,4 +7,3 @@ updates:
     labels:
     - "ok-to-test"
     - "dependencies"
-    vendor: true
