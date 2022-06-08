@@ -909,24 +909,24 @@ func TestIsSkipped(t *testing.T) {
 func TestIsFailure(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		task ResolvedPipelineRunTask
+		rprt ResolvedPipelineRunTask
 		want bool
 	}{{
 		name: "taskrun not started",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 		},
 		want: false,
 	}, {
 		name: "run not started",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 		},
 		want: false,
 	}, {
 		name: "taskrun running",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeStarted(trs[0]),
 		},
@@ -934,7 +934,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run running",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunStarted(runs[0]),
@@ -942,7 +942,7 @@ func TestIsFailure(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun succeeded",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeSucceeded(trs[0]),
 		},
@@ -950,7 +950,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run succeeded",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunSucceeded(runs[0]),
@@ -958,7 +958,7 @@ func TestIsFailure(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun failed",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeFailed(trs[0]),
 		},
@@ -966,7 +966,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run failed",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunFailed(runs[0]),
@@ -974,7 +974,7 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun failed: retries remaining",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      makeFailed(trs[0]),
 		},
@@ -982,7 +982,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run failed: retries remaining",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			CustomTask:   true,
 			Run:          makeRunFailed(runs[0]),
@@ -990,7 +990,7 @@ func TestIsFailure(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun failed: no retries remaining",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withRetries(makeFailed(trs[0])),
 		},
@@ -998,7 +998,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run failed: no retries remaining",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			CustomTask:   true,
 			Run:          withRunRetries(makeRunFailed(runs[0])),
@@ -1006,21 +1006,21 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun cancelled",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      withCancelled(makeFailed(trs[0])),
 		},
 		want: true,
 	}, {
 		name: "taskrun cancelled but not failed",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      withCancelled(newTaskRun(trs[0])),
 		},
 		want: false,
 	}, {
 		name: "run cancelled",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
 			CustomTask:   true,
@@ -1028,7 +1028,7 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "run cancelled but not failed",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(newRun(runs[0])),
 			CustomTask:   true,
@@ -1036,14 +1036,14 @@ func TestIsFailure(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun cancelled: retries remaining",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withCancelled(makeFailed(trs[0])),
 		},
 		want: true,
 	}, {
 		name: "run cancelled: retries remaining",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
 			CustomTask:   true,
@@ -1051,14 +1051,14 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun cancelled: no retries remaining",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withCancelled(withRetries(makeFailed(trs[0]))),
 		},
 		want: true,
 	}, {
 		name: "run cancelled: no retries remaining",
-		task: ResolvedPipelineRunTask{
+		rprt: ResolvedPipelineRunTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(withRunRetries(makeRunFailed(runs[0]))),
 			CustomTask:   true,
@@ -1066,7 +1066,7 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.task.IsFailure(); got != tc.want {
+			if got := tc.rprt.IsFailure(); got != tc.want {
 				t.Errorf("expected IsFailure: %t but got %t", tc.want, got)
 			}
 
@@ -1857,7 +1857,7 @@ func TestValidateWorkspaceBindingsWithValidWorkspaces(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		spec *v1beta1.PipelineSpec
-		run  *v1beta1.PipelineRun
+		pr   *v1beta1.PipelineRun
 		err  string
 	}{{
 		name: "include required workspace",
@@ -1866,7 +1866,7 @@ func TestValidateWorkspaceBindingsWithValidWorkspaces(t *testing.T) {
 				Name: "foo",
 			}},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				Workspaces: []v1beta1.WorkspaceBinding{{
 					Name:     "foo",
@@ -1882,14 +1882,14 @@ func TestValidateWorkspaceBindingsWithValidWorkspaces(t *testing.T) {
 				Optional: true,
 			}},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				Workspaces: []v1beta1.WorkspaceBinding{},
 			},
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateWorkspaceBindings(tc.spec, tc.run); err != nil {
+			if err := ValidateWorkspaceBindings(tc.spec, tc.pr); err != nil {
 				t.Errorf("Unexpected error: %v", err)
 			}
 		})
@@ -1900,7 +1900,7 @@ func TestValidateWorkspaceBindingsWithInvalidWorkspaces(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		spec *v1beta1.PipelineSpec
-		run  *v1beta1.PipelineRun
+		pr   *v1beta1.PipelineRun
 		err  string
 	}{{
 		name: "missing required workspace",
@@ -1909,14 +1909,14 @@ func TestValidateWorkspaceBindingsWithInvalidWorkspaces(t *testing.T) {
 				Name: "foo",
 			}},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			Spec: v1beta1.PipelineRunSpec{
 				Workspaces: []v1beta1.WorkspaceBinding{},
 			},
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateWorkspaceBindings(tc.spec, tc.run); err == nil {
+			if err := ValidateWorkspaceBindings(tc.spec, tc.pr); err == nil {
 				t.Fatalf("Expected error indicating `foo` workspace was not provided but got no error")
 			}
 		})
@@ -1927,7 +1927,7 @@ func TestValidateTaskRunSpecs(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		p       *v1beta1.Pipeline
-		run     *v1beta1.PipelineRun
+		pr      *v1beta1.PipelineRun
 		wantErr bool
 	}{{
 		name: "valid task mapping",
@@ -1950,7 +1950,7 @@ func TestValidateTaskRunSpecs(t *testing.T) {
 				}},
 			},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinerun",
 			},
@@ -1992,7 +1992,7 @@ func TestValidateTaskRunSpecs(t *testing.T) {
 				}},
 			},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinerun",
 			},
@@ -2034,7 +2034,7 @@ func TestValidateTaskRunSpecs(t *testing.T) {
 				}},
 			},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinerun",
 			},
@@ -2052,7 +2052,7 @@ func TestValidateTaskRunSpecs(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			spec := tc.p.Spec
-			err := ValidateTaskRunSpecs(&spec, tc.run)
+			err := ValidateTaskRunSpecs(&spec, tc.pr)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("Did not get error when it was expected for test: %s", tc.name)
@@ -2070,7 +2070,7 @@ func TestValidateServiceaccountMapping(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		p       *v1beta1.Pipeline
-		run     *v1beta1.PipelineRun
+		pr      *v1beta1.PipelineRun
 		wantErr bool
 	}{{
 		name: "valid task mapping",
@@ -2093,7 +2093,7 @@ func TestValidateServiceaccountMapping(t *testing.T) {
 				}},
 			},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinerun",
 			},
@@ -2135,7 +2135,7 @@ func TestValidateServiceaccountMapping(t *testing.T) {
 				}},
 			},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinerun",
 			},
@@ -2177,7 +2177,7 @@ func TestValidateServiceaccountMapping(t *testing.T) {
 				}},
 			},
 		},
-		run: &v1beta1.PipelineRun{
+		pr: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinerun",
 			},
@@ -2195,7 +2195,7 @@ func TestValidateServiceaccountMapping(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			spec := tc.p.Spec
-			err := ValidateServiceaccountMapping(&spec, tc.run)
+			err := ValidateServiceaccountMapping(&spec, tc.pr)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("Did not get error when it was expected for test: %s", tc.name)
