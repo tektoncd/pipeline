@@ -40,25 +40,27 @@ const (
 	// DefaultCloudEventSinkValue is the default value for cloud event sinks.
 	DefaultCloudEventSinkValue = ""
 
-	defaultTimeoutMinutesKey       = "default-timeout-minutes"
-	defaultServiceAccountKey       = "default-service-account"
-	defaultManagedByLabelValueKey  = "default-managed-by-label-value"
-	defaultPodTemplateKey          = "default-pod-template"
-	defaultAAPodTemplateKey        = "default-affinity-assistant-pod-template"
-	defaultCloudEventsSinkKey      = "default-cloud-events-sink"
-	defaultTaskRunWorkspaceBinding = "default-task-run-workspace-binding"
+	defaultTimeoutMinutesKey             = "default-timeout-minutes"
+	defaultServiceAccountKey             = "default-service-account"
+	defaultManagedByLabelValueKey        = "default-managed-by-label-value"
+	defaultPodTemplateKey                = "default-pod-template"
+	defaultAAPodTemplateKey              = "default-affinity-assistant-pod-template"
+	defaultCloudEventsSinkKey            = "default-cloud-events-sink"
+	defaultTaskRunWorkspaceBinding       = "default-task-run-workspace-binding"
+	defaultMaxMatrixCombinationsCountKey = "default-max-matrix-combinations-count"
 )
 
 // Defaults holds the default configurations
 // +k8s:deepcopy-gen=true
 type Defaults struct {
-	DefaultTimeoutMinutes          int
-	DefaultServiceAccount          string
-	DefaultManagedByLabelValue     string
-	DefaultPodTemplate             *pod.Template
-	DefaultAAPodTemplate           *pod.AffinityAssistantTemplate
-	DefaultCloudEventsSink         string
-	DefaultTaskRunWorkspaceBinding string
+	DefaultTimeoutMinutes             int
+	DefaultServiceAccount             string
+	DefaultManagedByLabelValue        string
+	DefaultPodTemplate                *pod.Template
+	DefaultAAPodTemplate              *pod.AffinityAssistantTemplate
+	DefaultCloudEventsSink            string
+	DefaultTaskRunWorkspaceBinding    string
+	DefaultMaxMatrixCombinationsCount int
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -137,6 +139,15 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	if bindingYAML, ok := cfgMap[defaultTaskRunWorkspaceBinding]; ok {
 		tc.DefaultTaskRunWorkspaceBinding = bindingYAML
 	}
+
+	if defaultMaxMatrixCombinationsCount, ok := cfgMap[defaultMaxMatrixCombinationsCountKey]; ok {
+		matrixCombinationsCount, err := strconv.ParseInt(defaultMaxMatrixCombinationsCount, 10, 0)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing tracing config %q", defaultMaxMatrixCombinationsCountKey)
+		}
+		tc.DefaultMaxMatrixCombinationsCount = int(matrixCombinationsCount)
+	}
+
 	return &tc, nil
 }
 

@@ -302,10 +302,31 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		// This is an alpha feature and will fail validation if it's used in a pipeline spec
 		// when the enable-api-fields feature gate is anything but "alpha".
 		errs = errs.Also(ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
+		errs = errs.Also(pt.validateMatrixCombinationsCount(ctx))
 	}
 	errs = errs.Also(validateParameterInOneOfMatrixOrParams(pt.Matrix, pt.Params))
 	errs = errs.Also(validateParametersInTaskMatrix(pt.Matrix))
 	return errs
+}
+
+func (pt *PipelineTask) validateMatrixCombinationsCount(ctx context.Context) (errs *apis.FieldError) {
+	matrixCombinationsCount := pt.getMatrixCombinationsCount()
+	maxMatrixCombinationsCount := config.FromContextOrDefaults(ctx).Defaults.DefaultMaxMatrixCombinationsCount
+	if matrixCombinationsCount > maxMatrixCombinationsCount {
+		errs = errs.Also(apis.ErrOutOfBoundsValue(matrixCombinationsCount, 0, maxMatrixCombinationsCount, "matrix"))
+	}
+	return errs
+}
+
+func (pt *PipelineTask) getMatrixCombinationsCount() int {
+	if len(pt.Matrix) == 0 {
+		return 0
+	}
+	count := 1
+	for _, param := range pt.Matrix {
+		count *= len(param.Value.ArrayVal)
+	}
+	return count
 }
 
 func (pt *PipelineTask) validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks sets.String) (errs *apis.FieldError) {

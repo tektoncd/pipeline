@@ -9,6 +9,7 @@ weight: 11
 
 - [Overview](#overview)
 - [Configuring a Matrix](#configuring-a-matrix)
+  - [Concurrency Control](#concurrency-control)
   - [Parameters](#parameters)
   - [Context Variables](#context-variables)
   - [Results](#results)
@@ -20,6 +21,11 @@ weight: 11
 `Matrix` is used to fan out `Tasks` in a `Pipeline`. This doc will explain the details of `matrix` support in
 Tekton. 
 
+Documentation for specifying `Matrix` in a `Pipeline`:
+- [Specifying `Matrix` in `Tasks`](pipelines.md#specifying-matrix-in-pipelinetasks)
+- [Specifying `Matrix` in `Finally Tasks`](pipelines.md#specifying-matrix-in-finally-tasks)
+- [Specifying `Matrix` in `Custom Tasks`](pipelines.md#specifying-matrix)
+
 > :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
 > The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
 >
@@ -29,8 +35,31 @@ Tekton.
 ## Configuring a Matrix
 
 A `Matrix` supports the following features:
+* [Concurrency Control](#concurrency-control)
 * [Parameters](#parameters)
 * [Context Variables](#context-variables)
+* [Results](#results) 
+
+### Concurrency Control
+
+The default maximum count of `TaskRuns` or `Runs` from a given `Matrix` is **256**. To customize the maximum count of
+`TaskRuns` or `Runs` generated from a given `Matrix`, configure the `default-max-matrix-combinations-count` in 
+[config defaults](/config/config-defaults.yaml). When a `Matrix` in `PipelineTask` would generate more than the maximum
+`TaskRuns` or `Runs`, the `Pipeline` validation would fail.
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+data:
+  default-service-account: "tekton"
+  default-timeout-minutes: "20"
+  default-max-matrix-combinations-count: "1024"
+  ...
+```
+
+For more information, see [installation customizations](/docs/install.md#customizing-basic-execution-parameters).
 
 ### Parameters
 

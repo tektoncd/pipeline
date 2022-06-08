@@ -2716,8 +2716,12 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 				featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
 					"enable-api-fields": version,
 				})
+				defaults := &config.Defaults{
+					DefaultMaxMatrixCombinationsCount: 4,
+				}
 				cfg := &config.Config{
 					FeatureFlags: featureFlags,
+					Defaults:     defaults,
 				}
 
 				ctx := config.ToContext(context.Background(), cfg)
@@ -2824,8 +2828,12 @@ func Test_validateMatrix(t *testing.T) {
 			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
 				"enable-api-fields": "alpha",
 			})
+			defaults := &config.Defaults{
+				DefaultMaxMatrixCombinationsCount: 4,
+			}
 			cfg := &config.Config{
 				FeatureFlags: featureFlags,
+				Defaults:     defaults,
 			}
 
 			ctx := config.ToContext(context.Background(), cfg)
