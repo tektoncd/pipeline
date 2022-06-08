@@ -1066,8 +1066,8 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.rprt.IsFailure(); got != tc.want {
-				t.Errorf("expected IsFailure: %t but got %t", tc.want, got)
+			if got := tc.rprt.isFailure(); got != tc.want {
+				t.Errorf("expected isFailure: %t but got %t", tc.want, got)
 			}
 
 		})

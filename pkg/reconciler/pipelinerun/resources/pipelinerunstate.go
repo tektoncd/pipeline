@@ -179,7 +179,7 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1beta1.TaskRunR
 		if rprt.IsCustomTask() {
 			continue
 		}
-		if !rprt.IsSuccessful() {
+		if !rprt.isSuccessful() {
 			continue
 		}
 		results[rprt.PipelineTask.Name] = rprt.TaskRun.Status.TaskRunResults
@@ -227,7 +227,7 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1alpha1.RunResult {
 		if !rprt.IsCustomTask() {
 			continue
 		}
-		if !rprt.IsSuccessful() {
+		if !rprt.isSuccessful() {
 			continue
 		}
 		results[rprt.PipelineTask.Name] = rprt.Run.Status.Results
@@ -323,7 +323,7 @@ func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*R
 			}
 			if status.IsFalse() {
 				if !(isCancelled || status.Reason == ReasonConditionCheckFailed) {
-					if t.HasRemainingRetries() {
+					if t.hasRemainingRetries() {
 						tasks = append(tasks, t)
 					}
 				}
@@ -339,10 +339,10 @@ func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*R
 func (facts *PipelineRunFacts) IsStopping() bool {
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.IsCancelled() {
+			if t.isCancelled() {
 				return true
 			}
-			if t.IsFailure() {
+			if t.isFailure() {
 				return true
 			}
 		}
@@ -354,7 +354,7 @@ func (facts *PipelineRunFacts) IsStopping() bool {
 func (facts *PipelineRunFacts) IsRunning() bool {
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.IsRunning() {
+			if t.isRunning() {
 				return true
 			}
 		}
@@ -412,7 +412,7 @@ func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 	if facts.checkDAGTasksDone() {
 		// return list of tasks with all final tasks
 		for _, t := range facts.State {
-			if facts.isFinalTask(t.PipelineTask.Name) && !t.IsSuccessful() {
+			if facts.isFinalTask(t.PipelineTask.Name) && !t.isSuccessful() {
 				finalCandidates.Insert(t.PipelineTask.Name)
 			}
 		}
@@ -546,10 +546,10 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 			var s string
 			switch {
 			// execution status is Succeeded when a task has succeeded condition with status set to true
-			case t.IsSuccessful():
+			case t.isSuccessful():
 				s = v1beta1.TaskRunReasonSuccessful.String()
 			// execution status is Failed when a task has succeeded condition with status set to false
-			case t.IsConditionStatusFalse():
+			case t.isConditionStatusFalse():
 				s = v1beta1.TaskRunReasonFailed.String()
 			default:
 				// None includes skipped as well
@@ -567,7 +567,7 @@ func (facts *PipelineRunFacts) GetPipelineTaskStatus() map[string]string {
 		for _, t := range facts.State {
 			if facts.isDAGTask(t.PipelineTask.Name) {
 				// if any of the dag task failed, change the aggregate status to failed and return
-				if t.IsConditionStatusFalse() {
+				if t.isConditionStatusFalse() {
 					aggregateStatus = v1beta1.PipelineRunReasonFailed.String()
 					break
 				}
@@ -589,7 +589,7 @@ func (facts *PipelineRunFacts) completedOrSkippedDAGTasks() []string {
 	tasks := []string{}
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.IsDone(facts) {
+			if t.isDone(facts) {
 				tasks = append(tasks, t.PipelineTask.Name)
 			}
 		}
@@ -602,7 +602,7 @@ func (facts *PipelineRunFacts) completedOrSkippedDAGTasks() []string {
 func (facts *PipelineRunFacts) checkTasksDone(d *dag.Graph) bool {
 	for _, t := range facts.State {
 		if isTaskInGraph(t.PipelineTask.Name, d) {
-			if !t.IsDone(facts) {
+			if !t.isDone(facts) {
 				return false
 			}
 		}
@@ -632,13 +632,13 @@ func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 	for _, t := range facts.State {
 		switch {
 		// increment success counter since the task is successful
-		case t.IsSuccessful():
+		case t.isSuccessful():
 			s.Succeeded++
 		// increment cancelled counter since the task is cancelled
-		case t.IsCancelled():
+		case t.isCancelled():
 			s.Cancelled++
 		// increment failure counter since the task has failed
-		case t.IsFailure():
+		case t.isFailure():
 			s.Failed++
 		// increment skip counter since the task is skipped
 		case t.Skip(facts).IsSkipped:

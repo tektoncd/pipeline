@@ -68,13 +68,13 @@ type ResolvedPipelineRunTask struct {
 	ResolvedTaskResources *resources.ResolvedTaskResources
 }
 
-// IsDone returns true only if the task is skipped, succeeded or failed
-func (t ResolvedPipelineRunTask) IsDone(facts *PipelineRunFacts) bool {
-	return t.Skip(facts).IsSkipped || t.IsSuccessful() || t.IsFailure()
+// isDone returns true only if the task is skipped, succeeded or failed
+func (t ResolvedPipelineRunTask) isDone(facts *PipelineRunFacts) bool {
+	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure()
 }
 
-// IsRunning returns true only if the task is neither succeeded, cancelled nor failed
-func (t ResolvedPipelineRunTask) IsRunning() bool {
+// isRunning returns true only if the task is neither succeeded, cancelled nor failed
+func (t ResolvedPipelineRunTask) isRunning() bool {
 	if t.IsCustomTask() {
 		if t.Run == nil {
 			return false
@@ -84,7 +84,7 @@ func (t ResolvedPipelineRunTask) IsRunning() bool {
 			return false
 		}
 	}
-	return !t.IsSuccessful() && !t.IsFailure() && !t.IsCancelled()
+	return !t.isSuccessful() && !t.isFailure() && !t.isCancelled()
 }
 
 // IsCustomTask returns true if the PipelineTask references a Custom Task.
@@ -97,20 +97,20 @@ func (t ResolvedPipelineRunTask) IsMatrixed() bool {
 	return len(t.PipelineTask.Matrix) > 0
 }
 
-// IsSuccessful returns true only if the run has completed successfully
-func (t ResolvedPipelineRunTask) IsSuccessful() bool {
+// isSuccessful returns true only if the run has completed successfully
+func (t ResolvedPipelineRunTask) isSuccessful() bool {
 	if t.IsCustomTask() {
 		return t.Run != nil && t.Run.IsSuccessful()
 	}
 	return t.TaskRun != nil && t.TaskRun.IsSuccessful()
 }
 
-// IsFailure returns true only if the run has failed and will not be retried.
-func (t ResolvedPipelineRunTask) IsFailure() bool {
-	if t.IsCancelled() {
+// isFailure returns true only if the run has failed and will not be retried.
+func (t ResolvedPipelineRunTask) isFailure() bool {
+	if t.isCancelled() {
 		return true
 	}
-	if t.IsSuccessful() {
+	if t.isSuccessful() {
 		return false
 	}
 	var c *apis.Condition
@@ -128,12 +128,12 @@ func (t ResolvedPipelineRunTask) IsFailure() bool {
 		c = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 		isDone = t.TaskRun.IsDone()
 	}
-	return isDone && c.IsFalse() && !t.HasRemainingRetries()
+	return isDone && c.IsFalse() && !t.hasRemainingRetries()
 }
 
-// HasRemainingRetries returns true only when the number of retries already attempted
+// hasRemainingRetries returns true only when the number of retries already attempted
 // is less than the number of retries allowed.
-func (t ResolvedPipelineRunTask) HasRemainingRetries() bool {
+func (t ResolvedPipelineRunTask) hasRemainingRetries() bool {
 	var retriesDone int
 	if t.IsCustomTask() {
 		if t.Run == nil {
@@ -149,8 +149,8 @@ func (t ResolvedPipelineRunTask) HasRemainingRetries() bool {
 	return retriesDone < t.PipelineTask.Retries
 }
 
-// IsCancelled returns true only if the run is cancelled
-func (t ResolvedPipelineRunTask) IsCancelled() bool {
+// isCancelled returns true only if the run is cancelled
+func (t ResolvedPipelineRunTask) isCancelled() bool {
 	if t.IsCustomTask() {
 		if t.Run == nil {
 			return false
@@ -165,9 +165,9 @@ func (t ResolvedPipelineRunTask) IsCancelled() bool {
 	return c != nil && c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
 }
 
-// IsStarted returns true only if the PipelineRunTask itself has a TaskRun or
+// isStarted returns true only if the PipelineRunTask itself has a TaskRun or
 // Run associated that has a Succeeded-type condition.
-func (t ResolvedPipelineRunTask) IsStarted() bool {
+func (t ResolvedPipelineRunTask) isStarted() bool {
 	if t.IsCustomTask() {
 		return t.Run != nil && t.Run.Status.GetCondition(apis.ConditionSucceeded) != nil
 
@@ -175,10 +175,10 @@ func (t ResolvedPipelineRunTask) IsStarted() bool {
 	return t.TaskRun != nil && t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
 }
 
-// IsConditionStatusFalse returns true when a task has succeeded condition with status set to false
+// isConditionStatusFalse returns true when a task has succeeded condition with status set to false
 // it includes task failed after retries are exhausted, cancelled tasks, and time outs
-func (t ResolvedPipelineRunTask) IsConditionStatusFalse() bool {
-	if t.IsStarted() {
+func (t ResolvedPipelineRunTask) isConditionStatusFalse() bool {
+	if t.isStarted() {
 		if t.IsCustomTask() {
 			return t.Run.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
 		}
@@ -194,7 +194,7 @@ func (t *ResolvedPipelineRunTask) checkParentsDone(facts *PipelineRunFacts) bool
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
-		if !stateMap[p.Task.HashKey()].IsDone(facts) {
+		if !stateMap[p.Task.HashKey()].isDone(facts) {
 			return false
 		}
 	}
@@ -205,7 +205,7 @@ func (t *ResolvedPipelineRunTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 	var skippingReason v1beta1.SkippingReason
 
 	switch {
-	case facts.isFinalTask(t.PipelineTask.Name) || t.IsStarted():
+	case facts.isFinalTask(t.PipelineTask.Name) || t.isStarted():
 		skippingReason = v1beta1.None
 	case facts.IsStopping():
 		skippingReason = v1beta1.StoppingSkip
@@ -305,7 +305,7 @@ func (t *ResolvedPipelineRunTask) IsFinallySkipped(facts *PipelineRunFacts) Task
 	var skippingReason v1beta1.SkippingReason
 
 	switch {
-	case t.IsStarted():
+	case t.isStarted():
 		skippingReason = v1beta1.None
 	case facts.checkDAGTasksDone() && facts.isFinalTask(t.PipelineTask.Name):
 		switch {
