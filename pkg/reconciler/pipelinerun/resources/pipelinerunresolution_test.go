@@ -181,6 +181,14 @@ var gitSweetResourceBinding = v1beta1.PipelineResourceBinding{
 	ResourceRef: &v1beta1.PipelineResourceRef{Name: "sweet-resource"},
 }
 
+var matrixedPipelineTask = &v1beta1.PipelineTask{
+	Name: "task",
+	Matrix: []v1beta1.Param{{
+		Name:  "browser",
+		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+	}},
+}
+
 func makeStarted(tr v1beta1.TaskRun) *v1beta1.TaskRun {
 	newTr := newTaskRun(tr)
 	newTr.Status.Conditions[0].Status = corev1.ConditionUnknown
@@ -280,6 +288,11 @@ func newTaskRun(tr v1beta1.TaskRun) *v1beta1.TaskRun {
 			},
 		},
 	}
+}
+
+func withPipelineTaskRetries(pt v1beta1.PipelineTask, retries int) *v1beta1.PipelineTask {
+	pt.Retries = retries
+	return &pt
 }
 
 func newRun(run v1alpha1.Run) *v1alpha1.Run {
@@ -1062,6 +1075,131 @@ func TestIsFailure(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(withRunRetries(makeRunFailed(runs[0]))),
 			CustomTask:   true,
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns not started",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns running",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed taskrun running",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeSucceeded(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns succeeded",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeSucceeded(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed taskrun succeeded",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns failed",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "one matrixed taskruns failed",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeStarted(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns failed: retries remaining",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns failed: one taskrun with retries remaining",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), withRetries(makeFailed(trs[1]))},
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns failed: no retries remaining",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			TaskRuns:     []*v1beta1.TaskRun{withRetries(makeFailed(trs[0])), withRetries(makeFailed(trs[1]))},
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns cancelled",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
+		},
+		want: true,
+	}, {
+		name: "one matrixed taskrun cancelled",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns cancelled but not failed",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), withCancelled(newTaskRun(trs[1]))},
+		},
+		want: false,
+	}, {
+		name: "one matrixed taskrun cancelled but not failed",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: matrixedPipelineTask,
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed taskruns cancelled: retries remaining",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
+		},
+		want: true,
+	}, {
+		name: "one matrixed taskrun cancelled: retries remaining",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed taskruns cancelled: no retries remaining",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), withCancelled(withRetries(makeFailed(trs[1])))},
+		},
+		want: true,
+	}, {
+		name: "one matrixed taskrun cancelled: no retries remaining",
+		rprt: ResolvedPipelineRunTask{
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), makeStarted(trs[1])},
 		},
 		want: true,
 	}} {
