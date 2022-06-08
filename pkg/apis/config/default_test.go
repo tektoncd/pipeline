@@ -87,6 +87,20 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultAAPodTemplate:       &pod.AffinityAssistantTemplate{},
 			},
 		},
+		{
+			expectedError: true,
+			fileName:      "config-defaults-matrix-err",
+		},
+		{
+			expectedError: false,
+			fileName:      "config-defaults-matrix",
+			expectedConfig: &config.Defaults{
+				DefaultMaxMatrixCombinationsCount: 1024,
+				DefaultTimeoutMinutes:             60,
+				DefaultServiceAccount:             "default",
+				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -251,7 +265,7 @@ func verifyConfigFileWithExpectedConfig(t *testing.T, fileName string, expectedC
 	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if Defaults, err := config.NewDefaultsFromConfigMap(cm); err == nil {
-		if d := cmp.Diff(Defaults, expectedConfig); d != "" {
+		if d := cmp.Diff(expectedConfig, Defaults); d != "" {
 			t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 		}
 	} else {

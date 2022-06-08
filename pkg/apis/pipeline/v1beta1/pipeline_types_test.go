@@ -746,18 +746,122 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 			Message: "invalid value: result references are not allowed in parameters in a matrix",
 			Paths:   []string{"matrix[a-param].value"},
 		},
+	}, {
+		name: "count of combinations of parameters in the matrix exceeds the maximum",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "platform", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			}, {
+				Name: "browser", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox", "safari"}},
+			}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "expected 0 <= 9 <= 4",
+			Paths:   []string{"matrix"},
+		},
+	}, {
+		name: "count of combinations of parameters in the matrix equals the maximum",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "platform", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+			}, {
+				Name: "browser", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox"}},
+			}},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
 				"enable-api-fields": "alpha",
 			})
+			defaults := &config.Defaults{
+				DefaultMaxMatrixCombinationsCount: 4,
+			}
 			cfg := &config.Config{
 				FeatureFlags: featureFlags,
+				Defaults:     defaults,
 			}
 			ctx := config.ToContext(context.Background(), cfg)
 			if d := cmp.Diff(tt.wantErrs.Error(), tt.pt.validateMatrix(ctx).Error()); d != "" {
 				t.Errorf("PipelineTask.validateMatrix() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPipelineTask_getMatrixCombinationsCount(t *testing.T) {
+	tests := []struct {
+		name                    string
+		pt                      *PipelineTask
+		matrixCombinationsCount int
+	}{{
+		name: "combinations count is zero",
+		pt: &PipelineTask{
+			Name: "task",
+		},
+		matrixCombinationsCount: 0,
+	}, {
+		name: "combinations count is one from one parameter",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+			}},
+		},
+		matrixCombinationsCount: 1,
+	}, {
+		name: "combinations count is one from two parameters",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+			}, {
+				Name: "bar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
+			}},
+		},
+		matrixCombinationsCount: 1,
+	}, {
+		name: "combinations count is two from one parameter",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		},
+		matrixCombinationsCount: 2,
+	}, {
+		name: "combinations count is nine",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+			}, {
+				Name: "bar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+			}},
+		},
+		matrixCombinationsCount: 9,
+	}, {
+		name: "combinations count is large",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: []Param{{
+				Name: "foo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+			}, {
+				Name: "bar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+			}, {
+				Name: "quz", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
+			}, {
+				Name: "xyzzy", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
+			}},
+		},
+		matrixCombinationsCount: 135,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if d := cmp.Diff(tt.matrixCombinationsCount, tt.pt.getMatrixCombinationsCount()); d != "" {
+				t.Errorf("PipelineTask.getMatrixCombinationsCount() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

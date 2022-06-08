@@ -74,3 +74,7 @@ data:
     # but that a TaskRun does not explicitly provide.
     # default-task-run-workspace-binding: |
     #   emptyDir: {}
+
+    # default-max-matrix-combinations-count contains the default maximum number
+    # of combinations from a Matrix, if none is specified.
+    default-max-matrix-combinations-count: "256"
