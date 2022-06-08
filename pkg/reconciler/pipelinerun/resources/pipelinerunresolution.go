@@ -61,6 +61,7 @@ func (e *TaskNotFoundError) Error() string {
 type ResolvedPipelineRunTask struct {
 	TaskRunName string
 	TaskRun     *v1beta1.TaskRun
+	TaskRuns    []*v1beta1.TaskRun
 	// If the PipelineTask is a Custom Task, RunName and Run will be set.
 	CustomTask            bool
 	RunName               string
@@ -116,13 +117,28 @@ func (t ResolvedPipelineRunTask) isFailure() bool {
 	}
 	var c *apis.Condition
 	var isDone bool
-	if t.IsCustomTask() {
+
+	switch {
+	case t.IsCustomTask():
 		if t.Run == nil {
 			return false
 		}
 		c = t.Run.Status.GetCondition(apis.ConditionSucceeded)
 		isDone = t.Run.IsDone()
-	} else {
+	case t.IsMatrixed():
+		if len(t.TaskRuns) == 0 {
+			return false
+		}
+		// is failed on the first failure with no remaining retries to fail fast
+		for _, taskRun := range t.TaskRuns {
+			c = taskRun.Status.GetCondition(apis.ConditionSucceeded)
+			isDone = taskRun.IsDone()
+			if isDone && c.IsFalse() && !t.hasRemainingRetries() {
+				return true
+			}
+		}
+		return false
+	default:
 		if t.TaskRun == nil {
 			return false
 		}
@@ -136,12 +152,25 @@ func (t ResolvedPipelineRunTask) isFailure() bool {
 // is less than the number of retries allowed.
 func (t ResolvedPipelineRunTask) hasRemainingRetries() bool {
 	var retriesDone int
-	if t.IsCustomTask() {
+	switch {
+	case t.IsCustomTask():
 		if t.Run == nil {
 			return true
 		}
 		retriesDone = len(t.Run.Status.RetriesStatus)
-	} else {
+	case t.IsMatrixed():
+		if len(t.TaskRuns) == 0 {
+			return true
+		}
+		// has remaining retries when any TaskRun has a remaining retry
+		for _, taskRun := range t.TaskRuns {
+			retriesDone = len(taskRun.Status.RetriesStatus)
+			if retriesDone < t.PipelineTask.Retries {
+				return true
+			}
+		}
+		return false
+	default:
 		if t.TaskRun == nil {
 			return true
 		}
@@ -152,18 +181,32 @@ func (t ResolvedPipelineRunTask) hasRemainingRetries() bool {
 
 // isCancelled returns true only if the run is cancelled
 func (t ResolvedPipelineRunTask) isCancelled() bool {
-	if t.IsCustomTask() {
+	switch {
+	case t.IsCustomTask():
 		if t.Run == nil {
 			return false
 		}
 		c := t.Run.Status.GetCondition(apis.ConditionSucceeded)
 		return c != nil && c.IsFalse() && c.Reason == v1alpha1.RunReasonCancelled
-	}
-	if t.TaskRun == nil {
+	case t.IsMatrixed():
+		if len(t.TaskRuns) == 0 {
+			return false
+		}
+		// is cancelled when any TaskRun is cancelled to fail fast
+		for _, taskRun := range t.TaskRuns {
+			c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
+			if c != nil && c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String() {
+				return true
+			}
+		}
 		return false
+	default:
+		if t.TaskRun == nil {
+			return false
+		}
+		c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+		return c != nil && c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
 	}
-	c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-	return c != nil && c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
 }
 
 // isStarted returns true only if the PipelineRunTask itself has a TaskRun or
