@@ -44,6 +44,14 @@ data:
   # See https://github.com/tektoncd/pipeline/issues/2791 for more
   # info.
   disable-creds-init: "false"
+  # Setting this flag to "false" will stop Tekton from waiting for a
+  # TaskRun's sidecar containers to be running before starting the first
+  # step. This will allow Tasks to be run in environments that don't
+  # support the DownwardAPI volume type, but may lead to unintended
+  # behaviour if sidecars are used.
+  #
+  # See https://github.com/tektoncd/pipeline/issues/4937 for more info.
+  await-sidecar-readiness: "true"
   # This option should be set to false when Pipelines is running in a
   # cluster that does not use injected sidecars such as Istio. Setting
   # it to false should decrease the time it takes for a TaskRun to start
