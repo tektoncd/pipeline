@@ -253,17 +253,20 @@ func validatePipelineResults(results []PipelineResult) (errs *apis.FieldError) {
 	for idx, result := range results {
 		expressions, ok := GetVarSubstitutionExpressionsForPipelineResult(result)
 		if !ok {
-			errs = errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but no expressions were found",
+			return errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but no expressions were found",
 				"value").ViaFieldIndex("results", idx))
 		}
 
-		if LooksLikeContainsResultRefs(expressions) {
-			expressions = filter(expressions, looksLikeResultRef)
-			resultRefs := NewResultRefs(expressions)
-			if len(expressions) != len(resultRefs) {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs),
-					"value").ViaFieldIndex("results", idx))
-			}
+		if !LooksLikeContainsResultRefs(expressions) {
+			return errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but an invalid expressions was found",
+				"value").ViaFieldIndex("results", idx))
+		}
+
+		expressions = filter(expressions, looksLikeResultRef)
+		resultRefs := NewResultRefs(expressions)
+		if len(expressions) != len(resultRefs) {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs),
+				"value").ViaFieldIndex("results", idx))
 		}
 
 	}
