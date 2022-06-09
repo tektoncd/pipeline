@@ -2644,6 +2644,81 @@ func TestGetTaskRunName(t *testing.T) {
 	}
 }
 
+func TestGetTaskRunNames(t *testing.T) {
+	prName := "mypipelinerun"
+	taskRunsStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{
+		"mypipelinerun-mytask-0": {
+			PipelineTaskName: "mytask",
+		},
+		"mypipelinerun-mytask-1": {
+			PipelineTaskName: "mytask",
+		},
+	}
+
+	childRefs := []v1beta1.ChildStatusReference{{
+		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+		Name:             "mypipelinerun-mytask-0",
+		PipelineTaskName: "mytask",
+	}, {
+		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+		Name:             "mypipelinerun-mytask-1",
+		PipelineTaskName: "mytask",
+	}}
+
+	for _, tc := range []struct {
+		name        string
+		ptName      string
+		prName      string
+		wantTrNames []string
+	}{{
+		name:        "existing taskruns",
+		ptName:      "mytask",
+		wantTrNames: []string{"mypipelinerun-mytask-0", "mypipelinerun-mytask-1"},
+	}, {
+		name:        "new taskruns",
+		ptName:      "mynewtask",
+		wantTrNames: []string{"mypipelinerun-mynewtask-0", "mypipelinerun-mynewtask-1"},
+	}, {
+		name:   "new pipelinetask with long names",
+		ptName: "longtask-0123456789-0123456789-0123456789-0123456789-0123456789",
+		wantTrNames: []string{
+			"mypipelinerun09c563f6b29a3a2c16b98e6dc95979c5-longtask-01234567",
+			"mypipelinerunab643c1924b632f050e5a07fe482fc25-longtask-01234567",
+		},
+	}, {
+		name:   "new taskruns, pipelinerun with long name",
+		ptName: "task3",
+		prName: "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		wantTrNames: []string{
+			"pipeline-run-01234567891276ed292277c9bebded38d907a517fe-task3-0",
+			"pipeline-run-01234567891276ed292277c9bebded38d907a517fe-task3-1",
+		},
+	}, {
+		name:   "new taskruns, pipelinetask and pipelinerun with long name",
+		ptName: "task2-0123456789-0123456789-0123456789-0123456789-0123456789",
+		prName: "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		wantTrNames: []string{
+			"pipeline-run-0123456789-01234569d54677e88e96776942290e00b578ca5",
+			"pipeline-run-0123456789-01234563c0313c59d28c85a2c2b3fd3b17a9514",
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testPrName := prName
+			if tc.prName != "" {
+				testPrName = tc.prName
+			}
+			trNameFromTRStatus := GetNamesofTaskRuns(taskRunsStatus, nil, tc.ptName, testPrName, 2)
+			if d := cmp.Diff(tc.wantTrNames, trNameFromTRStatus); d != "" {
+				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
+			}
+			trNameFromChildRefs := GetNamesofTaskRuns(nil, childRefs, tc.ptName, testPrName, 2)
+			if d := cmp.Diff(tc.wantTrNames, trNameFromChildRefs); d != "" {
+				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestGetRunName(t *testing.T) {
 	prName := "pipeline-run"
 	runsStatus := map[string]*v1beta1.PipelineRunRunStatus{
