@@ -358,11 +358,18 @@ To customize the behavior of the Pipelines Controller, modify the ConfigMap `fea
   node in the cluster must have an appropriate label matching `topologyKey`. If some or all nodes
   are missing the specified `topologyKey` label, it can lead to unintended behavior.
 
-- `running-in-environment-with-injected-sidecars`: set this flag to `"true"` to allow the
-Tekton controller to set the `tekton.dev/ready` annotation at pod creation time for
-TaskRuns with no Sidecars specified. Enabling this option should decrease the time it takes for a TaskRun to
-start running. However, for clusters that use injected sidecars e.g. istio
-enabling this option can lead to unexpected behavior.
+- `await-sidecar-readiness`: set this flag to `"false"` to allow the Tekton controller to start a
+TasksRun's first step immediately without waiting for sidecar containers to be running first. Using
+this option should decrease the time it takes for a TaskRun to start running, and will allow TaskRun
+pods to be scheduled in environments that don't support [Downward API](https://kubernetes.io/docs/tasks/inject-data-application/downward-api-volume-expose-pod-information/)
+volumes (e.g. some virtual kubelet implementations). However, this may lead to unexpected behaviour
+with Tasks that use sidecars, or in clusters that use injected sidecars (e.g. Istio). Setting this flag
+to `"false"` will mean the `running-in-environment-with-injected-sidecars` flag has no effect.
+
+- `running-in-environment-with-injected-sidecars`: set this flag to `"false"` to allow the
+Tekton controller to start a TasksRun's first step immediately if it has no Sidecars specified.
+Using this option should decrease the time it takes for a TaskRun to start running.
+However, for clusters that use injected sidecars (e.g. Istio) this can lead to unexpected behavior.
 
 - `require-git-ssh-secret-known-hosts`: set this flag to `"true"` to require that
 Git SSH Secrets include a `known_hosts` field. This ensures that a git remote server's

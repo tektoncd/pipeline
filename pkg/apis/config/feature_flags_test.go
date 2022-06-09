@@ -35,9 +35,17 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &config.FeatureFlags{
-				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
-				EnableAPIFields:                  "stable",
-				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
+				DisableAffinityAssistant:         false,
+				RunningInEnvWithInjectedSidecars: true,
+				RequireGitSSHSecretKnownHosts:    false,
+
+				DisableCredsInit:       config.DefaultDisableCredsInit,
+				AwaitSidecarReadiness:  config.DefaultAwaitSidecarReadiness,
+				EnableTektonOCIBundles: config.DefaultEnableTektonOciBundles,
+				EnableCustomTasks:      config.DefaultEnableCustomTasks,
+				EnableAPIFields:        config.DefaultEnableAPIFields,
+				SendCloudEventsForRuns: config.DefaultSendCloudEventsForRuns,
+				EmbeddedStatus:         config.DefaultEmbeddedStatus,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -45,6 +53,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				DisableAffinityAssistant:         true,
 				RunningInEnvWithInjectedSidecars: false,
+				AwaitSidecarReadiness:            false,
 				RequireGitSSHSecretKnownHosts:    true,
 				EnableTektonOCIBundles:           true,
 				EnableCustomTasks:                true,
@@ -62,7 +71,12 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTektonOCIBundles: true,
 				EnableCustomTasks:      true,
 
+				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
+				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
+				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
@@ -73,7 +87,12 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTektonOCIBundles: true,
 				EnableCustomTasks:      true,
 
+				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
+				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
+				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
@@ -92,8 +111,15 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &config.FeatureFlags{
-		RunningInEnvWithInjectedSidecars: true,
-		EnableAPIFields:                  "stable",
+		DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
+		DisableCredsInit:                 config.DefaultDisableCredsInit,
+		RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+		AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+		RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
+		EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
+		EnableCustomTasks:                config.DefaultEnableCustomTasks,
+		EnableAPIFields:                  config.DefaultEnableAPIFields,
+		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)

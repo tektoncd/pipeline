@@ -46,6 +46,8 @@ const (
 	DefaultDisableCredsInit = false
 	// DefaultRunningInEnvWithInjectedSidecars is the default value for "running-in-environment-with-injected-sidecars".
 	DefaultRunningInEnvWithInjectedSidecars = true
+	// DefaultAwaitSidecarReadiness is the default value for "await-sidecar-readiness".
+	DefaultAwaitSidecarReadiness = true
 	// DefaultRequireGitSSHSecretKnownHosts is the default value for "require-git-ssh-secret-known-hosts".
 	DefaultRequireGitSSHSecretKnownHosts = false
 	// DefaultEnableTektonOciBundles is the default value for "enable-tekton-oci-bundles".
@@ -62,6 +64,7 @@ const (
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
 	runningInEnvWithInjectedSidecarsKey = "running-in-environment-with-injected-sidecars"
+	awaitSidecarReadinessKey            = "await-sidecar-readiness"
 	requireGitSSHSecretKnownHostsKey    = "require-git-ssh-secret-known-hosts" // nolint: gosec
 	enableTektonOCIBundles              = "enable-tekton-oci-bundles"
 	enableCustomTasks                   = "enable-custom-tasks"
@@ -82,6 +85,7 @@ type FeatureFlags struct {
 	ScopeWhenExpressionsToTask       bool
 	EnableAPIFields                  string
 	SendCloudEventsForRuns           bool
+	AwaitSidecarReadiness            bool
 	EmbeddedStatus                   string
 }
 
@@ -117,6 +121,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setFeature(runningInEnvWithInjectedSidecarsKey, DefaultRunningInEnvWithInjectedSidecars, &tc.RunningInEnvWithInjectedSidecars); err != nil {
+		return nil, err
+	}
+	if err := setFeature(awaitSidecarReadinessKey, DefaultAwaitSidecarReadiness, &tc.AwaitSidecarReadiness); err != nil {
 		return nil, err
 	}
 	if err := setFeature(requireGitSSHSecretKnownHostsKey, DefaultRequireGitSSHSecretKnownHosts, &tc.RequireGitSSHSecretKnownHosts); err != nil {

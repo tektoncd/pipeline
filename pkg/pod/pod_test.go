@@ -58,6 +58,7 @@ var (
 		return k == ReleaseAnnotation
 	}
 	featureInjectedSidecar                   = "running-in-environment-with-injected-sidecars"
+	featureAwaitSidecarReadiness             = "await-sidecar-readiness"
 	featureFlagSetReadyAnnotationOnPodCreate = "enable-ready-annotation-on-pod-create"
 
 	defaultActiveDeadlineSeconds = int64(config.DefaultTimeoutMinutes * 60 * deadlineFactor)
@@ -212,9 +213,6 @@ func TestPodBuild(t *testing.T) {
 				Image:   "image",
 				Command: []string{"/tekton/bin/entrypoint"},
 				Args: []string{
-					"-wait_file",
-					"/tekton/downward/ready",
-					"-wait_file_content",
 					"-post_file",
 					"/tekton/run/0/out",
 					"-termination_path",
@@ -225,13 +223,13 @@ func TestPodBuild(t *testing.T) {
 					"cmd",
 					"--",
 				},
-				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+				VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), {
 					Name:      "tekton-creds-init-home-0",
 					MountPath: "/tekton/creds",
 				}}, implicitVolumeMounts...),
 				TerminationMessagePath: "/tekton/termination",
 			}},
-			Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+			Volumes: append(implicitVolumes, binVolume, runVolume(0), corev1.Volume{
 				Name:         "tekton-creds-init-home-0",
 				VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
 			}),
@@ -2035,78 +2033,103 @@ func TestMakeLabels(t *testing.T) {
 	}
 }
 
-func TestShouldAddReadyAnnotationonPodCreate(t *testing.T) {
+func TestIsPodReadyImmediately(t *testing.T) {
 	sd := v1beta1.Sidecar{
 		Name: "a-sidecar",
 	}
+
+	getFeatureFlags := func(cfg map[string]string) *config.FeatureFlags {
+		flags, err := config.NewFeatureFlagsFromMap(cfg)
+		if err != nil {
+			t.Fatalf("Error building feature flags for testingL %s", err)
+		}
+		return flags
+	}
+
 	tcs := []struct {
-		description string
-		sidecars    []v1beta1.Sidecar
-		configMap   *corev1.ConfigMap
-		expected    bool
+		description  string
+		sidecars     []v1beta1.Sidecar
+		featureFlags *config.FeatureFlags
+		expected     bool
 	}{{
-		description: "Default behavior with sidecars present: Ready annotation not set on pod create",
+		description:  "Default behavior with sidecars present: Pod is not ready on create",
+		sidecars:     []v1beta1.Sidecar{sd},
+		featureFlags: getFeatureFlags(map[string]string{}),
+		expected:     false,
+	}, {
+		description:  "Default behavior with no sidecars present: Pod is not ready on create",
+		sidecars:     []v1beta1.Sidecar{},
+		featureFlags: getFeatureFlags(map[string]string{}),
+		expected:     false,
+	}, {
+		description: "Setting await-sidecar-readiness to true and running-in-environment-with-injected-sidecars to true with sidecars present results in false",
 		sidecars:    []v1beta1.Sidecar{sd},
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		},
+		featureFlags: getFeatureFlags(map[string]string{
+			featureAwaitSidecarReadiness: "true",
+			featureInjectedSidecar:       "true",
+		}),
 		expected: false,
 	}, {
-		description: "Default behavior with no sidecars present: Ready annotation not set on pod create",
+		description: "Setting await-sidecar-readiness to true and running-in-environment-with-injected-sidecars to true with no sidecars present results in false",
 		sidecars:    []v1beta1.Sidecar{},
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		},
+		featureFlags: getFeatureFlags(map[string]string{
+			featureAwaitSidecarReadiness: "true",
+			featureInjectedSidecar:       "true",
+		}),
 		expected: false,
 	}, {
-		description: "Setting running-in-environment-with-injected-sidecars to true with sidecars present results in false",
+		description: "Setting await-sidecar-readiness to true and running-in-environment-with-injected-sidecars to false with sidecars present results in false",
 		sidecars:    []v1beta1.Sidecar{sd},
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureInjectedSidecar: "true",
-			},
-		},
+		featureFlags: getFeatureFlags(map[string]string{
+			featureAwaitSidecarReadiness: "true",
+			featureInjectedSidecar:       "false",
+		}),
 		expected: false,
 	}, {
-		description: "Setting running-in-environment-with-injected-sidecars to true with no sidecars present results in false",
+		description: "Setting await-sidecar-readiness to true and running-in-environment-with-injected-sidecars to false with no sidecars present results in true",
 		sidecars:    []v1beta1.Sidecar{},
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureInjectedSidecar: "true",
-			},
-		},
-		expected: false,
+		featureFlags: getFeatureFlags(map[string]string{
+			featureAwaitSidecarReadiness: "true",
+			featureInjectedSidecar:       "false",
+		}),
+		expected: true,
 	}, {
-		description: "Setting running-in-environment-with-injected-sidecars to false with sidecars present results in false",
+		description: "Setting await-sidecar-readiness to false and running-in-environment-with-injected-sidecars to true with sidecars present results in true",
 		sidecars:    []v1beta1.Sidecar{sd},
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureInjectedSidecar: "false",
-			},
-		},
-		expected: false,
+		featureFlags: getFeatureFlags(map[string]string{
+			featureAwaitSidecarReadiness: "false",
+			featureInjectedSidecar:       "true",
+		}),
+		expected: true,
 	}, {
-		description: "Setting running-in-environment-with-injected-sidecars to false with no sidecars present results in true",
+		description: "Setting await-sidecar-readiness to false and running-in-environment-with-injected-sidecars to true with no sidecars present results in true",
 		sidecars:    []v1beta1.Sidecar{},
-		configMap: &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				featureInjectedSidecar: "false",
-			},
-		},
+		featureFlags: getFeatureFlags(map[string]string{
+			featureAwaitSidecarReadiness: "false",
+			featureInjectedSidecar:       "true",
+		}),
+		expected: true,
+	}, {
+		description: "Setting await-sidecar-readiness to false and running-in-environment-with-injected-sidecars to false with sidecars present results in true",
+		sidecars:    []v1beta1.Sidecar{sd},
+		featureFlags: getFeatureFlags(map[string]string{
+			featureAwaitSidecarReadiness: "false",
+			featureInjectedSidecar:       "false",
+		}),
+		expected: true,
+	}, {
+		description: "Setting await-sidecar-readiness to false and running-in-environment-with-injected-sidecars to false with no sidecars present results in true",
+		sidecars:    []v1beta1.Sidecar{},
+		featureFlags: getFeatureFlags(map[string]string{
+			featureAwaitSidecarReadiness: "false",
+			featureInjectedSidecar:       "false",
+		}),
 		expected: true,
 	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.description, func(t *testing.T) {
-			store := config.NewStore(logtesting.TestLogger(t))
-			store.OnConfigChanged(tc.configMap)
-			if result := shouldAddReadyAnnotationOnPodCreate(store.ToContext(context.Background()), tc.sidecars); result != tc.expected {
+			if result := isPodReadyImmediately(*tc.featureFlags, tc.sidecars); result != tc.expected {
 				t.Errorf("expected: %t Received: %t", tc.expected, result)
 			}
 		})
