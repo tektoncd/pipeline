@@ -1135,6 +1135,17 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 			Message: `invalid value: expected pipeline results to be task result expressions but no expressions were found`,
 			Paths:   []string{"results[0].value"},
 		},
+	}, {
+		desc: "invalid pipeline result value with invalid expression",
+		results: []PipelineResult{{
+			Name:        "my-pipeline-result",
+			Description: "this is my pipeline result",
+			Value:       "$(foo.bar)",
+		}},
+		expectedError: apis.FieldError{
+			Message: `invalid value: expected pipeline results to be task result expressions but an invalid expressions was found`,
+			Paths:   []string{"results[0].value"},
+		},
 	}}
 	for _, tt := range tests {
 		err := validatePipelineResults(tt.results)
