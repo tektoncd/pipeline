@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -578,6 +579,47 @@ func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 	}
 
 	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
+}
+
+// GetNamesofTaskRuns should return unique names for `TaskRuns` if one has not already been defined, and the existing one otherwise.
+func GetNamesofTaskRuns(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string, combinationCount int) []string {
+	var taskRunNames []string
+	if taskRunNames = getTaskRunNamesFromChildRefs(childRefs, ptName); taskRunNames != nil {
+		return taskRunNames
+	}
+	if taskRunNames = getTaskRunNamesFromTaskRunsStatus(taskRunsStatus, ptName); taskRunNames != nil {
+		return taskRunNames
+	}
+	return getNewTaskRunNames(ptName, prName, combinationCount)
+}
+
+func getTaskRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName string) []string {
+	var taskRunNames []string
+	for _, cr := range childRefs {
+		if cr.Kind == pipeline.TaskRunControllerName && cr.PipelineTaskName == ptName {
+			taskRunNames = append(taskRunNames, cr.Name)
+		}
+	}
+	return taskRunNames
+}
+
+func getTaskRunNamesFromTaskRunsStatus(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, ptName string) []string {
+	var taskRunNames []string
+	for k, v := range taskRunsStatus {
+		if v.PipelineTaskName == ptName {
+			taskRunNames = append(taskRunNames, k)
+		}
+	}
+	return taskRunNames
+}
+
+func getNewTaskRunNames(ptName, prName string, combinationCount int) []string {
+	var taskRunNames []string
+	for i := 0; i < combinationCount; i++ {
+		taskRunName := kmeta.ChildName(prName, fmt.Sprintf("-%s-%d", ptName, i))
+		taskRunNames = append(taskRunNames, taskRunName)
+	}
+	return taskRunNames
 }
 
 // getRunName should return a unique name for a `Run` if one has not already
