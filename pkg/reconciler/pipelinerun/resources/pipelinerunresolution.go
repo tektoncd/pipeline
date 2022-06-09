@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -566,7 +567,7 @@ func resolveTask(
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
 func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
-		if cr.Kind == "TaskRun" && cr.PipelineTaskName == ptName {
+		if cr.Kind == pipeline.TaskRunControllerName && cr.PipelineTaskName == ptName {
 			return cr.Name
 		}
 	}
@@ -584,7 +585,7 @@ func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 // been defined, and the existing one otherwise.
 func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
-		if cr.Kind == "Run" && cr.PipelineTaskName == ptName {
+		if cr.Kind == pipeline.RunControllerName && cr.PipelineTaskName == ptName {
 			return cr.Name
 		}
 	}
