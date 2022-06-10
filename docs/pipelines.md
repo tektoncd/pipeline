@@ -83,7 +83,7 @@ A `Pipeline` definition supports the following fields:
       - [`tasks`](#adding-tasks-to-the-pipeline) - Specifies the `Tasks` that comprise the `Pipeline`
         and the details of their execution.
 - Optional:
-  - [`resources`](#specifying-resources) - **alpha only** Specifies
+  - [`resources`](#specifying-resources) - **deprecated** Specifies
     [`PipelineResources`](resources.md) needed or created by the `Tasks` comprising the `Pipeline`.
   - [`params`](#specifying-parameters) - Specifies the `Parameters` that the `Pipeline` requires.
   - [`workspaces`](#specifying-workspaces) - Specifies a set of Workspaces that the `Pipeline` requires.
@@ -492,22 +492,23 @@ to indicate that `test-app` must run before it, regardless of the order in which
 they are referenced in the `Pipeline` definition.
 
 ```yaml
+workspaces:
+- name: source
+tasks:
 - name: test-app
   taskRef:
     name: make-test
-  resources:
-    inputs:
-      - name: workspace
-        resource: my-repo
+  workspaces:
+  - name: source
+    workspace: source
 - name: build-app
   taskRef:
     name: kaniko-build
   runAfter:
     - test-app
-  resources:
-    inputs:
-      - name: workspace
-        resource: my-repo
+  workspaces:
+  - name: source
+    workspace: source
 ```
 
 > :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
@@ -1004,6 +1005,7 @@ This is done using:
 For example, the `Pipeline` defined as follows
 
 ```yaml
+tasks:
 - name: lint-repo
   taskRef:
     name: pylint
@@ -1119,9 +1121,6 @@ e.g. a mount point for credentials held in Secrets. To support that requirement,
 
 ```yaml
 spec:
-  resources:
-    - name: app-git
-      type: git
   workspaces:
     - name: shared-workspace
   tasks:
@@ -1131,10 +1130,6 @@ spec:
       workspaces:
         - name: shared-workspace
           workspace: shared-workspace
-      resources:
-        inputs:
-          - name: app-git
-            resource: app-git
   finally:
     - name: cleanup-workspace
       taskRef:
@@ -1143,11 +1138,6 @@ spec:
         - name: shared-workspace
           workspace: shared-workspace
 ```
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
 
 ### Specifying `Parameters` in `finally` tasks
 
