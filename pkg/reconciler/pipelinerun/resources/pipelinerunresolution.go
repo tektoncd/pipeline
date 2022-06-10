@@ -624,8 +624,8 @@ func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 }
 
-// GetNamesofTaskRuns should return unique names for `TaskRuns` if one has not already been defined, and the existing one otherwise.
-func GetNamesofTaskRuns(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string, combinationCount int) []string {
+// GetNamesOfTaskRuns should return unique names for `TaskRuns` if one has not already been defined, and the existing one otherwise.
+func GetNamesOfTaskRuns(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string, combinationCount int) []string {
 	var taskRunNames []string
 	if taskRunNames = getTaskRunNamesFromChildRefs(childRefs, ptName); taskRunNames != nil {
 		return taskRunNames
