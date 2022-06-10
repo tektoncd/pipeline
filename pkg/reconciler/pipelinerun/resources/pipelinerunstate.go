@@ -147,12 +147,12 @@ func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[str
 			continue
 		}
 
-		status[rprt.TaskRunName] = rprt.getTaskRunStatus(rprt.TaskRunName, rprt.TaskRun, pr)
+		status[rprt.TaskRunName] = rprt.getTaskRunStatus(rprt.TaskRun, pr)
 	}
 	return status
 }
 
-func (rprt *ResolvedPipelineRunTask) getTaskRunStatus(taskRunName string, tr *v1beta1.TaskRun, pr *v1beta1.PipelineRun) *v1beta1.PipelineRunTaskRunStatus {
+func (rprt *ResolvedPipelineRunTask) getTaskRunStatus(tr *v1beta1.TaskRun, pr *v1beta1.PipelineRun) *v1beta1.PipelineRunTaskRunStatus {
 	var prtrs *v1beta1.PipelineRunTaskRunStatus
 	if tr != nil {
 		prtrs = pr.Status.TaskRuns[tr.Name]
