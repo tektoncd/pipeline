@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -2782,7 +2783,7 @@ func TestGetTaskRunName(t *testing.T) {
 	}
 }
 
-func TestGetTaskRunNames(t *testing.T) {
+func TestGetNamesOfTaskRuns(t *testing.T) {
 	prName := "mypipelinerun"
 	taskRunsStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{
 		"mypipelinerun-mytask-0": {
@@ -2836,8 +2837,8 @@ func TestGetTaskRunNames(t *testing.T) {
 		ptName: "task2-0123456789-0123456789-0123456789-0123456789-0123456789",
 		prName: "pipeline-run-0123456789-0123456789-0123456789-0123456789",
 		wantTrNames: []string{
-			"pipeline-run-0123456789-01234569d54677e88e96776942290e00b578ca5",
 			"pipeline-run-0123456789-01234563c0313c59d28c85a2c2b3fd3b17a9514",
+			"pipeline-run-0123456789-01234569d54677e88e96776942290e00b578ca5",
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2845,12 +2846,14 @@ func TestGetTaskRunNames(t *testing.T) {
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			trNameFromTRStatus := GetNamesofTaskRuns(taskRunsStatus, nil, tc.ptName, testPrName, 2)
-			if d := cmp.Diff(tc.wantTrNames, trNameFromTRStatus); d != "" {
+			namesOfTaskRunsFromTaskRunsStatus := GetNamesOfTaskRuns(taskRunsStatus, nil, tc.ptName, testPrName, 2)
+			sort.Strings(namesOfTaskRunsFromTaskRunsStatus)
+			if d := cmp.Diff(tc.wantTrNames, namesOfTaskRunsFromTaskRunsStatus); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
 			}
-			trNameFromChildRefs := GetNamesofTaskRuns(nil, childRefs, tc.ptName, testPrName, 2)
-			if d := cmp.Diff(tc.wantTrNames, trNameFromChildRefs); d != "" {
+			namesOfTaskRunsFromChildRefs := GetNamesOfTaskRuns(nil, childRefs, tc.ptName, testPrName, 2)
+			sort.Strings(namesOfTaskRunsFromChildRefs)
+			if d := cmp.Diff(tc.wantTrNames, namesOfTaskRunsFromChildRefs); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
 			}
 		})
