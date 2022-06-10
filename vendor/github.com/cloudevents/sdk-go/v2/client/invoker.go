@@ -81,9 +81,9 @@ func (r *receiveInvoker) Invoke(ctx context.Context, m binding.Message, respFn p
 
 			var cb func(error)
 			ctx, cb = r.observabilityService.RecordCallingInvoker(ctx, e)
-			defer cb(result)
 
 			resp, result = r.fn.invoke(ctx, e)
+			defer cb(result)
 			return
 		}()
 
@@ -127,6 +127,9 @@ func (r *receiveInvoker) IsResponder() bool {
 
 func computeInboundContext(message binding.Message, fallback context.Context, inboundContextDecorators []func(context.Context, binding.Message) context.Context) context.Context {
 	result := fallback
+	if mctx, ok := message.(binding.MessageContext); ok {
+		result = cecontext.ValuesDelegating(mctx.Context(), fallback)
+	}
 	for _, f := range inboundContextDecorators {
 		result = f(result, message)
 	}

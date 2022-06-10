@@ -21,6 +21,17 @@ const (
 	CloudEventsVersionV1 = "1.0"
 )
 
+var specV1Attributes = map[string]struct{}{
+	"id":              {},
+	"source":          {},
+	"type":            {},
+	"datacontenttype": {},
+	"subject":         {},
+	"time":            {},
+	"specversion":     {},
+	"dataschema":      {},
+}
+
 // EventContextV1 represents the non-data attributes of a CloudEvents v1.0
 // event.
 type EventContextV1 struct {
@@ -73,11 +84,16 @@ func (ec EventContextV1) ExtensionAs(name string, obj interface{}) error {
 	return fmt.Errorf("unknown extension type %T", obj)
 }
 
-// SetExtension adds the extension 'name' with value 'value' to the CloudEvents context.
-// This function fails if the name doesn't respect the regex ^[a-zA-Z0-9]+$
+// SetExtension adds the extension 'name' with value 'value' to the CloudEvents
+// context. This function fails if the name doesn't respect the regex
+// ^[a-zA-Z0-9]+$ or if the name uses a reserved event context key.
 func (ec *EventContextV1) SetExtension(name string, value interface{}) error {
 	if err := validateExtensionName(name); err != nil {
 		return err
+	}
+
+	if _, ok := specV1Attributes[strings.ToLower(name)]; ok {
+		return fmt.Errorf("bad key %q: CloudEvents spec attribute MUST NOT be overwritten by extension", name)
 	}
 
 	name = strings.ToLower(name)
