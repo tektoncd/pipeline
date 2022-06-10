@@ -123,12 +123,17 @@ type PipelineResult struct {
 	// Name the given name
 	Name string `json:"name"`
 
+	// Type is the user-specified type of the result.
+	// The possible types are 'string', 'array', and 'object', with 'string' as the default.
+	// 'array' and 'object' types are alpha features.
+	Type ResultsType `json:"type,omitempty"`
+
 	// Description is a human-readable description of the result
 	// +optional
 	Description string `json:"description"`
 
 	// Value the expression used to retrieve the value
-	Value string `json:"value"`
+	Value ArrayOrString `json:"value"`
 }
 
 // PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask

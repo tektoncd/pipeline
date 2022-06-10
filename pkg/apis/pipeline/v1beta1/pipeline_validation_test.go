@@ -129,7 +129,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				Results: []PipelineResult{{
 					Name:        "pipeline-result",
 					Description: "this is my pipeline result",
-					Value:       "$(tasks.my-task.results.my-result)",
+					Value:       *NewArrayOrString("$(tasks.my-task.results.my-result)"),
 				}},
 			},
 		},
@@ -1143,11 +1143,11 @@ func TestValidatePipelineResults_Success(t *testing.T) {
 	results := []PipelineResult{{
 		Name:        "my-pipeline-result",
 		Description: "this is my pipeline result",
-		Value:       "$(tasks.a-task.results.output)",
+		Value:       *NewArrayOrString("$(tasks.a-task.results.output)"),
 	}, {
 		Name:        "my-pipeline-object-result",
 		Description: "this is my pipeline result",
-		Value:       "$(tasks.a-task.results.gitrepo.commit)",
+		Value:       *NewArrayOrString("$(tasks.a-task.results.gitrepo.commit)"),
 	}}
 	if err := validatePipelineResults(results); err != nil {
 		t.Errorf("Pipeline.validatePipelineResults() returned error for valid pipeline: %s: %v", desc, err)
@@ -1164,7 +1164,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
-			Value:       "$(tasks.a-task.results.output.key1.extra)",
+			Value:       *NewArrayOrString("$(tasks.a-task.results.output.key1.extra)"),
 		}},
 		expectedError: apis.FieldError{
 			Message: `invalid value: expected all of the expressions [tasks.a-task.results.output.key1.extra] to be result expressions but only [] were`,
@@ -1175,7 +1175,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
-			Value:       "foo.bar",
+			Value:       *NewArrayOrString("foo.bar"),
 		}},
 		expectedError: apis.FieldError{
 			Message: `invalid value: expected pipeline results to be task result expressions but no expressions were found`,
@@ -1186,7 +1186,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
-			Value:       "$(foo.bar)",
+			Value:       *NewArrayOrString("$(foo.bar)"),
 		}},
 		expectedError: apis.FieldError{
 			Message: `invalid value: expected pipeline results to be task result expressions but an invalid expressions was found`,

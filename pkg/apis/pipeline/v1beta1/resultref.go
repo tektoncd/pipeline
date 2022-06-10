@@ -56,6 +56,8 @@ const (
 var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
 var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
+
+// arrayIndexingRegex is used to match `[int]` and `[*]`
 var arrayIndexingRegex = regexp.MustCompile(arrayIndexing)
 
 // NewResultRefs extracts all ResultReferences from a param or a pipeline result.
@@ -124,7 +126,7 @@ func GetVarSubstitutionExpressionsForParam(param Param) ([]string, bool) {
 
 // GetVarSubstitutionExpressionsForPipelineResult extracts all the value between "$(" and ")"" for a pipeline result
 func GetVarSubstitutionExpressionsForPipelineResult(result PipelineResult) ([]string, bool) {
-	allExpressions := validateString(result.Value)
+	allExpressions := validateString(result.Value.StringVal)
 	return allExpressions, len(allExpressions) != 0
 }
 
@@ -164,13 +166,12 @@ func parseExpression(substitutionExpression string) (string, string, int, string
 	// For string result: tasks.<taskName>.results.<stringResultName>
 	// For array result: tasks.<taskName>.results.<arrayResultName>[index]
 	if len(subExpressions) == 4 && subExpressions[0] == ResultTaskPart && subExpressions[2] == ResultResultPart {
-		stringIdx := strings.TrimSuffix(strings.TrimPrefix(arrayIndexingRegex.FindString(subExpressions[3]), "["), "]")
-		subExpressions[3] = arrayIndexingRegex.ReplaceAllString(subExpressions[3], "")
+		resultName, stringIdx := ParseResultName(subExpressions[3])
 		if stringIdx != "" {
 			intIdx, _ := strconv.Atoi(stringIdx)
-			return subExpressions[1], subExpressions[3], intIdx, "", nil
+			return subExpressions[1], resultName, intIdx, "", nil
 		}
-		return subExpressions[1], subExpressions[3], 0, "", nil
+		return subExpressions[1], resultName, 0, "", nil
 	}
 
 	// For object type result: tasks.<taskName>.results.<objectResultName>.<individualAttribute>
@@ -179,6 +180,19 @@ func parseExpression(substitutionExpression string) (string, string, int, string
 	}
 
 	return "", "", 0, "", fmt.Errorf("Must be one of the form 1). %q; 2). %q", resultExpressionFormat, objectResultExpressionFormat)
+}
+
+// ParseResultName parse the input string to extract resultName and result index.
+// Array indexing:
+// Input:  anArrayResult[1]
+// Output: anArrayResult, "1"
+// Array star reference:
+// Input:  anArrayResult[*]
+// Output: anArrayResult, "*"
+func ParseResultName(resultName string) (string, string) {
+	stringIdx := strings.TrimSuffix(strings.TrimPrefix(arrayIndexingRegex.FindString(resultName), "["), "]")
+	resultName = arrayIndexingRegex.ReplaceAllString(resultName, "")
+	return resultName, stringIdx
 }
 
 // PipelineTaskResultRefs walks all the places a result reference can be used

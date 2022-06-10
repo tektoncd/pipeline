@@ -95,7 +95,7 @@ A `Pipeline` definition supports the following fields:
         a `Task` requires.
         - [`from`](#using-the-from-field) - Indicates the data for a [`PipelineResource`](resources.md)
           originates from the output of a previous `Task`.
-      - [`runAfter`](#using-the-runafter-field) - Indicates that a `Task` should execute after one or more other 
+      - [`runAfter`](#using-the-runafter-field) - Indicates that a `Task` should execute after one or more other
         `Tasks` without output linking.
       - [`retries`](#using-the-retries-field) - Specifies the number of times to retry the execution of a `Task` after
         a failure. Does not apply to execution cancellations.
@@ -109,7 +109,7 @@ A `Pipeline` definition supports the following fields:
   - [`results`](#emitting-results-from-a-pipeline) - Specifies the location to which the `Pipeline` emits its execution
     results.
   - [`description`](#adding-a-description) - Holds an informative description of the `Pipeline` object.
-  - [`finally`](#adding-finally-to-the-pipeline) - Specifies one or more `Tasks` to be executed in parallel after 
+  - [`finally`](#adding-finally-to-the-pipeline) - Specifies one or more `Tasks` to be executed in parallel after
     all other tasks have completed.
     - [`name`](#adding-finally-to-the-pipeline) - the name of this `Task` within the context of this `Pipeline`.
     - [`taskRef`](#adding-finally-to-the-pipeline) - a reference to a `Task` definition.
@@ -174,7 +174,7 @@ spec:
           workspace: pipeline-ws1
 ```
 
-For simplicity you can also map the name of the `Workspace` in `PipelineTask` to match with 
+For simplicity you can also map the name of the `Workspace` in `PipelineTask` to match with
 the `Workspace` from the `Pipeline`.
 For example:
 
@@ -191,12 +191,12 @@ spec:
       taskRef:
         name: gen-code # gen-code expects a Workspace named "source"
       workspaces:
-        - name: source # <- mapping workspace name 
+        - name: source # <- mapping workspace name
     - name: commit
       taskRef:
         name: commit # commit expects a Workspace named "source"
       workspaces:
-        - name: source # <- mapping workspace name 
+        - name: source # <- mapping workspace name
       runAfter:
         - gen-code
 ```
@@ -402,7 +402,7 @@ spec:
 `"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
 
 You may also specify your `Task` reference using a `Tekton Bundle`. A `Tekton Bundle` is an OCI artifact that
-contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.  
+contains Tekton resources like `Tasks` which can be referenced within a `taskRef`.
 
 There is currently a hard limit of 20 objects in a bundle.
 
@@ -628,7 +628,7 @@ To guard a `Task` and its dependent Tasks:
 
 ##### Cascade `when` expressions to the specific dependent `Tasks`
 
-Pick and choose which specific dependent `Tasks` to guard as well, and cascade the `when` expressions to those `Tasks`. 
+Pick and choose which specific dependent `Tasks` to guard as well, and cascade the `when` expressions to those `Tasks`.
 
 Taking the use case below, a user who wants to guard `manual-approval` and its dependent `Tasks`:
 
@@ -689,12 +689,12 @@ tasks:
       value: $(tasks.manual-approval.results.approver)
   taskRef:
     name: slack-msg
-```  
+```
 
 ##### Compose using Pipelines in Pipelines
 
-Compose a set of `Tasks` as a unit of execution using `Pipelines` in `Pipelines`, which allows for guarding a `Task` and 
-its dependent `Tasks` (as a sub-`Pipeline`) using `when` expressions. 
+Compose a set of `Tasks` as a unit of execution using `Pipelines` in `Pipelines`, which allows for guarding a `Task` and
+its dependent `Tasks` (as a sub-`Pipeline`) using `when` expressions.
 
 **Note:** `Pipelines` in `Pipelines` is an [experimental feature](https://github.com/tektoncd/experimental/tree/main/pipelines-in-pipelines)
 
@@ -742,7 +742,7 @@ tasks:
         value: $(tasks.manual-approval.results.approver)
     taskRef:
       name: slack-msg
-      
+
 ---
 ## main pipeline
 tasks:
@@ -765,12 +765,12 @@ tasks:
 
 When `when` expressions evaluate to `False`, the `Task` will be skipped and:
 - The ordering-dependent `Tasks` will be executed
-- The resource-dependent `Tasks` (and their dependencies) will be skipped because of missing `Results` from the skipped 
-  parent `Task`. When we add support for [default `Results`](https://github.com/tektoncd/community/pull/240), then the 
-  resource-dependent `Tasks` may be executed if the default `Results` from the skipped parent `Task` are specified. In 
+- The resource-dependent `Tasks` (and their dependencies) will be skipped because of missing `Results` from the skipped
+  parent `Task`. When we add support for [default `Results`](https://github.com/tektoncd/community/pull/240), then the
+  resource-dependent `Tasks` may be executed if the default `Results` from the skipped parent `Task` are specified. In
   addition, if a resource-dependent `Task` needs a file from a guarded parent `Task` in a shared `Workspace`, make sure
-  to handle the execution of the child `Task` in case the expected file is missing from the `Workspace` because the 
-  guarded parent `Task` is skipped. 
+  to handle the execution of the child `Task` in case the expected file is missing from the `Workspace` because the
+  guarded parent `Task` is skipped.
 
 On the other hand, the rest of the `Pipeline` will continue executing.
 
@@ -823,12 +823,12 @@ tasks:
     name: slack-msg
 ```
 
-If `manual-approval` is skipped, execution of its dependent `Tasks` (`slack-msg`, `build-image` and `deploy-image`) 
+If `manual-approval` is skipped, execution of its dependent `Tasks` (`slack-msg`, `build-image` and `deploy-image`)
 would be unblocked regardless:
 - `build-image` and `deploy-image` should be executed successfully
 - `slack-msg` will be skipped because it is missing the `approver` `Result` from `manual-approval`
   - dependents of `slack-msg` would have been skipped too if it had any of them
-  - if `manual-approval` specifies a default `approver` `Result`, such as "None", then `slack-msg` would be executed 
+  - if `manual-approval` specifies a default `approver` `Result`, such as "None", then `slack-msg` would be executed
     ([supporting default `Results` is in progress](https://github.com/tektoncd/community/pull/240))
 
 ### Configuring the failure timeout
@@ -944,7 +944,7 @@ when:
 
 For an end-to-end example, see [`Task` `Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/task_results_example.yaml).
 
-Note that `when` expressions are whitespace-sensitive.  In particular, when producing results intended for inputs to `when` 
+Note that `when` expressions are whitespace-sensitive.  In particular, when producing results intended for inputs to `when`
 expressions that may include newlines at their close (e.g. `cat`, `jq`), you may wish to truncate them.
 
 ```yaml
@@ -985,6 +985,8 @@ results:
 
 For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-results.yaml).
 
+Array results is supported as alpha feature, see [`Array Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/alpha/pipelinerun-array-results.yaml).
+
 A `Pipeline Result` is not emitted if any of the following are true:
 - A `PipelineTask` referenced by the `Pipeline Result` failed. The `PipelineRun` will also
 have failed.
@@ -1009,9 +1011,9 @@ without getting stuck in an infinite loop.
 This is done using:
 - _resource dependencies_:
   - [`from`](#using-the-from-field) clauses on the [`PipelineResources`](resources.md) used by each `Task`
-  - [`results`](#emitting-results-from-a-pipeline) of one `Task` being passed into `params` or `when` expressions of 
+  - [`results`](#emitting-results-from-a-pipeline) of one `Task` being passed into `params` or `when` expressions of
     another
-    
+
 - _ordering dependencies_:
   - [`runAfter`](#using-the-runafter-field) clauses on the corresponding `Tasks`
 
@@ -1197,7 +1199,7 @@ spec:
           value: "someURL"
       matrix:
         - name: slack-channel
-          value: 
+          value:
           - "foo"
           - "bar"
 ```

@@ -248,10 +248,10 @@ spec:
 
 	expectedPipelineResults := []v1beta1.PipelineRunResult{{
 		Name:  "prResult-ref",
-		Value: "aResultValue",
+		Value: *v1beta1.NewArrayOrString("aResultValue"),
 	}, {
 		Name:  "prResult-spec",
-		Value: "aResultValue",
+		Value: *v1beta1.NewArrayOrString("aResultValue"),
 	}}
 
 	if len(pr.Status.PipelineResults) != 2 {
