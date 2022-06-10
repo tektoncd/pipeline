@@ -1618,6 +1618,72 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		runResults  map[string][]v1alpha1.RunResult
 		expected    []v1beta1.PipelineRunResult
 	}{{
+		description: "apply-array-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo[*])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+				},
+			},
+		},
+		expected: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+		}},
+	}, {
+		description: "apply-array-indexing-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo[1])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+				},
+			},
+		},
+		expected: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("rae"),
+		}},
+	}, {
+		description: "multiple-array-results-multiple-successful-tasks ",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo[*])"),
+		}, {
+			Name:  "pipeline-result-2",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt2.results.bar[*])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewArrayOrString("do", "rae"),
+				},
+			},
+			"pt2": {
+				{
+					Name:  "bar",
+					Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+				},
+			},
+		},
+		expected: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("do", "rae"),
+		}, {
+			Name:  "pipeline-result-2",
+			Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+		}},
+	}, {
 		description: "no-pipeline-results-no-returned-results",
 		results:     []v1beta1.PipelineResult{},
 		taskResults: map[string][]v1beta1.TaskRunResult{
@@ -1631,7 +1697,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "invalid-result-variable-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.pt1_results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1_results.foo)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {{
@@ -1644,7 +1710,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "no-taskrun-results-no-returned-results",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.pt1.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {},
@@ -1654,7 +1720,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "invalid-taskrun-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.pt1.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"definitely-not-pt1": {{
@@ -1667,7 +1733,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "invalid-result-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.pt1.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {{
@@ -1680,7 +1746,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "unsuccessful-taskrun-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.pt1.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{},
 		expected:    nil,
@@ -1688,10 +1754,10 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "mixed-success-tasks-some-returned-results",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.pt1.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo)"),
 		}, {
 			Name:  "bar",
-			Value: "$(tasks.pt2.results.bar)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt2.results.bar)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt2": {{
@@ -1701,16 +1767,16 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		},
 		expected: []v1beta1.PipelineRunResult{{
 			Name:  "bar",
-			Value: "rae",
+			Value: *v1beta1.NewArrayOrString("rae"),
 		}},
 	}, {
-		description: "multiple-results-multiple-successful-tasks",
+		description: "multiple-results-multiple-successful-tasks ",
 		results: []v1beta1.PipelineResult{{
 			Name:  "pipeline-result-1",
-			Value: "$(tasks.pt1.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo)"),
 		}, {
 			Name:  "pipeline-result-2",
-			Value: "$(tasks.pt1.results.foo), $(tasks.pt2.results.baz), $(tasks.pt1.results.bar), $(tasks.pt2.results.baz), $(tasks.pt1.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo), $(tasks.pt2.results.baz), $(tasks.pt1.results.bar), $(tasks.pt2.results.baz), $(tasks.pt1.results.foo)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {
@@ -1729,16 +1795,16 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		},
 		expected: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
-			Value: "do",
+			Value: *v1beta1.NewArrayOrString("do"),
 		}, {
 			Name:  "pipeline-result-2",
-			Value: "do, rae, mi, rae, do",
+			Value: *v1beta1.NewArrayOrString("do, rae, mi, rae, do"),
 		}},
 	}, {
 		description: "no-run-results-no-returned-results",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.customtask.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.customtask.results.foo)"),
 		}},
 		runResults: map[string][]v1alpha1.RunResult{},
 		expected:   nil,
@@ -1746,7 +1812,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "wrong-customtask-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.customtask.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.customtask.results.foo)"),
 		}},
 		runResults: map[string][]v1alpha1.RunResult{
 			"differentcustomtask": {{
@@ -1759,7 +1825,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "right-customtask-name-wrong-result-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.customtask.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.customtask.results.foo)"),
 		}},
 		runResults: map[string][]v1alpha1.RunResult{
 			"customtask": {{
@@ -1772,7 +1838,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "unsuccessful-run-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
-			Value: "$(tasks.customtask.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.customtask.results.foo)"),
 		}},
 		runResults: map[string][]v1alpha1.RunResult{
 			"customtask": {},
@@ -1782,10 +1848,10 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description: "multiple-results-custom-and-normal-tasks",
 		results: []v1beta1.PipelineResult{{
 			Name:  "pipeline-result-1",
-			Value: "$(tasks.customtask.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.customtask.results.foo)"),
 		}, {
 			Name:  "pipeline-result-2",
-			Value: "$(tasks.customtask.results.foo), $(tasks.normaltask.results.baz), $(tasks.customtask.results.bar), $(tasks.normaltask.results.baz), $(tasks.customtask.results.foo)",
+			Value: *v1beta1.NewArrayOrString("$(tasks.customtask.results.foo), $(tasks.normaltask.results.baz), $(tasks.customtask.results.bar), $(tasks.normaltask.results.baz), $(tasks.customtask.results.foo)"),
 		}},
 		runResults: map[string][]v1alpha1.RunResult{
 			"customtask": {
@@ -1806,10 +1872,10 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		},
 		expected: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
-			Value: "do",
+			Value: *v1beta1.NewArrayOrString("do"),
 		}, {
 			Name:  "pipeline-result-2",
-			Value: "do, rae, mi, rae, do",
+			Value: *v1beta1.NewArrayOrString("do, rae, mi, rae, do"),
 		}},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {

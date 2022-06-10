@@ -799,10 +799,14 @@
           "type": "string",
           "default": ""
         },
+        "type": {
+          "description": "Type is the user-specified type of the result. The possible types are 'string', 'array', and 'object', with 'string' as the default. 'array' and 'object' types are alpha features.",
+          "type": "string"
+        },
         "value": {
           "description": "Value the expression used to retrieve the value",
-          "type": "string",
-          "default": ""
+          "default": {},
+          "$ref": "#/definitions/v1beta1.ArrayOrString"
         }
       }
     },
@@ -872,8 +876,8 @@
         },
         "value": {
           "description": "Value is the result returned from the execution of this PipelineRun",
-          "type": "string",
-          "default": ""
+          "default": {},
+          "$ref": "#/definitions/v1beta1.ArrayOrString"
         }
       }
     },

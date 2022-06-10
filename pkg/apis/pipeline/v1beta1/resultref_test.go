@@ -692,3 +692,29 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 func lessResultRef(i, j *v1beta1.ResultRef) bool {
 	return i.PipelineTask+i.Result < j.PipelineTask+i.Result
 }
+
+func TestParseResultName(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  []string
+	}{{
+		name:  "array indexing",
+		input: "anArrayResult[1]",
+		want:  []string{"anArrayResult", "1"},
+	},
+		{
+			name:  "array star reference",
+			input: "anArrayResult[*]",
+			want:  []string{"anArrayResult", "*"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resultName, idx := v1beta1.ParseResultName(tt.input)
+			if d := cmp.Diff(tt.want, []string{resultName, idx}); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
