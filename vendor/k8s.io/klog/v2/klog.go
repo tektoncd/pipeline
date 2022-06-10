@@ -91,9 +91,9 @@ import (
 	"github.com/go-logr/logr"
 
 	"k8s.io/klog/v2/internal/buffer"
+	"k8s.io/klog/v2/internal/clock"
 	"k8s.io/klog/v2/internal/serialize"
 	"k8s.io/klog/v2/internal/severity"
-	"k8s.io/utils/clock"
 )
 
 // severityValue identifies the sort of log: info, warning etc. It also implements

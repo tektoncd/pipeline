@@ -24,35 +24,15 @@ import (
 // without directly importing it.
 
 // Logger in this package is exactly the same as logr.Logger.
-//
-// Experimental
-//
-// Notice: This type is EXPERIMENTAL and may be changed or removed in a
-// later release.
 type Logger = logr.Logger
 
 // LogSink in this package is exactly the same as logr.LogSink.
-//
-// Experimental
-//
-// Notice: This type is EXPERIMENTAL and may be changed or removed in a
-// later release.
 type LogSink = logr.LogSink
 
 // Runtimeinfo in this package is exactly the same as logr.RuntimeInfo.
-//
-// Experimental
-//
-// Notice: This type is EXPERIMENTAL and may be changed or removed in a
-// later release.
 type RuntimeInfo = logr.RuntimeInfo
 
 var (
 	// New is an alias for logr.New.
-	//
-	// Experimental
-	//
-	// Notice: This variable is EXPERIMENTAL and may be changed or removed in a
-	// later release.
 	New = logr.New
 )
