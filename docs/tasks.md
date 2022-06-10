@@ -980,9 +980,9 @@ Study the following code examples to better understand how to configure your `Ta
 - [Using a `Secret` as an environment source](#using-a-secret-as-an-environment-source)
 - [Using a `Sidecar` in a `Task`](#using-a-sidecar-in-a-task)
 
-_Tip: See the collection of simple
-[examples](https://github.com/tektoncd/pipeline/tree/main/examples) for
-additional code samples._
+_Tip: See the collection of Tasks in the 
+[Tekton community catalog](https://github.com/tektoncd/catalog) for
+more examples.
 
 ### Building and pushing a Docker image
 
@@ -994,32 +994,26 @@ unsafe** and is shown here only as a demonstration. Use [kaniko](https://github.
 ```yaml
 spec:
   params:
-    # These may be overridden, but provide sensible defaults.
-    - name: directory
-      type: string
-      description: The directory containing the build context.
-      default: /workspace
+    # This may be overridden, but is a sensible default.
     - name: dockerfileName
       type: string
       description: The name of the Dockerfile
       default: Dockerfile
-  resources:
-    inputs:
-      - name: workspace
-        type: git
-    outputs:
-      - name: builtImage
-        type: image
+    - name: image
+      type: string
+      description: The image to build and push
+  workspaces:
+  - name: source
   steps:
     - name: dockerfile-build
       image: gcr.io/cloud-builders/docker
-      workingDir: "$(params.directory)"
+      workingDir: "$(workspaces.source.path)"
       args:
         [
           "build",
           "--no-cache",
           "--tag",
-          "$(resources.outputs.image.url)",
+          "$(params.image)",
           "--file",
           "$(params.dockerfileName)",
           ".",
@@ -1030,7 +1024,7 @@ spec:
 
     - name: dockerfile-push
       image: gcr.io/cloud-builders/docker
-      args: ["push", "$(resources.outputs.image.url)"]
+      args: ["push", "$(params.image)"]
       volumeMounts:
         - name: docker-socket
           mountPath: /var/run/docker.sock
@@ -1117,15 +1111,12 @@ spec:
       type: string
       description: name of the secret holding the github-token
       default: github-token
-  resources:
-    inputs:
-      - name: source
-        type: git
-        targetPath: src/$(params.package)
+  workspaces:
+  - name: source
   steps:
     - name: release
       image: goreleaser/goreleaser
-      workingDir: /workspace/src/$(params.package)
+      workingDir: $(workspaces.source.path)/$(params.package)
       command:
         - goreleaser
       args:

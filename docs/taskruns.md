@@ -96,14 +96,13 @@ You can also embed the desired `Task` definition directly in the `TaskRun` using
 ```yaml
 spec:
   taskSpec:
-    resources:
-      inputs:
-        - name: workspace
-          type: git
+    workspaces:
+    - name: source
     steps:
       - name: build-and-push
         image: gcr.io/kaniko-project/executor:v0.17.1
         # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
+        workingDir: $(workspaces.source.path)
         env:
           - name: "DOCKER_CONFIG"
             value: "/tekton/home/.docker/"
@@ -685,33 +684,21 @@ To better understand `TaskRuns`, study the following code examples:
 ### Example `TaskRun` with a referenced `Task`
 
 In this example, a `TaskRun` named `read-repo-run` invokes and executes an existing
-`Task` named `read-task`. This `Task` uses a git input resource that the `TaskRun`
-references as `go-example-git`.
+`Task` named `read-task`. This `Task` reads the repository from the
+"input" `workspace`.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: go-example-git
-spec:
-  type: git
-  params:
-    - name: url
-      value: https://github.com/pivotal-nader-ziada/gohelloworld
----
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: read-task
 spec:
-  resources:
-    inputs:
-      - name: workspace
-        type: git
+  workspaces:
+  - name: input
   steps:
     - name: readme
       image: ubuntu
-      script: cat workspace/README.md
+      script: cat $(workspaces.input.path)/README.md
 ---
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
@@ -720,11 +707,11 @@ metadata:
 spec:
   taskRef:
     name: read-task
-  resources:
-    inputs:
-      - name: workspace
-        resourceRef:
-          name: go-example-git
+  workspaces:
+  - name: input
+    persistentVolumeClaim:
+      claimName: mypvc
+    subPath: my-subdir
 ```
 
 ### Example `TaskRun` with an embedded `Task`
@@ -733,34 +720,22 @@ In this example, a `TaskRun` named `build-push-task-run-2` directly executes
 a `Task` from its definition embedded in the `TaskRun's` `taskSpec` field:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: go-example-git
-spec:
-  type: git
-  params:
-    - name: url
-      value: https://github.com/pivotal-nader-ziada/gohelloworld
----
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: build-push-task-run-2
 spec:
-  resources:
-    inputs:
-      - name: workspace
-        resourceRef:
-          name: go-example-git
+  workspaces:
+  - name: source
+    persistentVolumeClaim:
+      claimName: my-pvc
   taskSpec:
-    resources:
-      inputs:
-        - name: workspace
-          type: git
+    workspaces:
+    - name: source
     steps:
       - name: build-and-push
         image: gcr.io/kaniko-project/executor:v0.17.1
+        workingDir: $(workspaces.source.path)
         # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
         env:
           - name: "DOCKER_CONFIG"
@@ -792,106 +767,6 @@ spec:
               value: https://github.com/pivotal-nader-ziada/gohelloworld
 ```
 
-### Example of Reusing a `Task`
-
-The following example illustrates the reuse of the same `Task`. Below, you can see
-several `TaskRuns` that instantiate a `Task` named `dockerfile-build-and-push`. The
-`TaskRuns` reference different `Resources` as their inputs.
-See [Building and pushing a Docker image](tasks.md#building-and-pushing-a-docker-image)
-for the full definition of this example `Task.`
-
-This `TaskRun` builds `mchmarny/rester-tester`:
-
-```yaml
-# This is the referenced PipelineResource
-metadata:
-  name: mchmarny-repo
-spec:
-  type: git
-  params:
-    - name: url
-      value: https://github.com/mchmarny/rester-tester.git
-```
-
-```yaml
-# This is the TaskRun
-spec:
-  taskRef:
-    name: dockerfile-build-and-push
-  params:
-    - name: IMAGE
-      value: gcr.io/my-project/rester-tester
-  resources:
-    inputs:
-      - name: workspace
-        resourceRef:
-          name: mchmarny-repo
-```
-
-This `TaskRun` builds the `wget` builder from `googlecloudplatform/cloud-builder`:
-
-```yaml
-# This is the referenced PipelineResource
-metadata:
-  name: cloud-builder-repo
-spec:
-  type: git
-  params:
-    - name: url
-      value: https://github.com/googlecloudplatform/cloud-builders.git
-```
-
-```yaml
-# This is the TaskRun
-spec:
-  taskRef:
-    name: dockerfile-build-and-push
-  params:
-    - name: IMAGE
-      value: gcr.io/my-project/wget
-    # Optional override to specify the subdirectory containing the Dockerfile
-    - name: DIRECTORY
-      value: /workspace/wget
-  resources:
-    inputs:
-      - name: workspace
-        resourceRef:
-          name: cloud-builder-repo
-```
-
-This `TaskRun` builds the `docker` builder from `googlecloudplatform/cloud-builder` with `17.06.1`:
-
-```yaml
-# This is the referenced PipelineResource
-metadata:
-  name: cloud-builder-repo
-spec:
-  type: git
-  params:
-    - name: url
-      value: https://github.com/googlecloudplatform/cloud-builders.git
-```
-
-```yaml
-# This is the TaskRun
-spec:
-  taskRef:
-    name: dockerfile-build-and-push
-  params:
-    - name: IMAGE
-      value: gcr.io/my-project/docker
-    # Optional overrides
-    - name: DIRECTORY
-      value: /workspace/docker
-    - name: DOCKERFILE_NAME
-      value: Dockerfile-17.06.1
-  resources:
-    inputs:
-      - name: workspace
-        resourceRef:
-          name: cloud-builder-repo
-```
-
 ### Example of Using custom `ServiceAccount` credentials
 
 The example below illustrates how to specify a `ServiceAccount` to access a private `git` repository:
@@ -903,24 +778,18 @@ metadata:
   name: test-task-with-serviceaccount-git-ssh
 spec:
   serviceAccountName: test-task-robot-git-ssh
-  resources:
-    inputs:
-      - name: workspace
-        resourceSpec:
-          type: git
-          params:
-            - name: url
-              value: https://github.com/tektoncd/pipeline.git
-  taskSpec:
-    resources:
-      inputs:
-        - name: workspace
-          type: git
-    steps:
-      - name: config
-        image: ubuntu
-        command: ["/bin/bash"]
-        args: ["-c", "cat README.md"]
+  workspaces:
+  - name: source
+    persistentVolumeClaim:
+      claimName: repo-pvc
+  - name: ssh-creds
+    secret:
+      secretName: test-git-ssh
+  params:
+    - name: url
+      value: https://github.com/tektoncd/pipeline.git
+  taskRef:
+    name: git-clone
 ```
 
 In the above code snippet, `serviceAccountName: test-build-robot-git-ssh` references the following
@@ -935,7 +804,7 @@ secrets:
   - name: test-git-ssh
 ```
 
-And `name: test-git-ssh` references the following `Secret`:
+And `secretName: test-git-ssh` references the following `Secret`:
 
 ```yaml
 apiVersion: v1
