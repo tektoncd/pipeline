@@ -108,6 +108,7 @@ func (t ResolvedPipelineRunTask) isSuccessful() bool {
 }
 
 // isFailure returns true only if the run has failed and will not be retried.
+// If the PipelineTask has a Matrix, isFailure returns true if any run has failed and will not be retried.
 func (t ResolvedPipelineRunTask) isFailure() bool {
 	if t.isCancelled() {
 		return true
@@ -129,7 +130,6 @@ func (t ResolvedPipelineRunTask) isFailure() bool {
 		if len(t.TaskRuns) == 0 {
 			return false
 		}
-		// is failed on the first failure with no remaining retries to fail fast
 		for _, taskRun := range t.TaskRuns {
 			c = taskRun.Status.GetCondition(apis.ConditionSucceeded)
 			isDone = taskRun.IsDone()
