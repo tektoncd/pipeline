@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Uber Technologies, Inc.
+// Copyright (c) 2021 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,9 +18,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// See #682 for more information.
-// +build !go1.12
+package ztest
 
-package zap
+import (
+	"time"
 
-const _stdLogDefaultDepth = 2
+	"github.com/benbjohnson/clock"
+)
+
+// MockClock provides control over the time.
+type MockClock struct{ m *clock.Mock }
+
+// NewMockClock builds a new mock clock that provides control of time.
+func NewMockClock() *MockClock {
+	return &MockClock{clock.NewMock()}
+}
+
+// Now reports the current time.
+func (c *MockClock) Now() time.Time {
+	return c.m.Now()
+}
+
+// NewTicker returns a time.Ticker that ticks at the specified frequency.
+func (c *MockClock) NewTicker(d time.Duration) *time.Ticker {
+	return &time.Ticker{C: c.m.Ticker(d).C}
+}
+
+// Add progresses time by the given duration.
+func (c *MockClock) Add(d time.Duration) {
+	c.m.Add(d)
+}
