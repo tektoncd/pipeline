@@ -86,7 +86,7 @@ func (t ResolvedPipelineRunTask) isRunning() bool {
 			return false
 		}
 	}
-	return !t.isSuccessful() && !t.isFailure() && !t.isCancelled()
+	return !t.isSuccessful() && !t.isFailure()
 }
 
 // IsCustomTask returns true if the PipelineTask references a Custom Task.

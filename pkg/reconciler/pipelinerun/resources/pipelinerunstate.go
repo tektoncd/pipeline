@@ -339,9 +339,6 @@ func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*R
 func (facts *PipelineRunFacts) IsStopping() bool {
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.isCancelled() {
-				return true
-			}
 			if t.isFailure() {
 				return true
 			}
