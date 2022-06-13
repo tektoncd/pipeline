@@ -108,7 +108,8 @@ func (t ResolvedPipelineRunTask) isSuccessful() bool {
 }
 
 // isFailure returns true only if the run has failed and will not be retried.
-// If the PipelineTask has a Matrix, isFailure returns true if any run has failed and will not be retried.
+// If the PipelineTask has a Matrix, isFailure returns true if any run has failed (no remaining retries)
+// and all other runs are done.
 func (t ResolvedPipelineRunTask) isFailure() bool {
 	if t.isCancelled() {
 		return true
@@ -130,14 +131,14 @@ func (t ResolvedPipelineRunTask) isFailure() bool {
 		if len(t.TaskRuns) == 0 {
 			return false
 		}
+		isDone = true
+		atLeastOneFailed := false
 		for _, taskRun := range t.TaskRuns {
-			c = taskRun.Status.GetCondition(apis.ConditionSucceeded)
-			isDone = taskRun.IsDone()
-			if isDone && c.IsFalse() && !t.hasRemainingRetries() {
-				return true
-			}
+			isDone = isDone && taskRun.IsDone()
+			taskRunFailed := taskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() && !t.hasRemainingRetries()
+			atLeastOneFailed = atLeastOneFailed || taskRunFailed
 		}
-		return false
+		return atLeastOneFailed && isDone
 	default:
 		if t.TaskRun == nil {
 			return false
@@ -180,6 +181,7 @@ func (t ResolvedPipelineRunTask) hasRemainingRetries() bool {
 }
 
 // isCancelled returns true only if the run is cancelled
+// If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled and all other runs are done.
 func (t ResolvedPipelineRunTask) isCancelled() bool {
 	switch {
 	case t.IsCustomTask():
@@ -192,14 +194,15 @@ func (t ResolvedPipelineRunTask) isCancelled() bool {
 		if len(t.TaskRuns) == 0 {
 			return false
 		}
-		// is cancelled when any TaskRun is cancelled to fail fast
+		isDone := true
+		atLeastOneCancelled := false
 		for _, taskRun := range t.TaskRuns {
+			isDone = isDone && taskRun.IsDone()
 			c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
-			if c != nil && c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String() {
-				return true
-			}
+			taskRunCancelled := c.IsFalse() && c.Reason == v1beta1.TaskRunReasonCancelled.String()
+			atLeastOneCancelled = atLeastOneCancelled || taskRunCancelled
 		}
-		return false
+		return atLeastOneCancelled && isDone
 	default:
 		if t.TaskRun == nil {
 			return false
