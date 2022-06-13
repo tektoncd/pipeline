@@ -52,11 +52,20 @@ type TaskRunSpec struct {
 	// Used for cancelling a taskrun (and maybe more later on)
 	// +optional
 	Status TaskRunSpecStatus `json:"status,omitempty"`
+
+	// TODO: move this field to timeouts map
 	// Time after which the build times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+	// ----------------------------------------
+
+	// Time after which the Task times out.
+	// Currently two keys are accepted in the map
+	// scheduling and execution (which replaces previous timeout)
+	Timeouts *TimeoutTaskRunFields `json:"timeouts,omitempty"`
+
 	// PodTemplate holds pod specific configuration
 	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
@@ -79,6 +88,14 @@ type TaskRunSpec struct {
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+}
+
+// TimeoutFields allows granular specification of pipeline, task, and finally timeouts
+type TimeoutTaskRunFields struct {
+	// TODO: add comments
+	Scheduling *metav1.Duration `json:"scheduling,omitempty"`
+	// TODO: add comments and replace functionality
+	Execution *metav1.Duration `json:"execution,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
@@ -204,6 +221,8 @@ type TaskRunStatusFields struct {
 	// CompletionTime is the time the build completed.
 	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
+
+	ScheduledTime *metav1.Time `json:"scheduledTime,omitempty"`
 
 	// Steps describes the state of each build step container.
 	// +optional
@@ -438,6 +457,54 @@ func (tr *TaskRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
 	return runtime > timeout
 }
 
+// HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
+func (tr *TaskRun) HasTimedOutExecution(ctx context.Context, c clock.PassiveClock, pod *corev1.Pod) bool {
+	if pod == nil {
+		return false
+	}
+	timeout := tr.Spec.Timeouts.Execution.Duration
+	// If timeout is set to 0 or defaulted to 0, there is no timeout.
+	if timeout == apisconfig.NoTimeoutDuration {
+		return false
+	}
+	runtime := c.Since(getScheduledTime(pod))
+	return runtime > timeout
+}
+
+func (tr *TaskRun) HasTimedOutSchedule(ctx context.Context, c clock.PassiveClock) bool {
+	if tr.Status.StartTime.IsZero() {
+		return false
+	}
+	if tr.Spec.Timeouts.Scheduling == nil {
+		return false
+	}
+
+	timeout := tr.Spec.Timeouts.Scheduling.Duration
+
+	runtime := c.Since(tr.Status.StartTime.Time)
+	return runtime > timeout
+}
+
+func (tr *TaskRun) IsScheduled(pod *corev1.Pod) bool {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled {
+			return c.Status == corev1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func getScheduledTime(pod *corev1.Pod) time.Time {
+	for _, c := range pod.Status.Conditions {
+		if c.Type == corev1.PodScheduled {
+			return c.LastTransitionTime.Time
+		}
+	}
+
+	return metav1.Time{}.Time
+}
+
+// TODO: (aleromero) : update timeout execution.
 // GetTimeout returns the timeout for the TaskRun, or the default if not specified
 func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
 	// Use the platform default is no timeout is set

@@ -149,8 +149,48 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
 
+	/*-------------------------------------------*/
+
+	var pod *corev1.Pod
+	var err error
+	if tr.Status.PodName != "" {
+		pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Get(ctx, tr.Status.PodName, metav1.GetOptions{})
+		if k8serrors.IsNotFound(err) {
+			// Keep going, this will result in the Pod being created below.
+		} else if err != nil {
+			// This is considered a transient error, so we return error, do not update
+			// the task run condition, and return an error which will cause this key to
+			// be requeued for reconcile.
+			logger.Errorf("Error getting pod %q: %v", tr.Status.PodName, err)
+			return err
+		}
+	}
+
+	// TODO: (aleromero) if scheduling timeout is set, then compare timeout with PodScheduled time: if time since PodScheduled > execution timeout -> fail task.
+	// TODO: (aleromero) else (scheduling timeout is not set) existing behavior?. if time since start > execution timeout -> fail task.
+	// If pod has been scheduled by reconciler then proceed to verify
+	// if execution time has been exceeded.
+	if tr.IsScheduled(pod) {
+
+		// TODO: (aleromero) timeout with execution
+		if tr.HasTimedOutExecution(ctx, c.Clock, pod) {
+			message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
+			err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
+			return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		}
+	} else {
+		// TODO: (aleromero) timout with schedule
+		if tr.HasTimedOutSchedule(ctx, c.Clock) {
+			message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
+			err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
+			return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		}
+	}
+
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
+
+	// tr.HasTimedOut(ctx, c.Clock): Old behavior, replaced with HasTimedOutExecution. Needs to be removed?
 	if tr.HasTimedOut(ctx, c.Clock) {
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
