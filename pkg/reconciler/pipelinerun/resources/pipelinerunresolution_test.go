@@ -1120,12 +1120,12 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: true,
 	}, {
-		name: "one matrixed taskruns failed",
+		name: "one matrixed taskrun failed, one matrixed taskrun running",
 		rprt: ResolvedPipelineRunTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeStarted(trs[1])},
 		},
-		want: true,
+		want: false,
 	}, {
 		name: "matrixed taskruns failed: retries remaining",
 		rprt: ResolvedPipelineRunTask{
@@ -1155,12 +1155,12 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: true,
 	}, {
-		name: "one matrixed taskrun cancelled",
+		name: "one matrixed taskrun cancelled, one matrixed taskrun running",
 		rprt: ResolvedPipelineRunTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
 		},
-		want: true,
+		want: false,
 	}, {
 		name: "matrixed taskruns cancelled but not failed",
 		rprt: ResolvedPipelineRunTask{
@@ -1183,12 +1183,12 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: true,
 	}, {
-		name: "one matrixed taskrun cancelled: retries remaining",
+		name: "one matrixed taskrun cancelled: retries remaining, one matrixed taskrun running",
 		rprt: ResolvedPipelineRunTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
 		},
-		want: true,
+		want: false,
 	}, {
 		name: "matrixed taskruns cancelled: no retries remaining",
 		rprt: ResolvedPipelineRunTask{
@@ -1197,12 +1197,12 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: true,
 	}, {
-		name: "one matrixed taskrun cancelled: no retries remaining",
+		name: "one matrixed taskrun cancelled: no retries remaining, one matrixed taskrun running",
 		rprt: ResolvedPipelineRunTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), makeStarted(trs[1])},
 		},
-		want: true,
+		want: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := tc.rprt.isFailure(); got != tc.want {
