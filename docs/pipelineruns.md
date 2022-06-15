@@ -941,8 +941,7 @@ taskRuns:
       podName: triggers-release-nightly-frwmw-build-pod
       resourcesResult:
         - key: commit
-          resourceRef:
-            name: git-source-triggers-frwmw
+          resourceName: git-source-triggers-frwmw
           value: 9ab5a1234166a89db352afa28f499d596ebb48db
       startTime: "2020-05-04T02:05:07Z"
       steps:

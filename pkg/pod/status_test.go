@@ -44,7 +44,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 			Name: "step-bar-0",
 			State: corev1.ContainerState{
 				Terminated: &corev1.ContainerStateTerminated{
-					Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+					Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
 				},
 			},
 		},
@@ -52,7 +52,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 				Name: "step-bar1",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 3072) + `","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 3072) + `","resourceName":"source-image"}]`,
 					},
 				},
 			},
@@ -60,7 +60,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 				Name: "step-bar2",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 3072) + `","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234` + strings.Repeat("a", 3072) + `","resourceName":"source-image"}]`,
 					},
 				},
 			}},
@@ -571,7 +571,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-foo",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"digest","value":"sha256:12345","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"digest","value":"sha256:12345","resourceName":"source-image"}]`,
 					},
 				},
 			}},
@@ -582,16 +582,16 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:12345","resourceRef":{"name":"source-image"}}]`,
+							Message: `[{"key":"digest","value":"sha256:12345","resourceName":"source-image"}]`,
 						}},
 					Name:          "foo",
 					ContainerName: "step-foo",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
 				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:         "digest",
-					Value:       "sha256:12345",
-					ResourceRef: &v1beta1.PipelineResourceRef{Name: "source-image"},
+					Key:          "digest",
+					Value:        "sha256:12345",
+					ResourceName: "source-image",
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -605,7 +605,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-bar",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
 					},
 				},
 			}},
@@ -616,16 +616,16 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"resultValue","type":1}]`,
+							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"resultValue","type":1}]`,
 						}},
 					Name:          "bar",
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
 				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:         "digest",
-					Value:       "sha256:1234",
-					ResourceRef: &v1beta1.PipelineResourceRef{Name: "source-image"},
+					Key:          "digest",
+					Value:        "sha256:1234",
+					ResourceName: "source-image",
 				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
@@ -644,7 +644,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Name: "step-banana",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
 					},
 				},
 			}},
@@ -655,16 +655,16 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"resultValue","type":1}]`,
+							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"resultValue","type":1}]`,
 						}},
 					Name:          "banana",
 					ContainerName: "step-banana",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
 				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:         "digest",
-					Value:       "sha256:1234",
-					ResourceRef: &v1beta1.PipelineResourceRef{Name: "source-image"},
+					Key:          "digest",
+					Value:        "sha256:1234",
+					ResourceName: "source-image",
 				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
@@ -1100,7 +1100,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				Name: "step-bar",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
 					},
 				},
 			}},
@@ -1111,16 +1111,16 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"","type":1}]`,
+							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"","type":1}]`,
 						}},
 					Name:          "bar",
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
 				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:         "digest",
-					Value:       "sha256:1234",
-					ResourceRef: &v1beta1.PipelineResourceRef{Name: "source-image"},
+					Key:          "digest",
+					Value:        "sha256:1234",
+					ResourceName: "source-image",
 				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
@@ -1139,7 +1139,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				Name: "step-bar",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"hello", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"hello", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
 					},
 				},
 			}},
@@ -1150,16 +1150,16 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"hello","type":1}]`,
+							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"hello","type":1}]`,
 						}},
 					Name:          "bar",
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
 				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:         "digest",
-					Value:       "sha256:1234",
-					ResourceRef: &v1beta1.PipelineResourceRef{Name: "source-image"},
+					Key:          "digest",
+					Value:        "sha256:1234",
+					ResourceName: "source-image",
 				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
@@ -1178,7 +1178,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				Name: "step-bar",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"[\"hello\",\"world\"]", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"[\"hello\",\"world\"]", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
 					},
 				},
 			}},
@@ -1189,16 +1189,16 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"[\"hello\",\"world\"]","type":1}]`,
+							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"[\"hello\",\"world\"]","type":1}]`,
 						}},
 					Name:          "bar",
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
 				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:         "digest",
-					Value:       "sha256:1234",
-					ResourceRef: &v1beta1.PipelineResourceRef{Name: "source-image"},
+					Key:          "digest",
+					Value:        "sha256:1234",
+					ResourceName: "source-image",
 				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
@@ -1217,7 +1217,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				Name: "step-bar",
 				State: corev1.ContainerState{
 					Terminated: &corev1.ContainerStateTerminated{
-						Message: `[{"key":"resultName","value":"{\"hello\":\"world\"}", "type":1}, {"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}}]`,
+						Message: `[{"key":"resultName","value":"{\"hello\":\"world\"}", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`,
 					},
 				},
 			}},
@@ -1228,16 +1228,16 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				Steps: []v1beta1.StepState{{
 					ContainerState: corev1.ContainerState{
 						Terminated: &corev1.ContainerStateTerminated{
-							Message: `[{"key":"digest","value":"sha256:1234","resourceRef":{"name":"source-image"}},{"key":"resultName","value":"{\"hello\":\"world\"}","type":1}]`,
+							Message: `[{"key":"digest","value":"sha256:1234","resourceName":"source-image"},{"key":"resultName","value":"{\"hello\":\"world\"}","type":1}]`,
 						}},
 					Name:          "bar",
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
 				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:         "digest",
-					Value:       "sha256:1234",
-					ResourceRef: &v1beta1.PipelineResourceRef{Name: "source-image"},
+					Key:          "digest",
+					Value:        "sha256:1234",
+					ResourceName: "source-image",
 				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",

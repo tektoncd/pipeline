@@ -771,10 +771,6 @@
         "resourceName": {
           "type": "string"
         },
-        "resourceRef": {
-          "description": "The field ResourceRef should be deprecated and removed in the next API version. See https://github.com/tektoncd/pipeline/issues/2694 for more information.",
-          "$ref": "#/definitions/v1beta1.PipelineResourceRef"
-        },
         "type": {
           "type": "integer",
           "format": "int32"
