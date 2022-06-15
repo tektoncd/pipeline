@@ -60,6 +60,8 @@ const (
 	DefaultSendCloudEventsForRuns = false
 	// DefaultEmbeddedStatus is the default value for "embedded-status".
 	DefaultEmbeddedStatus = FullEmbeddedStatus
+	// DefaultEnableInitContainerResources is the default value for "enable-init-container-resources".
+	DefaultEnableInitContainerResources = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -71,6 +73,7 @@ const (
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
 	embeddedStatus                      = "embedded-status"
+	enableInitContainerResources        = "enable-init-container-resources"
 )
 
 // FeatureFlags holds the features configurations
@@ -87,6 +90,7 @@ type FeatureFlags struct {
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
 	EmbeddedStatus                   string
+	EnableInitContainerResources     bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -136,6 +140,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setEmbeddedStatus(cfgMap, DefaultEmbeddedStatus, &tc.EmbeddedStatus); err != nil {
+		return nil, err
+	}
+	if err := setFeature(enableInitContainerResources, DefaultEnableInitContainerResources, &tc.EnableInitContainerResources); err != nil {
 		return nil, err
 	}
 

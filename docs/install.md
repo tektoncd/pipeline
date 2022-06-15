@@ -9,26 +9,28 @@ weight: 100
 
 This guide explains how to install Tekton Pipelines. It covers the following topics:
 
-- [Before you begin](#before-you-begin)
-- [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
+- [Installing Tekton Pipelines](#installing-tekton-pipelines)
+  - [Before you begin](#before-you-begin)
+  - [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
     - [Installing Tekton Pipelines on OpenShift](#installing-tekton-pipelines-on-openshift)
-- [Configuring PipelineResource storage](#configuring-pipelineresource-storage)
+  - [Configuring PipelineResource storage](#configuring-pipelineresource-storage)
     - [Configuring a persistent volume](#configuring-a-persistent-volume)
     - [Configuring a cloud storage bucket](#configuring-a-cloud-storage-bucket)
-        - [Example configuration for an S3 bucket](#example-configuration-for-an-s3-bucket)
-        - [Example configuration for a GCS bucket](#example-configuration-for-a-gcs-bucket)
-- [Configuring CloudEvents notifications](#configuring-cloudevents-notifications)
-- [Configuring self-signed cert for private registry](#configuring-self-signed-cert-for-private-registry)
-- [Customizing basic execution parameters](#customizing-basic-execution-parameters)
+      - [Example configuration for an S3 bucket](#example-configuration-for-an-s3-bucket)
+      - [Example configuration for a GCS bucket](#example-configuration-for-a-gcs-bucket)
+  - [Configuring CloudEvents notifications](#configuring-cloudevents-notifications)
+  - [Configuring self-signed cert for private registry](#configuring-self-signed-cert-for-private-registry)
+  - [Customizing basic execution parameters](#customizing-basic-execution-parameters)
     - [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
     - [Alpha Features](#alpha-features)
-- [Configuring High Availability](#configuring-high-availability)
-- [Configuring tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
-- [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
-- [Verify Tekton Pipelines release](#verify-tekton-pipelines-release)
+  - [Configuring High Availability](#configuring-high-availability)
+  - [Configuring tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
+  - [Platform Support](#platform-support)
+  - [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
+  - [Verify Tekton Pipelines Release](#verify-tekton-pipelines-release)
     - [Verify signatures using `cosign`](#verify-signatures-using-cosign)
-    - [Verify the tansparency logs using `rekor-cli`](#verify-the-transparency-logs-using-rekor-cli)
-- [Next steps](#next-steps)
+    - [Verify the transparency logs using `rekor-cli`](#verify-the-transparency-logs-using-rekor-cli)
+  - [Next steps](#next-steps)
 
 ## Before you begin
 
@@ -400,6 +402,9 @@ features](#alpha-features) to be used.
  `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the `PipelineRun` status with
   name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to
   do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses).
+
+- `enable-init-container-resources`: set this flag to "true" to set compute resources of Tekton init containers.
+See the [docs on compute resources](./compute-resources.md#enabling-init-container-compute-resources) for more information.
 
 For example:
 

@@ -321,14 +321,10 @@ Kubernetes allows users to define [ResourceQuotas](https://kubernetes.io/docs/co
 which restrict the maximum resource requests and limits of all pods running in a namespace.
 
 To deploy Tekton TaskRuns or PipelineRuns in namespaces with ResourceQuotas, compute resource requirements
-must be set for all containers in a `TaskRun`'s pod, including the init containers injected by Tekton.
+must be set for all containers in a `TaskRun`'s pod, including the init containers injected by Tekton
+(see [Configuring init container resources](#configuring-init-container-resources)).
 `Step` and `Sidecar` resource requirements can be configured directly through the API, as described in
-[Task Resource Requirements](#task-resource-requirements). To configure resource requirements for Tekton's init containers,
-deploy a LimitRange in the same namespace. The LimitRange's `default` and `defaultRequest` will be applied to the init containers,
-and divided among the `Steps` and `Sidecars`, as described in [LimitRange Support](#limitrange-support).
-
-[#2933](https://github.com/tektoncd/pipeline/issues/2933) tracks support for running `TaskRuns` in a namespace with a ResourceQuota
-without having to use LimitRanges.
+[Task Resource Requirements](#task-resource-requirements). 
 
 ResourceQuotas consider the effective resource requests and limits of a pod, which Kubernetes determines by summing the resource requirements
 of its containers (under the assumption that they run in parallel). When using LimitRanges to set compute resources for `TaskRun` pods,
@@ -344,8 +340,32 @@ not limits (tracked in [#4976](https://github.com/tektoncd/pipeline/issues/4976)
 By default, pods that run Tekton TaskRuns will have a [Quality of Service (QoS)](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/)
 of "BestEffort". If compute resource requirements are set for any Step or Sidecar, the pod will have a "Burstable" QoS.
 To get a "Guaranteed" QoS, a TaskRun pod must have compute resources set for all of its containers, including init containers which are
-injected by Tekton, and all containers must have their requests equal to their limits.
-This can be achieved by using LimitRanges to apply default requests and limits.
+injected by Tekton (see [Configuring init container resources](#configuring-init-container-resources)).
+In addition, all containers must have their requests equal to their limits.
+
+## Configuring Init Container Resources
+
+There are two ways to configure compute resources for Tekton init containers.
+
+The first is to deploy a LimitRange in the same namespace.
+The LimitRange's `default` and `defaultRequest` will be applied to the init containers,
+and divided among the `Steps` and `Sidecars`, as described in [LimitRange Support](#limitrange-support).
+
+The second option is to enable the feature flag "enable-init-container-resources".
+(Note: this feature is experimental and may be removed.)
+This flag will set all init container resource requests to the maximum requests of any app container,
+and all init container resource limits to the maximum limits of any app container.
+(If a container has no limits, that is the maximum limit.)
+This provides init containers with as much compute resources
+as possible without affecting the effective requests and limits of the pod.
+
+Tekton init containers don't require much CPU or memory, but if this feature is enabled,
+setting Step or Sidecar resource requirements too low risks throttling or OOMkilling TaskRun pods.
+
+If this feature is used along with LimitRanges, init containers will still receive the maximum
+requests and limits from Step and Sidecar containers, rather than the defaults from the LimitRange.
+The defaults from the LimitRange will apply only if Steps and Sidecars have no compute resources
+configured.
 
 # References
 

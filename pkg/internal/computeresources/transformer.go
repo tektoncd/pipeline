@@ -19,6 +19,7 @@ package computeresources
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/compare"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/limitrange"
 	"github.com/tektoncd/pipeline/pkg/pod"
@@ -36,8 +37,15 @@ func NewTransformer(ctx context.Context, namespace string, lister corev1listers.
 		if err != nil {
 			return p, err
 		}
-		return transformPodBasedOnLimitRange(p, limitRange), nil
+		return transformPodComputeResources(ctx, p, limitRange), nil
 	}
+}
+
+func transformPodComputeResources(ctx context.Context, p *corev1.Pod, limitRange *corev1.LimitRange) *corev1.Pod {
+	if limitRange != nil {
+		p = transformPodBasedOnLimitRange(p, *limitRange)
+	}
+	return setInitContainerResources(ctx, p)
 }
 
 // transformPodBasedOnLimitRange modifies the pod's containers' resource requirements to meet the constraints of the LimitRange.
@@ -49,12 +57,7 @@ func NewTransformer(ctx context.Context, namespace string, lister corev1listers.
 // (for app containers).
 // - If the container has limits, they are set to the min of (limits, limitRange maximum).
 // - If the container doesn't have limits, they are set to the min of (limitRange maximum, limitRange default).
-func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange) *corev1.Pod {
-	// No LimitRange defined, nothing to transform, bail early we don't have anything to transform.
-	if limitRange == nil {
-		return p
-	}
-
+func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange corev1.LimitRange) *corev1.Pod {
 	// The assumption here is that the min, max, default, ratio have already been
 	// computed if there is multiple LimitRange to satisfy the most (if we can).
 	// Count the number of step containers in the Pod.
@@ -114,15 +117,51 @@ func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange)
 	return p
 }
 
+// setInitContainerResources sets the resource requests of the pod's init containers to be the maximum resource
+// requests of any app container, and the resource limits of the pod's init containers to be the maximum resource
+// limits of any app container. The maximum limit is no limit.
+// These changes apply only if the "enable-init-container-resources" flag is set to "true".
+func setInitContainerResources(ctx context.Context, p *corev1.Pod) *corev1.Pod {
+	enableInitContainerResources := config.FromContextOrDefaults(ctx).FeatureFlags.EnableInitContainerResources
+	if !enableInitContainerResources {
+		return p
+	}
+	requests := getMaxContainerRequests(p)
+	limits := getMaxContainerLimits(p)
+	for i := range p.Spec.InitContainers {
+		if p.Spec.InitContainers[i].Resources.Requests == nil {
+			p.Spec.InitContainers[i].Resources.Requests = requests
+		} else {
+			for _, name := range resourceNames {
+				overrideRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Requests, requests)
+			}
+		}
+		if p.Spec.InitContainers[i].Resources.Limits == nil {
+			p.Spec.InitContainers[i].Resources.Limits = limits
+		} else {
+			for _, name := range resourceNames {
+				overrideRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Limits, limits)
+			}
+		}
+	}
+	return p
+}
+
 func setRequestsOrLimits(name corev1.ResourceName, dst, src corev1.ResourceList) {
 	if compare.IsZero(dst[name]) && !compare.IsZero(src[name]) {
 		dst[name] = src[name]
 	}
 }
 
+func overrideRequestsOrLimits(name corev1.ResourceName, dst, src corev1.ResourceList) {
+	if !compare.IsZero(src[name]) {
+		dst[name] = src[name]
+	}
+}
+
 // Returns the default requests to use for each step container, determined by dividing the LimitRange default requests
 // among the step containers, and applying the LimitRange minimum if necessary
-func getDefaultStepContainerRequest(limitRange *corev1.LimitRange, nbContainers int) corev1.ResourceList {
+func getDefaultStepContainerRequest(limitRange corev1.LimitRange, nbContainers int) corev1.ResourceList {
 	// Support only Type Container to start with
 	var r corev1.ResourceList = map[corev1.ResourceName]resource.Quantity{}
 	for _, item := range limitRange.Spec.Limits {
@@ -160,7 +199,7 @@ func getDefaultStepContainerRequest(limitRange *corev1.LimitRange, nbContainers 
 }
 
 // Returns the default requests to use for each init container, determined by the LimitRange default requests and minimums
-func getDefaultContainerRequest(limitRange *corev1.LimitRange) corev1.ResourceList {
+func getDefaultContainerRequest(limitRange corev1.LimitRange) corev1.ResourceList {
 	// Support only Type Container to start with
 	var r corev1.ResourceList
 	for _, item := range limitRange.Spec.Limits {
@@ -176,7 +215,7 @@ func getDefaultContainerRequest(limitRange *corev1.LimitRange) corev1.ResourceLi
 	return r
 }
 
-func getDefaultLimits(limitRange *corev1.LimitRange) corev1.ResourceList {
+func getDefaultLimits(limitRange corev1.LimitRange) corev1.ResourceList {
 	// Support only Type Container to start with
 	var l corev1.ResourceList
 	for _, item := range limitRange.Spec.Limits {
@@ -189,4 +228,58 @@ func getDefaultLimits(limitRange *corev1.LimitRange) corev1.ResourceList {
 		}
 	}
 	return l
+}
+
+// getMaxContainerRequests returns a map of resource name to the maximum quantity of that resource in any of
+// the pod's containers' resource requests.
+func getMaxContainerRequests(p *corev1.Pod) corev1.ResourceList {
+	var out corev1.ResourceList = map[corev1.ResourceName]resource.Quantity{}
+	for _, c := range p.Spec.Containers {
+		for name, quantity := range c.Resources.Requests {
+			max, ok := out[name]
+			if !ok {
+				out[name] = quantity
+			} else if quantity.Cmp(max) > 0 {
+				out[name] = quantity
+			}
+		}
+	}
+	return out
+}
+
+// getMaxContainerLimits returns a map of resource name to the maximum quantity of that resource in any of
+// the pod's containers' resource limits. The absence of limits is treated as the highest limit.
+func getMaxContainerLimits(p *corev1.Pod) corev1.ResourceList {
+	// Build map of resource name to all limits for that resource
+	allLimits := make(map[corev1.ResourceName][]resource.Quantity)
+	for _, name := range resourceNames {
+		allLimits[name] = make([]resource.Quantity, 0)
+	}
+	for _, c := range p.Spec.Containers {
+		for name, quantity := range c.Resources.Limits {
+			limits, ok := allLimits[name]
+			if !ok {
+				allLimits[name] = []resource.Quantity{quantity}
+			} else {
+				limits = append(limits, quantity)
+				allLimits[name] = limits
+			}
+		}
+	}
+
+	var out corev1.ResourceList = map[corev1.ResourceName]resource.Quantity{}
+	for name, limits := range allLimits {
+		if len(limits) < len(p.Spec.Containers) {
+			// Not all containers have resource limits; therefore, the maximum limit is no limit.
+			continue
+		}
+		max := resource.Quantity{}
+		for _, limit := range limits {
+			if limit.Cmp(max) > 0 {
+				max = limit
+			}
+		}
+		out[name] = max
+	}
+	return out
 }

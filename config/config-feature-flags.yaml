@@ -81,3 +81,10 @@ data:
   # Setting this flag to "true" enables CloudEvents for Runs, as long as a
   # CloudEvents sink is configured in the config-defaults config map
   send-cloudevents-for-runs: "false"
+  # Setting this flag to "true" enables setting compute resources
+  # of Tekton init containers based on the compute resource requirements
+  # of a TaskRun's pod's containers.
+  # This feature is experimental and may be removed.
+  # See https://github.com/tektoncd/pipeline/docs/compute-resources.md
+  # for more information.
+  enable-init-container-resources: "false"

@@ -16,14 +16,18 @@ limitations under the License.
 package computeresources
 
 import (
+	"context"
+	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/compare"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestTransformerOneContainer(t *testing.T) {
@@ -580,7 +584,7 @@ func TestTransformerOneContainer(t *testing.T) {
 				Spec: corev1.LimitRangeSpec{
 					Limits: tc.limitranges,
 				}}
-			got := transformPodBasedOnLimitRange(&pod, &limitRange)
+			got := transformPodComputeResources(context.Background(), &pod, &limitRange)
 			// We only care about the request and limit, ignoring the rest of the spec
 			cmpRequestsAndLimits(t, tc.want, got.Spec)
 		})
@@ -1153,49 +1157,762 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Spec: corev1.LimitRangeSpec{
 					Limits: tc.limitranges,
 				}}
-			got := transformPodBasedOnLimitRange(&pod, &limitRange)
+			got := transformPodComputeResources(context.Background(), &pod, &limitRange)
 			// We only care about the request and limit, ignoring the rest of the spec
 			cmpRequestsAndLimits(t, tc.want, got.Spec)
 		})
 	}
 }
 
+func TestTransformerInitContainerResources(t *testing.T) {
+	for _, tc := range []struct {
+		description string
+		podspec     corev1.PodSpec
+		wantInit    []corev1.Container
+	}{{
+		description: "no containers with resources",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+			}},
+		},
+		wantInit: []corev1.Container{{}},
+	}, {
+		description: "one container with requests",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(1),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: createResourceList(1),
+			},
+		}},
+	}, {
+		description: "one container with limits",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Limits: createResourceList(1),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Limits: createResourceList(1),
+			},
+		}},
+	}, {
+		description: "one container with requests and limits",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(1),
+					Limits:   createResourceList(3),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: createResourceList(1),
+				Limits:   createResourceList(3),
+			},
+		}},
+	}, {
+		description: "multiple containers with requests",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(1),
+				},
+			}, {
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(2),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: createResourceList(2),
+			},
+		}},
+	}, {
+		description: "multiple containers with limits",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Limits: createResourceList(1),
+				},
+			}, {
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Limits: createResourceList(2),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Limits: createResourceList(2),
+			},
+		}},
+	}, {
+		description: "container with requests and container with limits",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(1),
+				},
+			}, {
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Limits: createResourceList(2),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: createResourceList(1),
+			},
+		}},
+	}, {
+		description: "container with requests and container with limits lower than the requests",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(3),
+				},
+			}, {
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Limits: createResourceList(2),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: createResourceList(3),
+			},
+		}},
+	}, {
+		description: "multiple containers with requests and limits",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(1),
+					Limits:   createResourceList(5),
+				},
+			}, {
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(2),
+					Limits:   createResourceList(2),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: createResourceList(2),
+				Limits:   createResourceList(5),
+			},
+		}},
+	}, {
+		description: "multiple containers with requests and limits; multiple init containers",
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}, {
+				Name:  "baz",
+				Image: "qux",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(1),
+					Limits:   createResourceList(5),
+				},
+			}, {
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: createResourceList(2),
+					Limits:   createResourceList(2),
+				},
+			}},
+		},
+		wantInit: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Requests: createResourceList(2),
+				Limits:   createResourceList(5),
+			},
+		}, {
+			Resources: corev1.ResourceRequirements{
+				Requests: createResourceList(2),
+				Limits:   createResourceList(5),
+			},
+		}},
+	}} {
+		t.Run(tc.description, func(t *testing.T) {
+			pod := corev1.Pod{Spec: tc.podspec}
+			withConfig := enableInitContainerResources(t)
+			ctx := withConfig(context.Background())
+			got := transformPodComputeResources(ctx, &pod, nil)
+			cmpContainers(t, tc.wantInit, got.Spec.InitContainers, true)
+		})
+	}
+}
+
+func TestTransformerInitContainerResourcesWithLimitRange(t *testing.T) {
+	limitRange1 := corev1.LimitRange{
+		Spec: corev1.LimitRangeSpec{
+			Limits: []corev1.LimitRangeItem{{
+				Type:           corev1.LimitTypeContainer,
+				Max:            createResourceList(8),
+				Min:            createResourceList(2),
+				Default:        createResourceList(6),
+				DefaultRequest: createResourceList(4),
+			}},
+		},
+	}
+	for _, tc := range []struct {
+		description string
+		podspec     corev1.PodSpec
+		limitRange  corev1.LimitRange
+		want        corev1.PodSpec
+	}{ /*{
+			description: "multiple step containers without resources",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+				}, {
+					Name:  "step-bar",
+					Image: "baz",
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(4),
+						Limits:   createResourceList(6),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(2),
+						Limits:   createResourceList(6),
+					},
+				}, {
+					Name: "step-bar",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(2),
+						Limits:   createResourceList(6),
+					},
+				}},
+			},
+		}, {
+			description: "step and sidecar containers without resources",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+				}, {
+					Name:  "step-bar",
+					Image: "baz",
+				}, {
+					Name:  "sidecar",
+					Image: "baz",
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(4),
+						Limits:   createResourceList(6),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(2),
+						Limits:   createResourceList(6),
+					},
+				}, {
+					Name: "step-bar",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(2),
+						Limits:   createResourceList(6),
+					},
+				}, {
+					Name: "sidecar",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(4),
+						Limits:   createResourceList(6),
+					},
+				}},
+			},
+		}, {
+			description: "step container with requests higher than limitRange requests",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(6),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(6),
+					},
+				}},
+			},
+		}, */{
+			description: "step container with requests lower than limitRange requests",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(3),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(3),
+						Limits:   createResourceList(6),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(3),
+						Limits:   createResourceList(6),
+					},
+				}},
+			},
+		}, {
+			description: "step container with limits higher than limitRange default limits",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Limits: createResourceList(7),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(4),
+						Limits:   createResourceList(7),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(4),
+						Limits:   createResourceList(7),
+					},
+				}},
+			},
+		}, /* {
+			description: "step container with limits higher than limitRange max limits",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Limits: createResourceList(10),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(4),
+						Limits:   createResourceList(8),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(4),
+						Limits:   createResourceList(8),
+					},
+				}},
+			},
+		}, {
+			description: "step container with limits lower than limitRange default requests",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Limits: createResourceList(3),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(3),
+						Limits:   createResourceList(3),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(3),
+						Limits:   createResourceList(3),
+					},
+				}},
+			},
+		}, {
+			description: "step container with limits lower than limitRange min requests",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Limits: createResourceList(1),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(2),
+						Limits:   createResourceList(2),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(2),
+						Limits:   createResourceList(2),
+					},
+				}},
+			},
+		}, {
+			description: "step container with requests higher than limitRange default limits",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(7),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(7),
+						Limits:   createResourceList(7),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(7),
+						Limits:   createResourceList(7),
+					},
+				}},
+			},
+		}, {
+			description: "step container with requests higher than limitRange max limits",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(10),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(8),
+						Limits:   createResourceList(8),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(8),
+						Limits:   createResourceList(8),
+					},
+				}},
+			},
+		}, {
+			description: "step container with requests and limits",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(7),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(7),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(7),
+					},
+				}},
+			},
+		}, {
+			description: "multiple init containers, step container with requests and limits",
+			podspec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name:  "bar",
+					Image: "foo",
+				}, {
+					Name:  "baz",
+					Image: "qux",
+				}},
+				Containers: []corev1.Container{{
+					Name:  "step-foo",
+					Image: "baz",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(7),
+					},
+				}},
+			},
+			limitRange: limitRange1,
+			want: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(7),
+					},
+				}, {
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(7),
+					},
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-foo",
+					Resources: corev1.ResourceRequirements{
+						Requests: createResourceList(5),
+						Limits:   createResourceList(7),
+					},
+				}},
+			},
+		} */} {
+		t.Run(tc.description, func(t *testing.T) {
+			pod := corev1.Pod{Spec: tc.podspec}
+			withConfig := enableInitContainerResources(t)
+			ctx := withConfig(context.Background())
+			got := transformPodComputeResources(ctx, &pod, &tc.limitRange)
+			cmpRequestsAndLimits(t, tc.want, got.Spec)
+		})
+	}
+}
+
 func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
+	t.Helper()
 	// diff init containers
 	if len(want.InitContainers) != len(got.InitContainers) {
 		t.Errorf("Expected %d init containers, got %d", len(want.InitContainers), len(got.InitContainers))
 	} else {
-		for i, c := range got.InitContainers {
-
-			// compare name only if present in "want" so we can be sure which container gets which resources
-			if want.InitContainers[i].Name != "" {
-				if d := cmp.Diff(want.InitContainers[i].Name, c.Name); d != "" {
-					t.Errorf("Diff initcontainers[%d] %s", i, diff.PrintWantGot(d))
-				}
-			}
-
-			if d := cmp.Diff(want.InitContainers[i].Resources, c.Resources, compare.ResourceQuantityCmp); d != "" {
-				t.Errorf("Diff initcontainers[%d] %s", i, diff.PrintWantGot(d))
-			}
-		}
+		cmpContainers(t, want.InitContainers, got.InitContainers, true)
 	}
 
 	// diff containers
 	if len(want.Containers) != len(got.Containers) {
 		t.Errorf("Expected %d containers, got %d", len(want.Containers), len(got.Containers))
 	} else {
-		for i, c := range got.Containers {
+		cmpContainers(t, want.Containers, got.Containers, false)
+	}
+}
 
-			// compare name only if present in "want" so we can be sure which container gets which resources
-			if want.Containers[i].Name != "" {
-				if d := cmp.Diff(want.Containers[i].Name, c.Name); d != "" {
-					t.Errorf("Diff containers[%d] %s", i, diff.PrintWantGot(d))
-				}
-			}
-
-			if d := cmp.Diff(want.Containers[i].Resources, c.Resources, compare.ResourceQuantityCmp); d != "" {
-				t.Errorf("Diff containers[%d] %s", i, diff.PrintWantGot(d))
+func cmpContainers(t *testing.T, want, got []corev1.Container, init bool) {
+	t.Helper()
+	err := "Diff containers[%d] %s"
+	if init {
+		err = "Diff init containers[%d] %s"
+	}
+	for i, c := range got {
+		// compare name only if present in "want" so we can be sure which container gets which resources
+		if want[i].Name != "" {
+			if d := cmp.Diff(want[i].Name, c.Name); d != "" {
+				t.Errorf(err, i, diff.PrintWantGot(d))
 			}
 		}
+		if d := cmp.Diff(want[i].Resources, c.Resources, compare.ResourceQuantityCmp, compare.EquateEmptyResourceList()); d != "" {
+			t.Errorf(err, i, diff.PrintWantGot(d))
+		}
+	}
+}
+
+func enableInitContainerResources(t *testing.T) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		s := config.NewStore(logtesting.TestLogger(t))
+		s.OnConfigChanged(&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-init-container-resources": "true",
+			},
+		})
+		return s.ToContext(ctx)
+	}
+}
+
+// TODO: put somewhere more useful
+func createResourceList(multiple int) corev1.ResourceList {
+	cpuStr := strconv.Itoa(multiple*100) + "m"
+	memStr := strconv.Itoa(multiple*10) + "Mi"
+	ephemeralStr := strconv.Itoa(multiple*100) + "Mi"
+	return corev1.ResourceList{
+		corev1.ResourceCPU:              resource.MustParse(cpuStr),
+		corev1.ResourceMemory:           resource.MustParse(memStr),
+		corev1.ResourceEphemeralStorage: resource.MustParse(ephemeralStr),
 	}
 }
