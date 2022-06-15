@@ -105,8 +105,8 @@ func TestKanikoTaskRun(t *testing.T) {
 		case "url":
 			url = rr.Value
 		}
-		// Every resource should have a ref with a name
-		if rr.ResourceRef.Name == "" {
+		// Every resource should have a resource name
+		if rr.ResourceName == "" {
 			t.Errorf("Resource ref not set for %v in TaskRun: %v", rr, tr)
 		}
 	}

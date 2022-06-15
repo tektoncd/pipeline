@@ -240,8 +240,7 @@ For an example of what this output looks like:
 resourcesResult:
   - key: digest
     value: sha256:a08412a4164b85ae521b0c00cf328e3aab30ba94a526821367534b81e51cb1cb
-    resourceRef:
-      name: skaffold-image-leeroy-web
+    resourceName: skaffold-image-leeroy-web
 ```
 
 ### Description
@@ -380,8 +379,7 @@ When used as an input, the Git resource includes the exact commit fetched in the
 resourceResults:
   - key: commit
     value: 6ed7aad5e8a36052ee5f6079fc91368e362121f7
-    resourceRef:
-      name: skaffold-git
+    resourceName: skaffold-git
 ```
 
 #### Using a fork
@@ -663,8 +661,7 @@ status:
     resourcesResult:
       - key: "digest"
         value: "sha256:eed29cd0b6feeb1a92bc3c4f977fd203c63b376a638731c88cacefe3adb1c660"
-        resourceRef:
-          name: skaffold-image-leeroy-web
+        resourceName: skaffold-image-leeroy-web
     # ...
 ```
 

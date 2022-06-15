@@ -1228,12 +1228,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref common.Referenc
 							Format: "",
 						},
 					},
-					"resourceRef": {
-						SchemaProps: spec.SchemaProps{
-							Description: "The field ResourceRef should be deprecated and removed in the next API version. See https://github.com/tektoncd/pipeline/issues/2694 for more information.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef"),
-						},
-					},
 					"type": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"integer"},
@@ -1244,8 +1238,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref common.Referenc
 				Required: []string{"key", "value"},
 			},
 		},
-		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef"},
 	}
 }
 
