@@ -56,12 +56,12 @@ func (e *TaskNotFoundError) Error() string {
 	return fmt.Sprintf("Couldn't retrieve Task %q: %s", e.Name, e.Msg)
 }
 
-// ResolvedPipelineRunTask contains a Task and its associated TaskRun, if it
-// exists. TaskRun can be nil to represent there being no TaskRun.
+// ResolvedPipelineRunTask contains a PipelineTask and its associated TaskRun(s) or Runs, if they exist.
 type ResolvedPipelineRunTask struct {
-	TaskRunName string
-	TaskRun     *v1beta1.TaskRun
-	TaskRuns    []*v1beta1.TaskRun
+	TaskRunName  string
+	TaskRun      *v1beta1.TaskRun
+	TaskRunNames []string
+	TaskRuns     []*v1beta1.TaskRun
 	// If the PipelineTask is a Custom Task, RunName and Run will be set.
 	CustomTask            bool
 	RunName               string
@@ -504,14 +504,22 @@ func ResolvePipelineRunTask(
 		PipelineTask: &pipelineTask,
 	}
 	rprt.CustomTask = isCustomTask(ctx, rprt)
-	if rprt.IsCustomTask() {
+	switch {
+	case rprt.IsCustomTask():
 		rprt.RunName = getRunName(pipelineRun.Status.Runs, pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
 		run, err := getRun(rprt.RunName)
 		if err != nil && !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("error retrieving Run %s: %w", rprt.RunName, err)
 		}
 		rprt.Run = run
-	} else {
+	case rprt.IsMatrixed():
+		rprt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.TaskRuns, pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.GetMatrixCombinationsCount())
+		for _, taskRunName := range rprt.TaskRunNames {
+			if err := rprt.resolvePipelineRunTaskWithTaskRun(ctx, taskRunName, getTask, getTaskRun, pipelineTask, providedResources); err != nil {
+				return nil, err
+			}
+		}
+	default:
 		rprt.TaskRunName = GetTaskRunName(pipelineRun.Status.TaskRuns, pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
 		if err := rprt.resolvePipelineRunTaskWithTaskRun(ctx, rprt.TaskRunName, getTask, getTaskRun, pipelineTask, providedResources); err != nil {
 			return nil, err
@@ -535,10 +543,14 @@ func (t *ResolvedPipelineRunTask) resolvePipelineRunTaskWithTaskRun(
 		}
 	}
 	if taskRun != nil {
-		t.TaskRun = taskRun
+		if t.IsMatrixed() {
+			t.TaskRuns = append(t.TaskRuns, taskRun)
+		} else {
+			t.TaskRun = taskRun
+		}
 	}
 
-	if err := t.resolveTaskResources(ctx, getTask, pipelineTask, providedResources, t.TaskRun); err != nil {
+	if err := t.resolveTaskResources(ctx, getTask, pipelineTask, providedResources, taskRun); err != nil {
 		return err
 	}
 

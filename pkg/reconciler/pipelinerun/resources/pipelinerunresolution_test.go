@@ -1682,10 +1682,20 @@ func TestResolvePipelineRun_PipelineTaskHasNoResources(t *testing.T) {
 }
 
 func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
-	pt := v1beta1.PipelineTask{
+	pts := []v1beta1.PipelineTask{{
 		Name:    "mytask1",
 		TaskRef: &v1beta1.TaskRef{Name: "task"},
-	}
+	}, {
+		Name:    "mytask2",
+		TaskRef: &v1beta1.TaskRef{Name: "task"},
+		Matrix: []v1beta1.Param{{
+			Name:  "foo",
+			Value: *v1beta1.NewArrayOrString("f", "o", "o"),
+		}, {
+			Name:  "bar",
+			Value: *v1beta1.NewArrayOrString("b", "a", "r"),
+		}},
+	}}
 	providedResources := map[string]*resourcev1alpha1.PipelineResource{}
 
 	// Return an error when the Task is retrieved, as if it didn't exist
@@ -1700,14 +1710,16 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 			Name: "pipelinerun",
 		},
 	}
-	_, err := ResolvePipelineRunTask(context.Background(), pr, getTask, getTaskRun, nopGetRun, pt, providedResources)
-	switch err := err.(type) {
-	case nil:
-		t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
-	case *TaskNotFoundError:
-		// expected error
-	default:
-		t.Fatalf("Expected specific error type returned by func for non-existent Task for Pipeline %s but got %s", p.Name, err)
+	for _, pt := range pts {
+		_, err := ResolvePipelineRunTask(context.Background(), pr, getTask, getTaskRun, nopGetRun, pt, providedResources)
+		switch err := err.(type) {
+		case nil:
+			t.Fatalf("Expected error getting non-existent Tasks for Pipeline %s but got none", p.Name)
+		case *TaskNotFoundError:
+			// expected error
+		default:
+			t.Fatalf("Expected specific error type returned by func for non-existent Task for Pipeline %s but got %s", p.Name, err)
+		}
 	}
 }
 
@@ -2853,6 +2865,111 @@ func TestIsMatrixed(t *testing.T) {
 			got := rprt.IsMatrixed()
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("IsMatrixed: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
+	pipelineRunName := "pipelinerun"
+	pipelineTaskName := "pipelinetask"
+
+	pr := v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: pipelineRunName,
+		},
+	}
+
+	var taskRuns []*v1beta1.TaskRun
+	var taskRunsNames []string
+	taskRunsMap := map[string]*v1beta1.TaskRun{}
+	for i := 0; i < 9; i++ {
+		trName := fmt.Sprintf("%s-%s-%d", pipelineRunName, pipelineTaskName, i)
+		tr := &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: trName,
+			},
+		}
+		taskRuns = append(taskRuns, tr)
+		taskRunsNames = append(taskRunsNames, trName)
+		taskRunsMap[trName] = tr
+	}
+
+	pts := []v1beta1.PipelineTask{{
+		Name: "pipelinetask",
+		TaskRef: &v1beta1.TaskRef{
+			Name: "my-task",
+		},
+		Matrix: []v1beta1.Param{{
+			Name:  "platform",
+			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+		}},
+	}, {
+		Name: "pipelinetask",
+		TaskRef: &v1beta1.TaskRef{
+			Name: "my-task",
+		},
+		Matrix: []v1beta1.Param{{
+			Name:  "platform",
+			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+		}, {
+			Name:  "browsers",
+			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
+		}},
+	}}
+
+	rtr := &resources.ResolvedTaskResources{
+		TaskName: "task",
+		TaskSpec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
+			Name: "step1",
+		}}},
+		Inputs:  map[string]*v1alpha1.PipelineResource{},
+		Outputs: map[string]*v1alpha1.PipelineResource{},
+	}
+
+	getTask := func(ctx context.Context, name string) (v1beta1.TaskObject, error) { return task, nil }
+	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return taskRunsMap[name], nil }
+	getRun := func(name string) (*v1alpha1.Run, error) { return &runs[0], nil }
+
+	for _, tc := range []struct {
+		name string
+		pt   v1beta1.PipelineTask
+		want *ResolvedPipelineRunTask
+	}{{
+		name: "task with matrix - single parameter",
+		pt:   pts[0],
+		want: &ResolvedPipelineRunTask{
+			TaskRunNames:          taskRunsNames[:3],
+			TaskRuns:              taskRuns[:3],
+			PipelineTask:          &pts[0],
+			ResolvedTaskResources: rtr,
+		},
+	}, {
+		name: "task with matrix - multiple parameters",
+		pt:   pts[1],
+		want: &ResolvedPipelineRunTask{
+			TaskRunNames:          taskRunsNames,
+			TaskRuns:              taskRuns,
+			PipelineTask:          &pts[1],
+			ResolvedTaskResources: rtr,
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			cfg := config.NewStore(logtesting.TestLogger(t))
+			cfg.OnConfigChanged(&corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+				Data: map[string]string{
+					"enable-api-fields": "alpha",
+				},
+			})
+			ctx = cfg.ToContext(ctx)
+			rprt, err := ResolvePipelineRunTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
+			if err != nil {
+				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
+			}
+			if d := cmp.Diff(tc.want, rprt); d != "" {
+				t.Errorf("Did not get expected ResolvePipelineRunTask with Matrix: %s", diff.PrintWantGot(d))
 			}
 		})
 	}

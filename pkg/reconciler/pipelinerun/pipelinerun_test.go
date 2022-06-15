@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -103,10 +104,11 @@ var (
 )
 
 const (
-	apiFieldsFeatureFlag      = "enable-api-fields"
-	customTasksFeatureFlag    = "enable-custom-tasks"
-	ociBundlesFeatureFlag     = "enable-tekton-oci-bundles"
-	embeddedStatusFeatureFlag = "embedded-status"
+	apiFieldsFeatureFlag           = "enable-api-fields"
+	customTasksFeatureFlag         = "enable-custom-tasks"
+	ociBundlesFeatureFlag          = "enable-tekton-oci-bundles"
+	embeddedStatusFeatureFlag      = "embedded-status"
+	maxMatrixCombinationsCountFlag = "default-max-matrix-combinations-count"
 )
 
 type PipelineRunTest struct {
@@ -1429,6 +1431,13 @@ func newFeatureFlagsConfigMap() *corev1.ConfigMap {
 	}
 }
 
+func newDefaultsConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+		Data:       make(map[string]string),
+	}
+}
+
 func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
 	newCM := cm.DeepCopy()
 	newCM.Data[apiFieldsFeatureFlag] = config.AlphaAPIFields
@@ -1450,6 +1459,12 @@ func withOCIBundles(cm *corev1.ConfigMap) *corev1.ConfigMap {
 func withEmbeddedStatus(cm *corev1.ConfigMap, flagVal string) *corev1.ConfigMap {
 	newCM := cm.DeepCopy()
 	newCM.Data[embeddedStatusFeatureFlag] = flagVal
+	return newCM
+}
+
+func withMaxMatrixCombinationsCount(cm *corev1.ConfigMap, count int) *corev1.ConfigMap {
+	newCM := cm.DeepCopy()
+	newCM.Data[maxMatrixCombinationsCountFlag] = strconv.Itoa(count)
 	return newCM
 }
 
@@ -7431,5 +7446,306 @@ spec:
 
 	if d := cmp.Diff(actual, expectedTaskRun, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see propagated metadata by the precedence from PipelineTaskRunSpec in TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+}
+
+func TestReconciler_PipelineTaskMatrix(t *testing.T) {
+	names.TestingSeed()
+
+	task := parse.MustParseTask(t, `
+metadata:
+  name: mytask
+  namespace: foo
+spec:
+  params:
+    - name: platform
+    - name: browser
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.platform) and $(params.browser)"
+`)
+
+	expectedTaskRuns := []*v1beta1.TaskRun{
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-0", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: linux
+  - name: browser
+    value: chrome
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: mac
+  - name: browser
+    value: chrome
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-2", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: windows
+  - name: browser
+    value: chrome
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-3", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: linux
+  - name: browser
+    value: safari
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-4", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: mac
+  - name: browser
+    value: safari
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-5", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: windows
+  - name: browser
+    value: safari
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-6", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: linux
+  - name: browser
+    value: firefox
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-7", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: mac
+  - name: browser
+    value: firefox
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-platforms-and-browsers-8", "foo",
+				"pr", "p", "platforms-and-browsers", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: windows
+  - name: browser
+    value: firefox
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+`),
+	}
+
+	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
+
+	tests := []struct {
+		name     string
+		memberOf string
+		p        *v1beta1.Pipeline
+		tr       *v1beta1.TaskRun
+	}{{
+		name:     "p-dag",
+		memberOf: "tasks",
+		p: parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  tasks:
+    - name: platforms-and-browsers
+      taskRef:
+        name: mytask
+      matrix:
+        - name: platform
+          value:
+            - linux
+            - mac
+            - windows
+        - name: browser
+          value:
+            - chrome
+            - safari
+            - firefox
+`, "p-dag")),
+	}, {
+		name:     "p-finally",
+		memberOf: "finally",
+		p: parse.MustParsePipeline(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  tasks:
+    - name: unmatrixed-pt
+      params:
+        - name: platform
+          value: linux
+        - name: browser
+          value: chrome
+      taskRef:
+        name: mytask
+  finally:
+    - name: platforms-and-browsers
+      taskRef:
+        name: mytask
+      matrix:
+        - name: platform
+          value:
+            - linux
+            - mac
+            - windows
+        - name: browser
+          value:
+            - chrome
+            - safari
+            - firefox
+`, "p-finally")),
+		tr: mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("pr-unmatrixed-pt", "foo",
+				"pr", "p-finally", "unmatrixed-pt", false),
+			`
+spec:
+  params:
+  - name: platform
+    value: linux
+  - name: browser
+    value: chrome
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: mytask
+  timeout: 1h0m0s
+status:
+ conditions:
+  - type: Succeeded
+    status: "True"
+    reason: Succeeded
+    message: All Tasks have completed executing
+`),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: pr
+  namespace: foo
+spec:
+  serviceAccountName: test-sa 
+  pipelineRef:
+    name: %s
+`, tt.name))
+			d := test.Data{
+				PipelineRuns: []*v1beta1.PipelineRun{pr},
+				Pipelines:    []*v1beta1.Pipeline{tt.p},
+				Tasks:        []*v1beta1.Task{task},
+				ConfigMaps:   cms,
+			}
+			if tt.tr != nil {
+				d.TaskRuns = []*v1beta1.TaskRun{tt.tr}
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
+			taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
+				LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=pr,tekton.dev/pipeline=%s,tekton.dev/pipelineTask=platforms-and-browsers", tt.name),
+				Limit:         1,
+			})
+			if err != nil {
+				t.Fatalf("Failure to list TaskRun's %s", err)
+			}
+
+			if len(taskRuns.Items) != 9 {
+				t.Fatalf("Expected 9 TaskRuns got %d", len(taskRuns.Items))
+			}
+
+			for i := range taskRuns.Items {
+				expectedTaskRun := expectedTaskRuns[i]
+				expectedTaskRun.Labels["tekton.dev/pipeline"] = tt.name
+				expectedTaskRun.Labels["tekton.dev/memberOf"] = tt.memberOf
+				if d := cmp.Diff(expectedTaskRun, &taskRuns.Items[i], ignoreResourceVersion, ignoreTypeMeta); d != "" {
+					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
+				}
+			}
+		})
 	}
 }

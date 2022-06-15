@@ -310,7 +310,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 }
 
 func (pt *PipelineTask) validateMatrixCombinationsCount(ctx context.Context) (errs *apis.FieldError) {
-	matrixCombinationsCount := pt.getMatrixCombinationsCount()
+	matrixCombinationsCount := pt.GetMatrixCombinationsCount()
 	maxMatrixCombinationsCount := config.FromContextOrDefaults(ctx).Defaults.DefaultMaxMatrixCombinationsCount
 	if matrixCombinationsCount > maxMatrixCombinationsCount {
 		errs = errs.Also(apis.ErrOutOfBoundsValue(matrixCombinationsCount, 0, maxMatrixCombinationsCount, "matrix"))
@@ -318,7 +318,8 @@ func (pt *PipelineTask) validateMatrixCombinationsCount(ctx context.Context) (er
 	return errs
 }
 
-func (pt *PipelineTask) getMatrixCombinationsCount() int {
+// GetMatrixCombinationsCount returns the count of combinations of Parameters generated from the Matrix in PipelineTask.
+func (pt *PipelineTask) GetMatrixCombinationsCount() int {
 	if len(pt.Matrix) == 0 {
 		return 0
 	}

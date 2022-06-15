@@ -1010,17 +1010,19 @@ Task Runs:
 
 The name of the `TaskRuns` and `Runs` owned by a `PipelineRun`  are univocally associated to the owning resource.
 If a `PipelineRun` resource is deleted and created with the same name, the child `TaskRuns` will be created with the
-same name as before. The base format of the name is `<pipelinerun-name>-<pipelinetask-name>`. The name may vary
-according the logic of [`kmeta.ChildName`](https://pkg.go.dev/github.com/knative/pkg/kmeta#ChildName).
+same name as before. The base format of the name is `<pipelinerun-name>-<pipelinetask-name>`. If the `PipelineTask`
+has a `Matrix`, the name will have an int suffix with format `<pipelinerun-name>-<pipelinetask-name>-<combination-id>`.
+The name may vary according the logic of [`kmeta.ChildName`](https://pkg.go.dev/github.com/knative/pkg/kmeta#ChildName).
 
 Some examples:
 
-| `PipelineRun` Name       | `PipelineTask` Name          | `TaskRun` Name     |
-|--------------------------|------------------------------|--------------------|
-| pipeline-run             | task1                        | pipeline-run-task1 |
-| pipeline-run             | task2-0123456789-0123456789-0123456789-0123456789-0123456789 | pipeline-runee4a397d6eab67777d4e6f9991cd19e6-task2-0123456789-0 |
-| pipeline-run-0123456789-0123456789-0123456789-0123456789 | task3 | pipeline-run-0123456789-0123456789-0123456789-0123456789-task3 |
-| pipeline-run-0123456789-0123456789-0123456789-0123456789 | task2-0123456789-0123456789-0123456789-0123456789-0123456789 | pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b5c |
+| `PipelineRun` Name                                       | `PipelineTask` Name                                          | `TaskRun` Names                                                                        |
+|----------------------------------------------------------|--------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| pipeline-run                                             | task1                                                        | pipeline-run-task1                                                                     |
+| pipeline-run                                             | task2-0123456789-0123456789-0123456789-0123456789-0123456789 | pipeline-runee4a397d6eab67777d4e6f9991cd19e6-task2-0123456789-0                        |
+| pipeline-run-0123456789-0123456789-0123456789-0123456789 | task3                                                        | pipeline-run-0123456789-0123456789-0123456789-0123456789-task3                         |
+| pipeline-run-0123456789-0123456789-0123456789-0123456789 | task2-0123456789-0123456789-0123456789-0123456789-0123456789 | pipeline-run-0123456789-012345607ad8c7aac5873cdfabe472a68996b5c                        |
+| pipeline-run                                             | task4 (with 2x2 `Matrix`)                                    | pipeline-run-task1-0, pipeline-run-task1-2, pipeline-run-task1-3, pipeline-run-task1-4 |
 
 ## Cancelling a `PipelineRun`
 

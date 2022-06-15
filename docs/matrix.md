@@ -15,6 +15,8 @@ weight: 11
   - [Results](#results)
     - [Specifying Results in a Matrix](#specifying-results-in-a-matrix)
     - [Results from fanned out PipelineTasks](#results-from-fanned-out-pipelinetasks)
+- [Fan Out](#fan-out)
+  - [`PipelineTasks` with `Tasks`](#pipelinetasks-with-tasks)
 
 ## Overview
 
@@ -134,3 +136,73 @@ Consuming `Results` from previous `TaskRuns` or `Runs` in a `Matrix`, which woul
 Consuming `Results` from fanned out `PipelineTasks` will not be in the supported in the initial iteration
 of `Matrix`. Supporting consuming `Results` from fanned out `PipelineTasks` will be revisited after array
 and object `Results` are supported. 
+
+## Fan Out
+
+### `PipelineTasks` with `Tasks`
+
+When a `PipelineTask` has a `Task` and a `Matrix`, the `Task` will be executed in parallel `TaskRuns` with
+substitutions from combinations of `Parameters`.
+
+In the example below, nine `TaskRuns` are created with combinations of platforms ("linux", "mac", "windows")
+and browsers ("chrome", "safari", "firefox").
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: platform-browsers
+  annotations:
+    description: |
+      A task that does something cool with platforms and browsers
+spec:
+  params:
+    - name: platform
+    - name: browser
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.platform) and $(params.browser)"
+---
+# run platform-browsers task with:
+#   platforms: linux, mac, windows
+#   browsers: chrome, safari, firefox
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+spec:
+  serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+      - name: platforms-and-browsers
+        matrix:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
+        taskRef:
+          name: platform-browsers
+```
+
+```shell
+$ tkn taskruns list
+
+NAME                                         STARTED        DURATION     STATUS
+matrixed-pr-6lvzk-platforms-and-browsers-8   11 seconds ago   7 seconds    Succeeded
+matrixed-pr-6lvzk-platforms-and-browsers-6   12 seconds ago   7 seconds    Succeeded
+matrixed-pr-6lvzk-platforms-and-browsers-7   12 seconds ago   9 seconds    Succeeded
+matrixed-pr-6lvzk-platforms-and-browsers-4   12 seconds ago   7 seconds    Succeeded
+matrixed-pr-6lvzk-platforms-and-browsers-5   12 seconds ago   6 seconds    Succeeded
+matrixed-pr-6lvzk-platforms-and-browsers-3   13 seconds ago   7 seconds    Succeeded
+matrixed-pr-6lvzk-platforms-and-browsers-1   13 seconds ago   8 seconds    Succeeded
+matrixed-pr-6lvzk-platforms-and-browsers-2   13 seconds ago   8 seconds    Succeeded
+matrixed-pr-6lvzk-platforms-and-browsers-0   13 seconds ago   8 seconds    Succeeded
+```
