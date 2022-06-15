@@ -791,7 +791,7 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 	}
 }
 
-func TestPipelineTask_getMatrixCombinationsCount(t *testing.T) {
+func TestPipelineTask_GetMatrixCombinationsCount(t *testing.T) {
 	tests := []struct {
 		name                    string
 		pt                      *PipelineTask
@@ -860,8 +860,8 @@ func TestPipelineTask_getMatrixCombinationsCount(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if d := cmp.Diff(tt.matrixCombinationsCount, tt.pt.getMatrixCombinationsCount()); d != "" {
-				t.Errorf("PipelineTask.getMatrixCombinationsCount() errors diff %s", diff.PrintWantGot(d))
+			if d := cmp.Diff(tt.matrixCombinationsCount, tt.pt.GetMatrixCombinationsCount()); d != "" {
+				t.Errorf("PipelineTask.GetMatrixCombinationsCount() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
