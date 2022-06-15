@@ -100,11 +100,24 @@ func (t ResolvedPipelineRunTask) IsMatrixed() bool {
 }
 
 // isSuccessful returns true only if the run has completed successfully
+// If the PipelineTask has a Matrix, isSuccessful returns true if all runs have completed successfully
 func (t ResolvedPipelineRunTask) isSuccessful() bool {
-	if t.IsCustomTask() {
-		return t.Run != nil && t.Run.IsSuccessful()
+	switch {
+	case t.IsCustomTask():
+		return t.Run.IsSuccessful()
+	case t.IsMatrixed():
+		if len(t.TaskRuns) == 0 {
+			return false
+		}
+		for _, taskRun := range t.TaskRuns {
+			if !taskRun.IsSuccessful() {
+				return false
+			}
+		}
+		return true
+	default:
+		return t.TaskRun.IsSuccessful()
 	}
-	return t.TaskRun != nil && t.TaskRun.IsSuccessful()
 }
 
 // isFailure returns true only if the run has failed and will not be retried.

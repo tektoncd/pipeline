@@ -414,7 +414,7 @@ func (tr *TaskRun) HasStarted() bool {
 
 // IsSuccessful returns true if the TaskRun's status indicates that it is done.
 func (tr *TaskRun) IsSuccessful() bool {
-	return tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+	return tr != nil && tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 }
 
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state

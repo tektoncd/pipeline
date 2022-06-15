@@ -201,7 +201,7 @@ func (r *Run) HasStarted() bool {
 
 // IsSuccessful returns true if the Run's status indicates that it is done.
 func (r *Run) IsSuccessful() bool {
-	return r.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+	return r != nil && r.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 }
 
 // GetRunKey return the run's key for timeout handler map
