@@ -2828,9 +2828,9 @@ spec:
   pipelineRef:
     name: test-pipeline
   serviceAccountName: test-sa-0
-  serviceAccountNames:
-  - serviceAccountName: test-sa-1
-    taskName: hello-world-1
+  taskRunSpecs:
+  - taskServiceAccountName: test-sa-1
+    pipelineTaskName: hello-world-1
 `)}
 	ts := []*v1beta1.Task{parse.MustParseTask(t, `
 metadata:
@@ -2913,9 +2913,9 @@ spec:
   pipelineRef:
     name: test-pipeline
   serviceAccountName: test-sa-0
-  serviceAccountNames:
-  - serviceAccountName: test-sa-1
-    taskName: hello-world-1
+  taskRunSpecs:
+  - taskServiceAccountName: test-sa-1
+    pipelineTaskName: hello-world-1
 `)}
 
 	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}

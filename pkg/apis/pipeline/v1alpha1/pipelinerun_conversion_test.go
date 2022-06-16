@@ -61,11 +61,7 @@ func TestPipelineRunConversion(t *testing.T) {
 					Name: "pipeline",
 				},
 				ServiceAccountName: "sa",
-				ServiceAccountNames: []PipelineRunSpecServiceAccountName{{
-					TaskName:           "t1",
-					ServiceAccountName: "sa1",
-				}},
-				Timeout: &metav1.Duration{Duration: 1 * time.Minute},
+				Timeout:            &metav1.Duration{Duration: 1 * time.Minute},
 				PodTemplate: &PodTemplate{
 					NodeSelector: map[string]string{"foo": "bar"},
 				},
@@ -121,11 +117,7 @@ func TestPipelineRunConversion(t *testing.T) {
 					}},
 				},
 				ServiceAccountName: "sa",
-				ServiceAccountNames: []PipelineRunSpecServiceAccountName{{
-					TaskName:           "t1",
-					ServiceAccountName: "sa1",
-				}},
-				Timeout: &metav1.Duration{Duration: 1 * time.Minute},
+				Timeout:            &metav1.Duration{Duration: 1 * time.Minute},
 				PodTemplate: &PodTemplate{
 					NodeSelector: map[string]string{"foo": "bar"},
 				},

@@ -75,7 +75,7 @@ const (
 	// ReasonInvalidWorkspaceBinding indicates that a Pipeline expects a workspace but a
 	// PipelineRun has provided an invalid binding.
 	ReasonInvalidWorkspaceBinding = "InvalidWorkspaceBindings"
-	// ReasonInvalidServiceAccountMapping indicates that PipelineRun.Spec.ServiceAccountNames defined with a wrong taskName
+	// ReasonInvalidServiceAccountMapping indicates that PipelineRun.Spec.TaskRunSpecs[].TaskServiceAccountName is defined with a wrong taskName
 	ReasonInvalidServiceAccountMapping = "InvalidServiceAccountMappings"
 	// ReasonParameterTypeMismatch indicates that the reason for the failure status is that
 	// parameter(s) declared in the PipelineRun do not have the some declared type as the
@@ -443,15 +443,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		pr.Status.MarkFailed(ReasonInvalidWorkspaceBinding,
 			"PipelineRun %s/%s doesn't bind Pipeline %s/%s's Workspaces correctly: %s",
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
-		return controller.NewPermanentError(err)
-	}
-
-	// Ensure that the ServiceAccountNames defined are correct.
-	// This is "deprecated".
-	if err := resources.ValidateServiceaccountMapping(pipelineSpec, pr); err != nil {
-		pr.Status.MarkFailed(ReasonInvalidServiceAccountMapping,
-			"PipelineRun %s/%s doesn't define ServiceAccountNames correctly: %s",
-			pr.Namespace, pr.Name, err)
 		return controller.NewPermanentError(err)
 	}
 

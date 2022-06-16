@@ -350,61 +350,6 @@ func TestPipelineRunTimeouts(t *testing.T) {
 	}
 }
 
-func TestPipelineRunGetServiceAccountName(t *testing.T) {
-	for _, tt := range []struct {
-		name    string
-		pr      *v1beta1.PipelineRun
-		saNames map[string]string
-	}{
-		{
-			name: "default SA",
-			pr: &v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
-					ServiceAccountName: "defaultSA",
-					ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{
-						TaskName: "taskName", ServiceAccountName: "taskSA",
-					}},
-				},
-			},
-			saNames: map[string]string{
-				"unknown":  "defaultSA",
-				"taskName": "taskSA",
-			},
-		},
-		{
-			name: "mixed default SA",
-			pr: &v1beta1.PipelineRun{
-				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
-				Spec: v1beta1.PipelineRunSpec{
-					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
-					ServiceAccountName: "defaultSA",
-					ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{
-						TaskName: "task1", ServiceAccountName: "task1SA",
-					}, {
-						TaskName: "task2", ServiceAccountName: "task2SA",
-					}},
-				},
-			},
-			saNames: map[string]string{
-				"unknown": "defaultSA",
-				"task1":   "task1SA",
-				"task2":   "task2SA",
-			},
-		},
-	} {
-		for taskName, expected := range tt.saNames {
-			t.Run(tt.name, func(t *testing.T) {
-				sa := tt.pr.GetServiceAccountName(taskName)
-				if expected != sa {
-					t.Errorf("wrong service account: got: %v, want: %v", sa, expected)
-				}
-			})
-		}
-	}
-}
-
 func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
@@ -418,9 +363,6 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 				Spec: v1beta1.PipelineRunSpec{
 					PipelineRef:        &v1beta1.PipelineRef{Name: "prs"},
 					ServiceAccountName: "defaultSA",
-					ServiceAccountNames: []v1beta1.PipelineRunSpecServiceAccountName{{
-						TaskName: "taskName", ServiceAccountName: "taskSA",
-					}},
 					TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{{
 						PipelineTaskName:       "taskName",
 						TaskServiceAccountName: "newTaskSA",

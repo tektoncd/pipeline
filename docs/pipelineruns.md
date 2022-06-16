@@ -71,8 +71,6 @@ A `PipelineRun` definition supports the following fields:
   - [`params`](#specifying-parameters) - Specifies the desired execution parameters for the `Pipeline`.
   - [`serviceAccountName`](#specifying-custom-serviceaccount-credentials) - Specifies a `ServiceAccount`
     object that supplies specific execution credentials for the `Pipeline`.
-  - [`serviceAccountNames`](#mapping-serviceaccount-credentials-to-tasks) - Maps specific `serviceAccountName` values
-    to `Tasks` in the `Pipeline`. This overrides the credentials set for the entire `Pipeline`.
   - [`status`](#cancelling-a-pipelinerun) - Specifies options for cancelling a `PipelineRun`. 
   - [`taskRunSpecs`](#specifying-taskrunspecs) - Specifies a list of `PipelineRunTaskSpec` which allows for setting `ServiceAccountName`, [`Pod` template](./podtemplates.md), and `Metadata` for each task. This overrides the `Pod` template set for the entire `Pipeline`.
   - [`timeout`](#configuring-a-failure-timeout) - Specifies the timeout before the `PipelineRun` fails. `timeout` is deprecated and will eventually be removed, so consider using `timeouts` instead.
@@ -645,7 +643,7 @@ Consult the documentation of the custom task that you are using to determine whe
 
 ### Mapping `ServiceAccount` credentials to `Tasks`
 
-If you require more granularity in specifying execution credentials, use the `serviceAccountNames` field to
+If you require more granularity in specifying execution credentials, use the `taskRunSpecs[].taskServiceAccountName` field to
 map a specific `serviceAccountName` value to a specific `Task` in the `Pipeline`. This overrides the global
 `serviceAccountName` you may have set for the `Pipeline` as described in the previous section.
 
@@ -654,9 +652,9 @@ For example, if you specify these mappings:
 ```yaml
 spec:
   serviceAccountName: sa-1
-  serviceAccountNames:
-    - taskName: build-task
-      serviceAccountName: sa-for-build
+  taskRunSpecs:
+    - pipelineTaskName: build-task
+      taskServiceAccountName: sa-for-build
 ```
 
 for this `Pipeline`:

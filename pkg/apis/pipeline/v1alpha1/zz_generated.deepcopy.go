@@ -314,11 +314,6 @@ func (in *PipelineRunSpec) DeepCopyInto(out *PipelineRunSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.ServiceAccountNames != nil {
-		in, out := &in.ServiceAccountNames, &out.ServiceAccountNames
-		*out = make([]v1beta1.PipelineRunSpecServiceAccountName, len(*in))
-		copy(*out, *in)
-	}
 	if in.Timeout != nil {
 		in, out := &in.Timeout, &out.Timeout
 		*out = new(v1.Duration)
