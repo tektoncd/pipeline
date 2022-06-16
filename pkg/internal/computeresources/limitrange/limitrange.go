@@ -23,7 +23,18 @@ import (
 	corev1listers "k8s.io/client-go/listers/core/v1"
 )
 
-func getVirtualLimitRange(namespace string, lister corev1listers.LimitRangeLister) (*corev1.LimitRange, error) {
+// GetVirtualLimitRange returns a pointer to a single LimitRange representing the most restrictive
+// requirements of all LimitRanges present in the namespace, or a nil pointer if there are no LimitRanges.
+// This LimitRange meets the following constraints:
+// - Its max is the smallest max of all the LimitRanges
+// - Its min is the largest min of all the LimitRanges
+// - Its maxLimitRequestRatio is the smallest maxLimitRequestRatio of all the LimitRanges
+// - Its default is the smallest default of any of the LimitRanges that fits within the minimum and maximum
+// - Its defaultRequest is the smallest defaultRequest of any of the LimitRanges that fits within the minimum and maximum
+//
+// This function isn't guaranteed to return a LimitRange with consistent constraints.
+// For example, the minimum could be greater than the maximum.
+func GetVirtualLimitRange(namespace string, lister corev1listers.LimitRangeLister) (*corev1.LimitRange, error) {
 	limitRanges, err := lister.LimitRanges(namespace).List(labels.Everything())
 	if err != nil {
 		return nil, err
@@ -38,12 +49,6 @@ func getVirtualLimitRange(namespace string, lister corev1listers.LimitRangeListe
 		limitRange = limitRanges[0]
 	default:
 		// Several LimitRange defined
-		// Create a virtual LimitRange with
-		// - Maximum of min values
-		// - Minimum of max values
-		// - Default that "fits" into min/max taken above
-		// - Default request that "fits" into min/max taken above
-		// - Smallest ratio (aka the most restrictive one)
 		limitRange = &corev1.LimitRange{}
 		m := map[corev1.LimitType]corev1.LimitRangeItem{}
 		for _, lr := range limitRanges {
@@ -93,6 +98,11 @@ func getVirtualLimitRange(namespace string, lister corev1listers.LimitRangeListe
 	return limitRange, nil
 }
 
+// IsZero returns true if the resource quantity has a zero value
+func IsZero(q resource.Quantity) bool {
+	return (&q).IsZero()
+}
+
 func maxOf(a, b resource.Quantity) resource.Quantity {
 	if (&a).Cmp(b) > 0 {
 		return a
@@ -101,14 +111,14 @@ func maxOf(a, b resource.Quantity) resource.Quantity {
 }
 
 func minOf(a, b resource.Quantity) resource.Quantity {
-	if isZero(a) || (&a).Cmp(b) > 0 {
+	if IsZero(a) || (&a).Cmp(b) > 0 {
 		return b
 	}
 	return a
 }
 
 func minOfBetween(a, b, min, max resource.Quantity) resource.Quantity {
-	if isZero(a) || (&a).Cmp(b) > 0 {
+	if IsZero(a) || (&a).Cmp(b) > 0 {
 		return b
 	}
 	return a

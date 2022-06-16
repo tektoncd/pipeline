@@ -36,7 +36,7 @@ import (
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
-	"github.com/tektoncd/pipeline/pkg/internal/limitrange"
+	"github.com/tektoncd/pipeline/pkg/internal/computeresources"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
@@ -707,7 +707,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 		EntrypointCache: c.entrypointCache,
 	}
 	pod, err := podbuilder.Build(ctx, tr, *ts,
-		limitrange.NewTransformer(ctx, tr.Namespace, c.limitrangeLister),
+		computeresources.NewTransformer(ctx, tr.Namespace, c.limitrangeLister),
 		affinityassistant.NewTransformer(ctx, tr.Annotations),
 	)
 	if err != nil {
