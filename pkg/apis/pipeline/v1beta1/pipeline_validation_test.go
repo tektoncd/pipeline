@@ -1149,7 +1149,7 @@ func TestValidatePipelineResults_Success(t *testing.T) {
 		Description: "this is my pipeline result",
 		Value:       *NewArrayOrString("$(tasks.a-task.results.gitrepo.commit)"),
 	}}
-	if err := validatePipelineResults(results); err != nil {
+	if err := validatePipelineResults(results, []PipelineTask{{Name: "a-task"}}); err != nil {
 		t.Errorf("Pipeline.validatePipelineResults() returned error for valid pipeline: %s: %v", desc, err)
 	}
 }
@@ -1166,10 +1166,8 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 			Description: "this is my pipeline result",
 			Value:       *NewArrayOrString("$(tasks.a-task.results.output.key1.extra)"),
 		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: expected all of the expressions [tasks.a-task.results.output.key1.extra] to be result expressions but only [] were`,
-			Paths:   []string{"results[0].value"},
-		},
+		expectedError: *apis.ErrInvalidValue(`expected all of the expressions [tasks.a-task.results.output.key1.extra] to be result expressions but only [] were`, "results[0].value").Also(
+			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
 	}, {
 		desc: "invalid pipeline result value with static string",
 		results: []PipelineResult{{
@@ -1177,10 +1175,9 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 			Description: "this is my pipeline result",
 			Value:       *NewArrayOrString("foo.bar"),
 		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: expected pipeline results to be task result expressions but no expressions were found`,
-			Paths:   []string{"results[0].value"},
-		},
+		expectedError: *apis.ErrInvalidValue(`expected pipeline results to be task result expressions but an invalid expressions was found`, "results[0].value").Also(
+			apis.ErrInvalidValue(`expected pipeline results to be task result expressions but no expressions were found`, "results[0].value")).Also(
+			apis.ErrInvalidValue(`referencing a nonexistent task`, "results[0].value")),
 	}, {
 		desc: "invalid pipeline result value with invalid expression",
 		results: []PipelineResult{{
@@ -1188,19 +1185,125 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 			Description: "this is my pipeline result",
 			Value:       *NewArrayOrString("$(foo.bar)"),
 		}},
-		expectedError: apis.FieldError{
-			Message: `invalid value: expected pipeline results to be task result expressions but an invalid expressions was found`,
-			Paths:   []string{"results[0].value"},
-		},
+		expectedError: *apis.ErrInvalidValue(`expected pipeline results to be task result expressions but an invalid expressions was found`, "results[0].value").Also(
+			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
 	}}
 	for _, tt := range tests {
-		err := validatePipelineResults(tt.results)
+		err := validatePipelineResults(tt.results, []PipelineTask{{Name: "a-task"}})
 		if err == nil {
 			t.Errorf("Pipeline.validatePipelineResults() did not return for invalid pipeline: %s", tt.desc)
 		}
 		if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-			t.Errorf("Pipeline.validateParamResults() errors diff %s", diff.PrintWantGot(d))
+			t.Errorf("Pipeline.validatePipelineResults() errors diff %s", diff.PrintWantGot(d))
 		}
+	}
+}
+
+func TestFinallyTaskResultsToPipelineResults_Success(t *testing.T) {
+	tests := []struct {
+		name string
+		p    *Pipeline
+		wc   func(context.Context) context.Context
+	}{{
+		name: "valid pipeline with pipeline results",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Results: []PipelineResult{{
+					Name:  "initialized",
+					Value: *NewArrayOrString("$(tasks.clone-app-repo.results.initialized)"),
+				}},
+				Tasks: []PipelineTask{{
+					Name: "clone-app-repo",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "initialized",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo", Image: "bar",
+						}},
+					}},
+				}},
+			},
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.p.Validate(ctx)
+			if err != nil {
+				t.Errorf("Pipeline.finallyTaskResultsToPipelineResults() returned error for valid Pipeline: %v", err)
+			}
+		})
+	}
+}
+
+func TestFinallyTaskResultsToPipelineResults_Failure(t *testing.T) {
+	tests := []struct {
+		desc          string
+		p             *Pipeline
+		expectedError apis.FieldError
+		wc            func(context.Context) context.Context
+	}{{
+		desc: "invalid propagation of finally task results from pipeline results",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Results: []PipelineResult{{
+					Name:  "initialized",
+					Value: *NewArrayOrString("$(tasks.check-git-commit.results.init)"),
+				}},
+				Tasks: []PipelineTask{{
+					Name: "clone-app-repo",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "current-date-unix-timestamp",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo", Image: "bar",
+						}},
+					}},
+				}},
+				Finally: []PipelineTask{{
+					Name: "check-git-commit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "init",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo2", Image: "bar",
+						}},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: referencing a nonexistent task`,
+			Paths:   []string{"spec.results[0].value"},
+		},
+	}}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.wc != nil {
+				ctx = tt.wc(ctx)
+			}
+			err := tt.p.Validate(ctx)
+			if err == nil {
+				t.Errorf("Pipeline.finallyTaskResultsToPipelineResults() did not return for invalid pipeline: %s", tt.desc)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("Pipeline.finallyTaskResultsToPipelineResults() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
