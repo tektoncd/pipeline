@@ -47,7 +47,7 @@ Therefore, the pod will have no effective CPU limit.
 Tekton allows users to specify resource requirements of [`Steps`](./tasks.md#defining-steps),
 which run sequentially. However, the pod's effective resource requirements are still the
 sum of its containers' resource requirements. This means that when specifying resource 
-requirements for `Step`containers, they must be treated as if they are running in parallel.
+requirements for `Step` containers, they must be treated as if they are running in parallel.
 
 Tekton adjusts `Step` resource requirements to comply with [LimitRanges](#limitrange-support).
 [ResourceQuotas](#resourcequota-support) are not currently supported.
@@ -68,26 +68,26 @@ in a `Task's` pod, unless there is a LimitRange present in the namespace.
 (Tekton doesn't allow users to configure init containers for a `Task`.)
 Tekton supports LimitRange minimum, maximum, and default resource requirements for containers,
 but does not support LimitRange ratios between requests and limits ([#4230](https://github.com/tektoncd/pipeline/issues/4230)).
-LimitRange types other than "Container" are not supported.
+LimitRange types other than "Container" are not considered for purposes of resource requirements.
 
 ### Requests
 
-If a `Step` does not have requests defined, the resulting container's requests are the larger of:
+If a container does not have requests defined, the resulting container's requests are the larger of:
 - the LimitRange minimum resource requests 
-- the LimitRange default resource requests, divided among the app containers
+- the LimitRange default resource requests (for init and Sidecar containers) or the LimitRange default resource requests divided by the number of Step containers (for Step containers)
 
-If a `Step` has requests defined, the resulting container's requests are the larger of:
-- the `Step's` requests
+If a container has requests defined, the resulting container's requests are the larger of:
+- the container's requests
 - the LimitRange minimum resource requests
 
 ### Limits
 
-If a `Step` does not have limits defined, the resulting container's limits are the smaller of:
+If a container does not have limits defined, the resulting container's limits are the smaller of:
 - the LimitRange maximum resource limits 
 - the LimitRange default resource limits
 
-If a `Step` has limits defined, the resulting container's limits are the smaller of:
-- the `Step's` limits
+If a container has limits defined, the resulting container's limits are the smaller of:
+- the container's limits
 - the LimitRange maximum resource limits
 
 ### Examples
@@ -116,12 +116,25 @@ A `Task` with 2 `Steps` and no resources specified would result in a pod with th
 
 | Container    | CPU request | CPU limit |
 | ------------ | ----------- | --------- |
-| container 1  | 500m        | 2         |
+| container 1  | 500m        | 2         | 
 | container 2  | 500m        | 2         |
 
-Here, the default CPU request was divided among app containers, and this value was used since it was greater
+Here, the default CPU request was divided among the step containers, and this value was used since it was greater
 than the minimum request specified by the LimitRange.
 The CPU limits are 2 for each container, as this is the default limit specifed in the LimitRange.
+
+If we had a `Task` with 2 `Steps` and 1 `Sidecar` with no resources specified would result in a pod with the following containers:  
+
+| Container    | CPU request | CPU limit |
+| ------------ | ----------- | --------- |
+| container 1  | 500m        | 2         |
+| container 2  | 500m        | 2         |
+| container 3  | 1           | 2         |
+
+For the first two containers, the default CPU request was divided among the step containers, and this value was used since it was greater
+than the minimum request specified by the LimitRange. The third container is a sidecar and since it is not a step container gets the full 
+default CPU request of 1. AS before the CPU limits are 2 for each container, as this is the default limit specifed in the LimitRange.
+
 
 Now, consider a `Task` with the following `Step`s:
 
@@ -221,7 +234,7 @@ The maximum of the "min" values is the output "min" value.
 
 Kubernetes allows users to define [ResourceQuotas](https://kubernetes.io/docs/concepts/policy/resource-quotas/),
 which restrict the maximum resource requests and limits of all pods running in a namespace.
-`TaskRuns` can't currently be created in a namespace with ResourceQuotas
+`TaskRuns` can't currently be created in a namespace with ResourceQuotas without siginificant caveats.
 ([#2933](https://github.com/tektoncd/pipeline/issues/2933)).
 
 # References
