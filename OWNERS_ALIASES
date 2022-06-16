@@ -9,7 +9,7 @@ aliases:
   - pritidesai
   - jerop
   - lbernick
-  
+  - abayer
 
   apis-approvers:
   - afrittoli
@@ -21,6 +21,7 @@ aliases:
   - pritidesai
   - jerop
   - lbernick
+  - abayer
 
   productivity-approvers:
   - afrittoli
@@ -36,5 +37,4 @@ aliases:
 # pivotal-nader-ziada
 # shashwathi
 # aaron-prindle
-# abayer
 # sbwsg
