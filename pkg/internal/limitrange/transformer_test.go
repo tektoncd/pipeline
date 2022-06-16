@@ -49,7 +49,7 @@ func TestTransformerOneContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -91,7 +91,7 @@ func TestTransformerOneContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -112,11 +112,6 @@ func TestTransformerOneContainer(t *testing.T) {
 						corev1.ResourceMemory:           resource.MustParse("100Mi"),
 						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.Quantity{},
-						corev1.ResourceMemory:           resource.Quantity{},
-						corev1.ResourceEphemeralStorage: resource.Quantity{},
-					},
 				},
 			}},
 		},
@@ -136,7 +131,7 @@ func TestTransformerOneContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -181,7 +176,7 @@ func TestTransformerOneContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -236,7 +231,7 @@ func TestTransformerOneContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -295,7 +290,7 @@ func TestTransformerOneContainer(t *testing.T) {
 				},
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
@@ -365,7 +360,7 @@ func TestTransformerOneContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -437,7 +432,7 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -447,7 +442,7 @@ func TestTransformerMultipleContainer(t *testing.T) {
 					},
 				},
 			}, {
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -465,9 +460,8 @@ func TestTransformerMultipleContainer(t *testing.T) {
 					},
 				},
 			}, {
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{},
-				},
+				// No resources set
+				Resources: corev1.ResourceRequirements{},
 			}},
 		},
 	}, {
@@ -486,10 +480,10 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}, {
-				Name:  "bar",
+				Name:  "step-bar",
 				Image: "baz",
 			}},
 		},
@@ -510,11 +504,6 @@ func TestTransformerMultipleContainer(t *testing.T) {
 						corev1.ResourceMemory:           resource.MustParse("100Mi"),
 						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.Quantity{},
-						corev1.ResourceMemory:           resource.Quantity{},
-						corev1.ResourceEphemeralStorage: resource.Quantity{},
-					},
 				},
 			}, {
 				Resources: corev1.ResourceRequirements{
@@ -522,11 +511,6 @@ func TestTransformerMultipleContainer(t *testing.T) {
 						corev1.ResourceCPU:              resource.MustParse("1"),
 						corev1.ResourceMemory:           resource.MustParse("100Mi"),
 						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
-					},
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:              resource.Quantity{},
-						corev1.ResourceMemory:           resource.Quantity{},
-						corev1.ResourceEphemeralStorage: resource.Quantity{},
 					},
 				},
 			}},
@@ -547,10 +531,10 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}, {
-				Name:  "bar",
+				Name:  "step-bar",
 				Image: "baz",
 			}},
 		},
@@ -603,10 +587,10 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}, {
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -674,10 +658,10 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}, {
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -755,10 +739,10 @@ func TestTransformerMultipleContainer(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}, {
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -801,6 +785,194 @@ func TestTransformerMultipleContainer(t *testing.T) {
 						corev1.ResourceCPU:              resource.MustParse("700m"),
 						corev1.ResourceMemory:           resource.MustParse("70Mi"),
 						corev1.ResourceEphemeralStorage: resource.MustParse("700Mi"),
+					},
+				},
+			}},
+		},
+	}, {
+		description: "limitRange with default requests and no resources on 2 step containers and a sidecar",
+		limitranges: []corev1.LimitRangeItem{{
+			Type: corev1.LimitTypeContainer,
+			Default: corev1.ResourceList{
+				corev1.ResourceCPU:              resource.MustParse("2"),
+				corev1.ResourceMemory:           resource.MustParse("200Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+			},
+			DefaultRequest: corev1.ResourceList{
+				corev1.ResourceCPU:              resource.MustParse("1"),
+				corev1.ResourceMemory:           resource.MustParse("100Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
+			},
+		}},
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+			}, {
+				Name:  "step-bar",
+				Image: "baz",
+			}, {
+				Name:  "sidecar-fizz",
+				Image: "baz",
+			}},
+		},
+		want: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("2"),
+						corev1.ResourceMemory:           resource.MustParse("200Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Name: "step-foo",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("2"),
+						corev1.ResourceMemory:           resource.MustParse("200Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("500m"),
+						corev1.ResourceMemory:           resource.MustParse("50Mi"),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
+					},
+				},
+			}, {
+				Name: "step-bar",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("2"),
+						corev1.ResourceMemory:           resource.MustParse("200Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("500m"),
+						corev1.ResourceMemory:           resource.MustParse("50Mi"),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
+					},
+				},
+			}, {
+				Name: "sidecar-fizz",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("2"),
+						corev1.ResourceMemory:           resource.MustParse("200Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
+					},
+				},
+			}},
+		},
+	}, {
+		description: "limitRange with default requests and no resources on 2 step containers and a sidecar with resources",
+		limitranges: []corev1.LimitRangeItem{{
+			Type: corev1.LimitTypeContainer,
+			Default: corev1.ResourceList{
+				corev1.ResourceCPU:              resource.MustParse("2"),
+				corev1.ResourceMemory:           resource.MustParse("200Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+			},
+			DefaultRequest: corev1.ResourceList{
+				corev1.ResourceCPU:              resource.MustParse("1"),
+				corev1.ResourceMemory:           resource.MustParse("100Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
+			},
+		}},
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+			}, {
+				Name:  "step-bar",
+				Image: "baz",
+			}, {
+				Name:  "sidecar-fizz",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("4"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse("400Mi"),
+					},
+				},
+			}},
+		},
+		want: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("2"),
+						corev1.ResourceMemory:           resource.MustParse("200Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("100Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Name: "step-foo",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("2"),
+						corev1.ResourceMemory:           resource.MustParse("200Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("500m"),
+						corev1.ResourceMemory:           resource.MustParse("50Mi"),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
+					},
+				},
+			}, {
+				Name: "step-bar",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("2"),
+						corev1.ResourceMemory:           resource.MustParse("200Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("500m"),
+						corev1.ResourceMemory:           resource.MustParse("50Mi"),
+						corev1.ResourceEphemeralStorage: *resource.NewQuantity(536870912, resource.BinarySI),
+					},
+				},
+			}, {
+				Name: "sidecar-fizz",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("4"),
+						corev1.ResourceMemory:           resource.MustParse("200Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:              resource.MustParse("1"),
+						corev1.ResourceMemory:           resource.MustParse("400Mi"),
+						corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 					},
 				},
 			}},
@@ -898,7 +1070,7 @@ func TestTransformerOneContainerMultipleLimitRange(t *testing.T) {
 				Image: "foo",
 			}},
 			Containers: []corev1.Container{{
-				Name:  "foo",
+				Name:  "step-foo",
 				Image: "baz",
 			}},
 		},
@@ -958,6 +1130,14 @@ func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
 		t.Errorf("Expected %d init containers, got %d", len(want.InitContainers), len(got.InitContainers))
 	} else {
 		for i, c := range got.InitContainers {
+
+			// compare name only if present in "want" so we can be sure which container gets which resources
+			if want.InitContainers[i].Name != "" {
+				if d := cmp.Diff(want.InitContainers[i].Name, c.Name); d != "" {
+					t.Errorf("Diff initcontainers[%d] %s", i, diff.PrintWantGot(d))
+				}
+			}
+
 			if d := cmp.Diff(want.InitContainers[i].Resources, c.Resources, resourceQuantityCmp); d != "" {
 				t.Errorf("Diff initcontainers[%d] %s", i, diff.PrintWantGot(d))
 			}
@@ -969,6 +1149,14 @@ func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
 		t.Errorf("Expected %d containers, got %d", len(want.Containers), len(got.Containers))
 	} else {
 		for i, c := range got.Containers {
+
+			// compare name only if present in "want" so we can be sure which container gets which resources
+			if want.Containers[i].Name != "" {
+				if d := cmp.Diff(want.Containers[i].Name, c.Name); d != "" {
+					t.Errorf("Diff containers[%d] %s", i, diff.PrintWantGot(d))
+				}
+			}
+
 			if d := cmp.Diff(want.Containers[i].Resources, c.Resources, resourceQuantityCmp); d != "" {
 				t.Errorf("Diff containers[%d] %s", i, diff.PrintWantGot(d))
 			}

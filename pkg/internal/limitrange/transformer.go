@@ -45,33 +45,45 @@ func NewTransformer(ctx context.Context, namespace string, lister corev1listers.
 
 		// The assumption here is that the min, max, default, ratio have already been
 		// computed if there is multiple LimitRange to satisfy the most (if we can).
-		// Count the number of containers (that we know) in the Pod.
+		// Count the number of step containers in the Pod.
 		// This should help us find the smallest request to apply to containers
-		nbContainers := len(p.Spec.Containers)
+		nbStepContainers := 0
+		for _, c := range p.Spec.Containers {
+			if pod.IsContainerStep(c.Name) {
+				nbStepContainers++
+			}
+		}
+
 		// FIXME(#4230) maxLimitRequestRatio to support later
-		defaultLimits := getDefaultLimits(limitRange)
-		defaultInitRequests := getDefaultInitContainerRequest(limitRange)
+		defaultContainerLimits := getDefaultLimits(limitRange)
+		defaultContainerRequests := getDefaultContainerRequest(limitRange)
+		defaultStepContainerRequests := getDefaultStepContainerRequest(limitRange, nbStepContainers)
+
 		for i := range p.Spec.InitContainers {
 			// We are trying to set the smallest requests possible
 			if p.Spec.InitContainers[i].Resources.Requests == nil {
-				p.Spec.InitContainers[i].Resources.Requests = defaultInitRequests
+				p.Spec.InitContainers[i].Resources.Requests = defaultContainerRequests
 			} else {
 				for _, name := range resourceNames {
-					setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Requests, defaultInitRequests)
+					setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Requests, defaultContainerRequests)
 				}
 			}
 			// We are trying to set the highest limits possible
 			if p.Spec.InitContainers[i].Resources.Limits == nil {
-				p.Spec.InitContainers[i].Resources.Limits = defaultLimits
+				p.Spec.InitContainers[i].Resources.Limits = defaultContainerLimits
 			} else {
 				for _, name := range resourceNames {
-					setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Limits, defaultLimits)
+					setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Limits, defaultContainerLimits)
 				}
 			}
 		}
 
-		defaultRequests := getDefaultAppContainerRequest(limitRange, nbContainers)
-		for i := range p.Spec.Containers {
+		for i, c := range p.Spec.Containers {
+			var defaultRequests = defaultContainerRequests
+			if pod.IsContainerStep(c.Name) {
+				defaultRequests = defaultStepContainerRequests
+			}
+
 			if p.Spec.Containers[i].Resources.Requests == nil {
 				p.Spec.Containers[i].Resources.Requests = defaultRequests
 			} else {
@@ -80,10 +92,10 @@ func NewTransformer(ctx context.Context, namespace string, lister corev1listers.
 				}
 			}
 			if p.Spec.Containers[i].Resources.Limits == nil {
-				p.Spec.Containers[i].Resources.Limits = defaultLimits
+				p.Spec.Containers[i].Resources.Limits = defaultContainerLimits
 			} else {
 				for _, name := range resourceNames {
-					setRequestsOrLimits(name, p.Spec.Containers[i].Resources.Limits, defaultLimits)
+					setRequestsOrLimits(name, p.Spec.Containers[i].Resources.Limits, defaultContainerLimits)
 				}
 			}
 		}
@@ -97,9 +109,9 @@ func setRequestsOrLimits(name corev1.ResourceName, dst, src corev1.ResourceList)
 	}
 }
 
-// Returns the default requests to use for each app container, determined by dividing the LimitRange default requests
-// among the app containers, and applying the LimitRange minimum if necessary
-func getDefaultAppContainerRequest(limitRange *corev1.LimitRange, nbContainers int) corev1.ResourceList {
+// Returns the default requests to use for each step container, determined by dividing the LimitRange default requests
+// among the step containers, and applying the LimitRange minimum if necessary
+func getDefaultStepContainerRequest(limitRange *corev1.LimitRange, nbContainers int) corev1.ResourceList {
 	// Support only Type Container to start with
 	var r corev1.ResourceList = map[corev1.ResourceName]resource.Quantity{}
 	for _, item := range limitRange.Spec.Limits {
@@ -115,19 +127,29 @@ func getDefaultAppContainerRequest(limitRange *corev1.LimitRange, nbContainers i
 				if item.Min != nil {
 					min = item.Min[name]
 				}
+
+				var result resource.Quantity
 				if name == corev1.ResourceMemory || name == corev1.ResourceEphemeralStorage {
-					r[name] = takeTheMax(request, *resource.NewQuantity(defaultRequest.Value()/int64(nbContainers), defaultRequest.Format), min)
+					result = takeTheMax(request, *resource.NewQuantity(defaultRequest.Value()/int64(nbContainers), defaultRequest.Format), min)
 				} else {
-					r[name] = takeTheMax(request, *resource.NewMilliQuantity(defaultRequest.MilliValue()/int64(nbContainers), defaultRequest.Format), min)
+					result = takeTheMax(request, *resource.NewMilliQuantity(defaultRequest.MilliValue()/int64(nbContainers), defaultRequest.Format), min)
+				}
+				// only set non-zero request values
+				if !isZero(result) {
+					r[name] = result
 				}
 			}
 		}
+	}
+	// return nil if the resource list is empty to avoid setting an empty defaultrequest
+	if len(r) == 0 {
+		return nil
 	}
 	return r
 }
 
 // Returns the default requests to use for each init container, determined by the LimitRange default requests and minimums
-func getDefaultInitContainerRequest(limitRange *corev1.LimitRange) corev1.ResourceList {
+func getDefaultContainerRequest(limitRange *corev1.LimitRange) corev1.ResourceList {
 	// Support only Type Container to start with
 	var r corev1.ResourceList
 	for _, item := range limitRange.Spec.Limits {
