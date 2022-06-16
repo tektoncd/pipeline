@@ -68,8 +68,6 @@ type PipelineRunSpec struct {
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-	// +optional
-	ServiceAccountNames []PipelineRunSpecServiceAccountName `json:"serviceAccountNames,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
@@ -114,10 +112,6 @@ type PipelineRunStatusFields = v1beta1.PipelineRunStatusFields
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
 type PipelineRunTaskRunStatus = v1beta1.PipelineRunTaskRunStatus
-
-// PipelineRunSpecServiceAccountName can be used to configure specific
-// ServiceAccountName for a concrete Task
-type PipelineRunSpecServiceAccountName = v1beta1.PipelineRunSpecServiceAccountName
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -178,18 +172,6 @@ func (pr *PipelineRun) IsTimedOut(c clock.PassiveClock) bool {
 	return false
 }
 
-// GetServiceAccountName returns the service account name for a given
-// PipelineTask if configured, otherwise it returns the PipelineRun's serviceAccountName.
-func (pr *PipelineRun) GetServiceAccountName(pipelineTaskName string) string {
-	serviceAccountName := pr.Spec.ServiceAccountName
-	for _, sa := range pr.Spec.ServiceAccountNames {
-		if sa.TaskName == pipelineTaskName {
-			serviceAccountName = sa.ServiceAccountName
-		}
-	}
-	return serviceAccountName
-}
-
 // HasVolumeClaimTemplate returns true if PipelineRun contains volumeClaimTemplates that is
 // used for creating PersistentVolumeClaims with an OwnerReference for each run
 func (pr *PipelineRun) HasVolumeClaimTemplate() bool {
@@ -211,7 +193,7 @@ type PipelineTaskRunSpec struct {
 // GetTaskRunSpecs returns the task specific spec for a given
 // PipelineTask if configured, otherwise it returns the PipelineRun's default.
 func (pr *PipelineRun) GetTaskRunSpecs(pipelineTaskName string) (string, *PodTemplate) {
-	serviceAccountName := pr.GetServiceAccountName(pipelineTaskName)
+	serviceAccountName := pr.Spec.ServiceAccountName
 	taskPodTemplate := pr.Spec.PodTemplate
 	for _, task := range pr.Spec.TaskRunSpecs {
 		if task.PipelineTaskName == pipelineTaskName {

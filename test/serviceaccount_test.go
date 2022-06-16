@@ -150,10 +150,9 @@ spec:
   pipelineRef:
     name: %s
   serviceAccountName: sa1
-  serviceAccountNames:
-  - serviceAccountName: sa2
-    taskName: task2
   taskRunSpecs:
+  - pipelineTaskName: task2
+    taskServiceAccountName: sa2
   - pipelineTaskName: task3
     taskServiceAccountName: sa3
 `, helpers.ObjectNameForTest(t), namespace, pipeline.Name))

@@ -935,15 +935,6 @@
         "serviceAccountName": {
           "type": "string"
         },
-        "serviceAccountNames": {
-          "description": "Deprecated: use taskRunSpecs.ServiceAccountName instead",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineRunSpecServiceAccountName"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
         "status": {
           "description": "Used for cancelling a pipelinerun (and maybe more later on)",
           "type": "string"
@@ -973,18 +964,6 @@
             "$ref": "#/definitions/v1beta1.WorkspaceBinding"
           },
           "x-kubernetes-list-type": "atomic"
-        }
-      }
-    },
-    "v1beta1.PipelineRunSpecServiceAccountName": {
-      "description": "PipelineRunSpecServiceAccountName can be used to configure specific ServiceAccountName for a concrete Task",
-      "type": "object",
-      "properties": {
-        "serviceAccountName": {
-          "type": "string"
-        },
-        "taskName": {
-          "type": "string"
         }
       }
     },

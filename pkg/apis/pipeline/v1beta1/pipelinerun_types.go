@@ -172,18 +172,6 @@ func (pr *PipelineRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bo
 	return false
 }
 
-// GetServiceAccountName returns the service account name for a given
-// PipelineTask if configured, otherwise it returns the PipelineRun's serviceAccountName.
-func (pr *PipelineRun) GetServiceAccountName(pipelineTaskName string) string {
-	serviceAccountName := pr.Spec.ServiceAccountName
-	for _, sa := range pr.Spec.ServiceAccountNames {
-		if sa.TaskName == pipelineTaskName {
-			serviceAccountName = sa.ServiceAccountName
-		}
-	}
-	return serviceAccountName
-}
-
 // HasVolumeClaimTemplate returns true if PipelineRun contains volumeClaimTemplates that is
 // used for creating PersistentVolumeClaims with an OwnerReference for each run
 func (pr *PipelineRun) HasVolumeClaimTemplate() bool {
@@ -212,10 +200,6 @@ type PipelineRunSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// Deprecated: use taskRunSpecs.ServiceAccountName instead
-	// +optional
-	// +listType=atomic
-	ServiceAccountNames []PipelineRunSpecServiceAccountName `json:"serviceAccountNames,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
@@ -526,13 +510,6 @@ type PipelineRunRunStatus struct {
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
 }
 
-// PipelineRunSpecServiceAccountName can be used to configure specific
-// ServiceAccountName for a concrete Task
-type PipelineRunSpecServiceAccountName struct {
-	TaskName           string `json:"taskName,omitempty"`
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-}
-
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // PipelineRunList contains a list of PipelineRun
@@ -570,7 +547,7 @@ type PipelineTaskRunSpec struct {
 func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSpec {
 	s := PipelineTaskRunSpec{
 		PipelineTaskName:       pipelineTaskName,
-		TaskServiceAccountName: pr.GetServiceAccountName(pipelineTaskName),
+		TaskServiceAccountName: pr.Spec.ServiceAccountName,
 		TaskPodTemplate:        pr.Spec.PodTemplate,
 	}
 	for _, task := range pr.Spec.TaskRunSpecs {

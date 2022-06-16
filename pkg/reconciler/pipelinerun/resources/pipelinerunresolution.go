@@ -477,25 +477,6 @@ func ValidateTaskRunSpecs(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) erro
 	return nil
 }
 
-// ValidateServiceaccountMapping validates that the ServiceAccountNames defined by a PipelineRun are not correct.
-func ValidateServiceaccountMapping(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
-	pipelineTasks := make(map[string]string)
-	for _, task := range p.Tasks {
-		pipelineTasks[task.Name] = task.Name
-	}
-
-	for _, task := range p.Finally {
-		pipelineTasks[task.Name] = task.Name
-	}
-
-	for _, name := range pr.Spec.ServiceAccountNames {
-		if _, ok := pipelineTasks[name.TaskName]; !ok {
-			return fmt.Errorf("PipelineRun's ServiceAccountNames defined wrong taskName: %q, does not exist in Pipeline", name.TaskName)
-		}
-	}
-	return nil
-}
-
 func isCustomTask(ctx context.Context, rprt ResolvedPipelineRunTask) bool {
 	invalidSpec := rprt.PipelineTask.TaskRef != nil && rprt.PipelineTask.TaskSpec != nil
 	isTaskRefCustomTask := rprt.PipelineTask.TaskRef != nil && rprt.PipelineTask.TaskRef.APIVersion != "" &&

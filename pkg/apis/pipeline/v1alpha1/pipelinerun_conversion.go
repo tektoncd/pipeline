@@ -65,7 +65,6 @@ func (prs *PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1beta1.Pipelin
 	sink.Resources = prs.Resources
 	sink.Params = prs.Params
 	sink.ServiceAccountName = prs.ServiceAccountName
-	sink.ServiceAccountNames = prs.ServiceAccountNames
 	sink.Status = prs.Status
 	sink.Timeout = prs.Timeout
 	sink.PodTemplate = prs.PodTemplate
@@ -107,7 +106,6 @@ func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1beta1.Pip
 	prs.Resources = source.Resources
 	prs.Params = source.Params
 	prs.ServiceAccountName = source.ServiceAccountName
-	prs.ServiceAccountNames = source.ServiceAccountNames
 	prs.Status = source.Status
 	prs.Timeout = source.Timeout
 	prs.PodTemplate = source.PodTemplate
