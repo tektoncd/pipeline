@@ -69,7 +69,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineWorkspacesUsage(ps.Workspaces, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineWorkspacesUsage(ps.Workspaces, ps.Finally).ViaField("finally"))
 	// Validate the pipeline's results
-	errs = errs.Also(validatePipelineResults(ps.Results))
+	errs = errs.Also(validatePipelineResults(ps.Results, ps.Tasks))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
@@ -255,16 +255,17 @@ func filter(arr []string, cond func(string) bool) []string {
 }
 
 // validatePipelineResults ensure that pipeline result variables are properly configured
-func validatePipelineResults(results []PipelineResult) (errs *apis.FieldError) {
+func validatePipelineResults(results []PipelineResult, tasks []PipelineTask) (errs *apis.FieldError) {
+	pipelineTaskNames := getPipelineTasksNames(tasks)
 	for idx, result := range results {
 		expressions, ok := GetVarSubstitutionExpressionsForPipelineResult(result)
 		if !ok {
-			return errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but no expressions were found",
+			errs = errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but no expressions were found",
 				"value").ViaFieldIndex("results", idx))
 		}
 
 		if !LooksLikeContainsResultRefs(expressions) {
-			return errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but an invalid expressions was found",
+			errs = errs.Also(apis.ErrInvalidValue("expected pipeline results to be task result expressions but an invalid expressions was found",
 				"value").ViaFieldIndex("results", idx))
 		}
 
@@ -275,9 +276,40 @@ func validatePipelineResults(results []PipelineResult) (errs *apis.FieldError) {
 				"value").ViaFieldIndex("results", idx))
 		}
 
+		if !taskContainsResult(result.Value.StringVal, pipelineTaskNames) {
+			errs = errs.Also(apis.ErrInvalidValue("referencing a nonexistent task",
+				"value").ViaFieldIndex("results", idx))
+		}
 	}
 
 	return errs
+}
+
+// put task names in a set
+func getPipelineTasksNames(pipelineTasks []PipelineTask) sets.String {
+	pipelineTaskNames := make(sets.String)
+	for _, pipelineTask := range pipelineTasks {
+		pipelineTaskNames.Insert(pipelineTask.Name)
+	}
+
+	return pipelineTaskNames
+}
+
+// taskContainsResult ensures the result value is referenced within the
+// task names
+func taskContainsResult(resultExpression string, pipelineTaskNames sets.String) bool {
+	// split incase of multiple resultExpressions in the same result.Value string
+	// i.e "$(task.<task-name).result.<result-name>) - $(task2.<task2-name).result2.<result2-name>)"
+	split := strings.Split(resultExpression, "$")
+	for _, expression := range split {
+		if expression != "" {
+			pipelineTaskName, _, _, _, _ := parseExpression(stripVarSubExpression("$" + expression))
+			if !pipelineTaskNames.Has(pipelineTaskName) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func validateTasksAndFinallySection(ps *PipelineSpec) *apis.FieldError {
