@@ -156,6 +156,12 @@ var trs = []v1beta1.TaskRun{{
 		Name:      "pipelinerun-mytask2",
 	},
 	Spec: v1beta1.TaskRunSpec{},
+}, {
+	ObjectMeta: metav1.ObjectMeta{
+		Namespace: "namespace",
+		Name:      "pipelinerun-mytask4",
+	},
+	Spec: v1beta1.TaskRunSpec{},
 }}
 
 var runs = []v1alpha1.Run{{
@@ -392,6 +398,22 @@ var finalScheduledState = PipelineRunState{{
 	PipelineTask: &pts[1],
 	TaskRunName:  "pipelinerun-mytask2",
 	TaskRun:      makeScheduled(trs[1]),
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
+var retryableFinalState = PipelineRunState{{
+	PipelineTask: &pts[0],
+	TaskRunName:  "pipelinerun-mytask1",
+	TaskRun:      makeSucceeded(trs[0]),
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[3],
+	TaskRunName:  "pipelinerun-mytask4",
+	TaskRun:      makeFailed(trs[2]),
 	ResolvedTaskResources: &resources.ResolvedTaskResources{
 		TaskSpec: &task.Spec,
 	},

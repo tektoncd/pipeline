@@ -1194,6 +1194,15 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{},
+	}, {
+		// tasks: [ mytask1]
+		// finally: [mytask4]
+		name:               "07 - DAG tasks succeeded, return retryable final tasks",
+		desc:               "DAG task (mytask1) finished successfully - retry failed final tasks (mytask4)",
+		state:              retryableFinalState,
+		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
+		finalTasks:         []v1beta1.PipelineTask{pts[3]},
+		expectedFinalTasks: PipelineRunState{retryableFinalState[1]},
 	}}
 	for _, tc := range tcs {
 		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks), v1beta1.PipelineTaskList(tc.DAGTasks).Deps())
