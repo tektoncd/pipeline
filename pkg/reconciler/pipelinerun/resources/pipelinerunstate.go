@@ -402,7 +402,7 @@ func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 	return tasks, nil
 }
 
-// GetFinalTasks returns a list of final tasks without any taskRun associated with it
+// GetFinalTasks returns a list of final tasks which needs to be executed next
 // GetFinalTasks returns final tasks only when all DAG tasks have finished executing or have been skipped
 func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 	tasks := PipelineRunState{}
@@ -412,7 +412,7 @@ func (facts *PipelineRunFacts) GetFinalTasks() PipelineRunState {
 	if facts.checkDAGTasksDone() {
 		// return list of tasks with all final tasks
 		for _, t := range facts.State {
-			if facts.isFinalTask(t.PipelineTask.Name) && !t.isScheduled() {
+			if facts.isFinalTask(t.PipelineTask.Name) {
 				finalCandidates.Insert(t.PipelineTask.Name)
 			}
 		}
