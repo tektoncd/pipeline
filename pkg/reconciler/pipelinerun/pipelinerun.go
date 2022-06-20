@@ -590,8 +590,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	if cfg.FeatureFlags.EmbeddedStatus == config.MinimalEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus {
-		pr.Status.ChildReferences = pipelineRunFacts.State.GetChildReferences(v1beta1.SchemeGroupVersion.String(),
-			v1alpha1.SchemeGroupVersion.String())
+		pr.Status.ChildReferences = pipelineRunFacts.State.GetChildReferences()
 	}
 
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
