@@ -2442,14 +2442,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 					},
 				},
 			}},
-			childRefs: []v1beta1.ChildStatusReference{{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1alpha1",
-					Kind:       "Run",
-				},
-				Name:             "unresolved-custom-task-run",
-				PipelineTaskName: "unresolved-custom-task-1",
-			}},
+			childRefs: nil,
 		},
 		{
 			name: "single-task",
@@ -2576,7 +2569,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			childRefs := tc.state.GetChildReferences(v1beta1.SchemeGroupVersion.String(), v1alpha1.SchemeGroupVersion.String())
+			childRefs := tc.state.GetChildReferences()
 			if d := cmp.Diff(tc.childRefs, childRefs); d != "" {
 				t.Errorf("Didn't get expected child references for %s: %s", tc.name, diff.PrintWantGot(d))
 			}

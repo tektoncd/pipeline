@@ -238,27 +238,24 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1alpha1.RunResult {
 
 // GetChildReferences returns a slice of references, including version, kind, name, and pipeline task name, for all
 // TaskRuns and Runs in the state.
-func (state PipelineRunState) GetChildReferences(taskRunVersion string, runVersion string) []v1beta1.ChildStatusReference {
+func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReference {
 	var childRefs []v1beta1.ChildStatusReference
 
 	for _, rprt := range state {
-		if rprt.CustomTask {
-			childRefs = append(childRefs, rprt.getChildRefForRun(runVersion))
-		} else if rprt.TaskRun != nil {
-			childRefs = append(childRefs, rprt.getChildRefForTaskRun(taskRunVersion))
+		switch {
+		case rprt.Run != nil:
+			childRefs = append(childRefs, rprt.getChildRefForRun())
+		case rprt.TaskRun != nil:
+			childRefs = append(childRefs, rprt.getChildRefForTaskRun())
 		}
 	}
 	return childRefs
 }
 
-func (rprt *ResolvedPipelineRunTask) getChildRefForRun(runVersion string) v1beta1.ChildStatusReference {
-	if rprt.Run != nil {
-		runVersion = rprt.Run.APIVersion
-	}
-
+func (rprt *ResolvedPipelineRunTask) getChildRefForRun() v1beta1.ChildStatusReference {
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
-			APIVersion: runVersion,
+			APIVersion: rprt.Run.APIVersion,
 			Kind:       pipeline.RunControllerName,
 		},
 		Name:             rprt.RunName,
@@ -267,14 +264,10 @@ func (rprt *ResolvedPipelineRunTask) getChildRefForRun(runVersion string) v1beta
 	}
 }
 
-func (rprt *ResolvedPipelineRunTask) getChildRefForTaskRun(taskRunVersion string) v1beta1.ChildStatusReference {
-	if rprt.TaskRun != nil {
-		taskRunVersion = rprt.TaskRun.APIVersion
-	}
-
+func (rprt *ResolvedPipelineRunTask) getChildRefForTaskRun() v1beta1.ChildStatusReference {
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
-			APIVersion: taskRunVersion,
+			APIVersion: rprt.TaskRun.APIVersion,
 			Kind:       pipeline.TaskRunControllerName,
 		},
 		Name:             rprt.TaskRunName,
