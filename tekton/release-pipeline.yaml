@@ -105,7 +105,7 @@ spec:
           workspace: workarea
           subpath: git
     - name: publish-images
-      runAfter: [build-base-image]
+      runAfter: [unit-tests, build]
       taskRef:
         name: publish-release
       params:
