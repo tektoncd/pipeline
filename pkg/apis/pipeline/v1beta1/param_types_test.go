@@ -162,6 +162,7 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 		input              *v1beta1.ArrayOrString
 		stringReplacements map[string]string
 		arrayReplacements  map[string][]string
+		objectReplacements map[string]map[string]string
 	}
 	tests := []struct {
 		name           string
@@ -176,7 +177,15 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 		},
 		expectedOutput: v1beta1.NewArrayOrString("an", "array"),
 	}, {
-		name: "string replacements on string",
+		name: "single string replacement on string",
+		args: args{
+			input:              v1beta1.NewArrayOrString("$(params.myString1)"),
+			stringReplacements: map[string]string{"params.myString1": "value1", "params.myString2": "value2"},
+			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
+		},
+		expectedOutput: v1beta1.NewArrayOrString("value1"),
+	}, {
+		name: "multiple string replacements on string",
 		args: args{
 			input:              v1beta1.NewArrayOrString("astring$(some) asdf $(anotherkey)"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
@@ -207,10 +216,70 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 			arrayReplacements:  map[string][]string{"arraykey": {}},
 		},
 		expectedOutput: v1beta1.NewArrayOrString("firstvalue", "lastvalue"),
+	}, {
+		name: "array replacement on string val",
+		args: args{
+			input:             v1beta1.NewArrayOrString("$(params.myarray)"),
+			arrayReplacements: map[string][]string{"params.myarray": {"a", "b", "c"}},
+		},
+		expectedOutput: v1beta1.NewArrayOrString("a", "b", "c"),
+	}, {
+		name: "array star replacement on string val",
+		args: args{
+			input:             v1beta1.NewArrayOrString("$(params.myarray[*])"),
+			arrayReplacements: map[string][]string{"params.myarray": {"a", "b", "c"}},
+		},
+		expectedOutput: v1beta1.NewArrayOrString("a", "b", "c"),
+	}, {
+		name: "object replacement on string val",
+		args: args{
+			input: v1beta1.NewArrayOrString("$(params.object)"),
+			objectReplacements: map[string]map[string]string{
+				"params.object": {
+					"url":    "abc.com",
+					"commit": "af234",
+				},
+			},
+		},
+		expectedOutput: v1beta1.NewObject(map[string]string{
+			"url":    "abc.com",
+			"commit": "af234",
+		}),
+	}, {
+		name: "object star replacement on string val",
+		args: args{
+			input: v1beta1.NewArrayOrString("$(params.object[*])"),
+			objectReplacements: map[string]map[string]string{
+				"params.object": {
+					"url":    "abc.com",
+					"commit": "af234",
+				},
+			},
+		},
+		expectedOutput: v1beta1.NewObject(map[string]string{
+			"url":    "abc.com",
+			"commit": "af234",
+		}),
+	}, {
+		name: "string replacement on object individual variables",
+		args: args{
+			input: v1beta1.NewObject(map[string]string{
+				"key1": "$(mystring)",
+				"key2": "$(anotherObject.key)",
+			}),
+			stringReplacements: map[string]string{
+				"mystring":          "foo",
+				"anotherObject.key": "bar",
+			},
+		},
+		expectedOutput: v1beta1.NewObject(map[string]string{
+			"key1": "foo",
+			"key2": "bar",
+		}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.args.input.ApplyReplacements(tt.args.stringReplacements, tt.args.arrayReplacements)
+			tt.args.input.ApplyReplacements(tt.args.stringReplacements, tt.args.arrayReplacements, tt.args.objectReplacements)
 			if d := cmp.Diff(tt.expectedOutput, tt.args.input); d != "" {
 				t.Errorf("ApplyReplacements() output did not match expected value %s", diff.PrintWantGot(d))
 			}

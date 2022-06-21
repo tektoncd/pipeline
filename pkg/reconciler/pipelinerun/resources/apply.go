@@ -19,6 +19,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 
@@ -34,10 +35,11 @@ import (
 func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
 	// This assumes that the PipelineRun inputs have been validated against what the Pipeline requests.
 
-	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
-	// that need to be further processed.
+	// stringReplacements is used for standard single-string stringReplacements,
+	// while arrayReplacements/objectReplacements contains arrays/objects that need to be further processed.
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
+	objectReplacements := map[string]map[string]string{}
 
 	patterns := []string{
 		"params.%s",
@@ -45,34 +47,53 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 		"params['%s']",
 	}
 
+	// reference pattern for object individual keys params.<object_param_name>.<key_name>
+	objectIndividualVariablePattern := "params.%s.%s"
+
 	// Set all the default stringReplacements
 	for _, p := range p.Params {
 		if p.Default != nil {
-			if p.Default.Type == v1beta1.ParamTypeString {
-				for _, pattern := range patterns {
-					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
-				}
-			} else {
+			switch p.Default.Type {
+			case v1beta1.ParamTypeArray:
 				for _, pattern := range patterns {
 					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
+				}
+			case v1beta1.ParamTypeObject:
+				for _, pattern := range patterns {
+					objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ObjectVal
+				}
+				for k, v := range p.Default.ObjectVal {
+					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+				}
+			default:
+				for _, pattern := range patterns {
+					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
 				}
 			}
 		}
 	}
 	// Set and overwrite params with the ones from the PipelineRun
 	for _, p := range pr.Spec.Params {
-		if p.Value.Type == v1beta1.ParamTypeString {
-			for _, pattern := range patterns {
-				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
-			}
-		} else {
+		switch p.Value.Type {
+		case v1beta1.ParamTypeArray:
 			for _, pattern := range patterns {
 				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
+			}
+		case v1beta1.ParamTypeObject:
+			for _, pattern := range patterns {
+				objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ObjectVal
+			}
+			for k, v := range p.Value.ObjectVal {
+				stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+			}
+		default:
+			for _, pattern := range patterns {
+				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
 			}
 		}
 	}
 
-	return ApplyReplacements(ctx, p, stringReplacements, arrayReplacements)
+	return ApplyReplacements(ctx, p, stringReplacements, arrayReplacements, objectReplacements)
 }
 
 // ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
@@ -84,7 +105,7 @@ func ApplyContexts(ctx context.Context, spec *v1beta1.PipelineSpec, pipelineName
 		"context.pipelineRun.namespace": pr.Namespace,
 		"context.pipelineRun.uid":       string(pr.ObjectMeta.UID),
 	}
-	return ApplyReplacements(ctx, spec, replacements, map[string][]string{})
+	return ApplyReplacements(ctx, spec, replacements, map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyPipelineTaskContexts applies the substitution from $(context.pipelineTask.*) with the specified values.
@@ -94,8 +115,8 @@ func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
 	replacements := map[string]string{
 		"context.pipelineTask.retries": strconv.Itoa(pt.Retries),
 	}
-	pt.Params = replaceParamValues(pt.Params, replacements, map[string][]string{})
-	pt.Matrix = replaceParamValues(pt.Matrix, replacements, map[string][]string{})
+	pt.Params = replaceParamValues(pt.Params, replacements, map[string][]string{}, map[string]map[string]string{})
+	pt.Matrix = replaceParamValues(pt.Matrix, replacements, map[string][]string{}, map[string]map[string]string{})
 	return pt
 }
 
@@ -105,7 +126,7 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 	for _, resolvedPipelineRunTask := range targets {
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
-			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, nil)
+			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, nil, nil)
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, nil)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
@@ -117,7 +138,7 @@ func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[stri
 	for _, resolvedPipelineRunTask := range state {
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
-			pipelineTask.Params = replaceParamValues(pipelineTask.Params, replacements, nil)
+			pipelineTask.Params = replaceParamValues(pipelineTask.Params, replacements, nil, nil)
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(replacements, nil)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
@@ -137,39 +158,44 @@ func ApplyWorkspaces(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 		key := fmt.Sprintf("workspaces.%s.bound", boundWorkspace.Name)
 		replacements[key] = "true"
 	}
-	return ApplyReplacements(ctx, p, replacements, map[string][]string{})
+	return ApplyReplacements(ctx, p, replacements, map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
-func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string) *v1beta1.PipelineSpec {
+func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) *v1beta1.PipelineSpec {
 	p = p.DeepCopy()
 
 	for i := range p.Tasks {
-		p.Tasks[i].Params = replaceParamValues(p.Tasks[i].Params, replacements, arrayReplacements)
-		p.Tasks[i].Matrix = replaceParamValues(p.Tasks[i].Matrix, replacements, arrayReplacements)
+		p.Tasks[i].Params = replaceParamValues(p.Tasks[i].Params, replacements, arrayReplacements, objectReplacements)
+		p.Tasks[i].Matrix = replaceParamValues(p.Tasks[i].Matrix, replacements, arrayReplacements, objectReplacements)
 		for j := range p.Tasks[i].Workspaces {
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
 		}
+		log.Println("chuangw", arrayReplacements)
 		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
-		p.Tasks[i], replacements, arrayReplacements = propagateParams(ctx, p.Tasks[i], replacements, arrayReplacements)
+		p.Tasks[i], replacements, arrayReplacements, objectReplacements = propagateParams(ctx, p.Tasks[i], replacements, arrayReplacements, objectReplacements)
 	}
 
 	for i := range p.Finally {
-		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements)
-		p.Finally[i].Matrix = replaceParamValues(p.Finally[i].Matrix, replacements, arrayReplacements)
+		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements, objectReplacements)
+		p.Finally[i].Matrix = replaceParamValues(p.Finally[i].Matrix, replacements, arrayReplacements, objectReplacements)
 		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
 	}
 
 	return p
 }
 
-func propagateParams(ctx context.Context, t v1beta1.PipelineTask, replacements map[string]string, arrayReplacements map[string][]string) (v1beta1.PipelineTask, map[string]string, map[string][]string) {
+func propagateParams(ctx context.Context, t v1beta1.PipelineTask, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) (v1beta1.PipelineTask, map[string]string, map[string][]string, map[string]map[string]string) {
 	if t.TaskSpec != nil && config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
 		patterns := []string{
 			"params.%s",
 			"params[%q]",
 			"params['%s']",
 		}
+
+		// reference pattern for object individual keys params.<object_param_name>.<key_name>
+		objectIndividualVariablePattern := "params.%s.%s"
+
 		// check if there are task parameters defined that match the params at pipeline level
 		if len(t.Params) > 0 {
 			for _, par := range t.Params {
@@ -182,17 +208,23 @@ func propagateParams(ctx context.Context, t v1beta1.PipelineTask, replacements m
 					if _, ok := arrayReplacements[checkName]; ok {
 						arrayReplacements[checkName] = par.Value.ArrayVal
 					}
+					if _, ok := objectReplacements[checkName]; ok {
+						objectReplacements[checkName] = par.Value.ObjectVal
+						for k, v := range par.Value.ObjectVal {
+							replacements[fmt.Sprintf(objectIndividualVariablePattern, par.Name, k)] = v
+						}
+					}
 				}
 			}
 		}
 		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, replacements, arrayReplacements)
 	}
-	return t, replacements, arrayReplacements
+	return t, replacements, arrayReplacements, objectReplacements
 }
 
-func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]string, arrayReplacements map[string][]string) []v1beta1.Param {
+func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) []v1beta1.Param {
 	for i := range params {
-		params[i].Value.ApplyReplacements(stringReplacements, arrayReplacements)
+		params[i].Value.ApplyReplacements(stringReplacements, arrayReplacements, objectReplacements)
 	}
 	return params
 }

@@ -173,7 +173,7 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.args.input.ApplyReplacements(tt.args.stringReplacements, tt.args.arrayReplacements)
+			tt.args.input.ApplyReplacements(tt.args.stringReplacements, tt.args.arrayReplacements, nil)
 			if d := cmp.Diff(tt.expectedOutput, tt.args.input); d != "" {
 				t.Errorf("ApplyReplacements() output did not match expected value %s", diff.PrintWantGot(d))
 			}

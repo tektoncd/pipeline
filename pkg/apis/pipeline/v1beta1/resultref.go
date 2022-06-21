@@ -43,7 +43,10 @@ const (
 	ResultResultPart = "results"
 	// TODO(#2462) use one regex across all substitutions
 	// variableSubstitutionFormat matches format like $result.resultname, $result.resultname[int] and $result.resultname[*]
-	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9])*\*?\])?\)`
+	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)`
+	// exactVariableSubstitutionFormat matches strings that only contain a single reference to result or param variables, but nothing else
+	// i.e. `$(result.resultname)` is a match, but `foo $(result.resultname)` is not.
+	exactVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
 	// arrayIndexing will match all `[int]` and `[*]` for parseExpression
 	arrayIndexing = `\[([0-9])*\*?\]`
 	// ResultNameFormat Constant used to define the the regex Result.Name should follow
@@ -51,6 +54,7 @@ const (
 )
 
 var variableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
+var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
 var arrayIndexingRegex = regexp.MustCompile(arrayIndexing)
 
