@@ -80,7 +80,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: golang:1.17.8
+    image: golang:1.18.3
     script: |
       #!/bin/sh
       set -ex
@@ -95,13 +95,13 @@ spec:
 
       # Combine Distroless with a Windows base image, used for the entrypoint image.
       COMBINED_BASE_IMAGE=$(go run ./vendor/github.com/tektoncd/plumbing/cmd/combine/main.go \
-        gcr.io/distroless/static:nonroot \
-        mcr.microsoft.com/windows/nanoserver:1809 \
+        ghcr.io/distroless/static \
+        mcr.microsoft.com/windows/nanoserver:ltsc2022 \
         ${CONTAINER_REGISTRY}/$(params.package)/combined-base-image:latest)
 
       cat <<EOF > ${PROJECT_ROOT}/.ko.yaml
       # This matches the value configured in .ko.yaml
-      defaultBaseImage: gcr.io/distroless/static:nonroot
+      defaultBaseImage: ghcr.io/distroless/static
       baseImageOverrides:
         # Use the combined base image for images that should include Windows support.
         $(params.package)/cmd/entrypoint: ${COMBINED_BASE_IMAGE}
