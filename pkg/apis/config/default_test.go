@@ -36,9 +36,10 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &config.Defaults{
-				DefaultTimeoutMinutes:      50,
-				DefaultServiceAccount:      "tekton",
-				DefaultManagedByLabelValue: "something-else",
+				DefaultTimeoutMinutes:             50,
+				DefaultServiceAccount:             "tekton",
+				DefaultManagedByLabelValue:        "something-else",
+				DefaultMaxMatrixCombinationsCount: 256,
 			},
 			fileName: config.GetDefaultsConfigName(),
 		},
@@ -57,6 +58,7 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 						"label": "value2",
 					},
 				},
+				DefaultMaxMatrixCombinationsCount: 256,
 			},
 			fileName: "config-defaults-with-pod-template",
 		},
@@ -71,20 +73,22 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 			expectedError: false,
 			fileName:      "config-defaults-pod-template-err",
 			expectedConfig: &config.Defaults{
-				DefaultTimeoutMinutes:      50,
-				DefaultServiceAccount:      "tekton",
-				DefaultManagedByLabelValue: config.DefaultManagedByLabelValue,
-				DefaultPodTemplate:         &pod.Template{},
+				DefaultTimeoutMinutes:             50,
+				DefaultServiceAccount:             "tekton",
+				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
+				DefaultPodTemplate:                &pod.Template{},
+				DefaultMaxMatrixCombinationsCount: 256,
 			},
 		},
 		{
 			expectedError: false,
 			fileName:      "config-defaults-aa-pod-template-err",
 			expectedConfig: &config.Defaults{
-				DefaultTimeoutMinutes:      50,
-				DefaultServiceAccount:      "tekton",
-				DefaultManagedByLabelValue: config.DefaultManagedByLabelValue,
-				DefaultAAPodTemplate:       &pod.AffinityAssistantTemplate{},
+				DefaultTimeoutMinutes:             50,
+				DefaultServiceAccount:             "tekton",
+				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
+				DefaultAAPodTemplate:              &pod.AffinityAssistantTemplate{},
+				DefaultMaxMatrixCombinationsCount: 256,
 			},
 		},
 		{
@@ -117,9 +121,10 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 func TestNewDefaultsFromEmptyConfigMap(t *testing.T) {
 	DefaultsConfigEmptyName := "config-defaults-empty"
 	expectedConfig := &config.Defaults{
-		DefaultTimeoutMinutes:      60,
-		DefaultManagedByLabelValue: "tekton-pipelines",
-		DefaultServiceAccount:      "default",
+		DefaultTimeoutMinutes:             60,
+		DefaultManagedByLabelValue:        "tekton-pipelines",
+		DefaultServiceAccount:             "default",
+		DefaultMaxMatrixCombinationsCount: 256,
 	}
 	verifyConfigFileWithExpectedConfig(t, DefaultsConfigEmptyName, expectedConfig)
 }
