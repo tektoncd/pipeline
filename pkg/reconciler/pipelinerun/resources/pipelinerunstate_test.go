@@ -2565,6 +2565,94 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				PipelineTaskName: "single-custom-task-1",
 			}},
 		},
+		{
+			name: "matrixed-task",
+			state: PipelineRunState{{
+				TaskRunName: "matrixed-task-run-0",
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "matrixed-task",
+					TaskRef: &v1beta1.TaskRef{
+						Name:       "task",
+						Kind:       "Task",
+						APIVersion: "v1beta1",
+					},
+					WhenExpressions: []v1beta1.WhenExpression{{
+						Input:    "foo",
+						Operator: selection.In,
+						Values:   []string{"foo", "bar"},
+					}},
+					Matrix: []v1beta1.Param{{
+						Name:  "foobar",
+						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name:  "quxbaz",
+						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+					}},
+				},
+				TaskRuns: []*v1beta1.TaskRun{{
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-0"},
+				}, {
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-1"},
+				}, {
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-2"},
+				}, {
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-3"},
+				}},
+			}},
+			childRefs: []v1beta1.ChildStatusReference{{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				Name:             "matrixed-task-run-0",
+				PipelineTaskName: "matrixed-task",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}, {
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				Name:             "matrixed-task-run-1",
+				PipelineTaskName: "matrixed-task",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}, {
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				Name:             "matrixed-task-run-2",
+				PipelineTaskName: "matrixed-task",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}, {
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "TaskRun",
+				},
+				Name:             "matrixed-task-run-3",
+				PipelineTaskName: "matrixed-task",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}},
+		},
 	}
 
 	for _, tc := range testCases {
