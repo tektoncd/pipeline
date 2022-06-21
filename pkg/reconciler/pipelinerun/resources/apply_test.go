@@ -126,6 +126,36 @@ func TestApplyParameters(t *testing.T) {
 		},
 		alpha: true,
 	}, {
+		name: "parameter propagation object no task or task default winner pipeline",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myObject.key1) $(params.myObject.key2)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myObject", Value: *v1beta1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello world!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
 		name: "parameter propagation with task default but no task winner pipeline",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
@@ -290,6 +320,125 @@ func TestApplyParameters(t *testing.T) {
 		},
 		alpha: true,
 	}, {
+		name: "parameter propagation object with task default but no task winner pipeline",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "myobject",
+							Properties: map[string]v1beta1.PropertySpec{
+								"key1": {Type: "string"},
+								"key2": {Type: "string"},
+							},
+							Default: v1beta1.NewObject(map[string]string{
+								"key1": "default",
+								"key2": "param!",
+							}),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+			"key1": "pipeline",
+			"key2": "param!!",
+		})}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "myobject",
+							Properties: map[string]v1beta1.PropertySpec{
+								"key1": {Type: "string"},
+								"key2": {Type: "string"},
+							},
+							Default: v1beta1.NewObject(map[string]string{
+								"key1": "default",
+								"key2": "param!",
+							}),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline param!!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "parameter propagation object with task default and task winner task",
+		original: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+						"key1": "task",
+						"key2": "param!",
+					})},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "myobject",
+							Properties: map[string]v1beta1.PropertySpec{
+								"key1": {Type: "string"},
+								"key2": {Type: "string"},
+							},
+							Default: v1beta1.NewObject(map[string]string{
+								"key1": "default",
+								"key2": "param!!",
+							}),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
+		expected: v1beta1.PipelineSpec{
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+						"key1": "task",
+						"key2": "param!",
+					})},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "myobject",
+							Properties: map[string]v1beta1.PropertySpec{
+								"key1": {Type: "string"},
+								"key2": {Type: "string"},
+							},
+							Default: v1beta1.NewObject(map[string]string{
+								"key1": "default",
+								"key2": "param!!",
+							}),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "task param!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
 		name: "single parameter with when expression",
 		original: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
@@ -319,7 +468,64 @@ func TestApplyParameters(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "pipeline parameter nested inside task parameter",
+		name: "object parameter with when expression",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+						"key3": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+						"key3": "val3",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "$(params.myobject.key1)",
+					Operator: selection.In,
+					Values:   []string{"$(params.myobject.key2)", "$(params.myobject.key3)"},
+				}},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+			"key1": "val1",
+			"key2": "val2",
+			"key3": "val1",
+		})}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+						"key3": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+						"key3": "val3",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "val1",
+					Operator: selection.In,
+					Values:   []string{"val2", "val1"},
+				}},
+			}},
+		},
+	}, {
+		name: "string pipeline parameter nested inside task parameter",
 		original: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
@@ -346,7 +552,7 @@ func TestApplyParameters(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "array parameter",
+		name: "array pipeline parameter nested inside task parameter",
 		original: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewArrayOrString("default", "array", "value")},
@@ -371,6 +577,53 @@ func TestApplyParameters(t *testing.T) {
 				Params: []v1beta1.Param{
 					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("firstelement", "default", "array", "value")},
 					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("firstelement", "second-value", "array")},
+				},
+			}},
+		},
+	}, {
+		name: "object pipeline parameter nested inside task parameter",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("$(input.workspace.$(params.myobject.key1))")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("$(input.workspace.$(params.myobject.key2))")},
+				},
+			}},
+		},
+		params: nil, // no parameter values.
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("$(input.workspace.val1)")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("$(input.workspace.val2)")},
 				},
 			}},
 		},
@@ -461,6 +714,78 @@ func TestApplyParameters(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "object parameter evaluation with both tasks and final tasks",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.myobject.key1)")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("$(params.myobject.key2)")},
+				},
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.myobject.key1)")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("$(params.myobject.key2)")},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "$(params.myobject.key1)",
+					Operator: selection.In,
+					Values:   []string{"$(params.myobject.key2)"},
+				}},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+			"key1": "foo",
+			"key2": "bar",
+		})}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("foo")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("bar")},
+				},
+			}},
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "final-task-first-param", Value: *v1beta1.NewArrayOrString("foo")},
+					{Name: "final-task-second-param", Value: *v1beta1.NewArrayOrString("bar")},
+				},
+				WhenExpressions: v1beta1.WhenExpressions{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
+			}},
+		},
+	}, {
 		name: "parameter references with bracket notation and special characters",
 		original: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
@@ -537,6 +862,70 @@ func TestApplyParameters(t *testing.T) {
 						Name:      "first-workspace",
 						Workspace: "first-workspace",
 						SubPath:   "second-value",
+					},
+				},
+			}},
+		},
+	}, {
+		name: "object parameter in workspace subpath",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("$(params.myobject.key1)")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "$(params.myobject.key2)",
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+			"key1": "foo",
+			"key2": "bar",
+		})}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewArrayOrString("foo")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewArrayOrString("static value")},
+				},
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "bar",
 					},
 				},
 			}},

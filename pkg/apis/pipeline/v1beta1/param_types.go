@@ -195,15 +195,58 @@ func (arrayOrString ArrayOrString) MarshalJSON() ([]byte, error) {
 }
 
 // ApplyReplacements applyes replacements for ArrayOrString type
-func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string) {
-	if arrayOrString.Type == ParamTypeString {
-		arrayOrString.StringVal = substitution.ApplyReplacements(arrayOrString.StringVal, stringReplacements)
-	} else {
+func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) {
+	switch arrayOrString.Type {
+	case ParamTypeArray:
 		var newArrayVal []string
 		for _, v := range arrayOrString.ArrayVal {
 			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
 		arrayOrString.ArrayVal = newArrayVal
+	case ParamTypeObject:
+		newObjectVal := map[string]string{}
+		for k, v := range arrayOrString.ObjectVal {
+			newObjectVal[k] = substitution.ApplyReplacements(v, stringReplacements)
+		}
+		arrayOrString.ObjectVal = newObjectVal
+	default:
+		arrayOrString.applyOrCorrect(stringReplacements, arrayReplacements, objectReplacements)
+	}
+}
+
+// applyOrCorrect deals with string param whose value can be string literal or a reference to a string/array/object param/result.
+// If the value of arrayOrString is a reference to array or object, the type will be corrected from string to array/object.
+func (arrayOrString *ArrayOrString) applyOrCorrect(stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) {
+	stringVal := arrayOrString.StringVal
+
+	// if the stringVal is a string literal or a string that mixed with var references
+	// just do the normal string replacement
+	if !exactVariableSubstitutionRegex.MatchString(stringVal) {
+		arrayOrString.StringVal = substitution.ApplyReplacements(arrayOrString.StringVal, stringReplacements)
+		return
+	}
+
+	// trim the head "$(" and the tail ")" or "[*])"
+	// i.e. get "params.name" from "$(params.name)" or "$(params.name[*])"
+	trimedStringVal := strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(stringVal, "$("), ")"), "[*]")
+
+	// if the stringVal is a reference to a string param
+	if _, ok := stringReplacements[trimedStringVal]; ok {
+		arrayOrString.StringVal = substitution.ApplyReplacements(arrayOrString.StringVal, stringReplacements)
+	}
+
+	// if the stringVal is a reference to an array param, we need to change the type other than apply replacement
+	if _, ok := arrayReplacements[trimedStringVal]; ok {
+		arrayOrString.StringVal = ""
+		arrayOrString.ArrayVal = substitution.ApplyArrayReplacements(stringVal, stringReplacements, arrayReplacements)
+		arrayOrString.Type = ParamTypeArray
+	}
+
+	// if the stringVal is a reference an object param, we need to change the type other than apply replacement
+	if _, ok := objectReplacements[trimedStringVal]; ok {
+		arrayOrString.StringVal = ""
+		arrayOrString.ObjectVal = objectReplacements[trimedStringVal]
+		arrayOrString.Type = ParamTypeObject
 	}
 }
 
