@@ -30,7 +30,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -229,7 +228,7 @@ func TestEntrypointer(t *testing.T) {
 			}
 			fileContents, err := ioutil.ReadFile(terminationPath)
 			if err == nil {
-				var entries []v1alpha1.PipelineResourceResult
+				var entries []v1beta1.PipelineResourceResult
 				if err := json.Unmarshal(fileContents, &entries); err == nil {
 					var found = false
 					for _, result := range entries {

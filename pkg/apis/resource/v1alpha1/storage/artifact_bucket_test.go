@@ -21,7 +21,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -37,7 +38,7 @@ var (
 
 	bucket = storage.ArtifactBucket{
 		Location: "gs://fake-bucket",
-		Secrets: []v1alpha1.SecretParam{{
+		Secrets: []resourcev1alpha1.SecretParam{{
 			FieldName:  "GOOGLE_APPLICATION_CREDENTIALS",
 			SecretName: secretName,
 			SecretKey:  "serviceaccount",
@@ -50,7 +51,7 @@ var (
 func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 	names.TestingSeed()
 
-	want := []v1alpha1.Step{{
+	want := []v1beta1.Step{{
 		Name:    "artifact-dest-mkdir-workspace-9l9zj",
 		Image:   "busybox",
 		Command: []string{"mkdir", "-p", "/workspace/destination"},
@@ -71,7 +72,7 @@ func TestBucketGetCopyFromContainerSpec(t *testing.T) {
 
 func TestBucketGetCopyToContainerSpec(t *testing.T) {
 	names.TestingSeed()
-	want := []v1alpha1.Step{{
+	want := []v1beta1.Step{{
 		Name:         "artifact-copy-to-workspace-9l9zj",
 		Image:        "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		Command:      []string{"gsutil"},

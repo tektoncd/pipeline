@@ -23,9 +23,9 @@ import (
 	"os"
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -46,12 +46,7 @@ import (
 
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// v1alpha1
-	v1alpha1.SchemeGroupVersion.WithKind("Pipeline"):         &v1alpha1.Pipeline{},
-	v1alpha1.SchemeGroupVersion.WithKind("Task"):             &v1alpha1.Task{},
-	v1alpha1.SchemeGroupVersion.WithKind("ClusterTask"):      &v1alpha1.ClusterTask{},
-	v1alpha1.SchemeGroupVersion.WithKind("TaskRun"):          &v1alpha1.TaskRun{},
-	v1alpha1.SchemeGroupVersion.WithKind("PipelineRun"):      &v1alpha1.PipelineRun{},
-	v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &v1alpha1.PipelineResource{},
+	v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &resourcev1alpha1.PipelineResource{},
 	v1alpha1.SchemeGroupVersion.WithKind("Run"):              &v1alpha1.Run{},
 	// v1beta1
 	v1beta1.SchemeGroupVersion.WithKind("Pipeline"):    &v1beta1.Pipeline{},
@@ -131,59 +126,12 @@ func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 }
 
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	// nolint: revive
-	var (
-		v1alpha1GroupVersion = v1alpha1.SchemeGroupVersion.Version
-		v1beta1GroupVersion  = v1beta1.SchemeGroupVersion.Version
-	)
-
 	return conversion.NewConversionController(ctx,
 		// The path on which to serve the webhook
 		"/resource-conversion",
 
 		// Specify the types of custom resource definitions that should be converted
-		map[schema.GroupKind]conversion.GroupKindConversion{
-			v1beta1.Kind("Task"): {
-				DefinitionName: pipeline.TaskResource.String(),
-				HubVersion:     v1alpha1GroupVersion,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					v1alpha1GroupVersion: &v1alpha1.Task{},
-					v1beta1GroupVersion:  &v1beta1.Task{},
-				},
-			},
-			v1beta1.Kind("ClusterTask"): {
-				DefinitionName: pipeline.ClusterTaskResource.String(),
-				HubVersion:     v1alpha1GroupVersion,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					v1alpha1GroupVersion: &v1alpha1.ClusterTask{},
-					v1beta1GroupVersion:  &v1beta1.ClusterTask{},
-				},
-			},
-			v1beta1.Kind("TaskRun"): {
-				DefinitionName: pipeline.TaskRunResource.String(),
-				HubVersion:     v1alpha1GroupVersion,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					v1alpha1GroupVersion: &v1alpha1.TaskRun{},
-					v1beta1GroupVersion:  &v1beta1.TaskRun{},
-				},
-			},
-			v1beta1.Kind("Pipeline"): {
-				DefinitionName: pipeline.PipelineResource.String(),
-				HubVersion:     v1alpha1GroupVersion,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					v1alpha1GroupVersion: &v1alpha1.Pipeline{},
-					v1beta1GroupVersion:  &v1beta1.Pipeline{},
-				},
-			},
-			v1beta1.Kind("PipelineRun"): {
-				DefinitionName: pipeline.PipelineRunResource.String(),
-				HubVersion:     v1alpha1GroupVersion,
-				Zygotes: map[string]conversion.ConvertibleObject{
-					v1alpha1GroupVersion: &v1alpha1.PipelineRun{},
-					v1beta1GroupVersion:  &v1beta1.PipelineRun{},
-				},
-			},
-		},
+		map[schema.GroupKind]conversion.GroupKindConversion{},
 
 		// A function that infuses the context passed to ConvertTo/ConvertFrom/SetDefaults with custom metadata
 		func(ctx context.Context) context.Context {

@@ -29,9 +29,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
+
+var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+var testClock = clock.NewFakePassiveClock(now)
 
 func TestGetParams(t *testing.T) {
 	for _, c := range []struct {
@@ -209,7 +213,7 @@ status:
 		},
 		Spec: v1alpha1.RunSpec{
 			Retries: 3,
-			Ref: &v1alpha1.TaskRef{
+			Ref: &v1beta1.TaskRef{
 				APIVersion: "example.dev/v0",
 				Kind:       "Example",
 			},

@@ -26,7 +26,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
@@ -167,37 +166,6 @@ func TestGetPipelineFunc(t *testing.T) {
 			Bundle: u.Host + "/remote-pipeline-without-defaults",
 		},
 		expected: simplePipelineWithSpecParamAndKind(v1beta1.ParamTypeString, v1beta1.NamespacedTaskKind),
-	}, {
-		name:           "remote-v1alpha1-pipeline-without-defaults",
-		localPipelines: []runtime.Object{simplePipeline()},
-		remotePipelines: []runtime.Object{
-			&v1alpha1.Pipeline{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "simple",
-					Namespace: "default",
-				},
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Pipeline",
-					APIVersion: "tekton.dev/v1alpha1",
-				},
-				Spec: v1alpha1.PipelineSpec{
-					Tasks: []v1alpha1.PipelineTask{{
-						Name: "something",
-						TaskRef: &v1alpha1.TaskRef{
-							Name: "something",
-						},
-					}},
-					Params: []v1alpha1.ParamSpec{{
-						Name: "foo",
-					}},
-				},
-			},
-		},
-		ref: &v1alpha1.PipelineRef{
-			Name:   "simple",
-			Bundle: u.Host + "/remote-v1alpha1-pipeline-without-defaults",
-		},
-		expected: simplePipelineWithSpecParamKindNoType(v1beta1.ParamTypeString, v1beta1.NamespacedTaskKind),
 	}}
 
 	for _, tc := range testcases {
@@ -383,7 +351,7 @@ func simplePipelineWithBaseSpec() *v1beta1.Pipeline {
 	return p
 }
 
-func simplePipelineWithSpecAndParam(pt v1alpha1.ParamType) *v1beta1.Pipeline {
+func simplePipelineWithSpecAndParam(pt v1beta1.ParamType) *v1beta1.Pipeline {
 	p := simplePipelineWithBaseSpec()
 	p.Spec.Params = []v1beta1.ParamSpec{{
 		Name: "foo",
@@ -401,12 +369,6 @@ func simplePipelineWithSpecParamAndKind(pt v1beta1.ParamType, tk v1beta1.TaskKin
 	}}
 	p.Spec.Tasks[0].TaskRef.Kind = tk
 
-	return p
-}
-
-func simplePipelineWithSpecParamKindNoType(pt v1beta1.ParamType, tk v1beta1.TaskKind) *v1beta1.Pipeline {
-	p := simplePipelineWithSpecParamAndKind(pt, tk)
-	p.TypeMeta = metav1.TypeMeta{}
 	return p
 }
 

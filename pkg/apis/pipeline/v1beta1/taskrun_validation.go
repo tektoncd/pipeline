@@ -57,8 +57,8 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 
-	errs = errs.Also(validateParameters(ctx, ts.Params).ViaField("params"))
-	errs = errs.Also(validateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
+	errs = errs.Also(ValidateParameters(ctx, ts.Params).ViaField("params"))
+	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	if ts.Debug != nil {
 		errs = errs.Also(ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
@@ -103,8 +103,8 @@ func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
 	return errs
 }
 
-// validateWorkspaceBindings makes sure the volumes provided for the Task's declared workspaces make sense.
-func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs *apis.FieldError) {
+// ValidateWorkspaceBindings makes sure the volumes provided for the Task's declared workspaces make sense.
+func ValidateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs *apis.FieldError) {
 	var names []string
 	for idx, w := range wb {
 		names = append(names, w.Name)
@@ -114,7 +114,8 @@ func validateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs
 	return errs
 }
 
-func validateParameters(ctx context.Context, params []Param) (errs *apis.FieldError) {
+// ValidateParameters makes sure the params for the Task are valid.
+func ValidateParameters(ctx context.Context, params []Param) (errs *apis.FieldError) {
 	var names []string
 	for _, p := range params {
 		if p.Value.Type == ParamTypeObject {

@@ -3284,8 +3284,8 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		TaskSpec: &v1beta1.TaskSpec{Steps: []v1beta1.Step{{
 			Name: "step1",
 		}}},
-		Inputs:  map[string]*v1alpha1.PipelineResource{},
-		Outputs: map[string]*v1alpha1.PipelineResource{},
+		Inputs:  map[string]*resourcev1alpha1.PipelineResource{},
+		Outputs: map[string]*resourcev1alpha1.PipelineResource{},
 	}
 
 	getTask := func(ctx context.Context, name string) (v1beta1.TaskObject, error) { return task, nil }

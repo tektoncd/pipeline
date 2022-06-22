@@ -18,26 +18,6 @@ limitations under the License.
 
 package v1alpha1
 
-// ClusterTaskListerExpansion allows custom methods to be added to
-// ClusterTaskLister.
-type ClusterTaskListerExpansion interface{}
-
-// PipelineListerExpansion allows custom methods to be added to
-// PipelineLister.
-type PipelineListerExpansion interface{}
-
-// PipelineNamespaceListerExpansion allows custom methods to be added to
-// PipelineNamespaceLister.
-type PipelineNamespaceListerExpansion interface{}
-
-// PipelineRunListerExpansion allows custom methods to be added to
-// PipelineRunLister.
-type PipelineRunListerExpansion interface{}
-
-// PipelineRunNamespaceListerExpansion allows custom methods to be added to
-// PipelineRunNamespaceLister.
-type PipelineRunNamespaceListerExpansion interface{}
-
 // RunListerExpansion allows custom methods to be added to
 // RunLister.
 type RunListerExpansion interface{}
@@ -45,19 +25,3 @@ type RunListerExpansion interface{}
 // RunNamespaceListerExpansion allows custom methods to be added to
 // RunNamespaceLister.
 type RunNamespaceListerExpansion interface{}
-
-// TaskListerExpansion allows custom methods to be added to
-// TaskLister.
-type TaskListerExpansion interface{}
-
-// TaskNamespaceListerExpansion allows custom methods to be added to
-// TaskNamespaceLister.
-type TaskNamespaceListerExpansion interface{}
-
-// TaskRunListerExpansion allows custom methods to be added to
-// TaskRunLister.
-type TaskRunListerExpansion interface{}
-
-// TaskRunNamespaceListerExpansion allows custom methods to be added to
-// TaskRunNamespaceLister.
-type TaskRunNamespaceListerExpansion interface{}

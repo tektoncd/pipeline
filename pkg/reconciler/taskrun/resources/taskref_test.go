@@ -26,7 +26,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -72,6 +71,52 @@ var (
 		},
 	}
 )
+
+func TestGetTaskKind(t *testing.T) {
+	testCases := []struct {
+		name     string
+		tr       *v1beta1.TaskRun
+		expected v1beta1.TaskKind
+	}{
+		{
+			name: "no task ref",
+			tr: &v1beta1.TaskRun{
+				Spec: v1beta1.TaskRunSpec{
+					TaskSpec: &v1beta1.TaskSpec{},
+				},
+			},
+			expected: v1beta1.NamespacedTaskKind,
+		}, {
+			name: "no kind on task ref",
+			tr: &v1beta1.TaskRun{
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef: &v1beta1.TaskRef{Name: "whatever"},
+				},
+			},
+			expected: v1beta1.NamespacedTaskKind,
+		}, {
+			name: "kind on task ref",
+			tr: &v1beta1.TaskRun{
+				Spec: v1beta1.TaskRunSpec{
+					TaskRef: &v1beta1.TaskRef{
+						Name: "whatever",
+						Kind: "something-else",
+					},
+				},
+			},
+			expected: v1beta1.TaskKind("something-else"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tk := resources.GetTaskKind(tc.tr)
+			if tk != tc.expected {
+				t.Errorf("expected kind %s, but got %s", tc.expected, tk)
+			}
+		})
+	}
+}
 
 func TestLocalTaskRef(t *testing.T) {
 	testcases := []struct {
@@ -283,51 +328,6 @@ func TestGetTaskFunc(t *testing.T) {
 			},
 			expectedKind: v1beta1.NamespacedTaskKind,
 		}, {
-			name:       "remote-v1alpha1-task-without-defaults",
-			localTasks: []runtime.Object{},
-			remoteTasks: []runtime.Object{
-				&v1alpha1.Task{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "simple",
-						Namespace: "default",
-					},
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "tekton.dev/v1alpha1",
-						Kind:       "Task",
-					},
-					Spec: v1alpha1.TaskSpec{
-						TaskSpec: v1beta1.TaskSpec{
-							Params: []v1alpha1.ParamSpec{{
-								Name: "foo",
-							}},
-							Steps: []v1alpha1.Step{{
-								Image: "something",
-							}},
-						},
-					},
-				},
-			},
-			ref: &v1alpha1.TaskRef{
-				Name:   "simple",
-				Bundle: u.Host + "/remote-v1alpha1-task-without-defaults",
-			},
-			expected: &v1beta1.Task{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "simple",
-					Namespace: "default",
-				},
-				Spec: v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{
-						Image: "something",
-					}},
-					Params: []v1beta1.ParamSpec{{
-						Name: "foo",
-						Type: v1beta1.ParamTypeString,
-					}},
-				},
-			},
-			expectedKind: v1beta1.NamespacedTaskKind,
-		}, {
 			name:       "local-task",
 			localTasks: []runtime.Object{simpleNamespacedTask},
 			remoteTasks: []runtime.Object{
@@ -359,27 +359,34 @@ func TestGetTaskFunc(t *testing.T) {
 			name: "remote-cluster-task",
 			localTasks: []runtime.Object{
 				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "v1alpha1", Kind: "ClusterTask"},
+					TypeMeta:   metav1.TypeMeta{APIVersion: "v1beta1", Kind: "ClusterTask"},
 					ObjectMeta: metav1.ObjectMeta{Name: "simple"},
 					Spec:       v1beta1.TaskSpec{Params: []v1beta1.ParamSpec{{Name: "foo"}}},
 				},
 			},
 			remoteTasks: []runtime.Object{
 				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1", Kind: "ClusterTask"},
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "ClusterTask"},
 					ObjectMeta: metav1.ObjectMeta{Name: "simple"},
 				},
 				&v1beta1.ClusterTask{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1", Kind: "ClusterTask"},
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "ClusterTask"},
 					ObjectMeta: metav1.ObjectMeta{Name: "dummy"},
 				},
 			},
 			ref: &v1beta1.TaskRef{
-				Name:   "simple",
-				Kind:   v1alpha1.ClusterTaskKind,
-				Bundle: u.Host + "/remote-cluster-task",
+				Name:       "simple",
+				APIVersion: "tekton.dev/v1beta1",
+				Kind:       v1beta1.ClusterTaskKind,
+				Bundle:     u.Host + "/remote-cluster-task",
 			},
-			expected:     &v1beta1.ClusterTask{ObjectMeta: metav1.ObjectMeta{Name: "simple"}},
+			expected: &v1beta1.ClusterTask{
+				ObjectMeta: metav1.ObjectMeta{Name: "simple"},
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "ClusterTask",
+				},
+			},
 			expectedKind: v1beta1.ClusterTaskKind,
 		}, {
 			name:       "local-cluster-task",
@@ -394,9 +401,9 @@ func TestGetTaskFunc(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "dummy"},
 				},
 			},
-			ref: &v1alpha1.TaskRef{
+			ref: &v1beta1.TaskRef{
 				Name: "simple",
-				Kind: v1alpha1.ClusterTaskKind,
+				Kind: v1beta1.ClusterTaskKind,
 			},
 			expected:     simpleClusterTask,
 			expectedKind: v1beta1.ClusterTaskKind,

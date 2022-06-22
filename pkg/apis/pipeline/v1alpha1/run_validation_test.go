@@ -72,7 +72,7 @@ func TestRun_Invalid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "apiVersion",
 					Kind:       "kind",
 				},
@@ -92,7 +92,7 @@ func TestRun_Invalid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "",
 				},
 			},
@@ -105,7 +105,7 @@ func TestRun_Invalid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "",
 				},
@@ -150,7 +150,7 @@ func TestRun_Invalid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
@@ -163,7 +163,7 @@ func TestRun_Invalid(t *testing.T) {
 				}},
 			},
 		},
-		want: apis.ErrMultipleOneOf("spec.params"),
+		want: apis.ErrMultipleOneOf("spec.params[foo].name"),
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			err := c.run.Validate(context.Background())
@@ -185,7 +185,7 @@ func TestRun_Valid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "blah",
 					Name:       "blah",
@@ -199,7 +199,7 @@ func TestRun_Valid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
@@ -227,7 +227,7 @@ func TestRun_Valid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
@@ -247,7 +247,7 @@ func TestRun_Valid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
@@ -278,7 +278,7 @@ func TestRun_Workspaces_Invalid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
@@ -290,7 +290,7 @@ func TestRun_Workspaces_Invalid(t *testing.T) {
 				}},
 			},
 		},
-		wantErr: apis.ErrMissingField("workspace.persistentvolumeclaim.claimname"),
+		wantErr: apis.ErrMissingField("spec.workspaces[0].persistentvolumeclaim.claimname"),
 	}, {
 		name: "bind same workspace twice",
 		run: &v1alpha1.Run{
@@ -298,7 +298,7 @@ func TestRun_Workspaces_Invalid(t *testing.T) {
 				Name: "temp",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
@@ -311,7 +311,7 @@ func TestRun_Workspaces_Invalid(t *testing.T) {
 				}},
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("spec.workspaces.name"),
+		wantErr: apis.ErrMultipleOneOf("spec.workspaces[1].name"),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

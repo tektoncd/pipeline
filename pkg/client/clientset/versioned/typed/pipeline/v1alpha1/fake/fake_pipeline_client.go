@@ -28,28 +28,8 @@ type FakeTektonV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeTektonV1alpha1) ClusterTasks() v1alpha1.ClusterTaskInterface {
-	return &FakeClusterTasks{c}
-}
-
-func (c *FakeTektonV1alpha1) Pipelines(namespace string) v1alpha1.PipelineInterface {
-	return &FakePipelines{c, namespace}
-}
-
-func (c *FakeTektonV1alpha1) PipelineRuns(namespace string) v1alpha1.PipelineRunInterface {
-	return &FakePipelineRuns{c, namespace}
-}
-
 func (c *FakeTektonV1alpha1) Runs(namespace string) v1alpha1.RunInterface {
 	return &FakeRuns{c, namespace}
-}
-
-func (c *FakeTektonV1alpha1) Tasks(namespace string) v1alpha1.TaskInterface {
-	return &FakeTasks{c, namespace}
-}
-
-func (c *FakeTektonV1alpha1) TaskRuns(namespace string) v1alpha1.TaskRunInterface {
-	return &FakeTaskRuns{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

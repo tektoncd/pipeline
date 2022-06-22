@@ -64,7 +64,7 @@ func TestFilterRunRef(t *testing.T) {
 		desc: "both ref and spec",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "not-matching",
 					Kind:       kind,
 				},
@@ -81,7 +81,7 @@ func TestFilterRunRef(t *testing.T) {
 		desc: "Run without matching apiVersion in taskRef",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: "not-matching",
 					Kind:       kind,
 				},
@@ -92,7 +92,7 @@ func TestFilterRunRef(t *testing.T) {
 		desc: "Run without matching kind in taskRef",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: apiVersion,
 					Kind:       "not-matching",
 				},
@@ -103,7 +103,7 @@ func TestFilterRunRef(t *testing.T) {
 		desc: "Run with matching apiVersion and kind in taskRef",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: apiVersion,
 					Kind:       kind,
 				},
@@ -153,7 +153,7 @@ func TestFilterRunRef(t *testing.T) {
 		desc: "Run with matching apiVersion and kind and name for taskRef",
 		in: &v1alpha1.Run{
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: apiVersion,
 					Kind:       kind,
 					Name:       "some-name",
@@ -201,7 +201,7 @@ func TestFilterOwnerRunRef(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: apiVersion,
 					Kind:       kind,
 				},
@@ -265,7 +265,7 @@ func TestFilterOwnerRunRef(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: apiVersion2, // different apiversion
 					Kind:       kind,
 				},
@@ -329,7 +329,7 @@ func TestFilterOwnerRunRef(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: apiVersion,
 					Kind:       kind2, // different kind
 				},
@@ -419,7 +419,7 @@ func TestFilterOwnerRunRef(t *testing.T) {
 				Namespace: "default",
 			},
 			Spec: v1alpha1.RunSpec{
-				Ref: &v1alpha1.TaskRef{
+				Ref: &v1beta1.TaskRef{
 					APIVersion: apiVersion,
 					Kind:       kind,
 				},

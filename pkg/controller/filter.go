@@ -21,6 +21,7 @@ package controller
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	listersalpha "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -51,7 +52,7 @@ func FilterRunRef(apiVersion, kind string) func(interface{}) bool {
 		}
 		result := false
 		if r.Spec.Ref != nil {
-			result = r.Spec.Ref.APIVersion == apiVersion && r.Spec.Ref.Kind == v1alpha1.TaskKind(kind)
+			result = r.Spec.Ref.APIVersion == apiVersion && r.Spec.Ref.Kind == v1beta1.TaskKind(kind)
 		} else if r.Spec.Spec != nil {
 			result = r.Spec.Spec.APIVersion == apiVersion && r.Spec.Spec.Kind == kind
 		}
@@ -97,7 +98,7 @@ func FilterOwnerRunRef(runLister listersalpha.RunLister, apiVersion, kind string
 		}
 		result := false
 		if run.Spec.Ref != nil {
-			result = run.Spec.Ref.APIVersion == apiVersion && run.Spec.Ref.Kind == v1alpha1.TaskKind(kind)
+			result = run.Spec.Ref.APIVersion == apiVersion && run.Spec.Ref.Kind == v1beta1.TaskKind(kind)
 		} else if run.Spec.Spec != nil {
 			result = run.Spec.Spec.APIVersion == apiVersion && run.Spec.Spec.Kind == kind
 		}
