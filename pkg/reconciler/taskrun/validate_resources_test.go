@@ -20,12 +20,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
@@ -81,7 +80,7 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 		Inputs: map[string]*resourcev1alpha1.PipelineResource{
 			"resource-to-build": {
 				ObjectMeta: metav1.ObjectMeta{Name: "example-resource"},
-				Spec: v1alpha1.PipelineResourceSpec{
+				Spec: resourcev1alpha1.PipelineResourceSpec{
 					Type: resourcev1alpha1.PipelineResourceTypeGit,
 					Params: []v1beta1.ResourceParam{{
 						Name:  "foo",
@@ -91,7 +90,7 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 			},
 			"optional-resource-to-build": {
 				ObjectMeta: metav1.ObjectMeta{Name: "example-resource"},
-				Spec: v1alpha1.PipelineResourceSpec{
+				Spec: resourcev1alpha1.PipelineResourceSpec{
 					Type: resourcev1alpha1.PipelineResourceTypeGit,
 					Params: []v1beta1.ResourceParam{{
 						Name:  "foo",
@@ -103,13 +102,13 @@ func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
 		Outputs: map[string]*resourcev1alpha1.PipelineResource{
 			"resource-to-provide": {
 				ObjectMeta: metav1.ObjectMeta{Name: "example-image"},
-				Spec: v1alpha1.PipelineResourceSpec{
+				Spec: resourcev1alpha1.PipelineResourceSpec{
 					Type: resourcev1alpha1.PipelineResourceTypeImage,
 				},
 			},
 			"optional-resource-to-provide": {
 				ObjectMeta: metav1.ObjectMeta{Name: "example-image"},
-				Spec: v1alpha1.PipelineResourceSpec{
+				Spec: resourcev1alpha1.PipelineResourceSpec{
 					Type: resourcev1alpha1.PipelineResourceTypeImage,
 				},
 			},

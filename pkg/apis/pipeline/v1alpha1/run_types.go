@@ -47,7 +47,7 @@ type EmbeddedRunSpec struct {
 // RunSpec defines the desired state of Run
 type RunSpec struct {
 	// +optional
-	Ref *TaskRef `json:"ref,omitempty"`
+	Ref *v1beta1.TaskRef `json:"ref,omitempty"`
 
 	// Spec is a specification of a custom task
 	// +optional
@@ -69,7 +69,7 @@ type RunSpec struct {
 
 	// PodTemplate holds pod specific configuration
 	// +optional
-	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate *v1beta1.PodTemplate `json:"podTemplate,omitempty"`
 
 	// Time after which the custom-task times out.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration

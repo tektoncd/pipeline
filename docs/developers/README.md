@@ -262,7 +262,7 @@ Tasks can define results by adding a result on the task spec. This is an
 example:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: print-date
@@ -290,7 +290,7 @@ A user can defined more than one result for a single task.
 For this task definition,
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
   name: print-date
@@ -319,7 +319,7 @@ spec:
 you end up with this task run status:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 # ...
 status:
@@ -357,7 +357,7 @@ result in a pipeline by using the syntax
 result at the location of the variable.
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
   name: sum-and-multiply-pipeline

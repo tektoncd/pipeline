@@ -25,6 +25,7 @@ import (
 	// Link in the fakes so they get injected into injection.Fake
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	informersv1beta1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
@@ -71,7 +72,7 @@ type Data struct {
 	TaskRuns          []*v1beta1.TaskRun
 	Tasks             []*v1beta1.Task
 	ClusterTasks      []*v1beta1.ClusterTask
-	PipelineResources []*v1alpha1.PipelineResource
+	PipelineResources []*resourcev1alpha1.PipelineResource
 	Runs              []*v1alpha1.Run
 	Pods              []*corev1.Pod
 	Namespaces        []*corev1.Namespace

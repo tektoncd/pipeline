@@ -661,7 +661,7 @@ in order to stop `TaskRun` step containers from running.
 Example of cancelling a `TaskRun`:
 
 ```yaml
-apiVersion: tekton.dev/v1alpha1
+apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
   name: go-example-git

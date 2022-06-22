@@ -24,18 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// ClusterTasks returns a ClusterTaskInformer.
-	ClusterTasks() ClusterTaskInformer
-	// Pipelines returns a PipelineInformer.
-	Pipelines() PipelineInformer
-	// PipelineRuns returns a PipelineRunInformer.
-	PipelineRuns() PipelineRunInformer
 	// Runs returns a RunInformer.
 	Runs() RunInformer
-	// Tasks returns a TaskInformer.
-	Tasks() TaskInformer
-	// TaskRuns returns a TaskRunInformer.
-	TaskRuns() TaskRunInformer
 }
 
 type version struct {
@@ -49,32 +39,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// ClusterTasks returns a ClusterTaskInformer.
-func (v *version) ClusterTasks() ClusterTaskInformer {
-	return &clusterTaskInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
-}
-
-// Pipelines returns a PipelineInformer.
-func (v *version) Pipelines() PipelineInformer {
-	return &pipelineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// PipelineRuns returns a PipelineRunInformer.
-func (v *version) PipelineRuns() PipelineRunInformer {
-	return &pipelineRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
 // Runs returns a RunInformer.
 func (v *version) Runs() RunInformer {
 	return &runInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// Tasks returns a TaskInformer.
-func (v *version) Tasks() TaskInformer {
-	return &taskInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// TaskRuns returns a TaskRunInformer.
-func (v *version) TaskRuns() TaskRunInformer {
-	return &taskRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

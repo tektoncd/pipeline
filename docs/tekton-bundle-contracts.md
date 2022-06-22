@@ -24,7 +24,7 @@ Each layer must contain all of the following annotations:
 - `dev.tekton.image.name` => `ObjectMeta.Name` of the resource
 - `dev.tekton.image.kind` => `TypeMeta.Kind` of the resource, all lower-cased and singular (eg, `task`)
 - `dev.tekton.image.apiVersion` => `TypeMeta.APIVersion` of the resource (eg 
-"tekton.dev/v1alpha1")  
+"tekton.dev/v1beta1")  
 
 The union of the { `dev.tekton.image.apiVersion`, `dev.tekton.image.kind`, `dev.tekton.image.name` }
 annotations on a given layer must be unique among all layers of that image. In practical terms, this means no two

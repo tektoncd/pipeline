@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/remote"
@@ -45,7 +44,7 @@ var errEtcdLeaderChange = "etcdserver: leader changed"
 
 // GetTaskKind returns the referenced Task kind (Task, ClusterTask, ...) if the TaskRun is using TaskRef.
 func GetTaskKind(taskrun *v1beta1.TaskRun) v1beta1.TaskKind {
-	kind := v1alpha1.NamespacedTaskKind
+	kind := v1beta1.NamespacedTaskKind
 	if taskrun.Spec.TaskRef != nil && taskrun.Spec.TaskRef.Kind != "" {
 		kind = taskrun.Spec.TaskRef.Kind
 	}
@@ -79,7 +78,7 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester,
 	owner kmeta.OwnerRefable, tr *v1beta1.TaskRef, trName string, namespace, saName string) (GetTask, error) {
 	cfg := config.FromContextOrDefaults(ctx)
-	kind := v1alpha1.NamespacedTaskKind
+	kind := v1beta1.NamespacedTaskKind
 	if tr != nil && tr.Kind != "" {
 		kind = tr.Kind
 	}
@@ -152,21 +151,6 @@ func readRuntimeObjectAsTask(ctx context.Context, obj runtime.Object) (v1beta1.T
 	if task, ok := obj.(v1beta1.TaskObject); ok {
 		task.SetDefaults(ctx)
 		return task, nil
-	}
-
-	// If this object is not already a v1beta1 object, figure out what type it is actually and try to coerce it
-	// into a v1beta1.TaskInterface compatible object.
-	switch tt := obj.(type) {
-	case *v1alpha1.Task:
-		betaTask := &v1beta1.Task{}
-		err := tt.ConvertTo(ctx, betaTask)
-		betaTask.SetDefaults(ctx)
-		return betaTask, err
-	case *v1alpha1.ClusterTask:
-		betaTask := &v1beta1.ClusterTask{}
-		err := tt.ConvertTo(ctx, betaTask)
-		betaTask.SetDefaults(ctx)
-		return betaTask, err
 	}
 
 	return nil, errors.New("resource is not a task")

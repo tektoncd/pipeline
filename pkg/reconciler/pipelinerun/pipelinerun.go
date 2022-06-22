@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
@@ -285,7 +286,7 @@ func (c *Reconciler) resolvePipelineState(
 	tasks []v1beta1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
 	pr *v1beta1.PipelineRun,
-	providedResources map[string]*v1alpha1.PipelineResource) (resources.PipelineRunState, error) {
+	providedResources map[string]*resourcev1alpha1.PipelineResource) (resources.PipelineRunState, error) {
 	pst := resources.PipelineRunState{}
 	// Resolve each task individually because they each could have a different reference context (remote or local).
 	for _, task := range tasks {
