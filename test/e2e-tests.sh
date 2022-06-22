@@ -19,11 +19,12 @@
 
 source $(git rev-parse --show-toplevel)/test/e2e-common.sh
 
-
 # Setting defaults
 PIPELINE_FEATURE_GATE=${PIPELINE_FEATURE_GATE:-stable}
 SKIP_INITIALIZE=${SKIP_INITIALIZE:="false"}
 RUN_YAML_TESTS=${RUN_YAML_TESTS:="true"}
+E2E_CLUSTER_MACHINE=${E2E_CLUSTER_MACHINE:-n1-standard-8}
+E2E_MAX_CLUSTER_NODES=${E2E_MAX_CLUSTER_NODES:-5}
 failed=0
 
 # Script entry point.
