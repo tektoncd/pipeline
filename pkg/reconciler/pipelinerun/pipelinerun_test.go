@@ -1565,11 +1565,6 @@ func runTestReconcileOnCancelledPipelineRun(t *testing.T, embeddedStatus string)
 			specStatus: v1beta1.PipelineRunSpecStatusCancelled,
 			reason:     ReasonCancelled,
 		},
-		{
-			name:       "cancelled deprecated",
-			specStatus: v1beta1.PipelineRunSpecStatusCancelledDeprecated,
-			reason:     ReasonCancelledDeprecated,
-		},
 	}
 
 	for _, tc := range testCases {

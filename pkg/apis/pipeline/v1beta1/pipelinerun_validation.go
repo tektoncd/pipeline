@@ -121,8 +121,7 @@ func validateSpecStatus(status PipelineRunSpecStatus) *apis.FieldError {
 	switch status {
 	case "":
 		return nil
-	case PipelineRunSpecStatusPending,
-		PipelineRunSpecStatusCancelledDeprecated:
+	case PipelineRunSpecStatusPending:
 		return nil
 	case PipelineRunSpecStatusCancelled,
 		PipelineRunSpecStatusCancelledRunFinally,

@@ -104,8 +104,6 @@ const (
 	ReasonInvalidGraph = "PipelineInvalidGraph"
 	// ReasonCancelled indicates that a PipelineRun was cancelled.
 	ReasonCancelled = pipelinerunmetrics.ReasonCancelled
-	// ReasonCancelledDeprecated Deprecated: "PipelineRunCancelled" indicates that a PipelineRun was cancelled.
-	ReasonCancelledDeprecated = pipelinerunmetrics.ReasonCancelledDeprecated
 	// ReasonPending indicates that a PipelineRun is pending.
 	ReasonPending = "PipelineRunPending"
 	// ReasonCouldntCancel indicates that a PipelineRun was cancelled but attempting to update
