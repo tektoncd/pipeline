@@ -182,9 +182,10 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1beta1.TaskRunR
 		if !rprt.isSuccessful() {
 			continue
 		}
-		results[rprt.PipelineTask.Name] = rprt.TaskRun.Status.TaskRunResults
+		if rprt.TaskRun != nil {
+			results[rprt.PipelineTask.Name] = rprt.TaskRun.Status.TaskRunResults
+		}
 	}
-
 	return results
 }
 

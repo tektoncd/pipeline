@@ -2368,6 +2368,69 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "nil-run-1",
 		},
+	}, {
+		TaskRunNames: []string{
+			"matrixed-task-run-0",
+			"matrixed-task-run-1",
+			"matrixed-task-run-2",
+			"matrixed-task-run-3",
+		},
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "matrixed-task",
+			TaskRef: &v1beta1.TaskRef{
+				Name:       "task",
+				Kind:       "Task",
+				APIVersion: "v1beta1",
+			},
+			Matrix: []v1beta1.Param{{
+				Name:  "foobar",
+				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}, {
+				Name:  "quxbaz",
+				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+			}},
+		},
+		TaskRuns: []*v1beta1.TaskRun{{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-0"},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+					Reason: v1beta1.TaskRunReasonSuccessful.String(),
+				}}},
+			},
+		}, {
+			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-1"},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+					Reason: v1beta1.TaskRunReasonSuccessful.String(),
+				}}},
+			},
+		}, {
+			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-2"},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+					Reason: v1beta1.TaskRunReasonSuccessful.String(),
+				}}},
+			},
+		}, {
+			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
+			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-3"},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+					Reason: v1beta1.TaskRunReasonSuccessful.String(),
+				}}},
+			},
+		}},
 	}}
 
 	expectedTaskResults := map[string][]v1beta1.TaskRunResult{
