@@ -622,7 +622,7 @@ func TestResolveResultRefs(t *testing.T) {
 				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tt.wantPt, pt); d != "" {
-				t.Fatalf("ResolvedPipelineRunTask %s", diff.PrintWantGot(d))
+				t.Fatalf("ResolvedPipelineTask %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -632,7 +632,7 @@ func TestResolveResultRef(t *testing.T) {
 	for _, tt := range []struct {
 		name             string
 		pipelineRunState PipelineRunState
-		target           *ResolvedPipelineRunTask
+		target           *ResolvedPipelineTask
 		want             ResolvedResultRefs
 		wantErr          bool
 		wantPt           string
@@ -706,7 +706,7 @@ func TestResolveResultRef(t *testing.T) {
 				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tt.wantPt, pt); d != "" {
-				t.Fatalf("ResolvedPipelineRunTask %s", diff.PrintWantGot(d))
+				t.Fatalf("ResolvedPipelineTask %s", diff.PrintWantGot(d))
 			}
 		})
 	}

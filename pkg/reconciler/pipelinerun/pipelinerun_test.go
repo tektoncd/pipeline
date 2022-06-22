@@ -3066,12 +3066,12 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		timeoutDuration *metav1.Duration
 		timeoutFields   *v1beta1.TimeoutFields
 		startTime       time.Time
-		rprt            *resources.ResolvedPipelineRunTask
+		rpt             *resources.ResolvedPipelineTask
 		expected        *metav1.Duration
 	}{{
 		name:      "nil timeout duration",
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
 			},
@@ -3081,7 +3081,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		name:            "timeout specified in pr",
 		timeoutDuration: &metav1.Duration{Duration: 20 * time.Minute},
 		startTime:       now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
 			},
@@ -3091,7 +3091,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		name:            "0 timeout duration",
 		timeoutDuration: &metav1.Duration{Duration: 0 * time.Minute},
 		startTime:       now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
 			},
@@ -3101,7 +3101,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		name:            "taskrun being created after timeout expired",
 		timeoutDuration: &metav1.Duration{Duration: 1 * time.Minute},
 		startTime:       now.Add(-2 * time.Minute),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
 			},
@@ -3111,7 +3111,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		name:            "taskrun being created with timeout for PipelineTask",
 		timeoutDuration: &metav1.Duration{Duration: 20 * time.Minute},
 		startTime:       now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
 			},
@@ -3121,7 +3121,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 		name:            "0 timeout duration for PipelineRun, PipelineTask timeout still applied",
 		timeoutDuration: &metav1.Duration{Duration: 0 * time.Minute},
 		startTime:       now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
 			},
@@ -3133,7 +3133,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
 			},
@@ -3146,7 +3146,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: nil,
 			},
@@ -3158,7 +3158,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
 			},
@@ -3170,7 +3170,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			Tasks: &metav1.Duration{Duration: 1 * time.Minute},
 		},
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
 			},
@@ -3182,7 +3182,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now.Add(-10 * time.Minute),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 			TaskRun: &v1beta1.TaskRun{
 				Status: v1beta1.TaskRunStatus{
@@ -3199,7 +3199,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now.Add(-10 * time.Minute),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
 			},
@@ -3218,7 +3218,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			Tasks: &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now.Add(-10 * time.Minute),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
 			},
@@ -3248,7 +3248,7 @@ func TestGetTaskRunTimeout(t *testing.T) {
 					},
 				},
 			}
-			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), pr, tc.rprt, testClock), tc.expected); d != "" {
+			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), pr, tc.rpt, testClock), tc.expected); d != "" {
 				t.Errorf("Unexpected task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -3266,12 +3266,12 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		timeoutFields   *v1beta1.TimeoutFields
 		startTime       time.Time
 		pr              *v1beta1.PipelineRun
-		rprt            *resources.ResolvedPipelineRunTask
+		rpt             *resources.ResolvedPipelineTask
 		expected        *metav1.Duration
 	}{{
 		name:      "nil timeout duration",
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 60 * time.Minute},
@@ -3279,7 +3279,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		name:            "timeout specified in pr",
 		timeoutDuration: &metav1.Duration{Duration: 20 * time.Minute},
 		startTime:       now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
@@ -3287,7 +3287,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		name:            "taskrun being created after timeout expired",
 		timeoutDuration: &metav1.Duration{Duration: 1 * time.Minute},
 		startTime:       now.Add(-2 * time.Minute),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 1 * time.Second},
@@ -3298,7 +3298,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			Tasks:    &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
@@ -3308,7 +3308,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			Finally: &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
@@ -3320,14 +3320,14 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			Finally:  &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
 		expected: &metav1.Duration{Duration: 20 * time.Minute},
 	}, {
 		name:      "use pipeline.finally[].timeout",
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
 			},
@@ -3340,7 +3340,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			Finally:  &metav1.Duration{Duration: 1 * time.Minute},
 		},
 		startTime: now,
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 2 * time.Minute},
 			},
@@ -3352,7 +3352,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			Finally: &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now.Add(-10 * time.Minute),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 			TaskRun: &v1beta1.TaskRun{
 				Status: v1beta1.TaskRunStatus{
@@ -3369,7 +3369,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			Finally: &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now.Add(-10 * time.Minute),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
 			},
@@ -3389,7 +3389,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 			Finally:  &metav1.Duration{Duration: 20 * time.Minute},
 		},
 		startTime: now.Add(-10 * time.Minute),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
 			},
@@ -3419,7 +3419,7 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 					},
 				},
 			}
-			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), pr, tc.rprt, testClock)); d != "" {
+			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), pr, tc.rpt, testClock)); d != "" {
 				t.Errorf("Unexpected finally task run timeout. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -7217,7 +7217,7 @@ func TestGetTaskrunWorkspaces_Failure(t *testing.T) {
 	tests := []struct {
 		name          string
 		pr            *v1beta1.PipelineRun
-		rprt          *resources.ResolvedPipelineRunTask
+		rprt          *resources.ResolvedPipelineTask
 		expectedError string
 	}{{
 		name: "failure declaring workspace with different name",
@@ -7227,7 +7227,7 @@ metadata:
 spec:
   workspaces:
     - name: source`),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rprt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "resolved-pipelinetask",
 				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
@@ -7247,7 +7247,7 @@ spec:
   workspaces:
     - name: source
  `),
-			rprt: &resources.ResolvedPipelineRunTask{
+			rprt: &resources.ResolvedPipelineTask{
 				PipelineTask: &v1beta1.PipelineTask{
 					Name: "resolved-pipelinetask",
 					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
@@ -7277,7 +7277,7 @@ func TestGetTaskrunWorkspaces_Success(t *testing.T) {
 	tests := []struct {
 		name string
 		pr   *v1beta1.PipelineRun
-		rprt *resources.ResolvedPipelineRunTask
+		rprt *resources.ResolvedPipelineTask
 	}{{
 		name: "valid declaration of workspace names",
 		pr: parse.MustParsePipelineRun(t, `
@@ -7286,7 +7286,7 @@ metadata:
 spec:
   workspaces:
     - name: source`),
-		rprt: &resources.ResolvedPipelineRunTask{
+		rprt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "resolved-pipelinetask",
 				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
@@ -7304,7 +7304,7 @@ metadata:
 spec:
   workspaces:
     - name: source`),
-			rprt: &resources.ResolvedPipelineRunTask{
+			rprt: &resources.ResolvedPipelineTask{
 				PipelineTask: &v1beta1.PipelineTask{
 					Name: "resolved-pipelinetask",
 					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
