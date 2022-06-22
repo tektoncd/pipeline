@@ -22,12 +22,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
-	"sort"
 	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -725,15 +724,10 @@ func TestLabelsFromDisk(t *testing.T) {
 				derefed = append(derefed, *l)
 			}
 
-			sort.Slice(derefed, func(i, j int) bool {
-				return derefed[i].Name < derefed[j].Name
-			})
-			sort.Slice(tt.want, func(i, j int) bool {
-				return tt.want[i].Name < tt.want[j].Name
-			})
-
-			if !reflect.DeepEqual(derefed, tt.want) {
-				t.Errorf("labelsFromDisk() = %v, want %v", derefed, tt.want)
+			if d := cmp.Diff(tt.want, derefed, cmpopts.SortSlices(func(i, j scm.Label) bool {
+				return i.Name < j.Name
+			})); d != "" {
+				t.Errorf("expected labelsFromDisk() to match %#v. Diff %s", derefed, diff.PrintWantGot(d))
 			}
 		})
 	}

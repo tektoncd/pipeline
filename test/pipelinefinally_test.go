@@ -20,18 +20,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"testing"
 
-	"github.com/tektoncd/pipeline/test/parse"
-
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/test/diff"
-
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
-
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/test/diff"
+	"github.com/tektoncd/pipeline/test/parse"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -391,9 +388,9 @@ spec:
 
 	actualSkippedTasks := pr.Status.SkippedTasks
 	// Sort tasks based on their names to get similar order as in expected list
-	sort.Slice(actualSkippedTasks, func(i int, j int) bool { return actualSkippedTasks[i].Name < actualSkippedTasks[j].Name })
-
-	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks); d != "" {
+	if d := cmp.Diff(actualSkippedTasks, expectedSkippedTasks, cmpopts.SortSlices(func(i, j v1beta1.SkippedTask) bool {
+		return i.Name < j.Name
+	})); d != "" {
 		t.Fatalf("Expected four skipped tasks, dag task with condition failure dagtask3, dag task with when expression,"+
 			"two final tasks with missing result reference finaltaskconsumingdagtask1 and finaltaskconsumingdagtask4 in SkippedTasks."+
 			" Diff: %s", diff.PrintWantGot(d))

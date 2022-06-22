@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -17,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var (
@@ -614,22 +614,11 @@ func TestResolveResultRefs(t *testing.T) {
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, pt, err := ResolveResultRefs(tt.pipelineRunState, tt.targets)
-			sort.SliceStable(got, func(i, j int) bool {
-				fromI := got[i].FromTaskRun
-				if fromI == "" {
-					fromI = got[i].FromRun
-				}
-				fromJ := got[j].FromTaskRun
-				if fromJ == "" {
-					fromJ = got[j].FromRun
-				}
-				return strings.Compare(fromI, fromJ) < 0
-			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if d := cmp.Diff(tt.want, got); d != "" {
+			if d := cmp.Diff(tt.want, got, cmpopts.SortSlices(lessResolvedResultRefs)); d != "" {
 				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tt.wantPt, pt); d != "" {
@@ -709,22 +698,11 @@ func TestResolveResultRef(t *testing.T) {
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, pt, err := ResolveResultRef(tt.pipelineRunState, tt.target)
-			sort.SliceStable(got, func(i, j int) bool {
-				fromI := got[i].FromTaskRun
-				if fromI == "" {
-					fromI = got[i].FromRun
-				}
-				fromJ := got[j].FromTaskRun
-				if fromJ == "" {
-					fromJ = got[j].FromRun
-				}
-				return strings.Compare(fromI, fromJ) < 0
-			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ResolveResultRefs() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if d := cmp.Diff(tt.want, got); d != "" {
+			if d := cmp.Diff(tt.want, got, cmpopts.SortSlices(lessResolvedResultRefs)); d != "" {
 				t.Fatalf("ResolveResultRef %s", diff.PrintWantGot(d))
 			}
 			if d := cmp.Diff(tt.wantPt, pt); d != "" {
@@ -732,4 +710,16 @@ func TestResolveResultRef(t *testing.T) {
 			}
 		})
 	}
+}
+
+func lessResolvedResultRefs(i, j *ResolvedResultRef) bool {
+	fromI := i.FromTaskRun
+	if fromI == "" {
+		fromI = i.FromRun
+	}
+	fromJ := j.FromTaskRun
+	if fromJ == "" {
+		fromJ = j.FromRun
+	}
+	return strings.Compare(fromI, fromJ) < 0
 }

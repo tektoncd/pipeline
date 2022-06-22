@@ -16,7 +16,6 @@ limitations under the License.
 package resources_test
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -124,8 +123,7 @@ func TestGetOutputSteps(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			postTasks := resources.GetOutputSteps(tc.outputs, tc.pipelineTaskName, pvcDir)
-			sort.SliceStable(postTasks, func(i, j int) bool { return postTasks[i].Name < postTasks[j].Name })
-			if d := cmp.Diff(postTasks, tc.expectedtaskOuputResources); d != "" {
+			if d := cmp.Diff(tc.expectedtaskOuputResources, postTasks, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
 				t.Errorf("error comparing post steps %s", diff.PrintWantGot(d))
 			}
 		})
@@ -266,8 +264,7 @@ func TestGetInputSteps(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask.Resources.Inputs, pvcDir)
-			sort.SliceStable(taskInputResources, func(i, j int) bool { return taskInputResources[i].Name < taskInputResources[j].Name })
-			if d := cmp.Diff(tc.expectedtaskInputResources, taskInputResources); d != "" {
+			if d := cmp.Diff(tc.expectedtaskInputResources, taskInputResources, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
 				t.Errorf("error comparing task resource inputs %s", diff.PrintWantGot(d))
 			}
 
@@ -346,13 +343,14 @@ func TestWrapSteps(t *testing.T) {
 		Paths: []string{"/pvc/test-task/test-output-2"},
 	}}
 
-	sort.SliceStable(expectedtaskInputResources, func(i, j int) bool { return expectedtaskInputResources[i].Name < expectedtaskInputResources[j].Name })
-	sort.SliceStable(expectedtaskOuputResources, func(i, j int) bool { return expectedtaskOuputResources[i].Name < expectedtaskOuputResources[j].Name })
-
-	if d := cmp.Diff(taskRunSpec.Resources.Inputs, expectedtaskInputResources, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+	if d := cmp.Diff(taskRunSpec.Resources.Inputs, expectedtaskInputResources, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
 		t.Errorf("error comparing input resources %s", diff.PrintWantGot(d))
 	}
-	if d := cmp.Diff(taskRunSpec.Resources.Outputs, expectedtaskOuputResources, cmpopts.SortSlices(func(x, y v1beta1.TaskResourceBinding) bool { return x.Name < y.Name })); d != "" {
+	if d := cmp.Diff(taskRunSpec.Resources.Outputs, expectedtaskOuputResources, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
 		t.Errorf("error comparing output resources %s", diff.PrintWantGot(d))
 	}
+}
+
+func lessTaskResourceBindings(i, j v1beta1.TaskResourceBinding) bool {
+	return i.Name < j.Name
 }

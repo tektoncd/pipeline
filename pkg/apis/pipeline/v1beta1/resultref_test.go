@@ -17,10 +17,10 @@ limitations under the License.
 package v1beta1_test
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"k8s.io/apimachinery/pkg/selection"
@@ -277,16 +277,15 @@ func TestHasResultReference(t *testing.T) {
 				t.Fatalf("expected to find expressions but didn't find any")
 			}
 			got := v1beta1.NewResultRefs(expressions)
-			sort.Slice(got, func(i, j int) bool {
-				if got[i].PipelineTask > got[j].PipelineTask {
+			if d := cmp.Diff(tt.wantRef, got, cmpopts.SortSlices(func(i, j *v1beta1.ResultRef) bool {
+				if i.PipelineTask > j.PipelineTask {
 					return false
 				}
-				if got[i].Result > got[j].Result {
+				if i.Result > j.Result {
 					return false
 				}
 				return true
-			})
-			if d := cmp.Diff(tt.wantRef, got); d != "" {
+			})); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})

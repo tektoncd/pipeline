@@ -20,11 +20,11 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -788,15 +788,7 @@ pipelineTaskName: task
 				actualPrStatus.ChildReferences = fixedChildRefs
 			}
 
-			// Sort the ChildReferences to deal with annoying ordering issues.
-			sort.Slice(actualPrStatus.ChildReferences, func(i, j int) bool {
-				return actualPrStatus.ChildReferences[i].Name < actualPrStatus.ChildReferences[j].Name
-			})
-			sort.Slice(tc.expectedPrStatus.ChildReferences, func(i, j int) bool {
-				return tc.expectedPrStatus.ChildReferences[i].Name < tc.expectedPrStatus.ChildReferences[j].Name
-			})
-
-			if d := cmp.Diff(tc.expectedPrStatus, actualPrStatus); d != "" {
+			if d := cmp.Diff(tc.expectedPrStatus, actualPrStatus, cmpopts.SortSlices(lessChildReferences)); d != "" {
 				t.Errorf("expected the PipelineRun status to match %#v. Diff %s", tc.expectedPrStatus, diff.PrintWantGot(d))
 			}
 		})
@@ -950,14 +942,9 @@ metadata:
 					actualPrStatus.ChildReferences = fixedChildRefs
 				}
 
-				// Sort the ChildReferences to deal with annoying ordering issues.
-				sort.Slice(actualPrStatus.ChildReferences, func(i, j int) bool {
-					return actualPrStatus.ChildReferences[i].PipelineTaskName < actualPrStatus.ChildReferences[j].PipelineTaskName
-				})
-
 				expectedPRStatus := prStatusFromInputs(embeddedVal, prRunningStatus, tc.expectedStatusTRs, tc.expectedStatusRuns, tc.expectedStatusCRs)
 
-				if d := cmp.Diff(expectedPRStatus, actualPrStatus); d != "" {
+				if d := cmp.Diff(expectedPRStatus, actualPrStatus, cmpopts.SortSlices(lessChildReferences)); d != "" {
 					t.Errorf("expected the PipelineRun status to match %#v. Diff %s", expectedPRStatus, diff.PrintWantGot(d))
 				}
 			})
@@ -1197,10 +1184,6 @@ func prStatusFromInputs(embeddedStatus string, status duckv1beta1.Status, taskRu
 	}
 	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
 		prs.ChildReferences = append(prs.ChildReferences, childRefs...)
-		// Sort the ChildReferences to deal with annoying ordering issues.
-		sort.Slice(prs.ChildReferences, func(i, j int) bool {
-			return prs.ChildReferences[i].PipelineTaskName < prs.ChildReferences[j].PipelineTaskName
-		})
 	}
 
 	return prs
@@ -1302,4 +1285,8 @@ func mustParseChildStatusReference(t *testing.T, yamlStr string) v1beta1.ChildSt
 		t.Fatalf("parsing task run status %s: %v", yamlStr, err)
 	}
 	return output
+}
+
+func lessChildReferences(i, j v1beta1.ChildStatusReference) bool {
+	return i.Name < j.Name
 }
