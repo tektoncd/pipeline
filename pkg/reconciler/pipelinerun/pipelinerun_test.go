@@ -84,6 +84,8 @@ var (
 
 	ignoreResourceVersion    = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
 	ignoreTypeMeta           = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
+	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
+	ignoreStartTime          = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime")
 	trueb                    = true
 	simpleHelloWorldTask     = &v1beta1.Task{ObjectMeta: baseObjectMeta("hello-world", "foo")}
 	simpleSomeTask           = &v1beta1.Task{ObjectMeta: baseObjectMeta("some-task", "foo")}
@@ -7613,15 +7615,15 @@ spec:
   timeout: 1h0m0s
 `),
 	}
-
 	cms := []*corev1.ConfigMap{withEmbeddedStatus(withEnabledAlphaAPIFields(newFeatureFlagsConfigMap()), config.MinimalEmbeddedStatus)}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
-		name     string
-		memberOf string
-		p        *v1beta1.Pipeline
-		tr       *v1beta1.TaskRun
+		name                string
+		memberOf            string
+		p                   *v1beta1.Pipeline
+		tr                  *v1beta1.TaskRun
+		expectedPipelineRun *v1beta1.PipelineRun
 	}{{
 		name:     "p-dag",
 		memberOf: "tasks",
@@ -7646,6 +7648,79 @@ spec:
             - safari
             - firefox
 `, "p-dag")),
+		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr
+  namespace: foo
+  annotations: {}
+  labels:
+    tekton.dev/pipeline: p-dag
+spec:
+  serviceAccountName: test-sa 
+  pipelineRef:
+    name: p-dag
+status:
+  pipelineSpec:
+    tasks:
+    - name: platforms-and-browsers
+      taskRef:
+        name: mytask
+      matrix:
+        - name: platform
+          value:
+            - linux
+            - mac
+            - windows
+        - name: browser
+          value:
+            - chrome
+            - safari
+            - firefox
+  conditions:
+  - type: Succeeded
+    status: "Unknown"
+    reason: "Running"
+    message: "Tasks Completed: 0 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-0
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-1
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-2
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-3
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-4
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-5
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-6
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-7
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-8
+    pipelineTaskName: platforms-and-browsers
+  taskRuns: {}
+  runs: {}
+`),
 	}, {
 		name:     "p-finally",
 		memberOf: "finally",
@@ -7701,6 +7776,92 @@ status:
     reason: Succeeded
     message: All Tasks have completed executing
 `),
+		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr
+  namespace: foo
+  annotations: {}
+  labels:
+    tekton.dev/pipeline: p-finally
+spec:
+  serviceAccountName: test-sa 
+  pipelineRef:
+    name: p-finally
+status:
+  pipelineSpec:
+    tasks:
+    - name: unmatrixed-pt
+      params:
+        - name: platform
+          value: linux
+        - name: browser
+          value: chrome
+      taskRef:
+        name: mytask
+    finally:
+    - name: platforms-and-browsers
+      taskRef:
+        name: mytask
+      matrix:
+        - name: platform
+          value:
+            - linux
+            - mac
+            - windows
+        - name: browser
+          value:
+            - chrome
+            - safari
+            - firefox
+  conditions:
+  - type: Succeeded
+    status: "Unknown"
+    reason: "Running"
+    message: "Tasks Completed: 1 (Failed: 0, Cancelled 0), Incomplete: 1, Skipped: 0"
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-unmatrixed-pt
+    pipelineTaskName: unmatrixed-pt
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-0
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-1
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-2
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-3
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-4
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-5
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-6
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-7
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: pr-platforms-and-browsers-8
+    pipelineTaskName: platforms-and-browsers
+  taskRuns: {}
+  runs: {}
+`),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -7745,6 +7906,14 @@ spec:
 				if d := cmp.Diff(expectedTaskRun, &taskRuns.Items[i], ignoreResourceVersion, ignoreTypeMeta); d != "" {
 					t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i].Name, diff.PrintWantGot(d))
 				}
+			}
+
+			pipelineRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "pr", metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
+			}
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime); d != "" {
+				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
