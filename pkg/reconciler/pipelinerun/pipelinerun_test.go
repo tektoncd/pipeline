@@ -7614,7 +7614,7 @@ spec:
 `),
 	}
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{withEmbeddedStatus(withEnabledAlphaAPIFields(newFeatureFlagsConfigMap()), config.MinimalEmbeddedStatus)}
 	cms = append(cms, withMaxMatrixCombinationsCount(newDefaultsConfigMap(), 10))
 
 	tests := []struct {
