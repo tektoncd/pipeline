@@ -561,8 +561,8 @@ var taskWithOptionalResources = &v1beta1.Task{
 
 func dagFromState(state PipelineRunState) (*dag.Graph, error) {
 	pts := []v1beta1.PipelineTask{}
-	for _, rprt := range state {
-		pts = append(pts, *rprt.PipelineTask)
+	for _, rpt := range state {
+		pts = append(pts, *rpt.PipelineTask)
 	}
 	return dag.Build(v1beta1.PipelineTaskList(pts), v1beta1.PipelineTaskList(pts).Deps())
 }
@@ -959,11 +959,11 @@ func TestIsSkipped(t *testing.T) {
 				FinalTasksGraph: &dag.Graph{},
 			}
 			for taskName, isSkipped := range tc.expected {
-				rprt := stateMap[taskName]
-				if rprt == nil {
+				rpt := stateMap[taskName]
+				if rpt == nil {
 					t.Fatalf("Could not get task %s from the state: %v", taskName, tc.state)
 				}
-				if d := cmp.Diff(isSkipped, rprt.Skip(&facts).IsSkipped); d != "" {
+				if d := cmp.Diff(isSkipped, rpt.Skip(&facts).IsSkipped); d != "" {
 					t.Errorf("Didn't get expected isSkipped from task %s: %s", taskName, diff.PrintWantGot(d))
 				}
 			}
@@ -974,24 +974,24 @@ func TestIsSkipped(t *testing.T) {
 func TestIsFailure(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		rprt ResolvedPipelineRunTask
+		rpt  ResolvedPipelineTask
 		want bool
 	}{{
 		name: "taskrun not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 		},
 		want: false,
 	}, {
 		name: "run not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 		},
 		want: false,
 	}, {
 		name: "taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeStarted(trs[0]),
 		},
@@ -999,7 +999,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunStarted(runs[0]),
@@ -1007,7 +1007,7 @@ func TestIsFailure(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeSucceeded(trs[0]),
 		},
@@ -1015,7 +1015,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunSucceeded(runs[0]),
@@ -1023,7 +1023,7 @@ func TestIsFailure(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeFailed(trs[0]),
 		},
@@ -1031,7 +1031,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunFailed(runs[0]),
@@ -1039,7 +1039,7 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      makeFailed(trs[0]),
 		},
@@ -1047,7 +1047,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			CustomTask:   true,
 			Run:          makeRunFailed(runs[0]),
@@ -1055,7 +1055,7 @@ func TestIsFailure(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withRetries(makeFailed(trs[0])),
 		},
@@ -1063,7 +1063,7 @@ func TestIsFailure(t *testing.T) {
 	}, {
 
 		name: "run failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			CustomTask:   true,
 			Run:          withRunRetries(makeRunFailed(runs[0])),
@@ -1071,21 +1071,21 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      withCancelled(makeFailed(trs[0])),
 		},
 		want: true,
 	}, {
 		name: "taskrun cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      withCancelled(newTaskRun(trs[0])),
 		},
 		want: false,
 	}, {
 		name: "run cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
 			CustomTask:   true,
@@ -1093,7 +1093,7 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "run cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(newRun(runs[0])),
 			CustomTask:   true,
@@ -1101,14 +1101,14 @@ func TestIsFailure(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withCancelled(makeFailed(trs[0])),
 		},
 		want: true,
 	}, {
 		name: "run cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
 			CustomTask:   true,
@@ -1116,14 +1116,14 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withCancelled(withRetries(makeFailed(trs[0]))),
 		},
 		want: true,
 	}, {
 		name: "run cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(withRunRetries(makeRunFailed(runs[0]))),
 			CustomTask:   true,
@@ -1131,132 +1131,132 @@ func TestIsFailure(t *testing.T) {
 		want: true,
 	}, {
 		name: "matrixed taskruns not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeSucceeded(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeSucceeded(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "one matrixed taskrun failed, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed: one taskrun with retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), withRetries(makeFailed(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withRetries(makeFailed(trs[0])), withRetries(makeFailed(trs[1]))},
 		},
 		want: true,
 	}, {
 		name: "matrixed taskruns cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
 		},
 		want: true,
 	}, {
 		name: "one matrixed taskrun cancelled, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), withCancelled(newTaskRun(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
 		},
 		want: true,
 	}, {
 		name: "one matrixed taskrun cancelled: retries remaining, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), withCancelled(withRetries(makeFailed(trs[1])))},
 		},
 		want: true,
 	}, {
 		name: "one matrixed taskrun cancelled: no retries remaining, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), makeStarted(trs[1])},
 		},
 		want: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.rprt.isFailure(); got != tc.want {
+			if got := tc.rpt.isFailure(); got != tc.want {
 				t.Errorf("expected isFailure: %t but got %t", tc.want, got)
 			}
 
@@ -1372,11 +1372,11 @@ func TestSkipBecauseParentTaskWasSkipped(t *testing.T) {
 				FinalTasksGraph: &dag.Graph{},
 			}
 			for taskName, isSkipped := range tc.expected {
-				rprt := stateMap[taskName]
-				if rprt == nil {
+				rpt := stateMap[taskName]
+				if rpt == nil {
 					t.Fatalf("Could not get task %s from the state: %v", taskName, tc.state)
 				}
-				if d := cmp.Diff(isSkipped, rprt.skipBecauseParentTaskWasSkipped(&facts)); d != "" {
+				if d := cmp.Diff(isSkipped, rpt.skipBecauseParentTaskWasSkipped(&facts)); d != "" {
 					t.Errorf("Didn't get expected isSkipped from task %s: %s", taskName, diff.PrintWantGot(d))
 				}
 			}
@@ -1895,7 +1895,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}
-	expectedTask := &ResolvedPipelineRunTask{
+	expectedTask := &ResolvedPipelineTask{
 		PipelineTask: &p.Spec.Tasks[0],
 		TaskRunName:  "pipelinerun-mytask-with-a-really-long-name-to-trigger-tru",
 		TaskRun:      nil,
@@ -1962,7 +1962,7 @@ func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error getting tasks for fake pipeline %s: %s", p.ObjectMeta.Name, err)
 	}
-	expectedTask := &ResolvedPipelineRunTask{
+	expectedTask := &ResolvedPipelineTask{
 		PipelineTask: &p.Spec.Tasks[0],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      nil,
@@ -2431,11 +2431,11 @@ func TestIsCustomTask(t *testing.T) {
 				},
 			})
 			ctx = cfg.ToContext(ctx)
-			rprt, err := ResolvePipelineRunTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
+			rpt, err := ResolvePipelineRunTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 			}
-			got := rprt.IsCustomTask()
+			got := rpt.IsCustomTask()
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("IsCustomTask: %s", diff.PrintWantGot(d))
 			}
@@ -2577,7 +2577,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 }
 
 func TestResolvedPipelineRunTask_IsFinallySkippedByCondition(t *testing.T) {
-	task := &ResolvedPipelineRunTask{
+	task := &ResolvedPipelineTask{
 		TaskRunName: "dag-task",
 		TaskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -3035,11 +3035,11 @@ func TestIsMatrixed(t *testing.T) {
 				},
 			})
 			ctx = cfg.ToContext(ctx)
-			rprt, err := ResolvePipelineRunTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
+			rpt, err := ResolvePipelineRunTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 			}
-			got := rprt.IsMatrixed()
+			got := rpt.IsMatrixed()
 			if d := cmp.Diff(tc.want, got); d != "" {
 				t.Errorf("IsMatrixed: %s", diff.PrintWantGot(d))
 			}
@@ -3111,11 +3111,11 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		pt   v1beta1.PipelineTask
-		want *ResolvedPipelineRunTask
+		want *ResolvedPipelineTask
 	}{{
 		name: "task with matrix - single parameter",
 		pt:   pts[0],
-		want: &ResolvedPipelineRunTask{
+		want: &ResolvedPipelineTask{
 			TaskRunNames:          taskRunsNames[:3],
 			TaskRuns:              taskRuns[:3],
 			PipelineTask:          &pts[0],
@@ -3124,7 +3124,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 	}, {
 		name: "task with matrix - multiple parameters",
 		pt:   pts[1],
-		want: &ResolvedPipelineRunTask{
+		want: &ResolvedPipelineTask{
 			TaskRunNames:          taskRunsNames,
 			TaskRuns:              taskRuns,
 			PipelineTask:          &pts[1],
@@ -3141,11 +3141,11 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 				},
 			})
 			ctx = cfg.ToContext(ctx)
-			rprt, err := ResolvePipelineRunTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
+			rpt, err := ResolvePipelineRunTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 			}
-			if d := cmp.Diff(tc.want, rprt); d != "" {
+			if d := cmp.Diff(tc.want, rpt); d != "" {
 				t.Errorf("Did not get expected ResolvePipelineRunTask with Matrix: %s", diff.PrintWantGot(d))
 			}
 		})
@@ -3155,24 +3155,24 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 func TestIsSuccessful(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		rprt ResolvedPipelineRunTask
+		rpt  ResolvedPipelineTask
 		want bool
 	}{{
 		name: "taskrun not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 		},
 		want: false,
 	}, {
 		name: "run not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 		},
 		want: false,
 	}, {
 		name: "taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeStarted(trs[0]),
 		},
@@ -3180,7 +3180,7 @@ func TestIsSuccessful(t *testing.T) {
 	}, {
 
 		name: "run running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunStarted(runs[0]),
@@ -3188,7 +3188,7 @@ func TestIsSuccessful(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeSucceeded(trs[0]),
 		},
@@ -3196,7 +3196,7 @@ func TestIsSuccessful(t *testing.T) {
 	}, {
 
 		name: "run succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunSucceeded(runs[0]),
@@ -3204,7 +3204,7 @@ func TestIsSuccessful(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeFailed(trs[0]),
 		},
@@ -3212,7 +3212,7 @@ func TestIsSuccessful(t *testing.T) {
 	}, {
 
 		name: "run failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunFailed(runs[0]),
@@ -3220,7 +3220,7 @@ func TestIsSuccessful(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      makeFailed(trs[0]),
 		},
@@ -3228,7 +3228,7 @@ func TestIsSuccessful(t *testing.T) {
 	}, {
 
 		name: "run failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			CustomTask:   true,
 			Run:          makeRunFailed(runs[0]),
@@ -3236,7 +3236,7 @@ func TestIsSuccessful(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withRetries(makeFailed(trs[0])),
 		},
@@ -3244,7 +3244,7 @@ func TestIsSuccessful(t *testing.T) {
 	}, {
 
 		name: "run failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			CustomTask:   true,
 			Run:          withRunRetries(makeRunFailed(runs[0])),
@@ -3252,21 +3252,21 @@ func TestIsSuccessful(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      withCancelled(makeFailed(trs[0])),
 		},
 		want: false,
 	}, {
 		name: "taskrun cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      withCancelled(newTaskRun(trs[0])),
 		},
 		want: false,
 	}, {
 		name: "run cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
 			CustomTask:   true,
@@ -3274,7 +3274,7 @@ func TestIsSuccessful(t *testing.T) {
 		want: false,
 	}, {
 		name: "run cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(newRun(runs[0])),
 			CustomTask:   true,
@@ -3282,14 +3282,14 @@ func TestIsSuccessful(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withCancelled(makeFailed(trs[0])),
 		},
 		want: false,
 	}, {
 		name: "run cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
 			CustomTask:   true,
@@ -3297,14 +3297,14 @@ func TestIsSuccessful(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withCancelled(withRetries(makeFailed(trs[0]))),
 		},
 		want: false,
 	}, {
 		name: "run cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(withRunRetries(makeRunFailed(runs[0]))),
 			CustomTask:   true,
@@ -3312,132 +3312,132 @@ func TestIsSuccessful(t *testing.T) {
 		want: false,
 	}, {
 		name: "matrixed taskruns not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeSucceeded(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeSucceeded(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "one matrixed taskrun succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun failed, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed: one taskrun with retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), withRetries(makeFailed(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withRetries(makeFailed(trs[0])), withRetries(makeFailed(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun cancelled, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), withCancelled(newTaskRun(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun cancelled: retries remaining, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), withCancelled(withRetries(makeFailed(trs[1])))},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun cancelled: no retries remaining, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), makeStarted(trs[1])},
 		},
 		want: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.rprt.isSuccessful(); got != tc.want {
+			if got := tc.rpt.isSuccessful(); got != tc.want {
 				t.Errorf("expected isSuccessful: %t but got %t", tc.want, got)
 			}
 
@@ -3448,24 +3448,24 @@ func TestIsSuccessful(t *testing.T) {
 func TestIsRunning(t *testing.T) {
 	for _, tc := range []struct {
 		name string
-		rprt ResolvedPipelineRunTask
+		rpt  ResolvedPipelineTask
 		want bool
 	}{{
 		name: "taskrun not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 		},
 		want: false,
 	}, {
 		name: "run not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 		},
 		want: false,
 	}, {
 		name: "taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeStarted(trs[0]),
 		},
@@ -3473,7 +3473,7 @@ func TestIsRunning(t *testing.T) {
 	}, {
 
 		name: "run running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunStarted(runs[0]),
@@ -3481,7 +3481,7 @@ func TestIsRunning(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeSucceeded(trs[0]),
 		},
@@ -3489,7 +3489,7 @@ func TestIsRunning(t *testing.T) {
 	}, {
 
 		name: "run succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunSucceeded(runs[0]),
@@ -3497,7 +3497,7 @@ func TestIsRunning(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      makeFailed(trs[0]),
 		},
@@ -3505,7 +3505,7 @@ func TestIsRunning(t *testing.T) {
 	}, {
 
 		name: "run failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			CustomTask:   true,
 			Run:          makeRunFailed(runs[0]),
@@ -3513,7 +3513,7 @@ func TestIsRunning(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      makeFailed(trs[0]),
 		},
@@ -3521,7 +3521,7 @@ func TestIsRunning(t *testing.T) {
 	}, {
 
 		name: "run failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			CustomTask:   true,
 			Run:          makeRunFailed(runs[0]),
@@ -3529,7 +3529,7 @@ func TestIsRunning(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withRetries(makeFailed(trs[0])),
 		},
@@ -3537,7 +3537,7 @@ func TestIsRunning(t *testing.T) {
 	}, {
 
 		name: "run failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			CustomTask:   true,
 			Run:          withRunRetries(makeRunFailed(runs[0])),
@@ -3545,21 +3545,21 @@ func TestIsRunning(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      withCancelled(makeFailed(trs[0])),
 		},
 		want: false,
 	}, {
 		name: "taskrun cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			TaskRun:      withCancelled(newTaskRun(trs[0])),
 		},
 		want: true,
 	}, {
 		name: "run cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
 			CustomTask:   true,
@@ -3567,7 +3567,7 @@ func TestIsRunning(t *testing.T) {
 		want: false,
 	}, {
 		name: "run cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(newRun(runs[0])),
 			CustomTask:   true,
@@ -3575,14 +3575,14 @@ func TestIsRunning(t *testing.T) {
 		want: true,
 	}, {
 		name: "taskrun cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withCancelled(makeFailed(trs[0])),
 		},
 		want: false,
 	}, {
 		name: "run cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
 			CustomTask:   true,
@@ -3590,14 +3590,14 @@ func TestIsRunning(t *testing.T) {
 		want: false,
 	}, {
 		name: "taskrun cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			TaskRun:      withCancelled(withRetries(makeFailed(trs[0]))),
 		},
 		want: false,
 	}, {
 		name: "run cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
 			Run:          withRunCancelled(withRunRetries(makeRunFailed(runs[0]))),
 			CustomTask:   true,
@@ -3605,125 +3605,125 @@ func TestIsRunning(t *testing.T) {
 		want: false,
 	}, {
 		name: "matrixed taskruns not started",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeStarted(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeSucceeded(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "matrixed taskruns succeeded",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeSucceeded(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun failed, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeStarted(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "matrixed taskruns failed: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "matrixed taskruns failed: one taskrun with retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), withRetries(makeFailed(trs[1]))},
 		},
 		want: true,
 	}, {
 		name: "matrixed taskruns failed: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withRetries(makeFailed(trs[0])), withRetries(makeFailed(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "matrixed taskruns cancelled",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun cancelled, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "matrixed taskruns cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), withCancelled(newTaskRun(trs[1]))},
 		},
 		want: true,
 	}, {
 		name: "one matrixed taskrun cancelled but not failed",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), makeStarted(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "matrixed taskruns cancelled: retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), withCancelled(makeFailed(trs[1]))},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun cancelled: retries remaining, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
 		},
 		want: true,
 	}, {
 		name: "matrixed taskruns cancelled: no retries remaining",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), withCancelled(withRetries(makeFailed(trs[1])))},
 		},
 		want: false,
 	}, {
 		name: "one matrixed taskrun cancelled: no retries remaining, one matrixed taskrun running",
-		rprt: ResolvedPipelineRunTask{
+		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), makeStarted(trs[1])},
 		},
 		want: true,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.rprt.isRunning(); got != tc.want {
+			if got := tc.rpt.isRunning(); got != tc.want {
 				t.Errorf("expected isRunning: %t but got %t", tc.want, got)
 			}
 

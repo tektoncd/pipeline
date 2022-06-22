@@ -136,7 +136,7 @@ func TestValidatePipelineTaskResults_IncorrectTaskName(t *testing.T) {
 // TestValidatePipelineTaskResults_IncorrectResultName tests that a result variable with
 // a misnamed Result is correctly caught by the validatePipelineTaskResults func.
 func TestValidatePipelineTaskResults_IncorrectResultName(t *testing.T) {
-	pt1 := &ResolvedPipelineRunTask{
+	pt1 := &ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "pt1",
 		},
@@ -190,7 +190,7 @@ func TestValidatePipelineTaskResults_IncorrectResultName(t *testing.T) {
 // TestValidatePipelineTaskResults_MissingTaskSpec tests that a malformed PipelineTask
 // with a name but no spec results in a validation error being returned.
 func TestValidatePipelineTaskResults_MissingTaskSpec(t *testing.T) {
-	pt1 := &ResolvedPipelineRunTask{
+	pt1 := &ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "pt1",
 		},

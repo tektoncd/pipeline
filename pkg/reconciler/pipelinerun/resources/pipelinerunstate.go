@@ -44,7 +44,7 @@ const (
 
 // PipelineRunState is a slice of ResolvedPipelineRunTasks the represents the current execution
 // state of the PipelineRun.
-type PipelineRunState []*ResolvedPipelineRunTask
+type PipelineRunState []*ResolvedPipelineTask
 
 // PipelineRunFacts holds the state of all the components that make up the Pipeline graph that are used to track the
 // PipelineRun state without passing all these components separately. It helps simplify our implementation for getting
@@ -87,10 +87,10 @@ func (facts *PipelineRunFacts) ResetSkippedCache() {
 }
 
 // ToMap returns a map that maps pipeline task name to the resolved pipeline run task
-func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineRunTask {
-	m := make(map[string]*ResolvedPipelineRunTask)
-	for _, rprt := range state {
-		m[rprt.PipelineTask.Name] = rprt
+func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineTask {
+	m := make(map[string]*ResolvedPipelineTask)
+	for _, rpt := range state {
+		m[rpt.PipelineTask.Name] = rpt
 	}
 	return m
 }
@@ -117,16 +117,16 @@ func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 // the resource again.
 func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) *metav1.Time {
 	adjustedStartTime := unadjustedStartTime
-	for _, rprt := range state {
-		if rprt.TaskRun == nil {
-			if rprt.Run != nil {
-				if rprt.Run.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
-					adjustedStartTime = &rprt.Run.CreationTimestamp
+	for _, rpt := range state {
+		if rpt.TaskRun == nil {
+			if rpt.Run != nil {
+				if rpt.Run.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+					adjustedStartTime = &rpt.Run.CreationTimestamp
 				}
 			}
 		} else {
-			if rprt.TaskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
-				adjustedStartTime = &rprt.TaskRun.CreationTimestamp
+			if rpt.TaskRun.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
+				adjustedStartTime = &rpt.TaskRun.CreationTimestamp
 			}
 		}
 	}
@@ -138,29 +138,29 @@ func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) 
 // update taskrun status based on the pipelineRunState before returning it in the map
 func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[string]*v1beta1.PipelineRunTaskRunStatus {
 	status := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-	for _, rprt := range state {
-		if rprt.IsCustomTask() {
+	for _, rpt := range state {
+		if rpt.IsCustomTask() {
 			continue
 		}
 
-		if rprt.TaskRun == nil {
+		if rpt.TaskRun == nil {
 			continue
 		}
 
-		status[rprt.TaskRunName] = rprt.getTaskRunStatus(rprt.TaskRun, pr)
+		status[rpt.TaskRunName] = rpt.getTaskRunStatus(rpt.TaskRun, pr)
 	}
 	return status
 }
 
-func (rprt *ResolvedPipelineRunTask) getTaskRunStatus(tr *v1beta1.TaskRun, pr *v1beta1.PipelineRun) *v1beta1.PipelineRunTaskRunStatus {
+func (t *ResolvedPipelineTask) getTaskRunStatus(tr *v1beta1.TaskRun, pr *v1beta1.PipelineRun) *v1beta1.PipelineRunTaskRunStatus {
 	var prtrs *v1beta1.PipelineRunTaskRunStatus
 	if tr != nil {
 		prtrs = pr.Status.TaskRuns[tr.Name]
 	}
 	if prtrs == nil {
 		prtrs = &v1beta1.PipelineRunTaskRunStatus{
-			PipelineTaskName: rprt.PipelineTask.Name,
-			WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+			PipelineTaskName: t.PipelineTask.Name,
+			WhenExpressions:  t.PipelineTask.WhenExpressions,
 		}
 	}
 
@@ -175,15 +175,15 @@ func (rprt *ResolvedPipelineRunTask) getTaskRunStatus(tr *v1beta1.TaskRun, pr *v
 // the key and the results from the corresponding TaskRun as the value. It only includes tasks which have completed successfully.
 func (state PipelineRunState) GetTaskRunsResults() map[string][]v1beta1.TaskRunResult {
 	results := make(map[string][]v1beta1.TaskRunResult)
-	for _, rprt := range state {
-		if rprt.IsCustomTask() {
+	for _, rpt := range state {
+		if rpt.IsCustomTask() {
 			continue
 		}
-		if !rprt.isSuccessful() {
+		if !rpt.isSuccessful() {
 			continue
 		}
-		if rprt.TaskRun != nil {
-			results[rprt.PipelineTask.Name] = rprt.TaskRun.Status.TaskRunResults
+		if rpt.TaskRun != nil {
+			results[rpt.PipelineTask.Name] = rpt.TaskRun.Status.TaskRunResults
 		}
 	}
 	return results
@@ -194,28 +194,28 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1beta1.TaskRunR
 // Update run status based on the pipelineRunState before returning it in the map.
 func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]*v1beta1.PipelineRunRunStatus {
 	status := map[string]*v1beta1.PipelineRunRunStatus{}
-	for _, rprt := range state {
-		if !rprt.IsCustomTask() {
+	for _, rpt := range state {
+		if !rpt.IsCustomTask() {
 			continue
 		}
 
 		var prrs *v1beta1.PipelineRunRunStatus
-		if rprt.Run != nil {
-			prrs = pr.Status.Runs[rprt.RunName]
+		if rpt.Run != nil {
+			prrs = pr.Status.Runs[rpt.RunName]
 		}
 
 		if prrs == nil {
 			prrs = &v1beta1.PipelineRunRunStatus{
-				PipelineTaskName: rprt.PipelineTask.Name,
-				WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+				PipelineTaskName: rpt.PipelineTask.Name,
+				WhenExpressions:  rpt.PipelineTask.WhenExpressions,
 			}
 		}
 
-		if rprt.Run != nil {
-			prrs.Status = &rprt.Run.Status
+		if rpt.Run != nil {
+			prrs.Status = &rpt.Run.Status
 		}
 
-		status[rprt.RunName] = prrs
+		status[rpt.RunName] = prrs
 	}
 	return status
 }
@@ -224,14 +224,14 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 // and the results from the corresponding TaskRun as the value. It only includes runs which have completed successfully.
 func (state PipelineRunState) GetRunsResults() map[string][]v1alpha1.RunResult {
 	results := make(map[string][]v1alpha1.RunResult)
-	for _, rprt := range state {
-		if !rprt.IsCustomTask() {
+	for _, rpt := range state {
+		if !rpt.IsCustomTask() {
 			continue
 		}
-		if !rprt.isSuccessful() {
+		if !rpt.isSuccessful() {
 			continue
 		}
-		results[rprt.PipelineTask.Name] = rprt.Run.Status.Results
+		results[rpt.PipelineTask.Name] = rpt.Run.Status.Results
 	}
 
 	return results
@@ -242,16 +242,16 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1alpha1.RunResult {
 func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReference {
 	var childRefs []v1beta1.ChildStatusReference
 
-	for _, rprt := range state {
+	for _, rpt := range state {
 		switch {
-		case rprt.Run != nil:
-			childRefs = append(childRefs, rprt.getChildRefForRun())
-		case rprt.TaskRun != nil:
-			childRefs = append(childRefs, rprt.getChildRefForTaskRun(rprt.TaskRun))
-		case len(rprt.TaskRuns) != 0:
-			for _, taskRun := range rprt.TaskRuns {
+		case rpt.Run != nil:
+			childRefs = append(childRefs, rpt.getChildRefForRun())
+		case rpt.TaskRun != nil:
+			childRefs = append(childRefs, rpt.getChildRefForTaskRun(rpt.TaskRun))
+		case len(rpt.TaskRuns) != 0:
+			for _, taskRun := range rpt.TaskRuns {
 				if taskRun != nil {
-					childRefs = append(childRefs, rprt.getChildRefForTaskRun(taskRun))
+					childRefs = append(childRefs, rpt.getChildRefForTaskRun(taskRun))
 				}
 			}
 		}
@@ -259,35 +259,35 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 	return childRefs
 }
 
-func (rprt *ResolvedPipelineRunTask) getChildRefForRun() v1beta1.ChildStatusReference {
+func (t *ResolvedPipelineTask) getChildRefForRun() v1beta1.ChildStatusReference {
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
-			APIVersion: rprt.Run.APIVersion,
+			APIVersion: t.Run.APIVersion,
 			Kind:       pipeline.RunControllerName,
 		},
-		Name:             rprt.RunName,
-		PipelineTaskName: rprt.PipelineTask.Name,
-		WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+		Name:             t.RunName,
+		PipelineTaskName: t.PipelineTask.Name,
+		WhenExpressions:  t.PipelineTask.WhenExpressions,
 	}
 }
 
-func (rprt *ResolvedPipelineRunTask) getChildRefForTaskRun(taskRun *v1beta1.TaskRun) v1beta1.ChildStatusReference {
+func (t *ResolvedPipelineTask) getChildRefForTaskRun(taskRun *v1beta1.TaskRun) v1beta1.ChildStatusReference {
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
 			APIVersion: taskRun.APIVersion,
 			Kind:       pipeline.TaskRunControllerName,
 		},
 		Name:             taskRun.Name,
-		PipelineTaskName: rprt.PipelineTask.Name,
-		WhenExpressions:  rprt.PipelineTask.WhenExpressions,
+		PipelineTaskName: t.PipelineTask.Name,
+		WhenExpressions:  t.PipelineTask.WhenExpressions,
 	}
 }
 
 // getNextTasks returns a list of tasks which should be executed next i.e.
 // a list of tasks from candidateTasks which aren't yet indicated in state to be running and
 // a list of cancelled/failed tasks from candidateTasks which haven't exhausted their retries
-func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*ResolvedPipelineRunTask {
-	tasks := []*ResolvedPipelineRunTask{}
+func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*ResolvedPipelineTask {
+	tasks := []*ResolvedPipelineTask{}
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
 			if t.TaskRun == nil && t.Run == nil {
@@ -301,8 +301,8 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 
 // getRetryableTasks returns a list of tasks which should be executed next when the pipelinerun is stopping, i.e.
 // a list of cancelled/failed tasks from candidateTasks which haven't exhausted their retries
-func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*ResolvedPipelineRunTask {
-	var tasks []*ResolvedPipelineRunTask
+func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*ResolvedPipelineTask {
+	var tasks []*ResolvedPipelineTask
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
 			var status *apis.Condition
@@ -508,24 +508,24 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 // GetSkippedTasks constructs a list of SkippedTask struct to be included in the PipelineRun Status
 func (facts *PipelineRunFacts) GetSkippedTasks() []v1beta1.SkippedTask {
 	var skipped []v1beta1.SkippedTask
-	for _, rprt := range facts.State {
-		if rprt.Skip(facts).IsSkipped {
+	for _, rpt := range facts.State {
+		if rpt.Skip(facts).IsSkipped {
 			skippedTask := v1beta1.SkippedTask{
-				Name:            rprt.PipelineTask.Name,
-				Reason:          rprt.Skip(facts).SkippingReason,
-				WhenExpressions: rprt.PipelineTask.WhenExpressions,
+				Name:            rpt.PipelineTask.Name,
+				Reason:          rpt.Skip(facts).SkippingReason,
+				WhenExpressions: rpt.PipelineTask.WhenExpressions,
 			}
 			skipped = append(skipped, skippedTask)
 		}
-		if rprt.IsFinallySkipped(facts).IsSkipped {
+		if rpt.IsFinallySkipped(facts).IsSkipped {
 			skippedTask := v1beta1.SkippedTask{
-				Name:   rprt.PipelineTask.Name,
-				Reason: rprt.IsFinallySkipped(facts).SkippingReason,
+				Name:   rpt.PipelineTask.Name,
+				Reason: rpt.IsFinallySkipped(facts).SkippingReason,
 			}
 			// include the when expressions only when the finally task was skipped because
 			// its when expressions evaluated to false (not because results variables were missing)
-			if rprt.IsFinallySkipped(facts).SkippingReason == v1beta1.WhenExpressionsSkip {
-				skippedTask.WhenExpressions = rprt.PipelineTask.WhenExpressions
+			if rpt.IsFinallySkipped(facts).SkippingReason == v1beta1.WhenExpressionsSkip {
+				skippedTask.WhenExpressions = rpt.PipelineTask.WhenExpressions
 			}
 			skipped = append(skipped, skippedTask)
 		}

@@ -29,10 +29,10 @@ import (
 // a result name or the referenced task just doesn't return a result with that name.
 func ValidatePipelineTaskResults(state PipelineRunState) error {
 	ptMap := state.ToMap()
-	for _, rprt := range state {
-		for _, ref := range v1beta1.PipelineTaskResultRefs(rprt.PipelineTask) {
+	for _, rpt := range state {
+		for _, ref := range v1beta1.PipelineTaskResultRefs(rpt.PipelineTask) {
 			if err := validateResultRef(ref, ptMap); err != nil {
-				return fmt.Errorf("invalid result reference in pipeline task %q: %s", rprt.PipelineTask.Name, err)
+				return fmt.Errorf("invalid result reference in pipeline task %q: %s", rpt.PipelineTask.Name, err)
 			}
 		}
 	}
@@ -58,9 +58,9 @@ func ValidatePipelineResults(ps *v1beta1.PipelineSpec, state PipelineRunState) e
 }
 
 // validateResultRef takes a ResultRef and searches for the result using the given
-// map of PipelineTask name to ResolvedPipelineRunTask. If the ResultRef does not point
+// map of PipelineTask name to ResolvedPipelineTask. If the ResultRef does not point
 // to a pipeline task or named result then an error is returned.
-func validateResultRef(ref *v1beta1.ResultRef, ptMap map[string]*ResolvedPipelineRunTask) error {
+func validateResultRef(ref *v1beta1.ResultRef, ptMap map[string]*ResolvedPipelineTask) error {
 	if _, ok := ptMap[ref.PipelineTask]; !ok {
 		return fmt.Errorf("referenced pipeline task %q does not exist", ref.PipelineTask)
 	}
@@ -98,13 +98,13 @@ func ValidateOptionalWorkspaces(pipelineWorkspaces []v1beta1.PipelineWorkspaceDe
 		}
 	}
 
-	for _, rprt := range state {
-		for _, pws := range rprt.PipelineTask.Workspaces {
+	for _, rpt := range state {
+		for _, pws := range rpt.PipelineTask.Workspaces {
 			if optionalWorkspaces.Has(pws.Workspace) {
-				for _, tws := range rprt.ResolvedTaskResources.TaskSpec.Workspaces {
+				for _, tws := range rpt.ResolvedTaskResources.TaskSpec.Workspaces {
 					if tws.Name == pws.Name {
 						if !tws.Optional {
-							return fmt.Errorf("pipeline workspace %q is marked optional but pipeline task %q requires it be provided", pws.Workspace, rprt.PipelineTask.Name)
+							return fmt.Errorf("pipeline workspace %q is marked optional but pipeline task %q requires it be provided", pws.Workspace, rpt.PipelineTask.Name)
 						}
 					}
 				}

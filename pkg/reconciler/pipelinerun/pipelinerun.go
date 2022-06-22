@@ -491,9 +491,9 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		FinalTasksGraph: dfinally,
 	}
 
-	for _, rprt := range pipelineRunFacts.State {
-		if !rprt.IsCustomTask() {
-			err := taskrun.ValidateResolvedTaskResources(ctx, rprt.PipelineTask.Params, rprt.PipelineTask.Matrix, rprt.ResolvedTaskResources)
+	for _, rpt := range pipelineRunFacts.State {
+		if !rpt.IsCustomTask() {
+			err := taskrun.ValidateResolvedTaskResources(ctx, rpt.PipelineTask.Params, rpt.PipelineTask.Matrix, rpt.ResolvedTaskResources)
 			if err != nil {
 				logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
 				pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
@@ -611,14 +611,14 @@ func (c *Reconciler) processRunTimeouts(ctx context.Context, pr *v1beta1.Pipelin
 	if pr.IsCancelled() {
 		return nil
 	}
-	for _, rprt := range pipelineState {
-		if rprt.IsCustomTask() {
-			if rprt.Run != nil && !rprt.Run.IsCancelled() && (pr.HasTimedOut(ctx, c.Clock) || (rprt.Run.HasTimedOut(c.Clock) && !rprt.Run.IsDone())) {
-				logger.Infof("Cancelling run task: %s due to timeout.", rprt.RunName)
-				err := cancelRun(ctx, rprt.RunName, pr.Namespace, c.PipelineClientSet)
+	for _, rpt := range pipelineState {
+		if rpt.IsCustomTask() {
+			if rpt.Run != nil && !rpt.Run.IsCancelled() && (pr.HasTimedOut(ctx, c.Clock) || (rpt.Run.HasTimedOut(c.Clock) && !rpt.Run.IsDone())) {
+				logger.Infof("Cancelling run task: %s due to timeout.", rpt.RunName)
+				err := cancelRun(ctx, rpt.RunName, pr.Namespace, c.PipelineClientSet)
 				if err != nil {
 					errs = append(errs,
-						fmt.Errorf("failed to patch Run `%s` with cancellation: %s", rprt.RunName, err).Error())
+						fmt.Errorf("failed to patch Run `%s` with cancellation: %s", rpt.RunName, err).Error())
 				}
 			}
 		}
@@ -638,78 +638,78 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 
-	// nextRprts holds a list of pipeline tasks which should be executed next
-	nextRprts, err := pipelineRunFacts.DAGExecutionQueue()
+	// nextRpts holds a list of pipeline tasks which should be executed next
+	nextRpts, err := pipelineRunFacts.DAGExecutionQueue()
 	if err != nil {
 		logger.Errorf("Error getting potential next tasks for valid pipelinerun %s: %v", pr.Name, err)
 		return controller.NewPermanentError(err)
 	}
 
-	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRprts)
+	resolvedResultRefs, _, err := resources.ResolveResultRefs(pipelineRunFacts.State, nextRpts)
 	if err != nil {
 		logger.Infof("Failed to resolve task result reference for %q with error %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
 		return controller.NewPermanentError(err)
 	}
 
-	resources.ApplyTaskResults(nextRprts, resolvedResultRefs)
+	resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
 	// After we apply Task Results, we may be able to evaluate more
 	// when expressions, so reset the skipped cache
 	pipelineRunFacts.ResetSkippedCache()
 
 	// GetFinalTasks only returns final tasks when a DAG is complete
-	fnextRprts := pipelineRunFacts.GetFinalTasks()
-	if len(fnextRprts) != 0 {
+	fNextRpts := pipelineRunFacts.GetFinalTasks()
+	if len(fNextRpts) != 0 {
 		// apply the runtime context just before creating taskRuns for final tasks in queue
-		resources.ApplyPipelineTaskStateContext(fnextRprts, pipelineRunFacts.GetPipelineTaskStatus())
+		resources.ApplyPipelineTaskStateContext(fNextRpts, pipelineRunFacts.GetPipelineTaskStatus())
 
 		// Before creating TaskRun for scheduled final task, check if it's consuming a task result
 		// Resolve and apply task result wherever applicable, report warning in case resolution fails
-		for _, rprt := range fnextRprts {
-			resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.State, rprt)
+		for _, rpt := range fNextRpts {
+			resolvedResultRefs, _, err := resources.ResolveResultRef(pipelineRunFacts.State, rpt)
 			if err != nil {
-				logger.Infof("Final task %q is not executed as it could not resolve task params for %q: %v", rprt.PipelineTask.Name, pr.Name, err)
+				logger.Infof("Final task %q is not executed as it could not resolve task params for %q: %v", rpt.PipelineTask.Name, pr.Name, err)
 				continue
 			}
-			resources.ApplyTaskResults(resources.PipelineRunState{rprt}, resolvedResultRefs)
-			nextRprts = append(nextRprts, rprt)
+			resources.ApplyTaskResults(resources.PipelineRunState{rpt}, resolvedResultRefs)
+			nextRpts = append(nextRpts, rpt)
 		}
 	}
 
-	for _, rprt := range nextRprts {
-		if rprt == nil || rprt.Skip(pipelineRunFacts).IsSkipped || rprt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
+	for _, rpt := range nextRpts {
+		if rpt == nil || rpt.Skip(pipelineRunFacts).IsSkipped || rpt.IsFinallySkipped(pipelineRunFacts).IsSkipped {
 			continue
 		}
 		switch {
-		case rprt.IsCustomTask():
-			if rprt.IsFinalTask(pipelineRunFacts) {
-				rprt.Run, err = c.createRun(ctx, rprt, pr, getFinallyTaskRunTimeout)
+		case rpt.IsCustomTask():
+			if rpt.IsFinalTask(pipelineRunFacts) {
+				rpt.Run, err = c.createRun(ctx, rpt, pr, getFinallyTaskRunTimeout)
 			} else {
-				rprt.Run, err = c.createRun(ctx, rprt, pr, getTaskRunTimeout)
+				rpt.Run, err = c.createRun(ctx, rpt, pr, getTaskRunTimeout)
 			}
 			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rprt.RunName, err)
-				return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rprt.RunName, rprt.PipelineTask.Name, pr.Name, err)
+				recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rpt.RunName, err)
+				return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rpt.RunName, rpt.PipelineTask.Name, pr.Name, err)
 			}
-		case rprt.IsMatrixed():
-			if rprt.IsFinalTask(pipelineRunFacts) {
-				rprt.TaskRuns, err = c.createTaskRuns(ctx, rprt, pr, as.StorageBasePath(pr), getFinallyTaskRunTimeout)
+		case rpt.IsMatrixed():
+			if rpt.IsFinalTask(pipelineRunFacts) {
+				rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr, as.StorageBasePath(pr), getFinallyTaskRunTimeout)
 			} else {
-				rprt.TaskRuns, err = c.createTaskRuns(ctx, rprt, pr, as.StorageBasePath(pr), getTaskRunTimeout)
+				rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr, as.StorageBasePath(pr), getTaskRunTimeout)
 			}
 			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rprt.TaskRunNames, err)
-				return fmt.Errorf("error creating TaskRuns called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunNames, rprt.PipelineTask.Name, pr.Name, err)
+				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunsCreationFailed", "Failed to create TaskRuns %q: %v", rpt.TaskRunNames, err)
+				return fmt.Errorf("error creating TaskRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunNames, rpt.PipelineTask.Name, pr.Name, err)
 			}
 		default:
-			if rprt.IsFinalTask(pipelineRunFacts) {
-				rprt.TaskRun, err = c.createTaskRun(ctx, rprt.TaskRunName, nil, rprt, pr, as.StorageBasePath(pr), getFinallyTaskRunTimeout)
+			if rpt.IsFinalTask(pipelineRunFacts) {
+				rpt.TaskRun, err = c.createTaskRun(ctx, rpt.TaskRunName, nil, rpt, pr, as.StorageBasePath(pr), getFinallyTaskRunTimeout)
 			} else {
-				rprt.TaskRun, err = c.createTaskRun(ctx, rprt.TaskRunName, nil, rprt, pr, as.StorageBasePath(pr), getTaskRunTimeout)
+				rpt.TaskRun, err = c.createTaskRun(ctx, rpt.TaskRunName, nil, rpt, pr, as.StorageBasePath(pr), getTaskRunTimeout)
 			}
 			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rprt.TaskRunName, err)
-				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rprt.TaskRunName, rprt.PipelineTask.Name, pr.Name, err)
+				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rpt.TaskRunName, err)
+				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunName, rpt.PipelineTask.Name, pr.Name, err)
 			}
 
 		}
@@ -752,14 +752,14 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 	return nil
 }
 
-type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration
+type getTimeoutFunc func(ctx context.Context, pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask, c clock.PassiveClock) *metav1.Duration
 
-func (c *Reconciler) createTaskRuns(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) ([]*v1beta1.TaskRun, error) {
+func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) ([]*v1beta1.TaskRun, error) {
 	var taskRuns []*v1beta1.TaskRun
-	matrixCombinations := matrix.FanOut(rprt.PipelineTask.Matrix).ToMap()
-	for i, taskRunName := range rprt.TaskRunNames {
+	matrixCombinations := matrix.FanOut(rpt.PipelineTask.Matrix).ToMap()
+	for i, taskRunName := range rpt.TaskRunNames {
 		params := matrixCombinations[strconv.Itoa(i)]
-		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rprt, pr, storageBasePath, getTimeoutFunc)
+		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr, storageBasePath, getTimeoutFunc)
 		if err != nil {
 			return nil, err
 		}
@@ -768,7 +768,7 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rprt *resources.Resolve
 	return taskRuns, nil
 }
 
-func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, params []v1beta1.Param, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) (*v1beta1.TaskRun, error) {
+func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, params []v1beta1.Param, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, storageBasePath string, getTimeoutFunc getTimeoutFunc) (*v1beta1.TaskRun, error) {
 	logger := logging.FromContext(ctx)
 
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
@@ -783,38 +783,38 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(ctx, tr, metav1.UpdateOptions{})
 	}
 
-	rprt.PipelineTask = resources.ApplyPipelineTaskContexts(rprt.PipelineTask)
-	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
+	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask)
+	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	if len(params) == 0 {
-		params = rprt.PipelineTask.Params
+		params = rpt.PipelineTask.Params
 	}
 	tr = &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            taskRunName,
 			Namespace:       pr.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
-			Labels:          combineTaskRunAndTaskSpecLabels(pr, rprt.PipelineTask),
-			Annotations:     combineTaskRunAndTaskSpecAnnotations(pr, rprt.PipelineTask),
+			Labels:          combineTaskRunAndTaskSpecLabels(pr, rpt.PipelineTask),
+			Annotations:     combineTaskRunAndTaskSpecAnnotations(pr, rpt.PipelineTask),
 		},
 		Spec: v1beta1.TaskRunSpec{
 			Params:             params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
-			Timeout:            getTimeoutFunc(ctx, pr, rprt, c.Clock),
+			Timeout:            getTimeoutFunc(ctx, pr, rpt, c.Clock),
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
 			StepOverrides:      taskRunSpec.StepOverrides,
 			SidecarOverrides:   taskRunSpec.SidecarOverrides,
 		}}
 
-	if rprt.ResolvedTaskResources.TaskName != "" {
+	if rpt.ResolvedTaskResources.TaskName != "" {
 		// We pass the entire, original task ref because it may contain additional references like a Bundle url.
-		tr.Spec.TaskRef = rprt.PipelineTask.TaskRef
-	} else if rprt.ResolvedTaskResources.TaskSpec != nil {
-		tr.Spec.TaskSpec = rprt.ResolvedTaskResources.TaskSpec
+		tr.Spec.TaskRef = rpt.PipelineTask.TaskRef
+	} else if rpt.ResolvedTaskResources.TaskSpec != nil {
+		tr.Spec.TaskSpec = rpt.ResolvedTaskResources.TaskSpec
 	}
 
 	var pipelinePVCWorkspaceName string
 	var err error
-	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rprt)
+	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rpt)
 	if err != nil {
 		return nil, err
 	}
@@ -823,43 +823,43 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		tr.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
 	}
 
-	resources.WrapSteps(&tr.Spec, rprt.PipelineTask, rprt.ResolvedTaskResources.Inputs, rprt.ResolvedTaskResources.Outputs, storageBasePath)
-	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", taskRunName, rprt.PipelineTask.Name)
+	resources.WrapSteps(&tr.Spec, rpt.PipelineTask, rpt.ResolvedTaskResources.Inputs, rpt.ResolvedTaskResources.Outputs, storageBasePath)
+	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", taskRunName, rpt.PipelineTask.Name)
 	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 }
 
-func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipelineRunTask, pr *v1beta1.PipelineRun, getTimeoutFunc getTimeoutFunc) (*v1alpha1.Run, error) {
+func (c *Reconciler) createRun(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, getTimeoutFunc getTimeoutFunc) (*v1alpha1.Run, error) {
 	logger := logging.FromContext(ctx)
-	taskRunSpec := pr.GetTaskRunSpec(rprt.PipelineTask.Name)
+	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	r := &v1alpha1.Run{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            rprt.RunName,
+			Name:            rpt.RunName,
 			Namespace:       pr.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
-			Labels:          getTaskrunLabels(pr, rprt.PipelineTask.Name, true),
+			Labels:          getTaskrunLabels(pr, rpt.PipelineTask.Name, true),
 			Annotations:     getTaskrunAnnotations(pr),
 		},
 		Spec: v1alpha1.RunSpec{
-			Retries:            rprt.PipelineTask.Retries,
-			Ref:                rprt.PipelineTask.TaskRef,
-			Params:             rprt.PipelineTask.Params,
+			Retries:            rpt.PipelineTask.Retries,
+			Ref:                rpt.PipelineTask.TaskRef,
+			Params:             rpt.PipelineTask.Params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
-			Timeout:            getTimeoutFunc(ctx, pr, rprt, c.Clock),
+			Timeout:            getTimeoutFunc(ctx, pr, rpt, c.Clock),
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
 		},
 	}
 
-	if rprt.PipelineTask.TaskSpec != nil {
-		j, err := json.Marshal(rprt.PipelineTask.TaskSpec.Spec)
+	if rpt.PipelineTask.TaskSpec != nil {
+		j, err := json.Marshal(rpt.PipelineTask.TaskSpec.Spec)
 		if err != nil {
 			return nil, err
 		}
 		r.Spec.Spec = &v1alpha1.EmbeddedRunSpec{
 			TypeMeta: runtime.TypeMeta{
-				APIVersion: rprt.PipelineTask.TaskSpec.APIVersion,
-				Kind:       rprt.PipelineTask.TaskSpec.Kind,
+				APIVersion: rpt.PipelineTask.TaskSpec.APIVersion,
+				Kind:       rpt.PipelineTask.TaskSpec.Kind,
 			},
-			Metadata: rprt.PipelineTask.TaskSpec.Metadata,
+			Metadata: rpt.PipelineTask.TaskSpec.Metadata,
 			Spec: runtime.RawExtension{
 				Raw: j,
 			},
@@ -867,7 +867,7 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 	}
 	var pipelinePVCWorkspaceName string
 	var err error
-	r.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rprt)
+	r.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rpt)
 	if err != nil {
 		return nil, err
 	}
@@ -878,18 +878,18 @@ func (c *Reconciler) createRun(ctx context.Context, rprt *resources.ResolvedPipe
 		r.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
 	}
 
-	logger.Infof("Creating a new Run object %s", rprt.RunName)
+	logger.Infof("Creating a new Run object %s", rpt.RunName)
 	return c.PipelineClientSet.TektonV1alpha1().Runs(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
 }
 
-func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask) ([]v1beta1.WorkspaceBinding, string, error) {
+func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1beta1.WorkspaceBinding, string, error) {
 	var workspaces []v1beta1.WorkspaceBinding
 	var pipelinePVCWorkspaceName string
 	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
 	for _, binding := range pr.Spec.Workspaces {
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
-	for _, ws := range rprt.PipelineTask.Workspaces {
+	for _, ws := range rpt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
 
 		pipelineWorkspace := pipelineWorkspaceName
@@ -905,8 +905,8 @@ func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipel
 			workspaces = append(workspaces, taskWorkspaceByWorkspaceVolumeSource(b, taskWorkspaceName, pipelineTaskSubPath, *kmeta.NewControllerRef(pr)))
 		} else {
 			workspaceIsOptional := false
-			if rprt.ResolvedTaskResources != nil && rprt.ResolvedTaskResources.TaskSpec != nil {
-				for _, taskWorkspaceDeclaration := range rprt.ResolvedTaskResources.TaskSpec.Workspaces {
+			if rpt.ResolvedTaskResources != nil && rpt.ResolvedTaskResources.TaskSpec != nil {
+				for _, taskWorkspaceDeclaration := range rpt.ResolvedTaskResources.TaskSpec.Workspaces {
 					if taskWorkspaceDeclaration.Name == taskWorkspaceName && taskWorkspaceDeclaration.Optional {
 						workspaceIsOptional = true
 						break
@@ -914,7 +914,7 @@ func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipel
 				}
 			}
 			if !workspaceIsOptional {
-				return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspace, rprt.PipelineTask.Name)
+				return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspace, rpt.PipelineTask.Name)
 			}
 		}
 
@@ -1067,11 +1067,11 @@ func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[strin
 	}
 }
 
-// getFinallyTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask, which is a finally Task.
+// getFinallyTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineTask, which is a finally Task.
 // If there is no timeout for the finally TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
-	taskRunTimeout := calculateTaskRunTimeout(pr.PipelineTimeout(ctx), pr, rprt, c)
+func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask, c clock.PassiveClock) *metav1.Duration {
+	taskRunTimeout := calculateTaskRunTimeout(pr.PipelineTimeout(ctx), pr, rpt, c)
 	finallyTimeout := pr.FinallyTimeout()
 	// Return the smaller of taskRunTimeout and finallyTimeout
 	// This works because all finally tasks run in parallel, so there is no need to consider time spent by other finally tasks
@@ -1085,41 +1085,41 @@ func getFinallyTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt
 	return taskRunTimeout
 }
 
-// getTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask.
+// getTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineTask.
 // If there is no timeout for the TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
+func getTaskRunTimeout(ctx context.Context, pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask, c clock.PassiveClock) *metav1.Duration {
 	var timeout time.Duration
 	if pr.TasksTimeout() != nil {
 		timeout = pr.TasksTimeout().Duration
 	} else {
 		timeout = pr.PipelineTimeout(ctx)
 	}
-	return calculateTaskRunTimeout(timeout, pr, rprt, c)
+	return calculateTaskRunTimeout(timeout, pr, rpt, c)
 }
 
-// calculateTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineRunTask.
+// calculateTaskRunTimeout returns the timeout to set when creating the ResolvedPipelineTask.
 // `timeout` is:
-// - If ResolvedPipelineRunTask is a Task, `timeout` is the minimum of Tasks Timeout and Pipeline Timeout
-// - If ResolvedPipelineRunTask is a Finally Task, `timeout` is the Pipeline Timeout
+// - If ResolvedPipelineTask is a Task, `timeout` is the minimum of Tasks Timeout and Pipeline Timeout
+// - If ResolvedPipelineTask is a Finally Task, `timeout` is the Pipeline Timeout
 // If there is no timeout for the TaskRun, returns 0.
 // If pipeline level timeouts have already been exceeded, returns 1 second.
-func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rprt *resources.ResolvedPipelineRunTask, c clock.PassiveClock) *metav1.Duration {
+func calculateTaskRunTimeout(timeout time.Duration, pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask, c clock.PassiveClock) *metav1.Duration {
 	if timeout != apisconfig.NoTimeoutDuration {
 		pElapsedTime := c.Since(pr.Status.StartTime.Time)
 		if pElapsedTime > timeout {
 			return &metav1.Duration{Duration: 1 * time.Second}
 		}
 		timeRemaining := (timeout - pElapsedTime)
-		// Return the smaller of timeRemaining and rprt.pipelineTask.timeout
-		if rprt.PipelineTask.Timeout != nil && rprt.PipelineTask.Timeout.Duration < timeRemaining {
-			return &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
+		// Return the smaller of timeRemaining and rpt.pipelineTask.timeout
+		if rpt.PipelineTask.Timeout != nil && rpt.PipelineTask.Timeout.Duration < timeRemaining {
+			return &metav1.Duration{Duration: rpt.PipelineTask.Timeout.Duration}
 		}
 		return &metav1.Duration{Duration: timeRemaining}
 	}
 
-	if timeout == apisconfig.NoTimeoutDuration && rprt.PipelineTask.Timeout != nil {
-		return &metav1.Duration{Duration: rprt.PipelineTask.Timeout.Duration}
+	if timeout == apisconfig.NoTimeoutDuration && rpt.PipelineTask.Timeout != nil {
+		return &metav1.Duration{Duration: rpt.PipelineTask.Timeout.Duration}
 	}
 	return &metav1.Duration{Duration: apisconfig.NoTimeoutDuration}
 }
