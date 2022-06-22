@@ -1376,10 +1376,10 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 	}
 
 	// Map PipelineTask names to TaskRun child references that were already in the status
-	childRefByPipelineTask := make(map[string]*v1beta1.ChildStatusReference)
+	childRefByName := make(map[string]*v1beta1.ChildStatusReference)
 
 	for i := range pr.Status.ChildReferences {
-		childRefByPipelineTask[pr.Status.ChildReferences[i].PipelineTaskName] = &pr.Status.ChildReferences[i]
+		childRefByName[pr.Status.ChildReferences[i].Name] = &pr.Status.ChildReferences[i]
 	}
 
 	taskRuns := filterTaskRunsForPipelineRun(logger, pr, trs)
@@ -1389,13 +1389,13 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 		lbls := tr.GetLabels()
 		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
 
-		if _, ok := childRefByPipelineTask[pipelineTaskName]; !ok {
+		if _, ok := childRefByName[tr.Name]; !ok {
 			// This tr was missing from the status.
 			// Add it without conditions, which are handled in the next loop
 			logger.Infof("Found a TaskRun %s that was missing from the PipelineRun status", tr.Name)
 
 			// Since this was recovered now, add it to the map, or it might be overwritten
-			childRefByPipelineTask[pipelineTaskName] = &v1beta1.ChildStatusReference{
+			childRefByName[tr.Name] = &v1beta1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: v1beta1.SchemeGroupVersion.String(),
 					Kind:       "TaskRun",
@@ -1411,13 +1411,13 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 		lbls := r.GetLabels()
 		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
 
-		if _, ok := childRefByPipelineTask[pipelineTaskName]; !ok {
+		if _, ok := childRefByName[r.Name]; !ok {
 			// This run was missing from the status.
 			// Add it without conditions, which are handled in the next loop
 			logger.Infof("Found a Run %s that was missing from the PipelineRun status", r.Name)
 
 			// Since this was recovered now, add it to the map, or it might be overwritten
-			childRefByPipelineTask[pipelineTaskName] = &v1beta1.ChildStatusReference{
+			childRefByName[r.Name] = &v1beta1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: v1alpha1.SchemeGroupVersion.String(),
 					Kind:       "Run",
@@ -1429,8 +1429,8 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 	}
 
 	var newChildRefs []v1beta1.ChildStatusReference
-	for k := range childRefByPipelineTask {
-		newChildRefs = append(newChildRefs, *childRefByPipelineTask[k])
+	for k := range childRefByName {
+		newChildRefs = append(newChildRefs, *childRefByName[k])
 	}
 	pr.Status.ChildReferences = newChildRefs
 }
