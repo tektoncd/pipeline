@@ -790,7 +790,10 @@ pipelineTaskName: task
 
 			// Sort the ChildReferences to deal with annoying ordering issues.
 			sort.Slice(actualPrStatus.ChildReferences, func(i, j int) bool {
-				return actualPrStatus.ChildReferences[i].PipelineTaskName < actualPrStatus.ChildReferences[j].PipelineTaskName
+				return actualPrStatus.ChildReferences[i].Name < actualPrStatus.ChildReferences[j].Name
+			})
+			sort.Slice(tc.expectedPrStatus.ChildReferences, func(i, j int) bool {
+				return tc.expectedPrStatus.ChildReferences[i].Name < tc.expectedPrStatus.ChildReferences[j].Name
 			})
 
 			if d := cmp.Diff(tc.expectedPrStatus, actualPrStatus); d != "" {
