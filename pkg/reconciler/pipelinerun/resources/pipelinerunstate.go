@@ -250,7 +250,9 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 			childRefs = append(childRefs, rprt.getChildRefForTaskRun(rprt.TaskRun))
 		case len(rprt.TaskRuns) != 0:
 			for _, taskRun := range rprt.TaskRuns {
-				childRefs = append(childRefs, rprt.getChildRefForTaskRun(taskRun))
+				if taskRun != nil {
+					childRefs = append(childRefs, rprt.getChildRefForTaskRun(taskRun))
+				}
 			}
 		}
 	}

@@ -2629,6 +2629,34 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 			}},
 		},
 		{
+			name: "unresolved-matrixed-task",
+			state: PipelineRunState{{
+				TaskRunNames: []string{"task-run-0", "task-run-1", "task-run-2", "task-run-3"},
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "matrixed-task",
+					TaskRef: &v1beta1.TaskRef{
+						Name:       "task",
+						Kind:       "Task",
+						APIVersion: "v1beta1",
+					},
+					WhenExpressions: []v1beta1.WhenExpression{{
+						Input:    "foo",
+						Operator: selection.In,
+						Values:   []string{"foo", "bar"},
+					}},
+					Matrix: []v1beta1.Param{{
+						Name:  "foobar",
+						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name:  "quxbaz",
+						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+					}},
+				},
+				TaskRuns: []*v1beta1.TaskRun{nil, nil, nil, nil},
+			}},
+			childRefs: nil,
+		},
+		{
 			name: "matrixed-task",
 			state: PipelineRunState{{
 				TaskRunName: "matrixed-task-run-0",
