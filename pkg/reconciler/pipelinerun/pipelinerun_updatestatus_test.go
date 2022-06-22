@@ -720,6 +720,47 @@ metadata:
 			trs:              taskRunsWithNoOwner,
 			runs:             runsWithNoOwner,
 			expectedPrStatus: prStatusWithEmptyChildRefs,
+		}, {
+			prName:   "matrixed-taskruns-pr",
+			prStatus: prStatusWithEmptyChildRefs,
+			trs: []*v1beta1.TaskRun{
+				parse.MustParseTaskRun(t, `
+metadata:
+  labels:
+    tekton.dev/pipelineTask: task
+  name: pr-task-0-xxyyy
+  ownerReferences:
+  - uid: 11111111-1111-1111-1111-111111111111
+`),
+				parse.MustParseTaskRun(t, `
+metadata:
+  labels:
+    tekton.dev/pipelineTask: task
+  name: pr-task-1-xxyyy
+  ownerReferences:
+  - uid: 11111111-1111-1111-1111-111111111111
+`),
+			},
+			runs: nil,
+			expectedPrStatus: v1beta1.PipelineRunStatus{
+				Status: prRunningStatus,
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					ChildReferences: []v1beta1.ChildStatusReference{
+						mustParseChildStatusReference(t, `
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+name: pr-task-0-xxyyy
+pipelineTaskName: task
+`),
+						mustParseChildStatusReference(t, `
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+name: pr-task-1-xxyyy
+pipelineTaskName: task
+`),
+					},
+				},
+			},
 		},
 	}
 
