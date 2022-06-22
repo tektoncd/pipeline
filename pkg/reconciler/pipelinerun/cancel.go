@@ -71,9 +71,6 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1bet
 	// If we successfully cancelled all the TaskRuns and Runs, we can consider the PipelineRun cancelled.
 	if len(errs) == 0 {
 		reason := ReasonCancelled
-		if pr.Spec.Status == v1beta1.PipelineRunSpecStatusCancelledDeprecated {
-			reason = ReasonCancelledDeprecated
-		}
 
 		pr.Status.SetCondition(&apis.Condition{
 			Type:    apis.ConditionSucceeded,

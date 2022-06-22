@@ -84,7 +84,7 @@ func (pr *PipelineRun) HasStarted() bool {
 
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
 func (pr *PipelineRun) IsCancelled() bool {
-	return pr.Spec.Status == PipelineRunSpecStatusCancelled || pr.Spec.Status == PipelineRunSpecStatusCancelledDeprecated
+	return pr.Spec.Status == PipelineRunSpecStatusCancelled
 }
 
 // IsGracefullyCancelled returns true if the PipelineRun's spec status is set to CancelledRunFinally state
@@ -243,10 +243,6 @@ type TimeoutFields struct {
 type PipelineRunSpecStatus string
 
 const (
-	// PipelineRunSpecStatusCancelledDeprecated Deprecated: indicates that the user wants to cancel the task,
-	// if not already cancelled or terminated (replaced by "Cancelled")
-	PipelineRunSpecStatusCancelledDeprecated = "PipelineRunCancelled"
-
 	// PipelineRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	PipelineRunSpecStatusCancelled = "Cancelled"

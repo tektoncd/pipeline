@@ -374,8 +374,7 @@ func (facts *PipelineRunFacts) IsRunning() bool {
 
 // IsCancelled returns true if the PipelineRun was cancelled
 func (facts *PipelineRunFacts) IsCancelled() bool {
-	return facts.SpecStatus == v1beta1.PipelineRunSpecStatusCancelledDeprecated ||
-		facts.SpecStatus == v1beta1.PipelineRunSpecStatusCancelled
+	return facts.SpecStatus == v1beta1.PipelineRunSpecStatusCancelled
 }
 
 // IsGracefullyCancelled returns true if the PipelineRun was gracefully cancelled

@@ -281,19 +281,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 	}, {
-		name: "pipelinerun cancelled deprecated",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinerunname",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				Status: v1beta1.PipelineRunSpecStatusCancelledDeprecated,
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "prname",
-				},
-			},
-		},
-	}, {
 		name: "pipelinerun gracefully cancelled",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
