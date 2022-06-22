@@ -80,7 +80,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
   - name: create-ko-yaml
-    image: golang:1.18.3
+    image: golang:1.17.8
     script: |
       #!/bin/sh
       set -ex
