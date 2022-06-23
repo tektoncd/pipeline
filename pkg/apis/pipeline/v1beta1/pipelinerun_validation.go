@@ -97,7 +97,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
-	errs = errs.Also(validateSpecStatus(ctx, ps.Status))
+	errs = errs.Also(validateSpecStatus(ps.Status))
 
 	if ps.Workspaces != nil {
 		wsNames := make(map[string]int)
@@ -117,7 +117,7 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	return errs
 }
 
-func validateSpecStatus(ctx context.Context, status PipelineRunSpecStatus) *apis.FieldError {
+func validateSpecStatus(status PipelineRunSpecStatus) *apis.FieldError {
 	switch status {
 	case "":
 		return nil

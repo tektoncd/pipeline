@@ -2470,7 +2470,7 @@ status:
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
-			c.handlePodCreationError(testAssets.Ctx, taskRun, tc.err)
+			c.handlePodCreationError(taskRun, tc.err)
 			foundCondition := false
 			for _, cond := range taskRun.Status.Conditions {
 				if cond.Type == tc.expectedType && cond.Status == tc.expectedStatus && cond.Reason == tc.expectedReason {
@@ -4132,8 +4132,6 @@ status:
 }
 
 func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
-	ctx := context.Background()
-
 	tcs := []struct {
 		name     string
 		taskSpec *v1beta1.TaskSpec
@@ -4238,7 +4236,7 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := validateTaskSpecRequestResources(ctx, tc.taskSpec); err != nil {
+			if err := validateTaskSpecRequestResources(tc.taskSpec); err != nil {
 				t.Fatalf("Expected to see error when validating invalid TaskSpec resources but saw none")
 			}
 		})
@@ -4247,7 +4245,6 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 }
 
 func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
-	ctx := context.Background()
 	tcs := []struct {
 		name     string
 		taskSpec *v1beta1.TaskSpec
@@ -4294,7 +4291,7 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := validateTaskSpecRequestResources(ctx, tc.taskSpec); err == nil {
+			if err := validateTaskSpecRequestResources(tc.taskSpec); err == nil {
 				t.Fatalf("Expected to see error when validating invalid TaskSpec resources but saw none")
 			}
 		})
@@ -4347,7 +4344,7 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 	return mnts
 }
 
-func podArgs(stepName string, cmd string, additionalArgs []string, idx int) []string {
+func podArgs(cmd string, additionalArgs []string, idx int) []string {
 	args := []string{
 		"-wait_file",
 	}
@@ -4452,7 +4449,7 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 			VolumeMounts:           podVolumeMounts(idx, len(steps)),
 			TerminationMessagePath: "/tekton/termination",
 		}
-		stepContainer.Args = podArgs(s.name, s.cmd, s.args, idx)
+		stepContainer.Args = podArgs(s.cmd, s.args, idx)
 
 		for k, v := range s.envVars {
 			stepContainer.Env = append(stepContainer.Env, corev1.EnvVar{

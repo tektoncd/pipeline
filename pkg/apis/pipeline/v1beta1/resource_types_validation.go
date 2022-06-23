@@ -26,7 +26,7 @@ import (
 )
 
 // Validate implements apis.Validatable
-func (tr *TaskResources) Validate(ctx context.Context) (errs *apis.FieldError) {
+func (tr *TaskResources) Validate(context.Context) (errs *apis.FieldError) {
 	if tr != nil {
 		errs = errs.Also(validateTaskResources(tr.Inputs).ViaField("inputs"))
 		errs = errs.Also(validateTaskResources(tr.Outputs).ViaField("outputs"))

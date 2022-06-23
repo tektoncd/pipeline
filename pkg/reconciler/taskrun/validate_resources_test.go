@@ -543,7 +543,7 @@ func TestValidateOverrides(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateOverrides(context.Background(), tc.ts, tc.trs)
+			err := validateOverrides(tc.ts, tc.trs)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("expected err: %t, but got err %s", tc.wantErr, err)
 			}

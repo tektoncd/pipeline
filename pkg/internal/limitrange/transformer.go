@@ -34,7 +34,7 @@ func isZero(q resource.Quantity) bool {
 // NewTransformer returns a pod.Transformer that will modify limits if needed
 func NewTransformer(ctx context.Context, namespace string, lister corev1listers.LimitRangeLister) pod.Transformer {
 	return func(p *corev1.Pod) (*corev1.Pod, error) {
-		limitRange, err := getVirtualLimitRange(ctx, namespace, lister)
+		limitRange, err := getVirtualLimitRange(namespace, lister)
 		if err != nil {
 			return p, err
 		}

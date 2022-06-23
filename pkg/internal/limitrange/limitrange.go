@@ -17,15 +17,13 @@ limitations under the License.
 package limitrange
 
 import (
-	"context"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 )
 
-func getVirtualLimitRange(ctx context.Context, namespace string, lister corev1listers.LimitRangeLister) (*corev1.LimitRange, error) {
+func getVirtualLimitRange(namespace string, lister corev1listers.LimitRangeLister) (*corev1.LimitRange, error) {
 	limitRanges, err := lister.LimitRanges(namespace).List(labels.Everything())
 	if err != nil {
 		return nil, err
