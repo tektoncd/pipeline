@@ -1395,7 +1395,7 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 			childRefByName[tr.Name] = &v1beta1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: v1beta1.SchemeGroupVersion.String(),
-					Kind:       "TaskRun",
+					Kind:       pipeline.TaskRunControllerName,
 				},
 				Name:             tr.Name,
 				PipelineTaskName: pipelineTaskName,
@@ -1417,7 +1417,7 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 			childRefByName[r.Name] = &v1beta1.ChildStatusReference{
 				TypeMeta: runtime.TypeMeta{
 					APIVersion: v1alpha1.SchemeGroupVersion.String(),
-					Kind:       "Run",
+					Kind:       pipeline.RunControllerName,
 				},
 				Name:             r.Name,
 				PipelineTaskName: pipelineTaskName,

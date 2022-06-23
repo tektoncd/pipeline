@@ -262,7 +262,7 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 func (t *ResolvedPipelineTask) getChildRefForRun() v1beta1.ChildStatusReference {
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
-			APIVersion: t.Run.APIVersion,
+			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       pipeline.RunControllerName,
 		},
 		Name:             t.RunName,
@@ -274,7 +274,7 @@ func (t *ResolvedPipelineTask) getChildRefForRun() v1beta1.ChildStatusReference 
 func (t *ResolvedPipelineTask) getChildRefForTaskRun(taskRun *v1beta1.TaskRun) v1beta1.ChildStatusReference {
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
-			APIVersion: taskRun.APIVersion,
+			APIVersion: v1beta1.SchemeGroupVersion.String(),
 			Kind:       pipeline.TaskRunControllerName,
 		},
 		Name:             taskRun.Name,
