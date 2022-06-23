@@ -496,11 +496,11 @@ func isCustomTask(ctx context.Context, rpt ResolvedPipelineTask) bool {
 	return cfg.FeatureFlags.EnableCustomTasks && !invalidSpec && (isTaskRefCustomTask || isTaskSpecCustomTask)
 }
 
-// ResolvePipelineRunTask retrieves a single Task's instance using the getTask to fetch
+// ResolvePipelineTask retrieves a single Task's instance using the getTask to fetch
 // the spec. If it is unable to retrieve an instance of a referenced Task, it  will return
 // an error, otherwise it returns a list of all the Tasks retrieved.  It will retrieve
-// the Resources needed for the TaskRun using the mapping of providedResources.
-func ResolvePipelineRunTask(
+// the Resources needed for the TaskRuns or Runs using the mapping of providedResources.
+func ResolvePipelineTask(
 	ctx context.Context,
 	pipelineRun v1beta1.PipelineRun,
 	getTask resources.GetTask,
