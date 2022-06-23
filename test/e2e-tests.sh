@@ -22,6 +22,7 @@ source $(git rev-parse --show-toplevel)/test/e2e-common.sh
 
 # Setting defaults
 PIPELINE_FEATURE_GATE=${PIPELINE_FEATURE_GATE:-stable}
+EMBEDDED_STATUS_GATE=${EMBEDDED_STATUS_GATE:-full}
 SKIP_INITIALIZE=${SKIP_INITIALIZE:="false"}
 RUN_YAML_TESTS=${RUN_YAML_TESTS:="true"}
 failed=0
@@ -50,6 +51,18 @@ function set_feature_gate() {
   kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
 
+function set_embedded_status() {
+  local status="$1"
+  if [ "$status" != "full" ] && [ "$status" != "minimal" ] && [ "$status" != "both" ] ; then
+    printf "Invalid embedded status %s\n" ${status}
+    exit 255
+  fi
+  printf "Setting embedded status to %s\n", ${status}
+  jsonpatch=$(printf "{\"data\": {\"embedded-status\": \"%s\"}}" $1)
+  echo "feature-flags ConfigMap patch: ${jsonpatch}"
+  kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+}
+
 function run_e2e() {
   # Run the integration tests
   header "Running Go e2e tests"
@@ -64,6 +77,7 @@ function run_e2e() {
 }
 
 set_feature_gate "$PIPELINE_FEATURE_GATE"
+set_embedded_status "$EMBEDDED_STATUS_GATE"
 run_e2e
 
 (( failed )) && fail_test
