@@ -16,7 +16,7 @@ package v1beta1
 import "context"
 
 // SetDefaults set the default type for TaskResult
-func (tr *TaskResult) SetDefaults(ctx context.Context) {
+func (tr *TaskResult) SetDefaults(context.Context) {
 	if tr != nil && tr.Type == "" {
 		// ResultsTypeString is the default value
 		tr.Type = ResultsTypeString

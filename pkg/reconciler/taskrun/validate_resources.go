@@ -223,7 +223,7 @@ func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, 
 	return nil
 }
 
-func validateTaskSpecRequestResources(ctx context.Context, taskSpec *v1beta1.TaskSpec) error {
+func validateTaskSpecRequestResources(taskSpec *v1beta1.TaskSpec) error {
 	if taskSpec != nil {
 		for _, step := range taskSpec.Steps {
 			for k, request := range step.Resources.Requests {
@@ -250,13 +250,13 @@ func validateTaskSpecRequestResources(ctx context.Context, taskSpec *v1beta1.Tas
 }
 
 // validateOverrides validates that all stepOverrides map to valid steps, and likewise for sidecarOverrides
-func validateOverrides(ctx context.Context, ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
-	stepErr := validateStepOverrides(ctx, ts, trs)
-	sidecarErr := validateSidecarOverrides(ctx, ts, trs)
+func validateOverrides(ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
+	stepErr := validateStepOverrides(ts, trs)
+	sidecarErr := validateSidecarOverrides(ts, trs)
 	return multierror.Append(stepErr, sidecarErr).ErrorOrNil()
 }
 
-func validateStepOverrides(ctx context.Context, ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
+func validateStepOverrides(ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
 	var err error
 	stepNames := sets.NewString()
 	for _, step := range ts.Steps {
@@ -270,7 +270,7 @@ func validateStepOverrides(ctx context.Context, ts *v1beta1.TaskSpec, trs *v1bet
 	return err
 }
 
-func validateSidecarOverrides(ctx context.Context, ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
+func validateSidecarOverrides(ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) error {
 	var err error
 	sidecarNames := sets.NewString()
 	for _, sidecar := range ts.Sidecars {

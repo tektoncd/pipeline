@@ -61,7 +61,7 @@ type PropertySpec struct {
 }
 
 // SetDefaults set the default type
-func (pp *ParamSpec) SetDefaults(ctx context.Context) {
+func (pp *ParamSpec) SetDefaults(context.Context) {
 	if pp == nil {
 		return
 	}
@@ -72,11 +72,11 @@ func (pp *ParamSpec) SetDefaults(ctx context.Context) {
 	switch {
 	case pp.Type != "":
 		// If param type is provided by the author, do nothing but just set default type for PropertySpec in case `properties` section is provided.
-		pp.setDefaultsForProperties(ctx)
+		pp.setDefaultsForProperties()
 	case pp.Properties != nil:
 		pp.Type = ParamTypeObject
 		// Also set default type for PropertySpec
-		pp.setDefaultsForProperties(ctx)
+		pp.setDefaultsForProperties()
 	case pp.Default == nil:
 		// ParamTypeString is the default value (when no type can be inferred from the default value)
 		pp.Type = ParamTypeString
@@ -92,7 +92,7 @@ func (pp *ParamSpec) SetDefaults(ctx context.Context) {
 }
 
 // setDefaultsForProperties sets default type for PropertySpec (string) if it's not specified
-func (pp *ParamSpec) setDefaultsForProperties(ctx context.Context) {
+func (pp *ParamSpec) setDefaultsForProperties() {
 	for key, propertySpec := range pp.Properties {
 		if propertySpec.Type == "" {
 			pp.Properties[key] = PropertySpec{Type: ParamTypeString}

@@ -158,7 +158,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	}
 
 	// Check for Pod Failures
-	if failed, reason, message := c.checkPodFailed(ctx, tr); failed {
+	if failed, reason, message := c.checkPodFailed(tr); failed {
 		err := c.failTaskRun(ctx, tr, reason, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}
@@ -196,7 +196,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	return nil
 }
 
-func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1beta1.TaskRun) (bool, v1beta1.TaskRunReason, string) {
+func (c *Reconciler) checkPodFailed(tr *v1beta1.TaskRun) (bool, v1beta1.TaskRunReason, string) {
 	for index, step := range tr.Status.Steps {
 		if step.Waiting != nil && step.Waiting.Reason == "ImagePullBackOff" {
 			image := tr.Status.TaskSpec.Steps[index].Image
@@ -264,7 +264,7 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) erro
 		// Check if any SidecarStatuses are still shown as Running after stopping
 		// Sidecars. If any Running, update SidecarStatuses based on Pod ContainerStatuses.
 		if podconvert.IsSidecarStatusRunning(tr) {
-			err = updateStoppedSidecarStatus(ctx, pod, tr, c)
+			err = updateStoppedSidecarStatus(pod, tr)
 		}
 	}
 	if k8serrors.IsNotFound(err) {
@@ -360,7 +360,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := validateTaskSpecRequestResources(ctx, taskSpec); err != nil {
+	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -392,7 +392,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		}
 	}
 
-	if err := validateOverrides(ctx, taskSpec, &tr.Spec); err != nil {
+	if err := validateOverrides(taskSpec, &tr.Spec); err != nil {
 		logger.Errorf("TaskRun %q step or sidecar overrides are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -471,7 +471,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 		pod, err = c.createPod(ctx, ts, tr, rtr)
 		if err != nil {
-			newErr := c.handlePodCreationError(ctx, tr, err)
+			newErr := c.handlePodCreationError(tr, err)
 			logger.Errorf("Failed to create task run pod for taskrun %q: %v", tr.Name, newErr)
 			return newErr
 		}
@@ -562,7 +562,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1
 	return newTr, nil
 }
 
-func (c *Reconciler) handlePodCreationError(ctx context.Context, tr *v1beta1.TaskRun, err error) error {
+func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) error {
 	switch {
 	case isExceededResourceQuotaError(err):
 		// If we are struggling to create the pod, then it hasn't started.
@@ -767,7 +767,7 @@ func resourceImplBinding(resources map[string]*resourcev1alpha1.PipelineResource
 
 // updateStoppedSidecarStatus updates SidecarStatus for sidecars that were
 // terminated by nop image
-func updateStoppedSidecarStatus(ctx context.Context, pod *corev1.Pod, tr *v1beta1.TaskRun, c *Reconciler) error {
+func updateStoppedSidecarStatus(pod *corev1.Pod, tr *v1beta1.TaskRun) error {
 	tr.Status.Sidecars = []v1beta1.SidecarState{}
 	for _, s := range pod.Status.ContainerStatuses {
 		if !podconvert.IsContainerStep(s.Name) {
