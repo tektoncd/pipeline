@@ -300,7 +300,7 @@ func (c *Reconciler) resolvePipelineState(
 			return nil, controller.NewPermanentError(err)
 		}
 
-		resolvedTask, err := resources.ResolvePipelineRunTask(ctx,
+		resolvedTask, err := resources.ResolvePipelineTask(ctx,
 			*pr,
 			fn,
 			func(name string) (*v1beta1.TaskRun, error) {
