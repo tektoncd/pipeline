@@ -89,9 +89,6 @@ const (
 	// ReasonCouldntGetResource indicates that the reason for the failure status is that the
 	// associated PipelineRun's bound PipelineResources couldn't all be retrieved
 	ReasonCouldntGetResource = "CouldntGetResource"
-	// ReasonCouldntGetCondition indicates that the reason for the failure status is that the
-	// associated Pipeline's Conditions couldn't all be retrieved
-	ReasonCouldntGetCondition = "CouldntGetCondition"
 	// ReasonParameterMissing indicates that the reason for the failure status is that the
 	// associated PipelineRun didn't provide all the required parameters
 	ReasonParameterMissing = "ParameterMissing"

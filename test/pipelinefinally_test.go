@@ -266,10 +266,6 @@ spec:
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			dagTask2EndTime = taskrunItem.Status.CompletionTime
-		case n == "dagtask3":
-			if !isSkipped(t, n, taskrunItem.Status.Conditions) {
-				t.Fatalf("dag task %s should have skipped due to condition failure", n)
-			}
 		case n == "dagtask4":
 			t.Fatalf("task %s should have skipped due to when expression", n)
 		case n == "dagtask5":
@@ -713,20 +709,6 @@ func isCancelled(t *testing.T, taskRunName string, conds duckv1beta1.Conditions)
 	t.Helper()
 	for _, c := range conds {
 		if c.Type == apis.ConditionSucceeded {
-			return true
-		}
-	}
-	t.Errorf("TaskRun status %q had no Succeeded condition", taskRunName)
-	return false
-}
-
-func isSkipped(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) bool {
-	t.Helper()
-	for _, c := range conds {
-		if c.Type == apis.ConditionSucceeded {
-			if c.Status != corev1.ConditionFalse && c.Reason != resources.ReasonConditionCheckFailed {
-				t.Errorf("TaskRun status %q is not skipped due to condition failure, got %q", taskRunName, c.Status)
-			}
 			return true
 		}
 	}

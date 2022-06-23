@@ -321,14 +321,9 @@ func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*R
 					isCancelled = isCancelled || status.Reason == v1alpha1.RunReasonCancelled
 				}
 			}
-			if status.IsFalse() {
-				if !(isCancelled || status.Reason == ReasonConditionCheckFailed) {
-					if t.hasRemainingRetries() {
-						tasks = append(tasks, t)
-					}
-				}
+			if status.IsFalse() && !isCancelled && t.hasRemainingRetries() {
+				tasks = append(tasks, t)
 			}
-
 		}
 	}
 	return tasks
