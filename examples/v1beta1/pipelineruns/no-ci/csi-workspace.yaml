@@ -1,0 +1,61 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: vault-database
+spec:
+  provider: vault
+  secretObjects:
+  - data:
+    - key: password
+      objectName: db-password
+    secretName: dbpass
+    type: Opaque
+  parameters:
+    vaultAddress: "http://vault.default:8200"
+    roleName: "database"
+    objects: |
+      - objectName: "db-password"
+        secretPath: "secret/data/db-pass"
+        secretKey: "password"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: csi-task
+spec:
+  workspaces:
+  - name: secret-password
+  steps:
+  - name: fetch-csi
+    image: ubuntu
+    script: cat $(workspaces.secret-password.path)/db-password
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: csi-pipeline
+spec:
+  workspaces:
+  - name: secret-vault
+  tasks:
+  - name: fetch-csi
+    taskRef:
+      name: csi-task
+    workspaces:
+    - name: secret-password
+      workspace: secret-vault
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: csi-credential-
+spec:
+  pipelineRef:
+    name: csi-pipeline
+  workspaces:
+    - name: secret-vault
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: "vault-database"

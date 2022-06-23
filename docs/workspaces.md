@@ -512,6 +512,42 @@ workspaces:
       secretName: my-secret
 ```
 
+##### `csi`
+
+This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+for csi volume source to function.
+
+The `csi` field references a [`csi` volume](https://kubernetes.io/docs/concepts/storage/volumes/#csi).
+Using a `csi` volume has the following limitations:
+
+- `csi` volume sources require a volume driver to use, which must correspond to the value by the CSI driver as defined in the [CSI spec](https://github.com/container-storage-interface/spec/blob/master/spec.md#getplugininfo).
+
+```yaml
+workspaces:
+  - name: my-credentials
+    csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: "vault-database"
+```
+
+Example of CSI workspace using Hashicorp Vault:
+
+- Install the required csi driver. eg. [secrets-store-csi-driver](https://github.com/hashicorp/vault-csi-provider#using-yaml)
+- Install the `vault` Provider onto the kubernetes cluster. [Reference](https://learn.hashicorp.com/tutorials/vault/kubernetes-raft-deployment-guide)
+- Deploy a provider via [example](https://gist.github.com/JeromeJu/cc8e4e758029b6694806604750b8911c)
+- Create a SecretProviderClass Provider using the following [yaml](https://github.com/tektoncd/pipeline/blob/main/examples/v1beta1/pipelineruns/no-ci/csi-workspace.yaml#L1-L19)
+- Specify the ServiceAccount via vault:
+
+```
+vault write auth/kubernetes/role/database \
+bound_service_account_names=default \
+bound_service_account_namespaces=default \
+policies=internal-app \
+ttl=20m
+```
+
 If you need support for a `VolumeSource` type not listed above, [open an issue](https://github.com/tektoncd/pipeline/issues) or
 a [pull request](https://github.com/tektoncd/pipeline/blob/main/CONTRIBUTING.md).
 

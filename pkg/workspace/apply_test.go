@@ -509,6 +509,45 @@ func TestApply(t *testing.T) {
 				ReadOnly:  true,
 			}},
 		},
+	}, {
+		name: "binding a single workspace with CSI",
+		ts: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:      "custom",
+				MountPath: "/workspace/csi",
+				ReadOnly:  true,
+			}},
+		},
+		workspaces: []v1beta1.WorkspaceBinding{{
+			Name: "custom",
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "secrets-store.csi.k8s.io",
+			},
+			SubPath: "/foo/bar/baz",
+		}},
+		expectedTaskSpec: v1beta1.TaskSpec{
+			StepTemplate: &v1beta1.StepTemplate{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-mnq6l",
+					MountPath: "/workspace/csi",
+					SubPath:   "/foo/bar/baz",
+					ReadOnly:  true,
+				}},
+			},
+			Volumes: []corev1.Volume{{
+				Name: "ws-mnq6l",
+				VolumeSource: corev1.VolumeSource{
+					CSI: &corev1.CSIVolumeSource{
+						Driver: "secrets-store.csi.k8s.io",
+					},
+				},
+			}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:      "custom",
+				MountPath: "/workspace/csi",
+				ReadOnly:  true,
+			}},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			vols := workspace.CreateVolumes(tc.workspaces)
