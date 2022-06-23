@@ -31,9 +31,6 @@ Documentation for specifying `Matrix` in a `Pipeline`:
 > :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
 > The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
 > The `embedded-status` feature flag must be set to `"minimal"` to specify `Matrix` in a `PipelineTask`.
->
-> :warning: This feature is in a preview mode. 
-> It is still in a very early stage of development and is not yet fully functional.
 
 ## Configuring a Matrix
 
@@ -193,6 +190,8 @@ spec:
           name: platform-browsers
 ```
 
+When the above `PipelineRun` is executed, these are the `TaskRuns` that are created:
+
 ```shell
 $ tkn taskruns list
 
@@ -207,3 +206,105 @@ matrixed-pr-6lvzk-platforms-and-browsers-1   13 seconds ago   8 seconds    Succe
 matrixed-pr-6lvzk-platforms-and-browsers-2   13 seconds ago   8 seconds    Succeeded
 matrixed-pr-6lvzk-platforms-and-browsers-0   13 seconds ago   8 seconds    Succeeded
 ```
+
+When the above `Pipeline` is executed, its status is populated with `ChildReferences` of the above `TaskRuns`. The
+`PipelineRun` status tracks the status of all the fanned out `TaskRuns`. This is the `PipelineRun` after completing
+successfully:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+  labels:
+    tekton.dev/pipeline: matrixed-pr-6lvzk
+  name: matrixed-pr-6lvzk
+  namespace: default
+spec:
+  pipelineSpec:
+    tasks:
+    - matrix:
+      - name: platform
+        value:
+        - linux
+        - mac
+        - windows
+      - name: browser
+        value:
+        - chrome
+        - safari
+        - firefox
+      name: platforms-and-browsers
+      taskRef:
+        kind: Task
+        name: platform-browsers
+  serviceAccountName: default
+  timeout: 1h0m0s
+status:
+  pipelineSpec:
+    tasks:
+      - matrix:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
+        name: platforms-and-browsers
+        taskRef:
+          kind: Task
+          name: platform-browsers
+  startTime: "2022-06-23T23:01:11Z"
+  completionTime: "2022-06-23T23:01:20Z"
+  conditions:
+    - lastTransitionTime: "2022-06-23T23:01:20Z"
+      message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0'
+      reason: Succeeded
+      status: "True"
+      type: Succeeded
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-4
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-6
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-2
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-1
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-7
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-0
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-8
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-3
+    pipelineTaskName: platforms-and-browsers
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: matrixed-pr-6lvzk-platforms-and-browsers-5
+    pipelineTaskName: platforms-and-browsers
+```
+
+To execute this example yourself, run [`PipelineRun` with `Matrix`][pr-with-matrix].
+
+[pr-with-matrix]: ../examples/v1beta1/pipelineruns/alpha/pipelinerun-with-matrix.yaml
