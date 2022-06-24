@@ -3317,10 +3317,25 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "matrixed runs not started",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+		},
+		want: false,
+	}, {
 		name: "matrixed taskruns running",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0]), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed runs running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{makeRunStarted(runs[0]), makeRunStarted(runs[1])},
 		},
 		want: false,
 	}, {
@@ -3331,10 +3346,26 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{makeRunStarted(runs[0]), makeRunSucceeded(runs[1])},
+		},
+		want: false,
+	}, {
 		name: "matrixed taskruns succeeded",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0]), makeSucceeded(trs[1])},
+		},
+		want: true,
+	}, {
+		name: "matrixed runs succeeded",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{makeRunSucceeded(runs[0]), makeRunSucceeded(runs[1])},
 		},
 		want: true,
 	}, {
@@ -3345,10 +3376,26 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "one matrixed run succeeded",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{makeRunSucceeded(runs[0]), makeRunStarted(runs[1])},
+		},
+		want: false,
+	}, {
 		name: "matrixed taskruns failed",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed runs failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), makeRunFailed(runs[1])},
 		},
 		want: false,
 	}, {
@@ -3359,10 +3406,26 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "one matrixed run failed, one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), makeRunStarted(runs[1])},
+		},
+		want: false,
+	}, {
 		name: "matrixed taskruns failed: retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "matrixed runs failed: retries remaining",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), makeRunFailed(runs[1])},
 		},
 		want: false,
 	}, {
@@ -3373,10 +3436,26 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "matrixed runs failed: one run with retries remaining",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), withRunRetries(makeRunFailed(runs[1]))},
+		},
+		want: false,
+	}, {
 		name: "matrixed taskruns failed: no retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withRetries(makeFailed(trs[0])), withRetries(makeFailed(trs[1]))},
+		},
+		want: false,
+	}, {
+		name: "matrixed runs failed: no retries remaining",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			Runs:         []*v1alpha1.Run{withRunRetries(makeRunFailed(runs[0])), withRunRetries(makeRunFailed(runs[1]))},
 		},
 		want: false,
 	}, {
@@ -3387,10 +3466,26 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "matrixed runs cancelled",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{withRunCancelled(makeRunFailed(runs[0])), withRunCancelled(makeRunFailed(runs[1]))},
+		},
+		want: false,
+	}, {
 		name: "one matrixed taskrun cancelled, one matrixed taskrun running",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed run cancelled, one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{withRunCancelled(makeRunFailed(runs[0])), makeRunStarted(runs[1])},
 		},
 		want: false,
 	}, {
@@ -3401,10 +3496,26 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "matrixed runs cancelled but not failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{withRunCancelled(newRun(runs[0])), withRunCancelled(newRun(runs[1]))},
+		},
+		want: false,
+	}, {
 		name: "one matrixed taskrun cancelled but not failed",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(newTaskRun(trs[0])), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed run cancelled but not failed",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: matrixedPipelineTask,
+			Runs:         []*v1alpha1.Run{withRunCancelled(newRun(runs[0])), makeRunStarted(runs[1])},
 		},
 		want: false,
 	}, {
@@ -3415,10 +3526,26 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "matrixed runs cancelled: retries remaining",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			Runs:         []*v1alpha1.Run{withRunCancelled(makeRunFailed(runs[0])), withRunCancelled(makeRunFailed(runs[1]))},
+		},
+		want: false,
+	}, {
 		name: "one matrixed taskrun cancelled: retries remaining, one matrixed taskrun running",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeFailed(trs[0])), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed run cancelled: retries remaining, one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			Runs:         []*v1alpha1.Run{withRunCancelled(makeRunFailed(runs[0])), makeRunStarted(runs[1])},
 		},
 		want: false,
 	}, {
@@ -3429,10 +3556,26 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "matrixed runs cancelled: no retries remaining",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			Runs:         []*v1alpha1.Run{withRunCancelled(withRunRetries(makeRunFailed(runs[0]))), withRunCancelled(withRunRetries(makeRunFailed(runs[1])))},
+		},
+		want: false,
+	}, {
 		name: "one matrixed taskrun cancelled: no retries remaining, one matrixed taskrun running",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
 			TaskRuns:     []*v1beta1.TaskRun{withCancelled(withRetries(makeFailed(trs[0]))), makeStarted(trs[1])},
+		},
+		want: false,
+	}, {
+		name: "one matrixed run cancelled: no retries remaining, one matrixed run running",
+		rpt: ResolvedPipelineTask{
+			CustomTask:   true,
+			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
+			Runs:         []*v1alpha1.Run{withRunCancelled(withRunRetries(makeRunFailed(runs[0]))), makeRunStarted(runs[1])},
 		},
 		want: false,
 	}} {
