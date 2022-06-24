@@ -522,7 +522,7 @@ func ResolvePipelineTask(
 		}
 		rpt.Run = run
 	case rpt.IsMatrixed():
-		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.TaskRuns, pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.GetMatrixCombinationsCount())
+		rpt.TaskRunNames = GetNamesOfTaskRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.GetMatrixCombinationsCount())
 		for _, taskRunName := range rpt.TaskRunNames {
 			if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, taskRunName, getTask, getTaskRun, pipelineTask, providedResources); err != nil {
 				return nil, err
@@ -648,12 +648,8 @@ func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus,
 }
 
 // GetNamesOfTaskRuns should return unique names for `TaskRuns` if one has not already been defined, and the existing one otherwise.
-func GetNamesOfTaskRuns(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string, combinationCount int) []string {
-	var taskRunNames []string
-	if taskRunNames = getTaskRunNamesFromChildRefs(childRefs, ptName); taskRunNames != nil {
-		return taskRunNames
-	}
-	if taskRunNames = getTaskRunNamesFromTaskRunsStatus(taskRunsStatus, ptName); taskRunNames != nil {
+func GetNamesOfTaskRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, combinationCount int) []string {
+	if taskRunNames := getTaskRunNamesFromChildRefs(childRefs, ptName); taskRunNames != nil {
 		return taskRunNames
 	}
 	return getNewTaskRunNames(ptName, prName, combinationCount)
@@ -664,16 +660,6 @@ func getTaskRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptNa
 	for _, cr := range childRefs {
 		if cr.Kind == pipeline.TaskRunControllerName && cr.PipelineTaskName == ptName {
 			taskRunNames = append(taskRunNames, cr.Name)
-		}
-	}
-	return taskRunNames
-}
-
-func getTaskRunNamesFromTaskRunsStatus(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, ptName string) []string {
-	var taskRunNames []string
-	for k, v := range taskRunsStatus {
-		if v.PipelineTaskName == ptName {
-			taskRunNames = append(taskRunNames, k)
 		}
 	}
 	return taskRunNames
