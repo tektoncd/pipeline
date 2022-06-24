@@ -107,7 +107,7 @@ func imageNamesMapping() map[string]string {
 			"registry":                              getTestImage(registryImage),
 			"node":                                  "node:alpine3.11",
 			"gcr.io/cloud-builders/git":             "alpine/git:latest",
-			"docker:dind":                           "ibmcom/docker-s390x:dind",
+			"docker:dind":                           "ibmcom/docker-s390x:20.10",
 			"docker":                                "docker:18.06.3",
 			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
 			"stedolan/jq":                           "ibmcom/jq-s390x:latest",
