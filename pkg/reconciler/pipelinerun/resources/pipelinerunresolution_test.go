@@ -2831,15 +2831,6 @@ func TestGetTaskRunName(t *testing.T) {
 
 func TestGetNamesOfTaskRuns(t *testing.T) {
 	prName := "mypipelinerun"
-	taskRunsStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{
-		"mypipelinerun-mytask-0": {
-			PipelineTaskName: "mytask",
-		},
-		"mypipelinerun-mytask-1": {
-			PipelineTaskName: "mytask",
-		},
-	}
-
 	childRefs := []v1beta1.ChildStatusReference{{
 		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
 		Name:             "mypipelinerun-mytask-0",
@@ -2892,12 +2883,7 @@ func TestGetNamesOfTaskRuns(t *testing.T) {
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			namesOfTaskRunsFromTaskRunsStatus := GetNamesOfTaskRuns(taskRunsStatus, nil, tc.ptName, testPrName, 2)
-			sort.Strings(namesOfTaskRunsFromTaskRunsStatus)
-			if d := cmp.Diff(tc.wantTrNames, namesOfTaskRunsFromTaskRunsStatus); d != "" {
-				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
-			}
-			namesOfTaskRunsFromChildRefs := GetNamesOfTaskRuns(nil, childRefs, tc.ptName, testPrName, 2)
+			namesOfTaskRunsFromChildRefs := GetNamesOfTaskRuns(childRefs, tc.ptName, testPrName, 2)
 			sort.Strings(namesOfTaskRunsFromChildRefs)
 			if d := cmp.Diff(tc.wantTrNames, namesOfTaskRunsFromChildRefs); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
