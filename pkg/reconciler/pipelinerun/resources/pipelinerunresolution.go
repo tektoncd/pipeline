@@ -66,6 +66,7 @@ type ResolvedPipelineTask struct {
 	CustomTask            bool
 	RunName               string
 	Run                   *v1alpha1.Run
+	Runs                  []*v1alpha1.Run
 	PipelineTask          *v1beta1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
 }
@@ -108,6 +109,16 @@ func (t ResolvedPipelineTask) IsMatrixed() bool {
 // If the PipelineTask has a Matrix, isSuccessful returns true if all runs have completed successfully
 func (t ResolvedPipelineTask) isSuccessful() bool {
 	switch {
+	case t.IsCustomTask() && t.IsMatrixed():
+		if len(t.Runs) == 0 {
+			return false
+		}
+		for _, run := range t.Runs {
+			if !run.IsSuccessful() {
+				return false
+			}
+		}
+		return true
 	case t.IsCustomTask():
 		return t.Run.IsSuccessful()
 	case t.IsMatrixed():
