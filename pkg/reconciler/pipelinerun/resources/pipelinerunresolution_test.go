@@ -2906,6 +2906,69 @@ func TestGetNamesOfTaskRuns(t *testing.T) {
 	}
 }
 
+func TestGetNamesOfRuns(t *testing.T) {
+	prName := "mypipelinerun"
+	childRefs := []v1beta1.ChildStatusReference{{
+		TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+		Name:             "mypipelinerun-mytask-0",
+		PipelineTaskName: "mytask",
+	}, {
+		TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+		Name:             "mypipelinerun-mytask-1",
+		PipelineTaskName: "mytask",
+	}}
+
+	for _, tc := range []struct {
+		name         string
+		ptName       string
+		prName       string
+		wantRunNames []string
+	}{{
+		name:         "existing runs",
+		ptName:       "mytask",
+		wantRunNames: []string{"mypipelinerun-mytask-0", "mypipelinerun-mytask-1"},
+	}, {
+		name:         "new runs",
+		ptName:       "mynewtask",
+		wantRunNames: []string{"mypipelinerun-mynewtask-0", "mypipelinerun-mynewtask-1"},
+	}, {
+		name:   "new pipelinetask with long names",
+		ptName: "longtask-0123456789-0123456789-0123456789-0123456789-0123456789",
+		wantRunNames: []string{
+			"mypipelinerun09c563f6b29a3a2c16b98e6dc95979c5-longtask-01234567",
+			"mypipelinerunab643c1924b632f050e5a07fe482fc25-longtask-01234567",
+		},
+	}, {
+		name:   "new runs, pipelinerun with long name",
+		ptName: "task3",
+		prName: "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		wantRunNames: []string{
+			"pipeline-run-01234567891276ed292277c9bebded38d907a517fe-task3-0",
+			"pipeline-run-01234567891276ed292277c9bebded38d907a517fe-task3-1",
+		},
+	}, {
+		name:   "new runs, pipelinetask and pipelinerun with long name",
+		ptName: "task2-0123456789-0123456789-0123456789-0123456789-0123456789",
+		prName: "pipeline-run-0123456789-0123456789-0123456789-0123456789",
+		wantRunNames: []string{
+			"pipeline-run-0123456789-01234563c0313c59d28c85a2c2b3fd3b17a9514",
+			"pipeline-run-0123456789-01234569d54677e88e96776942290e00b578ca5",
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testPrName := prName
+			if tc.prName != "" {
+				testPrName = tc.prName
+			}
+			namesOfRunsFromChildRefs := getNamesOfRuns(childRefs, tc.ptName, testPrName, 2)
+			sort.Strings(namesOfRunsFromChildRefs)
+			if d := cmp.Diff(tc.wantRunNames, namesOfRunsFromChildRefs); d != "" {
+				t.Errorf("getRunName: %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestGetRunName(t *testing.T) {
 	prName := "pipeline-run"
 	runsStatus := map[string]*v1beta1.PipelineRunRunStatus{

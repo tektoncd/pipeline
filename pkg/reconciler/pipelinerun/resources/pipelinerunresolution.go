@@ -706,6 +706,25 @@ func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, childRefs [
 	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 }
 
+// getNamesOfRuns should return a unique names for `Runs` if they have not already been defined,
+// and the existing ones otherwise.
+func getNamesOfRuns(childRefs []v1beta1.ChildStatusReference, ptName, prName string, combinationCount int) []string {
+	if runNames := getRunNamesFromChildRefs(childRefs, ptName); runNames != nil {
+		return runNames
+	}
+	return getNewTaskRunNames(ptName, prName, combinationCount)
+}
+
+func getRunNamesFromChildRefs(childRefs []v1beta1.ChildStatusReference, ptName string) []string {
+	var runNames []string
+	for _, cr := range childRefs {
+		if cr.Kind == pipeline.RunControllerName && cr.PipelineTaskName == ptName {
+			runNames = append(runNames, cr.Name)
+		}
+	}
+	return runNames
+}
+
 // resolvePipelineTaskResources matches PipelineResources referenced by pt inputs and outputs with the
 // providedResources and returns an instance of ResolvedTaskResources.
 func resolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec, taskName string, kind v1beta1.TaskKind, providedResources map[string]*resourcev1alpha1.PipelineResource) (*resources.ResolvedTaskResources, error) {
