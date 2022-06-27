@@ -25,7 +25,7 @@ type TaskResult struct {
 
 	// Description is a human-readable description of the result
 	// +optional
-	Description string `json:"description"`
+	Description string `json:"description,omitempty"`
 }
 
 // TaskRunResult used to describe the results of a task

@@ -31,6 +31,13 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return errs.Also(ValidateEnabledAPIFields(ctx, "results type", config.AlphaAPIFields))
 	}
 
+	// Resources created before the result. Type was introduced may not have Type set
+	// and should be considered valid
+	if tr.Type == "" {
+		return nil
+	}
+
+	// By default the result type is string
 	if tr.Type != ResultsTypeString {
 		return apis.ErrInvalidValue(tr.Type, "type", fmt.Sprintf("type must be string"))
 	}

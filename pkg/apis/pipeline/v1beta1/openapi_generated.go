@@ -3977,7 +3977,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskResult(ref common.ReferenceCallback) c
 					"description": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Description is a human-readable description of the result",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
