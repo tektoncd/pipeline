@@ -25,11 +25,6 @@ import (
 // NewKlogr returns a logger that is functionally identical to
 // klogr.NewWithOptions(klogr.FormatKlog), i.e. it passes through to klog. The
 // difference is that it uses a simpler implementation.
-//
-// Experimental
-//
-// Notice: This function is EXPERIMENTAL and may be changed or removed in a
-// later release.
 func NewKlogr() Logger {
 	return New(&klogger{})
 }
