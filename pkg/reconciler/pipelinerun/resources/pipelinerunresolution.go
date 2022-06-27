@@ -66,6 +66,7 @@ type ResolvedPipelineTask struct {
 	CustomTask            bool
 	RunName               string
 	Run                   *v1alpha1.Run
+	RunNames              []string
 	Runs                  []*v1alpha1.Run
 	PipelineTask          *v1beta1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
@@ -525,6 +526,15 @@ func ResolvePipelineTask(
 	}
 	rpt.CustomTask = isCustomTask(ctx, rpt)
 	switch {
+	case rpt.IsCustomTask() && rpt.IsMatrixed():
+		rpt.RunNames = getNamesOfRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.GetMatrixCombinationsCount())
+		for _, runName := range rpt.RunNames {
+			run, err := getRun(runName)
+			if err != nil && !kerrors.IsNotFound(err) {
+				return nil, fmt.Errorf("error retrieving Run %s: %w", runName, err)
+			}
+			rpt.Runs = append(rpt.Runs, run)
+		}
 	case rpt.IsCustomTask():
 		rpt.RunName = getRunName(pipelineRun.Status.Runs, pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
 		run, err := getRun(rpt.RunName)
