@@ -150,6 +150,18 @@ func (t ResolvedPipelineTask) isFailure() bool {
 	var isDone bool
 
 	switch {
+	case t.IsCustomTask() && t.IsMatrixed():
+		if len(t.Runs) == 0 {
+			return false
+		}
+		isDone = true
+		atLeastOneFailed := false
+		for _, run := range t.Runs {
+			isDone = isDone && run.IsDone()
+			runFailed := run.Status.GetCondition(apis.ConditionSucceeded).IsFalse() && !t.hasRemainingRetries()
+			atLeastOneFailed = atLeastOneFailed || runFailed
+		}
+		return atLeastOneFailed && isDone
 	case t.IsCustomTask():
 		if t.Run == nil {
 			return false
@@ -183,6 +195,18 @@ func (t ResolvedPipelineTask) isFailure() bool {
 func (t ResolvedPipelineTask) hasRemainingRetries() bool {
 	var retriesDone int
 	switch {
+	case t.IsCustomTask() && t.IsMatrixed():
+		if len(t.Runs) == 0 {
+			return true
+		}
+		// has remaining retries when any Run has a remaining retry
+		for _, run := range t.Runs {
+			retriesDone = len(run.Status.RetriesStatus)
+			if retriesDone < t.PipelineTask.Retries {
+				return true
+			}
+		}
+		return false
 	case t.IsCustomTask():
 		if t.Run == nil {
 			return true
@@ -213,6 +237,19 @@ func (t ResolvedPipelineTask) hasRemainingRetries() bool {
 // If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled and all other runs are done.
 func (t ResolvedPipelineTask) isCancelled() bool {
 	switch {
+	case t.IsCustomTask() && t.IsMatrixed():
+		if len(t.Runs) == 0 {
+			return false
+		}
+		isDone := true
+		atLeastOneCancelled := false
+		for _, run := range t.Runs {
+			isDone = isDone && run.IsDone()
+			c := run.Status.GetCondition(apis.ConditionSucceeded)
+			runCancelled := c.IsFalse() && c.Reason == v1alpha1.RunReasonCancelled
+			atLeastOneCancelled = atLeastOneCancelled || runCancelled
+		}
+		return atLeastOneCancelled && isDone
 	case t.IsCustomTask():
 		if t.Run == nil {
 			return false
