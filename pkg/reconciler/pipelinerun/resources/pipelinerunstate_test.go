@@ -2431,6 +2431,100 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				}}},
 			},
 		}},
+	}, {
+		RunNames: []string{
+			"matrixed-run-0",
+			"matrixed-run-1",
+			"matrixed-run-2",
+			"matrixed-run-3",
+		},
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "matrixed-task",
+			TaskRef: &v1beta1.TaskRef{
+				Kind:       "Example",
+				APIVersion: "example.dev/v0",
+			},
+			Matrix: []v1beta1.Param{{
+				Name:  "foobar",
+				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}, {
+				Name:  "quxbaz",
+				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+			}},
+		},
+		Runs: []*v1alpha1.Run{{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
+			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-0"},
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}}},
+				RunStatusFields: v1alpha1.RunStatusFields{
+					Results: []v1alpha1.RunResult{{
+						Name:  "foo",
+						Value: "oof",
+					}, {
+						Name:  "bar",
+						Value: "rab",
+					}},
+				},
+			},
+		}, {
+			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
+			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-1"},
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}}},
+				RunStatusFields: v1alpha1.RunStatusFields{
+					Results: []v1alpha1.RunResult{{
+						Name:  "foo",
+						Value: "oof",
+					}, {
+						Name:  "bar",
+						Value: "rab",
+					}},
+				},
+			},
+		}, {
+			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
+			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-2"},
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}}},
+				RunStatusFields: v1alpha1.RunStatusFields{
+					Results: []v1alpha1.RunResult{{
+						Name:  "foo",
+						Value: "oof",
+					}, {
+						Name:  "bar",
+						Value: "rab",
+					}},
+				},
+			},
+		}, {
+			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
+			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-3"},
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionTrue,
+				}}},
+				RunStatusFields: v1alpha1.RunStatusFields{
+					Results: []v1alpha1.RunResult{{
+						Name:  "foo",
+						Value: "oof",
+					}, {
+						Name:  "bar",
+						Value: "rab",
+					}},
+				},
+			},
+		}},
 	}}
 
 	expectedTaskResults := map[string][]v1beta1.TaskRunResult{

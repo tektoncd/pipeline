@@ -689,11 +689,21 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 			continue
 		}
 		switch {
+		case rpt.IsCustomTask() && rpt.IsMatrixed():
+			if rpt.IsFinalTask(pipelineRunFacts) {
+				rpt.Runs, err = c.createRuns(ctx, rpt, pr, getFinallyTaskRunTimeout)
+			} else {
+				rpt.Runs, err = c.createRuns(ctx, rpt, pr, getTaskRunTimeout)
+			}
+			if err != nil {
+				recorder.Eventf(pr, corev1.EventTypeWarning, "RunsCreationFailed", "Failed to create Runs %q: %v", rpt.RunNames, err)
+				return fmt.Errorf("error creating Runs called %s for PipelineTask %s from PipelineRun %s: %w", rpt.RunNames, rpt.PipelineTask.Name, pr.Name, err)
+			}
 		case rpt.IsCustomTask():
 			if rpt.IsFinalTask(pipelineRunFacts) {
-				rpt.Run, err = c.createRun(ctx, rpt, pr, getFinallyTaskRunTimeout)
+				rpt.Run, err = c.createRun(ctx, rpt.RunName, nil, rpt, pr, getFinallyTaskRunTimeout)
 			} else {
-				rpt.Run, err = c.createRun(ctx, rpt, pr, getTaskRunTimeout)
+				rpt.Run, err = c.createRun(ctx, rpt.RunName, nil, rpt, pr, getTaskRunTimeout)
 			}
 			if err != nil {
 				recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rpt.RunName, err)
@@ -836,12 +846,27 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 }
 
-func (c *Reconciler) createRun(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, getTimeoutFunc getTimeoutFunc) (*v1alpha1.Run, error) {
+func (c *Reconciler) createRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, getTimeoutFunc getTimeoutFunc) ([]*v1alpha1.Run, error) {
+	var runs []*v1alpha1.Run
+	matrixCombinations := matrix.FanOut(rpt.PipelineTask.Matrix).ToMap()
+	for i, runName := range rpt.RunNames {
+		params := matrixCombinations[strconv.Itoa(i)]
+		run, err := c.createRun(ctx, runName, params, rpt, pr, getTimeoutFunc)
+		if err != nil {
+			return nil, err
+		}
+		runs = append(runs, run)
+	}
+	return runs, nil
+}
+
+func (c *Reconciler) createRun(ctx context.Context, runName string, params []v1beta1.Param, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, getTimeoutFunc getTimeoutFunc) (*v1alpha1.Run, error) {
 	logger := logging.FromContext(ctx)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
+	params = append(params, rpt.PipelineTask.Params...)
 	r := &v1alpha1.Run{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            rpt.RunName,
+			Name:            runName,
 			Namespace:       pr.Namespace,
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 			Labels:          getTaskrunLabels(pr, rpt.PipelineTask.Name, true),
@@ -850,7 +875,7 @@ func (c *Reconciler) createRun(ctx context.Context, rpt *resources.ResolvedPipel
 		Spec: v1alpha1.RunSpec{
 			Retries:            rpt.PipelineTask.Retries,
 			Ref:                rpt.PipelineTask.TaskRef,
-			Params:             rpt.PipelineTask.Params,
+			Params:             params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			Timeout:            getTimeoutFunc(ctx, pr, rpt, c.Clock),
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
@@ -886,7 +911,7 @@ func (c *Reconciler) createRun(ctx context.Context, rpt *resources.ResolvedPipel
 		r.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
 	}
 
-	logger.Infof("Creating a new Run object %s", rpt.RunName)
+	logger.Infof("Creating a new Run object %s", runName)
 	return c.PipelineClientSet.TektonV1alpha1().Runs(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
 }
 

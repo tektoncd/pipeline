@@ -3393,9 +3393,10 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 	getRun := func(name string) (*v1alpha1.Run, error) { return runsMap[name], nil }
 
 	for _, tc := range []struct {
-		name string
-		pt   v1beta1.PipelineTask
-		want *ResolvedPipelineTask
+		name   string
+		pt     v1beta1.PipelineTask
+		getRun GetRun
+		want   *ResolvedPipelineTask
 	}{{
 		name: "custom task with matrix - single parameter",
 		pt:   pts[0],
@@ -3414,6 +3415,18 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 			Runs:         runs,
 			PipelineTask: &pts[1],
 		},
+	}, {
+		name: "custom task with matrix - nil run",
+		pt:   pts[1],
+		getRun: func(name string) (*v1alpha1.Run, error) {
+			return nil, kerrors.NewNotFound(v1beta1.Resource("run"), name)
+		},
+		want: &ResolvedPipelineTask{
+			CustomTask:   true,
+			RunNames:     runNames,
+			Runs:         nil,
+			PipelineTask: &pts[1],
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -3425,7 +3438,10 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 				},
 			})
 			ctx = cfg.ToContext(ctx)
-			rpt, err := ResolvePipelineTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
+			if tc.getRun == nil {
+				tc.getRun = getRun
+			}
+			rpt, err := ResolvePipelineTask(ctx, pr, getTask, getTaskRun, tc.getRun, tc.pt, nil)
 			if err != nil {
 				t.Fatalf("Did not expect error when resolving PipelineRun: %v", err)
 			}

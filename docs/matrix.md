@@ -17,6 +17,7 @@ weight: 11
     - [Results from fanned out PipelineTasks](#results-from-fanned-out-pipelinetasks)
 - [Fan Out](#fan-out)
   - [`PipelineTasks` with `Tasks`](#pipelinetasks-with-tasks)
+  - [`PipelineTasks` with `Custom Tasks`](#pipelinetasks-with-custom-tasks)
 
 ## Overview
 
@@ -307,4 +308,153 @@ status:
 
 To execute this example yourself, run [`PipelineRun` with `Matrix`][pr-with-matrix].
 
+### `PipelineTasks` with `Custom Tasks`
+
+When a `PipelineTask` has a `Custom Task` and a `Matrix`, the `Custom Task` will be executed in parallel `Runs` with
+substitutions from combinations of `Parameters`.
+
+In the example below, eight `Runs` are created with combinations of CEL expressions, using the [CEL `Custom Task`][cel].
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+spec:
+  serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+      - name: platforms-and-browsers
+        matrix:
+          - name: type
+            value:
+              - "type(1)"
+              - "type(1.0)"
+          - name: colors
+            value:
+              - "{'blue': '0x000080', 'red': '0xFF0000'}['blue']"
+              - "{'blue': '0x000080', 'red': '0xFF0000'}['red']"
+          - name: bool
+            value:
+              - "type(1) == int"
+              - "{'blue': '0x000080', 'red': '0xFF0000'}['red'] == '0xFF0000'"
+        taskRef:
+          apiVersion: cel.tekton.dev/v1alpha1
+          kind: CEL
+```
+
+When the above `PipelineRun` is executed, these `Runs` are created:
+
+```shell
+$ k get run.tekton.dev
+
+NAME                                         SUCCEEDED   REASON              STARTTIME   COMPLETIONTIME
+matrixed-pr-4djw9-platforms-and-browsers-0   True        EvaluationSuccess   10s         10s
+matrixed-pr-4djw9-platforms-and-browsers-1   True        EvaluationSuccess   10s         10s
+matrixed-pr-4djw9-platforms-and-browsers-2   True        EvaluationSuccess   10s         10s
+matrixed-pr-4djw9-platforms-and-browsers-3   True        EvaluationSuccess   9s          9s
+matrixed-pr-4djw9-platforms-and-browsers-4   True        EvaluationSuccess   9s          9s
+matrixed-pr-4djw9-platforms-and-browsers-5   True        EvaluationSuccess   9s          9s
+matrixed-pr-4djw9-platforms-and-browsers-6   True        EvaluationSuccess   9s          9s
+matrixed-pr-4djw9-platforms-and-browsers-7   True        EvaluationSuccess   9s          9s
+```
+
+When the above `PipelineRun` is executed, its status is populated with `ChildReferences` of the above `Runs`. The
+`PipelineRun` status tracks the status of all the fanned out `Runs`. This is the `PipelineRun` after completing:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+  labels:
+    tekton.dev/pipeline: matrixed-pr-4djw9
+  name: matrixed-pr-4djw9
+  namespace: default
+spec:
+  pipelineSpec:
+    tasks:
+      - matrix:
+          - name: type
+            value:
+              - type(1)
+              - type(1.0)
+          - name: colors
+            value:
+              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''blue'']'
+              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red'']'
+          - name: bool
+            value:
+              - type(1) == int
+              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red''] == ''0xFF0000'''
+        name: platforms-and-browsers
+        taskRef:
+          apiVersion: cel.tekton.dev/v1alpha1
+          kind: CEL
+  serviceAccountName: default
+  timeout: 1h0m0s
+status:
+  pipelineSpec:
+    tasks:
+      - matrix:
+          - name: type
+            value:
+              - type(1)
+              - type(1.0)
+          - name: colors
+            value:
+              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''blue'']'
+              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red'']'
+          - name: bool
+            value:
+              - type(1) == int
+              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red''] == ''0xFF0000'''
+        name: platforms-and-browsers
+        taskRef:
+          apiVersion: cel.tekton.dev/v1alpha1
+          kind: CEL  
+  startTime: "2022-06-28T20:49:40Z"
+  completionTime: "2022-06-28T20:49:41Z"
+  conditions:
+    - lastTransitionTime: "2022-06-28T20:49:41Z"
+      message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0'
+      reason: Succeeded
+      status: "True"
+      type: Succeeded  
+  childReferences:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: Run
+      name: matrixed-pr-4djw9-platforms-and-browsers-1
+      pipelineTaskName: platforms-and-browsers
+    - apiVersion: tekton.dev/v1alpha1
+      kind: Run
+      name: matrixed-pr-4djw9-platforms-and-browsers-2
+      pipelineTaskName: platforms-and-browsers
+    - apiVersion: tekton.dev/v1alpha1
+      kind: Run
+      name: matrixed-pr-4djw9-platforms-and-browsers-3
+      pipelineTaskName: platforms-and-browsers
+    - apiVersion: tekton.dev/v1alpha1
+      kind: Run
+      name: matrixed-pr-4djw9-platforms-and-browsers-4
+      pipelineTaskName: platforms-and-browsers
+    - apiVersion: tekton.dev/v1alpha1
+      kind: Run
+      name: matrixed-pr-4djw9-platforms-and-browsers-5
+      pipelineTaskName: platforms-and-browsers
+    - apiVersion: tekton.dev/v1alpha1
+      kind: Run
+      name: matrixed-pr-4djw9-platforms-and-browsers-6
+      pipelineTaskName: platforms-and-browsers
+    - apiVersion: tekton.dev/v1alpha1
+      kind: Run
+      name: matrixed-pr-4djw9-platforms-and-browsers-7
+      pipelineTaskName: platforms-and-browsers
+    - apiVersion: tekton.dev/v1alpha1
+      kind: Run
+      name: matrixed-pr-4djw9-platforms-and-browsers-0
+      pipelineTaskName: platforms-and-browsers
+```
+
+[cel]: https://github.com/tektoncd/experimental/tree/1609827ea81d05c8d00f8933c5c9d6150cd36989/cel
 [pr-with-matrix]: ../examples/v1beta1/pipelineruns/alpha/pipelinerun-with-matrix.yaml

@@ -231,7 +231,9 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1alpha1.RunResult {
 		if !rpt.isSuccessful() {
 			continue
 		}
-		results[rpt.PipelineTask.Name] = rpt.Run.Status.Results
+		if rpt.Run != nil {
+			results[rpt.PipelineTask.Name] = rpt.Run.Status.Results
+		}
 	}
 
 	return results
