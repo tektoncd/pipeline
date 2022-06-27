@@ -245,7 +245,7 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 	for _, rpt := range state {
 		switch {
 		case rpt.Run != nil:
-			childRefs = append(childRefs, rpt.getChildRefForRun())
+			childRefs = append(childRefs, rpt.getChildRefForRun(rpt.Run.Name))
 		case rpt.TaskRun != nil:
 			childRefs = append(childRefs, rpt.getChildRefForTaskRun(rpt.TaskRun))
 		case len(rpt.TaskRuns) != 0:
@@ -254,18 +254,24 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 					childRefs = append(childRefs, rpt.getChildRefForTaskRun(taskRun))
 				}
 			}
+		case len(rpt.Runs) != 0:
+			for _, run := range rpt.Runs {
+				if run != nil {
+					childRefs = append(childRefs, rpt.getChildRefForRun(run.Name))
+				}
+			}
 		}
 	}
 	return childRefs
 }
 
-func (t *ResolvedPipelineTask) getChildRefForRun() v1beta1.ChildStatusReference {
+func (t *ResolvedPipelineTask) getChildRefForRun(runName string) v1beta1.ChildStatusReference {
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
 			APIVersion: v1alpha1.SchemeGroupVersion.String(),
 			Kind:       pipeline.RunControllerName,
 		},
-		Name:             t.RunName,
+		Name:             runName,
 		PipelineTaskName: t.PipelineTask.Name,
 		WhenExpressions:  t.PipelineTask.WhenExpressions,
 	}

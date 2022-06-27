@@ -2744,15 +2744,122 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				}},
 			}},
 		},
+		{
+			name: "unresolved-matrixed-custom-task",
+			state: PipelineRunState{{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "matrixed-task",
+					TaskRef: &v1beta1.TaskRef{
+						Kind:       "Example",
+						APIVersion: "example.dev/v0",
+					},
+					WhenExpressions: []v1beta1.WhenExpression{{
+						Input:    "foo",
+						Operator: selection.In,
+						Values:   []string{"foo", "bar"},
+					}},
+					Matrix: []v1beta1.Param{{
+						Name:  "foobar",
+						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name:  "quxbaz",
+						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+					}},
+				},
+				CustomTask: true,
+			}},
+			childRefs: nil,
+		},
+		{
+			name: "matrixed-custom-task",
+			state: PipelineRunState{{
+				PipelineTask: &v1beta1.PipelineTask{
+					Name: "matrixed-task",
+					TaskRef: &v1beta1.TaskRef{
+						APIVersion: "example.dev/v0",
+						Kind:       "Example",
+					},
+					WhenExpressions: []v1beta1.WhenExpression{{
+						Input:    "foo",
+						Operator: selection.In,
+						Values:   []string{"foo", "bar"},
+					}},
+					Matrix: []v1beta1.Param{{
+						Name:  "foobar",
+						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name:  "quxbaz",
+						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+					}},
+				},
+				CustomTask: true,
+				Runs: []*v1alpha1.Run{{
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-0"},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-1"},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-2"},
+				}, {
+					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-3"},
+				}},
+			}},
+			childRefs: []v1beta1.ChildStatusReference{{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1alpha1",
+					Kind:       "Run",
+				},
+				Name:             "matrixed-run-0",
+				PipelineTaskName: "matrixed-task",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}, {
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1alpha1",
+					Kind:       "Run",
+				},
+				Name:             "matrixed-run-1",
+				PipelineTaskName: "matrixed-task",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}, {
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1alpha1",
+					Kind:       "Run",
+				},
+				Name:             "matrixed-run-2",
+				PipelineTaskName: "matrixed-task",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}, {
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1alpha1",
+					Kind:       "Run",
+				},
+				Name:             "matrixed-run-3",
+				PipelineTaskName: "matrixed-task",
+				WhenExpressions: []v1beta1.WhenExpression{{
+					Input:    "foo",
+					Operator: selection.In,
+					Values:   []string{"foo", "bar"},
+				}},
+			}},
+		},
 	}
-
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			childRefs := tc.state.GetChildReferences()
 			if d := cmp.Diff(tc.childRefs, childRefs); d != "" {
 				t.Errorf("Didn't get expected child references for %s: %s", tc.name, diff.PrintWantGot(d))
 			}
-
 		})
 	}
 }
