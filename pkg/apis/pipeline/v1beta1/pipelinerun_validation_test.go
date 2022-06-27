@@ -29,7 +29,6 @@ import (
 	corev1resources "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestPipelineRun_Invalid(t *testing.T) {
@@ -93,49 +92,6 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrInvalidValue("PipelineRunCancell should be Cancelled, CancelledRunFinally, StoppedRunFinally or PipelineRunPending", "spec.status"),
-	}, {
-		name: "use of bundle without the feature flag set",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelinename",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name:   "my-pipeline",
-					Bundle: "docker.io/foo",
-				},
-			},
-		},
-		want: apis.ErrDisallowedFields("spec.pipelineRef.bundle"),
-	}, {
-		name: "bundle missing name",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelinename",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Bundle: "docker.io/foo",
-				},
-			},
-		},
-		want: apis.ErrMissingField("spec.pipelineRef.name"),
-		wc:   enableTektonOCIBundles(t),
-	}, {
-		name: "invalid bundle reference",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelinename",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name:   "my-pipeline",
-					Bundle: "not a valid reference",
-				},
-			},
-		},
-		want: apis.ErrInvalidValue("invalid bundle reference", "spec.pipelineRef.bundle", "could not parse reference: not a valid reference"),
-		wc:   enableTektonOCIBundles(t),
 	}, {
 		name: "pipelinerun pending while running",
 		pr: v1beta1.PipelineRun{
@@ -307,34 +263,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 	}, {
-		name: "alpha feature: valid resolver",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pr",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
-			},
-		},
-		wc: enableAlphaAPIFields,
-	}, {
-		name: "alpha feature: valid resolver with resource parameters",
-		pr: v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pr",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Resource: []v1beta1.ResolverParam{{
-					Name:  "repo",
-					Value: "https://github.com/tektoncd/pipeline.git",
-				}, {
-					Name:  "branch",
-					Value: "baz",
-				}}}},
-			},
-		},
-		wc: enableAlphaAPIFields,
-	}, {
 		name: "alpha feature: sidecar and step overrides",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
@@ -384,12 +312,6 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		wantErr     *apis.FieldError
 		withContext func(context.Context) context.Context
 	}{{
-		name: "pipelineRef without Pipeline Name",
-		spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{},
-		},
-		wantErr: apis.ErrMissingField("pipelineRef.name"),
-	}, {
 		name: "pipelineRef and pipelineSpec together",
 		spec: v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{
@@ -442,63 +364,6 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				"workspaces[0].volumeclaimtemplate",
 			},
 		},
-	}, {
-		name: "pipelineref resolver disallowed without alpha feature gate",
-		spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name: "foo",
-				ResolverRef: v1beta1.ResolverRef{
-					Resolver: "foo",
-				},
-			},
-		},
-		wantErr: apis.ErrDisallowedFields("resolver").ViaField("pipelineRef"),
-	}, {
-		name: "pipelineref resource disallowed without alpha feature gate",
-		spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name: "foo",
-				ResolverRef: v1beta1.ResolverRef{
-					Resource: []v1beta1.ResolverParam{},
-				},
-			},
-		},
-		wantErr: apis.ErrDisallowedFields("resource").ViaField("pipelineRef"),
-	}, {
-		name: "pipelineref resource disallowed without resolver",
-		spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				ResolverRef: v1beta1.ResolverRef{
-					Resource: []v1beta1.ResolverParam{},
-				},
-			},
-		},
-		wantErr:     apis.ErrMissingField("resolver").ViaField("pipelineRef"),
-		withContext: enableAlphaAPIFields,
-	}, {
-		name: "pipelineref resolver disallowed in conjunction with pipelineref name",
-		spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name: "foo",
-				ResolverRef: v1beta1.ResolverRef{
-					Resolver: "bar",
-				},
-			},
-		},
-		wantErr:     apis.ErrMultipleOneOf("name", "resolver").ViaField("pipelineRef"),
-		withContext: enableAlphaAPIFields,
-	}, {
-		name: "pipelineref resolver disallowed in conjunction with pipelineref bundle",
-		spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Bundle: "foo",
-				ResolverRef: v1beta1.ResolverRef{
-					Resolver: "baz",
-				},
-			},
-		},
-		wantErr:     apis.ErrMultipleOneOf("bundle", "resolver").ViaField("pipelineRef"),
-		withContext: enableAlphaAPIFields,
 	}, {
 		name: "duplicate stepOverride names",
 		spec: v1beta1.PipelineRunSpec{
@@ -973,19 +838,6 @@ func TestPipelineRunWithTimeout_Validate(t *testing.T) {
 				t.Error(err)
 			}
 		})
-	}
-}
-
-func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		s := config.NewStore(logtesting.TestLogger(t))
-		s.OnConfigChanged(&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-			Data: map[string]string{
-				"enable-tekton-oci-bundles": "true",
-			},
-		})
-		return s.ToContext(ctx)
 	}
 }
 

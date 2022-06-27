@@ -58,49 +58,11 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun *v1beta1.TaskRun
 		wc      func(context.Context) context.Context
 	}{{
-		name: "simple taskref",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "taskrname",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{Name: "taskrefname"},
-			},
-		},
-	}, {
 		name: "do not validate spec on delete",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "taskrname"},
 		},
 		wc: apis.WithinDelete,
-	}, {
-		name: "alpha feature: valid resolver",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "tr",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
-			},
-		},
-		wc: enableAlphaAPIFields,
-	}, {
-		name: "alpha feature: valid resolver with resource parameters",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "tr",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Resource: []v1beta1.ResolverParam{{
-					Name:  "repo",
-					Value: "https://github.com/tektoncd/pipeline.git",
-				}, {
-					Name:  "branch",
-					Value: "baz",
-				}}}},
-			},
-		},
-		wc: enableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid step and sidecar overrides",
 		taskRun: &v1beta1.TaskRun{
@@ -195,12 +157,6 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		spec:    v1beta1.TaskRunSpec{},
 		wantErr: apis.ErrMissingOneOf("taskRef", "taskSpec"),
 	}, {
-		name: "missing taskref name",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{},
-		},
-		wantErr: apis.ErrMissingField("taskRef.name"),
-	}, {
 		name: "invalid taskref and taskspec together",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
@@ -288,34 +244,6 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf("params[myobjectparam].name"),
 		wc:      enableAlphaAPIFields,
 	}, {
-		name: "use of bundle without the feature flag set",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name:   "my-task",
-				Bundle: "docker.io/foo",
-			},
-		},
-		wantErr: apis.ErrDisallowedFields("taskRef.bundle"),
-	}, {
-		name: "bundle missing name",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Bundle: "docker.io/foo",
-			},
-		},
-		wantErr: apis.ErrMissingField("taskRef.name"),
-		wc:      enableTektonOCIBundles(t),
-	}, {
-		name: "invalid bundle reference",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name:   "my-task",
-				Bundle: "invalid reference",
-			},
-		},
-		wantErr: apis.ErrInvalidValue("invalid bundle reference", "taskRef.bundle", "could not parse reference: invalid reference"),
-		wc:      enableTektonOCIBundles(t),
-	}, {
 		name: "using debug when apifields stable",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
@@ -338,95 +266,6 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		},
 		wantErr: apis.ErrInvalidValue("breakito is not a valid breakpoint. Available valid breakpoints include [onFailure]", "debug.breakpoint"),
 		wc:      enableAlphaAPIFields,
-	}, {
-		name: "taskref resolver disallowed without alpha feature gate",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "foo",
-				ResolverRef: v1beta1.ResolverRef{
-					Resolver: "git",
-				},
-			},
-		},
-		wantErr: apis.ErrDisallowedFields("resolver").ViaField("taskRef"),
-	}, {
-		name: "taskref resource disallowed without alpha feature gate",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "foo",
-				ResolverRef: v1beta1.ResolverRef{
-					Resource: []v1beta1.ResolverParam{},
-				},
-			},
-		},
-		wantErr: apis.ErrDisallowedFields("resource").ViaField("taskRef"),
-	}, {
-		name: "taskref resource disallowed without resolver",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				ResolverRef: v1beta1.ResolverRef{
-					Resource: []v1beta1.ResolverParam{},
-				},
-			},
-		},
-		wantErr: apis.ErrMissingField("resolver").ViaField("taskRef"),
-		wc:      enableAlphaAPIFields,
-	}, {
-		name: "taskref resolver disallowed in conjunction with taskref name",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "foo",
-				ResolverRef: v1beta1.ResolverRef{
-					Resolver: "git",
-				},
-			},
-		},
-		wantErr: apis.ErrMultipleOneOf("name", "resolver").ViaField("taskRef"),
-		wc:      enableAlphaAPIFields,
-	}, {
-		name: "taskref resolver disallowed in conjunction with taskref bundle",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Bundle: "bar",
-				ResolverRef: v1beta1.ResolverRef{
-					Resolver: "git",
-				},
-			},
-		},
-		wantErr: apis.ErrMultipleOneOf("bundle", "resolver").ViaField("taskRef"),
-		wc:      enableAlphaAPIFields,
-	}, {
-		name: "taskref resource disallowed in conjunction with taskref name",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Name: "bar",
-				ResolverRef: v1beta1.ResolverRef{
-					Resource: []v1beta1.ResolverParam{{
-						Name:  "foo",
-						Value: "bar",
-					}},
-				},
-			},
-		},
-		wantErr: apis.ErrMultipleOneOf("name", "resource").ViaField("taskRef").Also(
-			apis.ErrMissingField("resolver").ViaField("taskRef")),
-		wc: enableAlphaAPIFields,
-	}, {
-		name: "taskref resource disallowed in conjunction with taskref bundle",
-		spec: v1beta1.TaskRunSpec{
-			TaskRef: &v1beta1.TaskRef{
-				Bundle: "bar",
-				ResolverRef: v1beta1.ResolverRef{
-					Resource: []v1beta1.ResolverParam{{
-						Name:  "foo",
-						Value: "bar",
-					}},
-				},
-			},
-		},
-		wantErr: apis.ErrMultipleOneOf("bundle", "resource").ViaField("taskRef").Also(
-			apis.ErrMissingField("resolver").ViaField("taskRef")),
-		wc: enableAlphaAPIFields,
 	}, {
 		name: "stepOverride disallowed without alpha feature gate",
 		spec: v1beta1.TaskRunSpec{

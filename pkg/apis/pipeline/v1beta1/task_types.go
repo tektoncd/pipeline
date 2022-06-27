@@ -134,36 +134,3 @@ type TaskList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Task `json:"items"`
 }
-
-// TaskRef can be used to refer to a specific instance of a task.
-// Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
-type TaskRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name,omitempty"`
-	// TaskKind indicates the kind of the task, namespaced or cluster scoped.
-	Kind TaskKind `json:"kind,omitempty"`
-	// API version of the referent
-	// +optional
-	APIVersion string `json:"apiVersion,omitempty"`
-	// Bundle url reference to a Tekton Bundle.
-	// +optional
-	Bundle string `json:"bundle,omitempty"`
-
-	// ResolverRef allows referencing a Task in a remote location
-	// like a git repo. This field is only supported when the alpha
-	// feature gate is enabled.
-	// +optional
-	ResolverRef `json:",omitempty"`
-}
-
-// Check that Pipeline may be validated and defaulted.
-
-// TaskKind defines the type of Task used by the pipeline.
-type TaskKind string
-
-const (
-	// NamespacedTaskKind indicates that the task type has a namespaced scope.
-	NamespacedTaskKind TaskKind = "Task"
-	// ClusterTaskKind indicates that task type has a cluster scope.
-	ClusterTaskKind TaskKind = "ClusterTask"
-)
