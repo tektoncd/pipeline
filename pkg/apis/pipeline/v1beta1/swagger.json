@@ -2243,8 +2243,7 @@
       "properties": {
         "description": {
           "description": "Description is a human-readable description of the result",
-          "type": "string",
-          "default": ""
+          "type": "string"
         },
         "name": {
           "description": "Name the given name",
