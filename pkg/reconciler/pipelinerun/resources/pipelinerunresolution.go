@@ -570,7 +570,9 @@ func ResolvePipelineTask(
 			if err != nil && !kerrors.IsNotFound(err) {
 				return nil, fmt.Errorf("error retrieving Run %s: %w", runName, err)
 			}
-			rpt.Runs = append(rpt.Runs, run)
+			if run != nil {
+				rpt.Runs = append(rpt.Runs, run)
+			}
 		}
 	case rpt.IsCustomTask():
 		rpt.RunName = getRunName(pipelineRun.Status.Runs, pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
