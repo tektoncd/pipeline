@@ -21,81 +21,43 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
 
 // Validate ensures that a supplied TaskRef field is populated
 // correctly. No errors are returned for a nil TaskRef.
 func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
-	cfg := config.FromContextOrDefaults(ctx)
 	if ref == nil {
 		return
 	}
-	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
-		errs = errs.Also(ref.validateAlphaRef(ctx))
-	} else {
-		errs = errs.Also(ref.validateInTreeRef(ctx))
-	}
-	return
-}
 
-// validateInTreeRef returns errors if the given taskRef is not valid for
-// Pipelines' built-in resolution machinery.
-func (ref *TaskRef) validateInTreeRef(ctx context.Context) (errs *apis.FieldError) {
-	cfg := config.FromContextOrDefaults(ctx)
-	if ref.Resolver != "" {
-		errs = errs.Also(apis.ErrDisallowedFields("resolver"))
-	}
-	if ref.Resource != nil {
-		errs = errs.Also(apis.ErrDisallowedFields("resource"))
-	}
-	if ref.Name == "" {
-		errs = errs.Also(apis.ErrMissingField("name"))
-	}
-	if cfg.FeatureFlags.EnableTektonOCIBundles {
-		if ref.Bundle != "" && ref.Name == "" {
-			errs = errs.Also(apis.ErrMissingField("name"))
-		}
-		if ref.Bundle != "" {
-			if _, err := name.ParseReference(ref.Bundle); err != nil {
-				errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
-			}
-		}
-	} else if ref.Bundle != "" {
-		errs = errs.Also(apis.ErrDisallowedFields("bundle"))
-	}
-	return
-}
-
-// validateAlphaRef ensures that the user has passed either a
-// valid remote resource reference or a valid in-tree resource reference,
-// but not both.
-func (ref *TaskRef) validateAlphaRef(ctx context.Context) (errs *apis.FieldError) {
-	hasResolver := ref.Resolver != ""
-	hasResource := ref.Resource != nil
-	hasName := ref.Name != ""
-	hasBundle := ref.Bundle != ""
-	if hasName {
-		if hasResolver {
+	switch {
+	case ref.Resolver != "":
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.AlphaAPIFields).ViaField("resolver"))
+		if ref.Name != "" {
 			errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
 		}
-		if hasResource {
-			errs = errs.Also(apis.ErrMultipleOneOf("name", "resource"))
-		}
-	}
-	if hasBundle {
-		if hasResolver {
+		if ref.Bundle != "" {
 			errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
 		}
-		if hasResource {
+	case ref.Resource != nil:
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resource", config.AlphaAPIFields).ViaField("resource"))
+		if ref.Name != "" {
+			errs = errs.Also(apis.ErrMultipleOneOf("name", "resource"))
+		}
+		if ref.Bundle != "" {
 			errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resource"))
 		}
-	}
-	if !hasResolver {
-		if hasResource {
+		if ref.Resolver == "" {
 			errs = errs.Also(apis.ErrMissingField("resolver"))
-		} else {
-			errs = errs.Also(ref.validateInTreeRef(ctx))
+		}
+	case ref.Name == "":
+		errs = errs.Also(apis.ErrMissingField("name"))
+	case ref.Bundle != "":
+		errs = errs.Also(validateBundleFeatureFlag(ctx, "bundle", true).ViaField("bundle"))
+		if _, err := name.ParseReference(ref.Bundle); err != nil {
+			errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
 		}
 	}
 	return
