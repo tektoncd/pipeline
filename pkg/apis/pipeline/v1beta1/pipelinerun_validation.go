@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -72,8 +72,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		}
 	}
 
-	// This is an alpha feature and will fail validation if it's used in a pipelinerun spec
-	// when the enable-api-fields feature gate is anything but "alpha".
 	if ps.Timeouts != nil {
 		if ps.Timeout != nil {
 			// can't have both at the same time
@@ -153,7 +151,7 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 		if ps.Timeouts.Tasks.Duration > timeout {
 			tasksTimeoutErr = true
 		}
-		if ps.Timeouts.Tasks.Duration == apisconfig.NoTimeoutDuration && timeout != apisconfig.NoTimeoutDuration {
+		if ps.Timeouts.Tasks.Duration == config.NoTimeoutDuration && timeout != config.NoTimeoutDuration {
 			tasksTimeoutErr = true
 			tasksTimeoutStr += " (no timeout)"
 		}
@@ -168,7 +166,7 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 		if ps.Timeouts.Finally.Duration > timeout {
 			finallyTimeoutErr = true
 		}
-		if ps.Timeouts.Finally.Duration == apisconfig.NoTimeoutDuration && timeout != apisconfig.NoTimeoutDuration {
+		if ps.Timeouts.Finally.Duration == config.NoTimeoutDuration && timeout != config.NoTimeoutDuration {
 			finallyTimeoutErr = true
 			finallyTimeoutStr += " (no timeout)"
 		}
@@ -187,24 +185,17 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 }
 
 func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
-		if trs.StepOverrides != nil {
-			errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
-		}
-		if trs.SidecarOverrides != nil {
-			errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
-		}
-		if trs.ComputeResources != nil {
-			errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepOverrides))
-		}
-	} else {
-		if trs.StepOverrides != nil {
-			errs = errs.Also(apis.ErrDisallowedFields("stepOverrides"))
-		}
-		if trs.SidecarOverrides != nil {
-			errs = errs.Also(apis.ErrDisallowedFields("sidecarOverrides"))
-		}
+	if trs.StepOverrides != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
+		errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
+	}
+	if trs.SidecarOverrides != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
+		errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
+	}
+	if trs.ComputeResources != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
+		errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepOverrides))
 	}
 	return errs
 }

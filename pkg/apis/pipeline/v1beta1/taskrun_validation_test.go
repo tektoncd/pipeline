@@ -538,6 +538,19 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			"computeResources",
 		),
 		wc: enableAlphaAPIFields,
+	}, {
+		name: "computeResources disallowed without alpha feature gate",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "foo",
+			},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
+				},
+			},
+		},
+		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}}
 
 	for _, ts := range tests {
