@@ -68,11 +68,14 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if ts.StepOverrides != nil {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
 		errs = errs.Also(validateStepOverrides(ts.StepOverrides).ViaField("stepOverrides"))
-		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepOverrides))
 	}
 	if ts.SidecarOverrides != nil {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
 		errs = errs.Also(validateSidecarOverrides(ts.SidecarOverrides).ViaField("sidecarOverrides"))
+	}
+	if ts.ComputeResources != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
+		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepOverrides))
 	}
 
 	if ts.Status != "" {

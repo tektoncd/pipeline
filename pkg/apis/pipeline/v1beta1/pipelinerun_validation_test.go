@@ -530,7 +530,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr: apis.ErrDisallowedFields("stepOverrides").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr: apis.ErrGeneric("stepOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
 		name: "sidecarOverride disallowed without alpha feature gate",
 		spec: v1beta1.PipelineRunSpec{
@@ -547,7 +547,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 				},
 			},
 		},
-		wantErr: apis.ErrDisallowedFields("sidecarOverrides").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr: apis.ErrGeneric("sidecarOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
 		name: "missing stepOverride name",
 		spec: v1beta1.PipelineRunSpec{
@@ -621,6 +621,20 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			"taskRunSpecs[0].computeResources",
 		),
 		withContext: enableAlphaAPIFields,
+	}, {
+		name: "computeResources disallowed without alpha feature gate",
+		spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			TaskRunSpecs: []v1beta1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "bar",
+					ComputeResources: &corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
+					},
+				},
+			},
+		},
+		wantErr: apis.ErrGeneric("computeResources requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}}
 
 	for _, ps := range tests {
