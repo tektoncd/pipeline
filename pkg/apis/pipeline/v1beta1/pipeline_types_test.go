@@ -899,3 +899,90 @@ func TestPipelineTask_GetMatrixCombinationsCount(t *testing.T) {
 		})
 	}
 }
+
+func TestPipelineTask_ValidateEmbeddedOrType(t *testing.T) {
+	testCases := []struct {
+		name          string
+		pt            PipelineTask
+		expectedError *apis.FieldError
+	}{
+		{
+			name: "just apiVersion and kind",
+			pt: PipelineTask{
+				TaskSpec: &EmbeddedTask{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "something",
+						Kind:       "whatever",
+					},
+				},
+			},
+		}, {
+			name: "just steps",
+			pt: PipelineTask{
+				TaskSpec: &EmbeddedTask{
+					TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:  "foo",
+							Image: "bar",
+						}},
+					},
+				},
+			},
+		}, {
+			name: "apiVersion and steps",
+			pt: PipelineTask{
+				TaskSpec: &EmbeddedTask{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "something",
+					},
+					TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:  "foo",
+							Image: "bar",
+						}},
+					},
+				},
+			},
+			expectedError: &apis.FieldError{
+				Message: "taskSpec.apiVersion cannot be specified when using taskSpec.steps",
+				Paths:   []string{"taskSpec.apiVersion"},
+			},
+		}, {
+			name: "kind and steps",
+			pt: PipelineTask{
+				TaskSpec: &EmbeddedTask{
+					TypeMeta: runtime.TypeMeta{
+						Kind: "something",
+					},
+					TaskSpec: TaskSpec{
+						Steps: []Step{{
+							Name:  "foo",
+							Image: "bar",
+						}},
+					},
+				},
+			},
+			expectedError: &apis.FieldError{
+				Message: "taskSpec.kind cannot be specified when using taskSpec.steps",
+				Paths:   []string{"taskSpec.kind"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.pt.validateEmbeddedOrType()
+			if err == nil && tc.expectedError != nil {
+				t.Fatalf("PipelineTask.validateEmbeddedOrType() did not return expected error '%s'", tc.expectedError.Error())
+			}
+			if err != nil {
+				if tc.expectedError == nil {
+					t.Fatalf("PipelineTask.validateEmbeddedOrType() returned unexpected error '%s'", err.Error())
+				}
+				if d := cmp.Diff(tc.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+					t.Errorf("PipelineTask.validateEmbeddedOrType() errors diff %s", diff.PrintWantGot(d))
+				}
+			}
+		})
+	}
+}

@@ -321,6 +321,26 @@ func (pt *PipelineTask) validateMatrixCombinationsCount(ctx context.Context) (er
 	return errs
 }
 
+func (pt PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
+	// Reject cases where APIVersion and/or Kind are specified alongside an embedded Task.
+	// We determine if this is an embedded Task by checking of TaskSpec.TaskSpec.Steps has items.
+	if pt.TaskSpec != nil && len(pt.TaskSpec.TaskSpec.Steps) > 0 {
+		if pt.TaskSpec.APIVersion != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "taskSpec.apiVersion cannot be specified when using taskSpec.steps",
+				Paths:   []string{"taskSpec.apiVersion"},
+			})
+		}
+		if pt.TaskSpec.Kind != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "taskSpec.kind cannot be specified when using taskSpec.steps",
+				Paths:   []string{"taskSpec.kind"},
+			})
+		}
+	}
+	return
+}
+
 // GetMatrixCombinationsCount returns the count of combinations of Parameters generated from the Matrix in PipelineTask.
 func (pt *PipelineTask) GetMatrixCombinationsCount() int {
 	if len(pt.Matrix) == 0 {
@@ -464,6 +484,9 @@ func (pt PipelineTask) ValidateName() *apis.FieldError {
 // calls the validation routine based on the type of the task
 func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateRefOrSpec())
+
+	errs = errs.Also(pt.validateEmbeddedOrType())
+
 	cfg := config.FromContextOrDefaults(ctx)
 	// If EnableCustomTasks feature flag is on, validate custom task specifications
 	// pipeline task having taskRef with APIVersion is classified as custom task

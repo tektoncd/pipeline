@@ -727,6 +727,48 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			Message: `expected exactly one, got both`,
 			Paths:   []string{"tasks[1].name"},
 		},
+	}, {
+		name: "apiVersion with steps",
+		tasks: []PipelineTask{{
+			Name: "foo",
+			TaskSpec: &EmbeddedTask{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: "tekton.dev/v1beta1",
+				},
+				TaskSpec: TaskSpec{
+					Steps: []Step{{
+						Name:  "some-step",
+						Image: "some-image",
+					}},
+				},
+			},
+		}},
+		finalTasks: nil,
+		expectedError: apis.FieldError{
+			Message: "taskSpec.apiVersion cannot be specified when using taskSpec.steps",
+			Paths:   []string{"tasks[0].taskSpec.apiVersion"},
+		},
+	}, {
+		name: "kind with steps",
+		tasks: []PipelineTask{{
+			Name: "foo",
+			TaskSpec: &EmbeddedTask{
+				TypeMeta: runtime.TypeMeta{
+					Kind: "Task",
+				},
+				TaskSpec: TaskSpec{
+					Steps: []Step{{
+						Name:  "some-step",
+						Image: "some-image",
+					}},
+				},
+			},
+		}},
+		finalTasks: nil,
+		expectedError: apis.FieldError{
+			Message: "taskSpec.kind cannot be specified when using taskSpec.steps",
+			Paths:   []string{"tasks[0].taskSpec.kind"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
