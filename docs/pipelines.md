@@ -291,7 +291,7 @@ spec:
 
  Your `Pipeline` definition must reference at least one [`Task`](tasks.md).
 Each `Task` within a `Pipeline` must have a [valid](https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names)
-`name` and a `taskRef`. For example:
+`name` and a `taskRef` or a `taskSpec`. For example:
 
 ```yaml
 tasks:
@@ -299,6 +299,19 @@ tasks:
     taskRef:
       name: build-push
 ```
+
+or
+
+```yaml
+tasks:
+  - name: say-hello
+    taskSpec:
+      steps:
+      - image: ubuntu
+        script: echo 'hello there'
+```
+
+Note that any `task` specified in `taskSpec` will be the same version as the `Pipeline`.
 
 ### Specifying `Resources` in `PipelineTasks`
 
