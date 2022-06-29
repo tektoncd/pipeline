@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -142,6 +143,9 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	steps, err = v1beta1.MergeStepsWithOverrides(steps, taskRun.Spec.StepOverrides)
 	if err != nil {
 		return nil, err
+	}
+	if alphaAPIEnabled && taskRun.Spec.ComputeResources != nil {
+		tasklevel.ApplyTaskLevelComputeResources(steps, taskRun.Spec.ComputeResources)
 	}
 	sidecars, err := v1beta1.MergeSidecarsWithOverrides(taskSpec.Sidecars, taskRun.Spec.SidecarOverrides)
 	if err != nil {
