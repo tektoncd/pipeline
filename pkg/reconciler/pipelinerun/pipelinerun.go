@@ -793,9 +793,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
-	if len(params) == 0 {
-		params = rpt.PipelineTask.Params
-	}
+	params = append(params, rpt.PipelineTask.Params...)
 	tr = &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            taskRunName,
