@@ -34,22 +34,31 @@ mkdir -p "${TMP_DIFFROOT}"
 
 trap cleanup EXIT
 
-echo "Generating OpenAPI specification ..."
-go run k8s.io/kube-openapi/cmd/openapi-gen \
-    --input-dirs ./pkg/apis/pipeline/v1beta1,./pkg/apis/pipeline/pod,./pkg/apis/resource/v1alpha1,knative.dev/pkg/apis,knative.dev/pkg/apis/duck/v1beta1 \
-    --output-package ./pkg/apis/pipeline/v1beta1 -o ./ \
-    --go-header-file hack/boilerplate/boilerplate.go.txt \
-    -r "${TMP_DIFFROOT}/api-report"
+for APIVERSION in "v1beta1" "v1"
+do
+  input_dirs=./pkg/apis/pipeline/${APIVERSION},./pkg/apis/pipeline/pod,knative.dev/pkg/apis,knative.dev/pkg/apis/duck/v1beta1
+  if [ ${APIVERSION} = "v1beta1" ]
+  then
+    input_dirs=${input_dirs},./pkg/apis/resource/v1alpha1
+  fi
 
-violations=$(diff --changed-group-format='%>' --unchanged-group-format='' <(sort "hack/ignored-openapi-violations.list") <(sort "${TMP_DIFFROOT}/api-report") || echo "")
-if [ -n "${violations}" ]; then
-  echo ""
-  echo "New API rule violations found which are not present in hack/ignored-openapi-violations.list. Please fix these violations:"
-  echo ""
-  echo "${violations}"
-  echo ""
-  exit 1
-fi
+  echo "Generating OpenAPI specification for ${APIVERSION} ..."
+  go run k8s.io/kube-openapi/cmd/openapi-gen \
+      --input-dirs ${input_dirs} \
+      --output-package ./pkg/apis/pipeline/${APIVERSION} -o ./ \
+      --go-header-file hack/boilerplate/boilerplate.go.txt \
+      -r "${TMP_DIFFROOT}/api-report"
 
-echo "Generating swagger file ..."
-go run hack/spec-gen/main.go v0.17.2 > pkg/apis/pipeline/v1beta1/swagger.json
+  violations=$(diff --changed-group-format='%>' --unchanged-group-format='' <(sort "hack/ignored-openapi-violations.list") <(sort "${TMP_DIFFROOT}/api-report") || echo "")
+  if [ -n "${violations}" ]; then
+    echo ""
+    echo "New API rule violations found which are not present in hack/ignored-openapi-violations.list. Please fix these violations:"
+    echo ""
+    echo "${violations}"
+    echo ""
+    exit 1
+  fi
+
+  echo "Generating swagger file for ${APIVERSION} ..."
+  go run hack/spec-gen/main.go -apiVersion=${APIVERSION} > pkg/apis/pipeline/${APIVERSION}/swagger.json
+done

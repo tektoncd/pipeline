@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
+	tektonv1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1"
 	tektonv1alpha1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	discovery "k8s.io/client-go/discovery"
@@ -33,6 +34,7 @@ type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface
 	TektonV1beta1() tektonv1beta1.TektonV1beta1Interface
+	TektonV1() tektonv1.TektonV1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -41,6 +43,7 @@ type Clientset struct {
 	*discovery.DiscoveryClient
 	tektonV1alpha1 *tektonv1alpha1.TektonV1alpha1Client
 	tektonV1beta1  *tektonv1beta1.TektonV1beta1Client
+	tektonV1       *tektonv1.TektonV1Client
 }
 
 // TektonV1alpha1 retrieves the TektonV1alpha1Client
@@ -51,6 +54,11 @@ func (c *Clientset) TektonV1alpha1() tektonv1alpha1.TektonV1alpha1Interface {
 // TektonV1beta1 retrieves the TektonV1beta1Client
 func (c *Clientset) TektonV1beta1() tektonv1beta1.TektonV1beta1Interface {
 	return c.tektonV1beta1
+}
+
+// TektonV1 retrieves the TektonV1Client
+func (c *Clientset) TektonV1() tektonv1.TektonV1Interface {
+	return c.tektonV1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -101,6 +109,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.tektonV1, err = tektonv1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
@@ -124,6 +136,7 @@ func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.tektonV1alpha1 = tektonv1alpha1.New(c)
 	cs.tektonV1beta1 = tektonv1beta1.New(c)
+	cs.tektonV1 = tektonv1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
