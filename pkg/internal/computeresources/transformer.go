@@ -68,6 +68,9 @@ func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange)
 
 	// FIXME(#4230) maxLimitRequestRatio to support later
 	defaultContainerLimits := getDefaultLimits(limitRange)
+	maxContainerLimits := getMaxLimits(limitRange)
+	minContainerLimits := getMinLimits(limitRange)
+
 	defaultContainerRequests := getDefaultContainerRequest(limitRange)
 	defaultStepContainerRequests := getDefaultStepContainerRequest(limitRange, nbStepContainers)
 
@@ -77,7 +80,7 @@ func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange)
 			p.Spec.InitContainers[i].Resources.Requests = defaultContainerRequests
 		} else {
 			for _, name := range resourceNames {
-				setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Requests, defaultContainerRequests)
+				setRequests(name, p.Spec.InitContainers[i].Resources.Requests, defaultContainerRequests)
 			}
 		}
 		// We are trying to set the highest limits possible
@@ -85,8 +88,12 @@ func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange)
 			p.Spec.InitContainers[i].Resources.Limits = defaultContainerLimits
 		} else {
 			for _, name := range resourceNames {
-				setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Limits, defaultContainerLimits)
+				setLimits(name, p.Spec.InitContainers[i].Resources.Limits, defaultContainerLimits, minContainerLimits, maxContainerLimits)
 			}
+		}
+		// ensure the requests are not higher than the limits
+		for _, name := range resourceNames {
+			setRequestsToLimits(name, p.Spec.InitContainers[i].Resources.Requests, p.Spec.InitContainers[i].Resources.Limits)
 		}
 	}
 
@@ -100,23 +107,48 @@ func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange)
 			p.Spec.Containers[i].Resources.Requests = defaultRequests
 		} else {
 			for _, name := range resourceNames {
-				setRequestsOrLimits(name, p.Spec.Containers[i].Resources.Requests, defaultRequests)
+				setRequests(name, p.Spec.Containers[i].Resources.Requests, defaultRequests)
 			}
 		}
 		if p.Spec.Containers[i].Resources.Limits == nil {
 			p.Spec.Containers[i].Resources.Limits = defaultContainerLimits
 		} else {
 			for _, name := range resourceNames {
-				setRequestsOrLimits(name, p.Spec.Containers[i].Resources.Limits, defaultContainerLimits)
+				setLimits(name, p.Spec.Containers[i].Resources.Limits, defaultContainerLimits, minContainerLimits, maxContainerLimits)
 			}
+		}
+		for _, name := range resourceNames {
+			setRequestsToLimits(name, p.Spec.Containers[i].Resources.Requests, p.Spec.Containers[i].Resources.Limits)
 		}
 	}
 	return p
 }
 
-func setRequestsOrLimits(name corev1.ResourceName, dst, src corev1.ResourceList) {
-	if compare.IsZero(dst[name]) && !compare.IsZero(src[name]) {
-		dst[name] = src[name]
+// setRequests sets the requests to the max of (currentRequests, defaultRequests)
+func setRequests(name corev1.ResourceName, dst corev1.ResourceList, requests corev1.ResourceList) {
+	if compare.IsZero(requests[name]) {
+		return
+	}
+	dst[name] = compare.MaxRequest(dst[name], requests[name])
+}
+
+// setLimits sets the limits to the default limits if it exists, and keep the min of (currentLimits, maxLimits)
+func setLimits(name corev1.ResourceName, dst corev1.ResourceList, defaultLimits corev1.ResourceList, minLimits corev1.ResourceList, maxLimits corev1.ResourceList) {
+	if compare.IsZero(dst[name]) && !compare.IsZero(defaultLimits[name]) {
+		dst[name] = defaultLimits[name]
+	}
+	if !compare.IsZero(dst[name]) && !compare.IsZero(minLimits[name]) {
+		dst[name] = compare.MaxRequest(dst[name], minLimits[name])
+	}
+	if !compare.IsZero(dst[name]) && !compare.IsZero(maxLimits[name]) {
+		dst[name] = compare.MinLimit(dst[name], maxLimits[name])
+	}
+}
+
+// setRequestsToLimits sets the requests to the limits if the requests are greater than the limits
+func setRequestsToLimits(name corev1.ResourceName, requests corev1.ResourceList, limits corev1.ResourceList) {
+	if !compare.IsZero(requests[name]) && !compare.IsZero(limits[name]) {
+		requests[name] = compare.MinLimit(requests[name], limits[name])
 	}
 }
 
@@ -185,6 +217,32 @@ func getDefaultLimits(limitRange *corev1.LimitRange) corev1.ResourceList {
 				l = item.Default
 			} else if item.Max != nil {
 				l = item.Max
+			}
+		}
+	}
+	return l
+}
+
+// getMaxLimits returns the max limits of LimitRange
+func getMaxLimits(limitRange *corev1.LimitRange) corev1.ResourceList {
+	var l corev1.ResourceList
+	for _, item := range limitRange.Spec.Limits {
+		if item.Type == corev1.LimitTypeContainer {
+			if item.Max != nil {
+				l = item.Max
+			}
+		}
+	}
+	return l
+}
+
+// getMinLimits returns the min limits of LimitRange
+func getMinLimits(limitRange *corev1.LimitRange) corev1.ResourceList {
+	var l corev1.ResourceList
+	for _, item := range limitRange.Spec.Limits {
+		if item.Type == corev1.LimitTypeContainer {
+			if item.Min != nil {
+				l = item.Min
 			}
 		}
 	}
