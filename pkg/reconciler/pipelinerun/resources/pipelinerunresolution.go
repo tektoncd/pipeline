@@ -819,7 +819,7 @@ func resolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec,
 }
 
 func (t *ResolvedPipelineTask) hasResultReferences() bool {
-	for _, param := range t.PipelineTask.Params {
+	for _, param := range append(t.PipelineTask.Params, t.PipelineTask.Matrix...) {
 		if ps, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param); ok {
 			if v1beta1.LooksLikeContainsResultRefs(ps) {
 				return true

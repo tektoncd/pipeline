@@ -1,0 +1,64 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: platform-browsers
+  annotations:
+    description: |
+      A task that does something cool with platforms and browsers
+spec:
+  params:
+    - name: platform
+    - name: browser
+  steps:
+    - name: echo
+      image: alpine
+      script: |
+        echo "$(params.platform) and $(params.browser)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-
+spec:
+  serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+      - name: get-platforms
+        taskSpec:
+          results:
+            - name: one
+            - name: two
+            - name: three
+          steps:
+            - name: echo
+              image: alpine
+              script: |
+                printf linux | tee /tekton/results/one
+                printf mac | tee /tekton/results/two
+                printf windows | tee /tekton/results/three
+      - name: get-browsers
+        taskSpec:
+          results:
+            - name: one
+            - name: two
+            - name: three
+          steps:
+            - name: echo
+              image: alpine
+              script: |
+                printf chrome | tee /tekton/results/one
+                printf safari | tee /tekton/results/two
+                printf firefox | tee /tekton/results/three
+      - name: platforms-and-browsers-dag
+        matrix:
+          - name: platform
+            value:
+              - $(tasks.get-platforms.results.one)
+              - $(tasks.get-platforms.results.two)
+              - $(tasks.get-platforms.results.three)
+          - name: browser
+            value:
+              - $(tasks.get-browsers.results.one)
+              - $(tasks.get-browsers.results.two)
+        taskRef:
+          name: platform-browsers

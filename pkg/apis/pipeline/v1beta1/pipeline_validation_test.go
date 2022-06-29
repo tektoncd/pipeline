@@ -2895,10 +2895,6 @@ func Test_validateMatrix(t *testing.T) {
 				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
 			}},
 		}},
-		wantErrs: &apis.FieldError{
-			Message: "invalid value: result references are not allowed in parameters in a matrix",
-			Paths:   []string{"[0].matrix[a-param].value", "[1].matrix[b-param].value"},
-		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
