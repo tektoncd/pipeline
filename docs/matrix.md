@@ -160,8 +160,40 @@ Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Ma
 #### Specifying Results in a Matrix
 
 Consuming `Results` from previous `TaskRuns` or `Runs` in a `Matrix`, which would dynamically generate 
-`TaskRuns` or `Runs` from the fanned out `PipelineTask`, is not yet supported. This dynamic fan out of
-`PipelineTasks` through consuming `Results` will be supported soon. 
+`TaskRuns` or `Runs` from the fanned out `PipelineTask`, is supported. Producing `Results` in from a
+`PipelineTask` with a `Matrix` is not yet supported - see [further details](#results-from-fanned-out-pipelinetasks).
+
+`Matrix` supports Results of type String that are passed in individually:
+
+```yaml
+tasks:
+...
+- name: task-4
+  taskRef:
+    name: task-4
+  matrix:
+  - name: values
+    value: 
+    - (tasks.task-1.results.foo) # string
+    - (tasks.task-2.results.bar) # string
+    - (tasks.task-3.results.rad) # string
+```
+
+For further information, see the example in [`PipelineRun` with `Matrix` and `Results`][pr-with-matrix-and-results].
+
+When we support `Results` of type Array at the `Pipeline` level, we will support passing Results into the `Matrix`.
+> Note: Results of type Array are not yet supported in the Pipeline level.
+
+```yaml
+tasks:
+...
+- name: task-5
+  taskRef:
+    name: task-5
+  matrix:
+  - name: values
+    value: (tasks.task-4.results.foo) # array
+```
 
 #### Results from fanned out PipelineTasks
 
@@ -491,3 +523,4 @@ status:
 
 [cel]: https://github.com/tektoncd/experimental/tree/1609827ea81d05c8d00f8933c5c9d6150cd36989/cel
 [pr-with-matrix]: ../examples/v1beta1/pipelineruns/alpha/pipelinerun-with-matrix.yaml
+[pr-with-matrix-and-results]: ../examples/v1beta1/pipelineruns/alpha/pipelinerun-with-matrix-and-results.yaml

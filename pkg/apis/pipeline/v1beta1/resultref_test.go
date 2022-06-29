@@ -652,6 +652,11 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 				"$(tasks.pt4.results.r4)",
 			},
 		}},
+		Matrix: []v1beta1.Param{{
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt5.results.r5)", "$(tasks.pt6.results.r6)"),
+		}, {
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt7.results.r7)", "$(tasks.pt8.results.r8)"),
+		}},
 	}
 	refs := v1beta1.PipelineTaskResultRefs(&pt)
 	expectedRefs := []*v1beta1.ResultRef{{
@@ -666,8 +671,24 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 	}, {
 		PipelineTask: "pt4",
 		Result:       "r4",
+	}, {
+		PipelineTask: "pt5",
+		Result:       "r5",
+	}, {
+		PipelineTask: "pt6",
+		Result:       "r6",
+	}, {
+		PipelineTask: "pt7",
+		Result:       "r7",
+	}, {
+		PipelineTask: "pt8",
+		Result:       "r8",
 	}}
-	if d := cmp.Diff(refs, expectedRefs); d != "" {
+	if d := cmp.Diff(refs, expectedRefs, cmpopts.SortSlices(lessResultRef)); d != "" {
 		t.Errorf("%v", d)
 	}
+}
+
+func lessResultRef(i, j *v1beta1.ResultRef) bool {
+	return i.PipelineTask+i.Result < j.PipelineTask+i.Result
 }

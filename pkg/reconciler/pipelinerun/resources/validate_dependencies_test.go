@@ -66,6 +66,29 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 			},
 		}},
 	}, {
+		desc: "correct use of task and result names in matrix",
+		state: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "pt1",
+			},
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskName: "t",
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{{
+						Name: "result",
+					}},
+				},
+			},
+		}, {
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "pt2",
+				Matrix: []v1beta1.Param{{
+					Name:  "p",
+					Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.result)", "foo"),
+				}},
+			},
+		}},
+	}, {
 		desc: "custom task results are not validated",
 		state: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
@@ -106,6 +129,17 @@ func TestValidatePipelineTaskResults_IncorrectTaskName(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name:  "p1",
 					Value: *v1beta1.NewArrayOrString(missingPipelineTaskVariable),
+				}},
+			},
+		}},
+	}, {
+		desc: "invalid result reference in matrix",
+		state: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "pt1",
+				Params: []v1beta1.Param{{
+					Name:  "p1",
+					Value: *v1beta1.NewArrayOrString(missingPipelineTaskVariable, "foo"),
 				}},
 			},
 		}},
@@ -164,6 +198,17 @@ func TestValidatePipelineTaskResults_IncorrectResultName(t *testing.T) {
 			},
 		}},
 	}, {
+		desc: "invalid result reference in matrix",
+		state: PipelineRunState{pt1, {
+			PipelineTask: &v1beta1.PipelineTask{
+				Name: "pt2",
+				Matrix: []v1beta1.Param{{
+					Name:  "p1",
+					Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.result1)", "$(tasks.pt1.results.result2)"),
+				}},
+			},
+		}},
+	}, {
 		desc: "invalid result reference in when expression",
 		state: PipelineRunState{pt1, {
 			PipelineTask: &v1beta1.PipelineTask{
@@ -205,6 +250,14 @@ func TestValidatePipelineTaskResults_MissingTaskSpec(t *testing.T) {
 			Params: []v1beta1.Param{{
 				Name:  "p1",
 				Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.result1)"),
+			}},
+		},
+	}, {
+		PipelineTask: &v1beta1.PipelineTask{
+			Name: "pt3",
+			Matrix: []v1beta1.Param{{
+				Name:  "p1",
+				Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.result1)", "$(tasks.pt1.results.result2)"),
 			}},
 		},
 	}}
