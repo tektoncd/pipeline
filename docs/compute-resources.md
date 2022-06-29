@@ -45,7 +45,6 @@ Therefore, the pod will have no effective CPU limit.
 ## Task-level Compute Resources Configuration
 
 **([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
-(This feature is under development and not functional yet. Stay tuned!)
 
 Tekton allows users to specify resource requirements of [`Steps`](./tasks.md#defining-steps),
 which run sequentially. However, the pod's effective resource requirements are still the
@@ -63,7 +62,9 @@ Each of these details is explained in more depth below.
 Some points to note:
 
 - Task-level resource requests and limits do not apply to sidecars which can be configured separately.
-- Users may not configure the Task-level and Step-level resource requirements (requests/limits)  simultaneously.
+- If only limits are configured in task-level, it will be applied as the task-level requests.
+- Resource requirements configured in `Step` or `StepTemplate` of the referenced `Task` will be overridden by the task-level requirements.
+- `TaskRun` configured with both `StepOverrides` and task-level requirements will be rejected.
 
 ### Configure Task-level Compute Resources
 
@@ -84,7 +85,7 @@ spec:
       cpu: 2
 ```
 
-The following TaskRun will be rejected, because it configures both step-level and task-level compute resource requirements:
+The following TaskRun will be rejected, because it configures both stepOverrides and task-level compute resource requirements:
 
 ```yaml
 kind: TaskRun

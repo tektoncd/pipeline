@@ -2078,6 +2078,217 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 	}
 }
 
+type ExpectedComputeResources struct {
+	name                 string
+	ResourceRequirements corev1.ResourceRequirements
+}
+
+func TestPodBuild_TaskLevelResourceRequirements(t *testing.T) {
+	testcases := []struct {
+		desc                     string
+		ts                       v1beta1.TaskSpec
+		trs                      v1beta1.TaskRunSpec
+		expectedComputeResources []ExpectedComputeResources
+	}{{
+		desc: "overwrite stepTemplate resources requirements",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Name:    "1st-step",
+				Image:   "image",
+				Command: []string{"cmd"},
+			}, {
+				Name:    "2nd-step",
+				Image:   "image",
+				Command: []string{"cmd"},
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("500m"),
+						corev1.ResourceMemory: resource.MustParse("500Mi"),
+					},
+				},
+			},
+		},
+		trs: v1beta1.TaskRunSpec{
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("2"),
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+		},
+		expectedComputeResources: []ExpectedComputeResources{{
+			name: "step-1st-step",
+			ResourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		}, {
+			name: "step-2nd-step",
+			ResourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		}},
+	}, {
+		desc: "overwrite step resources requirements",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Name:    "1st-step",
+				Image:   "image",
+				Command: []string{"cmd"},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("250m"),
+						corev1.ResourceMemory: resource.MustParse("500Mi"),
+					},
+				},
+			}, {
+				Name:    "2nd-step",
+				Image:   "image",
+				Command: []string{"cmd"},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("300m"),
+						corev1.ResourceMemory: resource.MustParse("500Mi"),
+					},
+				},
+			}},
+		},
+		trs: v1beta1.TaskRunSpec{
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("2"),
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+		},
+		expectedComputeResources: []ExpectedComputeResources{{
+			name: "step-1st-step",
+			ResourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		}, {
+			name: "step-2nd-step",
+			ResourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("1"),
+					corev1.ResourceMemory: resource.MustParse("1Gi"),
+				},
+			},
+		}},
+	}, {
+		desc: "with sidecar resource requirements",
+		ts: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Name:    "1st-step",
+				Image:   "image",
+				Command: []string{"cmd"},
+			}},
+			Sidecars: []v1beta1.Sidecar{{
+				Name: "sidecar",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("750m"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("1.5"),
+					},
+				},
+			}},
+		},
+		trs: v1beta1.TaskRunSpec{
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("2"),
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+		},
+		expectedComputeResources: []ExpectedComputeResources{{
+			name: "step-1st-step",
+			ResourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    resource.MustParse("2"),
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+		}, {
+			name: "sidecar-sidecar",
+			ResourceRequirements: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("750m"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("1.5"),
+				},
+			},
+		}},
+	}}
+
+	for _, tc := range testcases {
+		t.Run(tc.desc, func(t *testing.T) {
+			names.TestingSeed()
+			store := config.NewStore(logtesting.TestLogger(t))
+			enableAlphaAPI := map[string]string{"enable-api-fields": "alpha"}
+			store.OnConfigChanged(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+					Data:       enableAlphaAPI,
+				},
+			)
+
+			kubeclient := fakek8s.NewSimpleClientset(
+				&corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: "default", Namespace: "default"}},
+			)
+			builder := Builder{
+				Images:     images,
+				KubeClient: kubeclient,
+			}
+			tr := &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo-taskrun",
+					Namespace: "default",
+				},
+				Spec: tc.trs,
+			}
+
+			gotPod, err := builder.Build(store.ToContext(context.Background()), tr, tc.ts)
+			if err != nil {
+				t.Fatalf("builder.Build: %v", err)
+			}
+
+			if err := verifyTaskLevelComputeResources(tc.expectedComputeResources, gotPod.Spec.Containers); err != nil {
+				t.Errorf("verifyTaskLevelComputeResources: %v", err)
+			}
+		})
+	}
+}
+
+// verifyTaskLevelComputeResources verifies that the given TaskRun's containers have the expected compute resources.
+func verifyTaskLevelComputeResources(expectedComputeResources []ExpectedComputeResources, containers []corev1.Container) error {
+	if len(expectedComputeResources) != len(containers) {
+		return fmt.Errorf("expected %d compute resource requirements, got %d", len(expectedComputeResources), len(containers))
+	}
+	for i, r := range expectedComputeResources {
+		if r.name != containers[i].Name {
+			return fmt.Errorf("expected container name %s, got %s", r.name, containers[i].Name)
+		}
+		if d := cmp.Diff(r.ResourceRequirements, containers[i].Resources); d != "" {
+			return fmt.Errorf("container \"#%d\" resource requirements don't match %s", i, diff.PrintWantGot(d))
+		}
+	}
+	return nil
+}
+
 func TestMakeLabels(t *testing.T) {
 	taskRunName := "task-run-name"
 	want := map[string]string{
