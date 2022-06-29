@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
 
@@ -28,7 +29,7 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// Array and Object is alpha feature
 	if tr.Type == ResultsTypeArray || tr.Type == ResultsTypeObject {
-		return errs.Also(ValidateEnabledAPIFields(ctx, "results type", config.AlphaAPIFields))
+		return errs.Also(version.ValidateEnabledAPIFields(ctx, "results type", config.AlphaAPIFields))
 	}
 
 	if tr.Type != ResultsTypeString {
