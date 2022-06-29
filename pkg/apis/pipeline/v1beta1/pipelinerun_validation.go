@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -194,7 +195,23 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 	}
 	if trs.ComputeResources != nil {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
-		errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepOverrides))
+		errs = errs.Also(validateStepOverridesComputeResources(trs.ComputeResources, trs.StepOverrides))
 	}
 	return errs
+}
+
+// validateStepOverridesComputeResources validates that the compute resources are not configured both in stepOverrides and in computeResources
+func validateStepOverridesComputeResources(computeResources *corev1.ResourceRequirements, overrides []TaskRunStepOverride) (errs *apis.FieldError) {
+	if computeResources == nil {
+		return nil
+	}
+	for _, override := range overrides {
+		if override.Resources.Limits != nil || override.Resources.Requests != nil {
+			return apis.ErrMultipleOneOf(
+				"stepOverrides.resources",
+				"computeResources",
+			)
+		}
+	}
+	return nil
 }

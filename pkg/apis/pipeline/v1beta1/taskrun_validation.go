@@ -75,7 +75,7 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	if ts.ComputeResources != nil {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
-		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepOverrides))
+		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepOverrides, ts.TaskSpec))
 	}
 
 	if ts.Status != "" {
@@ -146,16 +146,36 @@ func validateStepOverrides(overrides []TaskRunStepOverride) (errs *apis.FieldErr
 }
 
 // validateTaskRunComputeResources ensures that compute resources are not configured at both the step level and the task level
-func validateTaskRunComputeResources(computeResources *corev1.ResourceRequirements, overrides []TaskRunStepOverride) (errs *apis.FieldError) {
+func validateTaskRunComputeResources(computeResources *corev1.ResourceRequirements, overrides []TaskRunStepOverride, taskSpec *TaskSpec) (errs *apis.FieldError) {
+	if computeResources == nil {
+		return nil
+	}
+
+	hasOverrides := false
 	for _, override := range overrides {
-		if override.Resources.Size() != 0 && computeResources != nil {
-			return apis.ErrMultipleOneOf(
-				"stepOverrides.resources",
-				"computeResources",
-			)
+		if override.Resources.Limits != nil || override.Resources.Requests != nil {
+			hasOverrides = true
 		}
 	}
-	return nil
+	if hasOverrides {
+		errs = errs.Also(apis.ErrMultipleOneOf("stepOverrides.resources", "computeResources"))
+	}
+
+	if taskSpec == nil {
+		return errs
+	}
+
+	hasStepComputeResources := false
+	for _, step := range taskSpec.Steps {
+		if step.Resources.Limits != nil || step.Resources.Requests != nil {
+			hasStepComputeResources = true
+		}
+	}
+	if hasStepComputeResources {
+		errs = errs.Also(apis.ErrMultipleOneOf("taskSpec.steps.resources", "computeResources"))
+	}
+
+	return errs
 }
 
 func validateSidecarOverrides(overrides []TaskRunSidecarOverride) (errs *apis.FieldError) {

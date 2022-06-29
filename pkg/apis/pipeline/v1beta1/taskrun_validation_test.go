@@ -379,6 +379,29 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		),
 		wc: config.EnableAlphaAPIFields,
 	}, {
+		name: "invalid both step-level (step.resources) and task-level (spec.computeResources) resource requirements",
+		spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:  "foo-step",
+					Image: "foo-image",
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+					},
+				}},
+			},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
+				},
+			},
+		},
+		wantErr: apis.ErrMultipleOneOf(
+			"taskSpec.steps.resources",
+			"computeResources",
+		),
+		wc: config.EnableAlphaAPIFields,
+	}, {
 		name: "computeResources disallowed without alpha feature gate",
 		spec: v1beta1.TaskRunSpec{
 			TaskRef: &v1beta1.TaskRef{
@@ -487,6 +510,22 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 					},
 				},
 			}},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "valid task-level resource requirements while no resource requirements under taskSpec",
+		spec: v1beta1.TaskRunSpec{
+			TaskSpec: &v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:  "foo-step",
+					Image: "foo-image",
+				}},
+			},
+			ComputeResources: &corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
+				},
+			},
 		},
 		wc: config.EnableAlphaAPIFields,
 	}}
