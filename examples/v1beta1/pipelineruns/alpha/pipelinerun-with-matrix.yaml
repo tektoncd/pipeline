@@ -37,3 +37,15 @@ spec:
               - firefox
         taskRef:
           name: platform-browsers
+      - name: matrix-and-params
+        matrix:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+        params:
+          - name: browser
+            value: chrome
+        taskRef:
+          name: platform-browsers

@@ -11,6 +11,7 @@ weight: 11
 - [Configuring a Matrix](#configuring-a-matrix)
   - [Concurrency Control](#concurrency-control)
   - [Parameters](#parameters)
+    - [Specifying both `params` and `matrix` in a `PipelineTask`](#specifying-both-params-and-matrix-in-a-pipelinetask)
   - [Context Variables](#context-variables)
   - [Results](#results)
     - [Specifying Results in a Matrix](#specifying-results-in-a-matrix)
@@ -112,6 +113,38 @@ A `Parameter` can be passed to either the `matrix` or `params` field, not both.
 
 For further details on specifying `Parameters` in the `Pipeline` and passing them to
 `PipelineTasks`, see [documentation](pipelines.md#specifying-parameters).
+
+#### Specifying both `params` and `matrix` in a `PipelineTask`
+
+In the example below, the *test* `Task` takes *browser* and *platform* `Parameters` of type
+`"string"`. A `Pipeline` used to run the `Task` on three browsers (using `matrix`) and one
+platform (using `params`) would be specified as such and execute three `TaskRuns`:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: platform-browser-tests
+spec:
+  tasks:
+  - name: fetch-repository
+    taskRef:
+      name: git-clone
+    ...
+  - name: test
+    matrix:
+      - name: browser
+        value:
+          - chrome
+          - safari
+          - firefox
+    params:
+      - name: platform
+        value: linux
+    taskRef:
+      name: browser-test
+  ...
+```
 
 ### Context Variables
 

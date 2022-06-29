@@ -7513,11 +7513,12 @@ spec:
   params:
     - name: platform
     - name: browser
+    - name: version
   steps:
     - name: echo
       image: alpine
       script: |
-        echo "$(params.platform) and $(params.browser)"
+        echo "$(params.platform) and $(params.browser) and $(params.version)"
 `)
 
 	expectedTaskRuns := []*v1beta1.TaskRun{
@@ -7531,6 +7532,8 @@ spec:
     value: linux
   - name: browser
     value: chrome
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7547,6 +7550,8 @@ spec:
     value: mac
   - name: browser
     value: chrome
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7563,6 +7568,8 @@ spec:
     value: windows
   - name: browser
     value: chrome
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7579,6 +7586,8 @@ spec:
     value: linux
   - name: browser
     value: safari
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7595,6 +7604,8 @@ spec:
     value: mac
   - name: browser
     value: safari
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7611,6 +7622,8 @@ spec:
     value: windows
   - name: browser
     value: safari
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7627,6 +7640,8 @@ spec:
     value: linux
   - name: browser
     value: firefox
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7643,6 +7658,8 @@ spec:
     value: mac
   - name: browser
     value: firefox
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7659,6 +7676,8 @@ spec:
     value: windows
   - name: browser
     value: firefox
+  - name: version
+    value: v0.33.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7698,6 +7717,9 @@ spec:
             - chrome
             - safari
             - firefox
+      params:
+        - name: version
+          value: v0.33.0
 `, "p-dag")),
 		expectedPipelineRun: parse.MustParsePipelineRun(t, `
 metadata:
@@ -7727,6 +7749,9 @@ status:
             - chrome
             - safari
             - firefox
+      params:
+        - name: version
+          value: v0.33.0
   conditions:
   - type: Succeeded
     status: "Unknown"
@@ -7787,6 +7812,8 @@ spec:
           value: linux
         - name: browser
           value: chrome
+        - name: version
+          value: v0.22.0
       taskRef:
         name: mytask
   finally:
@@ -7804,6 +7831,9 @@ spec:
             - chrome
             - safari
             - firefox
+      params:
+        - name: version
+          value: v0.33.0
 `, "p-finally")),
 		tr: mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-unmatrixed-pt", "foo",
@@ -7815,6 +7845,8 @@ spec:
     value: linux
   - name: browser
     value: chrome
+  - name: version
+    value: v0.22.0
   resources: {}
   serviceAccountName: test-sa
   taskRef:
@@ -7847,6 +7879,8 @@ status:
           value: linux
         - name: browser
           value: chrome
+        - name: version
+          value: v0.22.0
       taskRef:
         name: mytask
     finally:
@@ -7864,6 +7898,9 @@ status:
             - chrome
             - safari
             - firefox
+      params:
+        - name: version
+          value: v0.33.0
   conditions:
   - type: Succeeded
     status: "Unknown"
