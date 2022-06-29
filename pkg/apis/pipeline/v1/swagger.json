@@ -1,0 +1,196 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "Tekton Pipeline",
+    "title": "Tekton",
+    "version": "v0.17.2"
+  },
+  "paths": {},
+  "definitions": {
+    "pod.AffinityAssistantTemplate": {
+      "description": "AffinityAssistantTemplate holds pod specific configuration and is a subset of the generic pod Template",
+      "type": "object",
+      "properties": {
+        "imagePullSecrets": {
+          "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.LocalObjectReference"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "nodeSelector": {
+          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "tolerations": {
+          "description": "If specified, the pod's tolerations.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Toleration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "pod.Template": {
+      "description": "Template holds pod specific configuration",
+      "type": "object",
+      "properties": {
+        "affinity": {
+          "description": "If specified, the pod's scheduling constraints",
+          "$ref": "#/definitions/v1.Affinity"
+        },
+        "automountServiceAccountToken": {
+          "description": "AutomountServiceAccountToken indicates whether pods running as this service account should have an API token automatically mounted.",
+          "type": "boolean"
+        },
+        "dnsConfig": {
+          "description": "Specifies the DNS parameters of a pod. Parameters specified here will be merged to the generated DNS configuration based on DNSPolicy.",
+          "$ref": "#/definitions/v1.PodDNSConfig"
+        },
+        "dnsPolicy": {
+          "description": "Set DNS policy for the pod. Defaults to \"ClusterFirst\". Valid values are 'ClusterFirst', 'Default' or 'None'. DNS parameters given in DNSConfig will be merged with the policy selected with DNSPolicy.",
+          "type": "string"
+        },
+        "enableServiceLinks": {
+          "description": "EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
+          "type": "boolean"
+        },
+        "hostAliases": {
+          "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified. This is only valid for non-hostNetwork pods.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.HostAlias"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "hostNetwork": {
+          "description": "HostNetwork specifies whether the pod may use the node network namespace",
+          "type": "boolean"
+        },
+        "imagePullSecrets": {
+          "description": "ImagePullSecrets gives the name of the secret used by the pod to pull the image if specified",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.LocalObjectReference"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "nodeSelector": {
+          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "priorityClassName": {
+          "description": "If specified, indicates the pod's priority. \"system-node-critical\" and \"system-cluster-critical\" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
+          "type": "string"
+        },
+        "runtimeClassName": {
+          "description": "RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which should be used to run this pod. If no RuntimeClass resource matches the named class, the pod will not be run. If unset or empty, the \"legacy\" RuntimeClass will be used, which is an implicit class with an empty definition that uses the default runtime handler. More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md This is a beta feature as of Kubernetes v1.14.",
+          "type": "string"
+        },
+        "schedulerName": {
+          "description": "SchedulerName specifies the scheduler to be used to dispatch the Pod",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
+          "$ref": "#/definitions/v1.PodSecurityContext"
+        },
+        "tolerations": {
+          "description": "If specified, the pod's tolerations.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Toleration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "volumes": {
+          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Volume"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge,retainKeys"
+        }
+      }
+    },
+    "v1.Task": {
+      "description": "Task represents a collection of sequential steps that are run as part of a Pipeline using a set of inputs and producing a set of outputs. Tasks execute when TaskRuns are created that provide the input parameters and resources and output resources the Task requires.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the Task from the client",
+          "default": {},
+          "$ref": "#/definitions/v1.TaskSpec"
+        }
+      }
+    },
+    "v1.TaskList": {
+      "description": "TaskList contains a list of Task",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Task"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1.TaskSpec": {
+      "description": "TaskSpec defines the desired state of Task.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Description is a user-facing description of the task that may be used to populate a UI.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

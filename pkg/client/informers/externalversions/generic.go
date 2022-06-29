@@ -21,6 +21,7 @@ package externalversions
 import (
 	"fmt"
 
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -53,7 +54,11 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=tekton.dev, Version=v1alpha1
+	// Group=tekton.dev, Version=v1
+	case v1.SchemeGroupVersion.WithResource("tasks"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1().Tasks().Informer()}, nil
+
+		// Group=tekton.dev, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("runs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Tekton().V1alpha1().Runs().Informer()}, nil
 
