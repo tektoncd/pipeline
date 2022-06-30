@@ -80,6 +80,10 @@ func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
 // isRunning returns true only if the task is neither succeeded, cancelled nor failed
 func (t ResolvedPipelineTask) isRunning() bool {
 	switch {
+	case t.IsCustomTask() && t.IsMatrixed():
+		if len(t.Runs) == 0 {
+			return false
+		}
 	case t.IsCustomTask():
 		if t.Run == nil {
 			return false
