@@ -298,7 +298,7 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 	tasks := []*ResolvedPipelineTask{}
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
-			if t.TaskRun == nil && t.Run == nil {
+			if t.TaskRun == nil && t.Run == nil && len(t.TaskRuns) == 0 && len(t.Runs) == 0 {
 				tasks = append(tasks, t)
 			}
 		}
@@ -307,29 +307,39 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 	return tasks
 }
 
-// getRetryableTasks returns a list of tasks which should be executed next when the pipelinerun is stopping, i.e.
-// a list of cancelled/failed tasks from candidateTasks which haven't exhausted their retries
+// getRetryableTasks returns a list of pipelinetasks which should be executed next when the pipelinerun is stopping,
+// i.e. a list of failed pipelinetasks from candidateTasks which haven't exhausted their retries. Note that if a
+// pipelinetask is cancelled, the retries are not exhausted - they are not retryable.
 func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*ResolvedPipelineTask {
 	var tasks []*ResolvedPipelineTask
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
 			var status *apis.Condition
-			var isCancelled bool
-			if t.TaskRun != nil {
+			switch {
+			case t.TaskRun != nil:
 				status = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-				isCancelled = t.TaskRun.IsCancelled()
-				if status != nil {
-					isCancelled = isCancelled || status.Reason == v1beta1.TaskRunReasonCancelled.String()
+			case len(t.TaskRuns) != 0:
+				isDone := true
+				for _, taskRun := range t.TaskRuns {
+					isDone = isDone && taskRun.IsDone()
+					c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
+					if c.IsFalse() {
+						status = c
+					}
 				}
-
-			} else if t.Run != nil {
+			case t.Run != nil:
 				status = t.Run.Status.GetCondition(apis.ConditionSucceeded)
-				isCancelled = t.Run.IsCancelled()
-				if status != nil {
-					isCancelled = isCancelled || status.Reason == v1alpha1.RunReasonCancelled
+			case len(t.Runs) != 0:
+				isDone := true
+				for _, run := range t.Runs {
+					isDone = isDone && run.IsDone()
+					c := run.Status.GetCondition(apis.ConditionSucceeded)
+					if c.IsFalse() {
+						status = c
+					}
 				}
 			}
-			if status.IsFalse() && !isCancelled && t.hasRemainingRetries() {
+			if status.IsFalse() && !t.isCancelled() && t.hasRemainingRetries() {
 				tasks = append(tasks, t)
 			}
 		}
