@@ -121,6 +121,48 @@ var pts = []v1beta1.PipelineTask{{
 	Name:    "mytask15",
 	TaskRef: &v1beta1.TaskRef{Name: "taskWithReferenceToTaskResult"},
 	Params:  []v1beta1.Param{{Name: "param1", Value: *v1beta1.NewArrayOrString("$(tasks.mytask1.results.result1)")}},
+}, {
+	Name: "mytask16",
+	Matrix: []v1beta1.Param{{
+		Name:  "browser",
+		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+	}},
+}, {
+	Name: "mytask17",
+	Matrix: []v1beta1.Param{{
+		Name:  "browser",
+		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+	}},
+}, {
+	Name:    "mytask18",
+	TaskRef: &v1beta1.TaskRef{Name: "task"},
+	Retries: 1,
+	Matrix: []v1beta1.Param{{
+		Name:  "browser",
+		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+	}},
+}, {
+	Name:    "mytask19",
+	TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
+	Matrix: []v1beta1.Param{{
+		Name:  "browser",
+		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+	}},
+}, {
+	Name:    "mytask20",
+	TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
+	Matrix: []v1beta1.Param{{
+		Name:  "browser",
+		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+	}},
+}, {
+	Name:    "mytask21",
+	TaskRef: &v1beta1.TaskRef{Name: "task"},
+	Retries: 2,
+	Matrix: []v1beta1.Param{{
+		Name:  "browser",
+		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+	}},
 }}
 
 var p = &v1beta1.Pipeline{
@@ -496,6 +538,147 @@ var runCancelled = PipelineRunState{{
 	PipelineTask: &pts[12],
 	RunName:      "pipelinerun-mytask13",
 	Run:          withRunCancelled(newRun(runs[0])),
+}}
+
+var noneStartedStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[15],
+	TaskRunNames: []string{"pipelinerun-mytask1"},
+	TaskRuns:     nil,
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[16],
+	TaskRunNames: []string{"pipelinerun-mytask3"},
+	TaskRuns:     nil,
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
+var oneStartedStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[15],
+	TaskRunNames: []string{"pipelinerun-mytask1"},
+	TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0])},
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[16],
+	TaskRunNames: []string{"pipelinerun-mytask2"},
+	TaskRuns:     nil,
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
+var oneFinishedStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[15],
+	TaskRunNames: []string{"pipelinerun-mytask1"},
+	TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0])},
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[16],
+	TaskRunNames: []string{"pipelinerun-mytask2"},
+	TaskRuns:     nil,
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
+var oneFailedStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[15],
+	TaskRunNames: []string{"pipelinerun-mytask1"},
+	TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0])},
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[16],
+	TaskRunNames: []string{"pipelinerun-mytask2"},
+	TaskRun:      nil,
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
+var finalScheduledStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[15],
+	TaskRunNames: []string{"pipelinerun-mytask1"},
+	TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0])},
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[16],
+	TaskRunNames: []string{"pipelinerun-mytask2"},
+	TaskRuns:     []*v1beta1.TaskRun{makeScheduled(trs[1])},
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
+var allFinishedStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[15],
+	TaskRunNames: []string{"pipelinerun-mytask1"},
+	TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0])},
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}, {
+	PipelineTask: &pts[16],
+	TaskRunNames: []string{"pipelinerun-mytask2"},
+	TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0])},
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
+}}
+
+var noRunStartedStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[18],
+	CustomTask:   true,
+	RunNames:     []string{"pipelinerun-mytask13"},
+	Runs:         nil,
+}, {
+	PipelineTask: &pts[19],
+	CustomTask:   true,
+	RunNames:     []string{"pipelinerun-mytask13"},
+	Runs:         nil,
+}}
+
+var oneRunStartedStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[18],
+	CustomTask:   true,
+	RunNames:     []string{"pipelinerun-mytask13"},
+	Runs:         []*v1alpha1.Run{makeRunStarted(runs[0])},
+}, {
+	PipelineTask: &pts[19],
+	CustomTask:   true,
+	RunNames:     []string{"pipelinerun-mytask14"},
+	Runs:         nil,
+}}
+
+var oneRunFailedStateMatrix = PipelineRunState{{
+	PipelineTask: &pts[18],
+	CustomTask:   true,
+	RunNames:     []string{"pipelinerun-mytask13"},
+	Runs:         []*v1alpha1.Run{makeRunFailed(runs[0])},
+}, {
+	PipelineTask: &pts[19],
+	CustomTask:   true,
+	RunNames:     []string{"pipelinerun-mytask14"},
+	Runs:         nil,
+}}
+
+var taskCancelledMatrix = PipelineRunState{{
+	PipelineTask: &pts[20],
+	TaskRunNames: []string{"pipelinerun-mytask1"},
+	TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeRetried(trs[0]))},
+	ResolvedTaskResources: &resources.ResolvedTaskResources{
+		TaskSpec: &task.Spec,
+	},
 }}
 
 var taskWithOptionalResourcesDeprecated = &v1beta1.Task{

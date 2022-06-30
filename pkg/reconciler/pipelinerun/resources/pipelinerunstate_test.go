@@ -419,11 +419,151 @@ func TestGetNextTasks(t *testing.T) {
 		state:        oneRunFailedState,
 		candidates:   sets.NewString("mytask13", "mytask14"),
 		expectedNext: []*ResolvedPipelineTask{oneRunFailedState[1]},
+	}, {
+		name:         "no-tasks-started-no-candidates-matrix",
+		state:        noneStartedStateMatrix,
+		candidates:   sets.NewString(),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "no-tasks-started-one-candidate-matrix",
+		state:        noneStartedStateMatrix,
+		candidates:   sets.NewString("mytask16"),
+		expectedNext: []*ResolvedPipelineTask{noneStartedStateMatrix[0]},
+	}, {
+		name:         "no-tasks-started-other-candidate-matrix",
+		state:        noneStartedStateMatrix,
+		candidates:   sets.NewString("mytask17"),
+		expectedNext: []*ResolvedPipelineTask{noneStartedStateMatrix[1]},
+	}, {
+		name:         "no-tasks-started-both-candidates-matrix",
+		state:        noneStartedStateMatrix,
+		candidates:   sets.NewString("mytask16", "mytask17"),
+		expectedNext: []*ResolvedPipelineTask{noneStartedStateMatrix[0], noneStartedStateMatrix[1]},
+	}, {
+		name:         "one-task-started-no-candidates-matrix",
+		state:        oneStartedStateMatrix,
+		candidates:   sets.NewString(),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "one-task-started-one-candidate-matrix",
+		state:        oneStartedStateMatrix,
+		candidates:   sets.NewString("mytask16"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "one-task-started-other-candidate-matrix",
+		state:        oneStartedStateMatrix,
+		candidates:   sets.NewString("mytask17"),
+		expectedNext: []*ResolvedPipelineTask{oneStartedStateMatrix[1]},
+	}, {
+		name:         "one-task-started-both-candidates-matrix",
+		state:        oneStartedStateMatrix,
+		candidates:   sets.NewString("mytask16", "mytask17"),
+		expectedNext: []*ResolvedPipelineTask{oneStartedStateMatrix[1]},
+	}, {
+		name:         "one-task-finished-no-candidates-matrix",
+		state:        oneFinishedStateMatrix,
+		candidates:   sets.NewString(),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "one-task-finished-one-candidate-matrix",
+		state:        oneFinishedStateMatrix,
+		candidates:   sets.NewString("mytask16"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "one-task-finished-other-candidate-matrix",
+		state:        oneFinishedStateMatrix,
+		candidates:   sets.NewString("mytask17"),
+		expectedNext: []*ResolvedPipelineTask{oneFinishedStateMatrix[1]},
+	}, {
+		name:         "one-task-finished-both-candidate-matrix",
+		state:        oneFinishedStateMatrix,
+		candidates:   sets.NewString("mytask16", "mytask17"),
+		expectedNext: []*ResolvedPipelineTask{oneFinishedStateMatrix[1]},
+	}, {
+		name:         "one-task-failed-no-candidates-matrix",
+		state:        oneFailedStateMatrix,
+		candidates:   sets.NewString(),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "one-task-failed-one-candidate-matrix",
+		state:        oneFailedStateMatrix,
+		candidates:   sets.NewString("mytask16"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "one-task-failed-other-candidate-matrix",
+		state:        oneFailedStateMatrix,
+		candidates:   sets.NewString("mytask17"),
+		expectedNext: []*ResolvedPipelineTask{oneFailedStateMatrix[1]},
+	}, {
+		name:         "one-task-failed-both-candidates-matrix",
+		state:        oneFailedStateMatrix,
+		candidates:   sets.NewString("mytask16", "mytask17"),
+		expectedNext: []*ResolvedPipelineTask{oneFailedStateMatrix[1]},
+	}, {
+		name:         "final-task-scheduled-no-candidates-matrix",
+		state:        finalScheduledStateMatrix,
+		candidates:   sets.NewString(),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "final-task-finished-one-candidate-matrix",
+		state:        finalScheduledStateMatrix,
+		candidates:   sets.NewString("mytask16"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "final-task-finished-other-candidate-matrix",
+		state:        finalScheduledStateMatrix,
+		candidates:   sets.NewString("mytask17"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "final-task-finished-both-candidate-matrix",
+		state:        finalScheduledStateMatrix,
+		candidates:   sets.NewString("mytask16", "mytask17"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "all-finished-no-candidates-matrix",
+		state:        allFinishedStateMatrix,
+		candidates:   sets.NewString(),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "all-finished-one-candidate-matrix",
+		state:        allFinishedStateMatrix,
+		candidates:   sets.NewString("mytask16"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "all-finished-other-candidate-matrix",
+		state:        allFinishedStateMatrix,
+		candidates:   sets.NewString("mytask17"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "all-finished-both-candidates-matrix",
+		state:        allFinishedStateMatrix,
+		candidates:   sets.NewString("mytask16", "mytask17"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "one-cancelled-one-candidate-matrix",
+		state:        taskCancelledMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "no-runs-started-both-candidates-matrix",
+		state:        noRunStartedStateMatrix,
+		candidates:   sets.NewString("mytask19", "mytask20"),
+		expectedNext: []*ResolvedPipelineTask{noRunStartedStateMatrix[0], noRunStartedStateMatrix[1]},
+	}, {
+		name:         "one-run-started-both-candidates-matrix",
+		state:        oneRunStartedStateMatrix,
+		candidates:   sets.NewString("mytask19", "mytask20"),
+		expectedNext: []*ResolvedPipelineTask{oneRunStartedStateMatrix[1]},
+	}, {
+		name:         "one-run-failed-both-candidates-matrix",
+		state:        oneRunFailedStateMatrix,
+		candidates:   sets.NewString("mytask19", "mytask20"),
+		expectedNext: []*ResolvedPipelineTask{oneRunFailedStateMatrix[1]},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			next := tc.state.getNextTasks(tc.candidates)
-			if d := cmp.Diff(next, tc.expectedNext); d != "" {
+			if d := cmp.Diff(tc.expectedNext, next); d != "" {
 				t.Errorf("Didn't get expected next Tasks %s", diff.PrintWantGot(d))
 			}
 		})
@@ -546,6 +686,120 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		},
 	}}
 
+	var taskCancelledByStatusStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		TaskRunNames: []string{"pipelinerun-mytask1"},
+		TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeRetried(trs[0]))},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var taskCancelledBySpecStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		TaskRunNames: []string{"pipelinerun-mytask1"},
+		TaskRuns:     []*v1beta1.TaskRun{withCancelledBySpec(makeRetried(trs[0]))},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var taskRunningStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		TaskRunNames: []string{"pipelinerun-mytask1"},
+		TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0])},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var taskSucceededStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		TaskRunNames: []string{"pipelinerun-mytask1"},
+		TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0])},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var taskRetriedStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[17], // 1 retry needed
+		TaskRunNames: []string{"pipelinerun-mytask1"},
+		TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeRetried(trs[0]))},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var taskExpectedStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		TaskRunNames: []string{"pipelinerun-mytask1"},
+		TaskRuns:     []*v1beta1.TaskRun{withRetries(makeFailed(trs[0]))},
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runCancelledByStatusStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		RunNames:     []string{"pipelinerun-mytask1"},
+		Runs:         []*v1alpha1.Run{withRunCancelled(withRunRetries(newRun(runs[0])))},
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runCancelledBySpecStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		RunNames:     []string{"pipelinerun-mytask1"},
+		Runs:         []*v1alpha1.Run{withRunCancelledBySpec(withRunRetries(newRun(runs[0])))},
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runRunningStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		RunNames:     []string{"pipelinerun-mytask1"},
+		Runs:         []*v1alpha1.Run{makeRunStarted(runs[0])},
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runSucceededStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		RunNames:     []string{"pipelinerun-mytask1"},
+		Runs:         []*v1alpha1.Run{makeRunSucceeded(runs[0])},
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runRetriedStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[17], // 1 retry needed
+		RunNames:     []string{"pipelinerun-mytask1"},
+		Runs:         []*v1alpha1.Run{withRunCancelled(withRunRetries(newRun(runs[0])))},
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
+	var runExpectedStateMatrix = PipelineRunState{{
+		PipelineTask: &pts[20], // 2 retries needed
+		RunNames:     []string{"pipelinerun-mytask1"},
+		Runs:         []*v1alpha1.Run{withRunRetries(makeRunFailed(runs[0]))},
+		CustomTask:   true,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+
 	tcs := []struct {
 		name         string
 		state        PipelineRunState
@@ -611,6 +865,66 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		state:        runExpectedState,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineTask{runExpectedState[0]},
+	}, {
+		name:         "tasks-cancelled-no-candidates-matrix",
+		state:        taskCancelledByStatusStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "tasks-cancelled-bySpec-no-candidates-matrix",
+		state:        taskCancelledBySpecStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "tasks-running-no-candidates-matrix",
+		state:        taskRunningStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "tasks-succeeded-bySpec-no-candidates-matrix",
+		state:        taskSucceededStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "tasks-retried-no-candidates-matrix",
+		state:        taskRetriedStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "tasks-retried-one-candidate-matrix",
+		state:        taskExpectedStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{taskExpectedStateMatrix[0]},
+	}, {
+		name:         "runs-cancelled-no-candidates-matrix",
+		state:        runCancelledByStatusStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "runs-cancelled-bySpec-no-candidates-matrix",
+		state:        runCancelledBySpecStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "runs-running-no-candidates-matrix",
+		state:        runRunningStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "run-succeeded-bySpec-no-candidates-matrix",
+		state:        runSucceededStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "run-retried-no-candidates-matrix",
+		state:        runRetriedStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{},
+	}, {
+		name:         "run-retried-one-candidates-matrix",
+		state:        runExpectedStateMatrix,
+		candidates:   sets.NewString("mytask21"),
+		expectedNext: []*ResolvedPipelineTask{runExpectedStateMatrix[0]},
 	}}
 
 	// iterate over *state* to get from candidate and check if TaskRun or Run is there.
