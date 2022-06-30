@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -86,6 +87,48 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestSetTaskRunStatusBasedOnStepStatus_OnFailedTaskRun(t *testing.T) {
+	resultKey := "resultName"
+	resultVal := "resultValue"
+	cs := []corev1.ContainerStatus{{
+		Name: "step-bar-0",
+		State: corev1.ContainerState{
+			Terminated: &corev1.ContainerStateTerminated{
+				Message: fmt.Sprintf(`[{"key":"%s","value":"%s", "type":1}, {"key":"digest","value":"sha256:1234","resourceName":"source-image"}]`, resultKey, resultVal),
+			},
+		},
+	}}
+	tr := v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "task-run",
+			Namespace: "foo",
+		},
+		Status: v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "error message"),
+		},
+	}
+	expected := []v1beta1.TaskRunResult{{
+		Name: resultKey,
+		Type: v1beta1.ResultsTypeString,
+		Value: v1beta1.ArrayOrString{
+			Type:      v1beta1.ParamTypeString,
+			StringVal: resultVal,
+		},
+	}}
+
+	logger, _ := logging.NewLogger("", "status")
+	merr := setTaskRunStatusBasedOnStepStatus(logger, cs, &tr)
+	if merr != nil {
+		t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
+	}
+	if d := cmp.Diff(expected, tr.Status.TaskRunResults); d != "" {
+		t.Errorf("Unexpected status: %s", diff.PrintWantGot(d))
 	}
 }
 

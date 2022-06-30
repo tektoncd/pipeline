@@ -167,8 +167,8 @@ func setTaskRunStatusBasedOnStepStatus(logger *zap.SugaredLogger, stepStatuses [
 					merr = multierror.Append(merr, err)
 				}
 				taskResults, pipelineResourceResults, filteredResults := filterResultsAndResources(results)
+				trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 				if tr.IsSuccessful() {
-					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 					trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
 				}
 				msg, err = createMessageFromResults(filteredResults)
