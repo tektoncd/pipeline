@@ -4863,6 +4863,164 @@ spec:
 	}
 }
 
+func TestReconcileWithPipelineResults_OnFailedPipelineRun(t *testing.T) {
+	testCases := []struct {
+		name        string
+		embeddedVal string
+	}{
+		{
+			name:        "default embedded status",
+			embeddedVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:        "full embedded status",
+			embeddedVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:        "both embedded status",
+			embeddedVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:        "minimal embedded status",
+			embeddedVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileWithPipelineResultsOnFailedPipelineRun(t, tc.embeddedVal)
+		})
+	}
+}
+
+func runTestReconcileWithPipelineResultsOnFailedPipelineRun(t *testing.T, embeddedStatus string) {
+	names.TestingSeed()
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  results:
+  - description: pipeline result
+    name: result
+    value: $(tasks.a-task.results.aResult)
+  tasks:
+  - name: a-task
+    taskRef:
+      name: a-task
+  - name: b-task
+    params:
+    - name: bParam
+      value: $(tasks.a-task.results.aResult)
+    taskRef:
+      name: b-task
+`)}
+	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-failed-pr-with-task-results-a-task", "foo",
+			"test-failed-pr-with-task-results", "test-pipeline", "a-task", true),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  taskResults:
+  - name: aResult
+    value: aResultValue
+`), mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-failed-pr-with-task-results-b-task", "foo",
+			"test-failed-pr-with-task-results", "test-pipeline", "b-task", true),
+		`
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+     name: hello-world
+  timeout: 1h0m0s
+status:
+  conditions:
+  - status: "False"
+    type: Succeeded
+  taskResults:
+  - name: bResult
+    value: bResultValue
+`)}
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-failed-pr-with-task-results
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+  timeouts:
+    pipeline: "0"
+status:
+  conditions:
+  - message: Message
+    reason: Running
+    status: "Unknown"
+    type: Succeeded
+  startTime: "2021-12-31T00:00:00Z"
+`)}
+	ts := []*v1beta1.Task{
+		{ObjectMeta: baseObjectMeta("a-task", "foo")},
+		parse.MustParseTask(t, `
+metadata:
+  name: b-task
+  namespace: foo
+spec:
+  params:
+  - name: bParam
+    type: string
+`),
+	}
+	wantPrs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-failed-pr-with-task-results
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa-0
+  timeouts:
+    pipeline: "0"
+status:
+  conditions:
+  - message: "Tasks Completed: 2 (Failed: 1, Cancelled 0), Skipped: 0"
+    reason: Failed
+    status: "False"
+    type: Succeeded
+  pipelineResults:
+    - name: result
+      value: aResultValue
+`)}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		TaskRuns:     trs,
+		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	reconciledRun, _ := prt.reconcileRun("foo", "test-failed-pr-with-task-results", []string{}, false)
+
+	if d := cmp.Diff(reconciledRun.Status.Conditions, wantPrs[0].Status.Conditions, ignoreResourceVersion, ignoreLastTransitionTime); d != "" {
+		t.Errorf("expected to see pipeline run marked as failed. Diff %s", diff.PrintWantGot(d))
+	}
+	if d := cmp.Diff(reconciledRun.Status.PipelineResults, wantPrs[0].Status.PipelineResults, ignoreResourceVersion, ignoreLastTransitionTime); d != "" {
+		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
+	}
+}
+
 func Test_storePipelineSpec(t *testing.T) {
 	labels := map[string]string{"lbl": "value"}
 	annotations := map[string]string{"io.annotation": "value"}
