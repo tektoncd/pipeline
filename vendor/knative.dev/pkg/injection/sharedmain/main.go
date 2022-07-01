@@ -59,10 +59,16 @@ func init() {
 	maxprocs.Set()
 }
 
-// GetLoggingConfig gets the logging config from either the file system if present
-// or via reading a configMap from the API.
+// GetLoggingConfig gets the logging config from the (in order):
+// 1. provided context,
+// 2. reading from the API server,
+// 3. defaults (if not found).
 // The context is expected to be initialized with injection.
 func GetLoggingConfig(ctx context.Context) (*logging.Config, error) {
+	if cfg := logging.GetConfig(ctx); cfg != nil {
+		return cfg, nil
+	}
+
 	var loggingConfigMap *corev1.ConfigMap
 	// These timeout and retry interval are set by heuristics.
 	// e.g. istio sidecar needs a few seconds to configure the pod network.
@@ -79,8 +85,15 @@ func GetLoggingConfig(ctx context.Context) (*logging.Config, error) {
 	return logging.NewConfigFromConfigMap(loggingConfigMap)
 }
 
-// GetLeaderElectionConfig gets the leader election config.
+// GetLeaderElectionConfig gets the leader election config from the (in order):
+// 1. provided context,
+// 2. reading from the API server,
+// 3. defaults (if not found).
 func GetLeaderElectionConfig(ctx context.Context) (*leaderelection.Config, error) {
+	if cfg := leaderelection.GetConfig(ctx); cfg != nil {
+		return cfg, nil
+	}
+
 	leaderElectionConfigMap, err := kubeclient.Get(ctx).CoreV1().ConfigMaps(system.Namespace()).Get(ctx, leaderelection.ConfigMapName(), metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		return leaderelection.NewConfigFromConfigMap(nil)

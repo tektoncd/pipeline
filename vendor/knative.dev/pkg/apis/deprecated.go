@@ -36,12 +36,15 @@ func CheckDeprecated(ctx context.Context, obj interface{}) *FieldError {
 // CheckDeprecatedUpdate checks whether the provided named deprecated fields
 // are set in a context where deprecation is disallowed.
 // This is a json shallow check. We will recursively check inlined structs.
-func CheckDeprecatedUpdate(ctx context.Context, obj, original interface{}) *FieldError {
+func CheckDeprecatedUpdate(ctx context.Context, obj, original interface{}) (errs *FieldError) {
 	if IsDeprecatedAllowed(ctx) {
+		// TODO: We should still run through the validation here, but do
+		// something like:
+		// defer func() {
+		// 	errs = errs.At(WarningLevel)
+		// }()
 		return nil
 	}
-
-	var errs *FieldError
 	objFields, objInlined := getPrefixedNamedFieldValues(deprecatedPrefix, obj)
 
 	if nonZero(reflect.ValueOf(original)) {
