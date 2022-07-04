@@ -400,13 +400,13 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 // slice of ParamSpecs are provided in default iff the default section is provided.
 func validateObjectDefault(objectParams []ParamSpec) (errs *apis.FieldError) {
 	for _, p := range objectParams {
-		errs = errs.Also(validateObjectKeys(p.Properties, p.Default).ViaField(p.Name))
+		errs = errs.Also(ValidateObjectKeys(p.Properties, p.Default).ViaField(p.Name))
 	}
 	return errs
 }
 
-// validateObjectKeys validates if object keys defined in properties are all provided in its value provider iff the provider is not nil.
-func validateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ArrayOrString) (errs *apis.FieldError) {
+// ValidateObjectKeys validates if object keys defined in properties are all provided in its value provider iff the provider is not nil.
+func ValidateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ArrayOrString) (errs *apis.FieldError) {
 	if propertiesProvider == nil || propertiesProvider.ObjectVal == nil {
 		return nil
 	}
