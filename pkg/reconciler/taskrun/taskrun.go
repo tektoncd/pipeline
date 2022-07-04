@@ -240,8 +240,9 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) erro
 		return nil
 	}
 
-	// do not continue if the TaskSpec had no sidecars
-	if tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Sidecars) == 0 {
+	// do not continue if Tekton is configured to run without injected sidecars and the TaskSpec had no sidecars
+	cfg := config.FromContextOrDefaults(ctx)
+	if !cfg.FeatureFlags.RunningInEnvWithInjectedSidecars && tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Sidecars) == 0 {
 		return nil
 	}
 
