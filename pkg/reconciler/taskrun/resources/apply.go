@@ -49,29 +49,42 @@ func ApplyParameters(spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1
 		"inputs.params.%s",
 	}
 
+	// reference pattern for object individual keys params.<object_param_name>.<key_name>
+	objectIndividualVariablePattern := "params.%s.%s"
+
 	// Set all the default stringReplacements
 	for _, p := range defaults {
 		if p.Default != nil {
-			if p.Default.Type == v1beta1.ParamTypeString {
-				for _, pattern := range patterns {
-					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
-				}
-			} else {
+			switch p.Default.Type {
+			case v1beta1.ParamTypeArray:
 				for _, pattern := range patterns {
 					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
+				}
+			case v1beta1.ParamTypeObject:
+				for k, v := range p.Default.ObjectVal {
+					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+				}
+			default:
+				for _, pattern := range patterns {
+					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
 				}
 			}
 		}
 	}
 	// Set and overwrite params with the ones from the TaskRun
 	for _, p := range tr.Spec.Params {
-		if p.Value.Type == v1beta1.ParamTypeString {
-			for _, pattern := range patterns {
-				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
-			}
-		} else {
+		switch p.Value.Type {
+		case v1beta1.ParamTypeArray:
 			for _, pattern := range patterns {
 				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
+			}
+		case v1beta1.ParamTypeObject:
+			for k, v := range p.Value.ObjectVal {
+				stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+			}
+		default:
+			for _, pattern := range patterns {
+				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
 			}
 		}
 	}
