@@ -62,6 +62,8 @@ import (
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/changeset"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -397,20 +399,17 @@ var (
 		Name: "tekton-internal-downward",
 		VolumeSource: corev1.VolumeSource{
 			DownwardAPI: &corev1.DownwardAPIVolumeSource{
-				Items: []corev1.DownwardAPIVolumeFile{
-					{
-						Path: "ready",
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: "metadata.annotations['tekton.dev/ready']",
-						},
+				Items: []corev1.DownwardAPIVolumeFile{{
+					Path: "ready",
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.annotations['tekton.dev/ready']",
 					},
-					{
-						Path: "cancel",
-						FieldRef: &corev1.ObjectFieldSelector{
-							FieldPath: "metadata.annotations['tekton.dev/cancel']",
-						},
+				}, {
+					Path: "cancel",
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.annotations['tekton.dev/cancel']",
 					},
-				},
+				}},
 			},
 		},
 	}
@@ -4080,417 +4079,6 @@ status:
 	}
 }
 
-func TestCancelTaskRun(t *testing.T) {
-	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
-	terminatedState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: now}, FinishedAt: metav1.Time{Time: now}, Reason: "Completed"}
-	terminatedWithErrorState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: now}, FinishedAt: metav1.Time{Time: now}, Reason: "Completed", ExitCode: 12}
-	waitingState := corev1.ContainerStateWaiting{Reason: "PodInitializing"}
-	testCases := []struct {
-		name               string
-		taskRun            *v1beta1.TaskRun
-		pod                *corev1.Pod
-		reason             v1beta1.TaskRunReason
-		message            string
-		expectedStatus     apis.Condition
-		expectedStepStates []v1beta1.StepState
-	}{{
-		name: "no-pod-scheduled",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: objectMeta("test-taskrun-run-failed", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: simpleTask.Name,
-				},
-				Status: v1beta1.TaskRunSpecStatusCancelled,
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionUnknown,
-						},
-					},
-				},
-			},
-		},
-		reason:  "some reason",
-		message: "some message",
-		expectedStatus: apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  "some reason",
-			Message: "some message",
-		},
-	}, {
-		name: "pod-scheduled",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: objectMeta("test-taskrun-run-failed", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: simpleTask.Name,
-				},
-				Status: v1beta1.TaskRunSpecStatusCancelled,
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionUnknown,
-						},
-					},
-				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					PodName: "foo-is-bar",
-				},
-			},
-		},
-		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-			Namespace: "foo",
-			Name:      "foo-is-bar",
-			Annotations: map[string]string{
-				"key": "value",
-			},
-		}},
-		reason:  "some reason",
-		message: "some message",
-		expectedStatus: apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  "some reason",
-			Message: "some message",
-		},
-	}, {
-		name: "step-status-update-cancel",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: objectMeta("test-taskrun-run-cancel", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: simpleTask.Name,
-				},
-				Status: v1beta1.TaskRunSpecStatusCancelled,
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionUnknown,
-						},
-					},
-				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					PodName: "foo-is-bar",
-					Steps: []v1beta1.StepState{{
-						ContainerState: corev1.ContainerState{
-							Running: &runningState,
-						},
-					}},
-				},
-			},
-		},
-		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-			Namespace: "foo",
-			Name:      "foo-is-bar",
-			Annotations: map[string]string{
-				"key": "value",
-			},
-		}},
-		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel was cancelled",
-		expectedStatus: apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel was cancelled",
-		},
-		expectedStepStates: []v1beta1.StepState{
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Reason:   v1beta1.TaskRunReasonCancelled.String(),
-					},
-				},
-			},
-		},
-	}, {
-		name: "step-status-update-cancel-multiple-steps",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: objectMeta("test-taskrun-run-cancel-multiple-steps", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: taskMultipleSteps.Name,
-				},
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionUnknown,
-						},
-					},
-				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					PodName: "foo-is-bar",
-					Steps: []v1beta1.StepState{
-						{
-							ContainerState: corev1.ContainerState{
-								Terminated: &terminatedState,
-							},
-						},
-						{
-							ContainerState: corev1.ContainerState{
-								Running: &runningState,
-							},
-						},
-						{
-							ContainerState: corev1.ContainerState{
-								Running: &runningState,
-							},
-						},
-					},
-				},
-			},
-		},
-		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-			Namespace: "foo",
-			Name:      "foo-is-bar",
-			Annotations: map[string]string{
-				"key": "value",
-			},
-		}},
-		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
-		expectedStatus: apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
-		},
-		expectedStepStates: []v1beta1.StepState{
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 0,
-						Reason:   "Completed",
-					},
-				},
-			},
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Reason:   v1beta1.TaskRunReasonCancelled.String(),
-					},
-				},
-			},
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Reason:   v1beta1.TaskRunReasonCancelled.String(),
-					},
-				},
-			},
-		},
-	}, {
-		name: "step-status-update-multiple-steps-waiting-state",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: objectMeta("test-taskrun-run-timeout-multiple-steps-waiting", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: taskMultipleSteps.Name,
-				},
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionUnknown,
-						},
-					},
-				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					PodName: "foo-is-bar",
-					Steps: []v1beta1.StepState{
-						{
-							ContainerState: corev1.ContainerState{
-								Waiting: &waitingState,
-							},
-						},
-						{
-							ContainerState: corev1.ContainerState{
-								Waiting: &waitingState,
-							},
-						},
-						{
-							ContainerState: corev1.ContainerState{
-								Waiting: &waitingState,
-							},
-						},
-					},
-				},
-			},
-		},
-		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-			Namespace: "foo",
-			Name:      "foo-is-bar",
-			Annotations: map[string]string{
-				"key": "value",
-			},
-		}},
-		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel-multiple-steps-waiting was cancelled",
-		expectedStatus: apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel-multiple-steps-waiting was cancelled",
-		},
-		expectedStepStates: []v1beta1.StepState{
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Reason:   v1beta1.TaskRunReasonCancelled.String(),
-					},
-				},
-			},
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Reason:   v1beta1.TaskRunReasonCancelled.String(),
-					},
-				},
-			},
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Reason:   v1beta1.TaskRunReasonCancelled.String(),
-					},
-				},
-			},
-		},
-	}, {
-		name: "step-status-update-with-multiple-steps-and-some-continue-on-error",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: objectMeta("test-taskrun-run-ignore-step-error", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: taskMultipleStepsIgnoreError.Name,
-				},
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type:   apis.ConditionSucceeded,
-							Status: corev1.ConditionTrue,
-						},
-					},
-				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					PodName: "foo-is-bar",
-					Steps: []v1beta1.StepState{
-						{
-							ContainerState: corev1.ContainerState{
-								Terminated: &terminatedWithErrorState,
-							},
-						},
-						{
-							ContainerState: corev1.ContainerState{
-								Running: &runningState,
-							},
-						},
-					},
-				},
-			},
-		},
-		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
-			Namespace: "foo",
-			Name:      "foo-is-bar",
-			Annotations: map[string]string{
-				"key": "value",
-			},
-		}},
-		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
-		expectedStatus: apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
-		},
-		expectedStepStates: []v1beta1.StepState{
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 12,
-						Reason:   "Completed",
-					},
-				},
-			},
-			{
-				ContainerState: corev1.ContainerState{
-					Terminated: &corev1.ContainerStateTerminated{
-						ExitCode: 1,
-						Reason:   v1beta1.TaskRunReasonCancelled.String(),
-					},
-				},
-			},
-		},
-	}}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			d := test.Data{
-				TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
-			}
-			if tc.pod != nil {
-				d.Pods = []*corev1.Pod{tc.pod}
-			}
-
-			testAssets, cancel := getTaskRunController(t, d)
-			defer cancel()
-
-			// Use the test assets to create a *Reconciler directly for focused testing.
-			c := &Reconciler{
-				KubeClientSet:     testAssets.Clients.Kube,
-				PipelineClientSet: testAssets.Clients.Pipeline,
-				Clock:             testClock,
-				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
-				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
-				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
-				cloudEventClient:  testAssets.Clients.CloudEvents,
-				metrics:           nil, // Not used
-				entrypointCache:   nil, // Not used
-				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
-			}
-
-			err := c.cancelTaskRun(testAssets.Ctx, tc.taskRun, tc.reason, tc.message)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if d := cmp.Diff(tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), &tc.expectedStatus, ignoreLastTransitionTime); d != "" {
-				t.Fatalf(diff.PrintWantGot(d))
-			}
-
-			if tc.expectedStepStates != nil {
-				ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt")
-				if c := cmp.Diff(tc.expectedStepStates, tc.taskRun.Status.Steps, ignoreTerminatedFields); c != "" {
-					t.Errorf("test %s failed: %s", tc.name, diff.PrintWantGot(c))
-				}
-			}
-		})
-	}
-}
-
 func Test_storeTaskSpec(t *testing.T) {
 	tr := parse.MustParseTaskRun(t, `
 metadata:
@@ -4979,6 +4567,521 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := validateTaskSpecRequestResources(tc.taskSpec); err == nil {
 				t.Fatalf("Expected to see error when validating invalid TaskSpec resources but saw none")
+			}
+		})
+	}
+}
+func TestReconcileOnCancelledTaskRunWithFeatureFlag(t *testing.T) {
+	taskRun := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("test-taskrun-run-cancelled", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+			Status: v1beta1.TaskRunSpecStatusCancelled,
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1beta1.Status{
+				Conditions: duckv1beta1.Conditions{
+					apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					},
+				},
+			},
+		},
+	}
+	pod, err := makePod(taskRun, simpleTask)
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
+	}
+	taskRun.Status.PodName = pod.Name
+
+	expectedStatus := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  "TaskRunCancelled",
+		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
+	}
+
+	testCases := []struct {
+		name          string
+		cancelEnabled bool
+	}{
+		{
+			name:          "Taskrun cancellation with entrypoint cancel enabled",
+			cancelEnabled: true,
+		},
+		{
+			name:          "Taskrun cancellation without entrypoint cancel",
+			cancelEnabled: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1beta1.TaskRun{taskRun},
+				Tasks:    []*v1beta1.Task{simpleTask},
+				Pods:     []*corev1.Pod{pod},
+			}
+
+			if tc.cancelEnabled {
+				d.ConfigMaps = []*corev1.ConfigMap{
+					{
+						ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+						Data: map[string]string{
+							"enable-cancel-using-entrypoint": "true",
+						},
+					},
+				}
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+			}
+			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+			}
+
+			if d := cmp.Diff(expectedStatus, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
+				t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
+			}
+
+			wantEvents := []string{
+				"Normal Started",
+				"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled",
+			}
+			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-cancelled-taskrun", wantEvents)
+			if !(err == nil) {
+				t.Errorf(err.Error())
+			}
+
+			_, err = clients.Kube.CoreV1().Pods(pod.ObjectMeta.Namespace).Get(testAssets.Ctx, pod.ObjectMeta.Name, metav1.GetOptions{})
+			if tc.cancelEnabled {
+				if err != nil {
+					t.Errorf("unexpected error: %v", err)
+				}
+			} else {
+				if !k8sapierrors.IsNotFound(err) {
+					t.Errorf("expected a NotFound response, got: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestCancelTaskRun(t *testing.T) {
+	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
+	terminatedState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: now}, FinishedAt: metav1.Time{Time: now}, Reason: "Completed"}
+	terminatedWithErrorState := corev1.ContainerStateTerminated{StartedAt: metav1.Time{Time: now}, FinishedAt: metav1.Time{Time: now}, Reason: "Completed", ExitCode: 12}
+	waitingState := corev1.ContainerStateWaiting{Reason: "PodInitializing"}
+	testCases := []struct {
+		name               string
+		taskRun            *v1beta1.TaskRun
+		pod                *corev1.Pod
+		reason             v1beta1.TaskRunReason
+		message            string
+		expectedStatus     apis.Condition
+		expectedStepStates []v1beta1.StepState
+	}{{
+		name: "no-pod-scheduled",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-failed", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+				Status: v1beta1.TaskRunSpecStatusCancelled,
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+			},
+		},
+		reason:  "some reason",
+		message: "some message",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "some reason",
+			Message: "some message",
+		},
+	}, {
+		name: "pod-scheduled",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-failed", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+				Status: v1beta1.TaskRunSpecStatusCancelled,
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+				},
+			},
+		},
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+			Annotations: map[string]string{
+				"key": "value",
+			},
+		}},
+		reason:  "some reason",
+		message: "some message",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  "some reason",
+			Message: "some message",
+		},
+	}, {
+		name: "step-status-update-cancel",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-cancel", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+				Status: v1beta1.TaskRunSpecStatusCancelled,
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{{
+						ContainerState: corev1.ContainerState{
+							Running: &runningState,
+						},
+					}},
+				},
+			},
+		},
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+			Annotations: map[string]string{
+				"key": "value",
+			},
+		}},
+		reason:  v1beta1.TaskRunReasonCancelled,
+		message: "TaskRun test-taskrun-run-cancel was cancelled",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonCancelled.String(),
+			Message: "TaskRun test-taskrun-run-cancel was cancelled",
+		},
+		expectedStepStates: []v1beta1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+		},
+	}, {
+		name: "step-status-update-cancel-multiple-steps",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-cancel-multiple-steps", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{
+						{
+							ContainerState: corev1.ContainerState{
+								Terminated: &terminatedState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Running: &runningState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Running: &runningState,
+							},
+						},
+					},
+				},
+			},
+		},
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+			Annotations: map[string]string{
+				"key": "value",
+			},
+		}},
+		reason:  v1beta1.TaskRunReasonCancelled,
+		message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonCancelled.String(),
+			Message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
+		},
+		expectedStepStates: []v1beta1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 0,
+						Reason:   "Completed",
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+		},
+	}, {
+		name: "step-status-update-multiple-steps-waiting-state",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-timeout-multiple-steps-waiting", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionUnknown,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{
+						{
+							ContainerState: corev1.ContainerState{
+								Waiting: &waitingState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Waiting: &waitingState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Waiting: &waitingState,
+							},
+						},
+					},
+				},
+			},
+		},
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+			Annotations: map[string]string{
+				"key": "value",
+			},
+		}},
+		reason:  v1beta1.TaskRunReasonCancelled,
+		message: "TaskRun test-taskrun-run-cancel-multiple-steps-waiting was cancelled",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonCancelled.String(),
+			Message: "TaskRun test-taskrun-run-cancel-multiple-steps-waiting was cancelled",
+		},
+		expectedStepStates: []v1beta1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+		},
+	}, {
+		name: "step-status-update-with-multiple-steps-and-some-continue-on-error",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: objectMeta("test-taskrun-run-ignore-step-error", "foo"),
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: simpleTask.Name,
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{
+						apis.Condition{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName: "foo-is-bar",
+					Steps: []v1beta1.StepState{
+						{
+							ContainerState: corev1.ContainerState{
+								Terminated: &terminatedWithErrorState,
+							},
+						},
+						{
+							ContainerState: corev1.ContainerState{
+								Running: &runningState,
+							},
+						},
+					},
+				},
+			},
+		},
+		pod: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "foo-is-bar",
+			Annotations: map[string]string{
+				"key": "value",
+			},
+		}},
+		reason:  v1beta1.TaskRunReasonCancelled,
+		message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
+		expectedStatus: apis.Condition{
+			Type:    apis.ConditionSucceeded,
+			Status:  corev1.ConditionFalse,
+			Reason:  v1beta1.TaskRunReasonCancelled.String(),
+			Message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
+		},
+		expectedStepStates: []v1beta1.StepState{
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 12,
+						Reason:   "Completed",
+					},
+				},
+			},
+			{
+				ContainerState: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						ExitCode: 1,
+						Reason:   v1beta1.TaskRunReasonCancelled.String(),
+					},
+				},
+			},
+		},
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
+			}
+			if tc.pod != nil {
+				d.Pods = []*corev1.Pod{tc.pod}
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+
+			// Use the test assets to create a *Reconciler directly for focused testing.
+			c := &Reconciler{
+				KubeClientSet:     testAssets.Clients.Kube,
+				PipelineClientSet: testAssets.Clients.Pipeline,
+				Clock:             testClock,
+				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
+				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
+				cloudEventClient:  testAssets.Clients.CloudEvents,
+				metrics:           nil, // Not used
+				entrypointCache:   nil, // Not used
+				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+			}
+
+			err := c.cancelTaskRun(testAssets.Ctx, tc.taskRun, tc.reason, tc.message)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if d := cmp.Diff(tc.taskRun.Status.GetCondition(apis.ConditionSucceeded), &tc.expectedStatus, ignoreLastTransitionTime); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+
+			if tc.expectedStepStates != nil {
+				ignoreTerminatedFields := cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt")
+				if c := cmp.Diff(tc.expectedStepStates, tc.taskRun.Status.Steps, ignoreTerminatedFields); c != "" {
+					t.Errorf("test %s failed: %s", tc.name, diff.PrintWantGot(c))
+				}
 			}
 		})
 	}

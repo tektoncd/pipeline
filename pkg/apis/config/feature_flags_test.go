@@ -59,6 +59,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
 				EmbeddedStatus:                   "both",
+				EnableBundleResolver:             true,
+				EnableCancelUsingEntrypoint:      true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
