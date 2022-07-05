@@ -123,11 +123,12 @@ func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
 func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResultRefs) {
 	stringReplacements := resolvedResultRefs.getStringReplacements()
 	arrayReplacements := resolvedResultRefs.getArrayReplacements()
+	objectReplacements := resolvedResultRefs.getObjectReplacements()
 	for _, resolvedPipelineRunTask := range targets {
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
-			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, nil)
-			pipelineTask.Matrix = replaceParamValues(pipelineTask.Matrix, stringReplacements, arrayReplacements, nil)
+			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, objectReplacements)
+			pipelineTask.Matrix = replaceParamValues(pipelineTask.Matrix, stringReplacements, nil, nil)
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, arrayReplacements)
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}

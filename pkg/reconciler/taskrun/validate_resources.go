@@ -146,7 +146,7 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, needed
 		// to pass array result to array param, yet in yaml format this will be
 		// unmarshalled to string for ArrayOrString. So we need to check and skip this validation.
 		// Please refer issue #4879 for more details and examples.
-		if param.Value.Type == v1beta1.ParamTypeString && (neededParamsTypes[param.Name] == v1beta1.ParamTypeArray || (neededParamsTypes[param.Name] == v1beta1.ParamTypeObject)) && v1beta1.VariableSubstitutionRegex.MatchString(param.Value.StringVal) {
+		if param.Value.Type == v1beta1.ParamTypeString && (neededParamsTypes[param.Name] == v1beta1.ParamTypeArray || neededParamsTypes[param.Name] == v1beta1.ParamTypeObject) && v1beta1.VariableSubstitutionRegex.MatchString(param.Value.StringVal) {
 			continue
 		}
 		if param.Value.Type != neededParamsTypes[param.Name] {

@@ -909,9 +909,14 @@ Sharing `Results` between `Tasks` in a `Pipeline` happens via
 [variable substitution](variables.md#variables-available-in-a-pipeline) - one `Task` emits
 a `Result` and another receives it as a `Parameter` with a variable such as
 `$(tasks.<task-name>.results.<result-name>)`. Array `Results` is supported as alpha feature and
-can be referer as `$(tasks.<task-name>.results.<result-name>[*])`.
+can be referred as `$(tasks.<task-name>.results.<result-name>[*])`. Array indexing can be rererred
+as `$(tasks.<task-name>.results.<result-name>[i])` where `i` is the index.
+Object `Results` is supported as alpha feature and can be referred as
+`$(tasks.<task-name>.results.<result-name>[*])`, object elements can be referred as
+`$(tasks.<task-name>.results.<result-name>.key)`.
 
-**Note:** Array `Result` cannot be used in `script`.
+**Note:** Whole Array and Object `Results` cannot be referred in `script` and `args`.
+**Note:** `Matrix` does not support `object` and `array` results.
 
 When one `Task` receives the `Results` of another, there is a dependency created between those
 two `Tasks`. In order for the receiving `Task` to get data from another `Task's` `Result`,
@@ -928,6 +933,12 @@ params:
     value: "$(tasks.checkout-source.results.commit)"
   - name: array-params
     value: "$(tasks.checkout-source.results.array-results[*])"
+  - name: array-indexing-params
+    value: "$(tasks.checkout-source.results.array-results[1])"
+  - name: object-params
+    value: "$(tasks.checkout-source.results.object-results[*])"
+  - name: object-element-params
+    value: "$(tasks.checkout-source.results.object-results.objectkey)"
 ```
 
 **Note:** If `checkout-source` exits successfully without initializing `commit` `Result`,
