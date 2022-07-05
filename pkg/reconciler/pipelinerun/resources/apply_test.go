@@ -1084,6 +1084,77 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 		}},
 	}, {
+		name: "Test object result as a whole substitution - params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+			}),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "resultName",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name:  "bParam",
+					Value: *v1beta1.NewArrayOrString(`$(tasks.aTask.results.resultName[*])`),
+				}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name: "bParam",
+					// index validation is done in ResolveResultRefs() before ApplyTaskResults()
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				}},
+			},
+		}},
+	}, {
+		name: "Test object result element substitution - params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+			}),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "resultName",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name:  "bParam",
+					Value: *v1beta1.NewArrayOrString(`$(tasks.aTask.results.resultName.key1)`),
+				}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Params: []v1beta1.Param{{
+					Name: "bParam",
+					// index validation is done in ResolveResultRefs() before ApplyTaskResults()
+					Value: *v1beta1.NewArrayOrString("val1"),
+				}},
+			},
+		}},
+	}, {
 		name: "Test result substitution on minimal variable substitution expression - matrix",
 		resolvedResultRefs: ResolvedResultRefs{{
 			Value: *v1beta1.NewArrayOrString("aResultValue"),
