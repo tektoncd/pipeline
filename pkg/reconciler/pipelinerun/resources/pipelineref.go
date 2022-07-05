@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipeline"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/oci"
 	"github.com/tektoncd/pipeline/pkg/remote/resolution"
@@ -37,7 +38,7 @@ import (
 // GetPipelineFunc is a factory function that will use the given PipelineRef to return a valid GetPipeline function that
 // looks up the pipeline. It uses as context a k8s client, tekton client, namespace, and service account name to return
 // the pipeline. It knows whether it needs to look in the cluster or in a remote location to fetch the reference.
-func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun) (GetPipeline, error) {
+func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun) (rprp.GetPipeline, error) {
 	cfg := config.FromContextOrDefaults(ctx)
 	pr := pipelineRun.Spec.PipelineRef
 	namespace := pipelineRun.Namespace
