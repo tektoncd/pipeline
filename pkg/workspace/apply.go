@@ -70,6 +70,9 @@ func CreateVolumes(wb []v1beta1.WorkspaceBinding) map[string]corev1.Volume {
 		case w.Secret != nil:
 			s := *w.Secret
 			v.setVolumeSource(w.Name, name, corev1.VolumeSource{Secret: &s})
+		case w.Projected != nil:
+			s := *w.Projected
+			v.setVolumeSource(w.Name, name, corev1.VolumeSource{Projected: &s})
 		case w.CSI != nil:
 			csi := *w.CSI
 			v.setVolumeSource(w.Name, name, corev1.VolumeSource{CSI: &csi})

@@ -2887,6 +2887,10 @@
           "description": "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
           "$ref": "#/definitions/v1.PersistentVolumeClaimVolumeSource"
         },
+        "projected": {
+          "description": "Projected represents a projected volume that should populate this workspace.",
+          "$ref": "#/definitions/v1.ProjectedVolumeSource"
+        },
         "secret": {
           "description": "Secret represents a secret that should populate this workspace.",
           "$ref": "#/definitions/v1.SecretVolumeSource"

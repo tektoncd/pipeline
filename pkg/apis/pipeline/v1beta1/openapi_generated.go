@@ -5199,6 +5199,12 @@ func schema_pkg_apis_pipeline_v1beta1_WorkspaceBinding(ref common.ReferenceCallb
 							Ref:         ref("k8s.io/api/core/v1.SecretVolumeSource"),
 						},
 					},
+					"projected": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Projected represents a projected volume that should populate this workspace.",
+							Ref:         ref("k8s.io/api/core/v1.ProjectedVolumeSource"),
+						},
+					},
 					"csi": {
 						SchemaProps: spec.SchemaProps{
 							Description: "CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.",
@@ -5210,7 +5216,7 @@ func schema_pkg_apis_pipeline_v1beta1_WorkspaceBinding(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.CSIVolumeSource", "k8s.io/api/core/v1.ConfigMapVolumeSource", "k8s.io/api/core/v1.EmptyDirVolumeSource", "k8s.io/api/core/v1.PersistentVolumeClaim", "k8s.io/api/core/v1.PersistentVolumeClaimVolumeSource", "k8s.io/api/core/v1.SecretVolumeSource"},
+			"k8s.io/api/core/v1.CSIVolumeSource", "k8s.io/api/core/v1.ConfigMapVolumeSource", "k8s.io/api/core/v1.EmptyDirVolumeSource", "k8s.io/api/core/v1.PersistentVolumeClaim", "k8s.io/api/core/v1.PersistentVolumeClaimVolumeSource", "k8s.io/api/core/v1.ProjectedVolumeSource", "k8s.io/api/core/v1.SecretVolumeSource"},
 	}
 }
 

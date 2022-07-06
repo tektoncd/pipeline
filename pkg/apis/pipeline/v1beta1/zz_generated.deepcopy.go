@@ -2212,6 +2212,11 @@ func (in *WorkspaceBinding) DeepCopyInto(out *WorkspaceBinding) {
 		*out = new(v1.SecretVolumeSource)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.Projected != nil {
+		in, out := &in.Projected, &out.Projected
+		*out = new(v1.ProjectedVolumeSource)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.CSI != nil {
 		in, out := &in.CSI, &out.CSI
 		*out = new(v1.CSIVolumeSource)
