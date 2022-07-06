@@ -29,7 +29,7 @@ const (
 	WebhookKindFork WebhookKind = "fork"
 	// WebhookKindInstallation is for app installation events
 	WebhookKindInstallation WebhookKind = "installation"
-	// WebhookKindInstallationRepository is for app isntallation in a repository events
+	// WebhookKindInstallationRepository is for app installation in a repository events
 	WebhookKindInstallationRepository WebhookKind = "installation_repository"
 	// WebhookKindIssue is for issue events
 	WebhookKindIssue WebhookKind = "issue"
@@ -66,7 +66,7 @@ const (
 var (
 	// ErrSignatureInvalid is returned when the webhook
 	// signature is invalid or cannot be calculated.
-	ErrSignatureInvalid = errors.New("Invalid webhook signature")
+	ErrSignatureInvalid = errors.New("invalid webhook signature")
 )
 
 type (

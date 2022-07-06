@@ -20,9 +20,9 @@ type Bool struct {
 // number and null input. 0 will not be considered a null
 // Bool. It also supports unmarshalling a sql.NullBool.
 func (b *Bool) UnmarshalJSON(data []byte) error {
-	var err error
 	var v interface{}
-	if err = json.Unmarshal(data, &v); err != nil {
+	err := json.Unmarshal(data, &v)
+	if err != nil {
 		return err
 	}
 	switch x := v.(type) {

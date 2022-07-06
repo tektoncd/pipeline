@@ -13,7 +13,7 @@ import (
 const (
 
 	// DefaultFileWritePermissions default permissions when creating a file
-	DefaultFileWritePermissions = 0644
+	DefaultFileWritePermissions = 0o644
 )
 
 type contentService struct {
@@ -108,7 +108,7 @@ func (c contentService) Delete(_ context.Context, repo, path, ref string) (*scm.
 	return nil, nil
 }
 
-func (c contentService) path(repo string, path string, ref string) (string, error) {
+func (c contentService) path(repo, path, ref string) (string, error) {
 	if c.data.ContentDir == "" {
 		return "", errors.Errorf("no data.ContentDir configured")
 	}

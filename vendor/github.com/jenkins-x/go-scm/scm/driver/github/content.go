@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"time"
 
 	"github.com/jenkins-x/go-scm/scm"
 )
@@ -77,22 +76,6 @@ type entry struct {
 	Size int    `json:"size"`
 	Sha  string `json:"sha"`
 	URL  string `json:"url"`
-}
-
-type contentUpdate struct {
-	Sha     string `json:"sha"`
-	Message string `json:"message"`
-	HTMLURL string `json:"html_url"`
-	Author  struct {
-		Name  string    `json:"name"`
-		Email string    `json:"email"`
-		Date  time.Time `json:"date"`
-	} `json:"author"`
-	Committer struct {
-		Name  string    `json:"name"`
-		Email string    `json:"email"`
-		Date  time.Time `json:"date"`
-	} `json:"committer"`
 }
 
 type contentBody struct {

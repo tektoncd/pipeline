@@ -41,7 +41,7 @@ func (s *pullService) FindComment(ctx context.Context, repo string, index, id in
 	return convertIssueComment(out), res, err
 }
 
-func (s *pullService) List(ctx context.Context, repo string, opts scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
+func (s *pullService) List(ctx context.Context, repo string, opts *scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/merge_requests?%s", encode(repo), encodePullRequestListOptions(opts))
 	out := []*pr{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -56,14 +56,14 @@ func (s *pullService) List(ctx context.Context, repo string, opts scm.PullReques
 }
 
 func (s *pullService) ListChanges(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/changes?%s", encode(repo), number, encodeListOptions(opts))
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/changes?%s", encode(repo), number, encodeListOptions(&opts))
 	out := new(changes)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertChangeList(out.Changes), res, err
 }
 
 func (s *pullService) ListComments(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/notes?%s", encode(repo), index, encodeListOptions(opts))
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/notes?%s", encode(repo), index, encodeListOptions(&opts))
 	out := []*issueComment{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertIssueCommentList(out), res, err
@@ -79,7 +79,7 @@ func (s *pullService) ListLabels(ctx context.Context, repo string, number int, o
 }
 
 func (s *pullService) ListEvents(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(opts))
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(&opts))
 	out := []*labelEvent{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertLabelEvents(out), res, err
@@ -93,7 +93,7 @@ func (s *pullService) DeleteLabel(ctx context.Context, repo string, number int, 
 	return s.setLabels(ctx, repo, number, label, "remove_labels")
 }
 
-func (s *pullService) setLabels(ctx context.Context, repo string, number int, labelsStr string, operation string) (*scm.Response, error) {
+func (s *pullService) setLabels(ctx context.Context, repo string, number int, labelsStr, operation string) (*scm.Response, error) {
 	in := url.Values{}
 	in.Set(operation, labelsStr)
 	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d?%s", encode(repo), number, in.Encode())
@@ -116,7 +116,7 @@ func (s *pullService) DeleteComment(ctx context.Context, repo string, index, id 
 	return res, err
 }
 
-func (s *pullService) EditComment(ctx context.Context, repo string, number int, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+func (s *pullService) EditComment(ctx context.Context, repo string, number, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
 	in := &updateNoteOptions{Body: input.Body}
 	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/notes/%d", encode(repo), number, id)
 	out := new(issueComment)
@@ -149,8 +149,8 @@ func (s *pullService) AssignIssue(ctx context.Context, repo string, number int, 
 	}
 
 	allAssignees := map[int]struct{}{}
-	for _, assignee := range pr.Assignees {
-		allAssignees[assignee.ID] = struct{}{}
+	for k := range pr.Assignees {
+		allAssignees[pr.Assignees[k].ID] = struct{}{}
 	}
 	for _, l := range logins {
 		u, _, err := s.client.Users.FindLogin(ctx, l)
@@ -186,7 +186,8 @@ func (s *pullService) UnassignIssue(ctx context.Context, repo string, number int
 		return nil, err
 	}
 	var assignees []int
-	for _, assignee := range pr.Assignees {
+	for k := range pr.Assignees {
+		assignee := pr.Assignees[k]
 		shouldKeep := true
 		for _, l := range logins {
 			if assignee.Login == l {
@@ -244,7 +245,7 @@ func (s *pullService) Update(ctx context.Context, repo string, number int, input
 	return s.updateMergeRequestField(ctx, repo, number, updateOpts)
 }
 
-func (s *pullService) SetMilestone(ctx context.Context, repo string, prID int, number int) (*scm.Response, error) {
+func (s *pullService) SetMilestone(ctx context.Context, repo string, prID, number int) (*scm.Response, error) {
 	updateOpts := &updateMergeRequestOptions{
 		MilestoneID: &number,
 	}

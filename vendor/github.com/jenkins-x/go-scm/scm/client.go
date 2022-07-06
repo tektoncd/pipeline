@@ -82,6 +82,7 @@ type (
 		Size int
 		From string
 		To   string
+		Sort string
 	}
 
 	// GraphQLService the API to performing GraphQL queries

@@ -61,8 +61,8 @@ func (s *issueService) AssignIssue(ctx context.Context, repo string, number int,
 	if err != nil {
 		return res, err
 	}
-	for _, assignee := range out.Assignees {
-		assigned[NormLogin(assignee.Login)] = true
+	for k := range out.Assignees {
+		assigned[NormLogin(out.Assignees[k].Login)] = true
 	}
 	missing := scm.MissingUsers{Action: "assign"}
 	for _, login := range logins {
@@ -89,8 +89,8 @@ func (s *issueService) UnassignIssue(ctx context.Context, repo string, number in
 	if err != nil {
 		return res, err
 	}
-	for _, assignee := range out.Assignees {
-		assigned[NormLogin(assignee.Login)] = true
+	for k := range out.Assignees {
+		assigned[NormLogin(out.Assignees[k].Login)] = true
 	}
 	extra := scm.ExtraUsers{Action: "unassign"}
 	for _, login := range logins {
@@ -184,7 +184,7 @@ func (s *issueService) DeleteComment(ctx context.Context, repo string, number, i
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
 
-func (s *issueService) EditComment(ctx context.Context, repo string, number int, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+func (s *issueService) EditComment(ctx context.Context, repo string, number, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/issues/comments/%d", repo, id)
 	in := &issueCommentInput{
 		Body: input.Body,
@@ -222,7 +222,7 @@ func (s *issueService) Unlock(ctx context.Context, repo string, number int) (*sc
 	return res, err
 }
 
-func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID int, number int) (*scm.Response, error) {
+func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID, number int) (*scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/issues/%d", repo, issueID)
 	in := &struct {
 		Milestone int `json:"milestone"`

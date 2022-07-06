@@ -160,7 +160,7 @@ func (s *repositoryService) Find(ctx context.Context, repo string) (*scm.Reposit
 }
 
 // FindHook returns a repository hook.
-func (s *repositoryService) FindHook(ctx context.Context, repo string, id string) (*scm.Hook, *scm.Response, error) {
+func (s *repositoryService) FindHook(ctx context.Context, repo, id string) (*scm.Hook, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/hooks/%s", repo, id)
 	out := new(hook)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
@@ -175,10 +175,9 @@ func (s *repositoryService) FindPerms(ctx context.Context, repo string) (*scm.Pe
 	return convertRepository(out).Perm, res, err
 }
 
-// FindPerms returns the repository permissions.
-//
+// FindUserPermission returns the repository permissions.
 // https://developer.github.com/v3/repos/collaborators/#review-a-users-permission-level
-func (s *repositoryService) FindUserPermission(ctx context.Context, repo string, user string) (string, *scm.Response, error) {
+func (s *repositoryService) FindUserPermission(ctx context.Context, repo, user string) (string, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/collaborators/%s/permission", repo, user)
 	var out struct {
 		Perm string `json:"permission"`
@@ -193,7 +192,7 @@ func (s *repositoryService) List(ctx context.Context, opts scm.ListOptions) ([]*
 		Method: http.MethodGet,
 		Path:   fmt.Sprintf("user/repos?visibility=all&affiliation=owner&%s", encodeListOptions(opts)),
 		Header: map[string][]string{
-			// This accept header enables the visibility parameter.
+			// This accepts header enables the visibility parameter.
 			// https://developer.github.com/changes/2019-12-03-internal-visibility-changes/
 			"Accept": {"application/vnd.github.nebula-preview+json"},
 		},
@@ -203,7 +202,7 @@ func (s *repositoryService) List(ctx context.Context, opts scm.ListOptions) ([]*
 	return convertRepositoryList(out), res, err
 }
 
-// List returns the repositories for an organisation
+// ListOrganisation returns the repositories for an organisation
 func (s *repositoryService) ListOrganisation(ctx context.Context, org string, opts scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
 	path := fmt.Sprintf("orgs/%s/repos?%s", org, encodeListOptions(opts))
 	out := []*repository{}
@@ -211,7 +210,7 @@ func (s *repositoryService) ListOrganisation(ctx context.Context, org string, op
 	return convertRepositoryList(out), res, err
 }
 
-// List returns the repositories for a user
+// ListUser returns the public repositories for the specified user
 func (s *repositoryService) ListUser(ctx context.Context, user string, opts scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
 	path := fmt.Sprintf("users/%s/repos?%s", user, encodeListOptions(opts))
 	out := []*repository{}
@@ -300,10 +299,11 @@ func (s *repositoryService) CreateHook(ctx context.Context, repo string, input *
 	} else {
 		in.Config.InsecureSSL = "0"
 	}
-	in.Events = append(
+	input.NativeEvents = append(
 		input.NativeEvents,
 		convertHookEvents(input.Events)...,
 	)
+	in.Events = input.NativeEvents
 	out := new(hook)
 	res, err := s.client.do(ctx, "POST", path, in, out)
 	return convertHook(out), res, err
@@ -328,7 +328,7 @@ func (s *repositoryService) CreateStatus(ctx context.Context, repo, ref string, 
 }
 
 // DeleteHook deletes a repository webhook.
-func (s *repositoryService) DeleteHook(ctx context.Context, repo string, id string) (*scm.Response, error) {
+func (s *repositoryService) DeleteHook(ctx context.Context, repo, id string) (*scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/hooks/%s", repo, id)
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
@@ -419,8 +419,7 @@ func convertHookEvents(from scm.HookEvents) []string {
 		events = append(events, "issue_comment")
 	}
 	if from.Branch || from.Tag {
-		events = append(events, "create")
-		events = append(events, "delete")
+		events = append(events, "create", "delete")
 	}
 	if from.Deployment {
 		events = append(events, "deployment")

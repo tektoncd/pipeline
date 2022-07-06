@@ -50,5 +50,5 @@ type (
 // CommitService commit interface
 type CommitService interface {
 	UpdateCommitStatus(ctx context.Context,
-		repo string, sha string, options CommitStatusUpdateOptions) (*CommitStatus, *Response, error)
+		repo string, sha string, options *CommitStatusUpdateOptions) (*CommitStatus, *Response, error)
 }

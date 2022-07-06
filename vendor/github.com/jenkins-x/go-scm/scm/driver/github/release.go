@@ -26,10 +26,10 @@ type release struct {
 }
 
 type releaseInput struct {
-	Title       string `json:"name"`
-	Description string `json:"body"`
-	Tag         string `json:"tag_name"`
-	Commitish   string `json:"target_commitish"`
+	Title       string `json:"name,omitempty"`
+	Description string `json:"body,omitempty"`
+	Tag         string `json:"tag_name,omitempty"`
+	Commitish   string `json:"target_commitish,omitempty"`
 	Draft       bool   `json:"draft"`
 	Prerelease  bool   `json:"prerelease"`
 }
@@ -41,7 +41,7 @@ func (s *releaseService) Find(ctx context.Context, repo string, id int) (*scm.Re
 	return convertRelease(out), res, err
 }
 
-func (s *releaseService) FindByTag(ctx context.Context, repo string, tag string) (*scm.Release, *scm.Response, error) {
+func (s *releaseService) FindByTag(ctx context.Context, repo, tag string) (*scm.Release, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/releases/tags/%s", repo, tag)
 	out := new(release)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
@@ -75,7 +75,7 @@ func (s *releaseService) Delete(ctx context.Context, repo string, id int) (*scm.
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
 
-func (s *releaseService) DeleteByTag(ctx context.Context, repo string, tag string) (*scm.Response, error) {
+func (s *releaseService) DeleteByTag(ctx context.Context, repo, tag string) (*scm.Response, error) {
 	rel, _, _ := s.FindByTag(ctx, repo, tag)
 	return s.Delete(ctx, repo, rel.ID)
 }
@@ -102,7 +102,7 @@ func (s *releaseService) Update(ctx context.Context, repo string, id int, input 
 	return convertRelease(out), res, err
 }
 
-func (s *releaseService) UpdateByTag(ctx context.Context, repo string, tag string, input *scm.ReleaseInput) (*scm.Release, *scm.Response, error) {
+func (s *releaseService) UpdateByTag(ctx context.Context, repo, tag string, input *scm.ReleaseInput) (*scm.Release, *scm.Response, error) {
 	rel, _, _ := s.FindByTag(ctx, repo, tag)
 	return s.Update(ctx, repo, rel.ID, input)
 }

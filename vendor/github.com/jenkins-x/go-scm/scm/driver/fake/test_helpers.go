@@ -2,13 +2,14 @@ package fake
 
 import (
 	"context"
+	"testing"
+
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // AssertRepoExists asserts that the repository exists
-func AssertRepoExists(t *testing.T, ctx context.Context, client *scm.Client, repo string) *scm.Repository {
+func AssertRepoExists(ctx context.Context, t *testing.T, client *scm.Client, repo string) *scm.Repository {
 	require.NotEmpty(t, repo, "no repository name")
 	require.NotNil(t, client, "no scm client")
 	require.NotNil(t, client.Repositories, "scm client does not support Repositories")
@@ -24,7 +25,7 @@ func AssertRepoExists(t *testing.T, ctx context.Context, client *scm.Client, rep
 }
 
 // AssertNoRepoExists asserts that the repository does not exist
-func AssertNoRepoExists(t *testing.T, ctx context.Context, client *scm.Client, repo string) {
+func AssertNoRepoExists(ctx context.Context, t *testing.T, client *scm.Client, repo string) {
 	require.NotEmpty(t, repo, "no repository name")
 	require.NotNil(t, client, "no scm client")
 	require.NotNil(t, client.Repositories, "scm client does not support Repositories")

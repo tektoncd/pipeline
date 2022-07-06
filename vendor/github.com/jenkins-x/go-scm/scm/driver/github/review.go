@@ -54,14 +54,14 @@ func (s *reviewService) Delete(ctx context.Context, repo string, number, id int)
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
 
-func (s *reviewService) ListComments(ctx context.Context, repo string, prID int, reviewID int, options scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
+func (s *reviewService) ListComments(ctx context.Context, repo string, prID, reviewID int, options scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls/%d/reviews/%d/comments?%s", repo, prID, reviewID, encodeListOptions(options))
 	out := []*reviewComment{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertReviewCommentList(out), res, err
 }
 
-func (s *reviewService) Update(ctx context.Context, repo string, prID int, reviewID int, body string) (*scm.Review, *scm.Response, error) {
+func (s *reviewService) Update(ctx context.Context, repo string, prID, reviewID int, body string) (*scm.Review, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls/%d/reviews/%d", repo, prID, reviewID)
 	in := &reviewUpdateInput{Body: body}
 
@@ -70,7 +70,7 @@ func (s *reviewService) Update(ctx context.Context, repo string, prID int, revie
 	return convertReview(out), res, err
 }
 
-func (s *reviewService) Submit(ctx context.Context, repo string, prID int, reviewID int, input *scm.ReviewSubmitInput) (*scm.Review, *scm.Response, error) {
+func (s *reviewService) Submit(ctx context.Context, repo string, prID, reviewID int, input *scm.ReviewSubmitInput) (*scm.Review, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls/%d/reviews/%d/events", repo, prID, reviewID)
 	in := &reviewSubmitInput{
 		Body:  input.Body,
@@ -82,7 +82,7 @@ func (s *reviewService) Submit(ctx context.Context, repo string, prID int, revie
 	return convertReview(out), res, err
 }
 
-func (s *reviewService) Dismiss(ctx context.Context, repo string, prID int, reviewID int, msg string) (*scm.Review, *scm.Response, error) {
+func (s *reviewService) Dismiss(ctx context.Context, repo string, prID, reviewID int, msg string) (*scm.Review, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls/%d/reviews/%d/dismissals", repo, prID, reviewID)
 	in := &reviewDismissInput{
 		Message: msg,
