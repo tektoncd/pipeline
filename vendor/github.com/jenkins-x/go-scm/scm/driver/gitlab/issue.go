@@ -31,8 +31,8 @@ func (s *issueService) AssignIssue(ctx context.Context, repo string, number int,
 	}
 
 	allAssignees := map[int]struct{}{}
-	for _, assignee := range issue.Assignees {
-		allAssignees[assignee.ID] = struct{}{}
+	for k := range issue.Assignees {
+		allAssignees[issue.Assignees[k].ID] = struct{}{}
 	}
 	for _, l := range logins {
 		u, _, err := s.client.Users.FindLogin(ctx, l)
@@ -65,15 +65,15 @@ func (s *issueService) UnassignIssue(ctx context.Context, repo string, number in
 		return nil, err
 	}
 	var assignees []int
-	for _, assignee := range issue.Assignees {
+	for k := range issue.Assignees {
 		shouldKeep := true
 		for _, l := range logins {
-			if assignee.Login == l {
+			if issue.Assignees[k].Login == l {
 				shouldKeep = false
 			}
 		}
 		if shouldKeep {
-			assignees = append(assignees, assignee.ID)
+			assignees = append(assignees, issue.Assignees[k].ID)
 		}
 	}
 
@@ -81,7 +81,7 @@ func (s *issueService) UnassignIssue(ctx context.Context, repo string, number in
 }
 
 func (s *issueService) ListEvents(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(opts))
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(&opts))
 	out := []*labelEvent{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertLabelEvents(out), res, err
@@ -166,7 +166,7 @@ func (s *issueService) List(ctx context.Context, repo string, opts scm.IssueList
 }
 
 func (s *issueService) ListComments(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/notes?%s", encode(repo), index, encodeListOptions(opts))
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/notes?%s", encode(repo), index, encodeListOptions(&opts))
 	out := []*issueComment{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertIssueCommentList(out), res, err
@@ -196,7 +196,7 @@ func (s *issueService) DeleteComment(ctx context.Context, repo string, number, i
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
 
-func (s *issueService) EditComment(ctx context.Context, repo string, number int, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+func (s *issueService) EditComment(ctx context.Context, repo string, number, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
 	in := &updateNoteOptions{Body: input.Body}
 	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/notes/%d", encode(repo), number, id)
 	out := new(issueComment)
@@ -228,7 +228,7 @@ func (s *issueService) Unlock(ctx context.Context, repo string, number int) (*sc
 	return res, err
 }
 
-func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID int, number int) (*scm.Response, error) {
+func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID, number int) (*scm.Response, error) {
 	in := &updateIssueOptions{
 		MilestoneID: &number,
 	}
@@ -289,6 +289,7 @@ type issueAssignee struct {
 	Username  string `json:"username"`
 }
 
+// nolint
 type issueComment struct {
 	ID     int `json:"id"`
 	Number int `json:"noteable_iid"`
@@ -300,10 +301,6 @@ type issueComment struct {
 	Body      string    `json:"body"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-}
-
-type issueCommentInput struct {
-	Body string `json:"body"`
 }
 
 // helper function to convert from the gitlab issue list to
@@ -352,8 +349,8 @@ func convertIssueAssignees(from *issueAssignee, fromList []*issueAssignee) []scm
 	}
 
 	var userList []scm.User
-	for _, u := range users {
-		userList = append(userList, u)
+	for k := range users {
+		userList = append(userList, users[k])
 	}
 	return userList
 }

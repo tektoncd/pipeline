@@ -331,8 +331,8 @@ github.com/hashicorp/golang-lru/simplelru
 # github.com/imdario/mergo v0.3.12
 ## explicit; go 1.13
 github.com/imdario/mergo
-# github.com/jenkins-x/go-scm v1.10.10
-## explicit; go 1.13
+# github.com/jenkins-x/go-scm v1.11.16
+## explicit; go 1.17
 github.com/jenkins-x/go-scm/pkg/hmac
 github.com/jenkins-x/go-scm/scm
 github.com/jenkins-x/go-scm/scm/driver/fake

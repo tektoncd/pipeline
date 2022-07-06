@@ -33,7 +33,7 @@ func (r *releaseService) releaseMap(repo string) map[int]*scm.Release {
 	return releaseMap
 }
 
-func (r *releaseService) FindByTag(_ context.Context, repo string, tag string) (*scm.Release, *scm.Response, error) {
+func (r *releaseService) FindByTag(_ context.Context, repo, tag string) (*scm.Release, *scm.Response, error) {
 	for _, rel := range r.releaseMap(repo) {
 		if rel.Tag == tag {
 			return rel, nil, nil
@@ -95,7 +95,7 @@ func (r *releaseService) Update(_ context.Context, repo string, number int, inpu
 	return nil, nil, nil
 }
 
-func (r *releaseService) UpdateByTag(ctx context.Context, repo string, tag string, input *scm.ReleaseInput) (*scm.Release, *scm.Response, error) {
+func (r *releaseService) UpdateByTag(ctx context.Context, repo, tag string, input *scm.ReleaseInput) (*scm.Release, *scm.Response, error) {
 	rel, _, _ := r.FindByTag(ctx, repo, tag)
 	return r.Update(ctx, repo, rel.ID, input)
 }
@@ -106,7 +106,7 @@ func (r *releaseService) Delete(_ context.Context, repo string, number int) (*sc
 	return nil, nil
 }
 
-func (r *releaseService) DeleteByTag(ctx context.Context, repo string, tag string) (*scm.Response, error) {
+func (r *releaseService) DeleteByTag(ctx context.Context, repo, tag string) (*scm.Response, error) {
 	rel, _, _ := r.FindByTag(ctx, repo, tag)
 	return r.Delete(ctx, repo, rel.ID)
 }

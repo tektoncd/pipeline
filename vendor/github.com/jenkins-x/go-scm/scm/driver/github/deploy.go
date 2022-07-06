@@ -77,7 +77,7 @@ type deploymentStatusInput struct {
 	AutoInactive    bool   `json:"auto_inactive"`
 }
 
-func (s *deploymentService) Find(ctx context.Context, repoFullName string, deploymentID string) (*scm.Deployment, *scm.Response, error) {
+func (s *deploymentService) Find(ctx context.Context, repoFullName, deploymentID string) (*scm.Deployment, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments/%s", repoFullName, deploymentID)
 	out := new(deployment)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
@@ -99,26 +99,26 @@ func (s *deploymentService) Create(ctx context.Context, repoFullName string, dep
 	return convertDeployment(out, repoFullName), res, wrapError(res, err)
 }
 
-func (s *deploymentService) Delete(ctx context.Context, repoFullName string, deploymentID string) (*scm.Response, error) {
+func (s *deploymentService) Delete(ctx context.Context, repoFullName, deploymentID string) (*scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments/%s", repoFullName, deploymentID)
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
 
-func (s *deploymentService) FindStatus(ctx context.Context, repoFullName string, deploymentID string, statusID string) (*scm.DeploymentStatus, *scm.Response, error) {
+func (s *deploymentService) FindStatus(ctx context.Context, repoFullName, deploymentID, statusID string) (*scm.DeploymentStatus, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments/%s/statuses/%s", repoFullName, deploymentID, statusID)
 	out := new(deploymentStatus)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
 	return convertDeploymentStatus(out), res, wrapError(res, err)
 }
 
-func (s *deploymentService) ListStatus(ctx context.Context, repoFullName string, deploymentID string, opts scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
+func (s *deploymentService) ListStatus(ctx context.Context, repoFullName, deploymentID string, opts scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments/%s/statuses?%s", repoFullName, deploymentID, encodeListOptions(opts))
 	out := []*deploymentStatus{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertDeploymentStatusList(out), res, wrapError(res, err)
 }
 
-func (s *deploymentService) CreateStatus(ctx context.Context, repoFullName string, deploymentID string, deploymentStatusInput *scm.DeploymentStatusInput) (*scm.DeploymentStatus, *scm.Response, error) {
+func (s *deploymentService) CreateStatus(ctx context.Context, repoFullName, deploymentID string, deploymentStatusInput *scm.DeploymentStatusInput) (*scm.DeploymentStatus, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments/%s/statuses", repoFullName, deploymentID)
 	in := convertToDeploymentStatusInput(deploymentStatusInput)
 	out := new(deploymentStatus)

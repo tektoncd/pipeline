@@ -22,9 +22,9 @@ type String struct {
 // does not produce a null String. It also supports
 // unmarshalling a sql.NullString.
 func (s *String) UnmarshalJSON(data []byte) error {
-	var err error
 	var v interface{}
-	if err = json.Unmarshal(data, &v); err != nil {
+	err := json.Unmarshal(data, &v)
+	if err != nil {
 		return err
 	}
 	switch x := v.(type) {

@@ -33,7 +33,7 @@ func New(uri string) (*scm.Client, error) {
 		return nil, err
 	}
 	if !strings.HasSuffix(base.Path, "/") {
-		base.Path = base.Path + "/"
+		base.Path += "/"
 	}
 	client := &wrapper{new(scm.Client)}
 	client.BaseURL = base
@@ -50,7 +50,7 @@ func New(uri string) (*scm.Client, error) {
 	client.Reviews = &reviewService{client}
 	client.Commits = &commitService{client}
 
-	//add the user service to the webhook service so it can be used for fetching users
+	// add the user service to the webhook service so it can be used for fetching users
 	us := &userService{client}
 	client.Users = us
 	client.Webhooks = &webhookService{
@@ -138,7 +138,10 @@ func (c *wrapper) do(ctx context.Context, method, path string, in, out interface
 	// write it to the body of the request.
 	if in != nil {
 		buf := new(bytes.Buffer)
-		json.NewEncoder(buf).Encode(in)
+		err := json.NewEncoder(buf).Encode(in) // #nosec
+		if err != nil {
+			return nil, err
+		}
 		if req.Header == nil {
 			req.Header = map[string][]string{}
 		}

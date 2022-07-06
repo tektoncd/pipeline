@@ -68,7 +68,7 @@ func IsTag(ref string) bool {
 	return strings.HasPrefix(ref, "refs/tags/")
 }
 
-//ConvertStatusInputsToStatuses converts the inputs to status objects
+// ConvertStatusInputsToStatuses converts the inputs to status objects
 func ConvertStatusInputsToStatuses(inputs []*StatusInput) []*Status {
 	answer := []*Status{}
 	for _, input := range inputs {

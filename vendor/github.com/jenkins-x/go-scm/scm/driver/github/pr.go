@@ -17,9 +17,7 @@ import (
 	errors2 "k8s.io/apimachinery/pkg/util/errors"
 )
 
-var (
-	teamRe = regexp.MustCompile(`^(.*)/(.*)$`)
-)
+var teamRe = regexp.MustCompile(`^(.*)/(.*)$`)
 
 type pullService struct {
 	*issueService
@@ -32,7 +30,7 @@ func (s *pullService) Find(ctx context.Context, repo string, number int) (*scm.P
 	return convertPullRequest(out), res, err
 }
 
-func (s *pullService) List(ctx context.Context, repo string, opts scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
+func (s *pullService) List(ctx context.Context, repo string, opts *scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls?%s", repo, encodePullRequestListOptions(opts))
 	out := []*pr{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -102,14 +100,14 @@ func (s *pullService) Update(ctx context.Context, repo string, number int, input
 }
 
 func (s *pullService) RequestReview(ctx context.Context, repo string, number int, logins []string) (*scm.Response, error) {
-	_, resp, err := s.tryRequestReview(ctx, repo, number, logins)
+	resp, err := s.tryRequestReview(ctx, repo, number, logins)
 	// At least one invalid user. Try adding them individually.
 	if err != nil && resp != nil && resp.Status == http.StatusUnprocessableEntity {
 		missing := scm.MissingUsers{
 			Action: "request a PR review from",
 		}
 		for _, user := range logins {
-			_, resp, err = s.tryRequestReview(ctx, repo, number, []string{user})
+			resp, err = s.tryRequestReview(ctx, repo, number, []string{user})
 			if err != nil && resp != nil && resp.Status == http.StatusUnprocessableEntity {
 				missing.Users = append(missing.Users, user)
 			} else if err != nil {
@@ -138,16 +136,16 @@ func (s *pullService) UnrequestReview(ctx context.Context, repo string, number i
 		return res, err
 	}
 	extras := scm.ExtraUsers{Action: "remove the PR review request for"}
-	for _, user := range out.RequestedReviewers {
+	for k := range out.RequestedReviewers {
 		found := false
 		for _, toDelete := range logins {
-			if NormLogin(user.Login) == NormLogin(toDelete) {
+			if NormLogin(out.RequestedReviewers[k].Login) == NormLogin(toDelete) {
 				found = true
 				break
 			}
 		}
 		if found {
-			extras.Users = append(extras.Users, user.Login)
+			extras.Users = append(extras.Users, out.RequestedReviewers[k].Login)
 		}
 	}
 	if len(extras.Users) > 0 {
@@ -173,18 +171,18 @@ func prepareReviewersBody(logins []string, org string) (prReviewers, error) {
 	return body, errors2.NewAggregate(errors)
 }
 
-func (s *pullService) tryRequestReview(ctx context.Context, orgAndRepo string, number int, logins []string) (*scm.PullRequest, *scm.Response, error) {
+func (s *pullService) tryRequestReview(ctx context.Context, orgAndRepo string, number int, logins []string) (*scm.Response, error) {
 	body, err := prepareReviewersBody(logins, strings.Split(orgAndRepo, "/")[0])
 	if err != nil {
 		// At least one team not in org,
 		// let RequestReview handle retries and alerting for each login.
-		return nil, nil, err
+		return nil, err
 	}
 
 	out := new(pr)
 	path := fmt.Sprintf("repos/%s/pulls/%d/requested_reviewers", orgAndRepo, number)
 	res, err := s.client.do(ctx, "POST", path, body, out)
-	return convertPullRequest(out), res, err
+	return res, err
 }
 
 type prReviewers struct {
@@ -299,8 +297,8 @@ func convertPullRequestBranch(src *prBranch) *scm.PullRequestBranch {
 
 func convertUsers(users []user) []scm.User {
 	answer := []scm.User{}
-	for _, u := range users {
-		user := convertUser(&u)
+	for k := range users {
+		user := convertUser(&users[k])
 		if user.Login != "" {
 			answer = append(answer, *user)
 		}

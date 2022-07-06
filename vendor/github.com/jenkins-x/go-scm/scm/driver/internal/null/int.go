@@ -22,9 +22,9 @@ type Int struct {
 // number and null input. 0 will not be considered a null
 // Int. It also supports unmarshalling a sql.NullInt64.
 func (i *Int) UnmarshalJSON(data []byte) error {
-	var err error
 	var v interface{}
-	if err = json.Unmarshal(data, &v); err != nil {
+	err := json.Unmarshal(data, &v)
+	if err != nil {
 		return err
 	}
 	switch x := v.(type) {
@@ -32,8 +32,8 @@ func (i *Int) UnmarshalJSON(data []byte) error {
 		// Unmarshal again, directly to int64, to avoid intermediate float64
 		err = json.Unmarshal(data, &i.Int64)
 	case string:
-		str := string(x)
-		if len(str) == 0 {
+		str := x
+		if str == "" {
 			i.Valid = false
 			return nil
 		}

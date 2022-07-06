@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/jenkins-x/go-scm/scm"
@@ -19,7 +20,7 @@ func (s *pullService) Find(ctx context.Context, repo string, number int) (*scm.P
 	f := s.data
 	val, exists := f.PullRequests[number]
 	if !exists {
-		return nil, nil, fmt.Errorf("Pull request number %d does not exit", number)
+		return nil, nil, fmt.Errorf("pull request number %d does not exit", number)
 	}
 	return val, nil, nil
 }
@@ -28,20 +29,107 @@ func (s *pullService) FindComment(context.Context, string, int, int) (*scm.Comme
 	panic("implement me")
 }
 
-func (s *pullService) List(ctx context.Context, fullName string, opts scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
-	var answer []*scm.PullRequest
+func (s *pullService) List(ctx context.Context, fullName string, opts *scm.PullRequestListOptions) ([]*scm.PullRequest, *scm.Response, error) {
+	var allPullRequests []*scm.PullRequest
 	f := s.data
-	for _, pr := range f.PullRequests {
+
+	keys := make([]int, 0, len(f.PullRequests))
+	for prKey := range f.PullRequests {
+		keys = append(keys, prKey)
+	}
+	sort.Ints(keys)
+	for _, prKey := range keys {
+		pr := f.PullRequests[prKey]
 		repo := pr.Repository()
 		fn := repo.FullName
 		if fn == "" {
 			fn = scm.Join(repo.Namespace, repo.Name)
 		}
 		if fn == fullName {
-			answer = append(answer, pr)
+			allPullRequests = append(allPullRequests, pr)
 		}
 	}
-	return answer, nil, nil
+
+	filteredPullRequests := filterPullRequests(allPullRequests, opts)
+
+	returnStart, returnEnd := paginated(opts.Page, opts.Size, len(filteredPullRequests))
+	return filteredPullRequests[returnStart:returnEnd], nil, nil
+}
+
+func filterPullRequests(requests []*scm.PullRequest, opts *scm.PullRequestListOptions) []*scm.PullRequest {
+	var filteredPullRequests, newFilteredPullRequests []int
+
+	for i := 0; i < len(requests); i++ {
+		filteredPullRequests = append(filteredPullRequests, i)
+	}
+
+	for _, i := range filteredPullRequests {
+		if opts.Closed && requests[i].Closed {
+			newFilteredPullRequests = append(newFilteredPullRequests, i)
+		}
+
+		if opts.Open && !requests[i].Closed {
+			newFilteredPullRequests = append(newFilteredPullRequests, i)
+		}
+	}
+
+	filteredPullRequests = newFilteredPullRequests
+	newFilteredPullRequests = nil
+
+	if opts.CreatedBefore != nil {
+		for _, i := range filteredPullRequests {
+			if requests[i].Created.Before(*opts.CreatedBefore) {
+				newFilteredPullRequests = append(newFilteredPullRequests, i)
+			}
+		}
+
+		filteredPullRequests = newFilteredPullRequests
+		newFilteredPullRequests = nil
+	}
+
+	if opts.UpdatedBefore != nil {
+		for _, i := range filteredPullRequests {
+			if requests[i].Updated.Before(*opts.UpdatedBefore) {
+				newFilteredPullRequests = append(newFilteredPullRequests, i)
+			}
+		}
+
+		filteredPullRequests = newFilteredPullRequests
+		newFilteredPullRequests = nil
+	}
+
+	if opts.CreatedAfter != nil {
+		for _, i := range filteredPullRequests {
+			if requests[i].Created.After(*opts.CreatedAfter) {
+				newFilteredPullRequests = append(newFilteredPullRequests, i)
+			}
+		}
+
+		filteredPullRequests = newFilteredPullRequests
+		newFilteredPullRequests = nil
+	}
+
+	if opts.UpdatedAfter != nil {
+		for _, i := range filteredPullRequests {
+			if requests[i].Updated.After(*opts.UpdatedAfter) {
+				newFilteredPullRequests = append(newFilteredPullRequests, i)
+			}
+		}
+
+		filteredPullRequests = newFilteredPullRequests
+	}
+
+	if len(opts.Labels) > 0 {
+		panic("implement me")
+	}
+
+	returnRequests := []*scm.PullRequest{}
+
+	for _, i := range filteredPullRequests {
+		returnRequests = append(returnRequests, requests[i])
+	}
+
+	return returnRequests
 }
 
 func (s *pullService) ListChanges(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
@@ -133,8 +221,34 @@ func (s *pullService) Merge(ctx context.Context, repo string, number int, mergeO
 	return nil, nil
 }
 
-func (s *pullService) Update(ctx context.Context, repo string, number int, prInput *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
-	panic("implement me")
+func (s *pullService) Update(_ context.Context, fullName string, number int, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
+	f := s.data
+	namespace := ""
+	name := ""
+	paths := strings.SplitN(fullName, "/", 2)
+	if len(paths) > 1 {
+		namespace = paths[0]
+		name = paths[1]
+	}
+	answer := &scm.PullRequest{
+		Number: number,
+		Title:  input.Title,
+		Body:   input.Body,
+		Base: scm.PullRequestBranch{
+			Ref: input.Base,
+			Repo: scm.Repository{
+				Namespace: namespace,
+				Name:      name,
+				FullName:  fullName,
+			},
+		},
+		Head: scm.PullRequestBranch{
+			Ref: input.Head,
+		},
+	}
+	f.PullRequestsCreated[number] = input
+	f.PullRequests[number] = answer
+	return answer, nil, nil
 }
 
 func (s *pullService) Close(context.Context, string, int) (*scm.Response, error) {
@@ -158,7 +272,7 @@ func (s *pullService) CreateComment(ctx context.Context, repo string, number int
 	return answer, nil, nil
 }
 
-func (s *pullService) DeleteComment(ctx context.Context, repo string, number int, id int) (*scm.Response, error) {
+func (s *pullService) DeleteComment(ctx context.Context, repo string, number, id int) (*scm.Response, error) {
 	f := s.data
 	f.PullRequestCommentsDeleted = append(f.PullRequestCommentsDeleted, fmt.Sprintf("%s#%d", repo, id))
 	for num, ics := range f.PullRequestComments {
@@ -172,7 +286,7 @@ func (s *pullService) DeleteComment(ctx context.Context, repo string, number int
 	return nil, fmt.Errorf("could not find issue comment %d", id)
 }
 
-func (s *pullService) EditComment(ctx context.Context, repo string, number int, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+func (s *pullService) EditComment(ctx context.Context, repo string, number, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
 	return nil, nil, scm.ErrNotSupported
 }
 
@@ -206,6 +320,13 @@ func (s *pullService) UnrequestReview(ctx context.Context, repo string, number i
 
 func (s *pullService) Create(_ context.Context, fullName string, input *scm.PullRequestInput) (*scm.PullRequest, *scm.Response, error) {
 	f := s.data
+
+	for i := range f.PullRequests {
+		if f.PullRequests[i].Head.Ref == input.Head && f.PullRequests[i].Base.Ref == input.Base && !f.PullRequests[i].Closed && !f.PullRequests[i].Merged {
+			return nil, nil, fmt.Errorf("open pull request from branch %s to branch %s exists, cannot open a duplicate", input.Head, input.Base)
+		}
+	}
+
 	f.PullRequestID++
 	namespace := ""
 	name := ""
@@ -235,7 +356,7 @@ func (s *pullService) Create(_ context.Context, fullName string, input *scm.Pull
 	return answer, nil, nil
 }
 
-func (s *pullService) SetMilestone(ctx context.Context, repo string, prID int, number int) (*scm.Response, error) {
+func (s *pullService) SetMilestone(ctx context.Context, repo string, prID, number int) (*scm.Response, error) {
 	return nil, scm.ErrNotSupported
 }
 

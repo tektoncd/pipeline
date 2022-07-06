@@ -76,7 +76,7 @@ func encodeIssueSearchOptions(opts scm.SearchOptions) string {
 	return params.Encode()
 }
 
-func encodePullRequestListOptions(opts scm.PullRequestListOptions) string {
+func encodePullRequestListOptions(opts *scm.PullRequestListOptions) string {
 	params := url.Values{}
 	if opts.Page != 0 {
 		params.Set("page", strconv.Itoa(opts.Page))

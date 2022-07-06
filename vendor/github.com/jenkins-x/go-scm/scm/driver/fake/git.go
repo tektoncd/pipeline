@@ -38,9 +38,9 @@ func (s *gitService) FindBranch(ctx context.Context, repo, name string) (*scm.Re
 	panic("implement me")
 }
 
-func (s *gitService) FindCommit(ctx context.Context, repo, SHA string) (*scm.Commit, *scm.Response, error) {
+func (s *gitService) FindCommit(ctx context.Context, repo, sha string) (*scm.Commit, *scm.Response, error) {
 	f := s.data
-	return f.Commits[SHA], nil, nil
+	return f.Commits[sha], nil, nil
 }
 
 func (s *gitService) FindTag(ctx context.Context, repo, name string) (*scm.Reference, *scm.Response, error) {

@@ -131,7 +131,7 @@ type (
 		FindComment(context.Context, string, int, int) (*Comment, *Response, error)
 
 		// Find returns the repository pull request list.
-		List(context.Context, string, PullRequestListOptions) ([]*PullRequest, *Response, error)
+		List(context.Context, string, *PullRequestListOptions) ([]*PullRequest, *Response, error)
 
 		// ListChanges returns the pull request changeset.
 		ListChanges(context.Context, string, int, ListOptions) ([]*Change, *Response, error)

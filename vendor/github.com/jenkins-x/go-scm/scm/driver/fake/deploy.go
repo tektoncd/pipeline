@@ -13,7 +13,7 @@ type deploymentService struct {
 	data   *Data
 }
 
-func (s *deploymentService) Find(ctx context.Context, repoFullName string, deploymentID string) (*scm.Deployment, *scm.Response, error) {
+func (s *deploymentService) Find(ctx context.Context, repoFullName, deploymentID string) (*scm.Deployment, *scm.Response, error) {
 	for _, d := range s.data.Deployments[repoFullName] {
 		if d.ID == deploymentID {
 			return d, nil, nil
@@ -56,7 +56,7 @@ func (s *deploymentService) Create(ctx context.Context, repoFullName string, inp
 	return d, nil, nil
 }
 
-func (s *deploymentService) Delete(ctx context.Context, repoFullName string, deploymentID string) (*scm.Response, error) {
+func (s *deploymentService) Delete(ctx context.Context, repoFullName, deploymentID string) (*scm.Response, error) {
 	deployments := s.data.Deployments[repoFullName]
 	for i, d := range deployments {
 		if d.ID == deploymentID {
@@ -71,7 +71,7 @@ func (s *deploymentService) Delete(ctx context.Context, repoFullName string, dep
 	return nil, scm.ErrNotFound
 }
 
-func (s *deploymentService) FindStatus(ctx context.Context, repoFullName string, deploymentID string, statusID string) (*scm.DeploymentStatus, *scm.Response, error) {
+func (s *deploymentService) FindStatus(ctx context.Context, repoFullName, deploymentID, statusID string) (*scm.DeploymentStatus, *scm.Response, error) {
 	key := scm.Join(repoFullName, deploymentID)
 	for _, d := range s.data.DeploymentStatus[key] {
 		if d.ID == statusID {
@@ -81,12 +81,12 @@ func (s *deploymentService) FindStatus(ctx context.Context, repoFullName string,
 	return nil, nil, scm.ErrNotFound
 }
 
-func (s *deploymentService) ListStatus(ctx context.Context, repoFullName string, deploymentID string, opts scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
+func (s *deploymentService) ListStatus(ctx context.Context, repoFullName, deploymentID string, opts scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
 	key := scm.Join(repoFullName, deploymentID)
 	return s.data.DeploymentStatus[key], nil, nil
 }
 
-func (s *deploymentService) CreateStatus(ctx context.Context, repoFullName string, deploymentID string, input *scm.DeploymentStatusInput) (*scm.DeploymentStatus, *scm.Response, error) {
+func (s *deploymentService) CreateStatus(ctx context.Context, repoFullName, deploymentID string, input *scm.DeploymentStatusInput) (*scm.DeploymentStatus, *scm.Response, error) {
 	key := scm.Join(repoFullName, deploymentID)
 	statuses := s.data.DeploymentStatus[key]
 

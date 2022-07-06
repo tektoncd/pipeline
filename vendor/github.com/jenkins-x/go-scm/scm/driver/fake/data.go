@@ -35,7 +35,7 @@ type Data struct {
 	Deployments                map[string][]*scm.Deployment
 	DeploymentStatus           map[string][]*scm.DeploymentStatus
 
-	//All Labels That Exist In The Repo
+	// All Labels That Exist In The Repo
 	RepoLabelsExisting []string
 	// org/repo#number:label
 	IssueLabelsAdded    []string

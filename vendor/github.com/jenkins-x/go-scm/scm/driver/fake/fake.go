@@ -36,9 +36,7 @@ func NewDefault() (*scm.Client, *Data) {
 
 	client.Username = data.CurrentUser.Login
 	// TODO
-	/*
-		client.Webhooks = &webhookService{client}
-	*/
+
 	return client.Client, data
 }
 

@@ -26,7 +26,7 @@ func (s *repositoryService) FindCombinedStatus(ctx context.Context, repo, ref st
 	}, nil, nil
 }
 
-func (s *repositoryService) FindUserPermission(ctx context.Context, repo string, user string) (string, *scm.Response, error) {
+func (s *repositoryService) FindUserPermission(ctx context.Context, repo, user string) (string, *scm.Response, error) {
 	f := s.data
 	m := f.UserPermissions[repo]
 	perm := ""
@@ -142,12 +142,10 @@ func (s *repositoryService) ListLabels(context.Context, string, scm.ListOptions)
 	return la, nil, nil
 }
 
-func (s *repositoryService) ListStatus(ctx context.Context, repo string, ref string, opt scm.ListOptions) ([]*scm.Status, *scm.Response, error) {
+func (s *repositoryService) ListStatus(ctx context.Context, repo, ref string, opt scm.ListOptions) ([]*scm.Status, *scm.Response, error) {
 	f := s.data
 	result := make([]*scm.Status, 0, len(f.Statuses))
-	for _, status := range f.Statuses[ref] {
-		result = append(result, status)
-	}
+	result = append(result, f.Statuses[ref]...)
 	return result, nil, nil
 }
 
@@ -196,7 +194,7 @@ func (s *repositoryService) UpdateHook(ctx context.Context, repo string, input *
 	return nil, nil, scm.ErrNotSupported
 }
 
-func (s *repositoryService) DeleteHook(ctx context.Context, fullName string, hookID string) (*scm.Response, error) {
+func (s *repositoryService) DeleteHook(ctx context.Context, fullName, hookID string) (*scm.Response, error) {
 	hooks := s.data.Hooks[fullName]
 	for i, h := range hooks {
 		if h.ID == hookID {
@@ -208,7 +206,7 @@ func (s *repositoryService) DeleteHook(ctx context.Context, fullName string, hoo
 	return nil, nil
 }
 
-func (s *repositoryService) CreateStatus(ctx context.Context, repo string, ref string, in *scm.StatusInput) (*scm.Status, *scm.Response, error) {
+func (s *repositoryService) CreateStatus(ctx context.Context, repo, ref string, in *scm.StatusInput) (*scm.Status, *scm.Response, error) {
 	statuses := s.data.Statuses[ref]
 	if statuses == nil {
 		statuses = []*scm.Status{}

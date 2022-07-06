@@ -31,7 +31,7 @@ func (s *releaseService) Find(ctx context.Context, repo string, id int) (*scm.Re
 	panic("gitlab only allows to find a release by tag")
 }
 
-func (s *releaseService) FindByTag(ctx context.Context, repo string, tag string) (*scm.Release, *scm.Response, error) {
+func (s *releaseService) FindByTag(ctx context.Context, repo, tag string) (*scm.Release, *scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/releases/%s", encode(repo), tag)
 	out := new(release)
 	res, err := s.client.do(ctx, "GET", path, nil, out)
@@ -62,7 +62,7 @@ func (s *releaseService) Delete(ctx context.Context, repo string, id int) (*scm.
 	panic("gitlab only allows to delete a release by tag")
 }
 
-func (s *releaseService) DeleteByTag(ctx context.Context, repo string, tag string) (*scm.Response, error) {
+func (s *releaseService) DeleteByTag(ctx context.Context, repo, tag string) (*scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/releases/%s", encode(repo), tag)
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
@@ -72,7 +72,7 @@ func (s *releaseService) Update(ctx context.Context, repo string, id int, input 
 	panic("gitlab only allows to update a release by tag")
 }
 
-func (s *releaseService) UpdateByTag(ctx context.Context, repo string, tag string, input *scm.ReleaseInput) (*scm.Release, *scm.Response, error) {
+func (s *releaseService) UpdateByTag(ctx context.Context, repo, tag string, input *scm.ReleaseInput) (*scm.Release, *scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/releases/%s", encode(repo), tag)
 	in := &releaseInput{}
 	if input.Title != "" {

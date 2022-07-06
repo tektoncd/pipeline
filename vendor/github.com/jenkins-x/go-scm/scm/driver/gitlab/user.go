@@ -41,7 +41,7 @@ func (s *userService) FindLogin(ctx context.Context, login string) (*scm.User, *
 	}
 	for !firstRun || (resp != nil && opts.Page <= resp.Page.Last) {
 		out := []*user{}
-		path := fmt.Sprintf("api/v4/users?search=%s&%s", login, encodeListOptions(opts))
+		path := fmt.Sprintf("api/v4/users?search=%s&%s", login, encodeListOptions(&opts))
 		resp, err = s.client.do(ctx, "GET", path, nil, &out)
 		if err != nil {
 			return nil, nil, err

@@ -13,7 +13,7 @@ type commitService struct {
 }
 
 func (s *commitService) UpdateCommitStatus(ctx context.Context,
-	repo string, sha string, options scm.CommitStatusUpdateOptions) (*scm.CommitStatus, *scm.Response, error) {
+	repo string, sha string, options *scm.CommitStatusUpdateOptions) (*scm.CommitStatus, *scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/statuses/%s", encode(repo), sha)
 
 	out := new(commitStatus)
@@ -23,7 +23,7 @@ func (s *commitService) UpdateCommitStatus(ctx context.Context,
 	return convertCommitStatus(out), res, err
 }
 
-func convertCommitStatusUpdateOptions(from scm.CommitStatusUpdateOptions) commitStatusUpdateOptions {
+func convertCommitStatusUpdateOptions(from *scm.CommitStatusUpdateOptions) commitStatusUpdateOptions {
 	return commitStatusUpdateOptions{
 		ID:          from.ID,
 		Sha:         from.Sha,

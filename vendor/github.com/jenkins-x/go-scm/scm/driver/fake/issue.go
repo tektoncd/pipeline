@@ -147,7 +147,7 @@ func (s *issueService) CreateComment(ctx context.Context, repo string, number in
 	return answer, nil, nil
 }
 
-func (s *issueService) DeleteComment(ctx context.Context, repo string, number int, id int) (*scm.Response, error) {
+func (s *issueService) DeleteComment(ctx context.Context, repo string, number, id int) (*scm.Response, error) {
 	f := s.data
 	f.IssueCommentsDeleted = append(f.IssueCommentsDeleted, fmt.Sprintf("%s#%d", repo, id))
 	for num, ics := range f.IssueComments {
@@ -161,7 +161,7 @@ func (s *issueService) DeleteComment(ctx context.Context, repo string, number in
 	return nil, fmt.Errorf("could not find issue comment %d", id)
 }
 
-func (s *issueService) EditComment(ctx context.Context, repo string, number int, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
+func (s *issueService) EditComment(ctx context.Context, repo string, number, id int, input *scm.CommentInput) (*scm.Comment, *scm.Response, error) {
 	return nil, nil, scm.ErrNotSupported
 }
 
@@ -181,7 +181,7 @@ func (s *issueService) Unlock(context.Context, string, int) (*scm.Response, erro
 	panic("implement me")
 }
 
-func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID int, number int) (*scm.Response, error) {
+func (s *issueService) SetMilestone(ctx context.Context, repo string, issueID, number int) (*scm.Response, error) {
 	return nil, scm.ErrNotSupported
 }
 
