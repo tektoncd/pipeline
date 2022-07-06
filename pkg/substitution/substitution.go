@@ -361,3 +361,8 @@ func ExtractIndexString(s string) string {
 func ExtractIndex(s string) (int, error) {
 	return strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(s, "["), "]"))
 }
+
+// StripStarVarSubExpression strips "$(target[*])"" to get "target"
+func StripStarVarSubExpression(s string) string {
+	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(s, "$("), ")"), "[*]")
+}

@@ -18,6 +18,7 @@ package resources
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -2057,12 +2058,47 @@ func TestApplyWorkspaces(t *testing.T) {
 
 func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 	for _, tc := range []struct {
-		description string
-		results     []v1beta1.PipelineResult
-		taskResults map[string][]v1beta1.TaskRunResult
-		runResults  map[string][]v1alpha1.RunResult
-		expected    []v1beta1.PipelineRunResult
+		description     string
+		results         []v1beta1.PipelineResult
+		taskResults     map[string][]v1beta1.TaskRunResult
+		runResults      map[string][]v1alpha1.RunResult
+		expectedResults []v1beta1.PipelineRunResult
+		expectedError   error
 	}{{
+		description: "non-reference-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("resultName"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+				},
+			},
+		},
+		expectedResults: nil,
+	}, {
+		description: "object-reference-not-exist",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo.key3)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+	}, {
 		description: "apply-array-results",
 		results: []v1beta1.PipelineResult{{
 			Name:  "pipeline-result-1",
@@ -2076,7 +2112,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				},
 			},
 		},
-		expected: []v1beta1.PipelineRunResult{{
+		expectedResults: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
 			Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
 		}},
@@ -2094,9 +2130,87 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				},
 			},
 		},
-		expected: []v1beta1.PipelineRunResult{{
+		expectedResults: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
 			Value: *v1beta1.NewArrayOrString("rae"),
+		}},
+	}, {
+		description: "apply-object-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo[*])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+		},
+		expectedResults: []v1beta1.PipelineRunResult{{
+			Name: "pipeline-result-1",
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+			}),
+		}},
+	}, {
+		description: "object-results-from-array-indexing-and-object-element",
+		results: []v1beta1.PipelineResult{{
+			Name: "pipeline-result-1",
+			Value: *v1beta1.NewObject(map[string]string{
+				"pkey1": "$(tasks.pt1.results.foo.key1)",
+				"pkey2": "$(tasks.pt2.results.bar[1])",
+			}),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+			"pt2": {
+				{
+					Name:  "bar",
+					Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+				},
+			},
+		},
+		expectedResults: []v1beta1.PipelineRunResult{{
+			Name: "pipeline-result-1",
+			Value: *v1beta1.NewObject(map[string]string{
+				"pkey1": "val1",
+				"pkey2": "rae",
+			}),
+		}},
+	}, {
+		description: "apply-object-element",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo.key1)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+		},
+		expectedResults: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("val1"),
 		}},
 	}, {
 		description: "multiple-array-results-multiple-successful-tasks ",
@@ -2121,7 +2235,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				},
 			},
 		},
-		expected: []v1beta1.PipelineRunResult{{
+		expectedResults: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
 			Value: *v1beta1.NewArrayOrString("do", "rae"),
 		}, {
@@ -2137,7 +2251,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
-		expected: nil,
+		expectedResults: nil,
 	}, {
 		description: "invalid-result-variable-no-returned-result",
 		results: []v1beta1.PipelineResult{{
@@ -2150,7 +2264,8 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
-		expected: nil,
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}, {
 		description: "no-taskrun-results-no-returned-results",
 		results: []v1beta1.PipelineResult{{
@@ -2160,7 +2275,8 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {},
 		},
-		expected: nil,
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}, {
 		description: "invalid-taskrun-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
@@ -2173,7 +2289,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
-		expected: nil,
+		expectedResults: nil,
 	}, {
 		description: "invalid-result-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
@@ -2186,15 +2302,16 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("bar"),
 			}},
 		},
-		expected: nil,
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}, {
 		description: "unsuccessful-taskrun-no-returned-result",
 		results: []v1beta1.PipelineResult{{
 			Name:  "foo",
 			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo)"),
 		}},
-		taskResults: map[string][]v1beta1.TaskRunResult{},
-		expected:    nil,
+		taskResults:     map[string][]v1beta1.TaskRunResult{},
+		expectedResults: nil,
 	}, {
 		description: "mixed-success-tasks-some-returned-results",
 		results: []v1beta1.PipelineResult{{
@@ -2210,10 +2327,11 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("rae"),
 			}},
 		},
-		expected: []v1beta1.PipelineRunResult{{
+		expectedResults: []v1beta1.PipelineRunResult{{
 			Name:  "bar",
 			Value: *v1beta1.NewArrayOrString("rae"),
 		}},
+		expectedError: fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}, {
 		description: "multiple-results-multiple-successful-tasks ",
 		results: []v1beta1.PipelineResult{{
@@ -2238,7 +2356,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("rae"),
 			}},
 		},
-		expected: []v1beta1.PipelineRunResult{{
+		expectedResults: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
 			Value: *v1beta1.NewArrayOrString("do"),
 		}, {
@@ -2251,8 +2369,8 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: *v1beta1.NewArrayOrString("$(tasks.customtask.results.foo)"),
 		}},
-		runResults: map[string][]v1alpha1.RunResult{},
-		expected:   nil,
+		runResults:      map[string][]v1alpha1.RunResult{},
+		expectedResults: nil,
 	}, {
 		description: "wrong-customtask-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
@@ -2265,7 +2383,8 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: "bar",
 			}},
 		},
-		expected: nil,
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}, {
 		description: "right-customtask-name-wrong-result-name-no-returned-result",
 		results: []v1beta1.PipelineResult{{
@@ -2278,7 +2397,8 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: "bar",
 			}},
 		},
-		expected: nil,
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}, {
 		description: "unsuccessful-run-no-returned-result",
 		results: []v1beta1.PipelineResult{{
@@ -2288,7 +2408,19 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		runResults: map[string][]v1alpha1.RunResult{
 			"customtask": {},
 		},
-		expected: nil,
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
+	}, {
+		description: "wrong-result-reference-expression",
+		results: []v1beta1.PipelineResult{{
+			Name:  "foo",
+			Value: *v1beta1.NewArrayOrString("$(tasks.task.results.foo.foo.foo)"),
+		}},
+		runResults: map[string][]v1alpha1.RunResult{
+			"customtask": {},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [foo], the referred results don't exist"),
 	}, {
 		description: "multiple-results-custom-and-normal-tasks",
 		results: []v1beta1.PipelineResult{{
@@ -2315,7 +2447,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				Value: *v1beta1.NewArrayOrString("rae"),
 			}},
 		},
-		expected: []v1beta1.PipelineRunResult{{
+		expectedResults: []v1beta1.PipelineRunResult{{
 			Name:  "pipeline-result-1",
 			Value: *v1beta1.NewArrayOrString("do"),
 		}, {
@@ -2324,8 +2456,13 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		}},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received := ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults)
-			if d := cmp.Diff(tc.expected, received); d != "" {
+			received, err := ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults)
+			if tc.expectedError != nil {
+				if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
+					t.Errorf("ApplyTaskResultsToPipelineResults() errors diff %s", diff.PrintWantGot(d))
+				}
+			}
+			if d := cmp.Diff(tc.expectedResults, received); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
 		})
