@@ -228,7 +228,7 @@ func (arrayOrString *ArrayOrString) applyOrCorrect(stringReplacements map[string
 
 	// trim the head "$(" and the tail ")" or "[*])"
 	// i.e. get "params.name" from "$(params.name)" or "$(params.name[*])"
-	trimedStringVal := StripStarVarSubExpression(stringVal)
+	trimedStringVal := substitution.StripStarVarSubExpression(stringVal)
 
 	// if the stringVal is a reference to a string param
 	if _, ok := stringReplacements[trimedStringVal]; ok {
@@ -248,11 +248,6 @@ func (arrayOrString *ArrayOrString) applyOrCorrect(stringReplacements map[string
 		arrayOrString.ObjectVal = objectReplacements[trimedStringVal]
 		arrayOrString.Type = ParamTypeObject
 	}
-}
-
-// StripStarVarSubExpression strips "$(target[*])"" to get "target"
-func StripStarVarSubExpression(s string) string {
-	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(s, "$("), ")"), "[*]")
 }
 
 // NewArrayOrString creates an ArrayOrString of type ParamTypeString or ParamTypeArray, based on

@@ -128,6 +128,9 @@ func GetVarSubstitutionExpressionsForParam(param Param) ([]string, bool) {
 // GetVarSubstitutionExpressionsForPipelineResult extracts all the value between "$(" and ")"" for a pipeline result
 func GetVarSubstitutionExpressionsForPipelineResult(result PipelineResult) ([]string, bool) {
 	allExpressions := validateString(result.Value.StringVal)
+	for _, v := range result.Value.ObjectVal {
+		allExpressions = append(allExpressions, validateString(v)...)
+	}
 	return allExpressions, len(allExpressions) != 0
 }
 

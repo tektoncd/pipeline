@@ -718,3 +718,41 @@ func TestParseResultName(t *testing.T) {
 		})
 	}
 }
+
+func TestGetVarSubstitutionExpressionsForPipelineResult(t *testing.T) {
+	tests := []struct {
+		name   string
+		result v1beta1.PipelineResult
+		want   []string
+	}{{
+		name: "get string result expressions",
+		result: v1beta1.PipelineResult{
+			Name:  "string result",
+			Type:  v1beta1.ResultsTypeString,
+			Value: *v1beta1.NewArrayOrString("$(tasks.task1.results.result1) and $(tasks.task2.results.result2)"),
+		},
+		want: []string{"tasks.task1.results.result1", "tasks.task2.results.result2"},
+	},
+		{
+			name: "get object result expressions",
+			result: v1beta1.PipelineResult{
+				Name: "object result",
+				Type: v1beta1.ResultsTypeString,
+				Value: *v1beta1.NewObject(map[string]string{
+					"key1": "$(tasks.task1.results.result1)",
+					"key2": "$(tasks.task2.results.result2) and another one $(tasks.task3.results.result3)",
+					"key3": "no ref here",
+				}),
+			},
+			want: []string{"tasks.task1.results.result1", "tasks.task2.results.result2", "tasks.task3.results.result3"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			get, _ := v1beta1.GetVarSubstitutionExpressionsForPipelineResult(tt.result)
+			if d := cmp.Diff(tt.want, get); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}

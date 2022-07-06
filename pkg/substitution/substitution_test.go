@@ -573,3 +573,36 @@ func TestTrimSquareBrackets(t *testing.T) {
 		})
 	}
 }
+
+func TestStripStarVarSubExpression(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{{
+		name:  "normal string",
+		input: "hello world",
+		want:  "hello world",
+	}, {
+		name:  "result reference",
+		input: "$(tasks.task.results.result)",
+		want:  "tasks.task.results.result",
+	}, {
+		name:  "result star reference",
+		input: "$(tasks.task.results.result[*])",
+		want:  "tasks.task.results.result",
+	}, {
+		name:  "result index reference",
+		input: "$(tasks.task.results.result[1])",
+		want:  "tasks.task.results.result[1]",
+	},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := substitution.StripStarVarSubExpression(tt.input)
+			if d := cmp.Diff(tt.want, got); d != "" {
+				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
