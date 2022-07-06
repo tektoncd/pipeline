@@ -41,6 +41,10 @@ spec:
         type: array
         description: whole array
         value: $(tasks.task1.results.array-results[*])
+      - name: array-results-from-array-indexing-and-object-elements
+        type: array
+        description: whole array
+        value: ["$(tasks.task1.results.array-results[0])", "$(tasks.task2.results.object-results.foo)"]
       - name: array-indexing-results
         type: string
         description: array element
