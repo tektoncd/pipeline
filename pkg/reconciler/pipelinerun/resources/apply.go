@@ -303,6 +303,9 @@ func ApplyTaskResultsToPipelineResults(
 							intIdx, _ := strconv.Atoi(stringIdx)
 							if intIdx < len(resultValue.ArrayVal) {
 								stringReplacements[variable] = resultValue.ArrayVal[intIdx]
+							} else {
+								invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
+								validPipelineResult = false
 							}
 						} else {
 							arrayReplacements[substitution.StripStarVarSubExpression(variable)] = resultValue.ArrayVal

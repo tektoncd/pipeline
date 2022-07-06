@@ -1005,6 +1005,14 @@ Array and object results is supported as alpha feature, see [`Array Results` in 
 
 ```yaml
     results:
+      - name: array-results
+        type: array
+        description: whole array
+        value: $(tasks.task1.results.array-results[*])
+      - name: array-indexing-results
+        type: string
+        description: array element
+        value: $(tasks.task1.results.array-results[1])
       - name: object-results
         type: object
         description: whole object

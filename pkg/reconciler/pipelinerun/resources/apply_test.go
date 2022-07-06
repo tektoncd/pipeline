@@ -2080,6 +2080,22 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		},
 		expectedResults: nil,
 	}, {
+		description: "array-index-out-of-bound",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo[4])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+				},
+			},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+	}, {
 		description: "object-reference-not-exist",
 		results: []v1beta1.PipelineResult{{
 			Name:  "pipeline-result-1",
@@ -2190,6 +2206,33 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 				"pkey1": "val1",
 				"pkey2": "rae",
 			}),
+		}},
+	}, {
+		description: "array-results-from-array-indexing-and-object-element",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo.key1)", "$(tasks.pt2.results.bar[1])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+			"pt2": {
+				{
+					Name:  "bar",
+					Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+				},
+			},
+		},
+		expectedResults: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("val1", "rae"),
 		}},
 	}, {
 		description: "apply-object-element",
