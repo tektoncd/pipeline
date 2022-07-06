@@ -46,7 +46,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
-	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipeline"
+	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"

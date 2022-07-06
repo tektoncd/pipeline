@@ -25,7 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
-	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipeline"
+	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/oci"
 	"github.com/tektoncd/pipeline/pkg/remote/resolution"
