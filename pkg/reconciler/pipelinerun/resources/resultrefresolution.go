@@ -22,6 +22,8 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resolution"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/state"
 )
 
 // ResolvedResultRefs represents all of the ResolvedResultRef for a pipeline task
@@ -38,7 +40,7 @@ type ResolvedResultRef struct {
 }
 
 // ResolveResultRef resolves any ResultReference that are found in the target ResolvedPipelineTask
-func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
+func ResolveResultRef(pipelineRunState state.PipelineRunState, target *resolution.ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
 	resolvedResultRefs, pt, err := convertToResultRefs(pipelineRunState, target)
 	if err != nil {
 		return nil, pt, err
@@ -47,7 +49,7 @@ func ResolveResultRef(pipelineRunState PipelineRunState, target *ResolvedPipelin
 }
 
 // ResolveResultRefs resolves any ResultReference that are found in the target ResolvedPipelineTask
-func ResolveResultRefs(pipelineRunState PipelineRunState, targets PipelineRunState) (ResolvedResultRefs, string, error) {
+func ResolveResultRefs(pipelineRunState state.PipelineRunState, targets state.PipelineRunState) (ResolvedResultRefs, string, error) {
 	var allResolvedResultRefs ResolvedResultRefs
 	for _, target := range targets {
 		resolvedResultRefs, pt, err := convertToResultRefs(pipelineRunState, target)
@@ -73,7 +75,7 @@ func validateArrayResultsIndex(allResolvedResultRefs ResolvedResultRefs) (Resolv
 
 // extractResultRefs resolves any ResultReference that are found in param or pipeline result
 // Returns nil if none are found
-func extractResultRefsForParam(pipelineRunState PipelineRunState, param v1beta1.Param) (ResolvedResultRefs, error) {
+func extractResultRefsForParam(pipelineRunState state.PipelineRunState, param v1beta1.Param) (ResolvedResultRefs, error) {
 	expressions, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param)
 	if ok {
 		return extractResultRefs(expressions, pipelineRunState)
@@ -81,7 +83,7 @@ func extractResultRefsForParam(pipelineRunState PipelineRunState, param v1beta1.
 	return nil, nil
 }
 
-func extractResultRefs(expressions []string, pipelineRunState PipelineRunState) (ResolvedResultRefs, error) {
+func extractResultRefs(expressions []string, pipelineRunState state.PipelineRunState) (ResolvedResultRefs, error) {
 	resultRefs := v1beta1.NewResultRefs(expressions)
 	var resolvedResultRefs ResolvedResultRefs
 	for _, resultRef := range resultRefs {
@@ -129,7 +131,7 @@ func removeDup(refs ResolvedResultRefs) ResolvedResultRefs {
 // found they are resolved to a value by searching pipelineRunState. The list of resolved
 // references are returned. If an error is encountered due to an invalid result reference
 // then a nil list and error is returned instead.
-func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
+func convertToResultRefs(pipelineRunState state.PipelineRunState, target *resolution.ResolvedPipelineTask) (ResolvedResultRefs, string, error) {
 	var resolvedResultRefs ResolvedResultRefs
 	for _, ref := range v1beta1.PipelineTaskResultRefs(target.PipelineTask) {
 		resolved, pt, err := resolveResultRef(pipelineRunState, ref)
@@ -141,12 +143,12 @@ func convertToResultRefs(pipelineRunState PipelineRunState, target *ResolvedPipe
 	return resolvedResultRefs, "", nil
 }
 
-func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultRef) (*ResolvedResultRef, string, error) {
+func resolveResultRef(pipelineState state.PipelineRunState, resultRef *v1beta1.ResultRef) (*ResolvedResultRef, string, error) {
 	referencedPipelineTask := pipelineState.ToMap()[resultRef.PipelineTask]
 	if referencedPipelineTask == nil {
 		return nil, resultRef.PipelineTask, fmt.Errorf("could not find task %q referenced by result", resultRef.PipelineTask)
 	}
-	if !referencedPipelineTask.isSuccessful() {
+	if !referencedPipelineTask.IsSuccessful() {
 		return nil, resultRef.PipelineTask, fmt.Errorf("task %q referenced by result was not successful", referencedPipelineTask.PipelineTask.Name)
 	}
 
