@@ -569,9 +569,29 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Steps: validSteps,
 		},
 		expectedError: apis.FieldError{
-			Message: fmt.Sprintf("The format of following variable names is invalid. %s", []string{"", "0ab", "a^b", "f oo"}),
+			Message: fmt.Sprintf("The format of following array and string variable names is invalid: %s", []string{"", "0ab", "a^b", "f oo"}),
 			Paths:   []string{"params"},
-			Details: "Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)\nMust begin with a letter or an underscore (_)",
+			Details: "String/Array Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)\nMust begin with a letter or an underscore (_)",
+		},
+	}, {
+		name: "invalid object param format - object param name and key name shouldn't contain dots.",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "invalid.name1",
+				Description: "object param name contains dots",
+				Properties: map[string]v1beta1.PropertySpec{
+					"invalid.key1": {},
+					"mykey2":       {},
+				},
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("Object param name and key name format is invalid: %v", map[string][]string{
+				"invalid.name1": {"invalid.key1"},
+			}),
+			Paths:   []string{"params"},
+			Details: "Object Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_) \nMust begin with a letter or an underscore (_)",
 		},
 	}, {
 		name: "duplicated param names",
