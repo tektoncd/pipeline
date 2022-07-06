@@ -443,20 +443,35 @@ steps:
 You can specify parameters, such as compilation flags or artifact names, that you want to supply to the `Task` at execution time.
  `Parameters` are passed to the `Task` from its corresponding `TaskRun`.
 
-Parameter names:
-
-- Must only contain alphanumeric characters, hyphens (`-`), underscores (`_`), and dots (`.`).
+#### Parameter name
+Parameter name format:
+- Must only contain alphanumeric characters, hyphens (`-`), underscores (`_`), and dots (`.`). However, `object` parameter name and its key names can't contain dots (`.`). See the reasons in the third item added in this [PR](https://github.com/tektoncd/community/pull/711).
 - Must begin with a letter or an underscore (`_`).
 
-For example, `foo.Is-Bar_` is a valid parameter name, but `barIsBa$` or `0banana` are not.
+For example, `foo.Is-Bar_` is a valid parameter name for string or array type, but is invalid for object parameter because it contains dots. On the other hand, `barIsBa$` or `0banana` are invalid for all types.
 
 > NOTE:
 > 1. Parameter names are **case insensitive**. For example, `APPLE` and `apple` will be treated as equal. If they appear in the same TaskSpec's params, it will be rejected as invalid.
 > 2. If a parameter name contains dots (.), it must be referenced by using the [bracket notation](#substituting-parameters-and-resources) with either single or double quotes i.e. `$(params['foo.bar'])`, `$(params["foo.bar"])`. See the following example for more information.
 
-Each declared parameter has a `type` field, which can be set to either `array` or `string`. `array` is useful in cases where the number
-of compilation flags being supplied to a task varies throughout the `Task's` execution. If not specified, the `type` field defaults to
-`string`. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
+#### Parameter type
+Each declared parameter has a `type` field, which can be set to `string`, `array` or `object` (alpha feature). 
+
+- `object` type
+`object` type is useful in cases where users want to group related parameters. For example, an object parameter called `gitrepo` can contain both the `url` and the `commmit` to group related information.
+
+  > NOTE: 
+  > - `object` param is an `alpha` feature and gated by the `alpha` feature flag.
+  > - `object` param must specify the `properties` section to define the schema i.e. what keys are available for this object param. See how to define `properties` section in the following example and the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#defaulting-to-string-types-for-values).
+  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object. See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
+
+
+
+- `array` type 
+`array` type is useful in cases where the number of compilation flags being supplied to a task varies throughout the `Task's` execution. 
+
+- `string` type
+If not specified, the `type` field defaults to `string`. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
 
 The following example illustrates the use of `Parameters` in a `Task`. The `Task` declares two input parameters named `flags`
 (of type `array`) and `someURL` (of type `string`), and uses them in the `steps.args` list. You can expand parameters of type `array`
@@ -471,6 +486,13 @@ metadata:
   name: task-with-parameters
 spec:
   params:
+    - name: gitrepo
+      type: object
+      properties:
+        url:
+          type: string
+        commit:
+          type: string
     - name: flags
       type: array
     - name: someURL
@@ -482,6 +504,12 @@ spec:
     - name: echo-output
       description: "successful echo"
   steps:
+    - name: do-the-clone
+      image: some-git-image
+      args: [
+        "-url=$(params.gitrepo.url)",
+        "-revision=$(params.gitrepo.commit)"
+      ]
     - name: build
       image: my-builder
       args: [
@@ -499,7 +527,7 @@ spec:
         echo $(params["foo.bar"]) | tee $(results.echo-output.path)
 ```
 
-The following `TaskRun` supplies a dynamic number of strings within the `flags` parameter:
+The following `TaskRun` supplies the value for the parameter `gitrepo`, `flags` and `someURL`:
 
 ```yaml
 apiVersion: tekton.dev/v1beta1
@@ -510,6 +538,10 @@ spec:
   taskRef:
     name: task-with-parameters
   params:
+    - name: gitrepo
+      value:
+        url: "abc.com"
+        commit: "c12b72"
     - name: flags
       value:
         - "--set"
@@ -520,6 +552,7 @@ spec:
       value: "http://google.com"
 ```
 
+#### Default value
 Parameter declarations (within Tasks and Pipelines) can include default values which will be used if the parameter is
 not specified, for example to specify defaults for both string params and array params
 ([full example](../examples/v1beta1/taskruns/array-default.yaml)) :
