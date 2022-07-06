@@ -434,6 +434,7 @@ Features currently in "alpha" are:
 | [Matrix](./matrix.md)                                                                                 | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                                      |                                                                      |                             |
 | [Embedded Statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses)           | [TEP-0100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md) |                                                                |                             |
 | [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration)   | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)             |                                                                      |                             |
+| [Projected Workspace Type](workspaces.md#projected)                                                   |                  |                                                                |                             |
 | [CSI Workspace Type](workspaces.md#csi)                                                               |                  |                                                                |                             |
 
 ## Configuring High Availability

@@ -83,6 +83,27 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 			},
 		},
 	}, {
+		name: "Valid projected",
+		binding: &v1beta1.WorkspaceBinding{
+			Name: "beth",
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{{
+					ConfigMap: &corev1.ConfigMapProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "a-configmap-name",
+						},
+					},
+				}, {
+					Secret: &corev1.SecretProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "my-secret",
+						},
+					},
+				}},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
 		name: "Valid csi",
 		binding: &v1beta1.WorkspaceBinding{
 			Name: "beth",
@@ -145,6 +166,19 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 			Name:   "beth",
 			Secret: &corev1.SecretVolumeSource{},
 		},
+	}, {
+		name: "projected workspace should be disallowed without alpha feature gate",
+		binding: &v1beta1.WorkspaceBinding{
+			Name:      "beth",
+			Projected: &corev1.ProjectedVolumeSource{},
+		},
+	}, {
+		name: "Provide projected without sources",
+		binding: &v1beta1.WorkspaceBinding{
+			Name:      "beth",
+			Projected: &corev1.ProjectedVolumeSource{},
+		},
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "csi workspace should be disallowed without alpha feature gate",
 		binding: &v1beta1.WorkspaceBinding{

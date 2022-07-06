@@ -116,6 +116,65 @@ func TestCreateVolumes(t *testing.T) {
 			},
 		},
 	}, {
+		name: "binding a single workspace with projected",
+		workspaces: []v1beta1.WorkspaceBinding{{
+			Name: "custom",
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{{
+					ConfigMap: &corev1.ConfigMapProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "foobarconfigmap",
+						},
+						Items: []corev1.KeyToPath{{
+							Key:  "foobar",
+							Path: "foobar.txt",
+						}},
+					},
+				}, {
+					Secret: &corev1.SecretProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "foobarsecret",
+						},
+						Items: []corev1.KeyToPath{{
+							Key:  "foobar",
+							Path: "foobar.txt",
+						}},
+					},
+				}},
+			},
+			SubPath: "/foo/bar/baz",
+		}},
+		expectedVolumes: map[string]corev1.Volume{
+			"custom": {
+				Name: "ws-6nl7g",
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{{
+							ConfigMap: &corev1.ConfigMapProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foobarconfigmap",
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  "foobar",
+									Path: "foobar.txt",
+								}},
+							},
+						}, {
+							Secret: &corev1.SecretProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foobarsecret",
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  "foobar",
+									Path: "foobar.txt",
+								}},
+							},
+						}},
+					},
+				},
+			},
+		},
+	}, {
 		name:            "0 workspace bindings",
 		workspaces:      []v1beta1.WorkspaceBinding{},
 		expectedVolumes: map[string]corev1.Volume{},
@@ -135,7 +194,7 @@ func TestCreateVolumes(t *testing.T) {
 		}},
 		expectedVolumes: map[string]corev1.Volume{
 			"custom": {
-				Name: "ws-6nl7g",
+				Name: "ws-j2tds",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
@@ -143,7 +202,7 @@ func TestCreateVolumes(t *testing.T) {
 				},
 			},
 			"even-more-custom": {
-				Name: "ws-j2tds",
+				Name: "ws-vr6ds",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "myotherpvc",
@@ -168,7 +227,7 @@ func TestCreateVolumes(t *testing.T) {
 		}},
 		expectedVolumes: map[string]corev1.Volume{
 			"custom": {
-				Name: "ws-vr6ds",
+				Name: "ws-l22wn",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
@@ -177,7 +236,7 @@ func TestCreateVolumes(t *testing.T) {
 			},
 			"custom2": {
 				// Since it is the same PVC source, it can't be added twice with two different names
-				Name: "ws-vr6ds",
+				Name: "ws-l22wn",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
@@ -271,6 +330,80 @@ func TestApply(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "binding a single workspace with projected",
+		ts: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name: "custom",
+			},
+			}},
+		workspaces: []v1beta1.WorkspaceBinding{{
+			Name: "custom",
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{{
+					ConfigMap: &corev1.ConfigMapProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "foobarconfigmap",
+						},
+						Items: []corev1.KeyToPath{{
+							Key:  "foobar",
+							Path: "foobar.txt",
+						}},
+					},
+				}, {
+					Secret: &corev1.SecretProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "foobarsecret",
+						},
+						Items: []corev1.KeyToPath{{
+							Key:  "foobar",
+							Path: "foobar.txt",
+						}},
+					},
+				}},
+			},
+			SubPath: "/foo/bar/baz",
+		}},
+		expectedTaskSpec: v1beta1.TaskSpec{
+			StepTemplate: &v1beta1.StepTemplate{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "ws-mssqb",
+					MountPath: "/workspace/custom",
+					SubPath:   "/foo/bar/baz", // TODO: what happens when you use subPath with emptyDir
+				}},
+			},
+			Volumes: []corev1.Volume{{
+				Name: "ws-mssqb",
+				VolumeSource: corev1.VolumeSource{
+					Projected: &corev1.ProjectedVolumeSource{
+						Sources: []corev1.VolumeProjection{{
+							ConfigMap: &corev1.ConfigMapProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foobarconfigmap",
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  "foobar",
+									Path: "foobar.txt",
+								}},
+							},
+						}, {
+							Secret: &corev1.SecretProjection{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "foobarsecret",
+								},
+								Items: []corev1.KeyToPath{{
+									Key:  "foobar",
+									Path: "foobar.txt",
+								}},
+							},
+						}},
+					},
+				},
+			}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name: "custom",
+			}},
+		},
+	}, {
 		name: "task spec already has volumes and stepTemplate",
 		ts: v1beta1.TaskSpec{
 			StepTemplate: &v1beta1.StepTemplate{
@@ -302,7 +435,7 @@ func TestApply(t *testing.T) {
 					Name:      "awesome-volume",
 					MountPath: "/",
 				}, {
-					Name:      "ws-mssqb",
+					Name:      "ws-78c5n",
 					MountPath: "/workspace/custom",
 					SubPath:   "/foo/bar/baz", // TODO: what happens when you use subPath with emptyDir
 				}},
@@ -313,7 +446,7 @@ func TestApply(t *testing.T) {
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			}, {
-				Name: "ws-mssqb",
+				Name: "ws-78c5n",
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{
 						Medium: corev1.StorageMediumMemory,
@@ -361,24 +494,24 @@ func TestApply(t *testing.T) {
 		expectedTaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "ws-78c5n",
+					Name:      "ws-6nl7g",
 					MountPath: "/workspace/custom",
 					SubPath:   "/foo/bar/baz",
 				}, {
-					Name:      "ws-6nl7g",
+					Name:      "ws-j2tds",
 					MountPath: "/workspace/even-more-custom",
 					SubPath:   "",
 				}},
 			},
 			Volumes: []corev1.Volume{{
-				Name: "ws-78c5n",
+				Name: "ws-6nl7g",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
 					},
 				},
 			}, {
-				Name: "ws-6nl7g",
+				Name: "ws-j2tds",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "myotherpvc",
@@ -415,17 +548,17 @@ func TestApply(t *testing.T) {
 		expectedTaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "ws-j2tds",
+					Name:      "ws-vr6ds",
 					MountPath: "/workspace/custom",
 					SubPath:   "/foo/bar/baz",
 				}, {
-					Name:      "ws-j2tds",
+					Name:      "ws-vr6ds",
 					MountPath: "/workspace/custom2",
 					SubPath:   "/very/professional/work/space",
 				}},
 			},
 			Volumes: []corev1.Volume{{
-				Name: "ws-j2tds",
+				Name: "ws-vr6ds",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
@@ -455,12 +588,12 @@ func TestApply(t *testing.T) {
 		expectedTaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "ws-l22wn",
+					Name:      "ws-twkr2",
 					MountPath: "/my/fancy/mount/path",
 				}},
 			},
 			Volumes: []corev1.Volume{{
-				Name: "ws-l22wn",
+				Name: "ws-twkr2",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
@@ -490,13 +623,13 @@ func TestApply(t *testing.T) {
 		expectedTaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "ws-twkr2",
+					Name:      "ws-mnq6l",
 					MountPath: "/my/fancy/mount/path",
 					ReadOnly:  true,
 				}},
 			},
 			Volumes: []corev1.Volume{{
-				Name: "ws-twkr2",
+				Name: "ws-mnq6l",
 				VolumeSource: corev1.VolumeSource{
 					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: "mypvc",
@@ -528,14 +661,14 @@ func TestApply(t *testing.T) {
 		expectedTaskSpec: v1beta1.TaskSpec{
 			StepTemplate: &v1beta1.StepTemplate{
 				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "ws-mnq6l",
+					Name:      "ws-hvpvf",
 					MountPath: "/workspace/csi",
 					SubPath:   "/foo/bar/baz",
 					ReadOnly:  true,
 				}},
 			},
 			Volumes: []corev1.Volume{{
-				Name: "ws-mnq6l",
+				Name: "ws-hvpvf",
 				VolumeSource: corev1.VolumeSource{
 					CSI: &corev1.CSIVolumeSource{
 						Driver: "secrets-store.csi.k8s.io",

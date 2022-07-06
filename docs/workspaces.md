@@ -512,6 +512,29 @@ workspaces:
       secretName: my-secret
 ```
 
+##### `projected`
+
+This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+for projected volume source to function.
+
+The `projected` field references a [`projected` volume](https://kubernetes.io/docs/concepts/storage/projected-volumes).
+Using a `projected` volume has the following limitations:
+
+- `projected` volume sources are always mounted as read-only. `Steps` cannot write to them and will error out if they try.
+- The volumes you want to project as a `Workspace` must exist prior to submitting the `TaskRun`.
+- The following volumes can be projected: `configMap`, `secret`, `serviceAccountToken` and `downwardApi`
+
+```yaml
+workspaces:
+  - name: myworkspace
+    projected:
+      sources:
+        - configMap:
+            name: my-configmap
+        - secret:
+            name: my-secret
+```
+
 ##### `csi`
 
 This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
