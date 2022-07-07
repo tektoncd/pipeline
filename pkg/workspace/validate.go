@@ -26,11 +26,11 @@ import (
 
 // ValidateBindings will return an error if the bound workspaces in binds don't satisfy the declared
 // workspaces in decls.
-func ValidateBindings(decls []v1beta1.WorkspaceDeclaration, binds []v1beta1.WorkspaceBinding) error {
+func ValidateBindings(ctx context.Context, decls []v1beta1.WorkspaceDeclaration, binds []v1beta1.WorkspaceBinding) error {
 	// This will also be validated at webhook time but in case the webhook isn't invoked for some
 	// reason we'll invoke the same validation here.
 	for _, b := range binds {
-		if err := b.Validate(context.Background()); err != nil {
+		if err := b.Validate(ctx); err != nil {
 			return fmt.Errorf("binding %q is invalid: %v", b.Name, err)
 		}
 	}
