@@ -78,9 +78,16 @@ func main() {
 	gitcreds.AddFlags(flag.CommandLine)
 	dockercreds.AddFlags(flag.CommandLine)
 
-	flag.Parse()
+	// Split args with `--` for the entrypoint and what it should execute
+	args, commandArgs := extractArgs(os.Args[1:])
 
-	if err := subcommands.Process(flag.Args()); err != nil {
+	// We are using the global variable flag.CommandLine here to be able
+	// to define what args it should parse.
+	// flag.Parse() does flag.CommandLine.Parse(os.Args[1:])
+	if err := flag.CommandLine.Parse(args); err != nil {
+		os.Exit(1)
+	}
+	if err := subcommands.Process(flag.CommandLine.Args()); err != nil {
 		log.Println(err.Error())
 		switch err.(type) {
 		case subcommands.SubcommandSuccessful:
@@ -123,7 +130,7 @@ func main() {
 	}
 
 	e := entrypoint.Entrypointer{
-		Command:             append(cmd, flag.Args()...),
+		Command:             append(cmd, commandArgs...),
 		WaitFiles:           strings.Split(*waitFiles, ","),
 		WaitFileContent:     *waitFileContent,
 		PostFile:            *postFile,
