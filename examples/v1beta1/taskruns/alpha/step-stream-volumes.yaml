@@ -1,0 +1,56 @@
+# This example TaskRun demonstrates how to redirect stdout and
+# stderr for steps with a workspace.
+kind: TaskRun
+apiVersion: tekton.dev/v1beta1
+metadata:
+  generateName: step-stream-vol-tr-
+spec:
+  taskSpec:
+    volumes:
+      - name: data
+    steps:
+      - name: echo
+        image: docker.io/library/bash
+        volumeMounts:
+          - name: data
+            mountPath: /data
+        script: echo -n "hello world"
+        stdoutConfig:
+          path: /data/step-echo-stdout
+      - name: error
+        image: docker.io/library/bash
+        onError: continue
+        volumeMounts:
+          - name: data
+            mountPath: /data
+        script: echo "not an error" && nonsense
+        stdoutConfig:
+          path: /data/step-error-stdout
+        stderrConfig:
+          path: /data/step-error-stderr
+      - name: combined
+        image: docker.io/library/bash
+        onError: continue
+        volumeMounts:
+          - name: data
+            mountPath: /data
+        script: echo "combined message" && nonsense
+        stdoutConfig:
+          path: /data/step-combined
+        stderrConfig:
+          path: /data/step-combined
+      - name: cat
+        image: docker.io/library/bash
+        volumeMounts:
+          - name: data
+            mountPath: /data
+        script: cat /data/step-echo-stdout
+        stdoutConfig:
+          path: /data/step-cat-stdout
+      - name: log-data
+        image: docker.io/library/bash
+        volumeMounts:
+          - name: data
+            mountPath: /data
+        workingDir: /data
+        script: find /data -type f -exec printf "--- {}\n" \; -exec cat {} \; -exec printf "\n---\n\n" \;

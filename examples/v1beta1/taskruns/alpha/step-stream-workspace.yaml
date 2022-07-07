@@ -1,0 +1,81 @@
+# This example TaskRun demonstrates how to redirect stdout and
+# stderr for steps with a workspace.
+kind: TaskRun
+apiVersion: tekton.dev/v1beta1
+metadata:
+  generateName: step-stream-ws-tr-
+spec:
+  taskSpec:
+    workspaces:
+      - name: data
+    results:
+      - name: digest
+      - name: error
+      - name: error2
+    steps:
+      - image: gcr.io/go-containerregistry/crane
+        workspaces:
+          - name: data
+        args:
+          - digest
+          - docker.io/library/bash
+        stdoutConfig:
+          path: $(results.digest.path)
+      - image: gcr.io/go-containerregistry/crane
+        workspaces:
+          - name: data
+        args:
+          - digest
+          - docker.io/library/bash
+        stdoutConfig:
+          path: $(workspaces.data.path)/stdout.txt
+      - image: gcr.io/go-containerregistry/crane
+        workspaces:
+          - name: data
+        onError: continue
+        args:
+          - wrong
+        stderrConfig:
+          path: $(workspaces.data.path)/stderr.txt
+      - image: gcr.io/go-containerregistry/crane
+        onError: continue
+        args:
+          - wrong
+        stderrConfig:
+          path: $(results.error2.path)
+      - image: docker.io/library/bash
+        workspaces:
+          - name: data
+        onError: continue
+        args:
+          - -c
+          - "echo foobar >$(workspaces.data.path)/foobar.txt"
+      - image: docker.io/library/bash
+        onError: continue
+        args:
+          - -c
+          - "2>$(results.error.path) >&2 echo -n fooerr"
+      - image: docker.io/library/bash
+        workspaces:
+          - name: data
+        workingDir: $(workspaces.data.path)
+        onError: continue
+        script: |
+          echo local >out.txt
+      - image: docker.io/library/bash
+        workspaces:
+          - name: data
+        onError: continue
+        script: |
+          echo -n "digest: "
+          if [[ -f $(results.digest.path) ]]; then cat $(results.digest.path); fi
+          echo " "
+          echo -n "error: "
+          if [[ -f $(results.error.path) ]]; then cat $(results.error.path); fi
+          echo "ls -alR /workspace"
+          ls -alR /workspace
+          echo "ls /tekton/results"
+          ls -al /tekton/results
+  workspaces:
+    - name: data
+      emptyDir: {}

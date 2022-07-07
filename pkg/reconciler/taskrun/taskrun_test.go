@@ -1239,6 +1239,171 @@ spec:
 	}
 }
 
+func TestAlphaReconcile(t *testing.T) {
+	names.TestingSeed()
+	taskRunWithOutputConfig := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-with-output-config
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - command:
+        - /mycmd
+        image: myimage
+        name: mycontainer
+        stdoutConfig:
+          path: stdout.txt
+`)
+
+	taskRunWithOutputConfigAndWorkspace := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-with-output-config-ws
+  namespace: foo
+spec:
+  workspaces:
+    - name: data
+      emptyDir: {}
+  taskSpec:
+    workspaces:
+      - name: data
+    steps:
+      - command:
+        - /mycmd
+        image: myimage
+        name: mycontainer
+        stdoutConfig:
+          path: stdout.txt
+`)
+
+	taskruns := []*v1beta1.TaskRun{
+		taskRunWithOutputConfig, taskRunWithOutputConfigAndWorkspace,
+	}
+
+	cms := []*corev1.ConfigMap{{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-api-fields": config.AlphaAPIFields,
+		},
+	}}
+	d := test.Data{
+		ConfigMaps:        cms,
+		TaskRuns:          taskruns,
+		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask, outputTask},
+		ClusterTasks:      []*v1beta1.ClusterTask{clustertask},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
+	}
+	for _, tc := range []struct {
+		name       string
+		taskRun    *v1beta1.TaskRun
+		wantPod    *corev1.Pod
+		wantEvents []string
+	}{{
+		name:    "taskrun-with-output-config",
+		taskRun: taskRunWithOutputConfig,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
+		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
+			name:       "mycontainer",
+			image:      "myimage",
+			stdoutPath: "stdout.txt",
+			cmd:        "/mycmd",
+		}}),
+	}, {
+		name:    "taskrun-with-output-config-ws",
+		taskRun: taskRunWithOutputConfigAndWorkspace,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
+		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "foo", config.DefaultServiceAccountValue, false,
+			[]corev1.Volume{{
+				Name: "ws-9l9zj",
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			}},
+			[]stepForExpectedPod{{
+				name:       "mycontainer",
+				image:      "myimage",
+				stdoutPath: "stdout.txt",
+				cmd:        "/mycmd",
+			}}),
+			[]corev1.VolumeMount{{
+				Name:      "ws-9l9zj",
+				MountPath: "/workspace/data",
+			}}),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+			saName := tc.taskRun.Spec.ServiceAccountName
+			if saName == "" {
+				saName = "default"
+			}
+			createServiceAccount(t, testAssets, saName, tc.taskRun.Namespace)
+
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("expected no error. Got error %v", err)
+			}
+			if len(clients.Kube.Actions()) == 0 {
+				t.Errorf("Expected actions to be logged in the kubeclient, got none")
+			}
+
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition == nil || condition.Status != corev1.ConditionUnknown {
+				t.Errorf("Expected invalid TaskRun to have in progress status, but had %v", condition)
+			}
+			if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
+				t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
+			}
+
+			if tr.Status.PodName == "" {
+				t.Fatalf("Reconcile didn't set pod name")
+			}
+
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(testAssets.Ctx, tr.Status.PodName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to fetch build pod: %v", err)
+			}
+
+			if d := cmp.Diff(tc.wantPod.ObjectMeta, pod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
+				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
+			}
+
+			pod.Name = tc.wantPod.Name // Ignore pod name differences, the pod name is generated and tested in pod_test.go
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, volumeSort, volumeMountSort, ignoreEnvVarOrdering); d != "" {
+				t.Errorf("Pod spec doesn't match %s", diff.PrintWantGot(d))
+			}
+			if len(clients.Kube.Actions()) == 0 {
+				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
+			}
+
+			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
+			if err != nil {
+				t.Errorf(err.Error())
+			}
+		})
+	}
+}
+
+func addVolumeMounts(p *corev1.Pod, vms []corev1.VolumeMount) *corev1.Pod {
+	for i, vm := range vms {
+		p.Spec.Containers[i].VolumeMounts = append(p.Spec.Containers[i].VolumeMounts, vm)
+	}
+	return p
+}
+
 // TestReconcileWithResolver checks that a TaskRun with a populated Resolver
 // field creates a ResolutionRequest object for that Resolver's type, and
 // that when the request is successfully resolved the TaskRun begins running.
@@ -4344,7 +4509,7 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 	return mnts
 }
 
-func podArgs(cmd string, additionalArgs []string, idx int) []string {
+func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []string, idx int) []string {
 	args := []string{
 		"-wait_file",
 	}
@@ -4360,6 +4525,14 @@ func podArgs(cmd string, additionalArgs []string, idx int) []string {
 		"/tekton/termination",
 		"-step_metadata_dir",
 		fmt.Sprintf("/tekton/run/%d/status", idx),
+	)
+	if stdoutPath != "" {
+		args = append(args, "-stdout_path", stdoutPath)
+	}
+	if stderrPath != "" {
+		args = append(args, "-stderr_path", stderrPath)
+	}
+	args = append(args,
 		"-entrypoint",
 		cmd,
 		"--",
@@ -4410,6 +4583,8 @@ type stepForExpectedPod struct {
 	envVars         map[string]string
 	workingDir      string
 	securityContext *corev1.SecurityContext
+	stdoutPath      string
+	stderrPath      string
 }
 
 func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
@@ -4449,7 +4624,7 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 			VolumeMounts:           podVolumeMounts(idx, len(steps)),
 			TerminationMessagePath: "/tekton/termination",
 		}
-		stepContainer.Args = podArgs(s.cmd, s.args, idx)
+		stepContainer.Args = podArgs(s.cmd, s.stdoutPath, s.stderrPath, s.args, idx)
 
 		for k, v := range s.envVars {
 			stepContainer.Env = append(stepContainer.Env, corev1.EnvVar{

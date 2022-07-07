@@ -395,6 +395,94 @@ func TestEntryPointOnError(t *testing.T) {
 	}
 }
 
+func TestEntryPointStepOutputConfigs(t *testing.T) {
+	taskSpec := v1beta1.TaskSpec{
+		Steps: []v1beta1.Step{{
+			StdoutConfig: &v1beta1.StepOutputConfig{
+				Path: "step-1-out",
+			},
+		}, {
+			StderrConfig: &v1beta1.StepOutputConfig{
+				Path: "step-2-err",
+			},
+		}, {
+			StdoutConfig: &v1beta1.StepOutputConfig{
+				Path: "step-3-out",
+			},
+			StderrConfig: &v1beta1.StepOutputConfig{
+				Path: "step-3-err",
+			},
+		}},
+	}
+
+	steps := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}, {
+		Image:        "step-2",
+		Command:      []string{"cmd1", "cmd2", "cmd3"}, // multiple cmd elements
+		Args:         []string{"arg1", "arg2"},
+		VolumeMounts: []corev1.VolumeMount{volumeMount}, // pre-existing volumeMount
+	}, {
+		Image:   "step-3",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/run/0/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/0/status",
+			"-stdout_path", "step-1-out",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}, {
+		Image:   "step-2",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/run/0/out",
+			"-post_file", "/tekton/run/1/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/1/status",
+			"-stderr_path", "step-2-err",
+			"-entrypoint", "cmd1", "--",
+			"cmd2", "cmd3",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{volumeMount},
+		TerminationMessagePath: "/tekton/termination",
+	}, {
+		Image:   "step-3",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/run/1/out",
+			"-post_file", "/tekton/run/2/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/2/status",
+			"-stdout_path", "step-3-out",
+			"-stderr_path", "step-3-err",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
 func TestUpdateReady(t *testing.T) {
 	for _, c := range []struct {
 		desc            string

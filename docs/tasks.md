@@ -18,6 +18,7 @@ weight: 200
     - [Accessing Step's `exitCode` in subsequent `Steps`](#accessing-steps-exitcode-in-subsequent-steps)
     - [Produce a task result with `onError`](#produce-a-task-result-with-onerror)
     - [Breakpoint on failure with `onError`](#breakpoint-on-failure-with-onerror)
+    - [Redirecting step output streams with `stdoutConfig` and `stderrConfig`](#redirecting-step-output-streams-with-stdoutConfig-and-stderrConfig`)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Workspaces`](#specifying-workspaces)
@@ -437,6 +438,74 @@ steps:
 [Debugging](taskruns.md#debugging-a-taskrun) a taskRun is supported to debug a container and comes with a set of
 [tools](taskruns.md#debug-environment) to declare the step as a failure or a success. Specifying
 [breakpoint](taskruns.md#breakpoint-on-failure) at the `taskRun` level overrides ignoring a step error using `onError`.
+
+#### Redirecting step output streams with `stdoutConfig` and `stderrConfig`
+
+This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+for Redirecting Step Output Streams to function.
+
+This feature defines optional `Step` fields `stdoutConfig` and `stderrConfig` which can be used to redirection the output streams `stdout` and `stderr` respectively:
+
+```yaml
+- name: ...
+  ...
+  stdoutConfig:
+    path: ...
+  stderrConfig:
+    path: ...
+```
+
+Once `stdoutConfig.path` or `stderrConfig.path` is specified, the corresponding output stream will be duplicated to both the given file and the standard output stream of the container, so users can still view the output through the Pod log API. If both `stdoutConfig.path` and `stderrConfig.path` are set to the same value, outputs from both streams will be interleaved in the same file, but there will be no ordering guarantee on the data. If multiple `Step`'s `stdoutConfig.path` fields are set to the same value, the file content will be overwritten by the last outputting step.
+
+Variable substitution will be applied to the new fields, so one could specify `$(results.<name>.path)` to the `stdoutConfig.path` or `stderrConfig.path` field to extract the stdout of a step into a Task result.
+
+##### Example Usage
+
+Redirecting stdout of `boskosctl` to `jq` and publish the resulting `project-id` as a Task result:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: boskos-acquire
+spec:
+  results:
+  - name: project-id
+  steps:
+  - name: boskosctl
+    image: gcr.io/k8s-staging-boskos/boskosctl
+    args:
+    - acquire
+    - --server-url=http://boskos.test-pods.svc.cluster.local
+    - --owner-name=christie-test-boskos
+    - --type=gke-project
+    - --state=free
+    - --target-state=busy
+    stdoutConfig:
+      path: /data/boskosctl-stdout
+    volumeMounts:
+    - name: data
+      mountPath: /data
+  - name: parse-project-id
+    image: imega/jq
+    args:
+    - -r
+    - .name
+    - /data/boskosctl-stdout
+    stdoutConfig:
+      path: $(results.project-id.path)
+    volumeMounts:
+    - name: data
+      mountPath: /data
+  volumes:
+  - name: data
+  ```
+
+> NOTE:
+>
+> - If the intent is to share output between `Step`s via a file, the user must ensure that the paths provided are shared between the `Step`s (e.g via `volumes`).
+> - There is currently a limit on the overall size of the `Task` results. If the stdout/stderr of a step is set to the path of a `Task` result and the step prints too many data, the result manifest would become too large. Currently the entrypoint binary will fail if that happens.
+> - If the stdout/stderr of a `Step` is set to the path of a `Task` result, e.g. `$(results.empty.path)`, but that result is not defined for the `Task`, the `Step` will run but the output will be captured in a file named `$(results.empty.path)` in the current working directory. Similarly, any stubstition that is not valid, e.g. `$(some.invalid.path)/out.txt`, will be left as-is and will result in a file path `$(some.invalid.path)/out.txt` relative to the current working directory.
 
 ### Specifying `Parameters`
 

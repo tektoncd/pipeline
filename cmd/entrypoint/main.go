@@ -45,6 +45,8 @@ var (
 	terminationPath     = flag.String("termination_path", "/tekton/termination", "If specified, file to write upon termination")
 	results             = flag.String("results", "", "If specified, list of file names that might contain task results")
 	timeout             = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
+	stdoutPath          = flag.String("stdout_path", "", "If specified, file to copy stdout to")
+	stderrPath          = flag.String("stderr_path", "", "If specified, file to copy stderr to")
 	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
@@ -130,13 +132,16 @@ func main() {
 	}
 
 	e := entrypoint.Entrypointer{
-		Command:             append(cmd, commandArgs...),
-		WaitFiles:           strings.Split(*waitFiles, ","),
-		WaitFileContent:     *waitFileContent,
-		PostFile:            *postFile,
-		TerminationPath:     *terminationPath,
-		Waiter:              &realWaiter{waitPollingInterval: defaultWaitPollingInterval, breakpointOnFailure: *breakpointOnFailure},
-		Runner:              &realRunner{},
+		Command:         append(cmd, commandArgs...),
+		WaitFiles:       strings.Split(*waitFiles, ","),
+		WaitFileContent: *waitFileContent,
+		PostFile:        *postFile,
+		TerminationPath: *terminationPath,
+		Waiter:          &realWaiter{waitPollingInterval: defaultWaitPollingInterval, breakpointOnFailure: *breakpointOnFailure},
+		Runner: &realRunner{
+			stdoutPath: *stdoutPath,
+			stderrPath: *stderrPath,
+		},
 		PostWriter:          &realPostWriter{},
 		Results:             strings.Split(*results, ","),
 		Timeout:             timeout,
