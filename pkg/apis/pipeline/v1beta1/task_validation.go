@@ -258,6 +258,17 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "windows script support", config.AlphaAPIFields).ViaField("script"))
 		}
 	}
+
+	// StdoutConfig is an alpha feature and will fail validation if it's used in a task spec
+	// when the enable-api-fields feature gate is not "alpha".
+	if s.StdoutConfig != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "step stdout stream support", config.AlphaAPIFields).ViaField("stdoutconfig"))
+	}
+	// StderrConfig is an alpha feature and will fail validation if it's used in a task spec
+	// when the enable-api-fields feature gate is not "alpha".
+	if s.StderrConfig != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "step stderr stream support", config.AlphaAPIFields).ViaField("stderrconfig"))
+	}
 	return errs
 }
 

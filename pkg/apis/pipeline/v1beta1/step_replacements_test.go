@@ -26,7 +26,8 @@ import (
 
 func TestApplyStepReplacements(t *testing.T) {
 	replacements := map[string]string{
-		"replace.me": "replaced!",
+		"replace.me":           "replaced!",
+		"workspaces.data.path": "/workspace/data",
 	}
 
 	arrayReplacements := map[string][]string{
@@ -75,6 +76,12 @@ func TestApplyStepReplacements(t *testing.T) {
 			MountPath: "$(replace.me)",
 			SubPath:   "$(replace.me)",
 		}},
+		StdoutConfig: &v1beta1.StepOutputConfig{
+			Path: "$(workspaces.data.path)/stdout.txt",
+		},
+		StderrConfig: &v1beta1.StepOutputConfig{
+			Path: "$(workspaces.data.path)/stderr.txt",
+		},
 	}
 
 	expected := v1beta1.Step{
@@ -119,6 +126,12 @@ func TestApplyStepReplacements(t *testing.T) {
 			MountPath: "replaced!",
 			SubPath:   "replaced!",
 		}},
+		StdoutConfig: &v1beta1.StepOutputConfig{
+			Path: "/workspace/data/stdout.txt",
+		},
+		StderrConfig: &v1beta1.StepOutputConfig{
+			Path: "/workspace/data/stderr.txt",
+		},
 	}
 	v1beta1.ApplyStepReplacements(&s, replacements, arrayReplacements)
 	if d := cmp.Diff(s, expected); d != "" {

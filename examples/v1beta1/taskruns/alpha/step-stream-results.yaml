@@ -1,0 +1,60 @@
+# This example TaskRun demonstrates how to redirect stdout and
+# stderr for steps.
+kind: TaskRun
+apiVersion: tekton.dev/v1beta1
+metadata:
+  generateName: step-stream-tr-
+spec:
+  taskSpec:
+    results:
+      - name: digest
+        description: image digest
+      - name: error
+        description: error message
+      - name: combined
+        description: combined result
+    steps:
+      # This step redirects stdout to the path for the Task
+      # result `digest` and stderr to the path for the Task result 'error'.
+      - name: digest-step
+        image: gcr.io/go-containerregistry/crane
+        args:
+          - digest
+          - docker.io/library/bash
+        stdoutConfig:
+          path: $(results.digest.path)
+        stderrConfig:
+          path: $(results.error.path)
+      # This step redirects stdout and stderr to the path for the Task
+      # result `combined`.
+      - name: error
+        image: docker.io/library/bash
+        onError: continue
+        script: echo "combined message" && nonsense
+        stdoutConfig:
+          path: $(results.combined.path)
+        stderrConfig:
+          path: $(results.combined.path)
+      # This step prints out the contents of the task results
+      # if they exist
+      - name: log-results
+        image: docker.io/library/bash
+        script: |
+          if [[ -f $(results.digest.path) ]]
+          then
+            echo -n "digest: "
+            cat $(results.digest.path)
+            echo ""
+          fi
+          if [[ -f $(results.error.path) ]]
+          then
+            echo -n "error: "
+            cat $(results.error.path)
+            echo ""
+          fi
+          if [[ -f $(results.combined.path) ]]
+          then
+            echo -n "combined: "
+            cat $(results.combined.path)
+            echo ""
+          fi

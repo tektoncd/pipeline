@@ -59,7 +59,7 @@ func MergeStepsWithStepTemplate(template *StepTemplate, steps []Step) ([]Step, e
 		}
 
 		// Pass through original step Script, for later conversion.
-		newStep := Step{Script: s.Script, OnError: s.OnError, Timeout: s.Timeout}
+		newStep := Step{Script: s.Script, OnError: s.OnError, Timeout: s.Timeout, StdoutConfig: s.StdoutConfig, StderrConfig: s.StderrConfig}
 		newStep.SetContainerFields(merged)
 		steps[i] = newStep
 	}
