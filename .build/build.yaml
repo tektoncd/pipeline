@@ -1,0 +1,65 @@
+kind: Build
+apiVersion: builds.katanomi.dev/v1alpha1
+spec:
+  workspaces:
+  - name: source
+tasks:
+
+## read oss version
+- name: oss-version
+  taskRef:
+    kind: ClusterTask
+    name: alauda-read-oss-version
+  params:
+  - name: version-file-path
+    value: ".build/opensource-version"
+  workspaces:
+  - name: source
+    workspace: source
+
+## generate version
+- name: generate-version
+  retries: 3
+  workspaces:
+    - name: source
+      workspace: source
+  taskRef:
+    kind: ClusterTask
+    name: alauda-generate-version
+  params:
+  - name: repo-type
+    value: gitlab
+  - name: repo-url
+    value: $(params.git-url)
+  - name: repo-ref
+    value: $(params.git-revision)
+## ko publish image
+- name: build-entrypoint
+  taskRef:
+    kind: ClusterTask
+    name: alauda-ko-build
+  workspaces:
+    - name: source
+      workspace: source
+  params:
+    - name: import-path
+      value: "github.com/tektoncd/pipeline/cmd/entrypoint"
+    - name: container-image
+      value: "build-harbor.alauda.cn/devops/tekton/entrypoint"
+    - name: container-image-tag
+      value: v$(tasks.oss-version.results.oss-version)-$(tasks.generate-version.results.commit-short-id)
+## ko publish image
+- name: build-git-init
+  taskRef:
+    kind: ClusterTask
+    name: alauda-ko-build
+  workspaces:
+    - name: source
+      workspace: source
+  params:
+    - name: import-path
+      value: "github.com/tektoncd/pipeline/cmd/git-init"
+    - name: container-image
+      value: "build-harbor.alauda.cn/devops/tekton/git-init"
+    - name: container-image-tag
+      value: v$(tasks.oss-version.results.oss-version)-$(tasks.generate-version.results.commit-short-id)
