@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -83,7 +84,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				}},
 			},
 		},
-		wc: enableAlphaAPIFields,
+		wc: config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -242,7 +243,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
 		wantErr: apis.ErrMultipleOneOf("params[myobjectparam].name"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "using debug when apifields stable",
 		spec: v1beta1.TaskRunSpec{
@@ -265,7 +266,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrInvalidValue("breakito is not a valid breakpoint. Available valid breakpoints include [onFailure]", "debug.breakpoint"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "stepOverride disallowed without alpha feature gate",
 		spec: v1beta1.TaskRunSpec{
@@ -311,7 +312,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("stepOverrides[1].name"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "missing stepOverride names",
 		spec: v1beta1.TaskRunSpec{
@@ -323,7 +324,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMissingField("stepOverrides[0].name"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate sidecarOverride names",
 		spec: v1beta1.TaskRunSpec{
@@ -341,7 +342,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMultipleOneOf("sidecarOverrides[1].name"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "missing sidecarOverride names",
 		spec: v1beta1.TaskRunSpec{
@@ -353,7 +354,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			}},
 		},
 		wantErr: apis.ErrMissingField("sidecarOverrides[0].name"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "invalid both step-level (stepOverrides.resources) and task-level (spec.computeResources) resource requirements",
 		spec: v1beta1.TaskRunSpec{
@@ -376,7 +377,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			"stepOverrides.resources",
 			"computeResources",
 		),
-		wc: enableAlphaAPIFields,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "computeResources disallowed without alpha feature gate",
 		spec: v1beta1.TaskRunSpec{
@@ -468,7 +469,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: enableAlphaAPIFields,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "valid sidecar and task-level (spec.resources) resource requirements",
 		spec: v1beta1.TaskRunSpec{
@@ -487,7 +488,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 				},
 			}},
 		},
-		wc: enableAlphaAPIFields,
+		wc: config.EnableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {

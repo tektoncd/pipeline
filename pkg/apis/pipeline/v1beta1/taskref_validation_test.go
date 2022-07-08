@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -39,7 +40,7 @@ func TestTaskRef_Valid(t *testing.T) {
 	}, {
 		name:    "alpha feature: valid resolver",
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid resolver with resource parameters",
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Resource: []v1beta1.ResolverParam{{
@@ -49,13 +50,13 @@ func TestTaskRef_Valid(t *testing.T) {
 			Name:  "branch",
 			Value: "baz",
 		}}}},
-		wc: enableAlphaAPIFields,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "valid bundle",
 		taskRef: &v1beta1.TaskRef{
 			Name:   "bundled-task",
 			Bundle: "gcr.io/my-bundle"},
-		wc: enableAlphaAPIFields,
+		wc: config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -126,7 +127,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "taskref resolver disallowed in conjunction with taskref name",
 		taskRef: &v1beta1.TaskRef{
@@ -136,7 +137,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "taskref resolver disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{
@@ -146,7 +147,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("bundle", "resolver"),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "taskref resource disallowed in conjunction with taskref name",
 		taskRef: &v1beta1.TaskRef{
@@ -159,7 +160,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("name", "resource").Also(apis.ErrMissingField("resolver")),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "taskref resource disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{
@@ -172,7 +173,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("bundle", "resource").Also(apis.ErrMissingField("resolver")),
-		wc:      enableAlphaAPIFields,
+		wc:      config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
