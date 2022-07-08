@@ -86,7 +86,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMissingField("resolver"),
-		withContext: enableAlphaAPIFields,
+		withContext: config.EnableAlphaAPIFields,
 	}, {
 		name: "pipelineref resolver disallowed in conjunction with pipelineref name",
 		ref: &v1beta1.PipelineRef{
@@ -96,7 +96,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMultipleOneOf("name", "resolver"),
-		withContext: enableAlphaAPIFields,
+		withContext: config.EnableAlphaAPIFields,
 	}, {
 		name: "pipelineref resolver disallowed in conjunction with pipelineref bundle",
 		ref: &v1beta1.PipelineRef{
@@ -106,7 +106,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMultipleOneOf("bundle", "resolver"),
-		withContext: enableAlphaAPIFields,
+		withContext: config.EnableAlphaAPIFields,
 	}, {
 		name: "pipelineref resource disallowed in conjunction with pipelineref name",
 		ref: &v1beta1.PipelineRef{
@@ -119,7 +119,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMultipleOneOf("name", "resource").Also(apis.ErrMissingField("resolver")),
-		withContext: enableAlphaAPIFields,
+		withContext: config.EnableAlphaAPIFields,
 	}, {
 		name: "pipelineref resource disallowed in conjunction with pipelineref bundle",
 		ref: &v1beta1.PipelineRef{
@@ -132,7 +132,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr:     apis.ErrMultipleOneOf("bundle", "resource").Also(apis.ErrMissingField("resolver")),
-		withContext: enableAlphaAPIFields,
+		withContext: config.EnableAlphaAPIFields,
 	}}
 
 	for _, tc := range tests {
@@ -160,7 +160,7 @@ func TestPipelineRef_Valid(t *testing.T) {
 	}, {
 		name: "alpha feature: valid resolver",
 		ref:  &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
-		wc:   enableAlphaAPIFields,
+		wc:   config.EnableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid resolver with resource parameters",
 		ref: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Resource: []v1beta1.ResolverParam{{
@@ -170,7 +170,7 @@ func TestPipelineRef_Valid(t *testing.T) {
 			Name:  "branch",
 			Value: "baz",
 		}}}},
-		wc: enableAlphaAPIFields,
+		wc: config.EnableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {

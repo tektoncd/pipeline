@@ -427,7 +427,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := getContextBasedOnFeatureFlag("alpha")
+			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1279,7 +1279,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := getContextBasedOnFeatureFlag("alpha")
+			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -1326,7 +1326,7 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 				Sidecars:   tt.fields.Sidecars,
 				Workspaces: tt.fields.Workspaces,
 			}
-			ctx := getContextBasedOnFeatureFlag("alpha")
+			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1383,7 +1383,7 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 				Sidecars: tt.fields.Sidecars,
 			}
 
-			ctx := getContextBasedOnFeatureFlag("alpha")
+			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
 			err := ts.Validate(ctx)
 			if err == nil {
@@ -1503,7 +1503,10 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 			testName := fmt.Sprintf("(using %s) %s", version, tt.name)
 			t.Run(testName, func(t *testing.T) {
 				ts := tt.spec
-				ctx := getContextBasedOnFeatureFlag(version)
+				ctx := context.Background()
+				if version == "alpha" {
+					ctx = config.EnableAlphaAPIFields(ctx)
+				}
 
 				ts.SetDefaults(ctx)
 				err := ts.Validate(ctx)
@@ -1520,16 +1523,6 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 	}
 }
 
-func getContextBasedOnFeatureFlag(featureFlag string) context.Context {
-	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": featureFlag,
-	})
-	cfg := &config.Config{
-		FeatureFlags: featureFlags,
-	}
-
-	return config.ToContext(context.Background(), cfg)
-}
 func TestSubstitutedContext(t *testing.T) {
 	type fields struct {
 		Params              []v1beta1.ParamSpec

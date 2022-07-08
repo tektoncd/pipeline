@@ -17,6 +17,7 @@ limitations under the License.
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -186,4 +187,18 @@ func setEmbeddedStatus(cfgMap map[string]string, defaultValue string, feature *s
 // NewFeatureFlagsFromConfigMap returns a Config for the given configmap
 func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, error) {
 	return NewFeatureFlagsFromMap(config.Data)
+}
+
+// EnableAlphaAPIFields enables alpha feature in an existing context (for use in testing)
+func EnableAlphaAPIFields(ctx context.Context) context.Context {
+	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{
+		"enable-api-fields": "alpha",
+	})
+	cfg := &Config{
+		Defaults: &Defaults{
+			DefaultTimeoutMinutes: 60,
+		},
+		FeatureFlags: featureFlags,
+	}
+	return ToContext(ctx, cfg)
 }

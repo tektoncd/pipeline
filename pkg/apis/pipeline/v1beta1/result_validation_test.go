@@ -17,10 +17,12 @@ limitations under the License.
 package v1beta1_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -68,7 +70,10 @@ func TestResultsValidate(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := getContextBasedOnFeatureFlag(tt.apiFields)
+			ctx := context.Background()
+			if tt.apiFields == "alpha" {
+				ctx = config.EnableAlphaAPIFields(ctx)
+			}
 			if err := tt.Result.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -133,7 +138,10 @@ func TestResultsValidateError(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := getContextBasedOnFeatureFlag(tt.apiFields)
+			ctx := context.Background()
+			if tt.apiFields == "alpha" {
+				ctx = config.EnableAlphaAPIFields(ctx)
+			}
 			err := tt.Result.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", tt.Result)
