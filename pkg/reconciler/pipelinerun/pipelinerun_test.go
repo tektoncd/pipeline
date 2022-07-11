@@ -50,6 +50,7 @@ import (
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -9137,4 +9138,101 @@ spec:
 
 func lessTaskResourceBindings(i, j v1beta1.TaskResourceBinding) bool {
 	return i.Name < j.Name
+}
+
+var gitSweetResourceBinding = v1beta1.PipelineResourceBinding{
+	Name:        "git-resource",
+	ResourceRef: &v1beta1.PipelineResourceRef{Name: "sweet-resource"},
+}
+
+func TestGetResourcesFromBindings(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "pipeline",
+			},
+			Resources: []v1beta1.PipelineResourceBinding{
+				gitSweetResourceBinding,
+				{
+					Name: "image-resource",
+					ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
+						Type: resourcev1alpha1.PipelineResourceTypeImage,
+						Params: []v1beta1.ResourceParam{{
+							Name:  "url",
+							Value: "gcr.io/sven",
+						}},
+					},
+				},
+			},
+		},
+	}
+	r := &resourcev1alpha1.PipelineResource{ObjectMeta: metav1.ObjectMeta{Name: "sweet-resource"}}
+	getResource := func(name string) (*resourcev1alpha1.PipelineResource, error) {
+		if name != "sweet-resource" {
+			return nil, fmt.Errorf("request for unexpected resource %s", name)
+		}
+		return r, nil
+	}
+	m, err := getResourcesFromBindings(pr, getResource)
+	if err != nil {
+		t.Fatalf("didn't expect error getting resources from bindings but got: %v", err)
+	}
+
+	r1, ok := m["git-resource"]
+	if !ok {
+		t.Errorf("Missing expected resource git-resource: %v", m)
+	} else if d := cmp.Diff(r, r1); d != "" {
+		t.Errorf("Expected resources didn't match actual %s", diff.PrintWantGot(d))
+	}
+
+	r2, ok := m["image-resource"]
+	if !ok {
+		t.Errorf("Missing expected resource image-resource: %v", m)
+	} else if r2.Spec.Type != resourcev1alpha1.PipelineResourceTypeImage ||
+		len(r2.Spec.Params) != 1 ||
+		r2.Spec.Params[0].Name != "url" ||
+		r2.Spec.Params[0].Value != "gcr.io/sven" {
+		t.Errorf("Did not get expected image resource, got %v", r2.Spec)
+	}
+}
+
+func TestGetResourcesFromBindings_Missing(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "pipeline",
+			},
+			Resources: []v1beta1.PipelineResourceBinding{gitSweetResourceBinding},
+		},
+	}
+	getResource := func(name string) (*resourcev1alpha1.PipelineResource, error) {
+		return nil, kerrors.NewNotFound(resourcev1alpha1.Resource("pipelineresources"), name)
+	}
+	_, err := getResourcesFromBindings(pr, getResource)
+	if err == nil {
+		t.Fatalf("Expected error indicating `image-resource` was missing but got no error")
+	} else if !kerrors.IsNotFound(err) {
+		t.Fatalf("getResourcesFromBindings() = %v, wanted IsNotFound", err)
+	}
+}
+
+func TestGetResourcesFromBindings_ErrorGettingResource(t *testing.T) {
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name: "pipeline",
+			},
+			Resources: []v1beta1.PipelineResourceBinding{gitSweetResourceBinding},
+		},
+	}
+	getResource := func(name string) (*resourcev1alpha1.PipelineResource, error) {
+		return nil, fmt.Errorf("iT HAS ALL GONE WRONG")
+	}
+	_, err := getResourcesFromBindings(pr, getResource)
+	if err == nil {
+		t.Fatalf("Expected error indicating resource couldnt be retrieved but got no error")
+	}
 }

@@ -402,7 +402,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
 	}
-	providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
+	providedResources, err := getResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
 	if err != nil {
 		if kerrors.IsNotFound(err) && tknreconciler.IsYoungResource(pr) {
 			// For newly created resources, don't fail immediately.
@@ -1463,4 +1463,19 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 		newChildRefs = append(newChildRefs, *childRefByName[k])
 	}
 	pr.Status.ChildReferences = newChildRefs
+}
+
+// getResourcesFromBindings will retrieve all Resources bound in PipelineRun pr and return a map
+// from the declared name of the PipelineResource (which is how the PipelineResource will
+// be referred to in the PipelineRun) to the PipelineResource, obtained via getResource.
+func getResourcesFromBindings(pr *v1beta1.PipelineRun, getResource tresources.GetResource) (map[string]*resourcev1alpha1.PipelineResource, error) {
+	rs := map[string]*resourcev1alpha1.PipelineResource{}
+	for _, resource := range pr.Spec.Resources {
+		r, err := tresources.GetResourceFromBinding(resource, getResource)
+		if err != nil {
+			return rs, err
+		}
+		rs[resource.Name] = r
+	}
+	return rs, nil
 }

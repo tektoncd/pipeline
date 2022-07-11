@@ -457,21 +457,6 @@ func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSki
 // GetRun is a function that will retrieve a Run by name.
 type GetRun func(name string) (*v1alpha1.Run, error)
 
-// GetResourcesFromBindings will retrieve all Resources bound in PipelineRun pr and return a map
-// from the declared name of the PipelineResource (which is how the PipelineResource will
-// be referred to in the PipelineRun) to the PipelineResource, obtained via getResource.
-func GetResourcesFromBindings(pr *v1beta1.PipelineRun, getResource resources.GetResource) (map[string]*resourcev1alpha1.PipelineResource, error) {
-	rs := map[string]*resourcev1alpha1.PipelineResource{}
-	for _, resource := range pr.Spec.Resources {
-		r, err := resources.GetResourceFromBinding(resource, getResource)
-		if err != nil {
-			return rs, err
-		}
-		rs[resource.Name] = r
-	}
-	return rs, nil
-}
-
 // ValidateResourceBindings validate that the PipelineResources declared in Pipeline p are bound in PipelineRun.
 func ValidateResourceBindings(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
 	required := make([]string, 0, len(p.Resources))
