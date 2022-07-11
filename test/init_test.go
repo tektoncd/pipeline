@@ -199,6 +199,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get pipeline: %w", err)
 	}
 	for _, i := range ps.Items {
+		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
 
@@ -207,6 +208,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get pipelinerun resource: %w", err)
 	}
 	for _, i := range prs.Items {
+		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
 
@@ -215,6 +217,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get pipelinerun: %w", err)
 	}
 	for _, i := range prrs.Items {
+		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
 
@@ -223,6 +226,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get tasks: %w", err)
 	}
 	for _, i := range ts.Items {
+		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
 
@@ -231,6 +235,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get clustertasks: %w", err)
 	}
 	for _, i := range cts.Items {
+		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
 
@@ -239,6 +244,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get taskruns: %w", err)
 	}
 	for _, i := range trs.Items {
+		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
 
@@ -247,6 +253,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get runs: %v", err)
 	}
 	for _, i := range rs.Items {
+		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
 
@@ -255,6 +262,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get pods: %w", err)
 	}
 	for _, i := range pods.Items {
+		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}
 
