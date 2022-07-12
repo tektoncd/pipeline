@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2022 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,4 +31,10 @@ func (t *Task) SetDefaults(ctx context.Context) {
 
 // SetDefaults set any defaults for the task spec
 func (ts *TaskSpec) SetDefaults(ctx context.Context) {
+	for i := range ts.Params {
+		ts.Params[i].SetDefaults(ctx)
+	}
+	for i := range ts.Results {
+		ts.Results[i].SetDefaults(ctx)
+	}
 }

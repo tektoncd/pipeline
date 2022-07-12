@@ -30,11 +30,27 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.AffinityAssistantTemplate": schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                  schema_pkg_apis_pipeline_pod_Template(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Task":                       schema_pkg_apis_pipeline_v1_Task(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskList":                   schema_pkg_apis_pipeline_v1_TaskList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec":                   schema_pkg_apis_pipeline_v1_TaskSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.AffinityAssistantTemplate":   schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                    schema_pkg_apis_pipeline_pod_Template(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString":                schema_pkg_apis_pipeline_v1_ArrayOrString(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param":                        schema_pkg_apis_pipeline_v1_Param(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec":                    schema_pkg_apis_pipeline_v1_ParamSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineWorkspaceDeclaration": schema_pkg_apis_pipeline_v1_PipelineWorkspaceDeclaration(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec":                 schema_pkg_apis_pipeline_v1_PropertySpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ResolverParam":                schema_pkg_apis_pipeline_v1_ResolverParam(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ResolverRef":                  schema_pkg_apis_pipeline_v1_ResolverRef(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Sidecar":                      schema_pkg_apis_pipeline_v1_Sidecar(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Step":                         schema_pkg_apis_pipeline_v1_Step(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepTemplate":                 schema_pkg_apis_pipeline_v1_StepTemplate(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Task":                         schema_pkg_apis_pipeline_v1_Task(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskList":                     schema_pkg_apis_pipeline_v1_TaskList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult":                   schema_pkg_apis_pipeline_v1_TaskResult(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult":                schema_pkg_apis_pipeline_v1_TaskRunResult(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec":                     schema_pkg_apis_pipeline_v1_TaskSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding":             schema_pkg_apis_pipeline_v1_WorkspaceBinding(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceDeclaration":         schema_pkg_apis_pipeline_v1_WorkspaceDeclaration(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspacePipelineTaskBinding": schema_pkg_apis_pipeline_v1_WorkspacePipelineTaskBinding(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage":               schema_pkg_apis_pipeline_v1_WorkspaceUsage(ref),
 	}
 }
 
@@ -283,6 +299,963 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 	}
 }
 
+func schema_pkg_apis_pipeline_v1_ArrayOrString(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings. consideration the object case after the community reaches an agreement on it.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"stringVal": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Represents the stored type of ArrayOrString.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"arrayVal": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"objectVal": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"type", "stringVal", "arrayVal", "objectVal"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_Param(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Param declares an ArrayOrString to use for the parameter called name.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"),
+						},
+					},
+				},
+				Required: []string{"name", "value"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_ParamSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ParamSpec defines arbitrary parameters needed beyond typed inputs (such as resources). Parameter values are provided by users as inputs on a TaskRun or PipelineRun.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name declares the name by which a parameter is referenced.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the user-specified type of the parameter. The possible types are currently \"string\", \"array\" and \"object\", and \"string\" is the default.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"description": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Description is a user-facing description of the parameter that may be used to populate a UI.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"properties": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Properties is the JSON Schema properties to support key-value pairs parameter.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
+									},
+								},
+							},
+						},
+					},
+					"default": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Default is the value a parameter takes if no input value is supplied. If default is set, a Task may be executed without a supplied value for the parameter.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_PipelineWorkspaceDeclaration(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding. Deprecated: use PipelineWorkspaceDeclaration type instead",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of a workspace to be provided by a PipelineRun.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"description": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Description is a human readable string describing how the workspace will be used in the Pipeline. It can be useful to include a bit of detail about which tasks are intended to have access to the data on the workspace.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"optional": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional marks a Workspace as not being required in PipelineRuns. By default this field is false and so declared workspaces are required.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_PropertySpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PropertySpec defines the struct for object keys",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_ResolverParam(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolverParam is a single parameter passed to a resolver.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the parameter that will be passed to the resolver.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Value is the string value of the parameter that will be passed to the resolver.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "value"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_ResolverRef(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"resolver": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"resource": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Resource contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ResolverParam"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ResolverParam"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Sidecar has nearly the same data structure as Step but does not have the ability to timeout.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"command": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"args": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"workingDir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"ports": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-map-keys": []interface{}{
+									"containerPort",
+									"protocol",
+								},
+								"x-kubernetes-list-type":       "map",
+								"x-kubernetes-patch-merge-key": "containerPort",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of ports to expose from the container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.ContainerPort"),
+									},
+								},
+							},
+						},
+					},
+					"envFrom": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvFromSource"),
+									},
+								},
+							},
+						},
+					},
+					"env": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of environment variables to set in the container. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
+					"volumeMounts": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "mountPath",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Pod volumes to mount into the container's filesystem. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.VolumeMount"),
+									},
+								},
+							},
+						},
+					},
+					"volumeDevices": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "devicePath",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "volumeDevices is the list of block devices to be used by the container.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.VolumeDevice"),
+									},
+								},
+							},
+						},
+					},
+					"livenessProbe": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Ref:         ref("k8s.io/api/core/v1.Probe"),
+						},
+					},
+					"readinessProbe": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Ref:         ref("k8s.io/api/core/v1.Probe"),
+						},
+					},
+					"startupProbe": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+							Ref:         ref("k8s.io/api/core/v1.Probe"),
+						},
+					},
+					"lifecycle": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Actions that the management system should take in response to container lifecycle events. Cannot be updated.",
+							Ref:         ref("k8s.io/api/core/v1.Lifecycle"),
+						},
+					},
+					"terminationMessagePath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem. Message written is intended to be brief final status, such as an assertion failure message. Will be truncated by the node if greater than 4096 bytes. The total message length across all containers will be limited to 12kb. Defaults to /dev/termination-log. Cannot be updated.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"terminationMessagePolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Indicate how the termination message should be populated. File will use the contents of terminationMessagePath to populate the container status message on both success and failure. FallbackToLogsOnError will use the last chunk of container log output if the termination message file is empty and the container exited with an error. The log output is limited to 2048 bytes or 80 lines, whichever is smaller. Defaults to File. Cannot be updated.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"imagePullPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"securityContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecurityContext defines the security options the container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+							Ref:         ref("k8s.io/api/core/v1.SecurityContext"),
+						},
+					},
+					"stdin": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"stdinOnce": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"tty": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"script": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command or Args.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"workspaces": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "This is an alpha field. You must set the \"enable-api-fields\" feature flag to \"alpha\" for this field to be supported.\n\nWorkspaces is a list of workspaces from the Task that this Sidecar wants exclusive access to. Adding a workspace to this list means that any other Step or Sidecar that does not also request this Workspace will not have access to it.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage"),
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage", "k8s.io/api/core/v1.ContainerPort", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.Lifecycle", "k8s.io/api/core/v1.Probe", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Step runs a subcomponent of a Task",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name of the container specified as a DNS_LABEL. Each container in a pod must have a unique name (DNS_LABEL). Cannot be updated.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"command": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"args": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"workingDir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"envFrom": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvFromSource"),
+									},
+								},
+							},
+						},
+					},
+					"env": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of environment variables to set in the container. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
+					"volumeMounts": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "mountPath",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Pod volumes to mount into the container's filesystem. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.VolumeMount"),
+									},
+								},
+							},
+						},
+					},
+					"volumeDevices": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "devicePath",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "volumeDevices is the list of block devices to be used by the container.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.VolumeDevice"),
+									},
+								},
+							},
+						},
+					},
+					"imagePullPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"securityContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecurityContext defines the security options the container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+							Ref:         ref("k8s.io/api/core/v1.SecurityContext"),
+						},
+					},
+					"script": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"timeout": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Timeout is the time after which the step times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
+						},
+					},
+					"workspaces": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "This is an alpha field. You must set the \"enable-api-fields\" feature flag to \"alpha\" for this field to be supported.\n\nWorkspaces is a list of workspaces from the Task that this Step wants exclusive access to. Adding a workspace to this list means that any other Step or Sidecar that does not also request this Workspace will not have access to it.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage"),
+									},
+								},
+							},
+						},
+					},
+					"onError": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ] stopAndFail indicates exit the taskRun if the container exits with non-zero exit code continue indicates continue executing the rest of the steps irrespective of the container exit code",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceUsage", "k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "StepTemplate is a template for a Step",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"image": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Docker image name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"command": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Entrypoint array. Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"args": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Arguments to the entrypoint. The docker image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"workingDir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Container's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"envFrom": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of sources to populate environment variables in the container. The keys defined within a source must be a C_IDENTIFIER. All invalid keys will be reported as an event when the container is starting. When a key exists in multiple sources, the value associated with the last source will take precedence. Values defined by an Env with a duplicate key will take precedence. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvFromSource"),
+									},
+								},
+							},
+						},
+					},
+					"env": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of environment variables to set in the container. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
+									},
+								},
+							},
+						},
+					},
+					"resources": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Compute Resources required by this container. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+							Default:     map[string]interface{}{},
+							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
+						},
+					},
+					"volumeMounts": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "mountPath",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Pod volumes to mount into the container's filesystem. Cannot be updated.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.VolumeMount"),
+									},
+								},
+							},
+						},
+					},
+					"volumeDevices": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "devicePath",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "volumeDevices is the list of block devices to be used by the container.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.VolumeDevice"),
+									},
+								},
+							},
+						},
+					},
+					"imagePullPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"securityContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SecurityContext defines the security options the container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
+							Ref:         ref("k8s.io/api/core/v1.SecurityContext"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.EnvFromSource", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/api/core/v1.SecurityContext", "k8s.io/api/core/v1.VolumeDevice", "k8s.io/api/core/v1.VolumeMount"},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1_Task(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -374,6 +1347,97 @@ func schema_pkg_apis_pipeline_v1_TaskList(ref common.ReferenceCallback) common.O
 	}
 }
 
+func schema_pkg_apis_pipeline_v1_TaskResult(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TaskResult used to describe the results of a task",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name the given name",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"properties": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Properties is the JSON Schema properties to support key-value pairs results.",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"),
+									},
+								},
+							},
+						},
+					},
+					"description": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Description is a human-readable description of the result",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_TaskRunResult(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TaskRunResult used to describe the results of a task",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name the given name",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Value the given value of the result",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"),
+						},
+					},
+				},
+				Required: []string{"name", "value"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -381,6 +1445,25 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 				Description: "TaskSpec defines the desired state of Task.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
+					"params": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec"),
+									},
+								},
+							},
+						},
+					},
 					"description": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Description is a user-facing description of the task that may be used to populate a UI.",
@@ -388,7 +1471,287 @@ func schema_pkg_apis_pipeline_v1_TaskSpec(ref common.ReferenceCallback) common.O
 							Format:      "",
 						},
 					},
+					"steps": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Steps are the steps of the build; each step is run sequentially with the source mounted into /workspace.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Step"),
+									},
+								},
+							},
+						},
+					},
+					"volumes": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.Volume"),
+									},
+								},
+							},
+						},
+					},
+					"stepTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "StepTemplate can be used as the basis for all step containers within the Task, so that the steps inherit settings on the base container.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepTemplate"),
+						},
+					},
+					"sidecars": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Sidecar"),
+									},
+								},
+							},
+						},
+					},
+					"workspaces": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Workspaces are the volumes that this Task requires.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceDeclaration"),
+									},
+								},
+							},
+						},
+					},
+					"results": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Results are values that this Task can output",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult"),
+									},
+								},
+							},
+						},
+					},
 				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Sidecar", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Step", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepTemplate", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceDeclaration", "k8s.io/api/core/v1.Volume"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_WorkspaceBinding(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkspaceBinding maps a Task's declared workspace to a Volume.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the workspace populated by the volume.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"subPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SubPath is optionally a directory on the volume which should be used for this binding (i.e. the volume will be mounted at this sub directory).",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"volumeClaimTemplate": {
+						SchemaProps: spec.SchemaProps{
+							Description: "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.",
+							Ref:         ref("k8s.io/api/core/v1.PersistentVolumeClaim"),
+						},
+					},
+					"persistentVolumeClaim": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
+							Ref:         ref("k8s.io/api/core/v1.PersistentVolumeClaimVolumeSource"),
+						},
+					},
+					"emptyDir": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EmptyDir represents a temporary directory that shares a Task's lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir Either this OR PersistentVolumeClaim can be used.",
+							Ref:         ref("k8s.io/api/core/v1.EmptyDirVolumeSource"),
+						},
+					},
+					"configMap": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigMap represents a configMap that should populate this workspace.",
+							Ref:         ref("k8s.io/api/core/v1.ConfigMapVolumeSource"),
+						},
+					},
+					"secret": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Secret represents a secret that should populate this workspace.",
+							Ref:         ref("k8s.io/api/core/v1.SecretVolumeSource"),
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+		Dependencies: []string{
+			"k8s.io/api/core/v1.ConfigMapVolumeSource", "k8s.io/api/core/v1.EmptyDirVolumeSource", "k8s.io/api/core/v1.PersistentVolumeClaim", "k8s.io/api/core/v1.PersistentVolumeClaimVolumeSource", "k8s.io/api/core/v1.SecretVolumeSource"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_WorkspaceDeclaration(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkspaceDeclaration is a declaration of a volume that a Task requires.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name by which you can bind the volume at runtime.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"description": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Description is an optional human readable description of this volume.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"mountPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MountPath overrides the directory that the volume will be made available at.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"readOnly": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ReadOnly dictates whether a mounted volume is writable. By default this field is false and so mounted volumes are writable.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+					"optional": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Optional marks a Workspace as not being required in TaskRuns. By default this field is false and so declared workspaces are required.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_WorkspacePipelineTaskBinding(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be mapped to a task's declared workspace.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the workspace as declared by the task",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"workspace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Workspace is the name of the workspace declared by the pipeline",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"subPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SubPath is optionally a directory on the volume which should be used for this binding (i.e. the volume will be mounted at this sub directory).",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name"},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_WorkspaceUsage(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "WorkspaceUsage is used by a Step or Sidecar to declare that it wants isolated access to a Workspace defined in a Task.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name is the name of the workspace this Step or Sidecar wants access to.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"mountPath": {
+						SchemaProps: spec.SchemaProps{
+							Description: "MountPath is the path that the workspace should be mounted to inside the Step or Sidecar, overriding any MountPath specified in the Task's WorkspaceDeclaration.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "mountPath"},
 			},
 		},
 	}

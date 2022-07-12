@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2022 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package v1
 
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/kmeta"
@@ -54,12 +55,44 @@ func (*Task) GetGroupVersionKind() schema.GroupVersionKind {
 // TaskSpec defines the desired state of Task.
 type TaskSpec struct {
 
+	// Params is a list of input parameters required to run the task. Params
+	// must be supplied as inputs in TaskRuns unless they declare a default
+	// value.
+	// +optional
+	// +listType=atomic
+	Params []ParamSpec `json:"params,omitempty"`
+
 	// Description is a user-facing description of the task that may be
 	// used to populate a UI.
 	// +optional
 	Description string `json:"description,omitempty"`
 
-	// TODO(#4984): Add the rest of task spec
+	// Steps are the steps of the build; each step is run sequentially with the
+	// source mounted into /workspace.
+	// +listType=atomic
+	Steps []Step `json:"steps,omitempty"`
+
+	// Volumes is a collection of volumes that are available to mount into the
+	// steps of the build.
+	// +listType=atomic
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+
+	// StepTemplate can be used as the basis for all step containers within the
+	// Task, so that the steps inherit settings on the base container.
+	StepTemplate *StepTemplate `json:"stepTemplate,omitempty"`
+
+	// Sidecars are run alongside the Task's step containers. They begin before
+	// the steps start and end after the steps complete.
+	// +listType=atomic
+	Sidecars []Sidecar `json:"sidecars,omitempty"`
+
+	// Workspaces are the volumes that this Task requires.
+	// +listType=atomic
+	Workspaces []WorkspaceDeclaration `json:"workspaces,omitempty"`
+
+	// Results are values that this Task can output
+	// +listType=atomic
+	Results []TaskResult `json:"results,omitempty"`
 }
 
 // TaskList contains a list of Task
