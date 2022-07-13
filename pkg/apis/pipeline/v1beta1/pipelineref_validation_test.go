@@ -39,22 +39,22 @@ func TestPipelineRef_Invalid(t *testing.T) {
 	}{{
 		name: "use of bundle without the feature flag set",
 		ref: &v1beta1.PipelineRef{
-			Name:   "my-pipeline",
-			Bundle: "docker.io/foo",
+			Name:             "my-pipeline",
+			DeprecatedBundle: "docker.io/foo",
 		},
 		wantErr: apis.ErrGeneric("bundle requires \"enable-tekton-oci-bundles\" feature gate to be true but it is false"),
 	}, {
 		name: "bundle missing name",
 		ref: &v1beta1.PipelineRef{
-			Bundle: "docker.io/foo",
+			DeprecatedBundle: "docker.io/foo",
 		},
 		wantErr:     apis.ErrMissingField("name"),
 		withContext: enableTektonOCIBundles(t),
 	}, {
 		name: "invalid bundle reference",
 		ref: &v1beta1.PipelineRef{
-			Name:   "my-pipeline",
-			Bundle: "not a valid reference",
+			Name:             "my-pipeline",
+			DeprecatedBundle: "not a valid reference",
 		},
 		wantErr:     apis.ErrInvalidValue("invalid bundle reference", "bundle", "could not parse reference: not a valid reference"),
 		withContext: enableTektonOCIBundles(t),
@@ -100,7 +100,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 	}, {
 		name: "pipelineref resolver disallowed in conjunction with pipelineref bundle",
 		ref: &v1beta1.PipelineRef{
-			Bundle: "foo",
+			DeprecatedBundle: "foo",
 			ResolverRef: v1beta1.ResolverRef{
 				Resolver: "baz",
 			},
@@ -123,7 +123,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 	}, {
 		name: "pipelineref resource disallowed in conjunction with pipelineref bundle",
 		ref: &v1beta1.PipelineRef{
-			Bundle: "bar",
+			DeprecatedBundle: "bar",
 			ResolverRef: v1beta1.ResolverRef{
 				Resource: []v1beta1.ResolverParam{{
 					Name:  "foo",

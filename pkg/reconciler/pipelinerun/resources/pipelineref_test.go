@@ -140,8 +140,8 @@ func TestGetPipelineFunc(t *testing.T) {
 		},
 		remotePipelines: []runtime.Object{simplePipeline(), dummyPipeline},
 		ref: &v1beta1.PipelineRef{
-			Name:   "simple",
-			Bundle: u.Host + "/remote-pipeline",
+			Name:             "simple",
+			DeprecatedBundle: u.Host + "/remote-pipeline",
 		},
 		expected: simplePipeline(),
 	}, {
@@ -162,8 +162,8 @@ func TestGetPipelineFunc(t *testing.T) {
 			simplePipelineWithSpecAndParam(""),
 			dummyPipeline},
 		ref: &v1beta1.PipelineRef{
-			Name:   "simple",
-			Bundle: u.Host + "/remote-pipeline-without-defaults",
+			Name:             "simple",
+			DeprecatedBundle: u.Host + "/remote-pipeline-without-defaults",
 		},
 		expected: simplePipelineWithSpecParamAndKind(v1beta1.ParamTypeString, v1beta1.NamespacedTaskKind),
 	}}

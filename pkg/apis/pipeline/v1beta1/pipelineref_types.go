@@ -23,9 +23,10 @@ type PipelineRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
-	// Bundle url reference to a Tekton Bundle.
+	// Deprecated. This field will be removed in a future release, use ResolverRef instead.
+	// DeprecatedBundle url reference to a Tekton Bundle.
 	// +optional
-	Bundle string `json:"bundle,omitempty"`
+	DeprecatedBundle string `json:"bundle,omitempty"`
 
 	// ResolverRef allows referencing a Pipeline in a remote location
 	// like a git repo. This field is only supported when the alpha

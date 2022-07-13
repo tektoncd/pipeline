@@ -55,7 +55,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 		}, nil
 	}
 	switch {
-	case cfg.FeatureFlags.EnableTektonOCIBundles && pr != nil && pr.Bundle != "":
+	case cfg.FeatureFlags.EnableTektonOCIBundles && pr != nil && pr.DeprecatedBundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a PipelineObject.
 		return func(ctx context.Context, name string) (v1beta1.PipelineObject, error) {
@@ -67,7 +67,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			if err != nil {
 				return nil, fmt.Errorf("failed to get keychain: %w", err)
 			}
-			resolver := oci.NewResolver(pr.Bundle, kc)
+			resolver := oci.NewResolver(pr.DeprecatedBundle, kc)
 			return resolvePipeline(ctx, resolver, name)
 		}, nil
 	case cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields && pr != nil && pr.Resolver != "" && requester != nil:

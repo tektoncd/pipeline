@@ -204,14 +204,14 @@ func TestPipelineTask_ValidateBundle_Failure(t *testing.T) {
 		name: "bundle - invalid reference",
 		p: PipelineTask{
 			Name:    "foo",
-			TaskRef: &TaskRef{Name: "bar", Bundle: "invalid reference"},
+			TaskRef: &TaskRef{Name: "bar", DeprecatedBundle: "invalid reference"},
 		},
 		expectedError: *apis.ErrInvalidValue("invalid bundle reference (could not parse reference: invalid reference)", "taskRef.bundle"),
 	}, {
 		name: "bundle - missing taskRef name",
 		p: PipelineTask{
 			Name:    "foo",
-			TaskRef: &TaskRef{Bundle: "valid-bundle"},
+			TaskRef: &TaskRef{DeprecatedBundle: "valid-bundle"},
 		},
 		expectedError: *apis.ErrMissingField("taskRef.name"),
 	}}
@@ -262,7 +262,7 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 		name: "pipeline task - use of bundle with the feature flag set",
 		tasks: PipelineTask{
 			Name:    "foo",
-			TaskRef: &TaskRef{Name: "bar", Bundle: "docker.io/foo"},
+			TaskRef: &TaskRef{Name: "bar", DeprecatedBundle: "docker.io/foo"},
 		},
 		enableBundles: true,
 	}}
@@ -326,7 +326,7 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		name: "pipeline task - use of bundle without the feature flag set",
 		task: PipelineTask{
 			Name:    "foo",
-			TaskRef: &TaskRef{Name: "bar", Bundle: "docker.io/foo"},
+			TaskRef: &TaskRef{Name: "bar", DeprecatedBundle: "docker.io/foo"},
 		},
 		expectedError: *apis.ErrDisallowedFields("taskref.bundle"),
 	}, {
@@ -376,7 +376,7 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 		name: "invalid bundle without bundle name",
 		p: PipelineTask{
 			Name:    "invalid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle"},
+			TaskRef: &TaskRef{DeprecatedBundle: "bundle"},
 		},
 		expectedError: apis.FieldError{
 			Message: `missing field(s)`,
@@ -672,7 +672,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			TaskRef: &TaskRef{APIVersion: "example.com", Kind: "custom"},
 		}, {
 			Name:    "valid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle", Name: "bundle"},
+			TaskRef: &TaskRef{DeprecatedBundle: "bundle", Name: "bundle"},
 		}, {
 			Name:    "valid-task",
 			TaskRef: &TaskRef{Name: "task"},
@@ -686,7 +686,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			TaskRef: &TaskRef{APIVersion: "example.com", Kind: "custom"},
 		}, {
 			Name:    "valid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle", Name: "bundle"},
+			TaskRef: &TaskRef{DeprecatedBundle: "bundle", Name: "bundle"},
 		}, {
 			Name:    "invalid-task-without-name",
 			TaskRef: &TaskRef{Name: ""},
@@ -701,7 +701,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			TaskRef: &TaskRef{APIVersion: "example.com", Kind: "custom"},
 		}, {
 			Name:    "invalid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle"},
+			TaskRef: &TaskRef{DeprecatedBundle: "bundle"},
 		}, {
 			Name:    "invalid-task-without-name",
 			TaskRef: &TaskRef{Name: ""},
@@ -717,7 +717,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			TaskRef: &TaskRef{APIVersion: "example.com"},
 		}, {
 			Name:    "invalid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle"},
+			TaskRef: &TaskRef{DeprecatedBundle: "bundle"},
 		}, {
 			Name:    "invalid-task",
 			TaskRef: &TaskRef{Name: ""},

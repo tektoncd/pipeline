@@ -84,7 +84,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 	}
 
 	switch {
-	case cfg.FeatureFlags.EnableTektonOCIBundles && tr != nil && tr.Bundle != "":
+	case cfg.FeatureFlags.EnableTektonOCIBundles && tr != nil && tr.DeprecatedBundle != "":
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a TaskObject.
 		return func(ctx context.Context, name string) (v1beta1.TaskObject, error) {
@@ -96,7 +96,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			if err != nil {
 				return nil, fmt.Errorf("failed to get keychain: %w", err)
 			}
-			resolver := oci.NewResolver(tr.Bundle, kc)
+			resolver := oci.NewResolver(tr.DeprecatedBundle, kc)
 
 			return resolveTask(ctx, resolver, name, kind)
 		}, nil

@@ -267,8 +267,8 @@ func TestGetTaskFunc(t *testing.T) {
 				},
 			},
 			ref: &v1beta1.TaskRef{
-				Name:   "simple",
-				Bundle: u.Host + "/remote-task",
+				Name:             "simple",
+				DeprecatedBundle: u.Host + "/remote-task",
 			},
 			expected: &v1beta1.Task{
 				ObjectMeta: metav1.ObjectMeta{
@@ -304,8 +304,8 @@ func TestGetTaskFunc(t *testing.T) {
 					},
 				}},
 			ref: &v1beta1.TaskRef{
-				Name:   "simple",
-				Bundle: u.Host + "/remote-task-without-defaults",
+				Name:             "simple",
+				DeprecatedBundle: u.Host + "/remote-task-without-defaults",
 			},
 			expected: &v1beta1.Task{
 				ObjectMeta: metav1.ObjectMeta{
@@ -375,10 +375,10 @@ func TestGetTaskFunc(t *testing.T) {
 				},
 			},
 			ref: &v1beta1.TaskRef{
-				Name:       "simple",
-				APIVersion: "tekton.dev/v1beta1",
-				Kind:       v1beta1.ClusterTaskKind,
-				Bundle:     u.Host + "/remote-cluster-task",
+				Name:             "simple",
+				APIVersion:       "tekton.dev/v1beta1",
+				Kind:             v1beta1.ClusterTaskKind,
+				DeprecatedBundle: u.Host + "/remote-cluster-task",
 			},
 			expected: &v1beta1.ClusterTask{
 				ObjectMeta: metav1.ObjectMeta{Name: "simple"},

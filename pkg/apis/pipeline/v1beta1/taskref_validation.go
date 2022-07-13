@@ -38,7 +38,7 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		if ref.Name != "" {
 			errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
 		}
-		if ref.Bundle != "" {
+		if ref.DeprecatedBundle != "" {
 			errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
 		}
 	case ref.Resource != nil:
@@ -46,7 +46,7 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		if ref.Name != "" {
 			errs = errs.Also(apis.ErrMultipleOneOf("name", "resource"))
 		}
-		if ref.Bundle != "" {
+		if ref.DeprecatedBundle != "" {
 			errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resource"))
 		}
 		if ref.Resolver == "" {
@@ -54,9 +54,9 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	case ref.Name == "":
 		errs = errs.Also(apis.ErrMissingField("name"))
-	case ref.Bundle != "":
+	case ref.DeprecatedBundle != "":
 		errs = errs.Also(validateBundleFeatureFlag(ctx, "bundle", true).ViaField("bundle"))
-		if _, err := name.ParseReference(ref.Bundle); err != nil {
+		if _, err := name.ParseReference(ref.DeprecatedBundle); err != nil {
 			errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
 		}
 	}

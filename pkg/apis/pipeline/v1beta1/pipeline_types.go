@@ -258,12 +258,12 @@ func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 // validateBundle validates bundle specifications - checking name and bundle
 func (pt PipelineTask) validateBundle() (errs *apis.FieldError) {
 	// bundle requires a TaskRef to be specified
-	if (pt.TaskRef != nil && pt.TaskRef.Bundle != "") && pt.TaskRef.Name == "" {
+	if (pt.TaskRef != nil && pt.TaskRef.DeprecatedBundle != "") && pt.TaskRef.Name == "" {
 		errs = errs.Also(apis.ErrMissingField("taskRef.name"))
 	}
 	// If a bundle url is specified, ensure it is parsable
-	if pt.TaskRef != nil && pt.TaskRef.Bundle != "" {
-		if _, err := name.ParseReference(pt.TaskRef.Bundle); err != nil {
+	if pt.TaskRef != nil && pt.TaskRef.DeprecatedBundle != "" {
+		if _, err := name.ParseReference(pt.TaskRef.DeprecatedBundle); err != nil {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "taskRef.bundle"))
 		}
 	}
@@ -287,7 +287,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 			errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
 		}
 		// fail if bundle is present when EnableTektonOCIBundles feature flag is off (as it won't be allowed nor used)
-		if !cfg.FeatureFlags.EnableTektonOCIBundles && pt.TaskRef.Bundle != "" {
+		if !cfg.FeatureFlags.EnableTektonOCIBundles && pt.TaskRef.DeprecatedBundle != "" {
 			errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
 		}
 		if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
@@ -502,7 +502,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	case cfg.FeatureFlags.EnableCustomTasks && pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "":
 		errs = errs.Also(pt.validateCustomTask())
 		// If EnableTektonOCIBundles feature flag is on, validate bundle specifications
-	case cfg.FeatureFlags.EnableTektonOCIBundles && pt.TaskRef != nil && pt.TaskRef.Bundle != "":
+	case cfg.FeatureFlags.EnableTektonOCIBundles && pt.TaskRef != nil && pt.TaskRef.DeprecatedBundle != "":
 		errs = errs.Also(pt.validateBundle())
 	default:
 		errs = errs.Also(pt.validateTask(ctx))

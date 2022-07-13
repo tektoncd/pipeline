@@ -54,8 +54,8 @@ func TestTaskRef_Valid(t *testing.T) {
 	}, {
 		name: "valid bundle",
 		taskRef: &v1beta1.TaskRef{
-			Name:   "bundled-task",
-			Bundle: "gcr.io/my-bundle"},
+			Name:             "bundled-task",
+			DeprecatedBundle: "gcr.io/my-bundle"},
 		wc: config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
@@ -84,22 +84,22 @@ func TestTaskRef_Invalid(t *testing.T) {
 	}, {
 		name: "use of bundle without the feature flag set",
 		taskRef: &v1beta1.TaskRef{
-			Name:   "my-task",
-			Bundle: "docker.io/foo",
+			Name:             "my-task",
+			DeprecatedBundle: "docker.io/foo",
 		},
 		wantErr: apis.ErrGeneric("bundle requires \"enable-tekton-oci-bundles\" feature gate to be true but it is false"),
 	}, {
 		name: "bundle missing name",
 		taskRef: &v1beta1.TaskRef{
-			Bundle: "docker.io/foo",
+			DeprecatedBundle: "docker.io/foo",
 		},
 		wantErr: apis.ErrMissingField("name"),
 		wc:      enableTektonOCIBundles(t),
 	}, {
 		name: "invalid bundle reference",
 		taskRef: &v1beta1.TaskRef{
-			Name:   "my-task",
-			Bundle: "invalid reference",
+			Name:             "my-task",
+			DeprecatedBundle: "invalid reference",
 		},
 		wantErr: apis.ErrInvalidValue("invalid bundle reference", "bundle", "could not parse reference: invalid reference"),
 		wc:      enableTektonOCIBundles(t),
@@ -141,7 +141,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 	}, {
 		name: "taskref resolver disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{
-			Bundle: "bar",
+			DeprecatedBundle: "bar",
 			ResolverRef: v1beta1.ResolverRef{
 				Resolver: "git",
 			},
@@ -164,7 +164,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 	}, {
 		name: "taskref resource disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{
-			Bundle: "bar",
+			DeprecatedBundle: "bar",
 			ResolverRef: v1beta1.ResolverRef{
 				Resource: []v1beta1.ResolverParam{{
 					Name:  "foo",
