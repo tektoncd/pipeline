@@ -79,6 +79,10 @@ type RunSpec struct {
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
 	Workspaces []v1beta1.WorkspaceBinding `json:"workspaces,omitempty"`
+
+	// TimeoutFromParent is set to true if this Run's timeout was set by a parent PipelineRun.
+	// +optional
+	TimeoutFromParent bool `json:"timeoutFromParent,omitempty"`
 }
 
 // RunSpecStatus defines the taskrun spec status the user can provide

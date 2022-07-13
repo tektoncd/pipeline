@@ -1962,6 +1962,35 @@ func TestGetPipelineConditionStatus_PipelineTimeoutDeprecated(t *testing.T) {
 	}
 }
 
+// pipeline should result in timeout if all tasks are completed and at least one of them timed out due to the PipelineRun timeout
+func TestGetPipelineConditionStatus_PipelineTimeoutDeprecated_PRTimeoutTask(t *testing.T) {
+	testState := allFinishedWithOneTimedOutDueToPipelineRunState(now.Add(-4 * time.Second))
+	d, err := dagFromState(testState)
+	if err != nil {
+		t.Fatalf("Unexpected error while building DAG for state %v: %v", testState, err)
+	}
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-no-tasks-started"},
+		Spec: v1beta1.PipelineRunSpec{
+			Timeout: &metav1.Duration{Duration: 121 * time.Second},
+		},
+		Status: v1beta1.PipelineRunStatus{
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: now.Add(-2 * time.Minute)},
+			},
+		},
+	}
+	facts := PipelineRunFacts{
+		State:           testState,
+		TasksGraph:      d,
+		FinalTasksGraph: &dag.Graph{},
+	}
+	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
+		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, testState)
+	}
+}
+
 // pipeline should result in timeout if its runtime exceeds its spec.Timeouts.Pipeline based on its status.Timeout
 func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 	d, err := dagFromState(oneFinishedState)
@@ -1989,6 +2018,37 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
 	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
 		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, oneFinishedState)
+	}
+}
+
+// pipeline should result in timeout if all tasks are completed and at least one of them timed out due to the PipelineRun timeout
+func TestGetPipelineConditionStatus_PipelineTimeouts_PRTimeoutTask(t *testing.T) {
+	testState := allFinishedWithOneTimedOutDueToPipelineRunState(now.Add(-4 * time.Second))
+	d, err := dagFromState(testState)
+	if err != nil {
+		t.Fatalf("Unexpected error while building DAG for state %v: %v", testState, err)
+	}
+	pr := &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun-no-tasks-started"},
+		Spec: v1beta1.PipelineRunSpec{
+			Timeouts: &v1beta1.TimeoutFields{
+				Pipeline: &metav1.Duration{Duration: 121 * time.Second},
+			},
+		},
+		Status: v1beta1.PipelineRunStatus{
+			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				StartTime: &metav1.Time{Time: now.Add(-2 * time.Minute)},
+			},
+		},
+	}
+	facts := PipelineRunFacts{
+		State:           testState,
+		TasksGraph:      d,
+		FinalTasksGraph: &dag.Graph{},
+	}
+	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
+	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
+		t.Fatalf("Expected to get status %s but got %s for state %v", corev1.ConditionFalse, c.Status, testState)
 	}
 }
 

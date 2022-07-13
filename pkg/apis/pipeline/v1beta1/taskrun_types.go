@@ -58,6 +58,7 @@ type TaskRunSpec struct {
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration
+	// +optional
 	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
@@ -78,7 +79,11 @@ type TaskRunSpec struct {
 	// +listType=atomic
 	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 	// Compute resources to use for this TaskRun
+	// +optional
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
+	// TimeoutFromParent is set to true if this TaskRun's timeout was set by a parent PipelineRun.
+	// +optional
+	TimeoutFromParent bool `json:"timeoutFromParent,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide

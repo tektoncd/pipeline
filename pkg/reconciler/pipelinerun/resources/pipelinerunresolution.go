@@ -30,6 +30,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
 )
@@ -193,6 +194,43 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		isDone = t.TaskRun.IsDone()
 	}
 	return isDone && c.IsFalse() && !t.hasRemainingRetries()
+}
+
+// isTimedOutDueToPipelineRun returns true only if the run has timed out, and its timeout was set to the PipelineRun's timeout.
+// If the PipelineTask has a Matrix, isSuccessful returns true if any of the runs satisfied this condition.
+func (t ResolvedPipelineTask) isTimedOutDueToPipelineRun(ctx context.Context, c clock.PassiveClock) bool {
+	switch {
+	case t.IsCustomTask() && t.IsMatrixed():
+		if len(t.Runs) == 0 {
+			return false
+		}
+		for _, run := range t.Runs {
+			if run.HasTimedOut(c) && run.Spec.TimeoutFromParent {
+				return true
+			}
+		}
+		return false
+	case t.IsCustomTask():
+		if t.Run == nil {
+			return false
+		}
+		return t.Run.HasTimedOut(c) && t.Run.Spec.TimeoutFromParent
+	case t.IsMatrixed():
+		if len(t.TaskRuns) == 0 {
+			return false
+		}
+		for _, taskRun := range t.TaskRuns {
+			if taskRun.HasTimedOut(ctx, c) && taskRun.Spec.TimeoutFromParent {
+				return true
+			}
+		}
+		return false
+	default:
+		if t.TaskRun == nil {
+			return false
+		}
+		return t.TaskRun.HasTimedOut(ctx, c) && t.TaskRun.Spec.TimeoutFromParent
+	}
 }
 
 // hasRemainingRetries returns true only when the number of retries already attempted

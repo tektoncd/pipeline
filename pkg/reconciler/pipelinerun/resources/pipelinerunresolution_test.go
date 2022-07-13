@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -272,6 +273,33 @@ func makeFailed(tr v1beta1.TaskRun) *v1beta1.TaskRun {
 	newTr := newTaskRun(tr)
 	newTr.Status.Conditions[0].Status = corev1.ConditionFalse
 	return newTr
+}
+
+func makeFailedDueToPipelineRunTimeout(tr v1beta1.TaskRun, startTime time.Time) *v1beta1.TaskRun {
+	newTr := newTaskRun(tr)
+	newTr.Spec.Timeout = &metav1.Duration{Duration: 3 * time.Second}
+	newTr.Spec.TimeoutFromParent = true
+	newTr.Status.Conditions[0].Status = corev1.ConditionFalse
+	newTr.Status.StartTime = &metav1.Time{Time: startTime}
+	return newTr
+}
+
+func allFinishedWithOneTimedOutDueToPipelineRunState(startTime time.Time) PipelineRunState {
+	return PipelineRunState{{
+		PipelineTask: &pts[0],
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun:      makeFailedDueToPipelineRunTimeout(trs[0], startTime),
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}, {
+		PipelineTask: &pts[1],
+		TaskRunName:  "pipelinerun-mytask2",
+		TaskRun:      makeSucceeded(trs[0]),
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
 }
 
 func makeRunFailed(run v1alpha1.Run) *v1alpha1.Run {

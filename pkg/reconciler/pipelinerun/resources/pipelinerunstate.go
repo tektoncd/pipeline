@@ -79,6 +79,8 @@ type pipelineRunStatusCount struct {
 	Cancelled int
 	// number of tasks which are still pending, have not executed
 	Incomplete int
+	// number of tasks which timed out due to the PipelineRun's timeout
+	TimedOutDueToPipelineRun int
 }
 
 // ResetSkippedCache resets the skipped cache in the facts map
@@ -449,7 +451,7 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 
 	// report the count in PipelineRun Status
 	// get the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
-	s := facts.getPipelineTasksCount()
+	s := facts.getPipelineTasksCount(ctx, c)
 	// completed task is a collection of successful, failed, cancelled tasks (skipped tasks are reported separately)
 	cmTasks := s.Succeeded + s.Failed + s.Cancelled
 
@@ -469,6 +471,11 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 		}
 
 		switch {
+		case s.TimedOutDueToPipelineRun > 0:
+			// Set reason to ReasonTimedOut - At least one timed out due to the PipelineRun's timeout
+			reason = v1beta1.PipelineRunReasonTimedOut.String()
+			status = corev1.ConditionFalse
+			message = fmt.Sprintf("PipelineRun %q failed to finish within %q", pr.Name, pr.PipelineTimeout(ctx).String())
 		case s.Failed > 0:
 			// Set reason to ReasonFailed - At least one failed
 			reason = v1beta1.PipelineRunReasonFailed.String()
@@ -630,19 +637,23 @@ func (facts *PipelineRunFacts) checkFinalTasksDone() bool {
 }
 
 // getPipelineTasksCount returns the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
-func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
+func (facts *PipelineRunFacts) getPipelineTasksCount(ctx context.Context, c clock.PassiveClock) pipelineRunStatusCount {
 	s := pipelineRunStatusCount{
-		Skipped:    0,
-		Succeeded:  0,
-		Failed:     0,
-		Cancelled:  0,
-		Incomplete: 0,
+		Skipped:                  0,
+		Succeeded:                0,
+		Failed:                   0,
+		Cancelled:                0,
+		Incomplete:               0,
+		TimedOutDueToPipelineRun: 0,
 	}
 	for _, t := range facts.State {
 		switch {
 		// increment success counter since the task is successful
 		case t.isSuccessful():
 			s.Succeeded++
+		// increment timed out counter due to PipelineRun counters if the task timed out due to the PipelineRun timeout
+		case t.isTimedOutDueToPipelineRun(ctx, c):
+			s.TimedOutDueToPipelineRun++
 		// increment cancelled counter since the task is cancelled
 		case t.isCancelled():
 			s.Cancelled++

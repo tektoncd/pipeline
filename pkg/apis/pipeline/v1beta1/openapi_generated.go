@@ -4489,6 +4489,13 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref common.ReferenceCallback) 
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
 					},
+					"timeoutFromParent": {
+						SchemaProps: spec.SchemaProps{
+							Description: "TimeoutFromParent is set to true if this TaskRun's timeout was set by a parent PipelineRun.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},

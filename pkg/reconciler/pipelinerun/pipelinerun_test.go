@@ -566,6 +566,7 @@ spec:
   taskRef:
     name: unit-test-task
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
@@ -638,6 +639,7 @@ spec:
   retries: 3
   serviceAccountName: default
   timeout: 1h0m0s
+  timeoutFromParent: true
 `
 
 	tcs := []struct {
@@ -700,6 +702,7 @@ spec:
       field1: 123
       field2: value
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 	}, {
 		name: "custom task with workspace",
@@ -738,6 +741,7 @@ spec:
     kind: Example
   serviceAccountName: default
   timeout: 1h0m0s
+  timeoutFromParent: true
   workspaces:
   - name: taskws
     persistentVolumeClaim:
@@ -872,6 +876,7 @@ spec:
         image: myimage
   serviceAccountName: %s
   timeout: 1h0m0s
+  timeoutFromParent: true
 `, config.DefaultServiceAccountValue))
 
 	expectedTaskRun.ObjectMeta = taskRunObjectMeta("test-pipeline-run-success-unit-test-task-spec", "foo", "test-pipeline-run-success", "test-pipeline", "unit-test-task-spec", false)
@@ -2786,6 +2791,7 @@ spec:
   taskRef:
     name: hello-world
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 
 	d := test.Data{
@@ -2923,6 +2929,7 @@ spec:
   taskRef:
     name: hello-world-task
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta(taskRunNames[1], "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "hello-world-1", false),
@@ -2933,6 +2940,7 @@ spec:
   taskRef:
     name: hello-world-task
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 	}
 
@@ -3110,12 +3118,13 @@ func TestGetTaskRunTimeout(t *testing.T) {
 	p := "pipeline"
 
 	tcs := []struct {
-		name            string
-		timeoutDuration *metav1.Duration
-		timeoutFields   *v1beta1.TimeoutFields
-		startTime       time.Time
-		rpt             *resources.ResolvedPipelineTask
-		expected        *metav1.Duration
+		name                string
+		timeoutDuration     *metav1.Duration
+		timeoutFields       *v1beta1.TimeoutFields
+		startTime           time.Time
+		rpt                 *resources.ResolvedPipelineTask
+		expected            *metav1.Duration
+		isTimeoutFromParent bool
 	}{{
 		name:      "nil timeout duration",
 		startTime: now,
@@ -3124,7 +3133,8 @@ func TestGetTaskRunTimeout(t *testing.T) {
 				Timeout: nil,
 			},
 		},
-		expected: &metav1.Duration{Duration: 60 * time.Minute},
+		expected:            &metav1.Duration{Duration: 60 * time.Minute},
+		isTimeoutFromParent: true,
 	}, {
 		name:            "timeout specified in pr",
 		timeoutDuration: &metav1.Duration{Duration: 20 * time.Minute},
@@ -3134,7 +3144,8 @@ func TestGetTaskRunTimeout(t *testing.T) {
 				Timeout: nil,
 			},
 		},
-		expected: &metav1.Duration{Duration: 20 * time.Minute},
+		expected:            &metav1.Duration{Duration: 20 * time.Minute},
+		isTimeoutFromParent: true,
 	}, {
 		name:            "0 timeout duration",
 		timeoutDuration: &metav1.Duration{Duration: 0 * time.Minute},
@@ -3279,6 +3290,26 @@ func TestGetTaskRunTimeout(t *testing.T) {
 			},
 		},
 		expected: &metav1.Duration{Duration: 10 * time.Minute},
+	}, {
+		name: "taskrun with elapsed time; timeouts.pipeline applies",
+		timeoutFields: &v1beta1.TimeoutFields{
+			Pipeline: &metav1.Duration{Duration: 20 * time.Minute},
+		},
+		startTime: now.Add(-10 * time.Minute),
+		rpt: &resources.ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Timeout: &metav1.Duration{Duration: 15 * time.Minute},
+			},
+			TaskRun: &v1beta1.TaskRun{
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						StartTime: nil,
+					},
+				},
+			},
+		},
+		expected:            &metav1.Duration{Duration: 10 * time.Minute},
+		isTimeoutFromParent: true,
 	}}
 
 	for _, tc := range tcs {
@@ -3296,8 +3327,12 @@ func TestGetTaskRunTimeout(t *testing.T) {
 					},
 				},
 			}
-			if d := cmp.Diff(getTaskRunTimeout(context.TODO(), pr, tc.rpt, testClock), tc.expected); d != "" {
+			trTimeout, timeoutFromParent := getTaskRunTimeout(context.TODO(), pr, tc.rpt, testClock)
+			if d := cmp.Diff(trTimeout, tc.expected); d != "" {
 				t.Errorf("Unexpected task run timeout. Diff %s", diff.PrintWantGot(d))
+			}
+			if tc.isTimeoutFromParent != timeoutFromParent {
+				t.Errorf("Expected whether task run timeout is determined by PipelineRun timeout to be %t, but is %t", tc.isTimeoutFromParent, timeoutFromParent)
 			}
 		})
 	}
@@ -3309,20 +3344,22 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 	p := "pipeline"
 
 	tcs := []struct {
-		name            string
-		timeoutDuration *metav1.Duration
-		timeoutFields   *v1beta1.TimeoutFields
-		startTime       time.Time
-		pr              *v1beta1.PipelineRun
-		rpt             *resources.ResolvedPipelineTask
-		expected        *metav1.Duration
+		name                string
+		timeoutDuration     *metav1.Duration
+		timeoutFields       *v1beta1.TimeoutFields
+		startTime           time.Time
+		pr                  *v1beta1.PipelineRun
+		rpt                 *resources.ResolvedPipelineTask
+		expected            *metav1.Duration
+		isTimeoutFromParent bool
 	}{{
 		name:      "nil timeout duration",
 		startTime: now,
 		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
-		expected: &metav1.Duration{Duration: 60 * time.Minute},
+		expected:            &metav1.Duration{Duration: 60 * time.Minute},
+		isTimeoutFromParent: true,
 	}, {
 		name:            "timeout specified in pr",
 		timeoutDuration: &metav1.Duration{Duration: 20 * time.Minute},
@@ -3330,7 +3367,8 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 		rpt: &resources.ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{},
 		},
-		expected: &metav1.Duration{Duration: 20 * time.Minute},
+		expected:            &metav1.Duration{Duration: 20 * time.Minute},
+		isTimeoutFromParent: true,
 	}, {
 		name:            "taskrun being created after timeout expired",
 		timeoutDuration: &metav1.Duration{Duration: 1 * time.Minute},
@@ -3449,7 +3487,8 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 				},
 			},
 		},
-		expected: &metav1.Duration{Duration: 11 * time.Minute},
+		expected:            &metav1.Duration{Duration: 11 * time.Minute},
+		isTimeoutFromParent: true,
 	}}
 
 	for _, tc := range tcs {
@@ -3467,8 +3506,12 @@ func TestGetFinallyTaskRunTimeout(t *testing.T) {
 					},
 				},
 			}
-			if d := cmp.Diff(tc.expected, getFinallyTaskRunTimeout(context.TODO(), pr, tc.rpt, testClock)); d != "" {
+			trTimeout, timeoutFromParent := getFinallyTaskRunTimeout(context.TODO(), pr, tc.rpt, testClock)
+			if d := cmp.Diff(tc.expected, trTimeout); d != "" {
 				t.Errorf("Unexpected finally task run timeout. Diff %s", diff.PrintWantGot(d))
+			}
+			if tc.isTimeoutFromParent != timeoutFromParent {
+				t.Errorf("Expected whether finally task run timeout is determined by PipelineRun timeout to be %t, but is %t", tc.isTimeoutFromParent, timeoutFromParent)
 			}
 		})
 	}
@@ -3531,6 +3574,7 @@ spec:
   taskRef:
     name: hello-world
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 
 	if d := cmp.Diff(actual, expectedTaskRun, ignoreTypeMeta); d != "" {
@@ -3724,6 +3768,7 @@ spec:
   taskRef:
     name: hello-world
   timeout: 1h0m0s
+  timeoutFromParent: false
 status:
   conditions:
   - status: "True"
@@ -3759,6 +3804,7 @@ spec:
   taskRef:
     name: b-task
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 	// Check that the expected TaskRun was created
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
@@ -3950,6 +3996,7 @@ spec:
   taskRef:
     name: %s
   timeout: 1h0m0s
+  timeoutFromParent: true
 `, taskName))
 
 		actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
@@ -4628,6 +4675,7 @@ spec:
   taskRef:
     name: b-task
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 	// Check that the expected TaskRun was created
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
@@ -4718,6 +4766,7 @@ spec:
     kind: Task
     name: a-task
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 	// Check that the expected TaskRun was created (only)
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
@@ -6228,6 +6277,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 status:
   conditions:
   - reason: Failed
@@ -6259,6 +6309,7 @@ spec:
   taskRef:
     name: finaltask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 	// Check that the expected TaskRun was created
 	actual, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
@@ -6438,6 +6489,7 @@ spec:
   taskRef:
     name: final-task
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 
 	// Check that the expected TaskRun was created
@@ -6645,6 +6697,7 @@ spec:
     kind: Task
     name: unit-test-task
   timeout: 1h0m0s
+  timeoutFromParent: true
 `, ref))
 
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
@@ -6751,6 +6804,7 @@ spec:
     - name: ws
       optional: true
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
@@ -7170,6 +7224,7 @@ func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]
 			ServiceAccountName: config.DefaultServiceAccountValue,
 			Resources:          &v1beta1.TaskRunResources{},
 			Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
+			TimeoutFromParent:  true,
 		},
 	}
 }
@@ -7575,6 +7630,7 @@ spec:
   taskRef:
     name: hello-world
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 
 	if d := cmp.Diff(actual, expectedTaskRun, ignoreTypeMeta); d != "" {
@@ -7648,6 +7704,7 @@ spec:
       - name: foo-step
         image: foo-image
   timeout: 1h0m0s
+  timeoutFromParent: true
 `)
 
 	if d := cmp.Diff(actual, expectedTaskRun, ignoreTypeMeta); d != "" {
@@ -7692,6 +7749,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
@@ -7710,6 +7768,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-2", "foo",
@@ -7728,6 +7787,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-3", "foo",
@@ -7746,6 +7806,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-4", "foo",
@@ -7764,6 +7825,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-5", "foo",
@@ -7782,6 +7844,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-6", "foo",
@@ -7800,6 +7863,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-7", "foo",
@@ -7818,6 +7882,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-8", "foo",
@@ -7836,6 +7901,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 	}
 	cms := []*corev1.ConfigMap{withEmbeddedStatus(withEnabledAlphaAPIFields(newFeatureFlagsConfigMap()), config.MinimalEmbeddedStatus)}
@@ -8223,6 +8289,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
@@ -8241,6 +8308,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-2", "foo",
@@ -8259,6 +8327,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-3", "foo",
@@ -8277,6 +8346,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-4", "foo",
@@ -8295,6 +8365,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-5", "foo",
@@ -8313,6 +8384,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-6", "foo",
@@ -8331,6 +8403,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-7", "foo",
@@ -8349,6 +8422,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseTaskRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-8", "foo",
@@ -8367,6 +8441,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 	}
 	cms := []*corev1.ConfigMap{withEmbeddedStatus(withEnabledAlphaAPIFields(newFeatureFlagsConfigMap()), config.MinimalEmbeddedStatus)}
@@ -8798,6 +8873,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
@@ -8819,6 +8895,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-2", "foo",
@@ -8840,6 +8917,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-3", "foo",
@@ -8861,6 +8939,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-4", "foo",
@@ -8882,6 +8961,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-5", "foo",
@@ -8903,6 +8983,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-6", "foo",
@@ -8924,6 +9005,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-7", "foo",
@@ -8945,6 +9027,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 		mustParseRunWithObjectMeta(t,
 			taskRunObjectMeta("pr-platforms-and-browsers-8", "foo",
@@ -8966,6 +9049,7 @@ spec:
   taskRef:
     name: mytask
   timeout: 1h0m0s
+  timeoutFromParent: true
 `),
 	}
 	cms := []*corev1.ConfigMap{withEmbeddedStatus(withEnabledAlphaAPIFields(newFeatureFlagsConfigMap()), config.MinimalEmbeddedStatus)}
