@@ -55,10 +55,15 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// Validate TaskSpec if it's present.
 	if ts.TaskSpec != nil {
+		// skip validation of parameter and workspaces variables since we validate them via taskrunspec below.
+		ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
 		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 
 	errs = errs.Also(ValidateParameters(ctx, ts.Params).ViaField("params"))
+
+	// Validate propagated parameters
+	errs = errs.Also(ts.validateInlineParameters(ctx))
 	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	if ts.Debug != nil {
@@ -96,6 +101,42 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
+	return errs
+}
+
+// validateInlineParameters validates that any parameters called in the
+// Task spec are declared in the TaskRun.
+// This is crucial for propagated parameters because the parameters could
+// be defined under taskRun and then called directly in the task steps.
+// In this case, parameters cannot be validated by the underlying taskSpec
+// since they may not have the parameters declared because of propagation.
+func (ts *TaskRunSpec) validateInlineParameters(ctx context.Context) (errs *apis.FieldError) {
+	if ts.TaskSpec == nil {
+		return errs
+	}
+	var paramSpec []ParamSpec
+	for _, p := range ts.Params {
+		pSpec := ParamSpec{
+			Name:    p.Name,
+			Default: &p.Value,
+		}
+		paramSpec = append(paramSpec, pSpec)
+	}
+	for _, p := range ts.TaskSpec.Params {
+		skip := false
+		for _, ps := range paramSpec {
+			if ps.Name == p.Name {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			paramSpec = append(paramSpec, p)
+		}
+	}
+	if ts.TaskSpec != nil && ts.TaskSpec.Steps != nil {
+		errs = errs.Also(ValidateParameterVariables(config.SetValidateParameterVariablesAndWorkspaces(ctx, true), ts.TaskSpec.Steps, paramSpec))
+	}
 	return errs
 }
 

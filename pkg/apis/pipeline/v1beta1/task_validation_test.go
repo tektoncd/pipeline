@@ -67,6 +67,20 @@ func TestTaskValidate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "task"},
 		},
 		wc: apis.WithinDelete,
+	}, {
+		name: "valid task",
+		t: &v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{Name: "task"},
+			Spec: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:  "my-step",
+					Image: "my-image",
+					Script: `
+					#!/usr/bin/env  bash
+					echo hello`,
+				}},
+			},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -77,6 +91,60 @@ func TestTaskValidate(t *testing.T) {
 			err := tt.t.Validate(ctx)
 			if err != nil {
 				t.Errorf("Task.Validate() returned error for valid Task: %v", err)
+			}
+		})
+	}
+}
+
+func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
+	type fields struct {
+		Params       []v1beta1.ParamSpec
+		Resources    *v1beta1.TaskResources
+		Steps        []v1beta1.Step
+		StepTemplate *v1beta1.StepTemplate
+		Workspaces   []v1beta1.WorkspaceDeclaration
+		Results      []v1beta1.TaskResult
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{{
+		name: "propagating params valid step with script",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Name:  "propagatingparams",
+				Image: "my-image",
+				Script: `
+				#!/usr/bin/env bash
+				$(params.message)`,
+			}},
+		},
+	}, {
+		name: "propagating params valid step with args",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Name:    "propagatingparams",
+				Image:   "my-image",
+				Command: []string{"$(params.command)"},
+				Args:    []string{"$(params.message)"},
+			}},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := &v1beta1.TaskSpec{
+				Params:       tt.fields.Params,
+				Resources:    tt.fields.Resources,
+				Steps:        tt.fields.Steps,
+				StepTemplate: tt.fields.StepTemplate,
+				Workspaces:   tt.fields.Workspaces,
+				Results:      tt.fields.Results,
+			}
+			ctx := config.EnableAlphaAPIFields(context.Background())
+			ts.SetDefaults(ctx)
+			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
+			if err := ts.Validate(ctx); err != nil {
+				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
 		})
 	}
@@ -1305,6 +1373,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
+			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
 			err := ts.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
@@ -1352,6 +1421,7 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
+			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -1409,6 +1479,7 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
+			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
 			err := ts.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
@@ -1460,6 +1531,7 @@ func TestStepOnError(t *testing.T) {
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
+			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
 			err := ts.Validate(ctx)
 			if tt.expectedError == nil && err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -1553,8 +1625,8 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 				if version == "alpha" {
 					ctx = config.EnableAlphaAPIFields(ctx)
 				}
-
 				ts.SetDefaults(ctx)
+				ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
 				err := ts.Validate(ctx)
 
 				if tt.requiredVersion != version && err == nil {
@@ -1638,6 +1710,7 @@ func TestSubstitutedContext(t *testing.T) {
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
+			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
 			if tt.fields.SubstitutionContext {
 				ctx = config.WithinSubstituted(ctx)
 			}
