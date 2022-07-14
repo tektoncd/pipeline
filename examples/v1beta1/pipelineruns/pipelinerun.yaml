@@ -142,7 +142,7 @@ spec:
     default: ""
   - name: BUILDER_IMAGE
     description: The image on which builds will run
-    default: gcr.io/kaniko-project/executor:v1.3.0
+    default: gcr.io/kaniko-project/executor:v1.8.1
   - name: baseImage
     description: Base image for GoogleContainerTools/skaffold microservice apps
     default: BASE=alpine:3.9
@@ -166,6 +166,7 @@ spec:
     - --destination=$(params.IMAGE)
     - --oci-layout-path=$(workspaces.source.path)/$(params.CONTEXT)/image-digest
     - --build-arg=$(inputs.params.baseImage)
+    - --ignore-path=/product_uuid # TODO(abayer): Work around Kaniko multi-stage build issues on Kind: https://github.com/GoogleContainerTools/kaniko/issues/2164
     # kaniko assumes it is running as root, which means this example fails on platforms
     # that default to run containers as random uid (like OpenShift). Adding this securityContext
     # makes it explicit that it needs to run as root.
