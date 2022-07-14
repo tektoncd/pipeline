@@ -56,6 +56,7 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 		return nil
 	}
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
+	ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
 	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
@@ -362,9 +363,10 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 			stringParameterNames.Insert(p.Name)
 		}
 	}
-
 	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParamSpecs))
-	errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
+	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
+		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
+	}
 	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 	errs = errs.Also(validateObjectDefault(objectParamSpecs))
 	return errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
@@ -585,9 +587,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 	errs := validateTaskVariable(step.Name, prefix, vars).ViaField("name")
 	errs = errs.Also(validateTaskVariable(step.Image, prefix, vars).ViaField("image"))
 	errs = errs.Also(validateTaskVariable(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	if !(config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" && prefix == "params") {
-		errs = errs.Also(validateTaskVariable(step.Script, prefix, vars).ViaField("script"))
-	}
+	errs = errs.Also(validateTaskVariable(step.Script, prefix, vars).ViaField("script"))
 	for i, cmd := range step.Command {
 		errs = errs.Also(validateTaskVariable(cmd, prefix, vars).ViaFieldIndex("command", i))
 	}

@@ -23,6 +23,9 @@ import (
 // isSubstituted is used for associating the parameter substitution inside the context.Context.
 type isSubstituted struct{}
 
+// validateEmbeddedVariables is used for deciding whether to validate or skip parameters and workspaces inside the contect.Context.
+type validateEmbeddedVariables string
+
 // WithinSubstituted is used to note that it is calling within
 // the context of a substitute variable operation.
 func WithinSubstituted(ctx context.Context) context.Context {
@@ -32,4 +35,14 @@ func WithinSubstituted(ctx context.Context) context.Context {
 // IsSubstituted indicates that the variables have been substituted.
 func IsSubstituted(ctx context.Context) bool {
 	return ctx.Value(isSubstituted{}) != nil
+}
+
+// SetValidateParameterVariablesAndWorkspaces sets the context to skip validation of parameters when embedded vs referenced to true or false.
+func SetValidateParameterVariablesAndWorkspaces(ctx context.Context, validate bool) context.Context {
+	return context.WithValue(ctx, validateEmbeddedVariables("ValidateParameterVariablesAndWorkspaces"), validate)
+}
+
+// ValidateParameterVariablesAndWorkspaces indicates if validation of paramater variables and workspaces should be conducted.
+func ValidateParameterVariablesAndWorkspaces(ctx context.Context) bool {
+	return ctx.Value(validateEmbeddedVariables("ValidateParameterVariablesAndWorkspaces")) == true
 }

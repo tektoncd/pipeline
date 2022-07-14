@@ -700,6 +700,9 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 	// Apply workspace resource substitution
 	ts = resources.ApplyWorkspaces(ctx, ts, ts.Workspaces, tr.Spec.Workspaces, workspaceVolumes)
 
+	// By this time, params and workspaces should be propagated down so we can
+	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
+	ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
 	if validateErr := ts.Validate(ctx); validateErr != nil {
 		logger.Errorf("Failed to create a pod for taskrun: %s due to task validation error %v", tr.Name, validateErr)
 		return nil, validateErr

@@ -37,15 +37,40 @@ func TestTaskRun_Invalidate(t *testing.T) {
 		name    string
 		taskRun *v1beta1.TaskRun
 		want    *apis.FieldError
+		wc      func(context.Context) context.Context
 	}{{
 		name:    "invalid taskspec",
 		taskRun: &v1beta1.TaskRun{},
 		want: apis.ErrMissingOneOf("spec.taskRef", "spec.taskSpec").Also(
 			apis.ErrGeneric(`invalid resource name "": must be a valid DNS label`, "metadata.name")),
+	}, {
+		name: "propagating params not provided but used by step",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words[*])"},
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `non-existent variable in "$(params.task-words[*])"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+		wc: config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
-			err := ts.taskRun.Validate(context.Background())
+			ctx := context.Background()
+			if ts.wc != nil {
+				ctx = ts.wc(ctx)
+			}
+			err := ts.taskRun.Validate(ctx)
 			if d := cmp.Diff(ts.want.Error(), err.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
@@ -64,6 +89,119 @@ func TestTaskRun_Validate(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "taskrname"},
 		},
 		wc: apis.WithinDelete,
+	}, {
+		name: "propagating params with taskrun",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ArrayOrString{
+						ArrayVal: []string{"hello", "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words[*])"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating partial params with different provided and default names",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ArrayOrString{
+						ArrayVal: []string{"hello", "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "task-words-2",
+						Type: v1beta1.ParamTypeArray,
+					}},
+					Steps: []v1beta1.Step{{
+						Name:    "task-echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words[*])"},
+					}, {
+						Name:    "task-echo-2",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words-2[*])"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating partial params in taskrun",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ArrayOrString{
+						ArrayVal: []string{"hello", "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "task-words-2",
+						Type: v1beta1.ParamTypeArray,
+					}, {
+						Name: "task-words",
+						Type: v1beta1.ParamTypeArray,
+					}},
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words[*])"},
+					}, {
+						Name:    "echo-2",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words-2[*])"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating params with taskrun same names",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ArrayOrString{
+						ArrayVal: []string{"hello", "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "task-words",
+						Type: v1beta1.ParamTypeArray,
+					}},
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words[*])"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid step and sidecar overrides",
 		taskRun: &v1beta1.TaskRun{
