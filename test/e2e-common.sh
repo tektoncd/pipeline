@@ -20,8 +20,9 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
-  ko resolve -R -f config/ \
-      | sed -e 's%"level": "info"%"level": "debug"%' \
+  local ko_target="$(mktemp)"
+  ko resolve -R -f config/ > "${ko_target}" || fail_test "Pipeline image resolve failed"
+  cat "${ko_target}" | sed -e 's%"level": "info"%"level": "debug"%' \
       | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
       | sed -e 's%loglevel.webhook: "info"%loglevel.webhook: "debug"%' \
       | kubectl apply -R -f - || fail_test "Build pipeline installation failed"
