@@ -279,6 +279,7 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 				cfg.FeatureFlags.EnableTektonOCIBundles = true
 			}
 			ctx = config.ToContext(ctx, cfg)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := tt.tasks.validateTask(ctx)
 			if err != nil {
 				t.Errorf("PipelineTask.validateTask() returned error for valid pipeline task: %v", err)
@@ -344,7 +345,8 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.task.validateTask(context.Background())
+			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
+			err := tt.task.validateTask(ctx)
 			if err == nil {
 				t.Error("PipelineTask.validateTask() did not return error for invalid pipeline task")
 			}
@@ -390,6 +392,7 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 			if tt.wc != nil {
 				ctx = tt.wc(ctx)
 			}
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := tt.p.Validate(ctx)
 			if err == nil {
 				t.Error("PipelineTask.Validate() did not return error for invalid pipeline task")
@@ -735,6 +738,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 				ctx = tt.wc(ctx)
 			}
 			taskNames := sets.String{}
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := tt.tasks.Validate(ctx, taskNames, tt.path)
 			if tt.expectedError != nil && err == nil {
 				t.Error("PipelineTaskList.Validate() did not return error for invalid pipeline tasks")

@@ -685,7 +685,8 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.ps.Validate(context.Background())
+			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
+			err := tt.ps.Validate(ctx)
 			if err == nil {
 				t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec")
 			}
@@ -705,7 +706,8 @@ func TestPipelineSpec_Validate_Failure_CycleDAG(t *testing.T) {
 			Name: "bar", TaskRef: &TaskRef{Name: "bar-task"}, RunAfter: []string{"foo"},
 		}},
 	}
-	err := ps.Validate(context.Background())
+	ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
+	err := ps.Validate(ctx)
 	if err == nil {
 		t.Errorf("PipelineSpec.Validate() did not return error for invalid pipelineSpec: %s", name)
 	}
@@ -772,7 +774,8 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidatePipelineTasks(context.Background(), tt.tasks, tt.finalTasks)
+			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
+			err := ValidatePipelineTasks(ctx, tt.tasks, tt.finalTasks)
 			if err == nil {
 				t.Error("ValidatePipelineTasks() did not return error for invalid pipeline tasks")
 			}
@@ -1673,6 +1676,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 		params        []ParamSpec
 		tasks         []PipelineTask
 		expectedError apis.FieldError
+		api           string
 	}{{
 		name: "invalid pipeline task with a parameter which is missing from the param declarations",
 		tasks: []PipelineTask{{
@@ -2004,6 +2008,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].when[0].input"},
 		},
+		api: "alpha",
 	}, {
 		name: "invalid object key in the Values of the when expression",
 		params: []ParamSpec{{
@@ -2027,6 +2032,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].when[0].values"},
 		},
+		api: "alpha",
 	}, {
 		name: "invalid object key is used to provide values for array params",
 		params: []ParamSpec{{
@@ -2048,6 +2054,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].params[a-param].value[0]"},
 		},
+		api: "alpha",
 	}, {
 		name: "invalid object key is used to provide values for string params",
 		params: []ParamSpec{{
@@ -2069,6 +2076,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].params[a-param]"},
 		},
+		api: "alpha",
 	}, {
 		name: "invalid object key is used to provide values for object params",
 		params: []ParamSpec{{
@@ -2096,6 +2104,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].params[an-object-param].properties[url]"},
 		},
+		api: "alpha",
 	}, {
 		name: "invalid object key is used to provide values for matrix params",
 		params: []ParamSpec{{
@@ -2119,10 +2128,14 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
 			Paths:   []string{"[0].matrix[b-param].value[0]"},
 		},
+		api: "alpha",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := context.Background()
+			if tt.api == "alpha" {
+				ctx = config.EnableAlphaAPIFields(context.Background())
+			}
 			err := validatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err == nil {
 				t.Errorf("Pipeline.validatePipelineParameterVariables() did not return error for invalid pipeline parameters")
@@ -3270,6 +3283,7 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 				ctx := config.ToContext(context.Background(), cfg)
 
 				ps.SetDefaults(ctx)
+				ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 				err := ps.Validate(ctx)
 
 				if tt.requiredVersion != version && err == nil {
