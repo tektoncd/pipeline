@@ -359,6 +359,10 @@ func TestTaskSpecValidate(t *testing.T) {
 				Name:        "MY-RESULT",
 				Type:        v1beta1.ResultsTypeObject,
 				Description: "my great result",
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {"string"},
+					"commit": {"string"},
+				},
 			}},
 		},
 	}, {

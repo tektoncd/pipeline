@@ -44,7 +44,7 @@ func TestResultsValidate(t *testing.T) {
 		name: "valid result type string",
 		Result: v1beta1.TaskResult{
 			Name:        "MY-RESULT",
-			Type:        "string",
+			Type:        v1beta1.ResultsTypeString,
 			Description: "my great result",
 		},
 
@@ -53,7 +53,7 @@ func TestResultsValidate(t *testing.T) {
 		name: "valid result type array",
 		Result: v1beta1.TaskResult{
 			Name:        "MY-RESULT",
-			Type:        "array",
+			Type:        v1beta1.ResultsTypeArray,
 			Description: "my great result",
 		},
 
@@ -62,10 +62,10 @@ func TestResultsValidate(t *testing.T) {
 		name: "valid result type object",
 		Result: v1beta1.TaskResult{
 			Name:        "MY-RESULT",
-			Type:        "array",
+			Type:        v1beta1.ResultsTypeObject,
 			Description: "my great result",
+			Properties:  map[string]v1beta1.PropertySpec{"hello": {Type: v1beta1.ParamTypeString}},
 		},
-
 		apiFields: "alpha",
 	}}
 	for _, tt := range tests {
@@ -117,7 +117,7 @@ func TestResultsValidateError(t *testing.T) {
 		name: "invalid array result type in stable",
 		Result: v1beta1.TaskResult{
 			Name:        "MY-RESULT",
-			Type:        "array",
+			Type:        v1beta1.ResultsTypeArray,
 			Description: "my great result",
 		},
 		apiFields: "stable",
@@ -128,12 +128,38 @@ func TestResultsValidateError(t *testing.T) {
 		name: "invalid object result type in stable",
 		Result: v1beta1.TaskResult{
 			Name:        "MY-RESULT",
-			Type:        "object",
+			Type:        v1beta1.ResultsTypeObject,
 			Description: "my great result",
+			Properties:  map[string]v1beta1.PropertySpec{"hello": {Type: v1beta1.ParamTypeString}},
 		},
 		apiFields: "stable",
 		expectedError: apis.FieldError{
 			Message: "results type requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"",
+		},
+	}, {
+		name: "invalid object properties type",
+		Result: v1beta1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1beta1.ResultsTypeObject,
+			Description: "my great result",
+			Properties:  map[string]v1beta1.PropertySpec{"hello": {Type: "wrong type"}},
+		},
+		apiFields: "alpha",
+		expectedError: apis.FieldError{
+			Message: "The value type specified for these keys [hello] is invalid, the type must be string",
+			Paths:   []string{"MY-RESULT.properties"},
+		},
+	}, {
+		name: "invalid object properties empty",
+		Result: v1beta1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1beta1.ResultsTypeObject,
+			Description: "my great result",
+		},
+		apiFields: "alpha",
+		expectedError: apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"MY-RESULT.properties"},
 		},
 	}}
 	for _, tt := range tests {
