@@ -9138,3 +9138,107 @@ spec:
 func lessTaskResourceBindings(i, j v1beta1.TaskResourceBinding) bool {
 	return i.Name < j.Name
 }
+
+// TestReconcileCustomTaskRetry runs "Reconcile" against pipelines with
+// retries, and status that represents different number of
+// retries already performed.  It verifies the reconciled status for the custom tasks
+func TestReconcileCustomTaskRetry(t *testing.T) {
+	for _, tc := range []struct {
+		name               string
+		retries            int
+		conditionSucceeded corev1.ConditionStatus
+		wantEvents         []string
+	}{{
+		name:               "One try has to be done",
+		retries:            1,
+		conditionSucceeded: corev1.ConditionFalse,
+		wantEvents: []string{
+			"Warning Failed PipelineRun \"test-pipeline-retry-run\"",
+		},
+	}, {
+		name:               "No more retries are needed",
+		retries:            2,
+		conditionSucceeded: corev1.ConditionUnknown,
+		wantEvents: []string{
+			"Warning Failed PipelineRun \"test-pipeline-retry-run\"",
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline-retry
+  namespace: foo
+spec:
+  tasks:
+  - name: wait-tasks
+    taskRef:
+      apiVersion: example.dev/v0
+      kind: Wait
+    params:
+    - name: duration
+      value: 10s
+`)}
+
+			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-retry-run
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline-retry
+  serviceAccountName: test-sa
+  timeout: 12h0m0s
+status:
+  startTime: "2021-12-31T00:00:00Z"
+`)}
+			rs := []*v1alpha1.Run{parse.MustParseRun(t, `
+metadata:
+  name: custom-run
+  namespace: foo
+spec:
+  ref:
+    apiVersion: example.dev/v0
+    kind: Wait
+  params:
+  - name: duration
+    value: 10s
+status:
+  conditions:
+  - status: "False"
+    type: Succeeded
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
+`)}
+
+			prrs := &v1beta1.PipelineRunRunStatus{
+				PipelineTaskName: "custom-task",
+				Status:           &rs[0].Status,
+			}
+			prs[0].Status.Runs = make(map[string]*v1beta1.PipelineRunRunStatus)
+			prs[0].Status.Runs["custom-task"] = prrs
+
+			cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
+			d := test.Data{
+				PipelineRuns: prs,
+				Runs:         rs,
+				Pipelines:    ps,
+				ConfigMaps:   cms,
+			}
+
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-retry-run", []string{}, false)
+
+			if len(reconciledRun.Status.Runs["custom-task"].Status.RetriesStatus) != tc.retries {
+				t.Fatalf(" %d retry expected but %d ", tc.retries, len(reconciledRun.Status.Runs["custom-task"].Status.RetriesStatus))
+			}
+
+			if status := reconciledRun.Status.Runs["custom-task"].Status.GetCondition(apis.ConditionSucceeded).Status; status != tc.conditionSucceeded {
+				t.Fatalf("Succeeded expected to be %s but is %s", tc.conditionSucceeded, status)
+			}
+		})
+	}
+}
