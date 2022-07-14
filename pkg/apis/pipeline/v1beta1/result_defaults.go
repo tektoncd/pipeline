@@ -17,8 +17,23 @@ import "context"
 
 // SetDefaults set the default type for TaskResult
 func (tr *TaskResult) SetDefaults(context.Context) {
-	if tr != nil && tr.Type == "" {
-		// ResultsTypeString is the default value
-		tr.Type = ResultsTypeString
+	if tr == nil {
+		return
+	}
+	if tr.Type == "" {
+		if tr.Properties != nil {
+			// Set type to object if `properties` is given
+			tr.Type = ResultsTypeObject
+		} else {
+			// ResultsTypeString is the default value
+			tr.Type = ResultsTypeString
+		}
+	}
+
+	// Set default type of object values to string
+	for key, propertySpec := range tr.Properties {
+		if propertySpec.Type == "" {
+			tr.Properties[key] = PropertySpec{Type: ParamType(ResultsTypeString)}
+		}
 	}
 }
