@@ -62,8 +62,11 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
+		ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
 	}
+	// Validate propagated parameters
+	errs = errs.Also(ps.validateInlineParameters(ctx))
 
 	if ps.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
@@ -107,12 +110,82 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 			wsNames[ws.Name] = idx
 		}
 	}
-
 	for idx, trs := range ps.TaskRunSpecs {
 		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
 	}
 
 	return errs
+}
+
+// validateInlineParameters validates parameters that are defined inline.
+// This is crucial for propagated parameters since the parameters could
+// be defined under pipelineRun and then called directly in the task steps.
+// In this case, parameters cannot be validated by the underlying pipelineSpec
+// or taskSpec since they may not have the parameters declared because of propagation.
+func (ps *PipelineRunSpec) validateInlineParameters(ctx context.Context) (errs *apis.FieldError) {
+	if ps.PipelineSpec == nil {
+		return errs
+	}
+	var paramSpec []ParamSpec
+	for _, p := range ps.Params {
+		pSpec := ParamSpec{
+			Name:    p.Name,
+			Default: &p.Value,
+		}
+		paramSpec = append(paramSpec, pSpec)
+	}
+	paramSpec = appendParamSpec(paramSpec, ps.PipelineSpec.Params)
+	for _, pt := range ps.PipelineSpec.Tasks {
+		paramSpec = appendParam(paramSpec, pt.Params)
+		if pt.TaskSpec != nil && pt.TaskSpec.Params != nil {
+			paramSpec = appendParamSpec(paramSpec, pt.TaskSpec.Params)
+		}
+	}
+	if ps.PipelineSpec != nil && ps.PipelineSpec.Tasks != nil {
+		for _, pt := range ps.PipelineSpec.Tasks {
+			if pt.TaskSpec != nil && pt.TaskSpec.Steps != nil {
+				errs = errs.Also(ValidateParameterVariables(
+					config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), pt.TaskSpec.Steps, paramSpec))
+			}
+		}
+	}
+	return errs
+}
+
+func appendParamSpec(paramSpec []ParamSpec, params []ParamSpec) []ParamSpec {
+	for _, p := range params {
+		skip := false
+		for _, ps := range paramSpec {
+			if ps.Name == p.Name {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			paramSpec = append(paramSpec, p)
+		}
+	}
+	return paramSpec
+}
+
+func appendParam(paramSpec []ParamSpec, params []Param) []ParamSpec {
+	for _, p := range params {
+		skip := false
+		for _, ps := range paramSpec {
+			if ps.Name == p.Name {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			pSpec := ParamSpec{
+				Name:    p.Name,
+				Default: &p.Value,
+			}
+			paramSpec = append(paramSpec, pSpec)
+		}
+	}
+	return paramSpec
 }
 
 func validateSpecStatus(status PipelineRunSpecStatus) *apis.FieldError {

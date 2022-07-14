@@ -32,6 +32,6 @@ func (t *ClusterTask) Validate(ctx context.Context) *apis.FieldError {
 		return nil
 	}
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
-	ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
+	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }

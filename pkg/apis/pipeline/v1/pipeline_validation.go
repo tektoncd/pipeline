@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -38,6 +39,7 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
+	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 	return errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 

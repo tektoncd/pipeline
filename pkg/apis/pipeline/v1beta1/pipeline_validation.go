@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -39,6 +40,7 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 		return nil
 	}
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
+	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 	return errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 

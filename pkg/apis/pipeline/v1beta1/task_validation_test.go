@@ -142,7 +142,7 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
-			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -1373,7 +1373,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
-			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := ts.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
@@ -1421,7 +1421,7 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
-			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -1479,7 +1479,7 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
-			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 			err := ts.Validate(ctx)
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
@@ -1555,7 +1555,7 @@ func TestStepOnError(t *testing.T) {
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
-			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := ts.Validate(ctx)
 			if tt.expectedError == nil && err != nil {
 				t.Errorf("No error expected from TaskSpec.Validate() but got = %v", err)
@@ -1653,7 +1653,7 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 					ctx = config.EnableAlphaAPIFields(ctx)
 				}
 				ts.SetDefaults(ctx)
-				ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, false)
+				ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 				err := ts.Validate(ctx)
 
 				if tt.requiredVersion != version && err == nil {
@@ -1737,7 +1737,7 @@ func TestSubstitutedContext(t *testing.T) {
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
-			ctx = config.SetValidateParameterVariablesAndWorkspaces(ctx, true)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			if tt.fields.SubstitutionContext {
 				ctx = config.WithinSubstituted(ctx)
 			}
