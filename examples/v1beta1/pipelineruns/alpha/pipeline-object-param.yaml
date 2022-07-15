@@ -1,0 +1,52 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: mock-clone-task
+spec:
+  params:
+    - name: arg
+      type: object
+      properties:
+        url:
+          type: string
+        commit:
+          type: string
+  steps:
+    - name: mock-clone-git
+      image: bash
+      args: [
+        "echo",
+        "--url=$(params.arg.url)",
+        "--commit=$(params.arg.commit)"
+      ]
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: mock-clone-pipeline
+spec:
+  params:
+    - name: gitrepo
+      properties:
+        url: {}
+        commit: {}
+  tasks:
+    - name: mock-clone
+      params:
+        - name: arg
+          value: $(params.gitrepo[*])
+      taskRef:
+        name: mock-clone-task
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-object-param-
+spec:
+  params:
+    - name: gitrepo
+      value:
+        url: abc.com
+        commit: sha123
+  pipelineRef:
+    name: mock-clone-pipeline
