@@ -9147,21 +9147,14 @@ func TestReconcileCustomTaskRetry(t *testing.T) {
 		name               string
 		retries            int
 		conditionSucceeded corev1.ConditionStatus
-		wantEvents         []string
 	}{{
 		name:               "One try has to be done",
 		retries:            1,
 		conditionSucceeded: corev1.ConditionFalse,
-		wantEvents: []string{
-			"Warning Failed PipelineRun \"test-pipeline-retry-run\"",
-		},
 	}, {
 		name:               "No more retries are needed",
-		retries:            2,
+		retries:            3,
 		conditionSucceeded: corev1.ConditionUnknown,
-		wantEvents: []string{
-			"Warning Failed PipelineRun \"test-pipeline-retry-run\"",
-		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
@@ -9171,6 +9164,7 @@ metadata:
 spec:
   tasks:
   - name: wait-tasks
+    retries: 2
     taskRef:
       apiVersion: example.dev/v0
       kind: Wait
@@ -9178,7 +9172,6 @@ spec:
     - name: duration
       value: 10s
 `)}
-
 			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
 metadata:
   name: test-pipeline-retry-run
@@ -9196,11 +9189,12 @@ metadata:
   name: custom-run
   namespace: foo
 spec:
+  timeout: 1s
   ref:
     apiVersion: example.dev/v0
     kind: Wait
   params:
-  - name: duration
+  - name: wrong-input
     value: 10s
 status:
   conditions:
@@ -9230,10 +9224,23 @@ status:
 			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
 
-			reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-retry-run", []string{}, false)
+			reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-retry-run", []string{}, false)
+			rsss, err := clients.Pipeline.TektonV1alpha1().Runs("foo").Get(prt.TestAssets.Ctx, "custom-run", metav1.GetOptions{})
 
-			if len(reconciledRun.Status.Runs["custom-task"].Status.RetriesStatus) != tc.retries {
-				t.Fatalf(" %d retry expected but %d ", tc.retries, len(reconciledRun.Status.Runs["custom-task"].Status.RetriesStatus))
+			clients.Pipeline.TektonV1alpha1().Runs("foo").UpdateStatus(prt.TestAssets.Ctx, rsss, metav1.UpdateOptions{})
+			if err != nil {
+				// TODO format:
+				t.Fatal(err)
+			}
+			clients.Pipeline.TektonV1alpha1().Runs("foo").UpdateStatus(prt.TestAssets.Ctx, rsss, metav1.UpdateOptions{})
+			t.Fatalf("it has %v rows", len(rsss.Status.RetriesStatus))
+			t.Fatalf("it has %v rows", reconciledRun.Status.Runs["test-pipeline-retry-run-wait-tasks"])
+			// t.Fatalf("it has %v rows", len(reconciledRun.Status.Runs["test-pipeline-retry-run-wait-tasks"].Status.RetriesStatus))
+			// for k, _ := range reconciledRun.Status.Runs {
+			// 	t.Fatal(k)
+			// }
+			if len(reconciledRun.Status.Runs["wait-tasks"].Status.RetriesStatus) != tc.retries {
+				t.Fatalf(" %d retry expected but %d ", tc.retries, len(reconciledRun.Status.Runs["wait-tasks"].Status.RetriesStatus))
 			}
 
 			if status := reconciledRun.Status.Runs["custom-task"].Status.GetCondition(apis.ConditionSucceeded).Status; status != tc.conditionSucceeded {
