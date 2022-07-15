@@ -31,7 +31,6 @@ metadata:
     # labels below are related to istio and should not be used for resource lookup
     version: "devel"
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: webhook
