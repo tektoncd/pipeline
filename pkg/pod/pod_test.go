@@ -69,7 +69,7 @@ var (
 	volumeMountSort = cmpopts.SortSlices(func(i, j corev1.VolumeMount) bool { return i.Name < j.Name })
 )
 
-const fakeVersion = "0000000000000000000000000000000000000000"
+const fakeVersion = "a728ce3"
 
 func init() {
 	os.Setenv("KO_DATA_PATH", "./testdata/")
