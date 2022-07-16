@@ -61,7 +61,6 @@ import (
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
-	"knative.dev/pkg/changeset"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -398,11 +397,12 @@ var (
 		},
 	}
 
-	fakeVersion                string
 	gitResourceSecurityContext = &corev1.SecurityContext{
 		RunAsUser: ptr.Int64(0),
 	}
 )
+
+const fakeVersion string = "0000000000000000000000000000000000000000"
 
 func placeToolsInitContainer(steps []string) corev1.Container {
 	return corev1.Container{
@@ -442,11 +442,6 @@ func createServiceAccount(t *testing.T, assets test.Assets, name string, namespa
 
 func init() {
 	os.Setenv("KO_DATA_PATH", "./testdata/")
-	commit, err := changeset.Get()
-	if err != nil {
-		panic(err)
-	}
-	fakeVersion = commit
 }
 
 func getRunName(tr *v1beta1.TaskRun) string {

@@ -41,7 +41,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
-	"knative.dev/pkg/changeset"
 	logtesting "knative.dev/pkg/logging/testing"
 	"knative.dev/pkg/system"
 
@@ -63,8 +62,6 @@ var (
 
 	defaultActiveDeadlineSeconds = int64(config.DefaultTimeoutMinutes * 60 * deadlineFactor)
 
-	fakeVersion string
-
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
@@ -72,13 +69,10 @@ var (
 	volumeMountSort = cmpopts.SortSlices(func(i, j corev1.VolumeMount) bool { return i.Name < j.Name })
 )
 
+const fakeVersion = "0000000000000000000000000000000000000000"
+
 func init() {
 	os.Setenv("KO_DATA_PATH", "./testdata/")
-	commit, err := changeset.Get()
-	if err != nil {
-		panic(err)
-	}
-	fakeVersion = commit
 }
 
 func TestPodBuild(t *testing.T) {
