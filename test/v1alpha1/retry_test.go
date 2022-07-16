@@ -148,8 +148,14 @@ spec:
 		if _, found := podNames[p.Name]; !found {
 			t.Errorf("BUG: TaskRunStatus.RetriesStatus did not report pod name %q", p.Name)
 		}
-		if p.Status.Phase != corev1.PodFailed {
-			t.Errorf("BUG: Pod %q is not failed: %v", p.Name, p.Status.Phase)
+		// Check each container in the pod, rather than the phase, since the phase doesn't update to a terminal state instantly.
+		// See https://github.com/kubernetes/kubernetes/pull/108366
+		for _, c := range p.Status.ContainerStatuses {
+			if c.State.Terminated == nil {
+				t.Errorf("BUG: Container %s in pod %s is not terminated", c.Name, p.Name)
+			} else if c.State.Terminated.ExitCode != 1 {
+				t.Errorf("BUG: Container %s in pod %s has exit code %d, expected 1", c.Name, p.Name, c.State.Terminated.ExitCode)
+			}
 		}
 	}
 }
