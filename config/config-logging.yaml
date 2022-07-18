@@ -21,7 +21,6 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  # Common configuration for all knative codebase
   zap-logger-config: |
     {
       "level": "info",
@@ -34,11 +33,11 @@ data:
       "errorOutputPaths": ["stderr"],
       "encoding": "json",
       "encoderConfig": {
-        "timeKey": "ts",
-        "levelKey": "level",
+        "timeKey": "timestamp",
+        "levelKey": "severity",
         "nameKey": "logger",
         "callerKey": "caller",
-        "messageKey": "msg",
+        "messageKey": "message",
         "stacktraceKey": "stacktrace",
         "lineEnding": "",
         "levelEncoder": "",
