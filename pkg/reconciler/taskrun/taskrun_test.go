@@ -698,14 +698,12 @@ spec:
 		TaskRuns: []*v1beta1.TaskRun{taskRun},
 	}
 
-	d.ConfigMaps = []*corev1.ConfigMap{
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				"default-cloud-events-sink": "http://synk:8080",
-			},
+	d.ConfigMaps = []*corev1.ConfigMap{{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+		Data: map[string]string{
+			"default-cloud-events-sink": "http://synk:8080",
 		},
-	}
+	}}
 
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -746,9 +744,8 @@ spec:
 		"Normal Start",
 		"Normal Running",
 	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-cloud-events", wantEvents)
-	if !(err == nil) {
-		t.Errorf(err.Error())
+	if err := eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-cloud-events", wantEvents); err != nil {
+		t.Errorf("CheckEventsOrdered: %v", err.Error())
 	}
 
 	wantCloudEvents := []string{
@@ -756,9 +753,8 @@ spec:
 		`(?s)dev.tekton.event.taskrun.running.v1.*test-taskrun-not-started`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	err = eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents)
-	if !(err == nil) {
-		t.Errorf(err.Error())
+	if err := eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents); err != nil {
+		t.Errorf("CheckEventsUnordered: %v", err.Error())
 	}
 }
 

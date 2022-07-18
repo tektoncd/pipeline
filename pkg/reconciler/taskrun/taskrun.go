@@ -20,11 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -48,7 +46,6 @@ import (
 	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	resolution "github.com/tektoncd/resolution/pkg/resource"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,6 +61,16 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"sigs.k8s.io/yaml"
 )
+
+var version string
+
+func init() {
+	var err error
+	version, err = changeset.Get()
+	if err != nil {
+		version = "unknown"
+	}
+}
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
@@ -96,8 +103,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 
-	// Read the initial condition
+	// Read the initial condition.
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
+
+	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
+	if len(tr.Annotations) == 0 {
+		tr.Annotations = map[string]string{}
+	}
+	tr.Annotations[podconvert.ReleaseAnnotation] = version
+
+	defer emitEvents(ctx, tr, before)
 
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
@@ -139,28 +154,25 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 			return err
 		}
 
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, nil)
+		return nil
 	}
 
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
 		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
-		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
 	}
 
 	// Check if the TaskRun has timed out; if it is, this will set its status
 	// accordingly.
 	if tr.HasTimedOut(ctx, c.Clock) {
 		message := fmt.Sprintf("TaskRun %q failed to finish within %q", tr.Name, tr.GetTimeout(ctx))
-		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonTimedOut, message)
 	}
 
 	// Check for Pod Failures
 	if failed, reason, message := c.checkPodFailed(tr); failed {
-		err := c.failTaskRun(ctx, tr, reason, message)
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		return c.failTaskRun(ctx, tr, reason, message)
 	}
 
 	// prepare fetches all required resources, validates them together with the
@@ -168,23 +180,14 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	_, rtr, err := c.prepare(ctx, tr)
 	if err != nil {
 		logger.Errorf("TaskRun prepare error: %v", err.Error())
-		// We only return an error if update failed, otherwise we don't want to
-		// reconcile an invalid TaskRun anymore
-		return c.finishReconcileUpdateEmitEvents(ctx, tr, nil, err)
+		return nil // We don't want to reconcile an invalid TaskRun anymore.
 	}
-
-	// Store the condition before reconcile
-	before = tr.Status.GetCondition(apis.ConditionSucceeded)
 
 	// Reconcile this copy of the task run and then write back any status
 	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, tr, rtr); err != nil {
+	err = c.reconcile(ctx, tr, rtr)
+	if err != nil {
 		logger.Errorf("Reconcile: %v", err.Error())
-	}
-
-	// Emit events (only when ConditionSucceeded was changed)
-	if err = c.finishReconcileUpdateEmitEvents(ctx, tr, before, err); err != nil {
-		return err
 	}
 
 	if tr.Status.StartTime != nil {
@@ -193,7 +196,8 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		// Snooze this resource until the timeout has elapsed.
 		return controller.NewRequeueAfter(tr.GetTimeout(ctx) - elapsed)
 	}
-	return nil
+
+	return err
 }
 
 func (c *Reconciler) checkPodFailed(tr *v1beta1.TaskRun) (bool, v1beta1.TaskRunReason, string) {
@@ -282,25 +286,10 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) erro
 	return nil
 }
 
-func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
-	logger := logging.FromContext(ctx)
-
-	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-
+func emitEvents(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition) {
 	// Send k8s events and cloud events (when configured)
+	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
-
-	_, err := c.updateLabelsAndAnnotations(ctx, tr)
-	if err != nil {
-		logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
-		events.EmitError(controller.GetEventRecorder(ctx), err, tr)
-	}
-
-	merr := multierror.Append(previousError, err).ErrorOrNil()
-	if controller.IsPermanentError(previousError) {
-		return controller.NewPermanentError(merr)
-	}
-	return merr
 }
 
 // `prepare` fetches resources the taskrun depends on, runs validation and conversion
@@ -548,29 +537,6 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 		}
 	}
 	return nil
-}
-
-func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
-	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
-	if tr.Annotations == nil {
-		tr.Annotations = make(map[string]string, 1)
-	}
-	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
-
-	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
-	if err != nil {
-		return nil, fmt.Errorf("error getting TaskRun %s when updating labels/annotations: %w", tr.Name, err)
-	}
-	if !reflect.DeepEqual(tr.ObjectMeta.Labels, newTr.ObjectMeta.Labels) || !reflect.DeepEqual(tr.ObjectMeta.Annotations, newTr.ObjectMeta.Annotations) {
-		// Note that this uses Update vs. Patch because the former is significantly easier to test.
-		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
-		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
-		newTr = newTr.DeepCopy()
-		newTr.Labels = tr.Labels
-		newTr.Annotations = tr.Annotations
-		return c.PipelineClientSet.TektonV1beta1().TaskRuns(tr.Namespace).Update(ctx, newTr, metav1.UpdateOptions{})
-	}
-	return newTr, nil
 }
 
 func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) error {
