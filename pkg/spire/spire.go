@@ -28,6 +28,7 @@ import (
 	"context"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -50,6 +51,7 @@ type ControllerAPIClient interface {
 	CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl int) error
 	DeleteEntry(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod) error
 	VerifyTaskRunResults(ctx context.Context, prs []v1beta1.PipelineResourceResult, tr *v1beta1.TaskRun) error
+	SetConfig(c spireconfig.SpireConfig)
 }
 
 // EntrypointerAPIClient interface maps to the spire entrypointer API to interact with spire
@@ -57,4 +59,5 @@ type EntrypointerAPIClient interface {
 	Close() error
 	// Sign returns the signature material to be put in the PipelineResourceResult to append to the output results
 	Sign(ctx context.Context, results []v1beta1.PipelineResourceResult) ([]v1beta1.PipelineResourceResult, error)
+	SetConfig(c spireconfig.SpireConfig)
 }

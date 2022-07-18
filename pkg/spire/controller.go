@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	entryv1 "github.com/spiffe/spire-api-sdk/proto/spire/api/server/entry/v1"
@@ -31,10 +32,34 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/rest"
+	"knative.dev/pkg/injection"
+	"knative.dev/pkg/logging"
 )
 
+func init() {
+	injection.Default.RegisterClient(withControllerClient)
+}
+
+// controllerKey is a way to associate the ControllerAPIClient from inside the context.Context
+type controllerKey struct{}
+
+// GetControllerAPIClient extracts the ControllerAPIClient from the context.
+func GetControllerAPIClient(ctx context.Context) ControllerAPIClient {
+	untyped := ctx.Value(controllerKey{})
+	if untyped == nil {
+		logging.FromContext(ctx).Errorf("Unable to fetch client from context.")
+		return nil
+	}
+	return untyped.(*spireControllerAPIClient)
+}
+
+func withControllerClient(ctx context.Context, cfg *rest.Config) context.Context {
+	return context.WithValue(ctx, controllerKey{}, &spireEntrypointerAPIClient{})
+}
+
 type spireControllerAPIClient struct {
-	config       spireconfig.SpireConfig
+	config       *spireconfig.SpireConfig
 	serverConn   *grpc.ClientConn
 	workloadConn *workloadapi.X509Source
 	entryClient  entryv1.EntryClient
@@ -42,6 +67,9 @@ type spireControllerAPIClient struct {
 }
 
 func (sc *spireControllerAPIClient) setupClient(ctx context.Context) error {
+	if sc.config == nil {
+		return errors.New("config has not been set yet")
+	}
 	if sc.entryClient == nil || sc.workloadConn == nil || sc.workloadAPI == nil || sc.serverConn == nil {
 		return sc.dial(ctx)
 	}
@@ -85,14 +113,8 @@ func (sc *spireControllerAPIClient) dial(ctx context.Context) error {
 	return nil
 }
 
-// NewSpireControllerAPIClient creates a new NewSpireControllerAPIClient for the pipeline controller
-func NewSpireControllerAPIClient(c spireconfig.SpireConfig) ControllerAPIClient {
-	if c.MockSpire {
-		return &MockClient{}
-	}
-	return &spireControllerAPIClient{
-		config: c,
-	}
+func (sc *spireControllerAPIClient) SetConfig(c spireconfig.SpireConfig) {
+	sc.config = &c
 }
 
 func (sc *spireControllerAPIClient) nodeEntry(nodeName string) *spiffetypes.Entry {

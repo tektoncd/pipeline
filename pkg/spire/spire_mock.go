@@ -24,8 +24,24 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/rest"
+	"knative.dev/pkg/injection"
 )
+
+func init() {
+	injection.Fake.RegisterClient(withFakeControllerClient)
+	injection.Fake.RegisterClient(withFakeEntrypointerClient)
+}
+
+func withFakeControllerClient(ctx context.Context, cfg *rest.Config) context.Context {
+	return context.WithValue(ctx, controllerKey{}, &MockClient{})
+}
+
+func withFakeEntrypointerClient(ctx context.Context, cfg *rest.Config) context.Context {
+	return context.WithValue(ctx, entrypointerKey{}, &MockClient{})
+}
 
 // MockClient is a client used for mocking the this package for unit testing
 // other tekton components that use the spire entrypointer or controller client.
@@ -206,4 +222,8 @@ func (sc *MockClient) Sign(ctx context.Context, results []v1beta1.PipelineResour
 // Close mock closing the spire client connection
 func (sc *MockClient) Close() error {
 	return nil
+}
+
+func (sc *MockClient) SetConfig(c spireconfig.SpireConfig) {
+	return
 }

@@ -24,14 +24,41 @@ import (
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
+	"k8s.io/client-go/rest"
+	"knative.dev/pkg/injection"
+	"knative.dev/pkg/logging"
 )
 
+func init() {
+	injection.Default.RegisterClient(withEntrypointerClient)
+}
+
+// entrypointerKey is a way to associate the EntrypointerAPIClient from inside the context.Context
+type entrypointerKey struct{}
+
+// GetEntrypointerAPIClient extracts the EntrypointerAPIClient from the context.
+func GetEntrypointerAPIClient(ctx context.Context) EntrypointerAPIClient {
+	untyped := ctx.Value(entrypointerKey{})
+	if untyped == nil {
+		logging.FromContext(ctx).Errorf("Unable to fetch client from context.")
+		return nil
+	}
+	return untyped.(*spireEntrypointerAPIClient)
+}
+
+func withEntrypointerClient(ctx context.Context, cfg *rest.Config) context.Context {
+	return context.WithValue(ctx, entrypointerKey{}, &spireEntrypointerAPIClient{})
+}
+
 type spireEntrypointerAPIClient struct {
-	config spireconfig.SpireConfig
+	config *spireconfig.SpireConfig
 	client *workloadapi.Client
 }
 
 func (w *spireEntrypointerAPIClient) setupClient(ctx context.Context) error {
+	if w.config == nil {
+		return errors.New("config has not been set yet")
+	}
 	if w.client == nil {
 		return w.dial(ctx)
 	}
@@ -64,11 +91,8 @@ func (w *spireEntrypointerAPIClient) getxsvid(ctx context.Context) (*x509svid.SV
 	return nil, errors.Wrap(err, "requested SVID failed to get fetched and timed out")
 }
 
-// NewSpireEntrypointerAPIClient creates a new spireEntrypointerApiClient for the entrypointer
-func NewSpireEntrypointerAPIClient(c spireconfig.SpireConfig) EntrypointerAPIClient {
-	return &spireEntrypointerAPIClient{
-		config: c,
-	}
+func (w *spireEntrypointerAPIClient) SetConfig(c spireconfig.SpireConfig) {
+	w.config = &c
 }
 
 func (w *spireEntrypointerAPIClient) Close() error {
