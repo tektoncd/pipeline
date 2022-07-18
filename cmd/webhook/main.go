@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -46,7 +45,7 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics/validation"
 )
 
-var pipelineTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
+var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// v1alpha1
 	v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"): &resourcev1alpha1.PipelineResource{},
 	v1alpha1.SchemeGroupVersion.WithKind("Run"):              &v1alpha1.Run{},
@@ -56,86 +55,78 @@ var pipelineTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1beta1.SchemeGroupVersion.WithKind("ClusterTask"): &v1beta1.ClusterTask{},
 	v1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &v1beta1.TaskRun{},
 	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
-}
-
-var resolutionTypes = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
+	// resolution
 	// v1alpha1
 	resolutionv1alpha1.SchemeGroupVersion.WithKind("ResolutionRequest"): &resolutionv1alpha1.ResolutionRequest{},
 }
 
-func newDefaultingAdmissionController(resourceBase string, types map[schema.GroupVersionKind]resourcesemantics.GenericCRD) func(context.Context, configmap.Watcher) *controller.Impl {
-	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		// Decorate contexts with the current state of the config.
-		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-		store.WatchConfigs(cmw)
+func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	// Decorate contexts with the current state of the config.
+	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	store.WatchConfigs(cmw)
 
-		return defaulting.NewAdmissionController(ctx,
+	return defaulting.NewAdmissionController(ctx,
 
-			// Name of the resource webhook.
-			fmt.Sprintf("webhook.%s.tekton.dev", resourceBase),
+		// Name of the resource webhook.
+		"webhook.pipeline.tekton.dev",
 
-			// The path on which to serve the webhook.
-			"/defaulting",
+		// The path on which to serve the webhook.
+		"/defaulting",
 
-			// The resources to validate and default.
-			types,
+		// The resources to validate and default.
+		types,
 
-			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
-			func(ctx context.Context) context.Context {
-				return store.ToContext(ctx)
-			},
+		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
+		func(ctx context.Context) context.Context {
+			return store.ToContext(ctx)
+		},
 
-			// Whether to disallow unknown fields.
-			true,
-		)
-	}
+		// Whether to disallow unknown fields.
+		true,
+	)
 }
 
-func newValidationAdmissionController(resourceBase string, types map[schema.GroupVersionKind]resourcesemantics.GenericCRD) func(context.Context, configmap.Watcher) *controller.Impl {
-	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		// Decorate contexts with the current state of the config.
-		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-		store.WatchConfigs(cmw)
-		return validation.NewAdmissionController(ctx,
+func newValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	// Decorate contexts with the current state of the config.
+	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+	store.WatchConfigs(cmw)
+	return validation.NewAdmissionController(ctx,
 
-			// Name of the resource webhook.
-			fmt.Sprintf("validation.webhook.%s.tekton.dev", resourceBase),
+		// Name of the resource webhook.
+		"validation.webhook.pipeline.tekton.dev",
 
-			// The path on which to serve the webhook.
-			"/resource-validation",
+		// The path on which to serve the webhook.
+		"/resource-validation",
 
-			// The resources to validate and default.
-			types,
+		// The resources to validate and default.
+		types,
 
-			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
-			func(ctx context.Context) context.Context {
-				return store.ToContext(ctx)
-			},
+		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
+		func(ctx context.Context) context.Context {
+			return store.ToContext(ctx)
+		},
 
-			// Whether to disallow unknown fields.
-			true,
-		)
-	}
+		// Whether to disallow unknown fields.
+		true,
+	)
 }
 
-func newConfigValidationController(resourceBase string) func(context.Context, configmap.Watcher) *controller.Impl {
-	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		return configmaps.NewAdmissionController(ctx,
+func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	return configmaps.NewAdmissionController(ctx,
 
-			// Name of the configmap webhook.
-			fmt.Sprintf("config.webhook.%s.tekton.dev", resourceBase),
+		// Name of the configmap webhook.
+		"config.webhook.pipeline.tekton.dev",
 
-			// The path on which to serve the webhook.
-			"/config-validation",
+		// The path on which to serve the webhook.
+		"/config-validation",
 
-			// The configmaps to validate.
-			configmap.Constructors{
-				logging.ConfigMapName():               logging.NewConfigFromConfigMap,
-				defaultconfig.GetDefaultsConfigName(): defaultconfig.NewDefaultsFromConfigMap,
-				pkgleaderelection.ConfigMapName():     pkgleaderelection.NewConfigFromConfigMap,
-			},
-		)
-	}
+		// The configmaps to validate.
+		configmap.Constructors{
+			logging.ConfigMapName():               logging.NewConfigFromConfigMap,
+			defaultconfig.GetDefaultsConfigName(): defaultconfig.NewDefaultsFromConfigMap,
+			pkgleaderelection.ConfigMapName():     pkgleaderelection.NewConfigFromConfigMap,
+		},
+	)
 }
 
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -193,12 +184,9 @@ func main() {
 
 	sharedmain.MainWithContext(ctx, serviceName,
 		certificates.NewController,
-		newDefaultingAdmissionController("pipeline", pipelineTypes),
-		newDefaultingAdmissionController("resolution", resolutionTypes),
-		newValidationAdmissionController("pipeline", pipelineTypes),
-		newValidationAdmissionController("resolution", resolutionTypes),
-		newConfigValidationController("pipeline"),
-		newConfigValidationController("resolution"),
+		newDefaultingAdmissionController,
+		newValidationAdmissionController,
+		newConfigValidationController,
 		newConversionController,
 	)
 }
