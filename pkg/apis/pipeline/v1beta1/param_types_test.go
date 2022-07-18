@@ -209,7 +209,14 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 		},
 		expectedOutput: v1beta1.NewArrayOrString("firstvalue", "array", "value", "lastvalue", "asdf", "sdfsd"),
 	}, {
-		name: "empty array replacement",
+		name: "empty array replacement without extra elements",
+		args: args{
+			input:             v1beta1.NewArrayOrString("$(arraykey)"),
+			arrayReplacements: map[string][]string{"arraykey": {}},
+		},
+		expectedOutput: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{}},
+	}, {
+		name: "empty array replacement with extra elements",
 		args: args{
 			input:              v1beta1.NewArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},

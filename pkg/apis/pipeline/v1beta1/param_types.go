@@ -198,7 +198,7 @@ func (arrayOrString ArrayOrString) MarshalJSON() ([]byte, error) {
 func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) {
 	switch arrayOrString.Type {
 	case ParamTypeArray:
-		var newArrayVal []string
+		newArrayVal := []string{}
 		for _, v := range arrayOrString.ArrayVal {
 			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
