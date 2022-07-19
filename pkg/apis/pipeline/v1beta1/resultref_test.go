@@ -754,10 +754,13 @@ func TestGetVarSubstitutionExpressionsForPipelineResult(t *testing.T) {
 		want: []string{"tasks.task1.results.result1", "tasks.task2.results.result2", "tasks.task3.results.result3"},
 	},
 	}
+	var sortStrings = func(x, y string) bool {
+		return x < y
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			get, _ := v1beta1.GetVarSubstitutionExpressionsForPipelineResult(tt.result)
-			if d := cmp.Diff(tt.want, get); d != "" {
+			if d := cmp.Diff(tt.want, get, cmpopts.SortSlices(sortStrings)); d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
 		})
