@@ -288,8 +288,8 @@ func ApplyTaskResultsToPipelineResults(
 				continue
 			}
 			switch len(variableParts) {
-			// For string result: tasks.<taskName>.results.<objectResultName>
-			// For array result: tasks.<taskName>.results.<objectResultName>[*], tasks.<taskName>.results.<objectResultName>[i]
+			// For string result: tasks.<taskName>.results.<stringResultName>
+			// For array result: tasks.<taskName>.results.<arrayResultName>[*], tasks.<taskName>.results.<arrayResultName>[i]
 			// For object result: tasks.<taskName>.results.<objectResultName>[*],
 			case resultsParseNumber:
 				taskName, resultName := variableParts[1], variableParts[3]
@@ -304,6 +304,7 @@ func ApplyTaskResultsToPipelineResults(
 							if intIdx < len(resultValue.ArrayVal) {
 								stringReplacements[variable] = resultValue.ArrayVal[intIdx]
 							} else {
+								// referred array index out of bound
 								invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 								validPipelineResult = false
 							}
@@ -316,7 +317,7 @@ func ApplyTaskResultsToPipelineResults(
 				} else if resultValue := runResultValue(taskName, resultName, customTaskResults); resultValue != nil {
 					stringReplacements[variable] = *resultValue
 				} else {
-					// referred array index out of bound
+					// referred result name is not existent
 					invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 					validPipelineResult = false
 				}
@@ -332,6 +333,10 @@ func ApplyTaskResultsToPipelineResults(
 						invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 						validPipelineResult = false
 					}
+				} else {
+					// referred result name is not existent
+					invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
+					validPipelineResult = false
 				}
 			default:
 				invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)

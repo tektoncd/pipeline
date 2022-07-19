@@ -2096,10 +2096,29 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		expectedResults: nil,
 		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
 	}, {
-		description: "object-reference-not-exist",
+		description: "object-reference-key-not-exist",
 		results: []v1beta1.PipelineResult{{
 			Name:  "pipeline-result-1",
 			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo.key3)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+		},
+		expectedResults: nil,
+		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
+	}, {
+		description: "object-results-resultname-not-exist",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.bar.key1)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {
