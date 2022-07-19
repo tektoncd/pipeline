@@ -26,12 +26,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
-	sel := resolver.GetSelector(context.Background())
+	sel := resolver.GetSelector(resolverContext())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != LabelValueHubResolverType {
@@ -48,7 +49,7 @@ func TestValidateParams(t *testing.T) {
 		ParamVersion: *v1beta1.NewArrayOrString("bar"),
 		ParamCatalog: *v1beta1.NewArrayOrString("baz"),
 	}
-	if err := resolver.ValidateParams(context.Background(), paramsWithTask); err != nil {
+	if err := resolver.ValidateParams(resolverContext(), paramsWithTask); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 
@@ -58,8 +59,29 @@ func TestValidateParams(t *testing.T) {
 		ParamVersion: *v1beta1.NewArrayOrString("bar"),
 		ParamCatalog: *v1beta1.NewArrayOrString("baz"),
 	}
-	if err := resolver.ValidateParams(context.Background(), paramsWithPipeline); err != nil {
+	if err := resolver.ValidateParams(resolverContext(), paramsWithPipeline); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
+	}
+}
+
+func TestValidateParamsDisabled(t *testing.T) {
+	resolver := Resolver{}
+
+	var err error
+
+	params := map[string]v1beta1.ArrayOrString{
+		ParamKind:    *v1beta1.NewArrayOrString("task"),
+		ParamName:    *v1beta1.NewArrayOrString("foo"),
+		ParamVersion: *v1beta1.NewArrayOrString("bar"),
+		ParamCatalog: *v1beta1.NewArrayOrString("baz"),
+	}
+	err = resolver.ValidateParams(context.Background(), params)
+	if err == nil {
+		t.Fatalf("expected missing name err")
+	}
+
+	if d := cmp.Diff(disabledError, err.Error()); d != "" {
+		t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -72,7 +94,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		ParamKind:    *v1beta1.NewArrayOrString("foo"),
 		ParamVersion: *v1beta1.NewArrayOrString("bar"),
 	}
-	err = resolver.ValidateParams(context.Background(), paramsMissingName)
+	err = resolver.ValidateParams(resolverContext(), paramsMissingName)
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
@@ -81,7 +103,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		ParamKind: *v1beta1.NewArrayOrString("foo"),
 		ParamName: *v1beta1.NewArrayOrString("bar"),
 	}
-	err = resolver.ValidateParams(context.Background(), paramsMissingVersion)
+	err = resolver.ValidateParams(resolverContext(), paramsMissingVersion)
 	if err == nil {
 		t.Fatalf("expected missing version err")
 	}
@@ -95,9 +117,30 @@ func TestValidateParamsConflictingKindName(t *testing.T) {
 		ParamVersion: *v1beta1.NewArrayOrString("bar"),
 		ParamCatalog: *v1beta1.NewArrayOrString("baz"),
 	}
-	err := resolver.ValidateParams(context.Background(), params)
+	err := resolver.ValidateParams(resolverContext(), params)
 	if err == nil {
 		t.Fatalf("expected err due to conflicting kind param")
+	}
+}
+
+func TestResolveDisabled(t *testing.T) {
+	resolver := Resolver{}
+
+	var err error
+
+	params := map[string]v1beta1.ArrayOrString{
+		ParamKind:    *v1beta1.NewArrayOrString("task"),
+		ParamName:    *v1beta1.NewArrayOrString("foo"),
+		ParamVersion: *v1beta1.NewArrayOrString("bar"),
+		ParamCatalog: *v1beta1.NewArrayOrString("baz"),
+	}
+	_, err = resolver.Resolve(context.Background(), params)
+	if err == nil {
+		t.Fatalf("expected missing name err")
+	}
+
+	if d := cmp.Diff(disabledError, err.Error()); d != "" {
+		t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -164,7 +207,7 @@ func TestResolve(t *testing.T) {
 				ParamCatalog: *v1beta1.NewArrayOrString(tc.catalog),
 			}
 
-			output, err := resolver.Resolve(context.Background(), params)
+			output, err := resolver.Resolve(resolverContext(), params)
 			if tc.expectedErr != nil {
 				if err == nil {
 					t.Fatalf("expected err '%v' but didn't get one", tc.expectedErr)
@@ -187,4 +230,8 @@ func TestResolve(t *testing.T) {
 			}
 		})
 	}
+}
+
+func resolverContext() context.Context {
+	return frtesting.ContextWithHubResolverEnabled(context.Background())
 }

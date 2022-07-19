@@ -21,10 +21,13 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
+
+const disabledError = "cannot handle resolution request, enable-hub-resolver feature flag not true"
 
 // LabelValueHubResolverType is the value to use for the
 // resolution.tekton.dev/type label on resource requests
@@ -60,6 +63,9 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 
 // ValidateParams ensures parameters from a request are as expected.
 func (r *Resolver) ValidateParams(ctx context.Context, params map[string]v1beta1.ArrayOrString) error {
+	if r.isDisabled(ctx) {
+		return errors.New(disabledError)
+	}
 	if _, ok := params[ParamName]; !ok {
 		return errors.New("must include name param")
 	}
@@ -84,6 +90,10 @@ type hubResponse struct {
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, params map[string]v1beta1.ArrayOrString) (framework.ResolvedResource, error) {
+	if r.isDisabled(ctx) {
+		return nil, errors.New(disabledError)
+	}
+
 	conf := framework.GetResolverConfigFromContext(ctx)
 	if _, ok := params[ParamCatalog]; !ok {
 		if catalogString, ok := conf[ConfigCatalog]; ok {
@@ -142,4 +152,13 @@ func (rr *ResolvedHubResource) Data() []byte {
 // Annotations returns any metadata needed alongside the data. None atm.
 func (*ResolvedHubResource) Annotations() map[string]string {
 	return nil
+}
+
+func (r *Resolver) isDisabled(ctx context.Context) bool {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EnableHubResolver {
+		return false
+	}
+
+	return true
 }

@@ -19,6 +19,7 @@ package git
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -28,10 +29,13 @@ import (
 	git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
+
+const disabledError = "cannot handle resolution request, enable-git-resolver feature flag not true"
 
 // LabelValueGitResolverType is the value to use for the
 // resolution.tekton.dev/type label on resource requests
@@ -70,7 +74,11 @@ func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the gitresolver.
-func (r *Resolver) ValidateParams(_ context.Context, params map[string]v1beta1.ArrayOrString) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params map[string]v1beta1.ArrayOrString) error {
+	if r.isDisabled(ctx) {
+		return errors.New(disabledError)
+	}
+
 	required := []string{
 		PathParam,
 	}
@@ -102,6 +110,10 @@ func (r *Resolver) ValidateParams(_ context.Context, params map[string]v1beta1.A
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
 func (r *Resolver) Resolve(ctx context.Context, params map[string]v1beta1.ArrayOrString) (framework.ResolvedResource, error) {
+	if r.isDisabled(ctx) {
+		return nil, errors.New(disabledError)
+	}
+
 	conf := framework.GetResolverConfigFromContext(ctx)
 	repo := params[URLParam].StringVal
 	if repo == "" {
@@ -190,6 +202,15 @@ func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time
 		}
 	}
 	return defaultTimeout
+}
+
+func (r *Resolver) isDisabled(ctx context.Context) bool {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EnableGitResolver {
+		return false
+	}
+
+	return true
 }
 
 // ResolvedGitResource implements framework.ResolvedResource and returns

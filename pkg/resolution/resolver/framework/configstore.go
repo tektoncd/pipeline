@@ -19,6 +19,7 @@ package framework
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/configmap"
 )
@@ -44,8 +45,32 @@ func DataFromConfigMap(config *corev1.ConfigMap) (map[string]string, error) {
 // ConfigStore wraps a knative untyped store and provides helper methods
 // for working with a resolver's configuration data.
 type ConfigStore struct {
+	*config.Store
 	resolverConfigName string
 	untyped            *configmap.UntypedStore
+}
+
+// NewConfigStore creates a new untyped store for the resolver's configuration and a config.Store for general Pipeline configuration.
+func NewConfigStore(resolverConfigName string, logger configmap.Logger) *ConfigStore {
+	return &ConfigStore{
+		Store:              config.NewStore(logger),
+		resolverConfigName: resolverConfigName,
+		untyped: configmap.NewUntypedStore(
+			"resolver-config",
+			logger,
+			configmap.Constructors{
+				resolverConfigName: DataFromConfigMap,
+			},
+		),
+	}
+}
+
+// WatchConfigs uses the provided configmap.Watcher
+// to setup watches for the config names provided in the
+// Constructors map
+func (store *ConfigStore) WatchConfigs(w configmap.Watcher) {
+	store.untyped.WatchConfigs(w)
+	store.Store.WatchConfigs(w)
 }
 
 // GetResolverConfig returns a copy of the resolver's current
@@ -65,7 +90,7 @@ func (store *ConfigStore) GetResolverConfig() map[string]string {
 // data stored in it.
 func (store *ConfigStore) ToContext(ctx context.Context) context.Context {
 	conf := store.GetResolverConfig()
-	return InjectResolverConfigToContext(ctx, conf)
+	return InjectResolverConfigToContext(store.Store.ToContext(ctx), conf)
 }
 
 // InjectResolverConfigToContext returns a new context with a
