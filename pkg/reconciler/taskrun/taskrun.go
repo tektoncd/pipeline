@@ -218,9 +218,13 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.Ta
 	logger := logging.FromContext(ctx)
 	if tr.IsDone() {
 		newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
-		if err != nil {
+		if err != nil && !k8serrors.IsNotFound(err) {
 			logger.Errorf("Error getting TaskRun %s when updating metrics: %w", tr.Name, err)
+			return
+		} else if k8serrors.IsNotFound(err) {
+			logger.Debugf("TaskRun %s not found when updating metrics: %w", tr.Name, err)
 		}
+
 		before := newTr.Status.GetCondition(apis.ConditionSucceeded)
 		go func(metrics *taskrunmetrics.Recorder) {
 			if err := metrics.DurationAndCount(ctx, tr, before); err != nil {
