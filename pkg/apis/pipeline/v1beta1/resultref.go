@@ -39,6 +39,8 @@ const (
 	objectResultExpressionFormat = "tasks.<taskName>.results.<objectResultName>.<individualAttribute>"
 	// ResultTaskPart Constant used to define the "tasks" part of a pipeline result reference
 	ResultTaskPart = "tasks"
+	// ResultFinallyPart Constant used to define the "finally" part of a pipeline result reference
+	ResultFinallyPart = "finally"
 	// ResultResultPart Constant used to define the "results" part of a pipeline result reference
 	ResultResultPart = "results"
 	// TODO(#2462) use one regex across all substitutions
@@ -99,7 +101,7 @@ func LooksLikeContainsResultRefs(expressions []string) bool {
 // looksLikeResultRef attempts to check if the given string looks like it contains any
 // result references. Returns true if it does, false otherwise
 func looksLikeResultRef(expression string) bool {
-	return strings.HasPrefix(expression, "task") && strings.Contains(expression, ".result")
+	return (strings.HasPrefix(expression, "task") || strings.HasPrefix(expression, "finally")) && strings.Contains(expression, ".result")
 }
 
 // GetVarSubstitutionExpressionsForParam extracts all the value between "$(" and ")"" for a parameter
@@ -172,7 +174,7 @@ func parseExpression(substitutionExpression string) (string, string, int, string
 
 	// For string result: tasks.<taskName>.results.<stringResultName>
 	// For array result: tasks.<taskName>.results.<arrayResultName>[index]
-	if len(subExpressions) == 4 && subExpressions[0] == ResultTaskPart && subExpressions[2] == ResultResultPart {
+	if len(subExpressions) == 4 && (subExpressions[0] == ResultTaskPart || subExpressions[0] == ResultFinallyPart) && subExpressions[2] == ResultResultPart {
 		resultName, stringIdx := ParseResultName(subExpressions[3])
 		if stringIdx != "" {
 			intIdx, _ := strconv.Atoi(stringIdx)
@@ -182,11 +184,11 @@ func parseExpression(substitutionExpression string) (string, string, int, string
 	}
 
 	// For object type result: tasks.<taskName>.results.<objectResultName>.<individualAttribute>
-	if len(subExpressions) == 5 && subExpressions[0] == ResultTaskPart && subExpressions[2] == ResultResultPart {
+	if len(subExpressions) == 5 && (subExpressions[0] == ResultTaskPart || subExpressions[0] == ResultFinallyPart) && subExpressions[2] == ResultResultPart {
 		return subExpressions[1], subExpressions[3], 0, subExpressions[4], nil
 	}
 
-	return "", "", 0, "", fmt.Errorf("Must be one of the form 1). %q; 2). %q", resultExpressionFormat, objectResultExpressionFormat)
+	return "", "", 0, "", fmt.Errorf("must be one of the form 1). %q; 2). %q", resultExpressionFormat, objectResultExpressionFormat)
 }
 
 // ParseResultName parse the input string to extract resultName and result index.
