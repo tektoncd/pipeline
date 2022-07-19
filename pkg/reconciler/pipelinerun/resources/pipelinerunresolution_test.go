@@ -1969,12 +1969,6 @@ func TestResolvePipelineRun_CustomTask(t *testing.T) {
 	pipelineState := PipelineRunState{}
 	ctx := context.Background()
 	cfg := config.NewStore(logtesting.TestLogger(t))
-	cfg.OnConfigChanged(&corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-custom-tasks": "true",
-		},
-	})
 	ctx = cfg.ToContext(ctx)
 	for _, task := range pts {
 		ps, err := ResolvePipelineTask(ctx, pr, nopGetTask, nopGetTaskRun, getRun, task, nil)
@@ -2742,12 +2736,6 @@ func TestIsCustomTask(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			cfg := config.NewStore(logtesting.TestLogger(t))
-			cfg.OnConfigChanged(&corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-				Data: map[string]string{
-					"enable-custom-tasks": "true",
-				},
-			})
 			ctx = cfg.ToContext(ctx)
 			rpt, err := ResolvePipelineTask(ctx, pr, getTask, getTaskRun, getRun, tc.pt, nil)
 			if err != nil {

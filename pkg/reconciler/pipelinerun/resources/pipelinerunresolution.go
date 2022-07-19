@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -539,14 +538,13 @@ func ValidateTaskRunSpecs(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) erro
 	return nil
 }
 
-func isCustomTask(ctx context.Context, rpt ResolvedPipelineTask) bool {
+func isCustomTask(rpt ResolvedPipelineTask) bool {
 	invalidSpec := rpt.PipelineTask.TaskRef != nil && rpt.PipelineTask.TaskSpec != nil
 	isTaskRefCustomTask := rpt.PipelineTask.TaskRef != nil && rpt.PipelineTask.TaskRef.APIVersion != "" &&
 		rpt.PipelineTask.TaskRef.Kind != ""
 	isTaskSpecCustomTask := rpt.PipelineTask.TaskSpec != nil && rpt.PipelineTask.TaskSpec.APIVersion != "" &&
 		rpt.PipelineTask.TaskSpec.Kind != ""
-	cfg := config.FromContextOrDefaults(ctx)
-	return cfg.FeatureFlags.EnableCustomTasks && !invalidSpec && (isTaskRefCustomTask || isTaskSpecCustomTask)
+	return !invalidSpec && (isTaskRefCustomTask || isTaskSpecCustomTask)
 }
 
 // ResolvePipelineTask retrieves a single Task's instance using the getTask to fetch
@@ -565,7 +563,7 @@ func ResolvePipelineTask(
 	rpt := ResolvedPipelineTask{
 		PipelineTask: &pipelineTask,
 	}
-	rpt.CustomTask = isCustomTask(ctx, rpt)
+	rpt.CustomTask = isCustomTask(rpt)
 	switch {
 	case rpt.IsCustomTask() && rpt.IsMatrixed():
 		rpt.RunNames = getNamesOfRuns(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name, pipelineTask.GetMatrixCombinationsCount())

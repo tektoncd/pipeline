@@ -42,7 +42,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				DisableCredsInit:       config.DefaultDisableCredsInit,
 				AwaitSidecarReadiness:  config.DefaultAwaitSidecarReadiness,
 				EnableTektonOCIBundles: config.DefaultEnableTektonOciBundles,
-				EnableCustomTasks:      config.DefaultEnableCustomTasks,
 				EnableAPIFields:        config.DefaultEnableAPIFields,
 				SendCloudEventsForRuns: config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:         config.DefaultEmbeddedStatus,
@@ -56,7 +55,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				AwaitSidecarReadiness:            false,
 				RequireGitSSHSecretKnownHosts:    true,
 				EnableTektonOCIBundles:           true,
-				EnableCustomTasks:                true,
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
 				EmbeddedStatus:                   "both",
@@ -69,7 +67,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				// These are prescribed as true by enabling "alpha" API fields, even
 				// if the submitted text value is "false".
 				EnableTektonOCIBundles: true,
-				EnableCustomTasks:      true,
 
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -85,7 +82,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:        "stable",
 				EnableTektonOCIBundles: true,
-				EnableCustomTasks:      true,
 
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
@@ -117,7 +113,6 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 		RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 		EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
-		EnableCustomTasks:                config.DefaultEnableCustomTasks,
 		EnableAPIFields:                  config.DefaultEnableAPIFields,
 		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 		EmbeddedStatus:                   config.DefaultEmbeddedStatus,

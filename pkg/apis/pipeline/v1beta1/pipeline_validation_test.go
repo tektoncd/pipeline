@@ -55,7 +55,6 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
 			},
 		},
-		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}, {
 		name: "pipelinetask custom task spec",
 		p: &Pipeline{
@@ -73,7 +72,6 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				}},
 			},
 		},
-		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}, {
 		name: "valid pipeline with params, resources, workspaces, task results, and pipeline results",
 		p: &Pipeline{
@@ -726,27 +724,6 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `expected exactly one, got both`,
 			Paths:   []string{"tasks[1].name"},
-		},
-	}, {
-		name: "apiVersion with steps",
-		tasks: []PipelineTask{{
-			Name: "foo",
-			TaskSpec: &EmbeddedTask{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1beta1",
-				},
-				TaskSpec: TaskSpec{
-					Steps: []Step{{
-						Name:  "some-step",
-						Image: "some-image",
-					}},
-				},
-			},
-		}},
-		finalTasks: nil,
-		expectedError: apis.FieldError{
-			Message: "taskSpec.apiVersion cannot be specified when using taskSpec.steps",
-			Paths:   []string{"tasks[0].taskSpec.apiVersion"},
 		},
 	}, {
 		name: "kind with steps",

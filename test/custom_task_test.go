@@ -49,16 +49,11 @@ const (
 	kind       = "Example"
 )
 
-var supportedFeatureGates = map[string]string{
-	"enable-custom-tasks": "true",
-	"enable-api-fields":   "alpha",
-}
-
 func TestCustomTask(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t, requireAnyGate(supportedFeatureGates))
+	c, namespace := setup(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 

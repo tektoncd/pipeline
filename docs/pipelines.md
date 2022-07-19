@@ -1561,9 +1561,6 @@ In this example, `pipelineResults` in `status` will exclude the name-value pair 
 
 ## Using Custom Tasks
 
-**Note: This is only allowed if `enable-custom-tasks` is set to
-`"true"` in the `feature-flags` configmap, see [`install.md`](./install.md#customizing-the-pipelines-controller-behavior)**
-
 [Custom Tasks](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md)
 can implement behavior that doesn't correspond directly to running a workload in a `Pod` on the cluster.
 For example, a custom task might execute some operation outside of the cluster and wait for its execution to complete.

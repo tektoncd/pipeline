@@ -219,7 +219,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			}
 			ctx, _ := ttesting.SetupFakeContext(t)
 			cfg := config.NewStore(logtesting.TestLogger(t))
-			cfg.OnConfigChanged(withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus)))
+			cfg.OnConfigChanged(withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus))
 			ctx = cfg.ToContext(ctx)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -391,7 +391,7 @@ func TestGetChildObjectsFromPRStatus(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, _ := ttesting.SetupFakeContext(t)
 			cfg := config.NewStore(logtesting.TestLogger(t))
-			cfg.OnConfigChanged(withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus)))
+			cfg.OnConfigChanged(withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus))
 			ctx = cfg.ToContext(ctx)
 
 			trNames, runNames, err := getChildObjectsFromPRStatus(ctx, tc.prStatus)

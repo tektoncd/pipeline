@@ -23,7 +23,6 @@ data:
   await-sidecar-readiness: "false"
   require-git-ssh-secret-known-hosts: "true"
   enable-tekton-oci-bundles: "true"
-  enable-custom-tasks: "true"
   enable-api-fields: "alpha"
   send-cloudevents-for-runs: "true"
   embedded-status: "both"
