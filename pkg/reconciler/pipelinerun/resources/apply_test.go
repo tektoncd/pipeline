@@ -2056,6 +2056,120 @@ func TestApplyWorkspaces(t *testing.T) {
 	}
 }
 
+func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
+	for _, tc := range []struct {
+		description   string
+		results       []v1beta1.PipelineResult
+		taskResults   map[string][]v1beta1.TaskRunResult
+		runResults    map[string][]v1alpha1.RunResult
+		expected      []v1beta1.PipelineRunResult
+		expectedError error
+	}{{
+		description: "single-string-result-single-successful-task",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(finally.pt1.results.foo)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewArrayOrString("do"),
+				},
+			},
+		},
+		expected: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("do"),
+		}},
+	}, {
+		description: "single-array-result-single-successful-task",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(finally.pt1.results.foo[*])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewArrayOrString("do", "rae"),
+				},
+			},
+		},
+		expected: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("do", "rae"),
+		}},
+	}, {
+		description: "multiple-results-custom-and-normal-tasks",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(finally.customtask.results.foo)"),
+		}},
+		runResults: map[string][]v1alpha1.RunResult{
+			"customtask": {
+				{
+					Name:  "foo",
+					Value: "do",
+				},
+			},
+		},
+		expected: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("do"),
+		}},
+	}, {
+		description: "apply-object-results",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(finally.pt1.results.foo[*])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name: "foo",
+					Value: *v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+					}),
+				},
+			},
+		},
+		expected: []v1beta1.PipelineRunResult{{
+			Name: "pipeline-result-1",
+			Value: *v1beta1.NewObject(map[string]string{
+				"key1": "val1",
+				"key2": "val2",
+			}),
+		}},
+	},
+		{
+			description: "referencing-invalid-finally-task",
+			results: []v1beta1.PipelineResult{{
+				Name:  "pipeline-result-1",
+				Value: *v1beta1.NewArrayOrString("$(finally.pt2.results.foo)"),
+			}},
+			taskResults: map[string][]v1beta1.TaskRunResult{
+				"pt1": {
+					{
+						Name:  "foo",
+						Value: *v1beta1.NewArrayOrString("do"),
+					},
+				},
+			},
+			expected:      nil,
+			expectedError: fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred result don't exist"),
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			received, _ := ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults)
+			if d := cmp.Diff(tc.expected, received); d != "" {
+				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 	for _, tc := range []struct {
 		description     string

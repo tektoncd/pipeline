@@ -39,6 +39,7 @@ weight: 400
     - [Specifying `Parameters` in `finally` tasks](#specifying-parameters-in-finally-tasks)
     - [Specifying `matrix` in `finally` tasks](#specifying-matrix-in-finally-tasks)
     - [Consuming `Task` execution results in `finally`](#consuming-task-execution-results-in-finally)
+    - [Consuming `Pipeline` result with `finally`](#consuming-pipeline-result-with-finally)
     - [`PipelineRun` Status with `finally`](#pipelinerun-status-with-finally)
     - [Using Execution `Status` of `pipelineTask`](#using-execution-status-of-pipelinetask)
     - [Using Aggregate Execution `Status` of All `Tasks`](#using-aggregate-execution-status-of-all-tasks)
@@ -50,7 +51,6 @@ weight: 400
     - [Known Limitations](#known-limitations)
       - [Specifying `Resources` in `finally` tasks](#specifying-resources-in-finally-tasks)
       - [Cannot configure the `finally` task execution order](#cannot-configure-the-finally-task-execution-order)
-      - [Cannot configure `Pipeline` result with `finally`](#cannot-configure-pipeline-result-with-finally)
   - [Using Custom Tasks](#using-custom-tasks)
     - [Specifying the target Custom Task](#specifying-the-target-custom-task)
     - [Specifying a Custom Task Spec in-line (or embedded)](#specifying-a-custom-task-spec-in-line-or-embedded)
@@ -1268,6 +1268,24 @@ uninitialized task result `commit`, the `finally` Task `discover-git-commit` wil
 `skippedTasks` and continues executing rest of the `finally` tasks. The pipeline exits with `completion` instead of
 `success` if a `finally` task is added to the list of `skippedTasks`.
 
+### Consuming `Pipeline` result with `finally`
+
+`finally` tasks can emit `Results` and these results emitted from the `finally` tasks can be configured in the
+[Pipeline Results](#emitting-results-from-a-pipeline). References of `Results` from `finally` will follow the same naming conventions as referencing `Results` from `tasks`: ```$(finally.<finally-pipelinetask-name>.result.<result-name>)```.
+
+```yaml
+results:
+  - name: comment-count-validate
+    value: $(finally.check-count.results.comment-count-validate)
+finally:
+  - name: check-count
+    taskRef: 
+      name: example-task-name
+```
+
+In this example, `pipelineResults` in `status` will show the name-value pair for the result `comment-count-validate` which is produced in the `Task` `example-task-name`.
+
+
 ### `PipelineRun` Status with `finally`
 
 With `finally`, `PipelineRun` status is calculated based on `PipelineTasks` under `tasks` section and `finally` tasks.
@@ -1543,21 +1561,6 @@ spec:
 It's not possible to configure or modify the execution order of the `finally` tasks. Unlike `Tasks` in a `Pipeline`,
 all `finally` tasks run simultaneously and start executing once all `PipelineTasks` under `tasks` have settled which means
 no `runAfter` can be specified in `finally` tasks.
-
-#### Cannot configure `Pipeline` result with `finally`
-
-`finally` tasks can emit `Results` but results emitted from the `finally` tasks can not be configured in the
-[Pipeline Results](#emitting-results-from-a-pipeline). We are working on adding support for this
-(tracked in issue [#2710](https://github.com/tektoncd/pipeline/issues/2710)).
-
-```yaml
-results:
-  - name: comment-count-validate
-    value: $(finally.check-count.results.comment-count-validate)
-```
-
-In this example, `pipelineResults` in `status` will exclude the name-value pair for that result `comment-count-validate`.
-
 
 ## Using Custom Tasks
 

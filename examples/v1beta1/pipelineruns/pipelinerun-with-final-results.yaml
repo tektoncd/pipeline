@@ -1,0 +1,77 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: sum-and-multiply-pipeline
+spec:
+  params:
+    - name: a
+      type: string
+      default: "1"
+    - name: b
+      type: string
+      default: "1"
+  results:
+    - name: task-result
+      description: "grabbing results from the tasks section"
+      value: $(tasks.multiply-inputs.results.product)
+    - name: finally-result
+      description: "grabbing results from the finally section"
+      value: $(finally.exponent.results.product)
+  tasks:
+    - name: multiply-inputs
+      taskRef:
+        name: multiply
+      params:
+        - name: a
+          value: "$(params.a)"
+        - name: b
+          value: "$(params.b)"
+  finally:
+    - name: exponent
+      taskRef:
+        name: multiply
+      params:
+        - name: a
+          value: "$(tasks.multiply-inputs.results.product)$(tasks.multiply-inputs.results.product)"
+        - name: b
+          value: "$(tasks.multiply-inputs.results.product)$(tasks.multiply-inputs.results.product)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: multiply
+  annotations:
+    description: |
+      A simple task that multiplies the two provided integers
+spec:
+  params:
+    - name: a
+      type: string
+      default: "1"
+      description: The first integer
+    - name: b
+      type: string
+      default: "1"
+      description: The second integer
+  results:
+    - name: product
+      description: The product of the two provided integers
+  steps:
+    - name: product
+      image: bash:latest
+      script: |
+        #!/usr/bin/env bash
+        echo -n $(( "$(params.a)" * "$(params.b)" )) | tee $(results.product.path)
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: sum-and-multiply-pipeline-run-
+spec:
+  pipelineRef:
+    name: sum-and-multiply-pipeline
+  params:
+    - name: a
+      value: "2"
+    - name: b
+      value: "1"

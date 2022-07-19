@@ -1149,7 +1149,7 @@ func TestValidatePipelineResults_Success(t *testing.T) {
 		Description: "this is my pipeline result",
 		Value:       *NewArrayOrString("$(tasks.a-task.results.gitrepo.commit)"),
 	}}
-	if err := validatePipelineResults(results, []PipelineTask{{Name: "a-task"}}); err != nil {
+	if err := validatePipelineResults(results, []PipelineTask{{Name: "a-task"}}, []PipelineTask{}); err != nil {
 		t.Errorf("Pipeline.validatePipelineResults() returned error for valid pipeline: %s: %v", desc, err)
 	}
 }
@@ -1160,13 +1160,22 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results       []PipelineResult
 		expectedError apis.FieldError
 	}{{
-		desc: "invalid pipeline result reference",
+		desc: "invalid pipeline task result reference",
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
 			Value:       *NewArrayOrString("$(tasks.a-task.results.output.key1.extra)"),
 		}},
 		expectedError: *apis.ErrInvalidValue(`expected all of the expressions [tasks.a-task.results.output.key1.extra] to be result expressions but only [] were`, "results[0].value").Also(
+			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
+	}, {
+		desc: "invalid pipeline finally result reference variable",
+		results: []PipelineResult{{
+			Name:        "my-pipeline-result",
+			Description: "this is my pipeline result",
+			Value:       *NewArrayOrString("$(finally.a-task.results.output.key1.extra)"),
+		}},
+		expectedError: *apis.ErrInvalidValue(`expected all of the expressions [finally.a-task.results.output.key1.extra] to be result expressions but only [] were`, "results[0].value").Also(
 			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
 	}, {
 		desc: "invalid pipeline result value with static string",
@@ -1189,7 +1198,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
 	}}
 	for _, tt := range tests {
-		err := validatePipelineResults(tt.results, []PipelineTask{{Name: "a-task"}})
+		err := validatePipelineResults(tt.results, []PipelineTask{{Name: "a-task"}}, []PipelineTask{})
 		if err == nil {
 			t.Errorf("Pipeline.validatePipelineResults() did not return for invalid pipeline: %s", tt.desc)
 		}
@@ -1226,7 +1235,42 @@ func TestFinallyTaskResultsToPipelineResults_Success(t *testing.T) {
 					}},
 				}},
 			},
-		}},
+		}}, {
+		name: "referencing existent finally task result",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Results: []PipelineResult{{
+					Name:  "initialized",
+					Value: *NewArrayOrString("$(finally.check-git-commit.results.init)"),
+				}},
+				Tasks: []PipelineTask{{
+					Name: "clone-app-repo",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "current-date-unix-timestamp",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo", Image: "bar",
+						}},
+					}},
+				}},
+				Finally: []PipelineTask{{
+					Name: "check-git-commit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "init",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo2", Image: "bar",
+						}},
+					}},
+				}},
+			},
+		},
+	},
 	}
 
 	for _, tt := range tests {
@@ -1257,6 +1301,45 @@ func TestFinallyTaskResultsToPipelineResults_Failure(t *testing.T) {
 				Results: []PipelineResult{{
 					Name:  "initialized",
 					Value: *NewArrayOrString("$(tasks.check-git-commit.results.init)"),
+				}},
+				Tasks: []PipelineTask{{
+					Name: "clone-app-repo",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "current-date-unix-timestamp",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo", Image: "bar",
+						}},
+					}},
+				}},
+				Finally: []PipelineTask{{
+					Name: "check-git-commit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "init",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo2", Image: "bar",
+						}},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: referencing a nonexistent task`,
+			Paths:   []string{"spec.results[0].value"},
+		},
+	}, {
+		desc: "referencing nonexistent finally task result",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Results: []PipelineResult{{
+					Name:  "initialized",
+					Value: *NewArrayOrString("$(finally.nonexistent-task.results.init)"),
 				}},
 				Tasks: []PipelineTask{{
 					Name: "clone-app-repo",

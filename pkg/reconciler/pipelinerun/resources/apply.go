@@ -282,7 +282,7 @@ func ApplyTaskResultsToPipelineResults(
 				continue
 			}
 			variableParts := strings.Split(variable, ".")
-			if variableParts[0] != v1beta1.ResultTaskPart || variableParts[2] != v1beta1.ResultResultPart {
+			if (variableParts[0] != v1beta1.ResultTaskPart && variableParts[0] != v1beta1.ResultFinallyPart) || variableParts[2] != v1beta1.ResultResultPart {
 				validPipelineResult = false
 				invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 				continue
