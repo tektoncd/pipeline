@@ -299,7 +299,11 @@ func ApplyTaskResultsToPipelineResults(
 					case v1beta1.ParamTypeString:
 						stringReplacements[variable] = resultValue.StringVal
 					case v1beta1.ParamTypeArray:
-						if stringIdx != "*" {
+						if stringIdx == "*" || stringIdx == "" {
+							// array reference: tasks.<taskName>.results.<arrayResultName>[*] and tasks.<taskName>.results.<arrayResultName>
+							arrayReplacements[substitution.StripStarVarSubExpression(variable)] = resultValue.ArrayVal
+						} else {
+							// array indexing: tasks.<taskName>.results.<arrayResultName>[i]
 							intIdx, _ := strconv.Atoi(stringIdx)
 							if intIdx < len(resultValue.ArrayVal) {
 								stringReplacements[variable] = resultValue.ArrayVal[intIdx]
@@ -307,8 +311,6 @@ func ApplyTaskResultsToPipelineResults(
 								invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
 								validPipelineResult = false
 							}
-						} else {
-							arrayReplacements[substitution.StripStarVarSubExpression(variable)] = resultValue.ArrayVal
 						}
 					case v1beta1.ParamTypeObject:
 						objectReplacements[substitution.StripStarVarSubExpression(variable)] = resultValue.ObjectVal

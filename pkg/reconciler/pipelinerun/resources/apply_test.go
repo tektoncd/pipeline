@@ -2115,10 +2115,28 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		expectedResults: nil,
 		expectedError:   fmt.Errorf("invalid pipelineresults [pipeline-result-1], the referred results don't exist"),
 	}, {
-		description: "apply-array-results",
+		description: "apply-array-results-star-notation",
 		results: []v1beta1.PipelineResult{{
 			Name:  "pipeline-result-1",
 			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo[*])"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"pt1": {
+				{
+					Name:  "foo",
+					Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+				},
+			},
+		},
+		expectedResults: []v1beta1.PipelineRunResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("do", "rae", "mi"),
+		}},
+	}, {
+		description: "apply-array-results-nonstar-notation",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewArrayOrString("$(tasks.pt1.results.foo)"),
 		}},
 		taskResults: map[string][]v1beta1.TaskRunResult{
 			"pt1": {

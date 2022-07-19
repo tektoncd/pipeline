@@ -41,6 +41,10 @@ spec:
         type: array
         description: whole array
         value: $(tasks.task1.results.array-results[*])
+      - name: array-results-nonstar-reference
+        type: array
+        description: whole array
+        value: $(tasks.task1.results.array-results)
       - name: array-results-from-array-indexing-and-object-elements
         type: array
         description: whole array
@@ -53,6 +57,10 @@ spec:
         type: object
         description: whole object
         value: $(tasks.task2.results.object-results[*])
+      - name: object-results-nonstar-reference
+        type: object
+        description: whole object
+        value: $(tasks.task2.results.object-results)
       - name: object-results-from-array-indexing-and-object-elements
         type: object
         description: whole object

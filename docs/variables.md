@@ -16,9 +16,12 @@ For instructions on using variable substitutions see the relevant section of [th
 
 | Variable | Description |
 | -------- | ----------- |
-| `params.<param name>` | The value of the parameter at runtime. |
+| `params.<param name>` | The value of the parameter at runtime. Recommend to use star notation for array and object param whole reference|
 | `params['<param name>']` | (see above) |
 | `params["<param name>"]` | (see above) |
+| `params.<param name>[*]` | Get the whole param array or object.|
+| `params['<param name>'][*]` | (see above) |
+| `params["<param name>"][*]` | (see above) |
 | `params.<param name>[i]` | Get the i-th element of param array. This is alpha feature, set `enable-api-fields` to `alpha`  to use it.|
 | `params['<param name>'][i]` | (see above) |
 | `params["<param name>"][i]` | (see above) |
@@ -31,6 +34,9 @@ For instructions on using variable substitutions see the relevant section of [th
 | `tasks.<taskName>.results.<resultName>[*]` | The array value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`. Cannot be used in `script`.) |
 | `tasks.<taskName>.results['<resultName>'][*]` | (see above)) |
 | `tasks.<taskName>.results["<resultName>"][*]` | (see above)) |
+| `tasks.<taskName>.results.<resultName>` | Get the whole results array or object. Recommend to use star notation) |
+| `tasks.<taskName>.results['<resultName>']` | (see above)) |
+| `tasks.<taskName>.results["<resultName>"]` | (see above)) |
 | `tasks.<taskName>.results.<resultName>.key` | The `key` value of the `Task's` object result. Can alter `Task` execution order within a `Pipeline`.) |
 | `tasks.<taskName>.results['<resultName>'][key]` | (see above)) |
 | `tasks.<taskName>.results["<resultName>"][key]` | (see above)) |
@@ -47,9 +53,12 @@ For instructions on using variable substitutions see the relevant section of [th
 
 | Variable | Description |
 | -------- | ----------- |
-| `params.<param name>` | The value of the parameter at runtime. |
+| `params.<param name>` | The value of the parameter at runtime. Recommend to use star notation for array and object param whole reference|
 | `params['<param name>']` | (see above) |
 | `params["<param name>"]` | (see above) |
+| `params.<param name>[*]` | Get the whole param array or object.|
+| `params['<param name>'][*]` | (see above) |
+| `params["<param name>"][*]` | (see above) |
 | `params.<param name>[i]` | Get the i-th element of param array. This is alpha feature, set `enable-api-fields` to `alpha`  to use it.|
 | `params['<param name>'][i]` | (see above) |
 | `params["<param name>"][i]` | (see above) |
