@@ -247,9 +247,13 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1beta1.Pi
 	if pr.IsDone() {
 		// We get latest pipelinerun cr already to avoid recount
 		newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
-		if err != nil {
+		if err != nil && !kerrors.IsNotFound(err) {
 			logger.Errorf("Error getting PipelineRun %s when updating metrics: %w", pr.Name, err)
+			return
+		} else if kerrors.IsNotFound(err) {
+			logger.Debugf("Pipelinerun %s not found when updating metrics: %w", pr.Name, err)
 		}
+
 		before := newPr.Status.GetCondition(apis.ConditionSucceeded)
 		go func(metrics *pipelinerunmetrics.Recorder) {
 			err := metrics.DurationAndCount(pr, before)
