@@ -59,6 +59,19 @@ function check_yaml_lint() {
 
 function ko_resolve() {
   header "Running `ko resolve`"
+
+  cat <<EOF > .ko.yaml
+    defaultBaseImage: ghcr.io/distroless/static
+    baseImageOverrides:
+      # Use the combined base image for images that should include Windows support.
+      # NOTE: Make sure this list of images to use the combined base image is in sync with what's in tekton/publish.yaml's 'create-ko-yaml' Task.
+      github.com/tektoncd/pipeline/cmd/entrypoint: gcr.io/tekton-releases/github.com/tektoncd/pipeline/combined-base-image:latest
+      github.com/tektoncd/pipeline/cmd/nop: gcr.io/tekton-releases/github.com/tektoncd/pipeline/combined-base-image:latest
+      github.com/tektoncd/pipeline/cmd/workingdirinit: gcr.io/tekton-releases/github.com/tektoncd/pipeline/combined-base-image:latest
+
+      github.com/tektoncd/pipeline/cmd/git-init: ghcr.io/distroless/git
+EOF
+
   KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -R -f config 1>/dev/null
 }
 
