@@ -503,6 +503,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	}
 
 	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return err
 	}
 

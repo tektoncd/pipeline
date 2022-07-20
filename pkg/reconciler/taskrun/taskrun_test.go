@@ -131,6 +131,21 @@ var (
 			Steps: []v1beta1.Step{simpleStep},
 		},
 	}
+	resultsTask = &v1beta1.Task{
+		ObjectMeta: objectMeta("test-results-task", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{simpleStep},
+			Results: []v1beta1.TaskResult{{
+				Name: "aResult",
+				Type: v1beta1.ResultsTypeArray,
+			}, {
+				Name:       "objectResult",
+				Type:       v1beta1.ResultsTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{"url": {Type: "string"}, "commit": {Type: "string"}},
+			},
+			},
+		},
+	}
 
 	clustertask = &v1beta1.ClusterTask{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-cluster-task"},
@@ -430,6 +445,9 @@ func runVolume(i int) corev1.Volume {
 
 func createServiceAccount(t *testing.T, assets test.Assets, name string, namespace string) {
 	t.Helper()
+	if name == "" {
+		name = "default"
+	}
 	if _, err := assets.Clients.Kube.CoreV1().ServiceAccounts(namespace).Create(assets.Ctx, &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -1179,9 +1197,6 @@ spec:
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			saName := tc.taskRun.Spec.ServiceAccountName
-			if saName == "" {
-				saName = "default"
-			}
 			createServiceAccount(t, testAssets, saName, tc.taskRun.Namespace)
 
 			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
@@ -1337,9 +1352,6 @@ spec:
 			c := testAssets.Controller
 			clients := testAssets.Clients
 			saName := tc.taskRun.Spec.ServiceAccountName
-			if saName == "" {
-				saName = "default"
-			}
 			createServiceAccount(t, testAssets, saName, tc.taskRun.Namespace)
 
 			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
@@ -4650,5 +4662,171 @@ func objectMeta(name, ns string) metav1.ObjectMeta {
 		Namespace:   ns,
 		Labels:      map[string]string{},
 		Annotations: map[string]string{},
+	}
+}
+
+func TestReconcile_validateTaskRunResults_valid(t *testing.T) {
+	taskRunResultsTypeMatched := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-results-type-valid
+  namespace: foo
+spec:
+  taskRef:
+    name: test-results-task
+status:
+  taskResults:
+    - name: aResult
+      type: array
+      value: aResultValue
+`)
+
+	taskRunResultsObjectValid := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-results-object-valid
+  namespace: foo
+spec:
+  taskRef:
+    name: test-results-task
+status:
+  taskResults:
+    - name: objectResult
+      type: object
+      value:
+        url: abc
+        commit: xyz
+`)
+
+	taskruns := []*v1beta1.TaskRun{
+		taskRunResultsTypeMatched, taskRunResultsObjectValid,
+	}
+
+	d := test.Data{
+		TaskRuns: taskruns,
+		Tasks:    []*v1beta1.Task{resultsTask},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-api-fields": config.AlphaAPIFields,
+			},
+		}},
+	}
+	for _, tc := range []struct {
+		name    string
+		taskRun *v1beta1.TaskRun
+	}{{
+		name:    "taskrun results type valid",
+		taskRun: taskRunResultsTypeMatched,
+	}, {
+		name:    "taskrun results object valid",
+		taskRun: taskRunResultsObjectValid,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, tc.taskRun.Spec.ServiceAccountName, tc.taskRun.Namespace)
+
+			// Reconcile the TaskRun.  This creates a Pod.
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("Error reconciling TaskRun. Got error %v", err)
+			}
+
+			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition.Type != apis.ConditionSucceeded || condition.Reason != "Running" {
+				t.Errorf("Expected TaskRun to succeed but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
+			}
+		})
+	}
+}
+
+func TestReconcile_validateTaskRunResults_invalid(t *testing.T) {
+	taskRunResultsTypeMismatched := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-results-type-mismatched
+  namespace: foo
+spec:
+  taskRef:
+    name: test-results-task
+status:
+  taskResults:
+    - name: aResult
+      type: string
+      value: aResultValue
+`)
+
+	taskRunResultsObjectMissKey := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-results-object-miss-key
+  namespace: foo
+spec:
+  taskRef:
+    name: test-results-task
+status:
+  taskResults:
+    - name: aResult
+      type: array
+      value:
+       - 1
+       - 2
+    - name: objectResult
+      type: object
+      value:
+        url: abc
+`)
+
+	taskruns := []*v1beta1.TaskRun{
+		taskRunResultsTypeMismatched, taskRunResultsObjectMissKey,
+	}
+
+	d := test.Data{
+		TaskRuns: taskruns,
+		Tasks:    []*v1beta1.Task{resultsTask},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-api-fields": config.AlphaAPIFields,
+			},
+		}},
+	}
+	for _, tc := range []struct {
+		name             string
+		taskRun          *v1beta1.TaskRun
+		wantFailedReason string
+		expectedError    error
+	}{{
+		name:             "taskrun results type mismatched",
+		taskRun:          taskRunResultsTypeMismatched,
+		wantFailedReason: podconvert.ReasonFailedValidation,
+		expectedError:    fmt.Errorf("1 error occurred:\n\t* missmatched Types for these results, map[aResult:[array]]"),
+	}, {
+		name:             "taskrun results object miss key",
+		taskRun:          taskRunResultsObjectMissKey,
+		wantFailedReason: podconvert.ReasonFailedValidation,
+		expectedError:    fmt.Errorf("1 error occurred:\n\t* missing keys for these results which are required in TaskResult's properties map[objectResult:[commit]]"),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, tc.taskRun.Spec.ServiceAccountName, tc.taskRun.Namespace)
+
+			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
+			if d := cmp.Diff(strings.TrimSuffix(err.Error(), "\n\n"), tc.expectedError.Error()); d != "" {
+				t.Errorf("Expected: %v, but Got: %v", tc.expectedError, err)
+			}
+			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != tc.wantFailedReason {
+				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", tc.wantFailedReason, tr.Status.Conditions)
+			}
+
+		})
 	}
 }
