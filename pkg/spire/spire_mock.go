@@ -34,15 +34,10 @@ import (
 
 func init() {
 	injection.Fake.RegisterClient(withFakeControllerClient)
-	injection.Fake.RegisterClient(withFakeEntrypointerClient)
 }
 
 func withFakeControllerClient(ctx context.Context, cfg *rest.Config) context.Context {
-	return context.WithValue(ctx, controllerKey{}, &MockClient{})
-}
-
-func withFakeEntrypointerClient(ctx context.Context, cfg *rest.Config) context.Context {
-	return context.WithValue(ctx, entrypointerKey{}, &MockClient{})
+	return context.WithValue(ctx, controllerKey{}, &spireControllerAPIClient{})
 }
 
 // MockClient is a client used for mocking the this package for unit testing
@@ -313,6 +308,7 @@ func (sc *MockClient) Close() error {
 	return nil
 }
 
+// SetConfig sets the spire configuration for MockClient
 func (sc *MockClient) SetConfig(c spireconfig.SpireConfig) {
 	return
 }

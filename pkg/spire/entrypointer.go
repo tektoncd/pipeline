@@ -24,30 +24,13 @@ import (
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
-	"k8s.io/client-go/rest"
-	"knative.dev/pkg/injection"
-	"knative.dev/pkg/logging"
 )
 
-func init() {
-	injection.Default.RegisterClient(withEntrypointerClient)
-}
-
-// entrypointerKey is a way to associate the EntrypointerAPIClient from inside the context.Context
-type entrypointerKey struct{}
-
-// GetEntrypointerAPIClient extracts the EntrypointerAPIClient from the context.
-func GetEntrypointerAPIClient(ctx context.Context) EntrypointerAPIClient {
-	untyped := ctx.Value(entrypointerKey{})
-	if untyped == nil {
-		logging.FromContext(ctx).Errorf("Unable to fetch client from context.")
-		return nil
+// NewEntrypointerAPIClient creates the EntrypointerAPIClient
+func NewEntrypointerAPIClient(c *spireconfig.SpireConfig) EntrypointerAPIClient {
+	return &spireEntrypointerAPIClient{
+		config: c,
 	}
-	return untyped.(*spireEntrypointerAPIClient)
-}
-
-func withEntrypointerClient(ctx context.Context, cfg *rest.Config) context.Context {
-	return context.WithValue(ctx, entrypointerKey{}, &spireEntrypointerAPIClient{})
 }
 
 type spireEntrypointerAPIClient struct {
@@ -66,7 +49,7 @@ func (w *spireEntrypointerAPIClient) setupClient(ctx context.Context) error {
 }
 
 func (w *spireEntrypointerAPIClient) dial(ctx context.Context) error {
-	// workloadapi.WithAddr("unix://"+w.config.SocketPath) when using the real spire
+	// spire workloadapi client for entrypoint - https://github.com/spiffe/go-spiffe/blob/main/v2/workloadapi/client.go
 	client, err := workloadapi.New(ctx, workloadapi.WithAddr(w.config.SocketPath))
 	if err != nil {
 		return errors.Wrap(err, "spire workload API not initialized due to error")
@@ -90,10 +73,6 @@ func (w *spireEntrypointerAPIClient) getWorkloadSVID(ctx context.Context) (*x509
 		return xsvid, nil
 	}
 	return nil, errors.Wrap(err, "requested SVID failed to get fetched and timed out")
-}
-
-func (w *spireEntrypointerAPIClient) SetConfig(c spireconfig.SpireConfig) {
-	w.config = &c
 }
 
 func (w *spireEntrypointerAPIClient) Close() error {

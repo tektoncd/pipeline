@@ -63,7 +63,7 @@ func TestSpire_TaskRunSign(t *testing.T) {
 	logger := logging.FromContext(ctx)
 
 	var (
-		cc ControllerAPIClient = spireControllerClient
+		cc = spireControllerClient
 	)
 	defer cc.Close()
 
@@ -104,7 +104,7 @@ func TestSpire_CheckSpireVerifiedFlag(t *testing.T) {
 	spireControllerClient.SetConfig(*cfg)
 
 	var (
-		cc ControllerAPIClient = spireControllerClient
+		cc = spireControllerClient
 	)
 	defer cc.Close()
 
@@ -147,7 +147,7 @@ func TestSpire_CheckHashSimilarities(t *testing.T) {
 	spireControllerClient.SetConfig(*cfg)
 
 	var (
-		cc ControllerAPIClient = spireControllerClient
+		cc = spireControllerClient
 	)
 	defer cc.Close()
 
@@ -206,7 +206,7 @@ func TestSpire_CheckTamper(t *testing.T) {
 	logger := logging.FromContext(ctx)
 
 	var (
-		cc ControllerAPIClient = spireControllerClient
+		cc = spireControllerClient
 	)
 	defer cc.Close()
 
@@ -215,6 +215,8 @@ func TestSpire_CheckTamper(t *testing.T) {
 		desc string
 		// annotations to set
 		setAnnotations map[string]string
+		// skip annotation set
+		skipAnnotation bool
 		// modify the status
 		modifyStatus bool
 		// modify the hash to match the new status but not the signature
@@ -276,6 +278,13 @@ func TestSpire_CheckTamper(t *testing.T) {
 			verify: false,
 		},
 		{
+			desc: "set temper flag",
+			setAnnotations: map[string]string{
+				NotVerifiedAnnotation: "true",
+			},
+			verify: false,
+		},
+		{
 			desc:         "tamper status",
 			modifyStatus: true,
 			verify:       false,
@@ -286,13 +295,20 @@ func TestSpire_CheckTamper(t *testing.T) {
 			modifyHashToMatch: true,
 			verify:            false,
 		},
+		{
+			desc:           "tamper status and status hash",
+			skipAnnotation: true,
+			verify:         false,
+		},
 	}
 	for _, tt := range tests {
 
 		for _, tr := range testTaskRuns() {
-			err := cc.AppendStatusInternalAnnotation(ctx, tr)
-			if err != nil {
-				t.Fatalf("failed to sign TaskRun: %v", err)
+			if !tt.skipAnnotation {
+				err := cc.AppendStatusInternalAnnotation(ctx, tr)
+				if err != nil {
+					t.Fatalf("failed to sign TaskRun: %v", err)
+				}
 			}
 
 			if tr.Status.Status.Annotations == nil {
@@ -340,14 +356,13 @@ func TestSpire_TaskRunResultsSign(t *testing.T) {
 	cfg := &config.SpireConfig{}
 	cfg.SocketPath = wl.Addr()
 	cfg.TrustDomain = trustDomain
-	spireEntryPointerClient := GetEntrypointerAPIClient(ctx)
+	spireEntryPointerClient := NewEntrypointerAPIClient(cfg)
 	spireControllerClient := GetControllerAPIClient(ctx)
-	spireEntryPointerClient.SetConfig(*cfg)
 	spireControllerClient.SetConfig(*cfg)
 
 	var (
-		cc ControllerAPIClient   = spireControllerClient
-		ec EntrypointerAPIClient = spireEntryPointerClient
+		cc = spireControllerClient
+		ec = spireEntryPointerClient
 	)
 	defer cc.Close()
 	defer ec.Close()
@@ -450,14 +465,13 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 	cfg := &config.SpireConfig{}
 	cfg.SocketPath = wl.Addr()
 	cfg.TrustDomain = trustDomain
-	spireEntryPointerClient := GetEntrypointerAPIClient(ctx)
+	spireEntryPointerClient := NewEntrypointerAPIClient(cfg)
 	spireControllerClient := GetControllerAPIClient(ctx)
-	spireEntryPointerClient.SetConfig(*cfg)
 	spireControllerClient.SetConfig(*cfg)
 
 	var (
-		cc ControllerAPIClient   = spireControllerClient
-		ec EntrypointerAPIClient = spireEntryPointerClient
+		cc = spireControllerClient
+		ec = spireEntryPointerClient
 	)
 	defer cc.Close()
 	defer ec.Close()

@@ -79,8 +79,7 @@ func (sc *spireControllerAPIClient) setupClient(ctx context.Context) error {
 
 func (sc *spireControllerAPIClient) dial(ctx context.Context) error {
 	if sc.workloadConn == nil {
-		// Create X509Source
-		// workloadapi.WithAddr("unix://"+w.config.SocketPath) when using the real spire
+		// Create X509Source - https://github.com/spiffe/go-spiffe/blob/main/v2/workloadapi/client.go
 		source, err := workloadapi.NewX509Source(ctx, workloadapi.WithClientOptions(workloadapi.WithAddr(sc.config.SocketPath)))
 		if err != nil {
 			return fmt.Errorf("unable to create X509Source for SPIFFE client: %w", err)
@@ -89,7 +88,7 @@ func (sc *spireControllerAPIClient) dial(ctx context.Context) error {
 	}
 
 	if sc.workloadAPI == nil {
-		// workloadapi.WithAddr("unix://"+w.config.SocketPath) when using the real spire
+		// spire workloadapi client for controller - https://github.com/spiffe/go-spiffe/blob/main/v2/workloadapi/client.go
 		client, err := workloadapi.New(ctx, workloadapi.WithAddr(sc.config.SocketPath))
 		if err != nil {
 			return fmt.Errorf("spire workload API not initialized due to error: %w", err)
@@ -98,7 +97,7 @@ func (sc *spireControllerAPIClient) dial(ctx context.Context) error {
 	}
 
 	if sc.serverConn == nil {
-		// Create connection
+		// Create connection to spire server
 		tlsConfig := tlsconfig.MTLSClientConfig(sc.workloadConn, sc.workloadConn, tlsconfig.AuthorizeAny())
 		conn, err := grpc.DialContext(ctx, sc.config.ServerAddr, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 		if err != nil {
@@ -116,6 +115,7 @@ func (sc *spireControllerAPIClient) dial(ctx context.Context) error {
 	return nil
 }
 
+// SetConfig sets the spire configuration for ControllerAPIClient
 func (sc *spireControllerAPIClient) SetConfig(c spireconfig.SpireConfig) {
 	sc.config = &c
 }

@@ -671,6 +671,15 @@ func testPipelineResourceResults() [][]v1beta1.PipelineResourceResult {
 				ResultType:   v1beta1.TaskRunResultType,
 			},
 		},
+		// array result
+		{
+			{
+				Key:          "resultArray",
+				Value:        "{\"key1\":\"var1\",\"key2\":\"var2\"}",
+				ResourceName: "source-image",
+				ResultType:   v1beta1.TaskRunResultType,
+			},
+		},
 		// multi result
 		{
 			{
@@ -703,7 +712,13 @@ func testPipelineResourceResults() [][]v1beta1.PipelineResourceResult {
 			{
 				Key:          "resultName",
 				Value:        "[\"hello\",\"world\"]",
-				ResourceName: "source-image",
+				ResourceName: "source-image3",
+				ResultType:   v1beta1.TaskRunResultType,
+			},
+			{
+				Key:          "resultName2",
+				Value:        "{\"key1\":\"var1\",\"key2\":\"var2\"}",
+				ResourceName: "source-image4",
 				ResultType:   v1beta1.TaskRunResultType,
 			},
 		},

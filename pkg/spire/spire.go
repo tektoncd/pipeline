@@ -72,5 +72,4 @@ type EntrypointerAPIClient interface {
 	Close() error
 	// Sign returns the signature material to be put in the PipelineResourceResult to append to the output results
 	Sign(ctx context.Context, results []v1beta1.PipelineResourceResult) ([]v1beta1.PipelineResourceResult, error)
-	SetConfig(c spireconfig.SpireConfig)
 }

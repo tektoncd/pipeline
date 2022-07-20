@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -338,8 +339,14 @@ func getResultValue(result v1beta1.PipelineResourceResult) (string, error) {
 		valList = append(valList, aos.ArrayVal...)
 		return strings.Join(valList, ","), nil
 	case v1beta1.ParamTypeObject:
-		for _, v := range aos.ObjectVal {
-			valList = append(valList, v)
+		keys := make([]string, len(aos.ObjectVal))
+		for k := range aos.ObjectVal {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			valList = append(valList, k)
+			valList = append(valList, aos.ObjectVal[k])
 		}
 		return strings.Join(valList, ","), nil
 	}
