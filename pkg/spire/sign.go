@@ -36,7 +36,7 @@ func (w *spireEntrypointerAPIClient) Sign(ctx context.Context, results []v1beta1
 		return nil, err
 	}
 
-	xsvid, err := w.getxsvid(ctx)
+	xsvid, err := w.getWorkloadSVID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -107,4 +107,42 @@ func getManifest(results []v1beta1.PipelineResourceResult) string {
 		keys = append(keys, r.Key)
 	}
 	return strings.Join(keys, ",")
+}
+
+// AppendStatusInternalAnnotation creates the status annotations which are used by the controller to verify the status hash
+func (sc *spireControllerAPIClient) AppendStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun) error {
+	err := sc.setupClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Add status hash
+	currentHash, err := hashTaskrunStatusInternal(tr)
+	if err != nil {
+		return err
+	}
+
+	// Sign with controller private key
+	xsvid, err := sc.fetchControllerSVID(ctx)
+	if err != nil {
+		return err
+	}
+
+	sig, err := signWithKey(xsvid, currentHash)
+	if err != nil {
+		return err
+	}
+
+	// Store Controller SVID
+	p := pem.EncodeToMemory(&pem.Block{
+		Bytes: xsvid.Certificates[0].Raw,
+		Type:  "CERTIFICATE",
+	})
+	if tr.Status.Annotations == nil {
+		tr.Status.Annotations = map[string]string{}
+	}
+	tr.Status.Annotations[controllerSvidAnnotation] = string(p)
+	tr.Status.Annotations[TaskRunStatusHashAnnotation] = currentHash
+	tr.Status.Annotations[taskRunStatusHashSigAnnotation] = base64.StdEncoding.EncodeToString(sig)
+	return nil
 }

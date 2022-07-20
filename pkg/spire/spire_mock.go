@@ -21,10 +21,12 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
@@ -59,15 +61,29 @@ type MockClient struct {
 
 	// VerifyAlwaysReturns defines whether to always verify successfully or to always fail verification if non-nil.
 	// This only take effect on Verify functions:
+	// - VerifyStatusInternalAnnotationOverride
 	// - VerifyTaskRunResultsOverride
 	VerifyAlwaysReturns *bool
+
+	// VerifyStatusInternalAnnotationOverride contains the function to overwrite a call to VerifyStatusInternalAnnotation
+	VerifyStatusInternalAnnotationOverride func(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error
 
 	// VerifyTaskRunResultsOverride contains the function to overwrite a call to VerifyTaskRunResults
 	VerifyTaskRunResultsOverride func(ctx context.Context, prs []v1beta1.PipelineResourceResult, tr *v1beta1.TaskRun) error
 
+	// AppendStatusInternalAnnotationOverride  contains the function to overwrite a call to AppendStatusInternalAnnotation
+	AppendStatusInternalAnnotationOverride func(ctx context.Context, tr *v1beta1.TaskRun) error
+
+	// CheckSpireVerifiedFlagOverride contains the function to overwrite a call to CheckSpireVerifiedFlag
+	CheckSpireVerifiedFlagOverride func(tr *v1beta1.TaskRun) bool
+
 	// SignOverride contains the function to overwrite a call to Sign
 	SignOverride func(ctx context.Context, results []v1beta1.PipelineResourceResult) ([]v1beta1.PipelineResourceResult, error)
 }
+
+const (
+	controllerSvid = "CONTROLLER_SVID_DATA"
+)
 
 func (*MockClient) mockSign(content, signedBy string) string {
 	return fmt.Sprintf("signed-by-%s:%x", signedBy, sha256.Sum256([]byte(content)))
@@ -82,8 +98,40 @@ func (*MockClient) GetIdentity(tr *v1beta1.TaskRun) string {
 	return fmt.Sprintf("/ns/%v/taskrun/%v", tr.Namespace, tr.Name)
 }
 
+// AppendStatusInternalAnnotation creates the status annotations which are used by the controller to verify the status hash
+func (sc *MockClient) AppendStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun) error {
+	if sc.AppendStatusInternalAnnotationOverride != nil {
+		return sc.AppendStatusInternalAnnotationOverride(ctx, tr)
+	}
+	// Add status hash
+	currentHash, err := hashTaskrunStatusInternal(tr)
+	if err != nil {
+		return err
+	}
+
+	if tr.Status.Annotations == nil {
+		tr.Status.Annotations = map[string]string{}
+	}
+	tr.Status.Annotations[controllerSvidAnnotation] = controllerSvid
+	tr.Status.Annotations[TaskRunStatusHashAnnotation] = currentHash
+	tr.Status.Annotations[taskRunStatusHashSigAnnotation] = sc.mockSign(currentHash, "controller")
+	return nil
+}
+
+// CheckSpireVerifiedFlag checks if the not-verified status annotation is set which would result in spire verification failed
+func (sc *MockClient) CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool {
+	if sc.CheckSpireVerifiedFlagOverride != nil {
+		return sc.CheckSpireVerifiedFlagOverride(tr)
+	}
+
+	if _, notVerified := tr.Status.Annotations[NotVerifiedAnnotation]; !notVerified {
+		return true
+	}
+	return false
+}
+
 // CreateEntries adds entries to the dictionary of entries that mock the SPIRE server datastore
-func (sc *MockClient) CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl int) error {
+func (sc *MockClient) CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl time.Duration) error {
 	id := fmt.Sprintf("/ns/%v/taskrun/%v", tr.Namespace, tr.Name)
 	if sc.Entries == nil {
 		sc.Entries = map[string]bool{}
@@ -98,6 +146,47 @@ func (sc *MockClient) DeleteEntry(ctx context.Context, tr *v1beta1.TaskRun, pod 
 	if sc.Entries != nil {
 		delete(sc.Entries, id)
 	}
+	return nil
+}
+
+// VerifyStatusInternalAnnotation checks that the internal status annotations are valid by the mocked spire client
+func (sc *MockClient) VerifyStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error {
+	if sc.VerifyStatusInternalAnnotationOverride != nil {
+		return sc.VerifyStatusInternalAnnotationOverride(ctx, tr, logger)
+	}
+
+	if sc.VerifyAlwaysReturns != nil {
+		if *sc.VerifyAlwaysReturns {
+			return nil
+		}
+		return errors.New("failed to verify from mock VerifyAlwaysReturns")
+	}
+
+	if !sc.CheckSpireVerifiedFlag(tr) {
+		return errors.New("annotation tekton.dev/not-verified = yes failed spire verification")
+	}
+
+	annotations := tr.Status.Annotations
+
+	// Verify annotations are there
+	if annotations[controllerSvidAnnotation] != controllerSvid {
+		return errors.New("svid annotation missing")
+	}
+
+	// Check signature
+	currentHash, err := hashTaskrunStatusInternal(tr)
+	if err != nil {
+		return err
+	}
+	if !sc.mockVerify(currentHash, annotations[taskRunStatusHashSigAnnotation], "controller") {
+		return errors.New("signature was not able to be verified")
+	}
+
+	// check current status hash vs annotation status hash by controller
+	if err := CheckStatusInternalAnnotation(tr); err != nil {
+		return err
+	}
+
 	return nil
 }
 

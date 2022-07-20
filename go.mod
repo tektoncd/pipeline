@@ -3,6 +3,7 @@ module github.com/tektoncd/pipeline
 go 1.17
 
 require (
+	github.com/Microsoft/go-winio v0.5.2
 	github.com/cloudevents/sdk-go/v2 v2.10.1
 	github.com/containerd/containerd v1.5.13
 	github.com/google/go-cmp v0.5.8
@@ -16,13 +17,14 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198
 	github.com/pkg/errors v0.9.1
-	github.com/spiffe/go-spiffe/v2 v2.1.0
+	github.com/spiffe/go-spiffe/v2 v2.1.1
 	github.com/spiffe/spire-api-sdk v1.3.1
 	github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 	gomodules.xyz/jsonpatch/v2 v2.2.0
+	gopkg.in/square/go-jose.v2 v2.5.1
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
 	k8s.io/client-go v0.23.5
@@ -35,11 +37,7 @@ require (
 
 require github.com/benbjohnson/clock v1.1.0 // indirect
 
-require (
-	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/zeebo/errs v1.2.2 // indirect
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
-)
+require github.com/zeebo/errs v1.2.2 // indirect
 
 require (
 	cloud.google.com/go/compute v1.5.0 // indirect
@@ -125,7 +123,7 @@ require (
 	github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
+	github.com/stretchr/testify v1.8.0
 	github.com/tektoncd/resolution v0.0.0-20220331203013-e4203c70c5eb
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
@@ -146,7 +144,7 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220303160752-862486edd9cc // indirect
 	google.golang.org/grpc v1.46.0
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/protobuf v1.28.0
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

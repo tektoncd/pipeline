@@ -18,27 +18,55 @@ package spire
 
 import (
 	"context"
+	"fmt"
 	"testing"
-	"time"
 
-	"github.com/google/uuid"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/spiffe/go-spiffe/v2/spiffeid"
+	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
+	"github.com/tektoncd/pipeline/pkg/spire/config"
+	"github.com/tektoncd/pipeline/pkg/spire/test"
+	"github.com/tektoncd/pipeline/pkg/spire/test/fakeworkloadapi"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	"knative.dev/pkg/logging"
 )
 
-// Simple task run sign/verify
-func TestSpireMock_TaskRunSign(t *testing.T) {
-	spireMockClient := &MockClient{}
-	var (
-		cc ControllerAPIClient = spireMockClient
-	)
+var (
+	trustDomain  = "example.org"
+	td           = spiffeid.RequireTrustDomainFromString(trustDomain)
+	fooID        = spiffeid.RequireFromPath(td, "/foo")
+	controllerID = spiffeid.RequireFromPath(td, "/controller")
+)
 
-	ctx := context.Background()
+func TestSpire_TaskRunSign(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
+
+	ca := test.NewCA(t, td)
+	wl := fakeworkloadapi.New(t)
+	defer wl.Stop()
+
+	wl.SetX509Bundles(ca.X509Bundle())
+
+	resp := &fakeworkloadapi.X509SVIDResponse{
+		Bundle: ca.X509Bundle(),
+		SVIDs:  makeX509SVIDs(ca, controllerID),
+	}
+	wl.SetX509SVIDResponse(resp)
+
+	cfg := &config.SpireConfig{}
+	cfg.SocketPath = wl.Addr()
+	cfg.TrustDomain = trustDomain
+	spireControllerClient := GetControllerAPIClient(ctx)
+	spireControllerClient.SetConfig(*cfg)
+
+	logger := logging.FromContext(ctx)
+
+	var (
+		cc ControllerAPIClient = spireControllerClient
+	)
+	defer cc.Close()
+
 	var err error
 
 	for _, tr := range testTaskRuns() {
@@ -47,19 +75,38 @@ func TestSpireMock_TaskRunSign(t *testing.T) {
 			t.Fatalf("failed to sign TaskRun: %v", err)
 		}
 
-		err = cc.VerifyStatusInternalAnnotation(ctx, tr, nil)
+		err = cc.VerifyStatusInternalAnnotation(ctx, tr, logger)
 		if err != nil {
 			t.Fatalf("failed to verify TaskRun: %v", err)
 		}
 	}
 }
 
-// test CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool
-func TestSpireMock_CheckSpireVerifiedFlag(t *testing.T) {
-	spireMockClient := &MockClient{}
+func TestSpire_CheckSpireVerifiedFlag(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
+
+	ca := test.NewCA(t, td)
+	wl := fakeworkloadapi.New(t)
+	defer wl.Stop()
+
+	wl.SetX509Bundles(ca.X509Bundle())
+
+	resp := &fakeworkloadapi.X509SVIDResponse{
+		Bundle: ca.X509Bundle(),
+		SVIDs:  makeX509SVIDs(ca, controllerID),
+	}
+	wl.SetX509SVIDResponse(resp)
+
+	cfg := &config.SpireConfig{}
+	cfg.SocketPath = wl.Addr()
+	cfg.TrustDomain = trustDomain
+	spireControllerClient := GetControllerAPIClient(ctx)
+	spireControllerClient.SetConfig(*cfg)
+
 	var (
-		cc ControllerAPIClient = spireMockClient
+		cc ControllerAPIClient = spireControllerClient
 	)
+	defer cc.Close()
 
 	trs := testTaskRuns()
 	tr := trs[0]
@@ -78,14 +125,32 @@ func TestSpireMock_CheckSpireVerifiedFlag(t *testing.T) {
 	}
 }
 
-// Task run check signed status is not the same with two taskruns
-func TestSpireMock_CheckHashSimilarities(t *testing.T) {
-	spireMockClient := &MockClient{}
-	var (
-		cc ControllerAPIClient = spireMockClient
-	)
+func TestSpire_CheckHashSimilarities(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
 
-	ctx := context.Background()
+	ca := test.NewCA(t, td)
+	wl := fakeworkloadapi.New(t)
+	defer wl.Stop()
+
+	wl.SetX509Bundles(ca.X509Bundle())
+
+	resp := &fakeworkloadapi.X509SVIDResponse{
+		Bundle: ca.X509Bundle(),
+		SVIDs:  makeX509SVIDs(ca, controllerID),
+	}
+	wl.SetX509SVIDResponse(resp)
+
+	cfg := &config.SpireConfig{}
+	cfg.SocketPath = wl.Addr()
+	cfg.TrustDomain = trustDomain
+	spireControllerClient := GetControllerAPIClient(ctx)
+	spireControllerClient.SetConfig(*cfg)
+
+	var (
+		cc ControllerAPIClient = spireControllerClient
+	)
+	defer cc.Close()
+
 	trs := testTaskRuns()
 	tr1, tr2 := trs[0], trs[1]
 
@@ -117,7 +182,33 @@ func TestSpireMock_CheckHashSimilarities(t *testing.T) {
 }
 
 // Task run sign, modify signature/hash/svid/content and verify
-func TestSpireMock_CheckTamper(t *testing.T) {
+func TestSpire_CheckTamper(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
+
+	ca := test.NewCA(t, td)
+	wl := fakeworkloadapi.New(t)
+	defer wl.Stop()
+
+	wl.SetX509Bundles(ca.X509Bundle())
+
+	resp := &fakeworkloadapi.X509SVIDResponse{
+		Bundle: ca.X509Bundle(),
+		SVIDs:  makeX509SVIDs(ca, controllerID),
+	}
+	wl.SetX509SVIDResponse(resp)
+
+	cfg := &config.SpireConfig{}
+	cfg.SocketPath = wl.Addr()
+	cfg.TrustDomain = trustDomain
+	spireControllerClient := GetControllerAPIClient(ctx)
+	spireControllerClient.SetConfig(*cfg)
+
+	logger := logging.FromContext(ctx)
+
+	var (
+		cc ControllerAPIClient = spireControllerClient
+	)
+	defer cc.Close()
 
 	tests := []struct {
 		// description of test case
@@ -197,12 +288,7 @@ func TestSpireMock_CheckTamper(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		spireMockClient := &MockClient{}
-		var (
-			cc ControllerAPIClient = spireMockClient
-		)
 
-		ctx := context.Background()
 		for _, tr := range testTaskRuns() {
 			err := cc.AppendStatusInternalAnnotation(ctx, tr)
 			if err != nil {
@@ -231,7 +317,7 @@ func TestSpireMock_CheckTamper(t *testing.T) {
 				tr.Status.Status.Annotations[TaskRunStatusHashAnnotation] = h
 			}
 
-			verified := cc.VerifyStatusInternalAnnotation(ctx, tr, nil) == nil
+			verified := cc.VerifyStatusInternalAnnotation(ctx, tr, logger) == nil
 			if verified != tt.verify {
 				t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.verify, verified)
 			}
@@ -241,13 +327,30 @@ func TestSpireMock_CheckTamper(t *testing.T) {
 
 }
 
-// Task result sign and verify
-func TestSpireMock_TaskRunResultsSign(t *testing.T) {
-	spireMockClient := &MockClient{}
+func TestSpire_TaskRunResultsSign(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
+
+	ca := test.NewCA(t, td)
+
+	wl := fakeworkloadapi.New(t)
+	defer wl.Stop()
+
+	wl.SetX509Bundles(ca.X509Bundle())
+
+	cfg := &config.SpireConfig{}
+	cfg.SocketPath = wl.Addr()
+	cfg.TrustDomain = trustDomain
+	spireEntryPointerClient := GetEntrypointerAPIClient(ctx)
+	spireControllerClient := GetControllerAPIClient(ctx)
+	spireEntryPointerClient.SetConfig(*cfg)
+	spireControllerClient.SetConfig(*cfg)
+
 	var (
-		cc ControllerAPIClient   = spireMockClient
-		ec EntrypointerAPIClient = spireMockClient
+		cc ControllerAPIClient   = spireControllerClient
+		ec EntrypointerAPIClient = spireEntryPointerClient
 	)
+	defer cc.Close()
+	defer ec.Close()
 
 	testCases := []struct {
 		// description of test
@@ -258,43 +361,57 @@ func TestSpireMock_TaskRunResultsSign(t *testing.T) {
 		wrongPodIdentity bool
 		// whether sign/verify procedure should succeed
 		success bool
+		// List of taskruns to test against
+		taskRunList []*v1beta1.TaskRun
+		// List of PipelineResourceResult to test against
+		pipelineResourceResults [][]v1beta1.PipelineResourceResult
 	}{
-		{
-			desc:    "regular sign/verify result",
-			success: true,
-		},
 		{
 			desc:            "sign/verify result when entry isn't created",
 			skipEntryCreate: true,
 			success:         false,
+			// Using single taskrun and pipelineResourceResults as the unit test
+			// times out with the default 30 second. getWorkloadSVID has a 20 second
+			// time out before it throws an error for no svid found
+			taskRunList:             testSingleTaskRun(),
+			pipelineResourceResults: testSinglePipelineResourceResults(),
 		},
 		{
-			desc:             "sign/verify result when signing with wrong pod identity",
-			wrongPodIdentity: true,
-			success:          false,
+			desc:                    "regular sign/verify result",
+			success:                 true,
+			taskRunList:             testTaskRuns(),
+			pipelineResourceResults: testPipelineResourceResults(),
+		},
+		{
+			desc:                    "sign/verify result when signing with wrong pod identity",
+			wrongPodIdentity:        true,
+			success:                 false,
+			taskRunList:             testTaskRuns(),
+			pipelineResourceResults: testPipelineResourceResults(),
 		},
 	}
 
 	for _, tt := range testCases {
 		ctx := context.Background()
-		for _, tr := range testTaskRuns() {
-
-			var err error
+		for _, tr := range tt.taskRunList {
 			if !tt.skipEntryCreate {
-				// Pod should not be nil, but it isn't used in mocking
-				// implementation so should not matter
-				err = cc.CreateEntries(ctx, tr, genPodObj(tr, ""), 10000)
-				if err != nil {
-					t.Fatalf("unable to create entry")
+				if !tt.wrongPodIdentity {
+					resp := &fakeworkloadapi.X509SVIDResponse{
+						Bundle: ca.X509Bundle(),
+						SVIDs:  makeX509SVIDs(ca, spiffeid.RequireFromPath(td, getTaskrunPath(tr))),
+					}
+					wl.SetX509SVIDResponse(resp)
+				} else {
+					resp := &fakeworkloadapi.X509SVIDResponse{
+						Bundle: ca.X509Bundle(),
+						SVIDs:  makeX509SVIDs(ca, fooID),
+					}
+					wl.SetX509SVIDResponse(resp)
 				}
 			}
 
-			for _, results := range testPipelineResourceResults() {
+			for _, results := range tt.pipelineResourceResults {
 				success := func() bool {
-					spireMockClient.SignIdentities = []string{spireMockClient.GetIdentity(tr)}
-					if tt.wrongPodIdentity {
-						spireMockClient.SignIdentities = []string{"wrong-identity"}
-					}
 
 					sigResults, err := ec.Sign(ctx, results)
 					if err != nil {
@@ -315,22 +432,35 @@ func TestSpireMock_TaskRunResultsSign(t *testing.T) {
 					t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.success, success)
 				}
 			}
-
-			err = cc.DeleteEntry(ctx, tr, genPodObj(tr, ""))
-			if err != nil {
-				t.Fatalf("unable to delete entry: %v", err)
-			}
 		}
 	}
 }
 
 // Task result sign, modify signature/content and verify
-func TestSpireMock_TaskRunResultsSignTamper(t *testing.T) {
-	spireMockClient := &MockClient{}
+func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
+
+	ca := test.NewCA(t, td)
+
+	wl := fakeworkloadapi.New(t)
+	defer wl.Stop()
+
+	wl.SetX509Bundles(ca.X509Bundle())
+
+	cfg := &config.SpireConfig{}
+	cfg.SocketPath = wl.Addr()
+	cfg.TrustDomain = trustDomain
+	spireEntryPointerClient := GetEntrypointerAPIClient(ctx)
+	spireControllerClient := GetControllerAPIClient(ctx)
+	spireEntryPointerClient.SetConfig(*cfg)
+	spireControllerClient.SetConfig(*cfg)
+
 	var (
-		cc ControllerAPIClient   = spireMockClient
-		ec EntrypointerAPIClient = spireMockClient
+		cc ControllerAPIClient   = spireControllerClient
+		ec EntrypointerAPIClient = spireEntryPointerClient
 	)
+	defer cc.Close()
+	defer ec.Close()
 
 	genPr := func() []v1beta1.PipelineResourceResult {
 		return []v1beta1.PipelineResourceResult{
@@ -510,17 +640,14 @@ func TestSpireMock_TaskRunResultsSignTamper(t *testing.T) {
 		ctx := context.Background()
 		for _, tr := range testTaskRuns() {
 
-			var err error
-			// Pod should not be nil, but it isn't used in mocking
-			// implementation so should not matter
-			err = cc.CreateEntries(ctx, tr, genPodObj(tr, ""), 10000)
-			if err != nil {
-				t.Fatalf("unable to create entry")
-			}
-
 			results := genPr()
 			success := func() bool {
-				spireMockClient.SignIdentities = []string{spireMockClient.GetIdentity(tr)}
+
+				resp := &fakeworkloadapi.X509SVIDResponse{
+					Bundle: ca.X509Bundle(),
+					SVIDs:  makeX509SVIDs(ca, spiffeid.RequireFromPath(td, getTaskrunPath(tr))),
+				}
+				wl.SetX509SVIDResponse(resp)
 
 				sigResults, err := ec.Sign(ctx, results)
 				if err != nil {
@@ -543,25 +670,23 @@ func TestSpireMock_TaskRunResultsSignTamper(t *testing.T) {
 			if success != tt.success {
 				t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.success, success)
 			}
-
-			err = cc.DeleteEntry(ctx, tr, genPodObj(tr, ""))
-			if err != nil {
-				t.Fatalf("unable to delete entry: %v", err)
-			}
 		}
 	}
 }
 
-func objectMeta(name, ns string) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:        name,
-		Namespace:   ns,
-		Labels:      map[string]string{},
-		Annotations: map[string]string{},
+func makeX509SVIDs(ca *test.CA, ids ...spiffeid.ID) []*x509svid.SVID {
+	svids := []*x509svid.SVID{}
+	for _, id := range ids {
+		svids = append(svids, ca.CreateX509SVID(id))
 	}
+	return svids
 }
 
-func testTaskRuns() []*v1beta1.TaskRun {
+func getTaskrunPath(tr *v1beta1.TaskRun) string {
+	return fmt.Sprintf("/ns/%v/taskrun/%v", tr.Namespace, tr.Name)
+}
+
+func testSingleTaskRun() []*v1beta1.TaskRun {
 	return []*v1beta1.TaskRun{
 		// taskRun 1
 		{
@@ -574,84 +699,10 @@ func testTaskRuns() []*v1beta1.TaskRun {
 				ServiceAccountName: "test-sa",
 			},
 		},
-		// taskRun 2
-		{
-			ObjectMeta: objectMeta("taskrun-example-populated", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
-				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-			Status: v1beta1.TaskRunStatus{
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					Steps: []v1beta1.StepState{{
-						ContainerState: corev1.ContainerState{
-							Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(0)},
-						},
-					}},
-				},
-			},
-		},
-		// taskRun 3
-		{
-			ObjectMeta: objectMeta("taskrun-example-with-objmeta", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
-				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type: apis.ConditionSucceeded,
-						},
-					},
-				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					Steps: []v1beta1.StepState{{
-						ContainerState: corev1.ContainerState{
-							Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(0)},
-						},
-					}},
-				},
-			},
-		},
-		{
-			ObjectMeta: objectMeta("taskrun-example-with-objmeta-annotations", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
-				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{
-						apis.Condition{
-							Type: apis.ConditionSucceeded,
-						},
-					},
-					Annotations: map[string]string{
-						"annotation1": "a1value",
-						"annotation2": "a2value",
-					},
-				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					Steps: []v1beta1.StepState{{
-						ContainerState: corev1.ContainerState{
-							Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(0)},
-						},
-					}},
-				},
-			},
-		},
 	}
 }
 
-func testPipelineResourceResults() [][]v1beta1.PipelineResourceResult {
+func testSinglePipelineResourceResults() [][]v1beta1.PipelineResourceResult {
 	return [][]v1beta1.PipelineResourceResult{
 		// Single result
 		{
@@ -662,79 +713,5 @@ func testPipelineResourceResults() [][]v1beta1.PipelineResourceResult {
 				ResultType:   v1beta1.TaskRunResultType,
 			},
 		},
-		// array result
-		{
-			{
-				Key:          "resultName",
-				Value:        "[\"hello\",\"world\"]",
-				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-		},
-		// multi result
-		{
-			{
-				Key:          "foo",
-				Value:        "abc",
-				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-			{
-				Key:          "bar",
-				Value:        "xyz",
-				ResourceName: "source-image2",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-		},
-		// mix result type
-		{
-			{
-				Key:          "foo",
-				Value:        "abc",
-				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-			{
-				Key:          "bar",
-				Value:        "xyz",
-				ResourceName: "source-image2",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-			{
-				Key:          "resultName",
-				Value:        "[\"hello\",\"world\"]",
-				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-		},
-		// not TaskRunResultType
-		{
-			{
-				Key:          "not-taskrun-result-type",
-				Value:        "sha256:12345",
-				ResourceName: "source-image",
-			},
-		},
-		// empty result
-		{},
 	}
-}
-
-func getHash(tr *v1beta1.TaskRun) string {
-	return tr.Status.Status.Annotations[TaskRunStatusHashAnnotation]
-}
-
-func genPodObj(tr *v1beta1.TaskRun, uid string) *corev1.Pod {
-	if uid == "" {
-		uid = uuid.NewString()
-	}
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: tr.ObjectMeta.Namespace,
-			Name:      "pod-" + tr.ObjectMeta.Name,
-			UID:       types.UID(uid),
-		},
-	}
-
-	return pod
 }

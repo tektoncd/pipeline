@@ -25,11 +25,13 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -86,6 +88,95 @@ func (sc *spireControllerAPIClient) VerifyTaskRunResults(ctx context.Context, pr
 	return nil
 }
 
+// VerifyStatusInternalAnnotation run multuple verification steps to ensure that the spire status annotations are valid
+func (sc *spireControllerAPIClient) VerifyStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error {
+	err := sc.setupClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !sc.CheckSpireVerifiedFlag(tr) {
+		return errors.New("annotation tekton.dev/not-verified = yes failed spire verification")
+	}
+
+	annotations := tr.Status.Annotations
+
+	// get trust bundle from spire server
+	trust, err := getTrustBundle(ctx, sc.workloadAPI)
+	if err != nil {
+		return err
+	}
+
+	// verify controller SVID
+	svid, ok := annotations[controllerSvidAnnotation]
+	if !ok {
+		return errors.New("No SVID found")
+	}
+	block, _ := pem.Decode([]byte(svid))
+	if block == nil {
+		return fmt.Errorf("invalid SVID: %w", err)
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return fmt.Errorf("invalid SVID: %w", err)
+	}
+
+	// verify certificate root of trust
+	if err := verifyCertificateTrust(cert, trust); err != nil {
+		return err
+	}
+	logger.Infof("Successfully verified certificate %s against SPIRE", svid)
+
+	if err := verifyAnnotation(cert.PublicKey, annotations); err != nil {
+		return err
+	}
+	logger.Info("Successfully verified signature")
+
+	// CheckStatusInternalAnnotation check current status hash vs annotation status hash by controller
+	if err := CheckStatusInternalAnnotation(tr); err != nil {
+		return err
+	}
+	logger.Info("Successfully verified status annotation hash matches the current taskrun status")
+
+	return nil
+}
+
+// CheckSpireVerifiedFlag checks if the not-verified status annotation is set which would result in spire verification failed
+func (sc *spireControllerAPIClient) CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool {
+	if _, notVerified := tr.Status.Annotations[NotVerifiedAnnotation]; !notVerified {
+		return true
+	}
+	return false
+}
+
+func hashTaskrunStatusInternal(tr *v1beta1.TaskRun) (string, error) {
+	s, err := json.Marshal(tr.Status.TaskRunStatusFields)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(s)), nil
+}
+
+// CheckStatusInternalAnnotation ensures that the internal status annotation hash and current status hash match
+func CheckStatusInternalAnnotation(tr *v1beta1.TaskRun) error {
+	// get stored hash of status
+	annotations := tr.Status.Annotations
+	hash, ok := annotations[TaskRunStatusHashAnnotation]
+	if !ok {
+		return fmt.Errorf("no annotation status hash found for %s", TaskRunStatusHashAnnotation)
+	}
+	// get current hash of status
+	current, err := hashTaskrunStatusInternal(tr)
+	if err != nil {
+		return err
+	}
+	if hash != current {
+		return fmt.Errorf("current status hash and stored annotation hash does not match! Annotation Hash: %s, Current Status Hash: %s", hash, current)
+	}
+
+	return nil
+}
+
 func getSVID(resultMap map[string]v1beta1.PipelineResourceResult) (*x509.Certificate, error) {
 	svid, ok := resultMap[KeySVID]
 	if !ok {
@@ -96,6 +187,9 @@ func getSVID(resultMap map[string]v1beta1.PipelineResourceResult) (*x509.Certifi
 		return nil, err
 	}
 	block, _ := pem.Decode([]byte(svidValue))
+	if block == nil {
+		return nil, fmt.Errorf("invalid SVID: %w", err)
+	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("invalid SVID: %w", err)
@@ -114,10 +208,12 @@ func getTrustBundle(ctx context.Context, client *workloadapi.Client) (*x509.Cert
 	}
 	if len(x509Bundle) > 0 {
 		trustPool := x509.NewCertPool()
-		for _, c := range x509Bundle[0].X509Authorities() {
-			trustPool.AddCert(c)
+		for _, bundle := range x509Bundle {
+			for _, c := range bundle.X509Authorities() {
+				trustPool.AddCert(c)
+			}
+			return trustPool, nil
 		}
-		return trustPool, nil
 	}
 	return nil, errors.Wrap(err, "trust domain bundle empty")
 }
@@ -173,6 +269,18 @@ func verifyManifest(results map[string]v1beta1.PipelineResourceResult) error {
 		}
 	}
 	return nil
+}
+
+func verifyAnnotation(pub interface{}, annotations map[string]string) error {
+	signature, ok := annotations[taskRunStatusHashSigAnnotation]
+	if !ok {
+		return fmt.Errorf("no signature found for %s", taskRunStatusHashSigAnnotation)
+	}
+	hash, ok := annotations[TaskRunStatusHashAnnotation]
+	if !ok {
+		return fmt.Errorf("no annotation status hash found for %s", TaskRunStatusHashAnnotation)
+	}
+	return verifySignature(pub, signature, hash)
 }
 
 func verifyResult(pub crypto.PublicKey, key string, results map[string]v1beta1.PipelineResourceResult) error {

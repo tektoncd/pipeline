@@ -36,7 +36,7 @@ type bundleDoc struct {
 // Bundle is a collection of trusted public key material for a trust domain,
 // conforming to the SPIFFE Bundle Format as part of the SPIFFE Trust Domain
 // and Bundle specification:
-// https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE_Trust_Domain_and_Bundle.md
+// https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md
 type Bundle struct {
 	trustDomain spiffeid.TrustDomain
 
@@ -95,7 +95,7 @@ func Parse(trustDomain spiffeid.TrustDomain, bundleBytes []byte) (*Bundle, error
 
 	if jwks.Keys == nil {
 		// The parameter keys MUST be present.
-		// https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE_Trust_Domain_and_Bundle.md#413-keys
+		// https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md#413-keys
 		return nil, spiffebundleErr.New("no authorities found")
 	}
 	for i, key := range jwks.Keys {

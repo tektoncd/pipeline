@@ -26,13 +26,23 @@ package spire
 
 import (
 	"context"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
+	// TaskRunStatusHashAnnotation TaskRun status annotation Hash Key
+	TaskRunStatusHashAnnotation = "tekton.dev/status-hash"
+	// taskRunStatusHashSigAnnotation TaskRun status annotation hash signature Key
+	taskRunStatusHashSigAnnotation = "tekton.dev/status-hash-sig"
+	// controllerSvidAnnotation TaskRun status annotation controller SVID Key
+	controllerSvidAnnotation = "tekton.dev/controller-svid"
+	// NotVerifiedAnnotation TaskRun status annotation not verified by spire key that get set when status match fails
+	NotVerifiedAnnotation = "tekton.dev/not-verified"
 	// KeySVID key used by TaskRun SVID
 	KeySVID = "SVID"
 	// KeySignatureSuffix is the suffix of the keys that contain signatures
@@ -47,9 +57,12 @@ const (
 
 // ControllerAPIClient interface maps to the spire controller API to interact with spire
 type ControllerAPIClient interface {
+	AppendStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun) error
+	CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool
 	Close() error
-	CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl int) error
+	CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl time.Duration) error
 	DeleteEntry(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod) error
+	VerifyStatusInternalAnnotation(ctx context.Context, tr *v1beta1.TaskRun, logger *zap.SugaredLogger) error
 	VerifyTaskRunResults(ctx context.Context, prs []v1beta1.PipelineResourceResult, tr *v1beta1.TaskRun) error
 	SetConfig(c spireconfig.SpireConfig)
 }

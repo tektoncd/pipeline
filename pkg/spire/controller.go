@@ -23,6 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
+	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	entryv1 "github.com/spiffe/spire-api-sdk/proto/spire/api/server/entry/v1"
 	spiffetypes "github.com/spiffe/spire-api-sdk/proto/spire/api/types"
@@ -55,7 +56,7 @@ func GetControllerAPIClient(ctx context.Context) ControllerAPIClient {
 }
 
 func withControllerClient(ctx context.Context, cfg *rest.Config) context.Context {
-	return context.WithValue(ctx, controllerKey{}, &spireEntrypointerAPIClient{})
+	return context.WithValue(ctx, controllerKey{}, &spireControllerAPIClient{})
 }
 
 type spireControllerAPIClient struct {
@@ -79,7 +80,8 @@ func (sc *spireControllerAPIClient) setupClient(ctx context.Context) error {
 func (sc *spireControllerAPIClient) dial(ctx context.Context) error {
 	if sc.workloadConn == nil {
 		// Create X509Source
-		source, err := workloadapi.NewX509Source(ctx, workloadapi.WithClientOptions(workloadapi.WithAddr("unix://"+sc.config.SocketPath)))
+		// workloadapi.WithAddr("unix://"+w.config.SocketPath) when using the real spire
+		source, err := workloadapi.NewX509Source(ctx, workloadapi.WithClientOptions(workloadapi.WithAddr(sc.config.SocketPath)))
 		if err != nil {
 			return fmt.Errorf("unable to create X509Source for SPIFFE client: %w", err)
 		}
@@ -87,7 +89,8 @@ func (sc *spireControllerAPIClient) dial(ctx context.Context) error {
 	}
 
 	if sc.workloadAPI == nil {
-		client, err := workloadapi.New(ctx, workloadapi.WithAddr("unix://"+sc.config.SocketPath))
+		// workloadapi.WithAddr("unix://"+w.config.SocketPath) when using the real spire
+		client, err := workloadapi.New(ctx, workloadapi.WithAddr(sc.config.SocketPath))
 		if err != nil {
 			return fmt.Errorf("spire workload API not initialized due to error: %w", err)
 		}
@@ -115,6 +118,14 @@ func (sc *spireControllerAPIClient) dial(ctx context.Context) error {
 
 func (sc *spireControllerAPIClient) SetConfig(c spireconfig.SpireConfig) {
 	sc.config = &c
+}
+
+func (sc *spireControllerAPIClient) fetchControllerSVID(ctx context.Context) (*x509svid.SVID, error) {
+	xsvid, err := sc.workloadAPI.FetchX509SVID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch controller SVID: %w", err)
+	}
+	return xsvid, nil
 }
 
 func (sc *spireControllerAPIClient) nodeEntry(nodeName string) *spiffetypes.Entry {
@@ -171,7 +182,7 @@ func (sc *spireControllerAPIClient) workloadEntry(tr *v1beta1.TaskRun, pod *core
 }
 
 // ttl is the TTL for the SPIRE entry in seconds, not the SVID TTL
-func (sc *spireControllerAPIClient) CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl int) error {
+func (sc *spireControllerAPIClient) CreateEntries(ctx context.Context, tr *v1beta1.TaskRun, pod *corev1.Pod, ttl time.Duration) error {
 	err := sc.setupClient(ctx)
 	if err != nil {
 		return err
@@ -280,17 +291,24 @@ func (sc *spireControllerAPIClient) DeleteEntry(ctx context.Context, tr *v1beta1
 }
 
 func (sc *spireControllerAPIClient) Close() error {
-	err := sc.serverConn.Close()
-	if err != nil {
-		return err
+	var err error
+	if sc.serverConn != nil {
+		err = sc.serverConn.Close()
+		if err != nil {
+			return err
+		}
 	}
-	err = sc.workloadAPI.Close()
-	if err != nil {
-		return err
+	if sc.workloadAPI != nil {
+		err = sc.workloadAPI.Close()
+		if err != nil {
+			return err
+		}
 	}
-	err = sc.workloadConn.Close()
-	if err != nil {
-		return err
+	if sc.workloadConn != nil {
+		err = sc.workloadConn.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

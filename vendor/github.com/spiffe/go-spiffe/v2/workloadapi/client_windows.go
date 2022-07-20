@@ -6,6 +6,7 @@ package workloadapi
 import (
 	"errors"
 	"path/filepath"
+	"strings"
 
 	"github.com/Microsoft/go-winio"
 	"google.golang.org/grpc"
@@ -38,7 +39,13 @@ func (c *Client) setAddress() error {
 		}
 	}
 
-	c.config.address, err = parseTargetFromAddr(c.config.address)
+	if strings.HasPrefix(c.config.address, "npipe:") {
+		// Use the dialer to connect to named pipes only if the gRPC target
+		// string has the "npipe" scheme
+		c.config.dialOptions = append(c.config.dialOptions, grpc.WithContextDialer(winio.DialPipeContext))
+	}
+
+	c.config.address, err = parseTargetFromStringAddr(c.config.address)
 	return err
 }
 

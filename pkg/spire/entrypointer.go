@@ -66,7 +66,8 @@ func (w *spireEntrypointerAPIClient) setupClient(ctx context.Context) error {
 }
 
 func (w *spireEntrypointerAPIClient) dial(ctx context.Context) error {
-	client, err := workloadapi.New(ctx, workloadapi.WithAddr("unix://"+w.config.SocketPath))
+	// workloadapi.WithAddr("unix://"+w.config.SocketPath) when using the real spire
+	client, err := workloadapi.New(ctx, workloadapi.WithAddr(w.config.SocketPath))
 	if err != nil {
 		return errors.Wrap(err, "spire workload API not initialized due to error")
 	}
@@ -74,7 +75,7 @@ func (w *spireEntrypointerAPIClient) dial(ctx context.Context) error {
 	return nil
 }
 
-func (w *spireEntrypointerAPIClient) getxsvid(ctx context.Context) (*x509svid.SVID, error) {
+func (w *spireEntrypointerAPIClient) getWorkloadSVID(ctx context.Context) (*x509svid.SVID, error) {
 	backOff := 2
 	var xsvid *x509svid.SVID
 	var err error
@@ -96,9 +97,11 @@ func (w *spireEntrypointerAPIClient) SetConfig(c spireconfig.SpireConfig) {
 }
 
 func (w *spireEntrypointerAPIClient) Close() error {
-	err := w.client.Close()
-	if err != nil {
-		return err
+	if w.client != nil {
+		err := w.client.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

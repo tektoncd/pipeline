@@ -17,7 +17,7 @@ type X509Context struct {
 // Default returns the default X509-SVID (the first in the list).
 //
 // See the SPIFFE Workload API standard Section 5.3.
-// (https://github.com/spiffe/spiffe/blob/master/standards/SPIFFE_Workload_API.md#53-default-identity)
+// (https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Workload_API.md#53-default-identity)
 func (x *X509Context) DefaultSVID() *x509svid.SVID {
 	return x.SVIDs[0]
 }

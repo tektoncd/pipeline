@@ -31,6 +31,16 @@ func SetupFakeContext(t *testing.T) (context.Context, []controller.Informer) {
 	return WithLogger(ctx, t), informer
 }
 
+// SetupDefaultContext sets up the the Context and the default filtered informers for the tests.
+func SetupDefaultContext(t *testing.T) (context.Context, []controller.Informer) {
+	ctx, _, informer := setupDefaultContextWithLabelKey(t)
+	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
+		SendSuccessfully: true,
+	}
+	ctx = cloudevent.WithClient(ctx, &cloudEventClientBehaviour)
+	return WithLogger(ctx, t), informer
+}
+
 // WithLogger returns the the Logger
 func WithLogger(ctx context.Context, t *testing.T) context.Context {
 	return logging.WithLogger(ctx, TestLogger(t))
@@ -49,5 +59,15 @@ func setupFakeContextWithLabelKey(t zaptest.TestingT) (context.Context, context.
 	ctx = controller.WithEventRecorder(ctx, record.NewFakeRecorder(1000))
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 	ctx, is := injection.Fake.SetupInformers(ctx, &rest.Config{})
+	return ctx, c, is
+}
+
+// setupDefaultContextWithLabelKey sets up the the Context and the default informers for the tests
+// The provided context includes the FilteredInformerFactory LabelKey.
+func setupDefaultContextWithLabelKey(t zaptest.TestingT) (context.Context, context.CancelFunc, []controller.Informer) {
+	ctx, c := context.WithCancel(logtesting.TestContextWithLogger(t))
+	ctx = controller.WithEventRecorder(ctx, record.NewFakeRecorder(1000))
+	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
+	ctx, is := injection.Default.SetupInformers(ctx, &rest.Config{})
 	return ctx, c, is
 }
