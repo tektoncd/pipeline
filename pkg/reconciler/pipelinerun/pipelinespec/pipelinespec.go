@@ -45,6 +45,7 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 		}
 		pipelineMeta = t.PipelineMetadata()
 		pipelineSpec = t.PipelineSpec()
+		pipelineSpec.SetDefaults(ctx)
 	case pipelineRun.Spec.PipelineSpec != nil:
 		pipelineMeta = pipelineRun.ObjectMeta
 		pipelineSpec = *pipelineRun.Spec.PipelineSpec

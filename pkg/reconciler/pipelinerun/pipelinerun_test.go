@@ -565,6 +565,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: unit-test-task
+    kind: Task
   timeout: 1h0m0s
 `)
 	// ignore IgnoreUnexported ignore both after and before steps fields
@@ -2785,6 +2786,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
+    kind: Task
   timeout: 1h0m0s
 `)
 
@@ -2922,6 +2924,7 @@ spec:
   serviceAccountName: test-sa-0
   taskRef:
     name: hello-world-task
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -2932,6 +2935,7 @@ spec:
   serviceAccountName: test-sa-1
   taskRef:
     name: hello-world-task
+    kind: Task
   timeout: 1h0m0s
 `),
 	}
@@ -3530,6 +3534,7 @@ spec:
   - name: foo
   taskRef:
     name: hello-world
+    kind: Task
   timeout: 1h0m0s
 `)
 
@@ -3758,6 +3763,7 @@ spec:
   serviceAccountName: test-sa-0
   taskRef:
     name: b-task
+    kind: Task
   timeout: 1h0m0s
 `)
 	// Check that the expected TaskRun was created
@@ -3949,6 +3955,7 @@ spec:
   serviceAccountName: test-sa-0
   taskRef:
     name: %s
+    kind: Task
   timeout: 1h0m0s
 `, taskName))
 
@@ -4627,6 +4634,7 @@ spec:
   serviceAccountName: test-sa-0
   taskRef:
     name: b-task
+    kind: Task
   timeout: 1h0m0s
 `)
 	// Check that the expected TaskRun was created
@@ -6258,6 +6266,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: finaltask
+    kind: Task
   timeout: 1h0m0s
 `)
 	// Check that the expected TaskRun was created
@@ -6437,6 +6446,7 @@ spec:
   serviceAccountName: test-sa-0
   taskRef:
     name: final-task
+    kind: Task
   timeout: 1h0m0s
 `)
 
@@ -7574,6 +7584,7 @@ spec:
   serviceAccountName: custom-sa
   taskRef:
     name: hello-world
+    kind: Task
   timeout: 1h0m0s
 `)
 
@@ -7691,6 +7702,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -7709,6 +7721,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -7727,6 +7740,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -7745,6 +7759,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -7763,6 +7778,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -7781,6 +7797,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -7799,6 +7816,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -7817,6 +7835,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -7835,6 +7854,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 	}
@@ -7882,7 +7902,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p-dag
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p-dag
 status:
@@ -7891,6 +7911,7 @@ status:
     - name: platforms-and-browsers
       taskRef:
         name: mytask
+        kind: Task
       matrix:
         - name: platform
           value:
@@ -8004,6 +8025,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 status:
  conditions:
@@ -8020,7 +8042,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p-finally
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p-finally
 status:
@@ -8036,10 +8058,12 @@ status:
           value: v0.22.0
       taskRef:
         name: mytask
+        kind: Task
     finally:
     - name: platforms-and-browsers
       taskRef:
         name: mytask
+        kind: Task
       matrix:
         - name: platform
           value:
@@ -8111,7 +8135,7 @@ metadata:
   name: pr
   namespace: foo
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: %s
 `, tt.name))
@@ -8222,6 +8246,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -8240,6 +8265,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -8258,6 +8284,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -8276,6 +8303,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -8294,6 +8322,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -8312,6 +8341,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -8330,6 +8360,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -8348,6 +8379,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 		mustParseTaskRunWithObjectMeta(t,
@@ -8366,6 +8398,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: mytask
+    kind: Task
   timeout: 1h0m0s
 `),
 	}
@@ -8397,9 +8430,11 @@ spec:
           value: v0.22.0
       taskRef:
         name: taskwithresults
+        kind: Task
     - name: platforms-and-browsers
       taskRef:
         name: mytask
+        kind: Task
       matrix:
         - name: platform
           value:
@@ -8455,7 +8490,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p-dag
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p-dag
 status:
@@ -8471,9 +8506,11 @@ status:
           value: v0.22.0
       taskRef:
         name: taskwithresults
+        kind: Task
     - name: platforms-and-browsers
       taskRef:
         name: mytask
+        kind: Task
       matrix:
         - name: platform
           value:
@@ -8556,10 +8593,12 @@ spec:
           value: v0.22.0
       taskRef:
         name: taskwithresults
+        kind: Task
   finally:
     - name: platforms-and-browsers
       taskRef:
         name: mytask
+        kind: Task
       matrix:
         - name: platform
           value:
@@ -8584,6 +8623,7 @@ spec:
   serviceAccountName: test-sa
   taskRef:
     name: taskwithresults
+    kind: Task
   timeout: 1h0m0s
 status:
  conditions:
@@ -8615,7 +8655,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p-finally
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p-finally
 status:
@@ -8631,10 +8671,12 @@ status:
           value: v0.22.0
       taskRef:
         name: taskwithresults
+        kind: Task
     finally:
     - name: platforms-and-browsers
       taskRef:
         name: mytask
+        kind: Task
       matrix:
         - name: platform
           value:
@@ -8706,7 +8748,7 @@ metadata:
   name: pr
   namespace: foo
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: %s
 `, tt.name))
@@ -9012,7 +9054,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p-dag
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p-dag
 status:
@@ -9152,7 +9194,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p-finally
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p-finally
 status:
@@ -9168,6 +9210,7 @@ status:
           value: v0.0
       taskRef:
         name: mytask
+        kind: Task
     finally:
     - name: platforms-and-browsers
       taskRef:
@@ -9244,7 +9287,7 @@ metadata:
   name: pr
   namespace: foo
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: %s
 `, tt.name))
@@ -9295,4 +9338,151 @@ spec:
 
 func lessTaskResourceBindings(i, j v1beta1.TaskResourceBinding) bool {
 	return i.Name < j.Name
+}
+
+func TestReconcile_SetDefaults(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			runTestReconcileWithoutDefaults(t, tc.embeddedStatusVal)
+		})
+	}
+}
+
+func runTestReconcileWithoutDefaults(t *testing.T, embeddedStatus string) {
+	names.TestingSeed()
+	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-success
+  namespace: foo
+spec:
+  params:
+  - name: bar
+    value: somethingmorefun
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+`)}
+	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  params:
+  - default: somethingdifferent
+    name: pipeline-param
+  - default: revision
+    name: rev-param
+  - name: bar
+  tasks:
+  - name: unit-test-1
+    params:
+    - name: foo
+      value: somethingfun
+    - name: bar
+      value: $(params.bar)
+    taskRef:
+      name: unit-test-task
+  - name: unit-test-cluster-task
+    params:
+    - name: foo
+      value: somethingfun
+    - name: bar
+      value: $(params.bar)
+    taskRef:
+      kind: ClusterTask
+      name: unit-test-cluster-task
+`)}
+	ts := []*v1beta1.Task{
+		parse.MustParseTask(t, `
+metadata:
+  name: unit-test-task
+  namespace: foo
+spec:
+  params:
+  - name: foo
+  - name: bar
+`),
+	}
+	clusterTasks := []*v1beta1.ClusterTask{
+		parse.MustParseClusterTask(t, `
+metadata:
+  name: unit-test-cluster-task
+spec:
+  params:
+  - name: foo
+  - name: bar
+`),
+	}
+
+	d := test.Data{
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		ClusterTasks: clusterTasks,
+		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	wantEvents := []string{
+		"Normal Started",
+		"Normal Running Tasks Completed: 0",
+	}
+	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", wantEvents, false)
+
+	// Check that the expected TaskRun was created
+	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
+	expectedTaskRun := mustParseTaskRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-success-unit-test-1", "foo", "test-pipeline-run-success",
+			"test-pipeline", "unit-test-1", false),
+		`
+spec:
+  params:
+  - name: foo
+    value: somethingfun
+  - name: bar
+    value: somethingmorefun
+  serviceAccountName: test-sa
+  taskRef:
+    name: unit-test-task
+    kind: Task
+  timeout: 1h0m0s
+  resources: {}
+`)
+	// ignore IgnoreUnexported ignore both after and before steps fields
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
+	}
+
+	// This PipelineRun is in progress now and the status should reflect that
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+
+	tr1Name := "test-pipeline-run-success-unit-test-1"
+	tr2Name := "test-pipeline-run-success-unit-test-cluster-task"
+
+	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 2)
+	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, tr1Name, tr2Name)
+
 }
