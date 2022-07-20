@@ -21,6 +21,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 
@@ -32,11 +33,16 @@ import (
 
 // realRunner actually runs commands.
 type realRunner struct {
+	stdoutPath string
+	stderrPath string
 }
 
 var _ entrypoint.Runner = (*realRunner)(nil)
 
 func (rr *realRunner) Run(ctx context.Context, args ...string) error {
+	if rr.stdoutPath != "" || rr.stderrPath != "" {
+		return errors.New("step.StdoutPath and step.StderrPath not supported on Windows")
+	}
 	if len(args) == 0 {
 		return nil
 	}
