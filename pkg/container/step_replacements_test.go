@@ -14,13 +14,14 @@
  limitations under the License.
 */
 
-package v1beta1_test
+package container_test
 
 import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/container"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -133,7 +134,7 @@ func TestApplyStepReplacements(t *testing.T) {
 			Path: "/workspace/data/stderr.txt",
 		},
 	}
-	v1beta1.ApplyStepReplacements(&s, replacements, arrayReplacements)
+	container.ApplyStepReplacements(&s, replacements, arrayReplacements)
 	if d := cmp.Diff(s, expected); d != "" {
 		t.Errorf("Container replacements failed: %s", d)
 	}

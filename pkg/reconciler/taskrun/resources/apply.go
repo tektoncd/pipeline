@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/container"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
@@ -202,7 +203,7 @@ func applyWorkspaceMountPath(variable string, spec *v1beta1.TaskSpec, declaratio
 		for _, usage := range step.Workspaces {
 			if usage.Name == declaration.Name && usage.MountPath != "" {
 				stringReplacements[variable] = usage.MountPath
-				v1beta1.ApplyStepReplacements(step, stringReplacements, emptyArrayReplacements)
+				container.ApplyStepReplacements(step, stringReplacements, emptyArrayReplacements)
 			}
 		}
 	}
@@ -212,7 +213,7 @@ func applyWorkspaceMountPath(variable string, spec *v1beta1.TaskSpec, declaratio
 		for _, usage := range sidecar.Workspaces {
 			if usage.Name == declaration.Name && usage.MountPath != "" {
 				stringReplacements[variable] = usage.MountPath
-				v1beta1.ApplySidecarReplacements(sidecar, stringReplacements, emptyArrayReplacements)
+				container.ApplySidecarReplacements(sidecar, stringReplacements, emptyArrayReplacements)
 			}
 		}
 	}
@@ -269,12 +270,12 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 	// Apply variable expansion to steps fields.
 	steps := spec.Steps
 	for i := range steps {
-		v1beta1.ApplyStepReplacements(&steps[i], stringReplacements, arrayReplacements)
+		container.ApplyStepReplacements(&steps[i], stringReplacements, arrayReplacements)
 	}
 
 	// Apply variable expansion to stepTemplate fields.
 	if spec.StepTemplate != nil {
-		v1beta1.ApplyStepTemplateReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
+		container.ApplyStepTemplateReplacements(spec.StepTemplate, stringReplacements, arrayReplacements)
 	}
 
 	// Apply variable expansion to the build's volumes
@@ -329,7 +330,7 @@ func ApplyReplacements(spec *v1beta1.TaskSpec, stringReplacements map[string]str
 	// Apply variable substitution to the sidecar definitions
 	sidecars := spec.Sidecars
 	for i := range sidecars {
-		v1beta1.ApplySidecarReplacements(&sidecars[i], stringReplacements, arrayReplacements)
+		container.ApplySidecarReplacements(&sidecars[i], stringReplacements, arrayReplacements)
 	}
 
 	return spec
