@@ -12,7 +12,7 @@ type reviewService struct {
 }
 
 func (s *reviewService) Find(ctx context.Context, repo string, number, reviewID int) (*scm.Review, *scm.Response, error) {
-	reviews, r, err := s.List(ctx, repo, number, scm.ListOptions{})
+	reviews, r, err := s.List(ctx, repo, number, &scm.ListOptions{})
 	if err != nil {
 		return nil, r, err
 	}
@@ -24,7 +24,7 @@ func (s *reviewService) Find(ctx context.Context, repo string, number, reviewID 
 	return nil, r, err
 }
 
-func (s *reviewService) List(ctx context.Context, repo string, number int, opt scm.ListOptions) ([]*scm.Review, *scm.Response, error) {
+func (s *reviewService) List(ctx context.Context, repo string, number int, opt *scm.ListOptions) ([]*scm.Review, *scm.Response, error) {
 	f := s.data
 	return append([]*scm.Review{}, f.Reviews[number]...), nil, nil
 }
@@ -45,7 +45,7 @@ func (s *reviewService) Delete(context.Context, string, int, int) (*scm.Response
 	panic("implement me")
 }
 
-func (s *reviewService) ListComments(ctx context.Context, repo string, prID, reviewID int, options scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
+func (s *reviewService) ListComments(ctx context.Context, repo string, prID, reviewID int, options *scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
 	return nil, nil, scm.ErrNotSupported
 }
 

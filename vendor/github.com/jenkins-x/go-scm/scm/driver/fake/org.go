@@ -52,7 +52,7 @@ func (s *organizationService) Find(ctx context.Context, name string) (*scm.Organ
 	return nil, nil, scm.ErrNotFound
 }
 
-func (s *organizationService) List(context.Context, scm.ListOptions) ([]*scm.Organization, *scm.Response, error) {
+func (s *organizationService) List(context.Context, *scm.ListOptions) ([]*scm.Organization, *scm.Response, error) {
 	orgs := s.data.Organizations
 	if orgs == nil {
 		// Return hardcoded organizations if none specified explicitly
@@ -73,7 +73,7 @@ func (s *organizationService) List(context.Context, scm.ListOptions) ([]*scm.Org
 	return orgs, &scm.Response{}, nil
 }
 
-func (s *organizationService) ListTeams(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.Team, *scm.Response, error) {
+func (s *organizationService) ListTeams(ctx context.Context, org string, opts *scm.ListOptions) ([]*scm.Team, *scm.Response, error) {
 	return []*scm.Team{
 		{
 			ID:   0,
@@ -86,7 +86,7 @@ func (s *organizationService) ListTeams(ctx context.Context, org string, ops scm
 	}, nil, nil
 }
 
-func (s *organizationService) ListTeamMembers(ctx context.Context, teamID int, role string, ops scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
+func (s *organizationService) ListTeamMembers(ctx context.Context, teamID int, role string, opts *scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
 	if role != RoleAll {
 		return nil, nil, fmt.Errorf("unsupported role %v (only all supported)", role)
 	}
@@ -101,10 +101,11 @@ func (s *organizationService) ListTeamMembers(ctx context.Context, teamID int, r
 	return members, nil, nil
 }
 
-func (s *organizationService) ListOrgMembers(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
+func (s *organizationService) ListOrgMembers(ctx context.Context, org string, opts *scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
 	return nil, nil, scm.ErrNotSupported
 }
-func (s *organizationService) ListPendingInvitations(_ context.Context, org string, opts scm.ListOptions) ([]*scm.OrganizationPendingInvite, *scm.Response, error) {
+
+func (s *organizationService) ListPendingInvitations(_ context.Context, org string, opts *scm.ListOptions) ([]*scm.OrganizationPendingInvite, *scm.Response, error) {
 	for _, o := range s.data.Organizations {
 		if o.Name == org {
 			return []*scm.OrganizationPendingInvite{{
@@ -117,8 +118,7 @@ func (s *organizationService) ListPendingInvitations(_ context.Context, org stri
 	return nil, nil, scm.ErrNotFound
 }
 
-func (s *organizationService) ListMemberships(ctx context.Context, opts scm.ListOptions) ([]*scm.Membership, *scm.Response, error) {
-
+func (s *organizationService) ListMemberships(ctx context.Context, opts *scm.ListOptions) ([]*scm.Membership, *scm.Response, error) {
 	return []*scm.Membership{
 		{
 			OrganizationName: "test-org1",
@@ -131,7 +131,6 @@ func (s *organizationService) ListMemberships(ctx context.Context, opts scm.List
 			Role:             "member",
 		},
 	}, nil, nil
-
 }
 
 func (s *organizationService) AcceptOrganizationInvitation(_ context.Context, org string) (*scm.Response, error) {

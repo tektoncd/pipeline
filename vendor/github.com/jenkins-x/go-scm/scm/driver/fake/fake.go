@@ -13,7 +13,7 @@ func NewDefault() (*scm.Client, *Data) {
 	data := NewData()
 	data.CurrentUser.Login = "fakeuser"
 	data.CurrentUser.Name = "fakeuser"
-	data.ContentDir = "test_data"
+	data.ContentDir = "testdata"
 
 	client := &wrapper{new(scm.Client)}
 	client.BaseURL = &url.URL{
@@ -35,7 +35,6 @@ func NewDefault() (*scm.Client, *Data) {
 	client.Users = &userService{client: client, data: data}
 
 	client.Username = data.CurrentUser.Login
-	// TODO
 
 	return client.Client, data
 }

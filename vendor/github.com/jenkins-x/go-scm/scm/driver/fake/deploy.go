@@ -22,7 +22,7 @@ func (s *deploymentService) Find(ctx context.Context, repoFullName, deploymentID
 	return nil, nil, scm.ErrNotFound
 }
 
-func (s *deploymentService) List(ctx context.Context, repoFullName string, opts scm.ListOptions) ([]*scm.Deployment, *scm.Response, error) {
+func (s *deploymentService) List(ctx context.Context, repoFullName string, opts *scm.ListOptions) ([]*scm.Deployment, *scm.Response, error) {
 	return s.data.Deployments[repoFullName], nil, nil
 }
 
@@ -81,7 +81,7 @@ func (s *deploymentService) FindStatus(ctx context.Context, repoFullName, deploy
 	return nil, nil, scm.ErrNotFound
 }
 
-func (s *deploymentService) ListStatus(ctx context.Context, repoFullName, deploymentID string, opts scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
+func (s *deploymentService) ListStatus(ctx context.Context, repoFullName, deploymentID string, opts *scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
 	key := scm.Join(repoFullName, deploymentID)
 	return s.data.DeploymentStatus[key], nil, nil
 }

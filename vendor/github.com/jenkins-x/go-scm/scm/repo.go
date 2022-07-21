@@ -134,22 +134,22 @@ type (
 		FindPerms(context.Context, string) (*Perm, *Response, error)
 
 		// List returns a list of repositories.
-		List(context.Context, ListOptions) ([]*Repository, *Response, error)
+		List(context.Context, *ListOptions) ([]*Repository, *Response, error)
 
 		// List returns a list of repositories for a given organisation
-		ListOrganisation(context.Context, string, ListOptions) ([]*Repository, *Response, error)
+		ListOrganisation(context.Context, string, *ListOptions) ([]*Repository, *Response, error)
 
 		// List returns a list of repositories for a given user.
-		ListUser(context.Context, string, ListOptions) ([]*Repository, *Response, error)
+		ListUser(context.Context, string, *ListOptions) ([]*Repository, *Response, error)
 
 		// ListLabels returns the labels on a repo
-		ListLabels(context.Context, string, ListOptions) ([]*Label, *Response, error)
+		ListLabels(context.Context, string, *ListOptions) ([]*Label, *Response, error)
 
 		// ListHooks returns a list or repository hooks.
-		ListHooks(context.Context, string, ListOptions) ([]*Hook, *Response, error)
+		ListHooks(context.Context, string, *ListOptions) ([]*Hook, *Response, error)
 
 		// ListStatus returns a list of commit statuses.
-		ListStatus(context.Context, string, string, ListOptions) ([]*Status, *Response, error)
+		ListStatus(context.Context, string, string, *ListOptions) ([]*Status, *Response, error)
 
 		// FindCombinedStatus returns the combined status for a ref
 		FindCombinedStatus(ctx context.Context, repo, ref string) (*CombinedStatus, *Response, error)
@@ -179,7 +179,7 @@ type (
 		AddCollaborator(ctx context.Context, repo, user, permission string) (bool, bool, *Response, error)
 
 		// ListCollaborators lists the collaborators on a repository
-		ListCollaborators(ctx context.Context, repo string, ops ListOptions) ([]User, *Response, error)
+		ListCollaborators(ctx context.Context, repo string, ops *ListOptions) ([]User, *Response, error)
 
 		// FindUserPermission returns the user's permission level for a repo
 		FindUserPermission(ctx context.Context, repo string, user string) (string, *Response, error)
