@@ -20,6 +20,17 @@ const (
 	CloudEventsVersionV03 = "0.3"
 )
 
+var specV03Attributes = map[string]struct{}{
+	"type":                {},
+	"source":              {},
+	"subject":             {},
+	"id":                  {},
+	"time":                {},
+	"schemaurl":           {},
+	"datacontenttype":     {},
+	"datacontentencoding": {},
+}
+
 // EventContextV03 represents the non-data attributes of a CloudEvents v0.3
 // event.
 type EventContextV03 struct {
@@ -78,11 +89,17 @@ func (ec EventContextV03) ExtensionAs(name string, obj interface{}) error {
 	}
 }
 
-// SetExtension adds the extension 'name' with value 'value' to the CloudEvents context.
+// SetExtension adds the extension 'name' with value 'value' to the CloudEvents
+// context. This function fails if the name uses a reserved event context key.
 func (ec *EventContextV03) SetExtension(name string, value interface{}) error {
 	if ec.Extensions == nil {
 		ec.Extensions = make(map[string]interface{})
 	}
+
+	if _, ok := specV03Attributes[strings.ToLower(name)]; ok {
+		return fmt.Errorf("bad key %q: CloudEvents spec attribute MUST NOT be overwritten by extension", name)
+	}
+
 	if value == nil {
 		delete(ec.Extensions, name)
 		if len(ec.Extensions) == 0 {
