@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -86,6 +87,7 @@ type Protocol struct {
 	server            *http.Server
 	handlerRegistered bool
 	middleware        []Middleware
+	limiter           RateLimiter
 
 	isRetriableFunc IsRetriable
 }
@@ -113,6 +115,10 @@ func New(opts ...Option) (*Protocol, error) {
 
 	if p.isRetriableFunc == nil {
 		p.isRetriableFunc = defaultIsRetriableFunc
+	}
+
+	if p.limiter == nil {
+		p.limiter = noOpLimiter{}
 	}
 
 	return p, nil
@@ -151,7 +157,14 @@ func (p *Protocol) Send(ctx context.Context, m binding.Message, transformers ...
 				buf := new(bytes.Buffer)
 				buf.ReadFrom(message.BodyReader)
 				errorStr := buf.String()
-				err = NewResult(res.StatusCode, "%s", errorStr)
+				// If the error is not wrapped, then append the original error string.
+				if og, ok := err.(*Result); ok {
+					og.Format = og.Format + "%s"
+					og.Args = append(og.Args, errorStr)
+					err = og
+				} else {
+					err = NewResult(res.StatusCode, "%w: %s", err, errorStr)
+				}
 			}
 		}
 	}
@@ -277,6 +290,20 @@ func (p *Protocol) Respond(ctx context.Context) (binding.Message, protocol.Respo
 // ServeHTTP implements http.Handler.
 // Blocks until ResponseFn is invoked.
 func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	// always apply limiter first using req context
+	ok, reset, err := p.limiter.Allow(req.Context(), req)
+	if err != nil {
+		p.incoming <- msgErr{msg: nil, err: fmt.Errorf("unable to acquire rate limit token: %w", err)}
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if !ok {
+		rw.Header().Add("Retry-After", strconv.Itoa(int(reset)))
+		http.Error(rw, "limit exceeded", 429)
+		return
+	}
+
 	// Filter the GET style methods:
 	switch req.Method {
 	case http.MethodOptions:
