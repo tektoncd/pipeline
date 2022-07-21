@@ -195,7 +195,20 @@ for your `KO_DOCKER_REPO` if required. To be able to push images to
 ```shell
 gcloud auth configure-docker
 ```
-The [example GKE setup](#using-gke) in this guide grants service accounts permissions to push and pull GCR images in the same project.
+
+To be able to pull images from `gcr.io/<project>`, please follow the instructions [here](https://cloud.google.com/container-registry/docs/access-control#grant) to configure IAM policies for the services that will pull iamges from your GCR. 
+
+If you choose to run GKE and GCR in the same GCP project, please follow the [example GKE setup](#using-gke) and make sure to add ```storage-full``` to the ```--scopes``` args in the example to give the GKE default service account full access to your GCR. Alternatively, you can grant the GKE default service account read access to your GCR by running:
+
+```
+gcloud projects add-iam-policy-binding <project-number> \
+--member='serviceAccount:<project-number>-compute@developer.gserviceaccount.com' \
+--role='roles/storage.objectViewer'
+```
+
+For more information about GCP Compute Engine default service accounts, please check [here](https://cloud.google.com/compute/docs/access/service-accounts)
+
+After configuring IAM policy of your GCR, the [example GKE setup](#using-gke) in this guide now has permissions to push and pull images from your GCR.
 If you choose to use a different setup with fewer default permissions, or your GKE cluster that will run Tekton
 is in a different project than your GCR registry, you will need to provide the Tekton pipelines
 controller and webhook service accounts with GCR credentials.
