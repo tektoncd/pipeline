@@ -245,6 +245,8 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 			return fmt.Errorf("missing service reference for webhook: %s", wh.Name)
 		}
 		cur.ClientConfig.Service.Path = ptr.String(ac.Path())
+
+		cur.ReinvocationPolicy = ptrReinvocationPolicyType(admissionregistrationv1.IfNeededReinvocationPolicy)
 	}
 
 	if ok, err := kmp.SafeEqual(configuredWebhook, current); err != nil {
@@ -470,4 +472,8 @@ func setDefaults(ctx context.Context, patches duck.JSONPatch, crd resourcesemant
 	}
 
 	return append(patches, patch...), nil
+}
+
+func ptrReinvocationPolicyType(r admissionregistrationv1.ReinvocationPolicyType) *admissionregistrationv1.ReinvocationPolicyType {
+	return &r
 }

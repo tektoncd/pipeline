@@ -290,11 +290,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
-	version, err := changeset.Get()
-	if err != nil {
-		return nil, err
-	}
-	podAnnotations[ReleaseAnnotation] = version
+	podAnnotations[ReleaseAnnotation] = changeset.Get()
 
 	if readyImmediately {
 		podAnnotations[readyAnnotation] = readyAnnotationValue

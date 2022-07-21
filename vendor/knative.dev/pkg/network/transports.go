@@ -18,6 +18,7 @@ package network
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -45,7 +46,7 @@ func newAutoTransport(v1, v2 http.RoundTripper) http.RoundTripper {
 	})
 }
 
-const sleepTO = 30 * time.Millisecond
+const sleep = 30 * time.Millisecond
 
 var backOffTemplate = wait.Backoff{
 	Duration: 50 * time.Millisecond,
@@ -53,6 +54,9 @@ var backOffTemplate = wait.Backoff{
 	Jitter:   0.1, // At most 10% jitter.
 	Steps:    15,
 }
+
+// ErrTimeoutDialing when the timeout is reached after set amount of time.
+var ErrTimeoutDialing = errors.New("timed out dialing")
 
 // DialWithBackOff executes `net.Dialer.DialContext()` with exponentially increasing
 // dial timeouts. In addition it sleeps with random jitter between tries.
@@ -63,11 +67,21 @@ var DialWithBackOff = NewBackoffDialer(backOffTemplate)
 // between tries.
 func NewBackoffDialer(backoffConfig wait.Backoff) func(context.Context, string, string) (net.Conn, error) {
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
-		return dialBackOffHelper(ctx, network, address, backoffConfig, sleepTO)
+		return dialBackOffHelper(ctx, network, address, backoffConfig, nil)
 	}
 }
 
-func dialBackOffHelper(ctx context.Context, network, address string, bo wait.Backoff, sleep time.Duration) (net.Conn, error) {
+// DialTLSWithBackOff is same with DialWithBackOff but takes tls config.
+var DialTLSWithBackOff = NewTLSBackoffDialer(backOffTemplate)
+
+// NewTLSBackoffDialer is same with NewBackoffDialer but takes tls config.
+func NewTLSBackoffDialer(backoffConfig wait.Backoff) func(context.Context, string, string, *tls.Config) (net.Conn, error) {
+	return func(ctx context.Context, network, address string, tlsConf *tls.Config) (net.Conn, error) {
+		return dialBackOffHelper(ctx, network, address, backoffConfig, tlsConf)
+	}
+}
+
+func dialBackOffHelper(ctx context.Context, network, address string, bo wait.Backoff, tlsConf *tls.Config) (net.Conn, error) {
 	dialer := &net.Dialer{
 		Timeout:   bo.Duration, // Initial duration.
 		KeepAlive: 5 * time.Second,
@@ -75,7 +89,15 @@ func dialBackOffHelper(ctx context.Context, network, address string, bo wait.Bac
 	}
 	start := time.Now()
 	for {
-		c, err := dialer.DialContext(ctx, network, address)
+		var (
+			c   net.Conn
+			err error
+		)
+		if tlsConf == nil {
+			c, err = dialer.DialContext(ctx, network, address)
+		} else {
+			c, err = tls.DialWithDialer(dialer, network, address, tlsConf)
+		}
 		if err != nil {
 			var errNet net.Error
 			if errors.As(err, &errNet) && errNet.Timeout() {
@@ -91,7 +113,7 @@ func dialBackOffHelper(ctx context.Context, network, address string, bo wait.Bac
 		return c, nil
 	}
 	elapsed := time.Since(start)
-	return nil, fmt.Errorf("timed out dialing after %.2fs", elapsed.Seconds())
+	return nil, fmt.Errorf("%w %s after %.2fs", ErrTimeoutDialing, address, elapsed.Seconds())
 }
 
 func newHTTPTransport(disableKeepAlives, disableCompression bool, maxIdle, maxIdlePerHost int) http.RoundTripper {
@@ -105,12 +127,32 @@ func newHTTPTransport(disableKeepAlives, disableCompression bool, maxIdle, maxId
 	return transport
 }
 
+func newHTTPSTransport(disableKeepAlives, disableCompression bool, maxIdle, maxIdlePerHost int, tlsConf *tls.Config) http.RoundTripper {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = DialWithBackOff
+	transport.DisableKeepAlives = disableKeepAlives
+	transport.MaxIdleConns = maxIdle
+	transport.MaxIdleConnsPerHost = maxIdlePerHost
+	transport.ForceAttemptHTTP2 = false
+	transport.DisableCompression = disableCompression
+
+	transport.TLSClientConfig = tlsConf
+	return transport
+}
+
 // NewProberTransport creates a RoundTripper that is useful for probing,
 // since it will not cache connections.
 func NewProberTransport() http.RoundTripper {
 	return newAutoTransport(
 		newHTTPTransport(true /*disable keep-alives*/, false /*disable auto-compression*/, 0, 0 /*no caching*/),
 		NewH2CTransport())
+}
+
+// NewProxyAutoTLSTransport is same with NewProxyAutoTransport but it has tls.Config to create HTTPS request.
+func NewProxyAutoTLSTransport(maxIdle, maxIdlePerHost int, tlsConf *tls.Config) http.RoundTripper {
+	return newAutoTransport(
+		newHTTPSTransport(false /*disable keep-alives*/, true /*disable auto-compression*/, maxIdle, maxIdlePerHost, tlsConf),
+		newH2Transport(true /*disable auto-compression*/, tlsConf))
 }
 
 // NewAutoTransport creates a RoundTripper that can use appropriate transport

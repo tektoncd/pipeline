@@ -547,14 +547,10 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 
 func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
 	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
-	version, err := changeset.Get()
-	if err != nil {
-		return nil, err
-	}
 	if tr.Annotations == nil {
 		tr.Annotations = make(map[string]string, 1)
 	}
-	tr.Annotations[podconvert.ReleaseAnnotation] = version
+	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
 
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
