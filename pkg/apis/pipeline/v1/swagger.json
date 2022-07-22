@@ -523,6 +523,14 @@
           "description": "SecurityContext defines the security options the container should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
           "$ref": "#/definitions/v1.SecurityContext"
         },
+        "stderrConfig": {
+          "description": "Stores configuration for the stderr stream of the step.",
+          "$ref": "#/definitions/v1.StepOutputConfig"
+        },
+        "stdoutConfig": {
+          "description": "Stores configuration for the stdout stream of the step.",
+          "$ref": "#/definitions/v1.StepOutputConfig"
+        },
         "timeout": {
           "description": "Timeout is the time after which the step times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
           "$ref": "#/definitions/v1.Duration"
@@ -561,6 +569,16 @@
             "$ref": "#/definitions/v1.WorkspaceUsage"
           },
           "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.StepOutputConfig": {
+      "description": "StepOutputConfig stores configuration for a step output stream.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "Path to duplicate stdout stream to on container's local filesystem.",
+          "type": "string"
         }
       }
     },
