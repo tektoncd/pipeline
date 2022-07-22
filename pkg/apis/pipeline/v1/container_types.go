@@ -476,27 +476,28 @@ type Sidecar struct {
 // ToK8sContainer converts the Sidecar to a Kubernetes Container struct
 func (s *Sidecar) ToK8sContainer() *corev1.Container {
 	return &corev1.Container{
-		Name:                   s.Name,
-		Image:                  s.Image,
-		Command:                s.Command,
-		Args:                   s.Args,
-		WorkingDir:             s.WorkingDir,
-		Ports:                  s.Ports,
-		EnvFrom:                s.EnvFrom,
-		Env:                    s.Env,
-		Resources:              s.Resources,
-		VolumeMounts:           s.VolumeMounts,
-		VolumeDevices:          s.VolumeDevices,
-		LivenessProbe:          s.LivenessProbe,
-		ReadinessProbe:         s.ReadinessProbe,
-		StartupProbe:           s.StartupProbe,
-		Lifecycle:              s.Lifecycle,
-		TerminationMessagePath: s.TerminationMessagePath,
-		ImagePullPolicy:        s.ImagePullPolicy,
-		SecurityContext:        s.SecurityContext,
-		Stdin:                  s.Stdin,
-		StdinOnce:              s.StdinOnce,
-		TTY:                    s.TTY,
+		Name:                     s.Name,
+		Image:                    s.Image,
+		Command:                  s.Command,
+		Args:                     s.Args,
+		WorkingDir:               s.WorkingDir,
+		Ports:                    s.Ports,
+		EnvFrom:                  s.EnvFrom,
+		Env:                      s.Env,
+		Resources:                s.Resources,
+		VolumeMounts:             s.VolumeMounts,
+		VolumeDevices:            s.VolumeDevices,
+		LivenessProbe:            s.LivenessProbe,
+		ReadinessProbe:           s.ReadinessProbe,
+		StartupProbe:             s.StartupProbe,
+		Lifecycle:                s.Lifecycle,
+		TerminationMessagePath:   s.TerminationMessagePath,
+		TerminationMessagePolicy: s.TerminationMessagePolicy,
+		ImagePullPolicy:          s.ImagePullPolicy,
+		SecurityContext:          s.SecurityContext,
+		Stdin:                    s.Stdin,
+		StdinOnce:                s.StdinOnce,
+		TTY:                      s.TTY,
 	}
 }
 
@@ -518,6 +519,7 @@ func (s *Sidecar) SetContainerFields(c corev1.Container) {
 	s.StartupProbe = c.StartupProbe
 	s.Lifecycle = c.Lifecycle
 	s.TerminationMessagePath = c.TerminationMessagePath
+	s.TerminationMessagePolicy = c.TerminationMessagePolicy
 	s.ImagePullPolicy = c.ImagePullPolicy
 	s.SecurityContext = c.SecurityContext
 	s.Stdin = c.Stdin
