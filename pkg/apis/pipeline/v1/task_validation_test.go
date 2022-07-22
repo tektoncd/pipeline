@@ -1408,7 +1408,29 @@ func TestIncompatibleAPIVersions(t *testing.T) {
 				script-1`,
 			}},
 		},
-	}}
+	}, {
+		name:            "stdout stream support requires alpha",
+		requiredVersion: "alpha",
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
+				Image: "foo",
+				StdoutConfig: &v1.StepOutputConfig{
+					Path: "/tmp/stdout.txt",
+				},
+			}},
+		},
+	}, {
+		name:            "stderr stream support requires alpha",
+		requiredVersion: "alpha",
+		spec: v1.TaskSpec{
+			Steps: []v1.Step{{
+				Image: "foo",
+				StderrConfig: &v1.StepOutputConfig{
+					Path: "/tmp/stderr.txt",
+				},
+			}},
+		}},
+	}
 	versions := []string{"alpha", "stable"}
 	for _, tt := range tests {
 		for _, version := range versions {

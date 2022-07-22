@@ -135,6 +135,19 @@ type Step struct {
 	// stopAndFail indicates exit the taskRun if the container exits with non-zero exit code
 	// continue indicates continue executing the rest of the steps irrespective of the container exit code
 	OnError string `json:"onError,omitempty"`
+	// Stores configuration for the stdout stream of the step.
+	// +optional
+	StdoutConfig *StepOutputConfig `json:"stdoutConfig,omitempty"`
+	// Stores configuration for the stderr stream of the step.
+	// +optional
+	StderrConfig *StepOutputConfig `json:"stderrConfig,omitempty"`
+}
+
+// StepOutputConfig stores configuration for a step output stream.
+type StepOutputConfig struct {
+	// Path to duplicate stdout stream to on container's local filesystem.
+	// +optional
+	Path string `json:"path,omitempty"`
 }
 
 // ToK8sContainer converts the Step to a Kubernetes Container struct

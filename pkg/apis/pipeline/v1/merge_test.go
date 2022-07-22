@@ -105,6 +105,28 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 				Value: "NEW_VALUE",
 			}},
 		}},
+	}, {
+		name: "workspace-and-output-config",
+		template: &v1.StepTemplate{
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "data",
+				MountPath: "/workspace/data",
+			}},
+		},
+		steps: []v1.Step{{
+			Image:        "some-image",
+			StdoutConfig: &v1.StepOutputConfig{Path: "stdout.txt"},
+			StderrConfig: &v1.StepOutputConfig{Path: "stderr.txt"},
+		}},
+		expected: []v1.Step{{
+			Image:        "some-image",
+			StdoutConfig: &v1.StepOutputConfig{Path: "stdout.txt"},
+			StderrConfig: &v1.StepOutputConfig{Path: "stderr.txt"},
+			VolumeMounts: []corev1.VolumeMount{{
+				Name:      "data",
+				MountPath: "/workspace/data",
+			}},
+		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := v1.MergeStepsWithStepTemplate(tc.template, tc.steps)
