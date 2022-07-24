@@ -79,6 +79,9 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		if tpl.HostNetwork == false && defaultTpl.HostNetwork == true {
 			tpl.HostNetwork = true
 		}
+		if tpl.TopologySpreadConstraints == nil {
+			tpl.TopologySpreadConstraints = defaultTpl.TopologySpreadConstraints
+		}
 		return tpl
 	}
 }

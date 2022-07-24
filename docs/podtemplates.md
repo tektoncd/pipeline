@@ -110,6 +110,10 @@ Pod templates support fields listed in the table below.
 			<td><code>hostAliases</code></td>
 			<td>Adds entries to a Pod's `/etc/hosts` to provide Pod-level overrides of hostnames. For further info see [Kubernetes' docs for this field](https://kubernetes.io/docs/tasks/network/customize-hosts-file-for-pods/).</td>
 		</tr>
+        <tr>
+            <td><code>topologySpreadConstraints</code></td>
+            <td>Specify how Pods are spread across your cluster among topology domains.</td>
+        </tr>
 	</tbody>
 </table>
 

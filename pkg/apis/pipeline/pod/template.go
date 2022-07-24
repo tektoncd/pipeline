@@ -113,6 +113,12 @@ type Template struct {
 	// HostNetwork specifies whether the pod may use the node network namespace
 	// +optional
 	HostNetwork bool `json:"hostNetwork,omitempty"`
+
+	// TopologySpreadConstraints controls how Pods are spread across your cluster among
+	// failure-domains such as regions, zones, nodes, and other user-defined topology domains.
+	// +optional
+	// +listType=atomic
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 }
 
 // Equals checks if this Template is identical to the given Template.

@@ -347,6 +347,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 			PriorityClassName:            priorityClassName,
 			ImagePullSecrets:             podTemplate.ImagePullSecrets,
 			HostAliases:                  podTemplate.HostAliases,
+			TopologySpreadConstraints:    podTemplate.TopologySpreadConstraints,
 			ActiveDeadlineSeconds:        &activeDeadlineSeconds, // Set ActiveDeadlineSeconds to mark the pod as "terminating" (like a Job)
 		},
 	}
