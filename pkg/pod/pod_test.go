@@ -1714,6 +1714,78 @@ _EOF_
 				}, runVolume(0)),
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
+		}, {
+			desc: "using TopologySpreadConstraints",
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{
+					{
+						Name:    "use-topologySpreadConstraints",
+						Image:   "image",
+						Command: []string{"cmd"}, // avoid entrypoint lookup.
+					},
+				},
+			},
+			trs: v1beta1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{
+							MaxSkew:           1,
+							TopologyKey:       "zone",
+							WhenUnsatisfiable: corev1.DoNotSchedule,
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{
+									"foo": "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "use-topologySpreadConstraints"}})},
+				TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+					{
+						MaxSkew:           1,
+						TopologyKey:       "zone",
+						WhenUnsatisfiable: corev1.DoNotSchedule,
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"foo": "bar",
+							},
+						},
+					},
+				},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				Containers: []corev1.Container{{
+					Name:    "step-use-topologySpreadConstraints",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}},
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
 		}} {
 		t.Run(c.desc, func(t *testing.T) {
 			names.TestingSeed()

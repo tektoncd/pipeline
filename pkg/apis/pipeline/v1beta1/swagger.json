@@ -118,6 +118,15 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "topologySpreadConstraints": {
+          "description": "TopologySpreadConstraints controls how Pods are spread across your cluster among failure-domains such as regions, zones, nodes, and other user-defined topology domains.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TopologySpreadConstraint"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "volumes": {
           "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
           "type": "array",
