@@ -6,18 +6,19 @@ the pipelines repo, a terminal window and a text editor.
 
 1. [Setup a context to connect to the dogfooding cluster](#setup-dogfooding-context) if you haven't already.
 
+1. Install the [rekor CLI](https://docs.sigstore.dev/rekor/installation/) if you haven't already.
+
 1. `cd` to root of Pipelines git checkout.
 
 1. Select the commit you would like to build the release from, most likely the
    most recent commit at https://github.com/tektoncd/pipeline/commits/main
-   and note the commit's hash.
+   and note the commit's full (40-digit) hash.
 
 1. Create environment variables for bash scripts in later steps.
 
     ```bash
     TEKTON_VERSION=# Example: v0.21.0
     TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
-    TEKTON_IMAGE_REGISTRY=gcr.io/tekton-releases # only change if you want to publish to a different registry
     ```
 
 1. Confirm commit SHA matches what you want to release.
@@ -39,7 +40,7 @@ the pipelines repo, a terminal window and a text editor.
    EOF
    ```
 
-1. Execute the release pipeline.
+1. Execute the release pipeline (takes ~45 mins).
 
     **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
 
@@ -53,6 +54,8 @@ the pipelines repo, a terminal window and a text editor.
       --workspace name=release-secret,secret=release-secret \
       --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
     ```
+
+    Accept the default values of the parameters (except for "releaseAsLatest" if backporting).
 
 1. Watch logs of pipeline-release.
 
@@ -100,7 +103,6 @@ the pipelines repo, a terminal window and a text editor.
     ```bash
     TEKTON_OLD_VERSION=# Example: v0.11.1
     TEKTON_RELEASE_NAME=# The release name you just chose, e.g.: "Ragdoll Norby"
-    TEKTON_PACKAGE=tektoncd/pipeline
     ```
 
     1. Execute the Draft Release Pipeline.
@@ -109,7 +111,7 @@ the pipelines repo, a terminal window and a text editor.
     tkn --context dogfooding pipeline start \
       --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
       --workspace name=credentials,secret=release-secret \
-      -p package="${TEKTON_PACKAGE}" \
+      -p package="tektoncd/pipeline" \
       -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
       -p release-tag="${TEKTON_VERSION}" \
       -p previous-release-tag="${TEKTON_OLD_VERSION}" \
@@ -133,6 +135,7 @@ the pipelines repo, a terminal window and a text editor.
 
 1. Create a branch for the release named `release-<version number>x`, e.g. [`release-v0.28.x`](https://github.com/tektoncd/pipeline/tree/release-v0.28.x)
    and push it to the repo https://github.com/tektoncd/pipeline.
+   (This can be done on the Github UI.)
    Make sure to fetch the commit specified in `TEKTON_RELEASE_GIT_SHA` to create the released branch.
 
 1. Edit `README.md` on `main` branch, add entry to docs table with latest release links.
@@ -152,9 +155,10 @@ the pipelines repo, a terminal window and a text editor.
     ```
 
 1. Announce the release in Slack channels #general, #announcements and #pipelines.
+Optional: Add a photo of this release's "purr programmer" (someone's cat).
 
 1. Update [the catalog repo](https://github.com/tektoncd/catalog) test infrastructure
-to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/master/test/e2e-tests.sh).
+to use the new release by updating the `RELEASE_YAML` link in [e2e-tests.sh](https://github.com/tektoncd/catalog/blob/main/test/e2e-tests.sh).
 
 1. For major releases, the [website sync configuration](https://github.com/tektoncd/website/blob/main/sync/config/pipelines.yaml)
    to include the new release.
