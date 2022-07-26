@@ -22,6 +22,8 @@ For instructions on using variable substitutions see the relevant section of [th
 | `params.<param name>[i]` | Get the i-th element of param array. This is alpha feature, set `enable-api-fields` to `alpha`  to use it.|
 | `params['<param name>'][i]` | (see above) |
 | `params["<param name>"][i]` | (see above) |
+| `params.<object-param-name>[*]` | Get the value of the whole object param. This is alpha feature, set `enable-api-fields` to `alpha`  to use it.|
+| `params.<object-param-name>.<individual-key-name>` | Get the value of an individual child of an object param. This is alpha feature, set `enable-api-fields` to `alpha`  to use it. |
 | `tasks.<taskName>.results.<resultName>` | The value of the `Task's` result. Can alter `Task` execution order within a `Pipeline`.) |
 | `tasks.<taskName>.results['<resultName>']` | (see above)) |
 | `tasks.<taskName>.results["<resultName>"]` | (see above)) |
@@ -53,6 +55,7 @@ For instructions on using variable substitutions see the relevant section of [th
 | `params.<param name>[i]` | Get the i-th element of param array. This is alpha feature, set `enable-api-fields` to `alpha`  to use it.|
 | `params['<param name>'][i]` | (see above) |
 | `params["<param name>"][i]` | (see above) |
+| `params.<object-param-name>.<individual-key-name>` | Get the value of an individual child of an object param. This is alpha feature, set `enable-api-fields` to `alpha`  to use it. |
 | `resources.inputs.<resourceName>.path` | The path to the input resource's directory. |
 | `resources.outputs.<resourceName>.path` | The path to the output resource's directory. |
 | `results.<resultName>.path` | The path to the file where the `Task` writes its results data. |

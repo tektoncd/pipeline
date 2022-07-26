@@ -527,14 +527,12 @@ For example, `foo.Is-Bar_` is a valid parameter name for string or array type, b
 Each declared parameter has a `type` field, which can be set to `string`, `array` or `object` (alpha feature). 
 
 - `object` type
-`object` type is useful in cases where users want to group related parameters. For example, an object parameter called `gitrepo` can contain both the `url` and the `commmit` to group related information.
+`object` type is useful in cases where users want to group related parameters. For example, an object parameter called `gitrepo` can contain both the `url` and the `commmit` to group related information. See the [TaskRun example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml) and the [PipelineRun example](../examples/v1beta1/pipelineruns/alpha/pipeline-object-param-and-result.yaml) in which object parameters are used.
 
   > NOTE: 
   > - `object` param is an `alpha` feature and gated by the `alpha` feature flag.
   > - `object` param must specify the `properties` section to define the schema i.e. what keys are available for this object param. See how to define `properties` section in the following example and the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#defaulting-to-string-types-for-values).
-  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object. See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
-
-
+  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object like [this example](https://github.com/tektoncd/pipeline/blob/55665765e4de35b3a4fb541549ae8cdef0996641/examples/v1beta1/pipelineruns/alpha/pipeline-object-param-and-result.yaml#L64-L65). See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
 
 - `array` type 
 `array` type is useful in cases where the number of compilation flags being supplied to a task varies throughout the `Task's` execution. 
@@ -542,9 +540,10 @@ Each declared parameter has a `type` field, which can be set to `string`, `array
 - `string` type
 If not specified, the `type` field defaults to `string`. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
 
-The following example illustrates the use of `Parameters` in a `Task`. The `Task` declares two input parameters named `flags`
-(of type `array`) and `someURL` (of type `string`), and uses them in the `steps.args` list. You can expand parameters of type `array`
-inside an existing array using the star operator. In this example, `flags` contains the star operator: `$(params.flags[*])`.
+The following example illustrates the use of `Parameters` in a `Task`. The `Task` declares 3 input parameters named `gitrepo` (of type `object`), `flags`
+(of type `array`) and `someURL` (of type `string`). These parameters are used in the `steps.args` list
+  - For `object` parameter, you can only use individual members (aka keys).
+  - You can expand parameters of type `array` inside an existing array using the star operator. In this example, `flags` contains the star operator: `$(params.flags[*])`.
 
 **Note:** Input parameter values can be used as variables throughout the `Task` by using [variable substitution](#using-variable-substitution).
 
@@ -569,9 +568,6 @@ spec:
     - name: foo.bar
       description: "the name contains dot character"
       default: "test"
-  results:
-    - name: echo-output
-      description: "successful echo"
   steps:
     - name: do-the-clone
       image: some-git-image
@@ -591,9 +587,10 @@ spec:
       ]
     - name: echo-param
       image: bash
-      script: |
-        set -e
-        echo $(params["foo.bar"]) | tee $(results.echo-output.path)
+      args: [
+        "echo",
+        "$(params['foo.bar'])",
+      ]
 ```
 
 The following `TaskRun` supplies the value for the parameter `gitrepo`, `flags` and `someURL`:
