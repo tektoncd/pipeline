@@ -28,12 +28,17 @@ import (
 
 type TektonV1Interface interface {
 	RESTClient() rest.Interface
+	PipelinesGetter
 	TasksGetter
 }
 
 // TektonV1Client is used to interact with features provided by the tekton.dev group.
 type TektonV1Client struct {
 	restClient rest.Interface
+}
+
+func (c *TektonV1Client) Pipelines(namespace string) PipelineInterface {
+	return newPipelines(c, namespace)
 }
 
 func (c *TektonV1Client) Tasks(namespace string) TaskInterface {

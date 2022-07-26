@@ -167,6 +167,89 @@
         }
       }
     },
+    "v1.EmbeddedTask": {
+      "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "description": {
+          "description": "Description is a user-facing description of the task that may be used to populate a UI.",
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.PipelineTaskMetadata"
+        },
+        "params": {
+          "description": "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ParamSpec"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "results": {
+          "description": "Results are values that this Task can output",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "sidecars": {
+          "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Sidecar"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "spec": {
+          "description": "Spec is a specification of a custom task",
+          "default": {},
+          "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
+        },
+        "stepTemplate": {
+          "description": "StepTemplate can be used as the basis for all step containers within the Task, so that the steps inherit settings on the base container.",
+          "$ref": "#/definitions/v1.StepTemplate"
+        },
+        "steps": {
+          "description": "Steps are the steps of the build; each step is run sequentially with the source mounted into /workspace.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Step"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "volumes": {
+          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Volume"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "workspaces": {
+          "description": "Workspaces are the volumes that this Task requires.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceDeclaration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
     "v1.Param": {
       "description": "Param declares an ArrayOrString to use for the parameter called name.",
       "type": "object",
@@ -216,6 +299,250 @@
         "type": {
           "description": "Type is the user-specified type of the parameter. The possible types are currently \"string\", \"array\" and \"object\", and \"string\" is the default.",
           "type": "string"
+        }
+      }
+    },
+    "v1.Pipeline": {
+      "description": "Pipeline describes a list of Tasks to execute. It expresses how outputs of tasks feed into inputs of subsequent tasks.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the Pipeline from the client",
+          "default": {},
+          "$ref": "#/definitions/v1.PipelineSpec"
+        }
+      }
+    },
+    "v1.PipelineList": {
+      "description": "PipelineList contains a list of Pipeline",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Pipeline"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1.PipelineResult": {
+      "description": "PipelineResult used to describe the results of a pipeline",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "description": {
+          "description": "Description is a human-readable description of the result",
+          "type": "string",
+          "default": ""
+        },
+        "name": {
+          "description": "Name the given name",
+          "type": "string",
+          "default": ""
+        },
+        "type": {
+          "description": "Type is the user-specified type of the result. The possible types are 'string', 'array', and 'object', with 'string' as the default. 'array' and 'object' types are alpha features.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value the expression used to retrieve the value",
+          "default": {},
+          "$ref": "#/definitions/v1.ArrayOrString"
+        }
+      }
+    },
+    "v1.PipelineSpec": {
+      "description": "PipelineSpec defines the desired state of Pipeline.",
+      "type": "object",
+      "properties": {
+        "description": {
+          "description": "Description is a user-facing description of the pipeline that may be used to populate a UI.",
+          "type": "string"
+        },
+        "finally": {
+          "description": "Finally declares the list of Tasks that execute just before leaving the Pipeline i.e. either after all Tasks are finished executing successfully or after a failure which would result in ending the Pipeline",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.PipelineTask"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "params": {
+          "description": "Params declares a list of input parameters that must be supplied when this Pipeline is run.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ParamSpec"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "results": {
+          "description": "Results are values that this pipeline can output once run",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.PipelineResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "tasks": {
+          "description": "Tasks declares the graph of Tasks that execute when this Pipeline is run.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.PipelineTask"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "workspaces": {
+          "description": "Workspaces declares a set of named workspaces that are expected to be provided by a PipelineRun.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.PipelineWorkspaceDeclaration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.PipelineTask": {
+      "description": "PipelineTask defines a task in a Pipeline, passing inputs from both Params and from the output of previous tasks.",
+      "type": "object",
+      "properties": {
+        "matrix": {
+          "description": "Matrix declares parameters used to fan out this task.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "name": {
+          "description": "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",
+          "type": "string"
+        },
+        "params": {
+          "description": "Parameters declares parameters passed to this task.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "retries": {
+          "description": "Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False",
+          "type": "integer",
+          "format": "int32"
+        },
+        "runAfter": {
+          "description": "RunAfter is the list of PipelineTask names that should be executed before this Task executes. (Used to force a specific ordering in graph execution.)",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "taskRef": {
+          "description": "TaskRef is a reference to a task definition.",
+          "$ref": "#/definitions/v1.TaskRef"
+        },
+        "taskSpec": {
+          "description": "TaskSpec is a specification of a task",
+          "$ref": "#/definitions/v1.EmbeddedTask"
+        },
+        "timeout": {
+          "description": "Time after which the TaskRun times out. Defaults to 1 hour. Specified TaskRun timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "when": {
+          "description": "When is a list of when expressions that need to be true for the task to run",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WhenExpression"
+          }
+        },
+        "workspaces": {
+          "description": "Workspaces maps workspaces from the pipeline spec to the workspaces declared in the Task.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspacePipelineTaskBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.PipelineTaskMetadata": {
+      "description": "PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask",
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      }
+    },
+    "v1.PipelineTaskParam": {
+      "description": "PipelineTaskParam is used to provide arbitrary string parameters to a Task.",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "default": ""
+        },
+        "value": {
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -286,6 +613,35 @@
             "$ref": "#/definitions/v1.ResolverParam"
           },
           "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.ResultRef": {
+      "description": "ResultRef is a type that represents a reference to a task run result",
+      "type": "object",
+      "required": [
+        "pipelineTask",
+        "result",
+        "resultsIndex",
+        "property"
+      ],
+      "properties": {
+        "pipelineTask": {
+          "type": "string",
+          "default": ""
+        },
+        "property": {
+          "type": "string",
+          "default": ""
+        },
+        "result": {
+          "type": "string",
+          "default": ""
+        },
+        "resultsIndex": {
+          "type": "integer",
+          "format": "int32",
+          "default": 0
         }
       }
     },
@@ -720,6 +1076,24 @@
         }
       }
     },
+    "v1.TaskRef": {
+      "description": "TaskRef can be used to refer to a specific instance of a task.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "API version of the referent",
+          "type": "string"
+        },
+        "kind": {
+          "description": "TaskKind indicates the kind of the task, namespaced or cluster scoped.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+          "type": "string"
+        }
+      }
+    },
     "v1.TaskResult": {
       "description": "TaskResult used to describe the results of a task",
       "type": "object",
@@ -837,6 +1211,36 @@
           "items": {
             "default": {},
             "$ref": "#/definitions/v1.WorkspaceDeclaration"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.WhenExpression": {
+      "description": "WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run to determine whether the Task should be executed or skipped",
+      "type": "object",
+      "required": [
+        "input",
+        "operator",
+        "values"
+      ],
+      "properties": {
+        "input": {
+          "description": "Input is the string for guard checking which can be a static input or an output from a parent Task",
+          "type": "string",
+          "default": ""
+        },
+        "operator": {
+          "description": "Operator that represents an Input's relationship to the values",
+          "type": "string",
+          "default": ""
+        },
+        "values": {
+          "description": "Values is an array of strings, which is compared against the input, for guard checking It must be non-empty",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
           },
           "x-kubernetes-list-type": "atomic"
         }
