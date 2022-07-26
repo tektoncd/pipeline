@@ -23,7 +23,6 @@ func (s *gitService) FindRef(ctx context.Context, repo, ref string) (string, *sc
 	path := fmt.Sprintf("api/v4/projects/%s/repository/commits?ref_name=%s", encode(repo), ref)
 	out := []*commit{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
-
 	if err != nil {
 		return "", res, err
 	}
@@ -38,7 +37,6 @@ func (s *gitService) FindRef(ctx context.Context, repo, ref string) (string, *sc
 		ref = ref[idx+1:]
 	}
 	return ref, res, err
-
 }
 
 func (s *gitService) CreateRef(ctx context.Context, repo, ref, sha string) (*scm.Reference, *scm.Response, error) {
@@ -88,8 +86,8 @@ func (s *gitService) FindTag(ctx context.Context, repo, name string) (*scm.Refer
 	return convertTag(out), res, err
 }
 
-func (s *gitService) ListBranches(ctx context.Context, repo string, opts scm.ListOptions) ([]*scm.Reference, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/repository/branches?%s", encode(repo), encodeListOptions(&opts))
+func (s *gitService) ListBranches(ctx context.Context, repo string, opts *scm.ListOptions) ([]*scm.Reference, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/repository/branches?%s", encode(repo), encodeListOptions(opts))
 	out := []*branch{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertBranchList(out), res, err
@@ -102,24 +100,24 @@ func (s *gitService) ListCommits(ctx context.Context, repo string, opts scm.Comm
 	return convertCommitList(out), res, err
 }
 
-func (s *gitService) ListTags(ctx context.Context, repo string, opts scm.ListOptions) ([]*scm.Reference, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/repository/tags?%s", encode(repo), encodeListOptions(&opts))
+func (s *gitService) ListTags(ctx context.Context, repo string, opts *scm.ListOptions) ([]*scm.Reference, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/repository/tags?%s", encode(repo), encodeListOptions(opts))
 	out := []*branch{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertTagList(out), res, err
 }
 
-func (s *gitService) ListChanges(ctx context.Context, repo, ref string, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
+func (s *gitService) ListChanges(ctx context.Context, repo, ref string, opts *scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
 	path := fmt.Sprintf("api/v4/projects/%s/repository/commits/%s/diff", encode(repo), encode(ref))
 	out := []*change{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertChangeList(out), res, err
 }
 
-func (s *gitService) CompareCommits(ctx context.Context, repo, ref1, ref2 string, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
+func (s *gitService) CompareCommits(ctx context.Context, repo, ref1, ref2 string, opts *scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
 	opts.From = encode(ref1)
 	opts.To = encode(ref2)
-	path := fmt.Sprintf("api/v4/projects/%s/repository/compare?%s", encode(repo), encodeListOptions(&opts))
+	path := fmt.Sprintf("api/v4/projects/%s/repository/compare?%s", encode(repo), encodeListOptions(opts))
 	out := compare{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertChangeList(out.Diffs), res, err

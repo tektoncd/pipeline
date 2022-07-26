@@ -2,7 +2,7 @@ package fake
 
 import (
 	"context"
-	"io/ioutil"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -32,7 +32,7 @@ func (c contentService) Find(_ context.Context, repo, path, ref string) (*scm.Co
 			Status: 404,
 		}, errors.Wrapf(err, "file %s does not exist", f)
 	}
-	data, err := ioutil.ReadFile(f) // #nosec
+	data, err := os.ReadFile(f) // #nosec
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to read file %s", f)
 	}
@@ -48,7 +48,7 @@ func (c contentService) List(_ context.Context, repo, path, ref string) ([]*scm.
 	if err != nil {
 		return nil, nil, err
 	}
-	fileNames, err := ioutil.ReadDir(dir)
+	fileNames, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to list files in directory %s", dir)
 	}
@@ -60,11 +60,17 @@ func (c contentService) List(_ context.Context, repo, path, ref string) ([]*scm.
 			t = "dir"
 		}
 		path := filepath.Join(dir, name)
+		info, err := f.Info()
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot get info for file %s: %v", name, err)
+		}
+		fSize := info.Size()
+
 		answer = append(answer, &scm.FileEntry{
 			Name: name,
 			Path: path,
 			Type: t,
-			Size: int(f.Size()),
+			Size: int(fSize),
 			Sha:  ref,
 			Link: "file://" + path,
 		})
@@ -77,7 +83,7 @@ func (c contentService) Create(_ context.Context, repo, path string, params *scm
 	if err != nil {
 		return nil, err
 	}
-	err = ioutil.WriteFile(f, params.Data, DefaultFileWritePermissions)
+	err = os.WriteFile(f, params.Data, DefaultFileWritePermissions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to write file %s", f)
 	}
@@ -89,7 +95,7 @@ func (c contentService) Update(_ context.Context, repo, path string, params *scm
 	if err != nil {
 		return nil, err
 	}
-	err = ioutil.WriteFile(f, params.Data, DefaultFileWritePermissions)
+	err = os.WriteFile(f, params.Data, DefaultFileWritePermissions)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to write file %s", f)
 	}

@@ -23,7 +23,7 @@ func (s *reviewService) Find(ctx context.Context, repo string, number, id int) (
 	return convertReview(out), res, err
 }
 
-func (s *reviewService) List(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Review, *scm.Response, error) {
+func (s *reviewService) List(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Review, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls/%d/reviews?%s", repo, number, encodeListOptions(opts))
 	out := []*review{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -54,7 +54,7 @@ func (s *reviewService) Delete(ctx context.Context, repo string, number, id int)
 	return s.client.do(ctx, "DELETE", path, nil, nil)
 }
 
-func (s *reviewService) ListComments(ctx context.Context, repo string, prID, reviewID int, options scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
+func (s *reviewService) ListComments(ctx context.Context, repo string, prID, reviewID int, options *scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/pulls/%d/reviews/%d/comments?%s", repo, prID, reviewID, encodeListOptions(options))
 	out := []*reviewComment{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)

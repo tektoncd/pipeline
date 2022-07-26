@@ -59,7 +59,7 @@ func (h *Handler) Download(ctx context.Context) (*Resource, error) {
 
 	// Statuses
 	h.logger.Info("finding combined status")
-	status, out, err := h.client.Repositories.ListStatus(ctx, h.repo, pr.Sha, scm.ListOptions{})
+	status, out, err := h.client.Repositories.ListStatus(ctx, h.repo, pr.Sha, &scm.ListOptions{})
 	if err != nil {
 		body, _ := ioutil.ReadAll(out.Body)
 		defer out.Body.Close()
@@ -70,13 +70,13 @@ func (h *Handler) Download(ctx context.Context) (*Resource, error) {
 	// Comments
 	// TODO: Pagination.
 	h.logger.Info("finding comments: %v", h)
-	comments, _, err := h.client.PullRequests.ListComments(ctx, h.repo, h.prNum, scm.ListOptions{})
+	comments, _, err := h.client.PullRequests.ListComments(ctx, h.repo, h.prNum, &scm.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("finding comments for pr %d: %w", h.prNum, err)
 	}
 	h.logger.Info("found comments: %v", comments)
 
-	labels, _, err := h.client.PullRequests.ListLabels(ctx, h.repo, h.prNum, scm.ListOptions{})
+	labels, _, err := h.client.PullRequests.ListLabels(ctx, h.repo, h.prNum, &scm.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("finding labels for pr %d: %w", h.prNum, err)
 	}
@@ -140,7 +140,7 @@ func (h *Handler) uploadLabels(ctx context.Context, manifest Manifest, raw []*sc
 
 	// Fetch current labels associated to the PR. We'll need to keep track of
 	// which labels are new and should not be modified.
-	currentLabels, _, err := h.client.PullRequests.ListLabels(ctx, h.repo, h.prNum, scm.ListOptions{})
+	currentLabels, _, err := h.client.PullRequests.ListLabels(ctx, h.repo, h.prNum, &scm.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("listing labels for pr %d: %w", h.prNum, err)
 	}
@@ -211,7 +211,7 @@ func (h *Handler) uploadComments(ctx context.Context, manifest Manifest, comment
 // SCM and exists in the manifest (therefore was present during resource
 // initialization).
 func (h *Handler) maybeDeleteComments(ctx context.Context, manifest Manifest, comments map[int]*scm.Comment) error {
-	currentComments, _, err := h.client.PullRequests.ListComments(ctx, h.repo, h.prNum, scm.ListOptions{})
+	currentComments, _, err := h.client.PullRequests.ListComments(ctx, h.repo, h.prNum, &scm.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func (h *Handler) uploadStatuses(ctx context.Context, statuses []*scm.Status, sh
 	}
 
 	h.logger.Infof("Looking for existing status on %s", sha)
-	cs, _, err := h.client.Repositories.ListStatus(ctx, h.repo, sha, scm.ListOptions{})
+	cs, _, err := h.client.Repositories.ListStatus(ctx, h.repo, sha, &scm.ListOptions{})
 	if err != nil {
 		return err
 	}

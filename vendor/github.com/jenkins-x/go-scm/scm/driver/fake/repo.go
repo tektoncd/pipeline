@@ -16,7 +16,7 @@ type repositoryService struct {
 }
 
 func (s *repositoryService) FindCombinedStatus(ctx context.Context, repo, ref string) (*scm.CombinedStatus, *scm.Response, error) {
-	statuses, _, err := s.ListStatus(ctx, repo, ref, scm.ListOptions{})
+	statuses, _, err := s.ListStatus(ctx, repo, ref, &scm.ListOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -47,11 +47,11 @@ func (s *repositoryService) FindPerms(context.Context, string) (*scm.Perm, *scm.
 	panic("implement me")
 }
 
-func (s *repositoryService) ListOrganisation(context.Context, string, scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
+func (s *repositoryService) ListOrganisation(context.Context, string, *scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
 	panic("implement me")
 }
 
-func (s *repositoryService) ListUser(context.Context, string, scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
+func (s *repositoryService) ListUser(context.Context, string, *scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
 	panic("implement me")
 }
 
@@ -111,7 +111,7 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, login stri
 	return false, nil, nil
 }
 
-func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, ops scm.ListOptions) ([]scm.User, *scm.Response, error) {
+func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, ops *scm.ListOptions) ([]scm.User, *scm.Response, error) {
 	f := s.data
 	result := make([]scm.User, 0, len(f.Collaborators))
 	for _, login := range f.Collaborators {
@@ -129,11 +129,11 @@ func (s *repositoryService) Find(ctx context.Context, fullName string) (*scm.Rep
 	return nil, &scm.Response{Status: 404}, scm.ErrNotFound
 }
 
-func (s *repositoryService) List(ctx context.Context, opts scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
+func (s *repositoryService) List(ctx context.Context, opts *scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
 	return s.data.Repositories, nil, nil
 }
 
-func (s *repositoryService) ListLabels(context.Context, string, scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+func (s *repositoryService) ListLabels(context.Context, string, *scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
 	f := s.data
 	la := []*scm.Label{}
 	for _, l := range f.RepoLabelsExisting {
@@ -142,7 +142,7 @@ func (s *repositoryService) ListLabels(context.Context, string, scm.ListOptions)
 	return la, nil, nil
 }
 
-func (s *repositoryService) ListStatus(ctx context.Context, repo, ref string, opt scm.ListOptions) ([]*scm.Status, *scm.Response, error) {
+func (s *repositoryService) ListStatus(ctx context.Context, repo, ref string, opt *scm.ListOptions) ([]*scm.Status, *scm.Response, error) {
 	f := s.data
 	result := make([]*scm.Status, 0, len(f.Statuses))
 	result = append(result, f.Statuses[ref]...)
@@ -174,7 +174,7 @@ func (s *repositoryService) Fork(ctx context.Context, input *scm.RepositoryInput
 	return s.Create(ctx, input)
 }
 
-func (s *repositoryService) ListHooks(ctx context.Context, fullName string, opts scm.ListOptions) ([]*scm.Hook, *scm.Response, error) {
+func (s *repositoryService) ListHooks(ctx context.Context, fullName string, opts *scm.ListOptions) ([]*scm.Hook, *scm.Response, error) {
 	return s.data.Hooks[fullName], nil, nil
 }
 

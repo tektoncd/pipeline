@@ -3,7 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -84,7 +84,7 @@ func (s *deploymentService) Find(ctx context.Context, repoFullName, deploymentID
 	return convertDeployment(out, repoFullName), res, wrapError(res, err)
 }
 
-func (s *deploymentService) List(ctx context.Context, repoFullName string, opts scm.ListOptions) ([]*scm.Deployment, *scm.Response, error) {
+func (s *deploymentService) List(ctx context.Context, repoFullName string, opts *scm.ListOptions) ([]*scm.Deployment, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments?%s", repoFullName, encodeListOptions(opts))
 	out := []*deployment{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -111,7 +111,7 @@ func (s *deploymentService) FindStatus(ctx context.Context, repoFullName, deploy
 	return convertDeploymentStatus(out), res, wrapError(res, err)
 }
 
-func (s *deploymentService) ListStatus(ctx context.Context, repoFullName, deploymentID string, opts scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
+func (s *deploymentService) ListStatus(ctx context.Context, repoFullName, deploymentID string, opts *scm.ListOptions) ([]*scm.DeploymentStatus, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/deployments/%s/statuses?%s", repoFullName, deploymentID, encodeListOptions(opts))
 	out := []*deploymentStatus{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -130,7 +130,7 @@ func wrapError(res *scm.Response, err error) error {
 	if res == nil {
 		return err
 	}
-	data, err2 := ioutil.ReadAll(res.Body)
+	data, err2 := io.ReadAll(res.Body)
 	if err2 != nil {
 		return errors.Wrapf(err, "http status %d", res.Status)
 	}
@@ -151,7 +151,6 @@ func convertDeploymentStatusList(out []*deploymentStatus) []*scm.DeploymentStatu
 		answer = append(answer, convertDeploymentStatus(o))
 	}
 	return answer
-
 }
 
 func convertToDeploymentInput(from *scm.DeploymentInput) *deploymentInput {

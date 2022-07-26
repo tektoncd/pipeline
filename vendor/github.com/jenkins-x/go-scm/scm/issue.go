@@ -98,13 +98,13 @@ type (
 		Search(context.Context, SearchOptions) ([]*SearchIssue, *Response, error)
 
 		// ListComments returns the issue comment list.
-		ListComments(context.Context, string, int, ListOptions) ([]*Comment, *Response, error)
+		ListComments(context.Context, string, int, *ListOptions) ([]*Comment, *Response, error)
 
 		// ListLabels returns the labels on an issue
-		ListLabels(context.Context, string, int, ListOptions) ([]*Label, *Response, error)
+		ListLabels(context.Context, string, int, *ListOptions) ([]*Label, *Response, error)
 
 		// ListEvents returns the events creating and removing the labels on an issue
-		ListEvents(context.Context, string, int, ListOptions) ([]*ListedIssueEvent, *Response, error)
+		ListEvents(context.Context, string, int, *ListOptions) ([]*ListedIssueEvent, *Response, error)
 
 		// Create creates a new issue.
 		Create(context.Context, string, *IssueInput) (*Issue, *Response, error)

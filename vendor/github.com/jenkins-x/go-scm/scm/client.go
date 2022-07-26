@@ -19,16 +19,16 @@ import (
 
 var (
 	// ErrNotFound indicates a resource is not found.
-	ErrNotFound = errors.New("Not Found")
+	ErrNotFound = errors.New("not Found")
 
 	// ErrNotSupported indicates a resource endpoint is not
 	// supported or implemented.
-	ErrNotSupported = errors.New("Not Supported")
+	ErrNotSupported = errors.New("not Supported")
 
 	// ErrNotAuthorized indicates the request is not
 	// authorized or the user does not have access to the
 	// resource.
-	ErrNotAuthorized = errors.New("Not Authorized")
+	ErrNotAuthorized = errors.New("not Authorized")
 
 	// ErrForbidden indicates the user does not have access to
 	// the resource, this is similar to 401, but in this case,
