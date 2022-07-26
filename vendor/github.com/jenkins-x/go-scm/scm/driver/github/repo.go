@@ -134,8 +134,8 @@ func (s *repositoryService) IsCollaborator(ctx context.Context, repo, user strin
 //
 // See 'IsCollaborator' for more details.
 // See https://developer.github.com/v3/repos/collaborators/
-func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, ops scm.ListOptions) ([]scm.User, *scm.Response, error) {
-	params := encodeListOptions(ops)
+func (s *repositoryService) ListCollaborators(ctx context.Context, repo string, opts *scm.ListOptions) ([]scm.User, *scm.Response, error) {
+	params := encodeListOptions(opts)
 
 	req := &scm.Request{
 		Method: http.MethodGet,
@@ -187,7 +187,7 @@ func (s *repositoryService) FindUserPermission(ctx context.Context, repo, user s
 }
 
 // List returns the user repository list.
-func (s *repositoryService) List(ctx context.Context, opts scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
+func (s *repositoryService) List(ctx context.Context, opts *scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
 	req := &scm.Request{
 		Method: http.MethodGet,
 		Path:   fmt.Sprintf("user/repos?visibility=all&affiliation=owner&%s", encodeListOptions(opts)),
@@ -203,7 +203,7 @@ func (s *repositoryService) List(ctx context.Context, opts scm.ListOptions) ([]*
 }
 
 // ListOrganisation returns the repositories for an organisation
-func (s *repositoryService) ListOrganisation(ctx context.Context, org string, opts scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
+func (s *repositoryService) ListOrganisation(ctx context.Context, org string, opts *scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
 	path := fmt.Sprintf("orgs/%s/repos?%s", org, encodeListOptions(opts))
 	out := []*repository{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -211,7 +211,7 @@ func (s *repositoryService) ListOrganisation(ctx context.Context, org string, op
 }
 
 // ListUser returns the public repositories for the specified user
-func (s *repositoryService) ListUser(ctx context.Context, user string, opts scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
+func (s *repositoryService) ListUser(ctx context.Context, user string, opts *scm.ListOptions) ([]*scm.Repository, *scm.Response, error) {
 	path := fmt.Sprintf("users/%s/repos?%s", user, encodeListOptions(opts))
 	out := []*repository{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -219,7 +219,7 @@ func (s *repositoryService) ListUser(ctx context.Context, user string, opts scm.
 }
 
 // ListHooks returns a list or repository hooks.
-func (s *repositoryService) ListHooks(ctx context.Context, repo string, opts scm.ListOptions) ([]*scm.Hook, *scm.Response, error) {
+func (s *repositoryService) ListHooks(ctx context.Context, repo string, opts *scm.ListOptions) ([]*scm.Hook, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/hooks?%s", repo, encodeListOptions(opts))
 	out := []*hook{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -227,7 +227,7 @@ func (s *repositoryService) ListHooks(ctx context.Context, repo string, opts scm
 }
 
 // ListStatus returns a list of commit statuses.
-func (s *repositoryService) ListStatus(ctx context.Context, repo, ref string, opts scm.ListOptions) ([]*scm.Status, *scm.Response, error) {
+func (s *repositoryService) ListStatus(ctx context.Context, repo, ref string, opts *scm.ListOptions) ([]*scm.Status, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/statuses/%s?%s", repo, ref, encodeListOptions(opts))
 	out := []*status{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
@@ -244,7 +244,7 @@ func (s *repositoryService) FindCombinedStatus(ctx context.Context, repo, ref st
 	return convertCombinedStatus(out), res, err
 }
 
-func (s *repositoryService) ListLabels(ctx context.Context, repo string, opts scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+func (s *repositoryService) ListLabels(ctx context.Context, repo string, opts *scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
 	path := fmt.Sprintf("repos/%s/labels?%s", repo, encodeListOptions(opts))
 	out := []*label{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)

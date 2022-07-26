@@ -69,19 +69,19 @@ type (
 		FindTag(ctx context.Context, repo, name string) (*Reference, *Response, error)
 
 		// ListBranches returns a list of git branches.
-		ListBranches(ctx context.Context, repo string, opts ListOptions) ([]*Reference, *Response, error)
+		ListBranches(ctx context.Context, repo string, opts *ListOptions) ([]*Reference, *Response, error)
 
 		// ListCommits returns a list of git commits.
 		ListCommits(ctx context.Context, repo string, opts CommitListOptions) ([]*Commit, *Response, error)
 
 		// ListChanges returns the changeset between a commit and its parent.
-		ListChanges(ctx context.Context, repo, ref string, opts ListOptions) ([]*Change, *Response, error)
+		ListChanges(ctx context.Context, repo, ref string, opts *ListOptions) ([]*Change, *Response, error)
 
 		// ListChanges returns the changeset between two commits.
-		CompareCommits(ctx context.Context, repo, ref1, ref2 string, opts ListOptions) ([]*Change, *Response, error)
+		CompareCommits(ctx context.Context, repo, ref1, ref2 string, opts *ListOptions) ([]*Change, *Response, error)
 
 		// ListTags returns a list of git tags.
-		ListTags(ctx context.Context, repo string, opts ListOptions) ([]*Reference, *Response, error)
+		ListTags(ctx context.Context, repo string, opts *ListOptions) ([]*Reference, *Response, error)
 
 		// FindRef returns the SHA of the given ref, such as "heads/master".
 		FindRef(ctx context.Context, repo, ref string) (string, *Response, error)

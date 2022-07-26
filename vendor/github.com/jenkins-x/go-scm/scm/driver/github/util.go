@@ -15,11 +15,11 @@ import (
 // NormLogin normalizes GitHub login strings
 var NormLogin = strings.ToLower
 
-func encodeListOptions(opts scm.ListOptions) string {
+func encodeListOptions(opts *scm.ListOptions) string {
 	return encodeListOptionsWith(opts, url.Values{})
 }
 
-func encodeListOptionsWith(opts scm.ListOptions, params url.Values) string {
+func encodeListOptionsWith(opts *scm.ListOptions, params url.Values) string {
 	if opts.Page != 0 {
 		params.Set("page", strconv.Itoa(opts.Page))
 	}

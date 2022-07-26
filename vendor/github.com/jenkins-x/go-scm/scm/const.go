@@ -73,7 +73,7 @@ func ToState(s string) State {
 
 // MarshalJSON marshals State to JSON
 func (s State) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`"%s"`, s.String())), nil
+	return []byte(fmt.Sprintf(`%q`, s.String())), nil
 }
 
 // UnmarshalJSON unmarshals JSON to State

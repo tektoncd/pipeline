@@ -80,14 +80,14 @@ func (s *issueService) UnassignIssue(ctx context.Context, repo string, number in
 	return s.setAssignees(ctx, repo, number, assignees)
 }
 
-func (s *issueService) ListEvents(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(&opts))
+func (s *issueService) ListEvents(ctx context.Context, repo string, index int, opts *scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(opts))
 	out := []*labelEvent{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertLabelEvents(out), res, err
 }
 
-func (s *issueService) ListLabels(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+func (s *issueService) ListLabels(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
 	issue, issueResp, err := s.Find(ctx, repo, number)
 	if err != nil {
 		return nil, issueResp, err
@@ -102,7 +102,7 @@ func (s *issueService) ListLabels(ctx context.Context, repo string, number int, 
 }
 
 func (s *issueService) AddLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
-	existingLabels, _, err := s.ListLabels(ctx, repo, number, scm.ListOptions{})
+	existingLabels, _, err := s.ListLabels(ctx, repo, number, &scm.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (s *issueService) setLabels(ctx context.Context, repo string, number int, l
 }
 
 func (s *issueService) DeleteLabel(ctx context.Context, repo string, number int, label string) (*scm.Response, error) {
-	existingLabels, _, err := s.ListLabels(ctx, repo, number, scm.ListOptions{})
+	existingLabels, _, err := s.ListLabels(ctx, repo, number, &scm.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -165,8 +165,8 @@ func (s *issueService) List(ctx context.Context, repo string, opts scm.IssueList
 	return convertIssueList(out), res, err
 }
 
-func (s *issueService) ListComments(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/notes?%s", encode(repo), index, encodeListOptions(&opts))
+func (s *issueService) ListComments(ctx context.Context, repo string, index int, opts *scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/issues/%d/notes?%s", encode(repo), index, encodeListOptions(opts))
 	out := []*issueComment{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertIssueCommentList(out), res, err

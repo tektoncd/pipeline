@@ -21,7 +21,7 @@ func (s *issueService) Search(context.Context, scm.SearchOptions) ([]*scm.Search
 	return nil, nil, nil
 }
 
-func (s *issueService) ListEvents(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
+func (s *issueService) ListEvents(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
 	f := s.data
 	return append([]*scm.ListedIssueEvent{}, f.IssueEvents[number]...), nil, nil
 }
@@ -38,7 +38,7 @@ func (s *issueService) Find(ctx context.Context, repo string, number int) (*scm.
 	return nil, nil, nil
 }
 
-func (s *issueService) ListLabels(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+func (s *issueService) ListLabels(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
 	f := s.data
 	re := regexp.MustCompile(fmt.Sprintf(`^%s#%d:(.*)$`, repo, number))
 	la := []*scm.Label{}
@@ -125,7 +125,7 @@ func (s *issueService) List(context.Context, string, scm.IssueListOptions) ([]*s
 	panic("implement me")
 }
 
-func (s *issueService) ListComments(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
+func (s *issueService) ListComments(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
 	f := s.data
 	return append([]*scm.Comment{}, f.IssueComments[number]...), nil, nil
 }
