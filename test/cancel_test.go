@@ -145,6 +145,13 @@ spec:
 			}
 			for _, taskrunItem := range taskrunList.Items {
 				trName = append(trName, taskrunItem.Name)
+				if taskrunItem.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
+					t.Fatalf("Status is %s while it should have been %s", taskrunItem.Spec.Status, v1beta1.TaskRunSpecStatusCancelled)
+				}
+				if taskrunItem.Spec.StatusMessage != v1beta1.TaskRunCancelledByPipelineMsg {
+					t.Fatalf("Status message is set to %s while it should be %s.", taskrunItem.Spec.StatusMessage, v1beta1.TaskRunCancelledByPipelineMsg)
+				}
+
 			}
 
 			matchKinds := map[string][]string{"PipelineRun": {pipelineRun.Name}}

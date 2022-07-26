@@ -1692,6 +1692,10 @@ status:
 		Operation: "add",
 		Path:      "/spec/status",
 		Value:     "RunCancelled",
+	}, {
+		Operation: "add",
+		Path:      "/spec/statusMessage",
+		Value:     "Run cancelled as the PipelineRun it belongs to has been cancelled.",
 	}}
 	if d := cmp.Diff(got, want); d != "" {
 		t.Fatalf("Expected cancel patch operation, but got a mismatch %s", diff.PrintWantGot(d))
@@ -1804,6 +1808,10 @@ status:
 				Operation: "add",
 				Path:      "/spec/status",
 				Value:     "RunCancelled",
+			}, {
+				Operation: "add",
+				Path:      "/spec/statusMessage",
+				Value:     string(v1alpha1.RunCancelledByPipelineMsg),
 			}}
 			if d := cmp.Diff(got, want); d != "" {
 				t.Fatalf("Expected RunCancelled patch operation, but got a mismatch %s", diff.PrintWantGot(d))

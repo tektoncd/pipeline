@@ -144,7 +144,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 	// If the TaskRun is cancelled, kill resources and update status
 	if tr.IsCancelled() {
-		message := fmt.Sprintf("TaskRun %q was cancelled", tr.Name)
+		message := fmt.Sprintf("TaskRun %q was cancelled. %s", tr.Name, tr.Spec.StatusMessage)
 		err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonCancelled, message)
 		return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
 	}

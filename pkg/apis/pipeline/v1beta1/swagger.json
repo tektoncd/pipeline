@@ -2505,6 +2505,10 @@
           "description": "Used for cancelling a taskrun (and maybe more later on)",
           "type": "string"
         },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
         "stepOverrides": {
           "description": "Overrides to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepOverride, the value from the StepOverride will be used. This field is only supported when the alpha feature gate is enabled.",
           "type": "array",

@@ -192,7 +192,11 @@ Supporting timeouts is optional but recommended.
    (i.e. `Run.Spec.Status == RunCancelled`) and or `Run.HasTimedOut()` and take
    any corresponding actions (i.e. a clean up e.g., cancel a cloud build, stop
    the waiting timer, tear down the approval listener).
-4. Once resources or timers are cleaned up it is good practice to set a
+4. A Custom Task author can differentiate between a Run cancelled by an user from a
+   Run cancellation initiated by a PipelineRun by looking at the `Run.Spec.StatusMessage`.
+   If a Run cancellation has been initiated by a cancellation of a PipelineRun then `Run.Spec.StatusMessage` is
+   `"Run cancelled as the PipelineRun it belongs to has been cancelled."`. 
+5. Once resources or timers are cleaned up it is good practice to set a
    `conditions` on the `Run`'s `status` of `Succeeded/False` with a `Reason`
    of `RunTimedOut`.
 

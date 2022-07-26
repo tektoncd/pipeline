@@ -172,6 +172,27 @@ func TestRunIsCancelled(t *testing.T) {
 	if !run.IsCancelled() {
 		t.Fatal("Expected run status to be cancelled")
 	}
+	expected := ""
+	if string(run.Spec.StatusMessage) != expected {
+		t.Fatalf("Expected StatusMessage is %s but got %s", expected, run.Spec.StatusMessage)
+	}
+}
+
+func TestRunIsCancelledWithMessage(t *testing.T) {
+	expectedStatusMessage := "test message"
+	run := v1alpha1.Run{
+		Spec: v1alpha1.RunSpec{
+			Status:        v1alpha1.RunSpecStatusCancelled,
+			StatusMessage: v1alpha1.RunSpecStatusMessage(expectedStatusMessage),
+		},
+	}
+	if !run.IsCancelled() {
+		t.Fatal("Expected run status to be cancelled")
+	}
+	expected := ""
+	if string(run.Spec.StatusMessage) != expectedStatusMessage {
+		t.Fatalf("Expected StatusMessage is %s but got %s", expected, run.Spec.StatusMessage)
+	}
 }
 
 // TestRunStatusExtraFields tests that extraFields in a RunStatus can be parsed
