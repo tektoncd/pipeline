@@ -55,21 +55,21 @@ func (s *pullService) List(ctx context.Context, repo string, opts *scm.PullReque
 	return convRepos, res, nil
 }
 
-func (s *pullService) ListChanges(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/changes?%s", encode(repo), number, encodeListOptions(&opts))
+func (s *pullService) ListChanges(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Change, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/changes?%s", encode(repo), number, encodeListOptions(opts))
 	out := new(changes)
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertChangeList(out.Changes), res, err
 }
 
-func (s *pullService) ListComments(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/notes?%s", encode(repo), index, encodeListOptions(&opts))
+func (s *pullService) ListComments(ctx context.Context, repo string, index int, opts *scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/notes?%s", encode(repo), index, encodeListOptions(opts))
 	out := []*issueComment{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertIssueCommentList(out), res, err
 }
 
-func (s *pullService) ListLabels(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
+func (s *pullService) ListLabels(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Label, *scm.Response, error) {
 	mr, _, err := s.Find(ctx, repo, number)
 	if err != nil {
 		return nil, nil, err
@@ -78,8 +78,8 @@ func (s *pullService) ListLabels(ctx context.Context, repo string, number int, o
 	return mr.Labels, nil, nil
 }
 
-func (s *pullService) ListEvents(ctx context.Context, repo string, index int, opts scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
-	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(&opts))
+func (s *pullService) ListEvents(ctx context.Context, repo string, index int, opts *scm.ListOptions) ([]*scm.ListedIssueEvent, *scm.Response, error) {
+	path := fmt.Sprintf("api/v4/projects/%s/merge_requests/%d/resource_label_events?%s", encode(repo), index, encodeListOptions(opts))
 	out := []*labelEvent{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertLabelEvents(out), res, err

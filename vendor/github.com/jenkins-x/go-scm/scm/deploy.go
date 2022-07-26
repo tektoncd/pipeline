@@ -75,7 +75,7 @@ type (
 		Find(ctx context.Context, repoFullName string, deploymentID string) (*Deployment, *Response, error)
 
 		// List returns a list of deployments.
-		List(ctx context.Context, repoFullName string, opts ListOptions) ([]*Deployment, *Response, error)
+		List(ctx context.Context, repoFullName string, opts *ListOptions) ([]*Deployment, *Response, error)
 
 		// Create creates a new deployment.
 		Create(ctx context.Context, repoFullName string, deployment *DeploymentInput) (*Deployment, *Response, error)
@@ -87,7 +87,7 @@ type (
 		FindStatus(ctx context.Context, repoFullName string, deploymentID string, statusID string) (*DeploymentStatus, *Response, error)
 
 		// List returns a list of deployments.
-		ListStatus(ctx context.Context, repoFullName string, deploymentID string, options ListOptions) ([]*DeploymentStatus, *Response, error)
+		ListStatus(ctx context.Context, repoFullName string, deploymentID string, options *ListOptions) ([]*DeploymentStatus, *Response, error)
 
 		// Create creates a new deployment.
 		CreateStatus(ctx context.Context, repoFullName string, deploymentID string, deployment *DeploymentStatusInput) (*DeploymentStatus, *Response, error)

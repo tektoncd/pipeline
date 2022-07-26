@@ -79,10 +79,10 @@ type (
 		Delete(context.Context, string) (*Response, error)
 
 		// List returns the user organization list.
-		List(context.Context, ListOptions) ([]*Organization, *Response, error)
+		List(context.Context, *ListOptions) ([]*Organization, *Response, error)
 
 		// ListTeams returns the user organization list.
-		ListTeams(ctx context.Context, org string, ops ListOptions) ([]*Team, *Response, error)
+		ListTeams(ctx context.Context, org string, ops *ListOptions) ([]*Team, *Response, error)
 
 		// IsMember returns true if the user is a member of the organization
 		IsMember(ctx context.Context, org string, user string) (bool, *Response, error)
@@ -91,18 +91,18 @@ type (
 		IsAdmin(ctx context.Context, org string, user string) (bool, *Response, error)
 
 		// ListTeamMembers lists the members of a team with a given role
-		ListTeamMembers(ctx context.Context, id int, role string, ops ListOptions) ([]*TeamMember, *Response, error)
+		ListTeamMembers(ctx context.Context, id int, role string, ops *ListOptions) ([]*TeamMember, *Response, error)
 
 		// ListOrgMembers lists the members of the organization
-		ListOrgMembers(ctx context.Context, org string, ops ListOptions) ([]*TeamMember, *Response, error)
+		ListOrgMembers(ctx context.Context, org string, ops *ListOptions) ([]*TeamMember, *Response, error)
 
 		// ListPendingInvitations lists the pending invitations for an organisation
-		ListPendingInvitations(ctx context.Context, org string, ops ListOptions) ([]*OrganizationPendingInvite, *Response, error)
+		ListPendingInvitations(ctx context.Context, org string, ops *ListOptions) ([]*OrganizationPendingInvite, *Response, error)
 
 		// AcceptPendingInvitation accepts a pending invitation for an organisation
 		AcceptOrganizationInvitation(ctx context.Context, org string) (*Response, error)
 
 		// ListMemberships lists organisation memberships for the authenticated user
-		ListMemberships(ctx context.Context, opts ListOptions) ([]*Membership, *Response, error)
+		ListMemberships(ctx context.Context, opts *ListOptions) ([]*Membership, *Response, error)
 	}
 )

@@ -18,7 +18,7 @@ func (s *reviewService) Find(ctx context.Context, repo string, number, id int) (
 	return nil, nil, scm.ErrNotSupported
 }
 
-func (s *reviewService) List(ctx context.Context, repo string, number int, opts scm.ListOptions) ([]*scm.Review, *scm.Response, error) {
+func (s *reviewService) List(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Review, *scm.Response, error) {
 	return nil, nil, scm.ErrNotSupported
 }
 
@@ -30,7 +30,7 @@ func (s *reviewService) Delete(ctx context.Context, repo string, number, id int)
 	return nil, scm.ErrNotSupported
 }
 
-func (s *reviewService) ListComments(ctx context.Context, repo string, prID, reviewID int, options scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
+func (s *reviewService) ListComments(ctx context.Context, repo string, prID, reviewID int, options *scm.ListOptions) ([]*scm.ReviewComment, *scm.Response, error) {
 	return nil, nil, scm.ErrNotSupported
 }
 

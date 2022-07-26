@@ -116,22 +116,22 @@ func (s *organizationService) Find(ctx context.Context, name string) (*scm.Organ
 	return convertOrganization(out), res, err
 }
 
-func (s *organizationService) List(ctx context.Context, opts scm.ListOptions) ([]*scm.Organization, *scm.Response, error) {
+func (s *organizationService) List(ctx context.Context, opts *scm.ListOptions) ([]*scm.Organization, *scm.Response, error) {
 	path := fmt.Sprintf("user/orgs?%s", encodeListOptions(opts))
 	out := []*organization{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertOrganizationList(out), res, err
 }
 
-func (s *organizationService) ListTeams(ctx context.Context, org string, opts scm.ListOptions) ([]*scm.Team, *scm.Response, error) {
+func (s *organizationService) ListTeams(ctx context.Context, org string, opts *scm.ListOptions) ([]*scm.Team, *scm.Response, error) {
 	path := fmt.Sprintf("orgs/%s/teams?%s", org, encodeListOptions(opts))
 	out := []*team{}
 	res, err := s.client.do(ctx, "GET", path, nil, &out)
 	return convertTeams(out), res, err
 }
 
-func (s *organizationService) ListOrgMembers(ctx context.Context, org string, ops scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
-	params := encodeListOptions(ops)
+func (s *organizationService) ListOrgMembers(ctx context.Context, org string, opts *scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
+	params := encodeListOptions(opts)
 
 	req := &scm.Request{
 		Method: http.MethodGet,
@@ -147,7 +147,7 @@ func (s *organizationService) ListOrgMembers(ctx context.Context, org string, op
 	return convertTeamMembers(out), res, err
 }
 
-func (s *organizationService) ListTeamMembers(ctx context.Context, id int, role string, opts scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
+func (s *organizationService) ListTeamMembers(ctx context.Context, id int, role string, opts *scm.ListOptions) ([]*scm.TeamMember, *scm.Response, error) {
 	params := encodeListOptionsWith(opts, url.Values{
 		"role": []string{role},
 	})
@@ -168,7 +168,7 @@ func (s *organizationService) ListTeamMembers(ctx context.Context, id int, role 
 
 // ListPendingInvitations lists the pending invitations for an organisation
 // see https://developer.github.com/v3/orgs/members/#list-pending-organization-invitations
-func (s *organizationService) ListPendingInvitations(ctx context.Context, org string, opts scm.ListOptions) ([]*scm.OrganizationPendingInvite, *scm.Response, error) {
+func (s *organizationService) ListPendingInvitations(ctx context.Context, org string, opts *scm.ListOptions) ([]*scm.OrganizationPendingInvite, *scm.Response, error) {
 	req := &scm.Request{
 		Method: http.MethodGet,
 		Path:   fmt.Sprintf("orgs/%s/invitations?%s", org, encodeListOptions(opts)),
@@ -180,7 +180,7 @@ func (s *organizationService) ListPendingInvitations(ctx context.Context, org st
 
 // ListMemberships lists organisation memberships for the authenticated user
 // see https://developer.github.com/v3/orgs/members/#list-organization-memberships-for-the-authenticated-user
-func (s *organizationService) ListMemberships(ctx context.Context, opts scm.ListOptions) ([]*scm.Membership, *scm.Response, error) {
+func (s *organizationService) ListMemberships(ctx context.Context, opts *scm.ListOptions) ([]*scm.Membership, *scm.Response, error) {
 	req := &scm.Request{
 		Method: http.MethodGet,
 		Path:   fmt.Sprintf("/user/memberships/orgs?%s", encodeListOptions(opts)),

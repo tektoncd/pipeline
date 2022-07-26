@@ -74,7 +74,7 @@ type (
 		Find(context.Context, string, int, int) (*Review, *Response, error)
 
 		// List returns the review list.
-		List(context.Context, string, int, ListOptions) ([]*Review, *Response, error)
+		List(context.Context, string, int, *ListOptions) ([]*Review, *Response, error)
 
 		// Create creates a review.
 		Create(context.Context, string, int, *ReviewInput) (*Review, *Response, error)
@@ -83,7 +83,7 @@ type (
 		Delete(context.Context, string, int, int) (*Response, error)
 
 		// ListComments returns comments from a review
-		ListComments(context.Context, string, int, int, ListOptions) ([]*ReviewComment, *Response, error)
+		ListComments(context.Context, string, int, int, *ListOptions) ([]*ReviewComment, *Response, error)
 
 		// Update updates the body of a review
 		Update(context.Context, string, int, int, string) (*Review, *Response, error)
