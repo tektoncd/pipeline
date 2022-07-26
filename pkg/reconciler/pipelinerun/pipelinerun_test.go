@@ -50,6 +50,7 @@ import (
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -9484,5 +9485,156 @@ spec:
 
 	verifyTaskRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 2)
 	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, tr1Name, tr2Name)
+}
 
+func TestReconcile_CreateTaskRunWithComputeResources(t *testing.T) {
+	simplePipeline := parse.MustParsePipeline(t, `
+metadata:
+  name: foo-pipeline
+  namespace: default
+spec:
+  tasks:
+  - name: 1st-task
+    taskSpec:
+      steps:
+      - name: 1st-step
+        image: foo-image
+        command: 
+        - /foo-cmd
+      - name: 2nd-step
+        image: foo-image
+        command: 
+        - /foo-cmd
+`)
+
+	testCases := []struct {
+		name                     string
+		pipeline                 *v1beta1.Pipeline
+		pipelineRun              *v1beta1.PipelineRun
+		expectedComputeResources []corev1.ResourceRequirements
+	}{{
+		name:     "only with requests",
+		pipeline: simplePipeline,
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: foo-pipeline-run
+  namespace: default
+spec:
+  pipelineRef:
+    name: foo-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: 1st-task
+    computeResources:
+      requests:
+        cpu: "500m"
+`),
+		expectedComputeResources: []corev1.ResourceRequirements{{
+			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("500m")},
+		}},
+	}, {
+		name:     "only with limits",
+		pipeline: simplePipeline,
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: foo-pipeline-run
+  namespace: default
+spec:
+  pipelineRef:
+    name: foo-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: 1st-task
+    computeResources:
+      limits:
+        cpu: "2"
+`),
+		expectedComputeResources: []corev1.ResourceRequirements{{
+			Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")},
+		}},
+	}, {
+		name:     "both with requests and limits",
+		pipeline: simplePipeline,
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: foo-pipeline-run
+  namespace: default
+spec:
+  pipelineRef:
+    name: foo-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: 1st-task
+    computeResources:
+      requests:
+        cpu: "500m"
+      limits:
+        cpu: "2"
+`),
+		expectedComputeResources: []corev1.ResourceRequirements{{
+			Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("500m")},
+			Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")},
+		}},
+	}, {
+		name:     "both with cpu and memory",
+		pipeline: simplePipeline,
+		pipelineRun: parse.MustParsePipelineRun(t, `
+metadata:
+  name: foo-pipeline-run
+  namespace: default
+spec:
+  pipelineRef:
+    name: foo-pipeline
+  taskRunSpecs:
+  - pipelineTaskName: 1st-task
+    computeResources:
+      requests:
+        cpu: "1"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+`),
+		expectedComputeResources: []corev1.ResourceRequirements{{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceMemory: resource.MustParse("1Gi")},
+			Limits: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("2")},
+		}},
+	}}
+
+	// verifyTaskLevelComputeResources verifies that the created TaskRuns have the expected compute resources
+	verifyTaskLevelComputeResources := func(expectedComputeResources []corev1.ResourceRequirements, taskRuns []v1beta1.TaskRun) error {
+		if len(expectedComputeResources) != len(taskRuns) {
+			return fmt.Errorf("expected %d compute resource requirements, got %d", len(expectedComputeResources), len(taskRuns))
+		}
+		for i, r := range expectedComputeResources {
+			if d := cmp.Diff(r, *taskRuns[i].Spec.ComputeResources); d != "" {
+				return fmt.Errorf("TaskRun #%d resource requirements don't match %s", i, diff.PrintWantGot(d))
+			}
+		}
+		return nil
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: []*v1beta1.PipelineRun{tc.pipelineRun},
+				Pipelines:    []*v1beta1.Pipeline{tc.pipeline},
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			reconciledRun, clients := prt.reconcileRun("default", tc.pipelineRun.Name, []string{}, false)
+
+			if reconciledRun.Status.CompletionTime != nil {
+				t.Errorf("Expected a CompletionTime on valid PipelineRun, but got nil")
+			}
+
+			TaskRunList, err := clients.Pipeline.TektonV1beta1().TaskRuns("default").List(prt.TestAssets.Ctx, metav1.ListOptions{})
+			if err != nil {
+				t.Fatalf("Failure to list TaskRun's %s", err)
+			}
+
+			if err := verifyTaskLevelComputeResources(tc.expectedComputeResources, TaskRunList.Items); err != nil {
+				t.Errorf("TaskRun \"%s\" failed to verify task-level compute resource requirements, because: %v", tc.name, err)
+			}
+		})
+	}
 }
