@@ -33,10 +33,10 @@ var _ apis.Validatable = (*TaskRun)(nil)
 
 // Validate taskrun
 func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
-	errs := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
+	errs := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(tr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
