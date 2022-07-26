@@ -73,7 +73,7 @@ func (cmd *updateMetricsConfigWithExporter) handleCommand(w *metricsWorker) {
 	ctx := cmd.ctx
 	logger := logging.FromContext(ctx)
 	if isNewExporterRequired(cmd.newConfig) {
-		logger.Info("Flushing the existing exporter before setting up the new exporter.")
+		logger.Debug("Flushing the existing exporter before setting up the new exporter.")
 		flushGivenExporter(curMetricsExporter)
 		e, f, err := newMetricsExporter(cmd.newConfig, logger)
 		if err != nil {
@@ -88,7 +88,7 @@ func (cmd *updateMetricsConfigWithExporter) handleCommand(w *metricsWorker) {
 			cmd.done <- err
 			return
 		}
-		logger.Infof("Successfully updated the metrics exporter; old config: %v; new config %v", existingConfig, cmd.newConfig)
+		logger.Debugf("Successfully updated the metrics exporter; old config: %v; new config %v", existingConfig, cmd.newConfig)
 	}
 	setCurMetricsConfigUnlocked(cmd.newConfig)
 	cmd.done <- nil

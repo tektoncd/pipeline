@@ -102,7 +102,8 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 			logkey.Operation, string(review.Request.Operation),
 			logkey.Resource, review.Request.Resource.String(),
 			logkey.SubResource, review.Request.SubResource,
-			logkey.UserInfo, fmt.Sprint(review.Request.UserInfo))
+			logkey.UserInfo, review.Request.UserInfo.Username,
+		)
 
 		ctx := logging.WithLogger(r.Context(), logger)
 		ctx = apis.WithHTTPRequest(ctx, r)
