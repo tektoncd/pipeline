@@ -318,7 +318,7 @@ The example below customizes the following:
 - the default Pod template to include a node selector to select the node where the Pod will be scheduled by default. A list of supported fields is available [here](https://github.com/tektoncd/pipeline/blob/main/docs/podtemplates.md#supported-fields).
   For more information, see [`PodTemplate` in `TaskRuns`](./taskruns.md#specifying-a-pod-template) or [`PodTemplate` in `PipelineRuns`](./pipelineruns.md#specifying-a-pod-template).
 - the default `Workspace` configuration can be set for any `Workspaces` that a Task declares but that a TaskRun does not explicitly provide
-- the default maximum combinations of `Parameters` in a `Matrix` that can be used to fan out a `PipelineTask`. For 
+- the default maximum combinations of `Parameters` in a `Matrix` that can be used to fan out a `PipelineTask`. For
 more information, see [`Matrix`](matrix.md).
 
 ```yaml
@@ -396,9 +396,9 @@ use of custom tasks in pipelines.
 most stable features to be used. Set it to "alpha" to allow [alpha
 features](#alpha-features) to be used.
 
-- `embedded-status`: set this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the 
+- `embedded-status`: set this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the
  `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the `PipelineRun` status with
-  name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to 
+  name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to
   do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses).
 
 For example:
@@ -436,6 +436,8 @@ Features currently in "alpha" are:
 | [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration)   | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)             |                                                                      |                             |
 | [Projected Workspace Type](workspaces.md#projected)                                                   |                  |                                                                |                             |
 | [CSI Workspace Type](workspaces.md#csi)                                                               |                  |                                                                |                             |
+| [Object Params and Results](pipelineruns.md#specifying-parameters)                                                               | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                  |                [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0)                                                |                             |
+| [Array Results](pipelineruns.md#specifying-parameters)                                                               |            [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)       |       [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0)                                                           |                |
 
 ## Configuring High Availability
 
