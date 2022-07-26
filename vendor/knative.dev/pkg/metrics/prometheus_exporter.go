@@ -48,7 +48,7 @@ func newPrometheusExporter(config *metricsConfig, logger *zap.SugaredLogger) (vi
 		logger.Errorw("Failed to create the Prometheus exporter.", zap.Error(err))
 		return nil, nil, err
 	}
-	logger.Infof("Created Prometheus exporter with config: %v. Start the server for Prometheus exporter.", config)
+	logger.Debugf("Created Prometheus exporter with config: %v. Start the server for Prometheus exporter.", config)
 	// Start the server for Prometheus scraping
 	go func() {
 		srv := startNewPromSrv(e, config.prometheusHost, config.prometheusPort)
