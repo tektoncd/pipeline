@@ -52,6 +52,9 @@ type TaskRunSpec struct {
 	// Used for cancelling a taskrun (and maybe more later on)
 	// +optional
 	Status TaskRunSpecStatus `json:"status,omitempty"`
+	// Status message for cancellation.
+	// +optional
+	StatusMessage TaskRunSpecStatusMessage `json:"statusMessage,omitempty"`
 	// Time after which the build times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
@@ -88,6 +91,15 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+)
+
+// TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.
+type TaskRunSpecStatusMessage string
+
+const (
+	// TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
+	// TaskRun was a part of has been cancelled.
+	TaskRunCancelledByPipelineMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has been cancelled."
 )
 
 // TaskRunDebug defines the breakpoint config for a particular TaskRun

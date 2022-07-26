@@ -248,6 +248,10 @@ func TestCancelPipelineRun(t *testing.T) {
 						if tr.Spec.Status != v1beta1.TaskRunSpecStatusCancelled {
 							t.Errorf("expected task %q to be marked as cancelled, was %q", tr.Name, tr.Spec.Status)
 						}
+						expectedStatusMessage := v1beta1.TaskRunCancelledByPipelineMsg
+						if tr.Spec.StatusMessage != expectedStatusMessage {
+							t.Errorf("expected task %q to have status message %s but was %s", tr.Name, expectedStatusMessage, tr.Spec.StatusMessage)
+						}
 					}
 				}
 				if tc.runs != nil {
@@ -258,6 +262,10 @@ func TestCancelPipelineRun(t *testing.T) {
 						}
 						if r.Spec.Status != v1alpha1.RunSpecStatusCancelled {
 							t.Errorf("expected task %q to be marked as cancelled, was %q", r.Name, r.Spec.Status)
+						}
+						expectedStatusMessage := v1alpha1.RunCancelledByPipelineMsg
+						if r.Spec.StatusMessage != expectedStatusMessage {
+							t.Errorf("expected task %q to have status message %s but was %s", r.Name, expectedStatusMessage, r.Spec.StatusMessage)
 						}
 					}
 				}

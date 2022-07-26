@@ -18,6 +18,7 @@ package v1alpha1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -31,6 +32,7 @@ import (
 )
 
 func TestRun_Invalid(t *testing.T) {
+	invalidStatusMessage := "test status message"
 	for _, c := range []struct {
 		name string
 		run  *v1alpha1.Run
@@ -144,6 +146,21 @@ func TestRun_Invalid(t *testing.T) {
 		},
 		want: apis.ErrMissingField("spec.spec.kind"),
 	}, {
+		name: "invalid statusMessage in Spec",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1beta1.TaskRef{
+					APIVersion: "blah",
+					Kind:       "blah",
+				},
+				StatusMessage: v1alpha1.RunSpecStatusMessage(invalidStatusMessage),
+			},
+		},
+		want: apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", invalidStatusMessage), "statusMessage"),
+	}, {
 		name: "non-unique params",
 		run: &v1alpha1.Run{
 			ObjectMeta: metav1.ObjectMeta{
@@ -203,6 +220,21 @@ func TestRun_Valid(t *testing.T) {
 					APIVersion: "blah",
 					Kind:       "blah",
 				},
+			},
+		},
+	}, {
+		name: "unnamed",
+		run: &v1alpha1.Run{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+			Spec: v1alpha1.RunSpec{
+				Ref: &v1beta1.TaskRef{
+					APIVersion: "blah",
+					Kind:       "blah",
+				},
+				Status:        v1alpha1.RunSpecStatusCancelled,
+				StatusMessage: v1alpha1.RunSpecStatusMessage("test status vessage"),
 			},
 		},
 	}, {

@@ -60,6 +60,10 @@ type RunSpec struct {
 	// +optional
 	Status RunSpecStatus `json:"status,omitempty"`
 
+	// Status message for cancellation.
+	// +optional
+	StatusMessage RunSpecStatusMessage `json:"statusMessage,omitempty"`
+
 	// Used for propagating retries count to custom tasks
 	// +optional
 	Retries int `json:"retries,omitempty"`
@@ -88,6 +92,15 @@ const (
 	// RunSpecStatusCancelled indicates that the user wants to cancel the run,
 	// if not already cancelled or terminated
 	RunSpecStatusCancelled RunSpecStatus = "RunCancelled"
+)
+
+// RunSpecStatusMessage defines human readable status messages for the TaskRun.
+type RunSpecStatusMessage string
+
+const (
+	// RunCancelledByPipelineMsg indicates that the PipelineRun of which part this Run was
+	// has been cancelled.
+	RunCancelledByPipelineMsg RunSpecStatusMessage = "Run cancelled as the PipelineRun it belongs to has been cancelled."
 )
 
 // GetParam gets the Param from the RunSpec with the given name

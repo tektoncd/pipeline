@@ -133,6 +133,27 @@ func TestTaskRunIsCancelled(t *testing.T) {
 	if !tr.IsCancelled() {
 		t.Fatal("Expected pipelinerun status to be cancelled")
 	}
+	expected := ""
+	if string(tr.Spec.StatusMessage) != expected {
+		t.Fatalf("Expected StatusMessage is %s but got %s", expected, tr.Spec.StatusMessage)
+	}
+}
+
+func TestTaskRunIsCancelledWithMessage(t *testing.T) {
+	expectedStatusMessage := "test message"
+	tr := &v1beta1.TaskRun{
+		Spec: v1beta1.TaskRunSpec{
+			Status:        v1beta1.TaskRunSpecStatusCancelled,
+			StatusMessage: v1beta1.TaskRunSpecStatusMessage(expectedStatusMessage),
+		},
+	}
+	if !tr.IsCancelled() {
+		t.Fatal("Expected pipelinerun status to be cancelled")
+	}
+
+	if string(tr.Spec.StatusMessage) != expectedStatusMessage {
+		t.Fatalf("Expected StatusMessage is %s but got %s", v1beta1.TaskRunCancelledByPipelineMsg, tr.Spec.StatusMessage)
+	}
 }
 
 func TestTaskRunHasVolumeClaimTemplate(t *testing.T) {

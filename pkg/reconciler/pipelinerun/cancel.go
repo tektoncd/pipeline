@@ -41,19 +41,31 @@ var cancelTaskRunPatchBytes, cancelRunPatchBytes []byte
 
 func init() {
 	var err error
-	cancelTaskRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
-		Operation: "add",
-		Path:      "/spec/status",
-		Value:     v1beta1.TaskRunSpecStatusCancelled,
-	}})
+	cancelTaskRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{
+		{
+			Operation: "add",
+			Path:      "/spec/status",
+			Value:     v1beta1.TaskRunSpecStatusCancelled,
+		},
+		{
+			Operation: "add",
+			Path:      "/spec/statusMessage",
+			Value:     v1beta1.TaskRunCancelledByPipelineMsg,
+		}})
 	if err != nil {
 		log.Fatalf("failed to marshal TaskRun cancel patch bytes: %v", err)
 	}
-	cancelRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
-		Operation: "add",
-		Path:      "/spec/status",
-		Value:     v1alpha1.RunSpecStatusCancelled,
-	}})
+	cancelRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{
+		{
+			Operation: "add",
+			Path:      "/spec/status",
+			Value:     v1alpha1.RunSpecStatusCancelled,
+		},
+		{
+			Operation: "add",
+			Path:      "/spec/statusMessage",
+			Value:     v1alpha1.RunCancelledByPipelineMsg,
+		}})
 	if err != nil {
 		log.Fatalf("failed to marshal Run cancel patch bytes: %v", err)
 	}

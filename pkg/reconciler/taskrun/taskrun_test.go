@@ -2075,6 +2075,7 @@ metadata:
   namespace: foo
 spec:
   status: TaskRunCancelled
+  statusMessage: "Test cancellation message."
   taskRef:
     name: test-task
 status:
@@ -2110,7 +2111,7 @@ status:
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunCancelled",
-		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
+		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled. Test cancellation message.`,
 	}
 	if d := cmp.Diff(expectedStatus, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
 		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
@@ -3621,6 +3622,7 @@ metadata:
   namespace: foo
 spec:
   status: TaskRunCancelled
+  statusMessage: "Test cancellation message."
   taskRef:
     name: test-task
 status:
@@ -3672,6 +3674,7 @@ metadata:
   namespace: foo
 spec:
   status: TaskRunCancelled
+  statusMessage: "Test cancellation message."
   taskRef:
     name: test-task
 status:
@@ -3688,12 +3691,12 @@ status:
 			Name:      "foo-is-bar",
 		}},
 		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel was cancelled",
+		message: "TaskRun test-taskrun-run-cancel was cancelled. Test cancellation message.",
 		expectedStatus: apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel was cancelled",
+			Message: "TaskRun test-taskrun-run-cancel was cancelled. Test cancellation message.",
 		},
 		expectedStepStates: []v1beta1.StepState{
 			{

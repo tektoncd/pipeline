@@ -18,6 +18,7 @@ package v1beta1_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -148,6 +149,7 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 }
 
 func TestTaskRunSpec_Invalidate(t *testing.T) {
+	invalidStatusMessage := "status message without status"
 	tests := []struct {
 		name    string
 		spec    v1beta1.TaskRunSpec
@@ -189,6 +191,15 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			Status: "TaskRunCancell",
 		},
 		wantErr: apis.ErrInvalidValue("TaskRunCancell should be TaskRunCancelled", "status"),
+	}, {
+		name: "incorrectly set statusMesage",
+		spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "taskrefname",
+			},
+			StatusMessage: v1beta1.TaskRunSpecStatusMessage(invalidStatusMessage),
+		},
+		wantErr: apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", invalidStatusMessage), "statusMessage"),
 	}, {
 		name: "invalid taskspec",
 		spec: v1beta1.TaskRunSpec{

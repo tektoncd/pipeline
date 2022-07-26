@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
@@ -65,6 +66,11 @@ func (rs *RunSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 		if rs.Spec.Kind == "" {
 			return apis.ErrMissingField("spec.spec.kind")
+		}
+	}
+	if rs.Status == "" {
+		if rs.StatusMessage != "" {
+			return apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", rs.StatusMessage), "statusMessage")
 		}
 	}
 	if err := v1beta1.ValidateParameters(ctx, rs.Params).ViaField("spec.params"); err != nil {
