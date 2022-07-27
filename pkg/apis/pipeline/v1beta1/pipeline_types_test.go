@@ -454,7 +454,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			"task-3": {"task-1", "task-2"},
 		},
 	}, {
-		name: "valid pipeline with resource deps - Task Results",
+		name: "valid pipeline with Task Results deps",
 		tasks: []PipelineTask{{
 			Name: "task-1",
 		}, {
@@ -470,7 +470,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			"task-2": {"task-1"},
 		},
 	}, {
-		name: "valid pipeline with resource deps - Task Results in Matrix",
+		name: "valid pipeline with Task Results in Matrix deps",
 		tasks: []PipelineTask{{
 			Name: "task-1",
 		}, {
@@ -488,7 +488,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			"task-2": {"task-1"},
 		},
 	}, {
-		name: "valid pipeline with resource deps - When Expressions",
+		name: "valid pipeline with When Expressions deps",
 		tasks: []PipelineTask{{
 			Name: "task-1",
 		}, {
