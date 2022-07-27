@@ -1210,14 +1210,6 @@ spec:
         - name: my-volume
           mountPath: /var/my-volume
 
-    - image: ubuntu
-      script: |
-        #!/usr/bin/env bash
-        cat /etc/my-volume
-      volumeMounts:
-        - name: my-volume
-          mountPath: /etc/my-volume
-
   volumes:
     - name: my-volume
       persistentVolumeClaim:
