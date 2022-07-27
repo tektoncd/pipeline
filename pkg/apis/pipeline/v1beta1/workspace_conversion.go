@@ -31,3 +31,27 @@ func (w *WorkspaceUsage) convertFrom(ctx context.Context, source v1.WorkspaceUsa
 	w.Name = source.Name
 	w.MountPath = source.MountPath
 }
+
+func (w PipelineWorkspaceDeclaration) convertTo(ctx context.Context, sink *v1.PipelineWorkspaceDeclaration) {
+	sink.Name = w.Name
+	sink.Description = w.Description
+	sink.Optional = w.Optional
+}
+
+func (w *PipelineWorkspaceDeclaration) convertFrom(ctx context.Context, source v1.PipelineWorkspaceDeclaration) {
+	w.Name = source.Name
+	w.Description = source.Description
+	w.Optional = source.Optional
+}
+
+func (w WorkspacePipelineTaskBinding) convertTo(ctx context.Context, sink *v1.WorkspacePipelineTaskBinding) {
+	sink.Name = w.Name
+	sink.Workspace = w.Workspace
+	sink.SubPath = w.SubPath
+}
+
+func (w *WorkspacePipelineTaskBinding) convertFrom(ctx context.Context, source v1.WorkspacePipelineTaskBinding) {
+	w.Name = source.Name
+	w.Workspace = source.Workspace
+	w.SubPath = source.SubPath
+}

@@ -45,3 +45,31 @@ func (p *ParamSpec) convertFrom(ctx context.Context, source v1.ParamSpec) {
 		}
 	}
 }
+
+func (p Param) convertTo(ctx context.Context, sink *v1.Param) {
+	sink.Name = p.Name
+	newValue := v1.ArrayOrString{}
+	p.Value.convertTo(ctx, &newValue)
+	sink.Value = newValue
+}
+
+func (p *Param) convertFrom(ctx context.Context, source v1.Param) {
+	p.Name = source.Name
+	newValue := ArrayOrString{}
+	newValue.convertFrom(ctx, source.Value)
+	p.Value = newValue
+}
+
+func (aos ArrayOrString) convertTo(ctx context.Context, sink *v1.ArrayOrString) {
+	sink.Type = v1.ParamType(aos.Type)
+	sink.StringVal = aos.StringVal
+	sink.ArrayVal = aos.ArrayVal
+	sink.ObjectVal = aos.ObjectVal
+}
+
+func (aos *ArrayOrString) convertFrom(ctx context.Context, source v1.ArrayOrString) {
+	aos.Type = ParamType(source.Type)
+	aos.StringVal = source.StringVal
+	aos.ArrayVal = source.ArrayVal
+	aos.ObjectVal = source.ObjectVal
+}

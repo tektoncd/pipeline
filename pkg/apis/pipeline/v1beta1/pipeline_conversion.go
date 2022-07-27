@@ -20,23 +20,254 @@ import (
 	"context"
 	"fmt"
 
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"knative.dev/pkg/apis"
 )
 
 var _ apis.Convertible = (*Pipeline)(nil)
 
 // ConvertTo implements apis.Convertible
-func (p *Pipeline) ConvertTo(ctx context.Context, sink apis.Convertible) error {
+func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
-	return fmt.Errorf("v1beta1 is the highest known version, got: %T", sink)
+	switch sink := to.(type) {
+	case *v1.Pipeline:
+		sink.ObjectMeta = p.ObjectMeta
+		return p.Spec.ConvertTo(ctx, &sink.Spec)
+	default:
+		return fmt.Errorf("unknown version, got: %T", sink)
+	}
+}
+
+// ConvertTo implements apis.Convertible
+func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec) error {
+	sink.Description = ps.Description
+	sink.Tasks = nil
+	for _, t := range ps.Tasks {
+		new := v1.PipelineTask{}
+		err := t.convertTo(ctx, &new)
+		if err != nil {
+			return err
+		}
+		sink.Tasks = append(sink.Tasks, new)
+	}
+	sink.Params = nil
+	for _, p := range ps.Params {
+		new := v1.ParamSpec{}
+		p.convertTo(ctx, &new)
+		sink.Params = append(sink.Params, new)
+	}
+	sink.Workspaces = nil
+	for _, w := range ps.Workspaces {
+		new := v1.PipelineWorkspaceDeclaration{}
+		w.convertTo(ctx, &new)
+		sink.Workspaces = append(sink.Workspaces, new)
+	}
+	sink.Results = nil
+	for _, r := range ps.Results {
+		new := v1.PipelineResult{}
+		r.convertTo(ctx, &new)
+		sink.Results = append(sink.Results, new)
+	}
+	sink.Finally = nil
+	for _, f := range ps.Finally {
+		new := v1.PipelineTask{}
+		err := f.convertTo(ctx, &new)
+		if err != nil {
+			return err
+		}
+		sink.Finally = append(sink.Finally, new)
+	}
+	// TODO: Handle Resources in #4546
+	return nil
 }
 
 // ConvertFrom implements apis.Convertible
-func (p *Pipeline) ConvertFrom(ctx context.Context, source apis.Convertible) error {
-	if apis.IsInDelete(ctx) {
-		return nil
+func (p *Pipeline) ConvertFrom(ctx context.Context, from apis.Convertible) error {
+	switch source := from.(type) {
+	case *v1.Pipeline:
+		p.ObjectMeta = source.ObjectMeta
+		return p.Spec.ConvertFrom(ctx, &source.Spec)
+	default:
+		return fmt.Errorf("unknown version, got: %T", p)
 	}
-	return fmt.Errorf("v1beta1 is the highest known version, got: %T", source)
+}
+
+// ConvertFrom implements apis.Convertible
+func (ps *PipelineSpec) ConvertFrom(ctx context.Context, source *v1.PipelineSpec) error {
+	ps.Description = source.Description
+	ps.Tasks = nil
+	for _, t := range source.Tasks {
+		new := PipelineTask{}
+		err := new.convertFrom(ctx, t)
+		if err != nil {
+			return err
+		}
+		ps.Tasks = append(ps.Tasks, new)
+	}
+	ps.Params = nil
+	for _, p := range source.Params {
+		new := ParamSpec{}
+		new.convertFrom(ctx, p)
+		ps.Params = append(ps.Params, new)
+	}
+	ps.Workspaces = nil
+	for _, w := range source.Workspaces {
+		new := PipelineWorkspaceDeclaration{}
+		new.convertFrom(ctx, w)
+		ps.Workspaces = append(ps.Workspaces, new)
+	}
+	ps.Results = nil
+	for _, r := range source.Results {
+		new := PipelineResult{}
+		new.convertFrom(ctx, r)
+		ps.Results = append(ps.Results, new)
+	}
+	ps.Finally = nil
+	for _, f := range source.Finally {
+		new := PipelineTask{}
+		err := new.convertFrom(ctx, f)
+		if err != nil {
+			return err
+		}
+		ps.Finally = append(ps.Finally, new)
+	}
+	return nil
+}
+
+func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) error {
+	sink.Name = pt.Name
+	if pt.TaskRef != nil {
+		sink.TaskRef = &v1.TaskRef{}
+		pt.TaskRef.convertTo(ctx, sink.TaskRef)
+	}
+	if pt.TaskSpec != nil {
+		sink.TaskSpec = &v1.EmbeddedTask{}
+		err := pt.TaskSpec.convertTo(ctx, sink.TaskSpec)
+		if err != nil {
+			return err
+		}
+	}
+	sink.When = nil
+	for _, we := range pt.WhenExpressions {
+		new := v1.WhenExpression{}
+		we.convertTo(ctx, &new)
+		sink.When = append(sink.When, new)
+	}
+	sink.Retries = pt.Retries
+	sink.RunAfter = pt.RunAfter
+	sink.Params = nil
+	for _, p := range pt.Params {
+		new := v1.Param{}
+		p.convertTo(ctx, &new)
+		sink.Params = append(sink.Params, new)
+	}
+	sink.Matrix = nil
+	for _, m := range pt.Matrix {
+		new := v1.Param{}
+		m.convertTo(ctx, &new)
+		sink.Matrix = append(sink.Matrix, new)
+	}
+	sink.Workspaces = nil
+	for _, w := range pt.Workspaces {
+		new := v1.WorkspacePipelineTaskBinding{}
+		w.convertTo(ctx, &new)
+		sink.Workspaces = append(sink.Workspaces, new)
+	}
+
+	sink.Timeout = pt.Timeout
+	return nil
+}
+
+func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask) error {
+	pt.Name = source.Name
+	if source.TaskRef != nil {
+		newTaskRef := TaskRef{}
+		newTaskRef.convertFrom(ctx, *source.TaskRef)
+		pt.TaskRef = &newTaskRef
+	}
+	if source.TaskSpec != nil {
+		newTaskSpec := EmbeddedTask{}
+		err := newTaskSpec.convertFrom(ctx, *source.TaskSpec)
+		pt.TaskSpec = &newTaskSpec
+		if err != nil {
+			return err
+		}
+	}
+	pt.WhenExpressions = nil
+	for _, we := range source.When {
+		new := WhenExpression{}
+		new.convertFrom(ctx, we)
+		pt.WhenExpressions = append(pt.WhenExpressions, new)
+	}
+	pt.Retries = source.Retries
+	pt.RunAfter = source.RunAfter
+	pt.Params = nil
+	for _, p := range source.Params {
+		new := Param{}
+		new.convertFrom(ctx, p)
+		pt.Params = append(pt.Params, new)
+	}
+	pt.Matrix = nil
+	for _, m := range source.Matrix {
+		new := Param{}
+		new.convertFrom(ctx, m)
+		pt.Matrix = append(pt.Matrix, new)
+	}
+	pt.Workspaces = nil
+	for _, w := range source.Workspaces {
+		new := WorkspacePipelineTaskBinding{}
+		new.convertFrom(ctx, w)
+		pt.Workspaces = append(pt.Workspaces, new)
+	}
+
+	pt.Timeout = source.Timeout
+	return nil
+}
+
+func (et EmbeddedTask) convertTo(ctx context.Context, sink *v1.EmbeddedTask) error {
+	sink.TypeMeta = et.TypeMeta
+	sink.Spec = et.Spec
+	sink.Metadata = v1.PipelineTaskMetadata(et.Metadata)
+	sink.TaskSpec = v1.TaskSpec{}
+	return et.TaskSpec.ConvertTo(ctx, &sink.TaskSpec)
+}
+
+func (et *EmbeddedTask) convertFrom(ctx context.Context, source v1.EmbeddedTask) error {
+	et.TypeMeta = source.TypeMeta
+	et.Spec = source.Spec
+	et.Metadata = PipelineTaskMetadata(source.Metadata)
+	et.TaskSpec = TaskSpec{}
+	return et.TaskSpec.ConvertFrom(ctx, &source.TaskSpec)
+}
+
+func (we WhenExpression) convertTo(ctx context.Context, sink *v1.WhenExpression) {
+	sink.Input = we.Input
+	sink.Operator = we.Operator
+	sink.Values = we.Values
+}
+
+func (we *WhenExpression) convertFrom(ctx context.Context, source v1.WhenExpression) {
+	we.Input = source.Input
+	we.Operator = source.Operator
+	we.Values = source.Values
+}
+
+func (pr PipelineResult) convertTo(ctx context.Context, sink *v1.PipelineResult) {
+	sink.Name = pr.Name
+	sink.Type = v1.ResultsType(pr.Type)
+	sink.Description = pr.Description
+	newValue := v1.ArrayOrString{}
+	pr.Value.convertTo(ctx, &newValue)
+	sink.Value = newValue
+}
+
+func (pr *PipelineResult) convertFrom(ctx context.Context, source v1.PipelineResult) {
+	pr.Name = source.Name
+	pr.Type = ResultsType(source.Type)
+	pr.Description = source.Description
+	newValue := ArrayOrString{}
+	newValue.convertFrom(ctx, source.Value)
+	pr.Value = newValue
 }
