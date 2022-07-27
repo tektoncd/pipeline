@@ -1195,6 +1195,35 @@ spec:
         name: "$(params.CFGNAME)"
 ```
 
+#### Mounting a `PersistentVolumeClaim` as a `Volume` source
+
+The example below illustrates how to mount a `PersistentVolumeClaim` to act as a `Volume` source:
+
+```yaml
+spec:
+  steps:
+    - image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        curl https://foo.com > /var/my-volume
+      volumeMounts:
+        - name: my-volume
+          mountPath: /var/my-volume
+
+    - image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        cat /etc/my-volume
+      volumeMounts:
+        - name: my-volume
+          mountPath: /etc/my-volume
+
+  volumes:
+    - name: my-volume
+      persistentVolumeClaim:
+        claimName: my-volume-pvc
+```
+
 #### Using a `Secret` as an environment source
 
 The example below illustrates how to use a `Secret` as an environment source:
