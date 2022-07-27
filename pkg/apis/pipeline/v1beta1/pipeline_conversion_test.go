@@ -14,15 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1beta1_test
 
 import (
 	"context"
 	"testing"
+	"time"
+
+	"github.com/google/go-cmp/cmp"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/selection"
+	"knative.dev/pkg/apis"
 )
 
 func TestPipelineConversionBadType(t *testing.T) {
-	good, bad := &Pipeline{}, &Task{}
+	good, bad := &v1beta1.Pipeline{}, &v1beta1.Task{}
 
 	if err := good.ConvertTo(context.Background(), bad); err == nil {
 		t.Errorf("ConvertTo() = %#v, wanted error", bad)
@@ -30,5 +39,184 @@ func TestPipelineConversionBadType(t *testing.T) {
 
 	if err := good.ConvertFrom(context.Background(), bad); err == nil {
 		t.Errorf("ConvertFrom() = %#v, wanted error", good)
+	}
+}
+
+func TestPipelineConversion(t *testing.T) {
+	versions := []apis.Convertible{&v1.Pipeline{}}
+
+	tests := []struct {
+		name string
+		in   *v1beta1.Pipeline
+	}{{
+		name: "simple pipeline",
+		in: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineSpec{
+				Description: "test",
+				Tasks: []v1beta1.PipelineTask{{
+					Name:    "foo",
+					TaskRef: &v1beta1.TaskRef{Name: "example.com/my-foo-task"},
+				}},
+				Params: []v1beta1.ParamSpec{{
+					Name:        "param-1",
+					Type:        v1beta1.ParamTypeString,
+					Description: "My first param",
+				}},
+			},
+		},
+	}, {
+		name: "pipeline conversion all non deprecated fields",
+		in: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineSpec{
+				Description: "test",
+				Tasks: []v1beta1.PipelineTask{{
+					Name: "task-1",
+				}, {
+					Name:    "foo",
+					TaskRef: &v1beta1.TaskRef{Name: "example.com/my-foo-task"},
+					TaskSpec: &v1beta1.EmbeddedTask{
+						TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:  "mystep",
+								Image: "myimage",
+							}},
+							Params: []v1beta1.ParamSpec{{
+								Name:        "string-param",
+								Type:        v1beta1.ParamTypeString,
+								Description: "String param",
+							}},
+						},
+					},
+					WhenExpressions: v1beta1.WhenExpressions{{
+						Input:    "foo",
+						Operator: selection.In,
+						Values:   []string{"foo", "bar"},
+					}},
+					Retries:  1,
+					RunAfter: []string{"task-1"},
+					Params: []v1beta1.Param{{
+						Name: "param-task-1",
+						Value: v1beta1.ArrayOrString{
+							ArrayVal: []string{"value-task-1"},
+						},
+					}},
+					Matrix: []v1beta1.Param{{
+						Name: "a-param",
+						Value: v1beta1.ArrayOrString{
+							Type:     v1beta1.ParamTypeArray,
+							ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"},
+						},
+					}},
+					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
+						Name:      "my-task-workspace",
+						Workspace: "source",
+					}},
+					Timeout: &metav1.Duration{Duration: 5 * time.Minute},
+				},
+				},
+				Params: []v1beta1.ParamSpec{{
+					Name:        "param-1",
+					Type:        v1beta1.ParamTypeString,
+					Description: "My first pipeline param",
+					Properties:  map[string]v1beta1.PropertySpec{"foo": {Type: v1beta1.ParamTypeString}},
+					Default:     v1beta1.NewArrayOrString("bar"),
+				}},
+				Workspaces: []v1beta1.WorkspacePipelineDeclaration{{
+					Name:        "workspace",
+					Description: "description",
+					Optional:    true,
+				}},
+				Results: []v1beta1.PipelineResult{{
+					Name:        "my-pipeline-result",
+					Type:        v1beta1.ResultsTypeObject,
+					Description: "this is my pipeline result",
+					Value:       *v1beta1.NewArrayOrString("foo.bar"),
+				}},
+				Finally: []v1beta1.PipelineTask{{
+					Name:    "final-task",
+					TaskRef: &v1beta1.TaskRef{Name: "foo-task"},
+				}},
+			},
+		},
+	}}
+
+	for _, test := range tests {
+		for _, version := range versions {
+			t.Run(test.name, func(t *testing.T) {
+				ver := version
+				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+					t.Errorf("ConvertTo() = %v", err)
+					return
+				}
+				t.Logf("ConvertTo() = %#v", ver)
+				got := &v1beta1.Pipeline{}
+				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+					t.Errorf("ConvertFrom() = %v", err)
+				}
+				t.Logf("ConvertFrom() = %#v", got)
+				if d := cmp.Diff(test.in, got); d != "" {
+					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
+				}
+			})
+		}
+	}
+}
+
+// TODO handle resources and bundles in #4546
+func TestPipelineConversionFromDeprecated(t *testing.T) {
+	versions := []apis.Convertible{&v1.Pipeline{}}
+	tests := []struct {
+		name string
+		in   *v1beta1.Pipeline
+		want *v1beta1.Pipeline
+	}{{
+		name: "pipeline resources",
+		in: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineSpec{
+				Resources: []v1beta1.PipelineDeclaredResource{{
+					Name:     "pipeline resource",
+					Type:     v1beta1.PipelineResourceTypeGit,
+					Optional: true,
+				}},
+			}},
+		want: &v1beta1.Pipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineSpec{},
+		},
+	}}
+
+	for _, test := range tests {
+		for _, version := range versions {
+			t.Run(test.name, func(t *testing.T) {
+				ver := version
+				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+					t.Errorf("ConvertTo() = %v", err)
+				}
+				t.Logf("ConvertTo() = %#v", ver)
+				got := &v1beta1.Pipeline{}
+				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+					t.Errorf("ConvertFrom() = %v", err)
+				}
+				t.Logf("ConvertFrom() = %#v", got)
+				if d := cmp.Diff(test.want, got); d != "" {
+					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
+				}
+			})
+		}
 	}
 }
