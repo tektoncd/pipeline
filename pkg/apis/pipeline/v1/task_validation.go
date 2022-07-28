@@ -52,10 +52,10 @@ var objectVariableNameFormatRegex = regexp.MustCompile(objectVariableNameFormat)
 
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
-	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
+	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
