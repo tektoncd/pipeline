@@ -32,7 +32,7 @@ without having to modify Tekton Pipelines itself.
 
 If you'd prefer to look at the end result of this howto you can take a
 visit the
-[`./resolver-template`](https://github.com/tektoncd/resolution/tree/main/docs/resolver-template)
+[`./resolver-template`](https://github.com/tektoncd/pipeline/tree/main/docs/resolver-template)
 in the Tekton Resolution repo. That template is built on the code from
 this howto to get you up and running quickly.
 
@@ -53,7 +53,7 @@ You'll also need the following:
 - An image registry that you can push images to. If you're using `kind`
   make sure your `KO_DOCKER_REPO` environment variable is set to
   `kind.local`.
-- Tekton Pipelines and Tekton Resolution installed in your Kubernetes
+- Tekton Pipelines and remote resolvers installed in your Kubernetes
   cluster. See [the getting started
   guide](./getting-started.md#step-3-install-tekton-resolution) for
   instructions on installing it.
@@ -95,7 +95,7 @@ package main
 
 import (
   "context"
-  "github.com/tektoncd/resolution/pkg/resolver/framework"
+  "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
   "knative.dev/pkg/injection/sharedmain"
 )
 
@@ -187,9 +187,9 @@ import (
   "context"
 
   // Add this one; it defines LabelKeyResolverType we use in GetSelector
-  "github.com/tektoncd/resolution/pkg/common"
+  "github.com/tektoncd/pipeline/pkg/resolution/common"
 
-  "github.com/tektoncd/resolution/pkg/resolver/framework"
+  "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
   "knative.dev/pkg/injection/sharedmain"
 )
 ```
@@ -270,10 +270,10 @@ A full description of the config is beyond the scope of a short howto
 but in summary we'll tell Kubernetes to run our resolver application
 along with some environment variables and other configuration that the
 underlying `knative` framework expects. The deployed application is put
-in the `tekton-remote-resolution` namespace and uses `ko` to build its
+in the `tekton-pipelines` namespace and uses `ko` to build its
 container image. Finally the `ServiceAccount` our deployment uses is
 `resolver`, which is the default `ServiceAccount` shared by all
-resolvers in the `tekton-remote-resolution` namespace.
+resolvers in the `tekton-pipelines` namespace.
 
 The full configuration follows:
 
@@ -282,7 +282,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demoresolver
-  namespace: tekton-remote-resolution
+  namespace: tekton-pipelines
 spec:
   replicas: 1
   selector:
@@ -354,7 +354,7 @@ Assuming the resolver deployed successfully you should be able to see it
 in the output from the following command:
 
 ```bash
-$ kubectl get deployments -n tekton-remote-resolution
+$ kubectl get deployments -n tekton-pipelines
 
 # And here's approximately what you should see when you run this command:
 NAME          READY   UP-TO-DATE   AVAILABLE   AGE
@@ -418,7 +418,7 @@ Resolver to fetch data from your storage backend of choice.
 
 Or if you prefer to take a look at a more fully-realized example of a
 Resolver, see the [code for the `gitresolver` hosted in the Tekton
-Resolution repo](https://github.com/tektoncd/resolution/tree/main/gitresolver/).
+Pipeline repo](https://github.com/tektoncd/pipeline/tree/main/pkg/resolution/resolver/git/).
 
 Finally, another direction you could take this would be to try writing a
 `PipelineRun` for Tekton Pipelines that speaks to your Resolver. Can

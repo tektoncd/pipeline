@@ -22,7 +22,7 @@ To reuse the template, simply copy this entire subdirectory to a new
 directory. The entire program is defined in
 [`./cmd/demoresolver/main.go`](./cmd/demoresolver/main.go) and provides stub
 implementations of all the methods defined by the [`framework.Resolver`
-interface](../../pkg/resolver/framework/interface.go).
+interface](../../pkg/resolution/resolver/framework/interface.go).
 
 Once copied you'll need to run `go mod init` and `go mod tidy` at the root
 of your project. We don't need this in `tektoncd/resolution` because this
@@ -39,7 +39,7 @@ will need to point to your new go module's name, with a `ko://` prefix.
 - A computer with
   [`kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl) and
   [`ko`](https://github.com/google/ko) installed.
-- The `tekton-remote-resolution` namespace and `ResolutionRequest`
+- The `tekton-pipelines` namespace and `ResolutionRequest`
   controller installed. See [the getting started
   guide](./getting-started.md#step-3-install-tekton-resolution) for
   instructions.

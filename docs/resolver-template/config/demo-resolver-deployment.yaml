@@ -15,7 +15,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demoresolver
-  namespace: tekton-remote-resolution
+  namespace: tekton-pipelines
 spec:
   replicas: 1
   selector:
@@ -38,7 +38,7 @@ spec:
       serviceAccountName: resolver
       containers:
       - name: controller
-        image: ko://github.com/tektoncd/resolution/docs/resolver-template/cmd/demoresolver
+        image: ko://github.com/tektoncd/pipeline/docs/resolver-template/cmd/demoresolver
         resources:
           requests:
             cpu: 100m

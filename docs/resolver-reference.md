@@ -1,7 +1,7 @@
 # Resolver Reference
 
 Writing a resolver is made easier with the
-`github.com/tektoncd/resolution/pkg/resolver/framework` package.
+`github.com/tektoncd/pipeline/pkg/resolution/resolver/framework` package.
 This package exposes a number of interfaces that let your code control
 what kind of behaviour it should have when running.
 
