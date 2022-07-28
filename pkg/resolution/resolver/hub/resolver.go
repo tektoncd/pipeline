@@ -27,11 +27,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
-const disabledError = "cannot handle resolution request, enable-hub-resolver feature flag not true"
+const (
+	// LabelValueHubResolverType is the value to use for the
+	// resolution.tekton.dev/type label on resource requests
+	LabelValueHubResolverType string = "hub"
 
-// LabelValueHubResolverType is the value to use for the
-// resolution.tekton.dev/type label on resource requests
-const LabelValueHubResolverType string = "hub"
+	disabledError = "cannot handle resolution request, enable-hub-resolver feature flag not true"
+)
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 type Resolver struct {
@@ -122,7 +124,12 @@ func (r *Resolver) Resolve(ctx context.Context, params map[string]v1beta1.ArrayO
 	if err != nil {
 		return nil, fmt.Errorf("error requesting resource from hub: %w", err)
 	}
-	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("requested resource '%s' not found on hub", url)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)

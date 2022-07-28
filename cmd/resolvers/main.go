@@ -17,6 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
+	"os"
+	"strings"
+
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -30,8 +34,20 @@ import (
 func main() {
 	ctx := filteredinformerfactory.WithSelectors(signals.NewContext(), v1alpha1.ManagedByLabelKey)
 
+	apiURL := os.Getenv("HUB_API")
+	hubURL := hub.DefaultHubURL
+	if apiURL == "" {
+		hubURL = hub.DefaultHubURL
+	} else {
+		if !strings.HasSuffix(apiURL, "/") {
+			apiURL += "/"
+		}
+		hubURL = apiURL + hub.YamlEndpoint
+	}
+	fmt.Println("RUNNING WITH HUB URL PATTERN:", hubURL)
+
 	sharedmain.MainWithContext(ctx, "controller",
 		framework.NewController(ctx, &git.Resolver{}),
-		framework.NewController(ctx, &hub.Resolver{}),
+		framework.NewController(ctx, &hub.Resolver{HubURL: hubURL}),
 		framework.NewController(ctx, &bundle.Resolver{}))
 }
