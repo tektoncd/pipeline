@@ -169,7 +169,7 @@ cli *(coming soon)*.
 
 A `taskRef` field may specify a Task in a remote location such as git.
 Support for specific types of remote will depend on the Resolvers your
-cluster's operator has installed. The below example demonstrates
+cluster's operator has installed. For more information please check the [Tekton resolution repo](https://github.com/tektoncd/resolution). The below example demonstrates
 referencing a Task in git:
 
 ```yaml
@@ -179,9 +179,9 @@ spec:
     resource:
     - name: url
       value: https://github.com/tektoncd/catalog.git
-    - name: commit
+    - name: revision
       value: abc123
-    - name: path
+    - name: pathInRepo
       value: /task/golang-build/0.3/golang-build.yaml
 ```
 
