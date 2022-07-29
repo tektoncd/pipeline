@@ -178,7 +178,7 @@ so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
 
 A `pipelineRef` field may specify a Pipeline in a remote location such as git.
 Support for specific types of remote will depend on the Resolvers your
-cluster's operator has installed. The below example demonstrates
+cluster's operator has installed. For more information please check the [Tekton resolution repo](https://github.com/tektoncd/resolution). The below example demonstrates
 referencing a Pipeline in git:
 
 ```yaml
@@ -188,9 +188,9 @@ spec:
     resource:
     - name: url
       value: https://github.com/tektoncd/catalog.git
-    - name: commit
+    - name: revision
       value: abc123
-    - name: path
+    - name: pathInRepo
       value: /pipeline/buildpacks/0.1/buildpacks.yaml
 ```
 
