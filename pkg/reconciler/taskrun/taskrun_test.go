@@ -2160,6 +2160,7 @@ status:
   steps:
   - container: step-unnamed-0
     name: unnamed-0
+    imageID: whatever
     waiting:
       message: Back-off pulling image "whatever"
       reason: ImagePullBackOff
@@ -2223,6 +2224,7 @@ status:
       startedAt: "2022-06-09T10:13:41Z"
   - container: step-unnamed-1
     name: unnamed-1
+    imageID: whatever
     waiting:
       message: Back-off pulling image "whatever"
       reason: ImagePullBackOff
