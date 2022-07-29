@@ -187,9 +187,6 @@ func TestTaskConversion(t *testing.T) {
 }
 
 func TestTaskConversionFromDeprecated(t *testing.T) {
-	// TODO(#4546): We're just dropping Resources when converting from
-	// v1beta1 to v1. Before moving the stored version to v1, we should
-	// come up with a better strategy
 	versions := []apis.Convertible{&v1.Task{}}
 	tests := []struct {
 		name string
@@ -205,7 +202,7 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 			},
 			Spec: v1beta1.TaskSpec{
 				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{},
+					Inputs: []v1beta1.TaskResource{{v1beta1.ResourceDeclaration{Name: "input-resource"}}},
 				},
 			},
 		},
@@ -215,7 +212,11 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 				Namespace:  "bar",
 				Generation: 1,
 			},
-			Spec: v1beta1.TaskSpec{},
+			Spec: v1beta1.TaskSpec{
+				Resources: &v1beta1.TaskResources{
+					Inputs: []v1beta1.TaskResource{{v1beta1.ResourceDeclaration{Name: "input-resource"}}},
+				},
+			},
 		},
 	}, {
 		name: "output resources",
@@ -227,7 +228,7 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 			},
 			Spec: v1beta1.TaskSpec{
 				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{},
+					Outputs: []v1beta1.TaskResource{{v1beta1.ResourceDeclaration{Name: "output-resource"}}},
 				},
 			},
 		},
@@ -237,7 +238,9 @@ func TestTaskConversionFromDeprecated(t *testing.T) {
 				Namespace:  "bar",
 				Generation: 1,
 			},
-			Spec: v1beta1.TaskSpec{},
+			Spec: v1beta1.TaskSpec{Resources: &v1beta1.TaskResources{
+				Outputs: []v1beta1.TaskResource{{v1beta1.ResourceDeclaration{Name: "output-resource"}}},
+			}},
 		},
 	}}
 	for _, test := range tests {

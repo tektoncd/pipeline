@@ -21,8 +21,12 @@ import (
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
+
+const resourcesAnnotationKey = "tekton.dev/v1beta1Resources"
 
 var _ apis.Convertible = (*Task)(nil)
 
@@ -34,6 +38,9 @@ func (t *Task) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.Task:
 		sink.ObjectMeta = t.ObjectMeta
+		if err := serializeResources(&sink.ObjectMeta, &t.Spec); err != nil {
+			return err
+		}
 		return t.Spec.ConvertTo(ctx, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
@@ -79,7 +86,6 @@ func (ts *TaskSpec) ConvertTo(ctx context.Context, sink *v1.TaskSpec) error {
 		sink.Params = append(sink.Params, new)
 	}
 	sink.Description = ts.Description
-	// TODO(#4546): Handle Resources
 	return nil
 }
 
@@ -91,6 +97,9 @@ func (t *Task) ConvertFrom(ctx context.Context, from apis.Convertible) error {
 	switch source := from.(type) {
 	case *v1.Task:
 		t.ObjectMeta = source.ObjectMeta
+		if err := deserializeResources(&t.ObjectMeta, &t.Spec); err != nil {
+			return err
+		}
 		return t.Spec.ConvertFrom(ctx, &source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", t)
@@ -136,5 +145,24 @@ func (ts *TaskSpec) ConvertFrom(ctx context.Context, source *v1.TaskSpec) error 
 		ts.Params = append(ts.Params, new)
 	}
 	ts.Description = source.Description
+	return nil
+}
+
+func serializeResources(meta *metav1.ObjectMeta, spec *TaskSpec) error {
+	if spec.Resources == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+}
+
+func deserializeResources(meta *metav1.ObjectMeta, spec *TaskSpec) error {
+	resources := &TaskResources{}
+	err := version.DeserializeFromMetadata(meta, resources, resourcesAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if resources.Inputs != nil || resources.Outputs != nil {
+		spec.Resources = resources
+	}
 	return nil
 }
