@@ -197,16 +197,16 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 }
 
 func (c *Reconciler) checkPodFailed(ctx context.Context, tr *v1beta1.TaskRun) (bool, v1beta1.TaskRunReason, string) {
-	for index, step := range tr.Status.Steps {
+	for _, step := range tr.Status.Steps {
 		if step.Waiting != nil && step.Waiting.Reason == "ImagePullBackOff" {
-			image := tr.Status.TaskSpec.Steps[index].Image
+			image := step.ImageID
 			message := fmt.Sprintf(`The step %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, step.Name, tr.Name, image, step.Waiting.Message)
 			return true, v1beta1.TaskRunReasonImagePullFailed, message
 		}
 	}
-	for index, sidecar := range tr.Status.Sidecars {
+	for _, sidecar := range tr.Status.Sidecars {
 		if sidecar.Waiting != nil && sidecar.Waiting.Reason == "ImagePullBackOff" {
-			image := tr.Status.TaskSpec.Sidecars[index].Image
+			image := sidecar.ImageID
 			message := fmt.Sprintf(`The sidecar %q in TaskRun %q failed to pull the image %q. The pod errored with the message: "%s."`, sidecar.Name, tr.Name, image, sidecar.Waiting.Message)
 			return true, v1beta1.TaskRunReasonImagePullFailed, message
 		}
