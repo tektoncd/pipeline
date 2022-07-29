@@ -52,7 +52,7 @@ do
   violations=$(diff --changed-group-format='%>' --unchanged-group-format='' <(sort "hack/ignored-openapi-violations.list") <(sort "${TMP_DIFFROOT}/api-report") || echo "")
   if [ -n "${violations}" ]; then
     echo ""
-    echo "New API rule violations found which are not present in hack/ignored-openapi-violations.list. Please fix these violations:"
+    echo "ERROR: New API rule violations found which are not present in hack/ignored-openapi-violations.list. Please fix these violations:"
     echo ""
     echo "${violations}"
     echo ""
