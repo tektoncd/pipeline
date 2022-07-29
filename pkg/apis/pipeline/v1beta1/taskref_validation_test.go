@@ -42,8 +42,8 @@ func TestTaskRef_Valid(t *testing.T) {
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "alpha feature: valid resolver with resource parameters",
-		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Resource: []v1beta1.ResolverParam{{
+		name: "alpha feature: valid resolver with params",
+		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Params: []v1beta1.ResolverParam{{
 			Name:  "repo",
 			Value: "https://github.com/tektoncd/pipeline.git",
 		}, {
@@ -112,18 +112,18 @@ func TestTaskRef_Invalid(t *testing.T) {
 		},
 		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
-		name: "taskref resource disallowed without alpha feature gate",
+		name: "taskref params disallowed without alpha feature gate",
 		taskRef: &v1beta1.TaskRef{
 			ResolverRef: v1beta1.ResolverRef{
-				Resource: []v1beta1.ResolverParam{},
+				Params: []v1beta1.ResolverParam{},
 			},
 		},
-		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resource requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
 	}, {
-		name: "taskref resource disallowed without resolver",
+		name: "taskref params disallowed without resolver",
 		taskRef: &v1beta1.TaskRef{
 			ResolverRef: v1beta1.ResolverRef{
-				Resource: []v1beta1.ResolverParam{},
+				Params: []v1beta1.ResolverParam{},
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver"),
@@ -149,30 +149,30 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf("bundle", "resolver"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "taskref resource disallowed in conjunction with taskref name",
+		name: "taskref params disallowed in conjunction with taskref name",
 		taskRef: &v1beta1.TaskRef{
 			Name: "bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Resource: []v1beta1.ResolverParam{{
+				Params: []v1beta1.ResolverParam{{
 					Name:  "foo",
 					Value: "bar",
 				}},
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("name", "resource").Also(apis.ErrMissingField("resolver")),
+		wantErr: apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "taskref resource disallowed in conjunction with taskref bundle",
+		name: "taskref params disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{
 			Bundle: "bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Resource: []v1beta1.ResolverParam{{
+				Params: []v1beta1.ResolverParam{{
 					Name:  "foo",
 					Value: "bar",
 				}},
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("bundle", "resource").Also(apis.ErrMissingField("resolver")),
+		wantErr: apis.ErrMultipleOneOf("bundle", "params").Also(apis.ErrMissingField("resolver")),
 		wc:      config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {

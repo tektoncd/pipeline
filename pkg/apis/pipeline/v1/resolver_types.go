@@ -28,13 +28,13 @@ type ResolverRef struct {
 	// resolution of the referenced Tekton resource, such as "git".
 	// +optional
 	Resolver ResolverName `json:"resolver,omitempty"`
-	// Resource contains the parameters used to identify the
+	// Params contains the parameters used to identify the
 	// referenced Tekton resource. Example entries might include
 	// "repo" or "path" but the set of params ultimately depends on
 	// the chosen resolver.
 	// +optional
 	// +listType=atomic
-	Resource []ResolverParam `json:"resource,omitempty"`
+	Params []ResolverParam `json:"params,omitempty"`
 }
 
 // ResolverParam is a single parameter passed to a resolver.

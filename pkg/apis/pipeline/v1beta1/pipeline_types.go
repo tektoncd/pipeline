@@ -295,7 +295,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 			if pt.TaskRef.Resolver != "" {
 				errs = errs.Also(apis.ErrDisallowedFields("taskref.resolver"))
 			}
-			if len(pt.TaskRef.Resource) > 0 {
+			if len(pt.TaskRef.Params) > 0 {
 				errs = errs.Also(apis.ErrDisallowedFields("taskref.resource"))
 			}
 		}

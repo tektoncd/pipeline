@@ -1487,18 +1487,18 @@
       "description": "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
       "type": "object",
       "properties": {
-        "resolver": {
-          "description": "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
-          "type": "string"
-        },
-        "resource": {
-          "description": "Resource contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+        "params": {
+          "description": "Params contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.ResolverParam"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "resolver": {
+          "description": "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+          "type": "string"
         }
       }
     },

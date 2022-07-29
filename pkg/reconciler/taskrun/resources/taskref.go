@@ -105,11 +105,10 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 		// casting it to a TaskObject.
 		return func(ctx context.Context, name string) (v1beta1.TaskObject, error) {
 			params := map[string]string{}
-			for _, p := range tr.Resource {
+			for _, p := range tr.Params {
 				params[p.Name] = p.Value
 			}
 			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, params)
-
 			return resolveTask(ctx, resolver, name, kind)
 		}, nil
 

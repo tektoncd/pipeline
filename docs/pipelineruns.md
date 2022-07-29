@@ -185,7 +185,7 @@ referencing a Pipeline in git:
 spec:
   pipelineRef:
     resolver: git
-    resource:
+    params:
     - name: url
       value: https://github.com/tektoncd/catalog.git
     - name: commit
