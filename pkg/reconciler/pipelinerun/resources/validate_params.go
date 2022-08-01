@@ -184,7 +184,7 @@ func findInvalidParamArrayReference(paramReference string, arrayParams map[strin
 	for _, val := range list {
 		indexString := substitution.ExtractIndexString(paramReference)
 		idx, _ := substitution.ExtractIndex(indexString)
-		v := substitution.TrimArrayIndex(val)
+		v := substitution.TrimTailOperator(val)
 		if paramLength, ok := arrayParams[v]; ok {
 			if idx >= paramLength {
 				outofBoundParams.Insert(val)

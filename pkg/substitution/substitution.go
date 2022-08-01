@@ -26,34 +26,70 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-const (
-	parameterSubstitution = `.*?(\[\*\])?`
+// a struct that holds a pair of values extracted from a reference: variable name and operator
+// example:
+// - $(params.myString)    - name: "myString", operator: ""
+// - $(params.myArray[2])  - name: "myArray", operator: "1"
+// - $(params.myObject[*]) - name: "myObject", operator: "*"
+type variableReference struct {
+	name     string
+	operator string
+}
 
-	// braceMatchingRegex is a regex for parameter references including dot notation, bracket notation with single and double quotes.
-	braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\['(?P<var3>%s)'\\])\\)))"
-	// arrayIndexing will match all `[int]` and `[*]` for parseExpression
-	arrayIndexing = `\[([0-9])*\*?\]`
+const (
+	// nameSubstition is the regex pattern for variable names that can catch any names in a notation
+	nameSubstition = `.*?`
+	// operator is the regex pattern for the operator suffix in a reference string
+	// - [i] int indexing to reference an array element
+	// - [*] star operator to reference the whole array or object
+	operator = `([0-9]+|\*)`
+
 	// paramIndex will match all `$(params.paramName[int])` expressions
 	paramIndexing = `\$\(params(\.[_a-zA-Z0-9.-]+|\[\'[_a-zA-Z0-9.-\/]+\'\]|\[\"[_a-zA-Z0-9.-\/]+\"\])\[[0-9]+\]\)`
 	// intIndex will match all `[int]` expressions
 	intIndex = `\[[0-9]+\]`
 )
 
-// arrayIndexingRegex is used to match `[int]` and `[*]`
-var arrayIndexingRegex = regexp.MustCompile(arrayIndexing)
+var (
+	// .paramName - dot notation
+	dotNotation = fmt.Sprintf(`\.(?P<var1>%s)`, nameSubstition)
+	// ['paramName'] - bracket notation with single quote
+	bracketNotationWithSingleQuote = fmt.Sprintf(`\['(?P<var2>%s)'\]`, nameSubstition)
+	// ["paramName"] - bracket notation with double quote
+	bracketNotationWithDoubleQuote = fmt.Sprintf(`\[\"(?P<var3>%s)\"\]`, nameSubstition)
+	// one of the three notations with optional indexing as the suffix
+	variableNotationPattern = fmt.Sprintf(`(%s|%s|%s)(\[(?P<opt>%s)\])?`, dotNotation, bracketNotationWithSingleQuote, bracketNotationWithDoubleQuote, operator)
 
-// paramIndexingRegex will match all `$(params.paramName[int])` expressions
-var paramIndexingRegex = regexp.MustCompile(paramIndexing)
+	// full variable referencing regex: $(xy)
+	// - x is the prefix i.e. params
+	// - y is `variableNotationPattern` - one of three notations + optional indexing
+	fullVariableReferenceRegex = `\$\(%s%s\)`
 
-// intIndexRegex will match all `[int]` for param expression
-var intIndexRegex = regexp.MustCompile(intIndex)
+	// isolatedParamVariablePattern is a regex to check if a string is an isolated
+	// reference to a param variable.
+	// (An isolated reference means a string that only contains a reference to a param
+	// variable but nothing else i.e. no extra characters, no reference to other variables.)
+	// Some examples:
+	// 	- Isolated reference: "$(params.myParam)", "$(params['myArray'][*])"
+	// 	- Non-isolated reference: "the param name is $(params.myParam)", "the first param is $(params.first) and the second param is $(params["second"])"
+	isolatedParamVariablePattern = fmt.Sprintf(fmt.Sprintf("^%s$", fullVariableReferenceRegex), "params", variableNotationPattern)
+	isolatedParamVariableRegex   = regexp.MustCompile(isolatedParamVariablePattern)
+
+	// operatorRegex is used to match `[int]` and `[*]`
+	operatorRegex = regexp.MustCompile(fmt.Sprintf(`\[%s\]`, operator))
+
+	// paramIndexingRegex will match all `$(params.paramName[int])` expressions
+	paramIndexingRegex = regexp.MustCompile(paramIndexing)
+
+	// intIndexRegex will match all `[int]` for param expression
+	intIndexRegex = regexp.MustCompile(intIndex)
+)
 
 // ValidateVariable makes sure all variables in the provided string are known
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if !vars.Has(v) {
+	if refs, _ := extractVariablesFromString(value, prefix); len(refs) > 0 {
+		for _, v := range refs {
+			if !vars.Has(v.name) {
 				return &apis.FieldError{
 					Message: fmt.Sprintf("non-existent variable in %q for %s %s", value, locationName, name),
 					Paths:   []string{path + "." + name},
@@ -66,7 +102,7 @@ func ValidateVariable(name, value, prefix, locationName, path string, vars sets.
 
 // ValidateVariableP makes sure all variables for a parameter in the provided string are known
 func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+	if refs, errString := extractVariablesFromString(value, prefix); len(refs) > 0 {
 		if errString != "" {
 			return &apis.FieldError{
 				Message: errString,
@@ -74,9 +110,8 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 			}
 
 		}
-		for _, v := range vs {
-			v = TrimArrayIndex(v)
-			if !vars.Has(v) {
+		for _, v := range refs {
+			if !vars.Has(v.name) {
 				return &apis.FieldError{
 					Message: fmt.Sprintf("non-existent variable in %q", value),
 					// Empty path is required to make the `ViaField`, … work
@@ -90,10 +125,9 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 
 // ValidateVariableProhibited verifies that variables matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibited(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if vars.Has(v) {
+	if refs, _ := extractVariablesFromString(value, prefix); len(refs) > 0 {
+		for _, v := range refs {
+			if vars.Has(v.name) {
 				return &apis.FieldError{
 					Message: fmt.Sprintf("variable type invalid in %q for %s %s", value, locationName, name),
 					Paths:   []string{path + "." + name},
@@ -106,17 +140,18 @@ func ValidateVariableProhibited(name, value, prefix, locationName, path string, 
 
 // ValidateVariableProhibitedP verifies that variables for a parameter matching the relevant string expressions do not reference any of the names present in vars.
 func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+	if refs, errString := extractVariablesFromString(value, prefix); len(refs) > 0 {
 		if errString != "" {
 			return &apis.FieldError{
 				Message: errString,
 				Paths:   []string{""},
 			}
-
 		}
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if vars.Has(v) {
+		for _, v := range refs {
+			if vars.Has(v.name) {
+				if _, isIntIndex := parseIndex(v.operator); isIntIndex {
+					continue
+				}
 				return &apis.FieldError{
 					Message: fmt.Sprintf("variable type invalid in %q", value),
 					// Empty path is required to make the `ViaField`, … work
@@ -125,6 +160,7 @@ func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.F
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -155,11 +191,14 @@ func ValidateEntireVariableProhibitedP(value, prefix string, vars sets.String) *
 
 // ValidateVariableIsolated verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolated(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
-	if vs, present, _ := extractVariablesFromString(value, prefix); present {
-		firstMatch, _ := extractExpressionFromString(value, prefix)
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if vars.Has(v) {
+	if refs, _ := extractVariablesFromString(value, prefix); len(refs) > 0 {
+		matches := extractExpressionsFromString(value, prefix)
+		firstMatch := ""
+		if len(matches) > 0 {
+			firstMatch = matches[0]
+		}
+		for _, v := range refs {
+			if vars.Has(v.name) {
 				if len(value) != len(firstMatch) {
 					return &apis.FieldError{
 						Message: fmt.Sprintf("variable is not properly isolated in %q for %s %s", value, locationName, name),
@@ -174,7 +213,7 @@ func ValidateVariableIsolated(name, value, prefix, locationName, path string, va
 
 // ValidateVariableIsolatedP verifies that variables matching the relevant string expressions are completely isolated if present.
 func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.FieldError {
-	if vs, present, errString := extractVariablesFromString(value, prefix); present {
+	if refs, errString := extractVariablesFromString(value, prefix); len(refs) > 0 {
 		if errString != "" {
 			return &apis.FieldError{
 				Message: errString,
@@ -182,10 +221,13 @@ func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.Fie
 			}
 
 		}
-		firstMatch, _ := extractExpressionFromString(value, prefix)
-		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
-			if vars.Has(v) {
+		matches := extractExpressionsFromString(value, prefix)
+		firstMatch := ""
+		if len(matches) > 0 {
+			firstMatch = matches[0]
+		}
+		for _, v := range refs {
+			if vars.Has(v.name) {
 				if len(value) != len(firstMatch) {
 					return &apis.FieldError{
 						Message: fmt.Sprintf("variable is not properly isolated in %q", value),
@@ -199,50 +241,52 @@ func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.Fie
 	return nil
 }
 
-// ValidateWholeArrayOrObjectRefInStringVariable validates if a single string field uses references to the whole array/object appropriately
-// valid example: "$(params.myObject[*])"
-// invalid example: "$(params.name-not-exist[*])"
-func ValidateWholeArrayOrObjectRefInStringVariable(name, value, prefix string, vars sets.String) (isIsolated bool, errs *apis.FieldError) {
-	nameSubstitution := `[_a-zA-Z0-9.-]+\[\*\]`
-
-	// a regex to check if the stringValue is an isolated reference to the whole array/object param without extra string literal.
-	isolatedVariablePattern := fmt.Sprintf(fmt.Sprintf("^%s$", braceMatchingRegex), prefix, nameSubstitution, nameSubstitution, nameSubstitution)
-	isolatedVariableRegex, err := regexp.Compile(isolatedVariablePattern)
-	if err != nil {
-		return false, &apis.FieldError{
-			Message: fmt.Sprint("Fail to parse the regex: ", err),
-			Paths:   []string{fmt.Sprintf("%s.%s", prefix, name)},
-		}
-	}
-
-	if isolatedVariableRegex.MatchString(value) {
+// ValidateIsolatedArrayOrObjectRefInStringVariable checks if a string is an isolated reference to an array/object param as whole
+// If that's the case, the variable name in that isolated reference will be validated against a set of available array/object param names.
+func ValidateIsolatedArrayOrObjectRefInStringVariable(name, value, prefix string, vars sets.String) (isIsolated bool, errs *apis.FieldError) {
+	if isIsolated := IsIsolatedArrayOrObjectParamRef(value); isIsolated {
 		return true, ValidateVariableP(value, prefix, vars).ViaFieldKey(prefix, name)
 	}
 
 	return false, nil
 }
 
-// Extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
-// "" and false if nothing is found.
-func extractExpressionFromString(s, prefix string) (string, bool) {
-	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
-	re := regexp.MustCompile(pattern)
-	match := re.FindStringSubmatch(s)
-	if match == nil {
-		return "", false
+// IsIsolatedArrayOrObjectParamRef checks if a string is an isolated reference to the whole array/object param with star operator
+// (An isolated reference to an array/object param as whole means a string that only contains a single reference
+// to an array/object param variable but nothing else)
+// Examples:
+// 	- isolated reference: "$(params['myArray'][*])", "$(params.myObject[*])"
+// 	- non-isolated reference: "this whole array param $(params["myArray"][*]) shouldn't appear in a string"
+func IsIsolatedArrayOrObjectParamRef(value string) bool {
+	if isolatedParamVariableRegex.MatchString(value) && strings.HasSuffix(value, "[*])") {
+		return true
 	}
-	return match[0], true
+
+	return false
 }
 
-func extractVariablesFromString(s, prefix string) ([]string, bool, string) {
-	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
+// Extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
+// "" and false if nothing is found.
+func extractExpressionsFromString(s, prefix string) []string {
+	pattern := fmt.Sprintf(fullVariableReferenceRegex, prefix, variableNotationPattern)
+	re := regexp.MustCompile(pattern)
+	return re.FindAllString(s, -1)
+}
+
+// extractVariablesFromString extracts both variable name and corresponding operator from a string
+// example:
+// 	Input: "first param $(params.myString), second param $(params["myArray"][2]), third param $(params.myObject[*])"
+// 	Output:
+// 		[("myString", ""), ("myArray", "2"), ("myObject", "*")], ""
+func extractVariablesFromString(s, prefix string) ([]variableReference, string) {
+	pattern := fmt.Sprintf(fullVariableReferenceRegex, prefix, variableNotationPattern)
 	re := regexp.MustCompile(pattern)
 	matches := re.FindAllStringSubmatch(s, -1)
 	errString := ""
 	if len(matches) == 0 {
-		return []string{}, false, ""
+		return []variableReference{}, ""
 	}
-	vars := make([]string, len(matches))
+	result := make([]variableReference, len(matches))
 	for i, match := range matches {
 		groups := matchGroups(match, re)
 		for j, v := range []string{"var1", "var2", "var3"} {
@@ -256,22 +300,28 @@ func extractVariablesFromString(s, prefix string) ([]string, bool, string) {
 			if j == 0 && strings.Contains(val, ".") {
 				if len(strings.Split(val, ".")) > 2 {
 					errString = fmt.Sprintf(`Invalid referencing of parameters in "%s"! Only two dot-separated components after the prefix "%s" are allowed.`, s, prefix)
-					return vars, true, errString
+					return result, errString
 				}
-				vars[i] = strings.SplitN(val, ".", 2)[0]
+				result[i] = variableReference{
+					name:     strings.SplitN(val, ".", 2)[0],
+					operator: groups["opt"],
+				}
 				break
 			}
 			if val != "" {
-				vars[i] = val
+				result[i] = variableReference{
+					name:     val,
+					operator: groups["opt"],
+				}
 				break
 			}
 		}
 	}
-	return vars, true, errString
+	return result, errString
 }
 
 func extractEntireVariablesFromString(s, prefix string) ([]string, error) {
-	pattern := fmt.Sprintf(braceMatchingRegex, prefix, parameterSubstitution, parameterSubstitution, parameterSubstitution)
+	pattern := fmt.Sprintf(fullVariableReferenceRegex, prefix, variableNotationPattern)
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("Fail to parse regex pattern: %v", err)
@@ -342,9 +392,9 @@ func ApplyArrayReplacements(in string, stringReplacements map[string]string, arr
 	return []string{ApplyReplacements(in, stringReplacements)}
 }
 
-// TrimArrayIndex replaces all `[i]` and `[*]` to "".
-func TrimArrayIndex(s string) string {
-	return arrayIndexingRegex.ReplaceAllString(s, "")
+// TrimTailOperator replaces all `[i]` and `[*]` to "".
+func TrimTailOperator(s string) string {
+	return operatorRegex.ReplaceAllString(s, "")
 }
 
 // ExtractParamsExpressions will find all  `$(params.paramName[int])` expressions
@@ -365,4 +415,14 @@ func ExtractIndex(s string) (int, error) {
 // StripStarVarSubExpression strips "$(target[*])"" to get "target"
 func StripStarVarSubExpression(s string) string {
 	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(s, "$("), ")"), "[*]")
+}
+
+// parseIndex parses integer from a string.
+// If the string is not numeric, the second returned value will be false.
+func parseIndex(s string) (int, bool) {
+	val, err := strconv.Atoi(s)
+	if err != nil {
+		return val, false
+	}
+	return val, true
 }

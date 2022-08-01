@@ -1517,7 +1517,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "array param - using the whole variable as a param's value that is intended to be array type",
+		name: "array param - using the whole variable (dot reference) as the value of an array param",
 		params: []ParamSpec{{
 			Name: "myArray",
 			Type: ParamTypeArray,
@@ -1527,6 +1527,45 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
 				Name: "a-param-intended-to-be-array", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myArray[*])"},
+			}},
+		}},
+	}, {
+		name: "array param - using the whole variable (bracket with single quote) as the value of an array param",
+		params: []ParamSpec{{
+			Name: "myArray",
+			Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param-intended-to-be-array", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params['myArray'][*])"},
+			}},
+		}},
+	}, {
+		name: "array param - using the whole variable (bracket with double quote) as the value of an array param",
+		params: []ParamSpec{{
+			Name: "myArray",
+			Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param-intended-to-be-array", Value: ArrayOrString{Type: ParamTypeString, StringVal: `$(params["myArray"][*])`},
+			}},
+		}},
+	}, {
+		name: "array index param - using the value of an array index as a string param",
+		params: []ParamSpec{{
+			Name: "myArray",
+			Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param-intended-to-be-from-an-array-index", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myArray[0])"},
 			}},
 		}},
 	}, {
@@ -1621,7 +1660,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "object param - using the whole variable as a param's value that is intended to be object type",
+		name: "object param - using the whole variable (dot notation) as the value of an object param",
 		params: []ParamSpec{{
 			Name: "myObject",
 			Type: ParamTypeObject,
@@ -1635,6 +1674,40 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
 				Name: "a-param-intended-to-be-object", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject[*])"},
+			}},
+		}},
+	}, {
+		name: "object param - using the whole variable (bracket notation with single quote) as the value of an object param",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param-intended-to-be-object", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params['myObject'][*])"},
+			}},
+		}},
+	}, {
+		name: "object param - using the whole variable (bracket notation with double quote) as the value of an object param",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param-intended-to-be-object", Value: ArrayOrString{Type: ParamTypeString, StringVal: `$(params["myObject"][*])`},
 			}},
 		}},
 	}, {

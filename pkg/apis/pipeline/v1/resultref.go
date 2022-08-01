@@ -42,17 +42,23 @@ const (
 	// ResultResultPart Constant used to define the "results" part of a pipeline result reference
 	ResultResultPart = "results"
 	// TODO(#2462) use one regex across all substitutions
-	// variableSubstitutionFormat matches format like $result.resultname, $result.resultname[int] and $result.resultname[*]
-	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)`
+	// resultVariableSubstitutionFormat matches format like $result.resultname, $result.resultname[int] and $result.resultname[*]
+	resultVariableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)`
+	// isolatedResultVariableSubstitutionFormat matches strings that only contain a single reference to result or param variables, but nothing else
+	// i.e. `$(result.resultname)` is a match, but `foo $(result.resultname)` is not.
+	isolatedResultVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
 	// arrayIndexing will match all `[int]` and `[*]` for parseExpression
 	arrayIndexing = `\[([0-9])*\*?\]`
 )
 
-// VariableSubstitutionRegex is a regex to find all result matching substitutions
-var VariableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
+// ResultVariableSubstitutionRegex is a regex to find all result matching substitutions
+var ResultVariableSubstitutionRegex = regexp.MustCompile(resultVariableSubstitutionFormat)
 
 // arrayIndexingRegex is used to match `[int]` and `[*]`
 var arrayIndexingRegex = regexp.MustCompile(arrayIndexing)
+
+// isolatedResultVariableSubstitutionRegex is used to check if a reference is an isolated result reference
+var isolatedResultVariableSubstitutionRegex = regexp.MustCompile(isolatedResultVariableSubstitutionFormat)
 
 // NewResultRefs extracts all ResultReferences from a param or a pipeline result.
 // If the ResultReference can be extracted, they are returned. Expressions which are not
@@ -131,7 +137,7 @@ func GetVarSubstitutionExpressionsForPipelineResult(result PipelineResult) ([]st
 }
 
 func validateString(value string) []string {
-	expressions := VariableSubstitutionRegex.FindAllString(value, -1)
+	expressions := ResultVariableSubstitutionRegex.FindAllString(value, -1)
 	if expressions == nil {
 		return nil
 	}

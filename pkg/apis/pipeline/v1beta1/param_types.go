@@ -221,7 +221,7 @@ func (arrayOrString *ArrayOrString) applyOrCorrect(stringReplacements map[string
 
 	// if the stringVal is a string literal or a string that mixed with var references
 	// just do the normal string replacement
-	if !exactVariableSubstitutionRegex.MatchString(stringVal) {
+	if !isolatedResultVariableSubstitutionRegex.MatchString(stringVal) && !substitution.IsIsolatedArrayOrObjectParamRef(stringVal) {
 		arrayOrString.StringVal = substitution.ApplyReplacements(arrayOrString.StringVal, stringReplacements)
 		return
 	}
@@ -338,7 +338,7 @@ func validateParamStringValue(param Param, prefix string, paramNames sets.String
 	stringValue := param.Value.StringVal
 
 	// if the provided param value is an isolated reference to the whole array/object, we just check if the param name exists.
-	isIsolated, errs := substitution.ValidateWholeArrayOrObjectRefInStringVariable(param.Name, stringValue, prefix, paramNames)
+	isIsolated, errs := substitution.ValidateIsolatedArrayOrObjectRefInStringVariable(param.Name, stringValue, prefix, paramNames)
 	if isIsolated {
 		return errs
 	}

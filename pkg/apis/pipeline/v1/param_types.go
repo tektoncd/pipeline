@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -28,12 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
-
-// exactVariableSubstitutionFormat matches strings that only contain a single reference to result or param variables, but nothing else
-// i.e. `$(result.resultname)` is a match, but `foo $(result.resultname)` is not.
-const exactVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
-
-var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 
 // ParamsPrefix is the prefix used in $(...) expressions referring to parameters
 const ParamsPrefix = "params"
@@ -228,7 +221,7 @@ func (arrayOrString *ArrayOrString) applyOrCorrect(stringReplacements map[string
 
 	// if the stringVal is a string literal or a string that mixed with var references
 	// just do the normal string replacement
-	if !exactVariableSubstitutionRegex.MatchString(stringVal) {
+	if !isolatedResultVariableSubstitutionRegex.MatchString(stringVal) && !substitution.IsIsolatedArrayOrObjectParamRef(stringVal) {
 		arrayOrString.StringVal = substitution.ApplyReplacements(arrayOrString.StringVal, stringReplacements)
 		return
 	}
@@ -350,7 +343,7 @@ func validateParamStringValue(param Param, prefix string, paramNames sets.String
 	stringValue := param.Value.StringVal
 
 	// if the provided param value is an isolated reference to the whole array/object, we just check if the param name exists.
-	isIsolated, errs := substitution.ValidateWholeArrayOrObjectRefInStringVariable(param.Name, stringValue, prefix, paramNames)
+	isIsolated, errs := substitution.ValidateIsolatedArrayOrObjectRefInStringVariable(param.Name, stringValue, prefix, paramNames)
 	if isIsolated {
 		return errs
 	}
