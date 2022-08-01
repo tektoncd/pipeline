@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/resolution/pkg/common"
 	"knative.dev/pkg/apis"
 )
@@ -31,8 +32,8 @@ func (rr *ResolutionRequest) Validate(ctx context.Context) (errs *apis.FieldErro
 }
 
 // Validate checks the the spec field of a ResolutionRequest is valid.
-func (rs *ResolutionRequestSpec) Validate(ctx context.Context) *apis.FieldError {
-	return nil
+func (rs *ResolutionRequestSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	return errs.Also(pipelinev1beta1.ValidateParameters(ctx, rs.Params)).ViaField("params")
 }
 
 func validateTypeLabel(rr *ResolutionRequest) *apis.FieldError {

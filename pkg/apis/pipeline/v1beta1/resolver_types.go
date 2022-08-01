@@ -34,15 +34,5 @@ type ResolverRef struct {
 	// the chosen resolver.
 	// +optional
 	// +listType=atomic
-	Params []ResolverParam `json:"params,omitempty"`
-}
-
-// ResolverParam is a single parameter passed to a resolver.
-type ResolverParam struct {
-	// Name is the name of the parameter that will be passed to the
-	// resolver.
-	Name string `json:"name"`
-	// Value is the string value of the parameter that will be
-	// passed to the resolver.
-	Value string `json:"value"`
+	Params []Param `json:"params,omitempty"`
 }

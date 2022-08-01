@@ -9,6 +9,9 @@ weight: 1000
 <p>Packages:</p>
 <ul>
 <li>
+<a href="#resolution.tekton.dev%2fv1alpha1">resolution.tekton.dev/v1alpha1</a>
+</li>
+<li>
 <a href="#tekton.dev%2fv1">tekton.dev/v1</a>
 </li>
 <li>
@@ -18,6 +21,210 @@ weight: 1000
 <a href="#tekton.dev%2fv1beta1">tekton.dev/v1beta1</a>
 </li>
 </ul>
+<h2 id="resolution.tekton.dev/v1alpha1">resolution.tekton.dev/v1alpha1</h2>
+<div>
+</div>
+Resource Types:
+<ul></ul>
+<h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequest">ResolutionRequest
+</h3>
+<div>
+<p>ResolutionRequest is an object for requesting the content of
+a Tekton resource like a pipeline.yaml.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestSpec">
+ResolutionRequestSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec holds the information for the request part of the resource request.</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params are the runtime attributes passed to
+the resolver to help it figure out how to resolve the
+resource being requested. For example: repo URL, commit SHA,
+path to file, the kind of authentication to leverage, etc.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatus">
+ResolutionRequestStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status communicates the state of the request and, ultimately,
+the content of the resolved resource.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequestSpec">ResolutionRequestSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1alpha1.ResolutionRequest">ResolutionRequest</a>)
+</p>
+<div>
+<p>ResolutionRequestSpec are all the fields in the spec of the
+ResolutionRequest CRD.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Params are the runtime attributes passed to
+the resolver to help it figure out how to resolve the
+resource being requested. For example: repo URL, commit SHA,
+path to file, the kind of authentication to leverage, etc.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequestStatus">ResolutionRequestStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1alpha1.ResolutionRequest">ResolutionRequest</a>)
+</p>
+<div>
+<p>ResolutionRequestStatus are all the fields in a ResolutionRequest&rsquo;s
+status subresource.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Status</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Status</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResolutionRequestStatusFields</code><br/>
+<em>
+<a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">
+ResolutionRequestStatusFields
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResolutionRequestStatusFields</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">ResolutionRequestStatusFields
+</h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatus">ResolutionRequestStatus</a>)
+</p>
+<div>
+<p>ResolutionRequestStatusFields are the ResolutionRequest-specific fields
+for the status subresource.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>data</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Data is a string representation of the resolved content
+of the requested resource in-lined into the ResolutionRequest
+object.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<hr/>
 <h2 id="tekton.dev/v1">tekton.dev/v1</h2>
 <div>
 <p>Package v1 contains API Schema definitions for the pipeline v1 API group</p>
@@ -272,6 +479,9 @@ map[string]string
 </table>
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>)
+</p>
 <div>
 <p>Param declares an ArrayOrString to use for the parameter called name.</p>
 </div>
@@ -513,48 +723,6 @@ ParamType
 <p>ResolverName is the name of a resolver from which a resource can be
 requested.</p>
 </div>
-<h3 id="tekton.dev/v1.ResolverParam">ResolverParam
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>)
-</p>
-<div>
-<p>ResolverParam is a single parameter passed to a resolver.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name of the parameter that will be passed to the
-resolver.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>value</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Value is the string value of the parameter that will be
-passed to the resolver.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1.ResolverRef">ResolverRef
 </h3>
 <div>
@@ -587,16 +755,16 @@ resolution of the referenced Tekton resource, such as &ldquo;git&rdquo;.</p>
 </tr>
 <tr>
 <td>
-<code>resource</code><br/>
+<code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1.ResolverParam">
-[]ResolverParam
+<a href="#tekton.dev/v1.Param">
+[]Param
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Resource contains the parameters used to identify the
+<p>Params contains the parameters used to identify the
 referenced Tekton resource. Example entries might include
 &ldquo;repo&rdquo; or &ldquo;path&rdquo; but the set of params ultimately depends on
 the chosen resolver.</p>
@@ -4570,7 +4738,7 @@ TaskSpec
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
 </p>
 <div>
 <p>Param declares an ArrayOrString to use for the parameter called name.</p>
@@ -6389,48 +6557,6 @@ ParamType
 <p>ResolverName is the name of a resolver from which a resource can be
 requested.</p>
 </div>
-<h3 id="tekton.dev/v1beta1.ResolverParam">ResolverParam
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>)
-</p>
-<div>
-<p>ResolverParam is a single parameter passed to a resolver.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name of the parameter that will be passed to the
-resolver.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>value</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Value is the string value of the parameter that will be
-passed to the resolver.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.ResolverRef">ResolverRef
 </h3>
 <p>
@@ -6466,16 +6592,16 @@ resolution of the referenced Tekton resource, such as &ldquo;git&rdquo;.</p>
 </tr>
 <tr>
 <td>
-<code>resource</code><br/>
+<code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ResolverParam">
-[]ResolverParam
+<a href="#tekton.dev/v1beta1.Param">
+[]Param
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Resource contains the parameters used to identify the
+<p>Params contains the parameters used to identify the
 referenced Tekton resource. Example entries might include
 &ldquo;repo&rdquo; or &ldquo;path&rdquo; but the set of params ultimately depends on
 the chosen resolver.</p>

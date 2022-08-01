@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -56,12 +57,13 @@ type ResolutionRequestList struct {
 // ResolutionRequestSpec are all the fields in the spec of the
 // ResolutionRequest CRD.
 type ResolutionRequestSpec struct {
-	// Parameters are the runtime attributes passed to
+	// Params are the runtime attributes passed to
 	// the resolver to help it figure out how to resolve the
 	// resource being requested. For example: repo URL, commit SHA,
 	// path to file, the kind of authentication to leverage, etc.
 	// +optional
-	Parameters []ResolutionParam `json:"params,omitempty"`
+	// +listType=atomic
+	Params []pipelinev1beta1.Param `json:"params,omitempty"`
 }
 
 // ResolutionRequestStatus are all the fields in a ResolutionRequest's
@@ -83,14 +85,4 @@ type ResolutionRequestStatusFields struct {
 // GetStatus implements KRShaped.
 func (rr *ResolutionRequest) GetStatus() *duckv1.Status {
 	return &rr.Status.Status
-}
-
-// ResolutionParam is a single parameter passed to a resolver.
-type ResolutionParam struct {
-	// Name is the name of the parameter that will be passed to the
-	// resolver.
-	Name string `json:"name"`
-	// Value is the string value of the parameter that will be
-	// passed to the resolver.
-	Value string `json:"value"`
 }

@@ -106,7 +106,8 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 		return func(ctx context.Context, name string) (v1beta1.TaskObject, error) {
 			params := map[string]string{}
 			for _, p := range tr.Params {
-				params[p.Name] = p.Value
+				// TODO(abayer): This will be changed to pass p.Value directly once we switch the reconciler over to the new resolution code
+				params[p.Name] = p.Value.StringVal
 			}
 			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, params)
 			return resolveTask(ctx, resolver, name, kind)

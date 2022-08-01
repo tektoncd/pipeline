@@ -250,26 +250,6 @@
         }
       }
     },
-    "v1.ResolverParam": {
-      "description": "ResolverParam is a single parameter passed to a resolver.",
-      "type": "object",
-      "required": [
-        "name",
-        "value"
-      ],
-      "properties": {
-        "name": {
-          "description": "Name is the name of the parameter that will be passed to the resolver.",
-          "type": "string",
-          "default": ""
-        },
-        "value": {
-          "description": "Value is the string value of the parameter that will be passed to the resolver.",
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
     "v1.ResolverRef": {
       "description": "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
       "type": "object",
@@ -279,7 +259,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.ResolverParam"
+            "$ref": "#/definitions/v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
         },

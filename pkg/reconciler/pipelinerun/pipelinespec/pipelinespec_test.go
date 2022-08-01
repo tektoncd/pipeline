@@ -126,9 +126,12 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 			PipelineRef: &v1beta1.PipelineRef{
 				ResolverRef: v1beta1.ResolverRef{
 					Resolver: "foo",
-					Params: []v1beta1.ResolverParam{{
-						Name:  "bar",
-						Value: "baz",
+					Params: []v1beta1.Param{{
+						Name: "bar",
+						Value: v1beta1.ArrayOrString{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "baz",
+						},
 					}},
 				},
 			},

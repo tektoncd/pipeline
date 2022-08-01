@@ -39,7 +39,7 @@ do
   input_dirs=./pkg/apis/pipeline/${APIVERSION},./pkg/apis/pipeline/pod,knative.dev/pkg/apis,knative.dev/pkg/apis/duck/v1beta1
   if [ ${APIVERSION} = "v1beta1" ]
   then
-    input_dirs=${input_dirs},./pkg/apis/resource/v1alpha1
+    input_dirs=${input_dirs},./pkg/apis/resource/v1alpha1,./pkg/apis/resolution/v1alpha1
   fi
 
   echo "Generating OpenAPI specification for ${APIVERSION} ..."
