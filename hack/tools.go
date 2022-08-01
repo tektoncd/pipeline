@@ -16,4 +16,6 @@ import (
 	_ "k8s.io/kube-openapi/cmd/openapi-gen"
 
 	_ "knative.dev/pkg/codegen/cmd/injection-gen"
+
+	_ "github.com/ahmetb/gen-crd-api-reference-docs"
 )

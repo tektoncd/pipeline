@@ -86,3 +86,6 @@ ${REPO_ROOT_DIR}/hack/update-deps.sh
 
 # Make sure the OpenAPI specification and Swagger file are up-to-date
 ${REPO_ROOT_DIR}/hack/update-openapigen.sh
+
+# Make sure the generated API reference docs are up-to-date
+${REPO_ROOT_DIR}/hack/update-reference-docs.sh
