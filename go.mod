@@ -120,7 +120,6 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.8.0 // indirect
-	github.com/tektoncd/resolution v0.0.0-20220331203013-e4203c70c5eb
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/automaxprocs v1.4.0 // indirect
@@ -147,7 +146,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.23.4 // indirect
 	k8s.io/gengo v0.0.0-20220307231824-4627b89bbf1b // indirect
 	k8s.io/klog/v2 v2.60.1-0.20220317184644-43cc75f9ae89 // indirect
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
+	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 )

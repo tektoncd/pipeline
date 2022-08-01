@@ -44,10 +44,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
+	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
 	"github.com/tektoncd/pipeline/pkg/workspace"
-	resolution "github.com/tektoncd/resolution/pkg/resource"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"

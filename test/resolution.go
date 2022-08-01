@@ -3,7 +3,7 @@ package test
 import (
 	"context"
 
-	resolution "github.com/tektoncd/resolution/pkg/resource"
+	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
 )
 
 var _ resolution.Requester = &Requester{}

@@ -25,6 +25,7 @@ import (
 	// Link in the fakes so they get injected into injection.Fake
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
@@ -36,15 +37,15 @@ import (
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
 	faketaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/task/fake"
 	faketaskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun/fake"
+	fakeresolutionclientset "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/fake"
+	resolutioninformersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/informers/externalversions/resolution/v1alpha1"
+	fakeresolutionrequestclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client/fake"
+	fakeresolutionrequestinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1alpha1/resolutionrequest/fake"
 	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
 	resourceinformersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/informers/externalversions/resource/v1alpha1"
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
-	fakeresolutionclientset "github.com/tektoncd/resolution/pkg/client/clientset/versioned/fake"
-	resolutioninformersv1alpha1 "github.com/tektoncd/resolution/pkg/client/informers/externalversions/resolution/v1alpha1"
-	fakeresolutionrequestclient "github.com/tektoncd/resolution/pkg/client/injection/client/fake"
-	fakeresolutionrequestinformer "github.com/tektoncd/resolution/pkg/client/injection/informers/resolution/v1alpha1/resolutionrequest/fake"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -67,18 +68,19 @@ import (
 // Data represents the desired state of the system (i.e. existing resources) to seed controllers
 // with.
 type Data struct {
-	PipelineRuns      []*v1beta1.PipelineRun
-	Pipelines         []*v1beta1.Pipeline
-	TaskRuns          []*v1beta1.TaskRun
-	Tasks             []*v1beta1.Task
-	ClusterTasks      []*v1beta1.ClusterTask
-	PipelineResources []*resourcev1alpha1.PipelineResource
-	Runs              []*v1alpha1.Run
-	Pods              []*corev1.Pod
-	Namespaces        []*corev1.Namespace
-	ConfigMaps        []*corev1.ConfigMap
-	ServiceAccounts   []*corev1.ServiceAccount
-	LimitRange        []*corev1.LimitRange
+	PipelineRuns       []*v1beta1.PipelineRun
+	Pipelines          []*v1beta1.Pipeline
+	TaskRuns           []*v1beta1.TaskRun
+	Tasks              []*v1beta1.Task
+	ClusterTasks       []*v1beta1.ClusterTask
+	PipelineResources  []*resourcev1alpha1.PipelineResource
+	Runs               []*v1alpha1.Run
+	Pods               []*corev1.Pod
+	Namespaces         []*corev1.Namespace
+	ConfigMaps         []*corev1.ConfigMap
+	ServiceAccounts    []*corev1.ServiceAccount
+	LimitRange         []*corev1.LimitRange
+	ResolutionRequests []*resolutionv1alpha1.ResolutionRequest
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -269,6 +271,12 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		}
 	}
 	c.ResolutionRequests.PrependReactor("*", "resolutionrequests", AddToInformer(t, i.ResolutionRequest.Informer().GetIndexer()))
+	for _, rr := range d.ResolutionRequests {
+		rr := rr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests(rr.Namespace).Create(ctx, rr, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	c.Pipeline.ClearActions()
 	c.Kube.ClearActions()
 	c.ResolutionRequests.ClearActions()

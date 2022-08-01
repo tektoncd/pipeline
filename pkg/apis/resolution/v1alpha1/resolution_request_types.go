@@ -66,6 +66,16 @@ type ResolutionRequestSpec struct {
 	Params []pipelinev1beta1.Param `json:"params,omitempty"`
 }
 
+// ParamsMap returns a map representation of the resolution parameters
+func (rrs *ResolutionRequestSpec) ParamsMap() map[string]pipelinev1beta1.ArrayOrString {
+	params := make(map[string]pipelinev1beta1.ArrayOrString)
+	for _, rp := range rrs.Params {
+		params[rp.Name] = rp.Value
+	}
+
+	return params
+}
+
 // ResolutionRequestStatus are all the fields in a ResolutionRequest's
 // status subresource.
 type ResolutionRequestStatus struct {

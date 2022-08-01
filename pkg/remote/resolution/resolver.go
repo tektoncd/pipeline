@@ -18,10 +18,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	resolutioncommon "github.com/tektoncd/resolution/pkg/common"
-	remoteresource "github.com/tektoncd/resolution/pkg/resource"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/kmeta"
 )
@@ -34,7 +35,7 @@ type Resolver struct {
 	requester       remoteresource.Requester
 	owner           kmeta.OwnerRefable
 	resolverName    string
-	params          map[string]string
+	params          map[string]v1beta1.ArrayOrString
 	targetName      string
 	targetNamespace string
 }
@@ -43,7 +44,7 @@ var _ remote.Resolver = &Resolver{}
 
 // NewResolver returns an implementation of remote.Resolver capable
 // of performing asynchronous remote resolution.
-func NewResolver(requester remoteresource.Requester, owner kmeta.OwnerRefable, resolverName string, targetName string, targetNamespace string, params map[string]string) remote.Resolver {
+func NewResolver(requester remoteresource.Requester, owner kmeta.OwnerRefable, resolverName string, targetName string, targetNamespace string, params map[string]v1beta1.ArrayOrString) remote.Resolver {
 	return &Resolver{
 		requester:       requester,
 		owner:           owner,
@@ -87,7 +88,7 @@ func (resolver *Resolver) List(_ context.Context) ([]remote.ResolvedObject, erro
 	return nil, nil
 }
 
-func buildRequest(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params map[string]string) (*resolutionRequest, error) {
+func buildRequest(resolverName string, owner kmeta.OwnerRefable, name string, namespace string, params map[string]v1beta1.ArrayOrString) (*resolutionRequest, error) {
 	if name == "" {
 		name = owner.GetObjectMeta().GetName()
 		namespace = owner.GetObjectMeta().GetNamespace()

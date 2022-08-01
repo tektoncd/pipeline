@@ -41,12 +41,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
-	resolutioncommon "github.com/tektoncd/resolution/pkg/common"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -7136,8 +7136,9 @@ spec:
 	if resolutionRequestType != resolverName {
 		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
 	}
-	if resreq.Spec.Parameters["foo"] != "bar" {
-		t.Fatalf("expected resource request parameter 'bar', but got '%s'", resreq.Spec.Parameters["foo"])
+	reqParams := resreq.Spec.ParamsMap()
+	if reqParams["foo"].StringVal != "bar" {
+		t.Fatalf("expected resource request parameter 'bar', but got '%s'", reqParams["foo"].StringVal)
 	}
 
 	taskBytes := []byte(`

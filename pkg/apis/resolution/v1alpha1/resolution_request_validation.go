@@ -20,7 +20,7 @@ import (
 	"context"
 
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/resolution/pkg/common"
+	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"knative.dev/pkg/apis"
 )
 
