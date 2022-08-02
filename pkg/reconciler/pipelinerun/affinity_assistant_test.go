@@ -20,6 +20,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/workspace"
+	"github.com/tektoncd/pipeline/test/diff"
+	"github.com/tektoncd/pipeline/test/parse"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -365,5 +370,151 @@ func TestDisableAffinityAssistant(t *testing.T) {
 				t.Errorf("Expected %t Received %t", tc.expected, result)
 			}
 		})
+	}
+}
+
+func TestGetAssistantAffinityMergedWithPodTemplateAffinity(t *testing.T) {
+
+	assistantPodAffinityTerm := corev1.WeightedPodAffinityTerm{
+		Weight: 100,
+		PodAffinityTerm: corev1.PodAffinityTerm{
+			LabelSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					workspace.LabelComponent: workspace.ComponentNameAffinityAssistant,
+				},
+			},
+			TopologyKey: "kubernetes.io/hostname",
+		},
+	}
+
+	prWithEmptyAffinityPodTemplate := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr-with-no-podTemplate
+`)
+	affinityWithAssistantAffinity := &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				assistantPodAffinityTerm,
+			},
+		},
+	}
+
+	prWithPodTemplatePodAffinity := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr-with-podTemplate-podAffinity
+spec:
+  podTemplate:
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                test/label: test
+            topologyKey: kubernetes.io/hostname
+          weight: 50
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              test/label: test
+          topologyKey: kubernetes.io/hostname
+`)
+	affinityWithPodTemplatePodAffinity := &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					Weight: 50,
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"test/label": "test",
+							},
+						},
+						TopologyKey: "kubernetes.io/hostname",
+					},
+				},
+				assistantPodAffinityTerm,
+			},
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"test/label": "test",
+						},
+					},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+	}
+
+	prWithPodTemplateNodeAffinity := parse.MustParsePipelineRun(t, `
+metadata:
+  name: pr-with-podTemplate-nodeAffinity
+spec:
+  podTemplate:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: NotIn
+              values:
+              - 192.168.xx.xx
+`)
+	affinityWithPodTemplateNodeAffinity := &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				assistantPodAffinityTerm,
+			},
+		},
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: []corev1.NodeSelectorRequirement{
+							{
+								Key:      "kubernetes.io/hostname",
+								Operator: corev1.NodeSelectorOpNotIn,
+								Values: []string{
+									"192.168.xx.xx",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range []struct {
+		description string
+		pr          *v1beta1.PipelineRun
+		expect      *corev1.Affinity
+	}{
+		{
+			description: "podTemplate affinity is empty",
+			pr:          prWithEmptyAffinityPodTemplate,
+			expect:      affinityWithAssistantAffinity,
+		},
+		{
+			description: "podTemplate with affinity which contains podAntiAffinity",
+			pr:          prWithPodTemplatePodAffinity,
+			expect:      affinityWithPodTemplatePodAffinity,
+		},
+		{
+			description: "podTemplate with affinity which contains nodeAntiAffinity",
+			pr:          prWithPodTemplateNodeAffinity,
+			expect:      affinityWithPodTemplateNodeAffinity,
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			resultAffinity := getAssistantAffinityMergedWithPodTemplateAffinity(tc.pr)
+			if d := cmp.Diff(tc.expect, resultAffinity); d != "" {
+				t.Errorf("affinity diff: %s", diff.PrintWantGot(d))
+			}
+		})
+
 	}
 }
