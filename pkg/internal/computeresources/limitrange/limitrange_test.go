@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/internal/computeresources/compare"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/limitrange"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
@@ -276,33 +277,11 @@ func TestGetVirtualLimitRange(t *testing.T) {
 			if err != nil {
 				t.Errorf("Unexpected error %s", err)
 			}
-			if d := cmp.Diff(tc.want, got, resourceQuantityCmp, equateEmpty()); d != "" {
+			if d := cmp.Diff(tc.want, got, compare.ResourceQuantityCmp, compare.EquateEmptyResourceList()); d != "" {
 				t.Errorf("Unexpected output for virtual limit range: %s", d)
 			}
 		})
 	}
-}
-
-var resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
-	return x.Cmp(y) == 0
-})
-
-func equateAlways(_, _ interface{}) bool { return true }
-
-func equateEmpty() cmp.Option {
-	return cmp.FilterValues(func(x, y corev1.ResourceList) bool { return isEmpty(x) && isEmpty(y) }, cmp.Comparer(equateAlways))
-}
-
-func isEmpty(x corev1.ResourceList) bool {
-	if len(x) == 0 {
-		return true
-	}
-	for _, q := range x {
-		if !q.IsZero() {
-			return false
-		}
-	}
-	return true
 }
 
 func createResourceList(multiple int) corev1.ResourceList {
