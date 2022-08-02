@@ -19,6 +19,7 @@ package computeresources
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/internal/computeresources/compare"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/limitrange"
 	"github.com/tektoncd/pipeline/pkg/pod"
 	corev1 "k8s.io/api/core/v1"
@@ -114,7 +115,7 @@ func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange)
 }
 
 func setRequestsOrLimits(name corev1.ResourceName, dst, src corev1.ResourceList) {
-	if limitrange.IsZero(dst[name]) && !limitrange.IsZero(src[name]) {
+	if compare.IsZero(dst[name]) && !compare.IsZero(src[name]) {
 		dst[name] = src[name]
 	}
 }
@@ -140,12 +141,12 @@ func getDefaultStepContainerRequest(limitRange *corev1.LimitRange, nbContainers 
 
 				var result resource.Quantity
 				if name == corev1.ResourceMemory || name == corev1.ResourceEphemeralStorage {
-					result = takeTheMax(request, *resource.NewQuantity(defaultRequest.Value()/int64(nbContainers), defaultRequest.Format), min)
+					result = compare.MaxRequest(request, *resource.NewQuantity(defaultRequest.Value()/int64(nbContainers), defaultRequest.Format), min)
 				} else {
-					result = takeTheMax(request, *resource.NewMilliQuantity(defaultRequest.MilliValue()/int64(nbContainers), defaultRequest.Format), min)
+					result = compare.MaxRequest(request, *resource.NewMilliQuantity(defaultRequest.MilliValue()/int64(nbContainers), defaultRequest.Format), min)
 				}
 				// only set non-zero request values
-				if !limitrange.IsZero(result) {
+				if !compare.IsZero(result) {
 					r[name] = result
 				}
 			}
@@ -173,17 +174,6 @@ func getDefaultContainerRequest(limitRange *corev1.LimitRange) corev1.ResourceLi
 		}
 	}
 	return r
-}
-
-func takeTheMax(requestQ, defaultQ, maxQ resource.Quantity) resource.Quantity {
-	var q resource.Quantity = requestQ
-	if defaultQ.Cmp(q) > 0 {
-		q = defaultQ
-	}
-	if maxQ.Cmp(q) > 0 {
-		q = maxQ
-	}
-	return q
 }
 
 func getDefaultLimits(limitRange *corev1.LimitRange) corev1.ResourceList {

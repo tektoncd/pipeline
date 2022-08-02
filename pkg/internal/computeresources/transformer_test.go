@@ -19,15 +19,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/internal/computeresources/compare"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-var resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
-	return x.Cmp(y) == 0
-})
 
 func TestTransformerOneContainer(t *testing.T) {
 	for _, tc := range []struct {
@@ -989,7 +986,7 @@ func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
 				}
 			}
 
-			if d := cmp.Diff(want.InitContainers[i].Resources, c.Resources, resourceQuantityCmp); d != "" {
+			if d := cmp.Diff(want.InitContainers[i].Resources, c.Resources, compare.ResourceQuantityCmp); d != "" {
 				t.Errorf("Diff initcontainers[%d] %s", i, diff.PrintWantGot(d))
 			}
 		}
@@ -1008,7 +1005,7 @@ func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
 				}
 			}
 
-			if d := cmp.Diff(want.Containers[i].Resources, c.Resources, resourceQuantityCmp); d != "" {
+			if d := cmp.Diff(want.Containers[i].Resources, c.Resources, compare.ResourceQuantityCmp); d != "" {
 				t.Errorf("Diff containers[%d] %s", i, diff.PrintWantGot(d))
 			}
 		}

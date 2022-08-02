@@ -17,6 +17,7 @@ limitations under the License.
 package limitrange
 
 import (
+	"github.com/tektoncd/pipeline/pkg/internal/computeresources/compare"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/labels"
@@ -65,17 +66,18 @@ func GetVirtualLimitRange(namespace string, lister corev1listers.LimitRangeListe
 					}
 				}
 				// Min
-				m[item.Type].Min[corev1.ResourceCPU] = maxOf(m[item.Type].Min[corev1.ResourceCPU], item.Min[corev1.ResourceCPU])
-				m[item.Type].Min[corev1.ResourceMemory] = maxOf(m[item.Type].Min[corev1.ResourceMemory], item.Min[corev1.ResourceMemory])
-				m[item.Type].Min[corev1.ResourceEphemeralStorage] = maxOf(m[item.Type].Min[corev1.ResourceEphemeralStorage], item.Min[corev1.ResourceEphemeralStorage])
+				m[item.Type].Min[corev1.ResourceCPU] = compare.MaxRequest(m[item.Type].Min[corev1.ResourceCPU], item.Min[corev1.ResourceCPU])
+				m[item.Type].Min[corev1.ResourceMemory] = compare.MaxRequest(m[item.Type].Min[corev1.ResourceMemory], item.Min[corev1.ResourceMemory])
+				m[item.Type].Min[corev1.ResourceEphemeralStorage] = compare.MaxRequest(m[item.Type].Min[corev1.ResourceEphemeralStorage], item.Min[corev1.ResourceEphemeralStorage])
 				// Max
-				m[item.Type].Max[corev1.ResourceCPU] = minOf(m[item.Type].Max[corev1.ResourceCPU], item.Max[corev1.ResourceCPU])
-				m[item.Type].Max[corev1.ResourceMemory] = minOf(m[item.Type].Max[corev1.ResourceMemory], item.Max[corev1.ResourceMemory])
-				m[item.Type].Max[corev1.ResourceEphemeralStorage] = minOf(m[item.Type].Max[corev1.ResourceEphemeralStorage], item.Max[corev1.ResourceEphemeralStorage])
+				m[item.Type].Max[corev1.ResourceCPU] = compare.MinLimit(m[item.Type].Max[corev1.ResourceCPU], item.Max[corev1.ResourceCPU])
+				m[item.Type].Max[corev1.ResourceMemory] = compare.MinLimit(m[item.Type].Max[corev1.ResourceMemory], item.Max[corev1.ResourceMemory])
+				m[item.Type].Max[corev1.ResourceEphemeralStorage] = compare.MinLimit(m[item.Type].Max[corev1.ResourceEphemeralStorage], item.Max[corev1.ResourceEphemeralStorage])
 				// MaxLimitRequestRatio
-				m[item.Type].MaxLimitRequestRatio[corev1.ResourceCPU] = minOf(m[item.Type].MaxLimitRequestRatio[corev1.ResourceCPU], item.MaxLimitRequestRatio[corev1.ResourceCPU])
-				m[item.Type].MaxLimitRequestRatio[corev1.ResourceMemory] = minOf(m[item.Type].MaxLimitRequestRatio[corev1.ResourceMemory], item.MaxLimitRequestRatio[corev1.ResourceMemory])
-				m[item.Type].MaxLimitRequestRatio[corev1.ResourceEphemeralStorage] = minOf(m[item.Type].MaxLimitRequestRatio[corev1.ResourceEphemeralStorage], item.MaxLimitRequestRatio[corev1.ResourceEphemeralStorage])
+				// The smallest ratio is the most restrictive
+				m[item.Type].MaxLimitRequestRatio[corev1.ResourceCPU] = compare.MinLimit(m[item.Type].MaxLimitRequestRatio[corev1.ResourceCPU], item.MaxLimitRequestRatio[corev1.ResourceCPU])
+				m[item.Type].MaxLimitRequestRatio[corev1.ResourceMemory] = compare.MinLimit(m[item.Type].MaxLimitRequestRatio[corev1.ResourceMemory], item.MaxLimitRequestRatio[corev1.ResourceMemory])
+				m[item.Type].MaxLimitRequestRatio[corev1.ResourceEphemeralStorage] = compare.MinLimit(m[item.Type].MaxLimitRequestRatio[corev1.ResourceEphemeralStorage], item.MaxLimitRequestRatio[corev1.ResourceEphemeralStorage])
 			}
 		}
 		// Handle Default and DefaultRequest
@@ -98,27 +100,8 @@ func GetVirtualLimitRange(namespace string, lister corev1listers.LimitRangeListe
 	return limitRange, nil
 }
 
-// IsZero returns true if the resource quantity has a zero value
-func IsZero(q resource.Quantity) bool {
-	return (&q).IsZero()
-}
-
-func maxOf(a, b resource.Quantity) resource.Quantity {
-	if (&a).Cmp(b) > 0 {
-		return a
-	}
-	return b
-}
-
-func minOf(a, b resource.Quantity) resource.Quantity {
-	if IsZero(a) || (&a).Cmp(b) > 0 {
-		return b
-	}
-	return a
-}
-
 func minOfBetween(a, b, min, max resource.Quantity) resource.Quantity {
-	if IsZero(a) || (&a).Cmp(b) > 0 {
+	if compare.IsZero(a) || (&a).Cmp(b) > 0 {
 		return b
 	}
 	return a
