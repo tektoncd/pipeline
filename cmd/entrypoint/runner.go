@@ -20,12 +20,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -85,74 +85,21 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	stopCh := make(chan struct{}, 1)
 	defer close(stopCh)
 
-	cmd.Stdout = os.Stdout
-	var stdoutFile *os.File
-	if rr.stdoutPath != "" {
-		var err error
-		var doneCh <-chan error
-		// Create directory if it doesn't already exist
-		if err = os.MkdirAll(filepath.Dir(rr.stdoutPath), os.ModePerm); err != nil {
-			return err
-		}
-		if stdoutFile, err = os.Create(rr.stdoutPath); err != nil {
-			return err
-		}
-		// We use os.Pipe in asyncWriter to copy stdout instead of cmd.StdoutPipe or providing an
-		// io.Writer directly because otherwise Go would wait for the underlying fd to be closed by the
-		// child process before returning from cmd.Wait even if the process is no longer running. This
-		// would cause a deadlock if the child spawns a long running descendant process before exiting.
-		if cmd.Stdout, doneCh, err = asyncWriter(io.MultiWriter(os.Stdout, stdoutFile), stopCh); err != nil {
-			return err
-		}
-		go func() {
-			if err := <-doneCh; err != nil {
-				log.Fatalf("Copying stdout: %v", err)
-			}
-			stdoutFile.Close()
-		}()
-	}
-
-	cmd.Stderr = os.Stderr
-	var stderrFile *os.File
-	if rr.stderrPath != "" {
-		var err error
-		var doneCh <-chan error
-		if rr.stderrPath == rr.stdoutPath {
-			fd, err := syscall.Dup(int(stdoutFile.Fd()))
-			if err != nil {
-				return err
-			}
-			stderrFile = os.NewFile(uintptr(fd), rr.stderrPath)
-		} else {
-			// Create directory if it doesn't already exist
-			if err = os.MkdirAll(filepath.Dir(rr.stderrPath), os.ModePerm); err != nil {
-				return err
-			}
-			if stderrFile, err = os.Create(rr.stderrPath); err != nil {
-				return err
-			}
-		}
-		// We use os.Pipe in asyncWriter to copy stderr instead of cmd.StderrPipe or providing an
-		// io.Writer directly because otherwise Go would wait for the underlying fd to be closed by the
-		// child process before returning from cmd.Wait even if the process is no longer running. This
-		// would cause a deadlock if the child spawns a long running descendant process before exiting.
-		if cmd.Stderr, doneCh, err = asyncWriter(io.MultiWriter(os.Stderr, stderrFile), stopCh); err != nil {
-			return err
-		}
-		go func() {
-			if err := <-doneCh; err != nil {
-				log.Fatalf("Copying stderr: %v", err)
-			}
-			stderrFile.Close()
-		}()
-	}
-
 	// dedicated PID group used to forward signals to
 	// main process and all children
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	if os.Getenv("TEKTON_RESOURCE_NAME") == "" && os.Getenv(pod.TektonHermeticEnvVar) == "1" {
 		dropNetworking(cmd)
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
 	}
 
 	// Start defined command
@@ -173,6 +120,21 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 		}
 	}()
 
+	wg := new(sync.WaitGroup)
+	if rr.stdoutPath != "" {
+		if err := tee(stdout, rr.stdoutPath, wg); err != nil {
+			return err
+		}
+	}
+	if rr.stderrPath != "" {
+		if err := tee(stderr, rr.stderrPath, wg); err != nil {
+			return err
+		}
+	}
+
+	// Wait for stdout/err buffers to finish reading before returning.
+	wg.Wait()
+
 	// Wait for command to exit
 	if err := cmd.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
@@ -180,6 +142,32 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 		}
 		return err
 	}
+
+	return nil
+}
+
+// tee copies data from a Reader into a file specified by path.
+// The file is opened with os.O_WRONLY|os.O_CREATE|os.O_APPEND, and will not
+// override any existing content in the path. This means that the same file can
+// be used for multiple streams if desired.
+// This func will spawn a goroutine that will copy data into the file
+// asynchronously, and will call WaitGroup.Done() once the Reader is closed and
+// the copy is complete.
+func tee(in io.ReadCloser, path string, wg *sync.WaitGroup) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		wg.Done()
+		return fmt.Errorf("error opening %s: %w", path, err)
+	}
+
+	wg.Add(1)
+	go func() {
+		if _, err := io.Copy(f, in); err != nil {
+			log.Printf("error copying to %s: %v", path, err)
+		}
+		f.Close()
+		wg.Done()
+	}()
 
 	return nil
 }
