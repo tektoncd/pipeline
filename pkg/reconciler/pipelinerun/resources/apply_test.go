@@ -931,6 +931,124 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
+	}, {
+		name: "single parameter with resolver",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
+				{Name: "second-param", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "first-resolver-param",
+							Value: *v1beta1.NewArrayOrString("$(params.first-param)"),
+						}, {
+							Name:  "second-resolver-param",
+							Value: *v1beta1.NewArrayOrString("$(params.second-param)"),
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewArrayOrString("second-value")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewArrayOrString("default-value")},
+				{Name: "second-param", Type: v1beta1.ParamTypeString},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "first-resolver-param",
+							Value: *v1beta1.NewArrayOrString("default-value"),
+						}, {
+							Name:  "second-resolver-param",
+							Value: *v1beta1.NewArrayOrString("second-value"),
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "object parameter with resolver",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+						"key3": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+						"key3": "val3",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "first-resolver-param",
+							Value: *v1beta1.NewArrayOrString("$(params.myobject.key1)"),
+						}, {
+							Name:  "second-resolver-param",
+							Value: *v1beta1.NewArrayOrString("$(params.myobject.key2)"),
+						}, {
+							Name:  "third-resolver-param",
+							Value: *v1beta1.NewArrayOrString("$(params.myobject.key3)"),
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+			"key1": "val1",
+			"key2": "val2",
+			"key3": "val1",
+		})}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{
+					Name: "myobject",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {Type: "string"},
+						"key2": {Type: "string"},
+						"key3": {Type: "string"},
+					},
+					Default: v1beta1.NewObject(map[string]string{
+						"key1": "val1",
+						"key2": "val2",
+						"key3": "val3",
+					}),
+				},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "first-resolver-param",
+							Value: *v1beta1.NewArrayOrString("val1"),
+						}, {
+							Name:  "second-resolver-param",
+							Value: *v1beta1.NewArrayOrString("val2"),
+						}, {
+							Name:  "third-resolver-param",
+							Value: *v1beta1.NewArrayOrString("val1"),
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
 	},
 	} {
 		ctx := context.Background()
@@ -1651,6 +1769,118 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 				}},
 			},
 		}},
+	}, {
+		name: "Test array result substitution on minimal variable substitution expression - resolver params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name: "bParam",
+							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray,
+								ArrayVal: []string{`$(tasks.aTask.results["aResult"][*])`},
+							},
+						}},
+					},
+				},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name: "bParam",
+							Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray,
+								ArrayVal: []string{"arrayResultValueOne", "arrayResultValueTwo"},
+							},
+						}},
+					},
+				},
+			},
+		}},
+	}, {
+		name: "Test result substitution on minimal variable substitution expression - resolver params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+						}},
+					},
+				},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewArrayOrString("aResultValue"),
+						}},
+					},
+				},
+			},
+		}},
+	}, {
+		name: "Test array indexing result substitution on minimal variable substitution expression - resolver params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult[0])"),
+						}, {
+							Name:  "cParam",
+							Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult[1])"),
+						}},
+					},
+				},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewArrayOrString("arrayResultValueOne"),
+						}, {
+							Name:  "cParam",
+							Value: *v1beta1.NewArrayOrString("arrayResultValueTwo"),
+						}},
+					},
+				},
+			},
+		}},
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			ApplyTaskResults(tt.targets, tt.resolvedResultRefs)
@@ -1853,6 +2083,80 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 					Operator: selection.In,
 					Values:   []string{"Result value --> arrayResultValueOne"},
 				}},
+			},
+		}},
+	}, {
+		name: "Test result substitution on embedded variable substitution expression - resolver params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewArrayOrString("Result value --> $(tasks.aTask.results.aResult)"),
+						}},
+					},
+				},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewArrayOrString("Result value --> aResultValue"),
+						}},
+					},
+				},
+			},
+		}},
+	}, {
+		name: "Test array indexing result substitution on embedded variable substitution expression - resolver params",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewArrayOrString("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewArrayOrString("Result value --> $(tasks.aTask.results.aResult[0])"),
+						}, {
+							Name:  "cParam",
+							Value: *v1beta1.NewArrayOrString("Result value --> $(tasks.aTask.results.aResult[1])"),
+						}},
+					},
+				},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				TaskRef: &v1beta1.TaskRef{
+					ResolverRef: v1beta1.ResolverRef{
+						Params: []v1beta1.Param{{
+							Name:  "bParam",
+							Value: *v1beta1.NewArrayOrString("Result value --> arrayResultValueOne"),
+						}, {
+							Name:  "cParam",
+							Value: *v1beta1.NewArrayOrString("Result value --> arrayResultValueTwo"),
+						}},
+					},
+				},
 			},
 		}},
 	}} {

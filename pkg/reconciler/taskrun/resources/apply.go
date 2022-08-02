@@ -33,6 +33,21 @@ import (
 	"github.com/tektoncd/pipeline/pkg/substitution"
 )
 
+const (
+	// objectIndividualVariablePattern is the reference pattern for object individual keys params.<object_param_name>.<key_name>
+	objectIndividualVariablePattern = "params.%s.%s"
+)
+
+var (
+	paramPatterns = []string{
+		"params.%s",
+		"params[%q]",
+		"params['%s']",
+		// FIXME(vdemeester) Remove that with deprecating v1beta1
+		"inputs.params.%s",
+	}
+)
+
 // ApplyParameters applies the params from a TaskRun.Input.Parameters to a TaskSpec
 func ApplyParameters(ctx context.Context, spec *v1beta1.TaskSpec, tr *v1beta1.TaskRun, defaults ...v1beta1.ParamSpec) *v1beta1.TaskSpec {
 	// This assumes that the TaskRun inputs have been validated against what the Task requests.
@@ -43,23 +58,12 @@ func ApplyParameters(ctx context.Context, spec *v1beta1.TaskSpec, tr *v1beta1.Ta
 	arrayReplacements := map[string][]string{}
 	cfg := config.FromContextOrDefaults(ctx)
 
-	patterns := []string{
-		"params.%s",
-		"params[%q]",
-		"params['%s']",
-		// FIXME(vdemeester) Remove that with deprecating v1beta1
-		"inputs.params.%s",
-	}
-
-	// reference pattern for object individual keys params.<object_param_name>.<key_name>
-	objectIndividualVariablePattern := "params.%s.%s"
-
 	// Set all the default stringReplacements
 	for _, p := range defaults {
 		if p.Default != nil {
 			switch p.Default.Type {
 			case v1beta1.ParamTypeArray:
-				for _, pattern := range patterns {
+				for _, pattern := range paramPatterns {
 					// array indexing for param is alpha feature
 					if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
 						for i := 0; i < len(p.Default.ArrayVal); i++ {
@@ -73,17 +77,35 @@ func ApplyParameters(ctx context.Context, spec *v1beta1.TaskSpec, tr *v1beta1.Ta
 					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 				}
 			default:
-				for _, pattern := range patterns {
+				for _, pattern := range paramPatterns {
 					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
 				}
 			}
 		}
 	}
 	// Set and overwrite params with the ones from the TaskRun
+	trStrings, trArrays := paramsFromTaskRun(ctx, tr)
+	for k, v := range trStrings {
+		stringReplacements[k] = v
+	}
+	for k, v := range trArrays {
+		arrayReplacements[k] = v
+	}
+
+	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
+}
+
+func paramsFromTaskRun(ctx context.Context, tr *v1beta1.TaskRun) (map[string]string, map[string][]string) {
+	// stringReplacements is used for standard single-string stringReplacements, while arrayReplacements contains arrays
+	// that need to be further processed.
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+	cfg := config.FromContextOrDefaults(ctx)
+
 	for _, p := range tr.Spec.Params {
 		switch p.Value.Type {
 		case v1beta1.ParamTypeArray:
-			for _, pattern := range patterns {
+			for _, pattern := range paramPatterns {
 				// array indexing for param is alpha feature
 				if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
 					for i := 0; i < len(p.Value.ArrayVal); i++ {
@@ -97,12 +119,13 @@ func ApplyParameters(ctx context.Context, spec *v1beta1.TaskSpec, tr *v1beta1.Ta
 				stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 			}
 		default:
-			for _, pattern := range patterns {
+			for _, pattern := range paramPatterns {
 				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
 			}
 		}
 	}
-	return ApplyReplacements(spec, stringReplacements, arrayReplacements)
+
+	return stringReplacements, arrayReplacements
 }
 
 // ApplyResources applies the substitution from values in resources which are referenced in spec as subitems

@@ -105,7 +105,17 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 		// casting it to a TaskObject.
 		return func(ctx context.Context, name string) (v1beta1.TaskObject, error) {
 			params := map[string]v1beta1.ArrayOrString{}
-			for _, p := range tr.Params {
+			var replacedParams []v1beta1.Param
+			if ownerAsTR, ok := owner.(*v1beta1.TaskRun); ok {
+				stringReplacements, arrayReplacements := paramsFromTaskRun(ctx, ownerAsTR)
+				for _, p := range tr.Params {
+					p.Value.ApplyReplacements(stringReplacements, arrayReplacements, nil)
+					replacedParams = append(replacedParams, p)
+				}
+			} else {
+				replacedParams = append(replacedParams, tr.Params...)
+			}
+			for _, p := range replacedParams {
 				params[p.Name] = p.Value
 			}
 			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, params)

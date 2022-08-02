@@ -36,6 +36,16 @@ const (
 	// objectElementResultsParseNumber is the value of how many parts we split from
 	// object attribute result reference. e.g.  tasks.<taskName>.results.<objectResultName>.<individualAttribute>
 	objectElementResultsParseNumber = 5
+	// objectIndividualVariablePattern is the reference pattern for object individual keys params.<object_param_name>.<key_name>
+	objectIndividualVariablePattern = "params.%s.%s"
+)
+
+var (
+	paramPatterns = []string{
+		"params.%s",
+		"params[%q]",
+		"params['%s']",
+	}
 )
 
 // ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
@@ -49,21 +59,12 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 	objectReplacements := map[string]map[string]string{}
 	cfg := config.FromContextOrDefaults(ctx)
 
-	patterns := []string{
-		"params.%s",
-		"params[%q]",
-		"params['%s']",
-	}
-
-	// reference pattern for object individual keys params.<object_param_name>.<key_name>
-	objectIndividualVariablePattern := "params.%s.%s"
-
 	// Set all the default stringReplacements
 	for _, p := range p.Params {
 		if p.Default != nil {
 			switch p.Default.Type {
 			case v1beta1.ParamTypeArray:
-				for _, pattern := range patterns {
+				for _, pattern := range paramPatterns {
 					// array indexing for param is alpha feature
 					if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
 						for i := 0; i < len(p.Default.ArrayVal); i++ {
@@ -73,24 +74,47 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
 				}
 			case v1beta1.ParamTypeObject:
-				for _, pattern := range patterns {
+				for _, pattern := range paramPatterns {
 					objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ObjectVal
 				}
 				for k, v := range p.Default.ObjectVal {
 					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 				}
 			default:
-				for _, pattern := range patterns {
+				for _, pattern := range paramPatterns {
 					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
 				}
 			}
 		}
 	}
 	// Set and overwrite params with the ones from the PipelineRun
+	prStrings, prArrays, prObjects := paramsFromPipelineRun(ctx, pr)
+
+	for k, v := range prStrings {
+		stringReplacements[k] = v
+	}
+	for k, v := range prArrays {
+		arrayReplacements[k] = v
+	}
+	for k, v := range prObjects {
+		objectReplacements[k] = v
+	}
+
+	return ApplyReplacements(ctx, p, stringReplacements, arrayReplacements, objectReplacements)
+}
+
+func paramsFromPipelineRun(ctx context.Context, pr *v1beta1.PipelineRun) (map[string]string, map[string][]string, map[string]map[string]string) {
+	// stringReplacements is used for standard single-string stringReplacements,
+	// while arrayReplacements/objectReplacements contains arrays/objects that need to be further processed.
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+	objectReplacements := map[string]map[string]string{}
+	cfg := config.FromContextOrDefaults(ctx)
+
 	for _, p := range pr.Spec.Params {
 		switch p.Value.Type {
 		case v1beta1.ParamTypeArray:
-			for _, pattern := range patterns {
+			for _, pattern := range paramPatterns {
 				// array indexing for param is alpha feature
 				if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
 					for i := 0; i < len(p.Value.ArrayVal); i++ {
@@ -100,20 +124,20 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 				arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ArrayVal
 			}
 		case v1beta1.ParamTypeObject:
-			for _, pattern := range patterns {
+			for _, pattern := range paramPatterns {
 				objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.ObjectVal
 			}
 			for k, v := range p.Value.ObjectVal {
 				stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
 			}
 		default:
-			for _, pattern := range patterns {
+			for _, pattern := range paramPatterns {
 				stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Value.StringVal
 			}
 		}
 	}
 
-	return ApplyReplacements(ctx, p, stringReplacements, arrayReplacements, objectReplacements)
+	return stringReplacements, arrayReplacements, objectReplacements
 }
 
 // ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
@@ -151,6 +175,9 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, objectReplacements)
 			pipelineTask.Matrix = replaceParamValues(pipelineTask.Matrix, stringReplacements, nil, nil)
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, arrayReplacements)
+			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
+				pipelineTask.TaskRef.Params = replaceParamValues(pipelineTask.TaskRef.Params, stringReplacements, arrayReplacements, objectReplacements)
+			}
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
@@ -163,6 +190,9 @@ func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[stri
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, replacements, nil, nil)
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(replacements, nil)
+			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
+				pipelineTask.TaskRef.Params = replaceParamValues(pipelineTask.TaskRef.Params, replacements, nil, nil)
+			}
 			resolvedPipelineRunTask.PipelineTask = pipelineTask
 		}
 	}
@@ -195,6 +225,9 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
 		}
 		p.Tasks[i].WhenExpressions = p.Tasks[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
+		if p.Tasks[i].TaskRef != nil && p.Tasks[i].TaskRef.Params != nil {
+			p.Tasks[i].TaskRef.Params = replaceParamValues(p.Tasks[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
+		}
 		p.Tasks[i], replacements, arrayReplacements, objectReplacements = propagateParams(ctx, p.Tasks[i], replacements, arrayReplacements, objectReplacements)
 	}
 
@@ -202,6 +235,9 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements, objectReplacements)
 		p.Finally[i].Matrix = replaceParamValues(p.Finally[i].Matrix, replacements, arrayReplacements, objectReplacements)
 		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
+		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
+			p.Finally[i].TaskRef.Params = replaceParamValues(p.Finally[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
+		}
 	}
 
 	return p
@@ -209,19 +245,10 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 
 func propagateParams(ctx context.Context, t v1beta1.PipelineTask, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) (v1beta1.PipelineTask, map[string]string, map[string][]string, map[string]map[string]string) {
 	if t.TaskSpec != nil && config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
-		patterns := []string{
-			"params.%s",
-			"params[%q]",
-			"params['%s']",
-		}
-
-		// reference pattern for object individual keys params.<object_param_name>.<key_name>
-		objectIndividualVariablePattern := "params.%s.%s"
-
 		// check if there are task parameters defined that match the params at pipeline level
 		if len(t.Params) > 0 {
 			for _, par := range t.Params {
-				for _, pattern := range patterns {
+				for _, pattern := range paramPatterns {
 					checkName := fmt.Sprintf(pattern, par.Name)
 					// Scoping. Task Params will replace Pipeline Params
 					if _, ok := replacements[checkName]; ok {
