@@ -96,7 +96,7 @@ metadata:
 spec:
   taskRef:
     name: %s
-  timeout: 1m
+  timeout: 2m
 `, sidecarTaskRunName, namespace, sidecarTaskName))
 
 			t.Logf("Creating Task %q", sidecarTaskName)
