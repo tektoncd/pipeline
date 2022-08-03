@@ -83,8 +83,6 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	defer signal.Reset()
 
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 
 	// Build a list of tee readers that we'll read from after the command is
 	// is started. If we are not configured to tee stdout/stderr this will be
@@ -96,6 +94,9 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 			return err
 		}
 		readers = append(readers, stdout)
+	} else {
+		// This needs to be set in an else since StdoutPipe will fail if cmd.Stdout is already set.
+		cmd.Stdout = os.Stdout
 	}
 	if rr.stderrPath != "" {
 		stderr, err := newTeeReader(cmd.StderrPipe, rr.stderrPath)
@@ -103,6 +104,8 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 			return err
 		}
 		readers = append(readers, stderr)
+	} else {
+		cmd.Stderr = os.Stderr
 	}
 
 	// dedicated PID group used to forward signals to
@@ -178,6 +181,7 @@ func newTeeReader(pipe func() (io.ReadCloser, error), path string) (*namedReader
 	if err != nil {
 		return nil, fmt.Errorf("error opening %s: %w", path, err)
 	}
+
 	return &namedReader{
 		name:   path,
 		Reader: io.TeeReader(in, f),
