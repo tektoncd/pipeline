@@ -38,13 +38,13 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 	expectedString := "hello world"
 	rr := realRunner{
 		stdoutPath: filepath.Join(tmp, "stdout"),
-		stderrPath: filepath.Join(tmp, "stderr"),
+		stderrPath: filepath.Join(tmp, "subpath/stderr"),
 	}
 	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	for _, path := range []string{"stdout", "stderr"} {
+	for _, path := range []string{"stdout", "subpath/stderr"} {
 		if got, err := ioutil.ReadFile(filepath.Join(tmp, path)); err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		} else if gotString := strings.TrimSpace(string(got)); gotString != expectedString {
