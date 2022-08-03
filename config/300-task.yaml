@@ -43,6 +43,25 @@ spec:
     # starts to increment
     subresources:
       status: {}
+  - name: v1
+    served: false
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        # TODO(#1461): Add OpenAPIV3 schema
+        # OpenAPIV3 schema allows Kubernetes to perform validation on the schema fields
+        # and use the schema in tooling such as `kubectl explain`.
+        # Using "x-kubernetes-preserve-unknown-fields: true"
+        # at the root of the schema (or within it) allows arbitrary fields.
+        # We currently perform our own validation separately.
+        # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#specifying-a-structural-schema
+        # for more info.
+        x-kubernetes-preserve-unknown-fields: true
+    # Opt into the status subresource so metadata.generation
+    # starts to increment
+    subresources:
+      status: {}
   names:
     kind: Task
     plural: tasks
@@ -54,7 +73,7 @@ spec:
   conversion:
     strategy: Webhook
     webhook:
-      conversionReviewVersions: ["v1beta1"]
+      conversionReviewVersions: ["v1beta1", "v1"]
       clientConfig:
         service:
           name: tekton-pipelines-webhook

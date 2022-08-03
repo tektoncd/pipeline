@@ -23,6 +23,8 @@ import (
 	"os"
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -54,6 +56,8 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1beta1.SchemeGroupVersion.WithKind("ClusterTask"): &v1beta1.ClusterTask{},
 	v1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &v1beta1.TaskRun{},
 	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
+	// v1
+	v1.SchemeGroupVersion.WithKind("Task"): &v1.Task{},
 }
 
 func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -126,12 +130,27 @@ func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 }
 
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	// nolint: revive
+	var (
+		v1beta1GroupVersion = v1beta1.SchemeGroupVersion.Version
+		v1GroupVersion      = v1.SchemeGroupVersion.Version
+	)
 	return conversion.NewConversionController(ctx,
 		// The path on which to serve the webhook
 		"/resource-conversion",
 
 		// Specify the types of custom resource definitions that should be converted
-		map[schema.GroupKind]conversion.GroupKindConversion{},
+		// "HubVersion" is the stored version, and "Zygotes" are the supported versions
+		map[schema.GroupKind]conversion.GroupKindConversion{
+			v1.Kind("Task"): {
+				DefinitionName: pipeline.TaskResource.String(),
+				HubVersion:     v1beta1GroupVersion,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					v1beta1GroupVersion: &v1beta1.Task{},
+					v1GroupVersion:      &v1.Task{},
+				},
+			},
+		},
 
 		// A function that infuses the context passed to ConvertTo/ConvertFrom/SetDefaults with custom metadata
 		func(ctx context.Context) context.Context {
