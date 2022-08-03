@@ -36,6 +36,10 @@ func (c *FakeTektonV1) Tasks(namespace string) v1.TaskInterface {
 	return &FakeTasks{c, namespace}
 }
 
+func (c *FakeTektonV1) TaskRuns(namespace string) v1.TaskRunInterface {
+	return &FakeTaskRuns{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeTektonV1) RESTClient() rest.Interface {

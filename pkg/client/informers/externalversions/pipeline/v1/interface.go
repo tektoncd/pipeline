@@ -28,6 +28,8 @@ type Interface interface {
 	Pipelines() PipelineInformer
 	// Tasks returns a TaskInformer.
 	Tasks() TaskInformer
+	// TaskRuns returns a TaskRunInformer.
+	TaskRuns() TaskRunInformer
 }
 
 type version struct {
@@ -49,4 +51,9 @@ func (v *version) Pipelines() PipelineInformer {
 // Tasks returns a TaskInformer.
 func (v *version) Tasks() TaskInformer {
 	return &taskInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// TaskRuns returns a TaskRunInformer.
+func (v *version) TaskRuns() TaskRunInformer {
+	return &taskRunInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

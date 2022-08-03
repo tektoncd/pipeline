@@ -813,6 +813,33 @@
         }
       }
     },
+    "v1.SidecarState": {
+      "description": "SidecarState reports the results of running a sidecar in a Task.",
+      "type": "object",
+      "properties": {
+        "container": {
+          "type": "string"
+        },
+        "imageID": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "running": {
+          "description": "Details about a running container",
+          "$ref": "#/definitions/v1.ContainerStateRunning"
+        },
+        "terminated": {
+          "description": "Details about a terminated container",
+          "$ref": "#/definitions/v1.ContainerStateTerminated"
+        },
+        "waiting": {
+          "description": "Details about a waiting container",
+          "$ref": "#/definitions/v1.ContainerStateWaiting"
+        }
+      }
+    },
     "v1.Step": {
       "description": "Step runs a subcomponent of a Task",
       "type": "object",
@@ -944,6 +971,33 @@
         "path": {
           "description": "Path to duplicate stdout stream to on container's local filesystem.",
           "type": "string"
+        }
+      }
+    },
+    "v1.StepState": {
+      "description": "StepState reports the results of running a step in a Task.",
+      "type": "object",
+      "properties": {
+        "container": {
+          "type": "string"
+        },
+        "imageID": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "running": {
+          "description": "Details about a running container",
+          "$ref": "#/definitions/v1.ContainerStateRunning"
+        },
+        "terminated": {
+          "description": "Details about a terminated container",
+          "$ref": "#/definitions/v1.ContainerStateTerminated"
+        },
+        "waiting": {
+          "description": "Details about a waiting container",
+          "$ref": "#/definitions/v1.ContainerStateWaiting"
         }
       }
     },
@@ -1133,6 +1187,88 @@
         }
       }
     },
+    "v1.TaskRun": {
+      "description": "TaskRun represents a single execution of a Task. TaskRuns are how the steps specified in a Task are executed; they specify the parameters and resources used to run the steps in a Task.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "default": {},
+          "$ref": "#/definitions/v1.TaskRunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/v1.TaskRunStatus"
+        }
+      }
+    },
+    "v1.TaskRunDebug": {
+      "description": "TaskRunDebug defines the breakpoint config for a particular TaskRun",
+      "type": "object",
+      "properties": {
+        "breakpoint": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.TaskRunInputs": {
+      "description": "TaskRunInputs holds the input values that this task was invoked with.",
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.TaskRunList": {
+      "description": "TaskRunList contains a list of TaskRun",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
     "v1.TaskRunResult": {
       "description": "TaskRunResult used to describe the results of a task",
       "type": "object",
@@ -1154,6 +1290,268 @@
           "description": "Value the given value of the result",
           "default": {},
           "$ref": "#/definitions/v1.ParamValue"
+        }
+      }
+    },
+    "v1.TaskRunSidecarOverride": {
+      "description": "TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.",
+      "type": "object",
+      "required": [
+        "name",
+        "resources"
+      ],
+      "properties": {
+        "name": {
+          "description": "The name of the Sidecar to override.",
+          "type": "string",
+          "default": ""
+        },
+        "resources": {
+          "description": "The resource requirements to apply to the Sidecar.",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        }
+      }
+    },
+    "v1.TaskRunSpec": {
+      "description": "TaskRunSpec defines the desired state of TaskRun",
+      "type": "object",
+      "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "debug": {
+          "$ref": "#/definitions/v1.TaskRunDebug"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "default": ""
+        },
+        "sidecarOverrides": {
+          "description": "Overrides to apply to Sidecars in this TaskRun. If a field is specified in both a Sidecar and a SidecarOverride, the value from the SidecarOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunSidecarOverride"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "status": {
+          "description": "Used for cancelling a taskrun (and maybe more later on)",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "stepOverrides": {
+          "description": "Overrides to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepOverride, the value from the StepOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunStepOverride"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "taskRef": {
+          "description": "no more than one of the TaskRef and TaskSpec may be specified.",
+          "$ref": "#/definitions/v1.TaskRef"
+        },
+        "taskSpec": {
+          "$ref": "#/definitions/v1.TaskSpec"
+        },
+        "timeout": {
+          "description": "Time after which the build times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.TaskRunStatus": {
+      "description": "TaskRunStatus defines the observed state of TaskRun",
+      "type": "object",
+      "required": [
+        "podName"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the build completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "podName": {
+          "description": "PodName is the name of the pod responsible for executing this task's steps.",
+          "type": "string",
+          "default": ""
+        },
+        "results": {
+          "description": "Results are the list of results written out by the task's containers",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "retriesStatus": {
+          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunStatus"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "sidecars": {
+          "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.SidecarState"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "steps": {
+          "description": "Steps describes the state of each build step container.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.StepState"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "taskSpec": {
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "$ref": "#/definitions/v1.TaskSpec"
+        }
+      }
+    },
+    "v1.TaskRunStatusFields": {
+      "description": "TaskRunStatusFields holds the fields of TaskRun's status.  This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
+      "type": "object",
+      "required": [
+        "podName"
+      ],
+      "properties": {
+        "completionTime": {
+          "description": "CompletionTime is the time the build completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "podName": {
+          "description": "PodName is the name of the pod responsible for executing this task's steps.",
+          "type": "string",
+          "default": ""
+        },
+        "results": {
+          "description": "Results are the list of results written out by the task's containers",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "retriesStatus": {
+          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunStatus"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "sidecars": {
+          "description": "The list has one entry per sidecar in the manifest. Each entry is represents the imageid of the corresponding sidecar.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.SidecarState"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "startTime": {
+          "description": "StartTime is the time the build is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "steps": {
+          "description": "Steps describes the state of each build step container.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.StepState"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "taskSpec": {
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "$ref": "#/definitions/v1.TaskSpec"
+        }
+      }
+    },
+    "v1.TaskRunStepOverride": {
+      "description": "TaskRunStepOverride is used to override the values of a Step in the corresponding Task.",
+      "type": "object",
+      "required": [
+        "name",
+        "resources"
+      ],
+      "properties": {
+        "name": {
+          "description": "The name of the Step to override.",
+          "type": "string",
+          "default": ""
+        },
+        "resources": {
+          "description": "The resource requirements to apply to the Step.",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
         }
       }
     },
