@@ -83,8 +83,8 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	defer signal.Reset()
 
 	cmd := exec.CommandContext(ctx, name, args...)
-	stopCh := make(chan struct{}, 1)
-	defer close(stopCh)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	// Build a list of tee readers that we'll read from after the command is
 	// is started. If we are not configured to tee stdout/stderr this will be
