@@ -43,6 +43,7 @@ func TestCancelPipelineRun(t *testing.T) {
 		pipelineRun    *v1beta1.PipelineRun
 		taskRuns       []*v1beta1.TaskRun
 		runs           []*v1alpha1.Run
+		childPRs       []*v1beta1.PipelineRun
 		wantErr        bool
 	}{{
 		name:           "no-resolved-taskrun",
@@ -191,6 +192,47 @@ func TestCancelPipelineRun(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "r2"}},
 		},
 	}, {
+		name:           "child-pipelinerun-with-minimal",
+		embeddedStatus: config.MinimalEmbeddedStatus,
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
+			Spec: v1beta1.PipelineRunSpec{
+				Status: v1beta1.PipelineRunSpecStatusCancelled,
+			},
+			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				ChildReferences: []v1beta1.ChildStatusReference{
+					{
+						TypeMeta:         runtime.TypeMeta{Kind: "PipelineRun"},
+						Name:             "pr1",
+						PipelineTaskName: "pr-1",
+					},
+					{
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						Name:             "t2",
+						PipelineTaskName: "task-2",
+					},
+					{
+						TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+						Name:             "r1",
+						PipelineTaskName: "run-1",
+					},
+					{
+						TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+						Name:             "r2",
+						PipelineTaskName: "run-2",
+					},
+				},
+			}},
+		},
+		taskRuns: []*v1beta1.TaskRun{
+			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
+		},
+		runs: []*v1alpha1.Run{
+			{ObjectMeta: metav1.ObjectMeta{Name: "r1"}},
+			{ObjectMeta: metav1.ObjectMeta{Name: "r2"}},
+		},
+		childPRs: []*v1beta1.PipelineRun{{ObjectMeta: metav1.ObjectMeta{Name: "pr1"}}},
+	}, {
 		name:           "unknown-kind-on-child-references",
 		embeddedStatus: config.MinimalEmbeddedStatus,
 		pipelineRun: &v1beta1.PipelineRun{
@@ -213,7 +255,7 @@ func TestCancelPipelineRun(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			d := test.Data{
-				PipelineRuns: []*v1beta1.PipelineRun{tc.pipelineRun},
+				PipelineRuns: append(tc.childPRs, tc.pipelineRun),
 				TaskRuns:     tc.taskRuns,
 				Runs:         tc.runs,
 			}
@@ -261,6 +303,17 @@ func TestCancelPipelineRun(t *testing.T) {
 						}
 					}
 				}
+				if tc.childPRs != nil {
+					for _, expectedPR := range tc.childPRs {
+						childPR, err := c.Pipeline.TektonV1beta1().PipelineRuns("").Get(ctx, expectedPR.Name, metav1.GetOptions{})
+						if err != nil {
+							t.Fatalf("couldn't get expected PipelineRun %s, got error %s", expectedPR.Name, err)
+						}
+						if childPR.Spec.Status != v1beta1.PipelineRunSpecStatusCancelled {
+							t.Errorf("expected task %q to be marked as cancelled, was %q", childPR.Name, childPR.Spec.Status)
+						}
+					}
+				}
 			}
 		})
 	}
@@ -268,12 +321,13 @@ func TestCancelPipelineRun(t *testing.T) {
 
 func TestGetChildObjectsFromPRStatus(t *testing.T) {
 	testCases := []struct {
-		name             string
-		embeddedStatus   string
-		prStatus         v1beta1.PipelineRunStatus
-		expectedTRNames  []string
-		expectedRunNames []string
-		hasError         bool
+		name                 string
+		embeddedStatus       string
+		prStatus             v1beta1.PipelineRunStatus
+		expectedTRNames      []string
+		expectedRunNames     []string
+		expectedChildPRNames []string
+		hasError             bool
 	}{
 		{
 			name:           "single taskrun, default embedded",
@@ -363,11 +417,19 @@ func TestGetChildObjectsFromPRStatus(t *testing.T) {
 					},
 					Name:             "r1",
 					PipelineTaskName: "run-1",
+				}, {
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "v1beta1",
+						Kind:       "PipelineRun",
+					},
+					Name:             "pr1",
+					PipelineTaskName: "pr-1",
 				}},
 			}},
-			expectedTRNames:  nil,
-			expectedRunNames: []string{"r1"},
-			hasError:         false,
+			expectedTRNames:      nil,
+			expectedRunNames:     []string{"r1"},
+			expectedChildPRNames: []string{"pr1"},
+			hasError:             false,
 		}, {
 			name:           "unknown kind",
 			embeddedStatus: config.MinimalEmbeddedStatus,
@@ -394,7 +456,7 @@ func TestGetChildObjectsFromPRStatus(t *testing.T) {
 			cfg.OnConfigChanged(withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus)))
 			ctx = cfg.ToContext(ctx)
 
-			trNames, runNames, err := getChildObjectsFromPRStatus(ctx, tc.prStatus)
+			trNames, runNames, childPRNames, err := getChildObjectsFromPRStatus(ctx, tc.prStatus)
 
 			if tc.hasError {
 				if err == nil {
@@ -409,6 +471,9 @@ func TestGetChildObjectsFromPRStatus(t *testing.T) {
 			}
 			if d := cmp.Diff(tc.expectedRunNames, runNames); d != "" {
 				t.Errorf("expected to see Run names %v. Diff %s", tc.expectedRunNames, diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(tc.expectedChildPRNames, childPRNames); d != "" {
+				t.Errorf("expected to see child PipelineRun names %v. Diff %s", tc.expectedChildPRNames, diff.PrintWantGot(d))
 			}
 		})
 	}

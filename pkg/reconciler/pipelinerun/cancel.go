@@ -37,7 +37,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var cancelTaskRunPatchBytes, cancelRunPatchBytes []byte
+var cancelTaskRunPatchBytes, cancelRunPatchBytes, cancelPipelineRunPatchBytes []byte
 
 func init() {
 	var err error
@@ -56,6 +56,14 @@ func init() {
 	}})
 	if err != nil {
 		log.Fatalf("failed to marshal Run cancel patch bytes: %v", err)
+	}
+	cancelPipelineRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{{
+		Operation: "add",
+		Path:      "/spec/status",
+		Value:     v1beta1.PipelineRunSpecStatusCancelled,
+	}})
+	if err != nil {
+		log.Fatalf("failed to marshal PipelineRun cancel patch bytes: %v", err)
 	}
 }
 
@@ -98,7 +106,7 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1bet
 func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) []string {
 	errs := []string{}
 
-	trNames, runNames, err := getChildObjectsFromPRStatus(ctx, pr.Status)
+	trNames, runNames, prNames, err := getChildObjectsFromPRStatus(ctx, pr.Status)
 	if err != nil {
 		errs = append(errs, err.Error())
 	}
@@ -107,7 +115,7 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
 		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
+			errs = append(errs, fmt.Errorf("failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
 			continue
 		}
 	}
@@ -116,7 +124,16 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 		logger.Infof("cancelling Run %s", runName)
 
 		if err := cancelRun(ctx, runName, pr.Namespace, clientSet); err != nil {
-			errs = append(errs, fmt.Errorf("Failed to patch Run `%s` with cancellation: %s", runName, err).Error())
+			errs = append(errs, fmt.Errorf("failed to patch Run `%s` with cancellation: %s", runName, err).Error())
+			continue
+		}
+	}
+
+	for _, prName := range prNames {
+		logger.Infof("cancelling PipelineRun %s", prName)
+
+		if _, err := clientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Patch(ctx, prName, types.JSONPatchType, cancelPipelineRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
+			errs = append(errs, fmt.Errorf("failed to patch PipelineRun `%s` with cancellation: %s", prName, err).Error())
 			continue
 		}
 	}
@@ -124,13 +141,14 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 	return errs
 }
 
-// getChildObjectsFromPRStatus returns taskruns and runs in the PipelineRunStatus's ChildReferences or TaskRuns/Runs,
+// getChildObjectsFromPRStatus returns taskruns, runs, and child PipelineRuns in the PipelineRunStatus's ChildReferences or TaskRuns/Runs,
 // based on the value of the embedded status flag.
-func getChildObjectsFromPRStatus(ctx context.Context, prs v1beta1.PipelineRunStatus) ([]string, []string, error) {
+func getChildObjectsFromPRStatus(ctx context.Context, prs v1beta1.PipelineRunStatus) ([]string, []string, []string, error) {
 	cfg := config.FromContextOrDefaults(ctx)
 
 	var trNames []string
 	var runNames []string
+	var prNames []string
 	unknownChildKinds := make(map[string]string)
 
 	if cfg.FeatureFlags.EmbeddedStatus != config.FullEmbeddedStatus {
@@ -140,6 +158,8 @@ func getChildObjectsFromPRStatus(ctx context.Context, prs v1beta1.PipelineRunSta
 				trNames = append(trNames, cr.Name)
 			case "Run":
 				runNames = append(runNames, cr.Name)
+			case "PipelineRun":
+				prNames = append(prNames, cr.Name)
 			default:
 				unknownChildKinds[cr.Name] = cr.Kind
 			}
@@ -158,7 +178,7 @@ func getChildObjectsFromPRStatus(ctx context.Context, prs v1beta1.PipelineRunSta
 		err = fmt.Errorf("found child objects of unknown kinds: %v", unknownChildKinds)
 	}
 
-	return trNames, runNames, err
+	return trNames, runNames, prNames, err
 }
 
 // gracefullyCancelPipelineRun marks any non-final resolved TaskRun(s) as cancelled and runs finally.
