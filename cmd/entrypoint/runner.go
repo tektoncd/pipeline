@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -85,21 +86,31 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	stopCh := make(chan struct{}, 1)
 	defer close(stopCh)
 
+	// Build a list of tee readers that we'll read from after the command is
+	// is started. If we are not configured to tee stdout/stderr this will be
+	// empty and contents will not be copied.
+	var readers []*namedReader
+	if rr.stdoutPath != "" {
+		stdout, err := newTeeReader(cmd.StdoutPipe, rr.stdoutPath)
+		if err != nil {
+			return err
+		}
+		readers = append(readers, stdout)
+	}
+	if rr.stderrPath != "" {
+		stderr, err := newTeeReader(cmd.StderrPipe, rr.stderrPath)
+		if err != nil {
+			return err
+		}
+		readers = append(readers, stderr)
+	}
+
 	// dedicated PID group used to forward signals to
 	// main process and all children
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	if os.Getenv("TEKTON_RESOURCE_NAME") == "" && os.Getenv(pod.TektonHermeticEnvVar) == "1" {
 		dropNetworking(cmd)
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
 	}
 
 	// Start defined command
@@ -121,15 +132,16 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	}()
 
 	wg := new(sync.WaitGroup)
-	if rr.stdoutPath != "" {
-		if err := tee(stdout, rr.stdoutPath, wg); err != nil {
-			return err
-		}
-	}
-	if rr.stderrPath != "" {
-		if err := tee(stderr, rr.stderrPath, wg); err != nil {
-			return err
-		}
+	for _, r := range readers {
+		wg.Add(1)
+		// Read concurrently so that we can pipe stdout and stderr at the same
+		// time.
+		go func(r *namedReader) {
+			defer wg.Done()
+			if _, err := io.ReadAll(r); err != nil {
+				log.Printf("error reading to %s: %v", r.name, err)
+			}
+		}(r)
 	}
 
 	// Wait for stdout/err buffers to finish reading before returning.
@@ -146,28 +158,35 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	return nil
 }
 
-// tee copies data from a Reader into a file specified by path.
+// newTeeReader creates a new Reader that copies data from the given pipe function
+// (i.e. cmd.StdoutPipe, cmd.StderrPipe) into a file specified by path.
 // The file is opened with os.O_WRONLY|os.O_CREATE|os.O_APPEND, and will not
 // override any existing content in the path. This means that the same file can
 // be used for multiple streams if desired.
-// This func will spawn a goroutine that will copy data into the file
-// asynchronously, and will call WaitGroup.Done() once the Reader is closed and
-// the copy is complete.
-func tee(in io.ReadCloser, path string, wg *sync.WaitGroup) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+// The behavior of the Reader is the same as io.TeeReader - reads from the pipe
+// will be written to the file.
+func newTeeReader(pipe func() (io.ReadCloser, error), path string) (*namedReader, error) {
+	in, err := pipe()
 	if err != nil {
-		wg.Done()
-		return fmt.Errorf("error opening %s: %w", path, err)
+		return nil, fmt.Errorf("error creating pipe: %w", err)
 	}
 
-	wg.Add(1)
-	go func() {
-		if _, err := io.Copy(f, in); err != nil {
-			log.Printf("error copying to %s: %v", path, err)
-		}
-		f.Close()
-		wg.Done()
-	}()
+	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return nil, fmt.Errorf("error creating parent directory: %w", err)
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	if err != nil {
+		return nil, fmt.Errorf("error opening %s: %w", path, err)
+	}
+	return &namedReader{
+		name:   path,
+		Reader: io.TeeReader(in, f),
+	}, nil
+}
 
-	return nil
+// namedReader is just a helper struct that lets us give a reader a name for
+// logging purposes.
+type namedReader struct {
+	io.Reader
+	name string
 }
