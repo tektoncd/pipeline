@@ -55,3 +55,27 @@ func (w *WorkspacePipelineTaskBinding) convertFrom(ctx context.Context, source v
 	w.Workspace = source.Workspace
 	w.SubPath = source.SubPath
 }
+
+func (w WorkspaceBinding) convertTo(ctx context.Context, sink *v1.WorkspaceBinding) {
+	sink.Name = w.Name
+	sink.SubPath = w.SubPath
+	sink.VolumeClaimTemplate = w.VolumeClaimTemplate
+	sink.PersistentVolumeClaim = w.PersistentVolumeClaim
+	sink.EmptyDir = w.EmptyDir
+	sink.ConfigMap = w.ConfigMap
+	sink.Secret = w.Secret
+	sink.Projected = w.Projected
+	sink.CSI = w.CSI
+}
+
+func (w *WorkspaceBinding) convertFrom(ctx context.Context, source v1.WorkspaceBinding) {
+	w.Name = source.Name
+	w.SubPath = source.SubPath
+	w.VolumeClaimTemplate = source.VolumeClaimTemplate
+	w.PersistentVolumeClaim = source.PersistentVolumeClaim
+	w.EmptyDir = source.EmptyDir
+	w.ConfigMap = source.ConfigMap
+	w.Secret = source.Secret
+	w.Projected = source.Projected
+	w.CSI = source.CSI
+}
