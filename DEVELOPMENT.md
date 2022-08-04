@@ -323,13 +323,12 @@ optional: As a convenience, the [Tekton plumbing project](https://github.com/tek
      --no-issue-client-certificate \
      --project=$PROJECT_ID \
      --region=us-central1 \
-     --machine-type=n1-standard-4 \
-     --image-type=cos \
+     --machine-type=e2-standard-4 \
      --num-nodes=1 \
      --cluster-version=1.21
     ```
 
-    > **Note**: The recommended [GCE machine type](https://cloud.google.com/compute/docs/machine-types) is `'n1-standard-4'`.
+    > **Note**: The recommended [GCE machine type](https://cloud.google.com/compute/docs/machine-types) is `'e2-standard-4'`.
 
     > **Note**: [The `'--scopes'` argument](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create#--scopes) on the  `'gcloud container cluster create'` command controls what GCP resources the cluster's default service account has access to; for example, to give the default service account full access to your GCR registry, you can add `'storage-full'` to the `--scopes` arg. See [Authenticating to GCP](https://cloud.google.com/kubernetes-engine/docs/tutorials/authenticating-to-cloud-platform) for more details.
 
