@@ -25,7 +25,7 @@ import (
 
 var _ apis.Convertible = (*Pipeline)(nil)
 
-// ConvertTo implements api.Convertible
+// ConvertTo implements apis.Convertible
 func (p *Pipeline) ConvertTo(ctx context.Context, sink apis.Convertible) error {
 	if apis.IsInDelete(ctx) {
 		return nil
@@ -33,10 +33,10 @@ func (p *Pipeline) ConvertTo(ctx context.Context, sink apis.Convertible) error {
 	return fmt.Errorf("v1beta1 is the highest known version, got: %T", sink)
 }
 
-// ConvertFrom implements api.Convertible
+// ConvertFrom implements apis.Convertible
 func (p *Pipeline) ConvertFrom(ctx context.Context, source apis.Convertible) error {
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
-	return fmt.Errorf("v1beta1 is the highest know version, got: %T", source)
+	return fmt.Errorf("v1beta1 is the highest known version, got: %T", source)
 }
