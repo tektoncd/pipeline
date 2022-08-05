@@ -14,7 +14,7 @@ spec:
       Test consuming args, acts as a regression test for bug 5080
     params:
     - name: ARGS
-      description: The terraform cli commands to tun
+      description: The terraform cli commands to run
       type: array
       default:
       - "--help"
