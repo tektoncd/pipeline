@@ -38,7 +38,7 @@ func TestTaskConversionBadType(t *testing.T) {
 	}
 
 	if err := good.ConvertFrom(context.Background(), bad); err == nil {
-		t.Errorf("ConvertTo() = %#v, wanted error", bad)
+		t.Errorf("ConvertFrom() = %#v, wanted error", bad)
 	}
 }
 
