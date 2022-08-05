@@ -385,6 +385,194 @@ func TestTransformerOneContainer(t *testing.T) {
 				},
 			}},
 		},
+	}, {
+		description: "limitRange with min and requests on containers < min",
+		limitranges: []corev1.LimitRangeItem{{
+			Type: corev1.LimitTypeContainer,
+			Min: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+		}},
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("800m"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("800m"),
+					},
+				},
+			}},
+		},
+		want: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("800m"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("800m"),
+					},
+				},
+			}},
+		},
+	}, {
+		description: "limitRange with min and limits on containers < min",
+		limitranges: []corev1.LimitRangeItem{{
+			Type: corev1.LimitTypeContainer,
+			Min: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("1"),
+			},
+		}},
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("800m"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("800m"),
+					},
+				},
+			}},
+		},
+		want: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("1"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("800m"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("1"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("800m"),
+					},
+				},
+			}},
+		},
+	}, {
+		description: "limitRange with max and limits on containers > max",
+		limitranges: []corev1.LimitRangeItem{{
+			Type: corev1.LimitTypeContainer,
+			Max: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("2"),
+			},
+		}},
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("3"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("3"),
+					},
+				},
+			}},
+		},
+		want: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("3"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("3"),
+					},
+				},
+			}},
+		},
+	}, {
+		description: "limitRange with max and requests on containers > max",
+		limitranges: []corev1.LimitRangeItem{{
+			Type: corev1.LimitTypeContainer,
+			Max: corev1.ResourceList{
+				corev1.ResourceCPU: resource.MustParse("2"),
+			},
+		}},
+		podspec: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Name:  "bar",
+				Image: "foo",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("3"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Name:  "step-foo",
+				Image: "baz",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("3"),
+					},
+				},
+			}},
+		},
+		want: corev1.PodSpec{
+			InitContainers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("3"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("2"),
+					},
+				},
+			}},
+			Containers: []corev1.Container{{
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("3"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU: resource.MustParse("2"),
+					},
+				},
+			}},
+		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
 			pod := corev1.Pod{Spec: tc.podspec}
