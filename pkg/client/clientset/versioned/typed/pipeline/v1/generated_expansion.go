@@ -20,6 +20,8 @@ package v1
 
 type PipelineExpansion interface{}
 
+type PipelineRunExpansion interface{}
+
 type TaskExpansion interface{}
 
 type TaskRunExpansion interface{}
