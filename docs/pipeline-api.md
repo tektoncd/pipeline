@@ -229,6 +229,8 @@ Resource Types:
 <ul><li>
 <a href="#tekton.dev/v1.Pipeline">Pipeline</a>
 </li><li>
+<a href="#tekton.dev/v1.PipelineRun">PipelineRun</a>
+</li><li>
 <a href="#tekton.dev/v1.Task">Task</a>
 </li><li>
 <a href="#tekton.dev/v1.TaskRun">TaskRun</a>
@@ -379,6 +381,210 @@ or after a failure which would result in ending the Pipeline</p>
 </td>
 </tr>
 </table>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineRun">PipelineRun
+</h3>
+<div>
+<p>PipelineRun represents a single execution of a Pipeline. PipelineRuns are how
+the graph of Tasks declared in a Pipeline are executed; they specify inputs
+to Pipelines such as parameter values and capture operational aspects of the
+Tasks execution such as service account and tolerations. Creating a
+PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+tekton.dev/v1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>PipelineRun</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRunSpec">
+PipelineRunSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>pipelineRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRef">
+PipelineRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineSpec">
+PipelineSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<p>Params is a list of parameter names and values.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRunSpecStatus">
+PipelineRunSpecStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for cancelling a pipelinerun (and maybe more later on)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeouts</code><br/>
+<em>
+<a href="#tekton.dev/v1.TimeoutFields">
+TimeoutFields
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the Pipeline times out.
+Currently three keys are accepted in the map
+pipeline, tasks and finally
+with Timeouts.pipeline &gt;= Timeouts.tasks + Timeouts.finally</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podTemplate</code><br/>
+<em>
+<a href="#tekton.dev/unversioned.Template">
+Template
+</a>
+</em>
+</td>
+<td>
+<p>PodTemplate holds pod specific configuration</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1.WorkspaceBinding">
+[]WorkspaceBinding
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces holds a set of workspace bindings that must match names
+with those declared in the pipeline.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskRunSpecs</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTaskRunSpec">
+[]PipelineTaskRunSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TaskRunSpecs holds a set of runtime specs</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRunStatus">
+PipelineRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -823,6 +1029,60 @@ TaskRunStatus
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.ChildStatusReference">ChildStatusReference
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
+</p>
+<div>
+<p>ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of the TaskRun or Run this is referencing.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineTaskName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PipelineTaskName is the name of the PipelineTask this is referencing.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>whenExpressions</code><br/>
+<em>
+<a href="#tekton.dev/v1.WhenExpression">
+[]WhenExpression
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WhenExpressions is the list of checks guarding the execution of the PipelineTask</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.EmbeddedTask">EmbeddedTask
 </h3>
 <p>
@@ -937,7 +1197,7 @@ TaskSpec
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -1090,7 +1350,7 @@ Used to distinguish between a single string and an array of strings.</p>
 <h3 id="tekton.dev/v1.ParamValue">ParamValue
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
 </p>
 <div>
 <p>ResultValue is a type alias of ParamValue</p>
@@ -1144,6 +1404,63 @@ map[string]string
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineRef">PipelineRef
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>)
+</p>
+<div>
+<p>PipelineRef can be used to refer to a specific instance of a Pipeline.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the referent; More info: <a href="http://kubernetes.io/docs/user-guide/identifiers#names">http://kubernetes.io/docs/user-guide/identifiers#names</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>API version of the referent</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResolverRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.ResolverRef">
+ResolverRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResolverRef allows referencing a Pipeline in a remote location
+like a git repo. This field is only supported when the alpha
+feature gate is enabled.</p>
 </td>
 </tr>
 </tbody>
@@ -1217,10 +1534,527 @@ ParamValue
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.PipelineRunReason">PipelineRunReason
+(<code>string</code> alias)</h3>
+<div>
+<p>PipelineRunReason represents a reason for the pipeline run &ldquo;Succeeded&rdquo; condition</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Cancelled&#34;</p></td>
+<td><p>PipelineRunReasonCancelled is the reason set when the PipelineRun cancelled by the user
+This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully
+This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed</p>
+</td>
+</tr><tr><td><p>&#34;CancelledRunningFinally&#34;</p></td>
+<td><p>PipelineRunReasonCancelledRunningFinally indicates that pipeline has been gracefully cancelled
+and no new Tasks will be scheduled by the controller, but final tasks are now running</p>
+</td>
+</tr><tr><td><p>&#34;Completed&#34;</p></td>
+<td><p>PipelineRunReasonCompleted is the reason set when the PipelineRun completed successfully with one or more skipped Tasks</p>
+</td>
+</tr><tr><td><p>&#34;Failed&#34;</p></td>
+<td><p>PipelineRunReasonFailed is the reason set when the PipelineRun completed with a failure</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRunPending&#34;</p></td>
+<td><p>PipelineRunReasonPending is the reason set when the PipelineRun is in the pending state</p>
+</td>
+</tr><tr><td><p>&#34;Running&#34;</p></td>
+<td><p>PipelineRunReasonRunning is the reason set when the PipelineRun is running</p>
+</td>
+</tr><tr><td><p>&#34;Started&#34;</p></td>
+<td><p>PipelineRunReasonStarted is the reason set when the PipelineRun has just started</p>
+</td>
+</tr><tr><td><p>&#34;StoppedRunningFinally&#34;</p></td>
+<td><p>PipelineRunReasonStoppedRunningFinally indicates that pipeline has been gracefully stopped
+and no new Tasks will be scheduled by the controller, but final tasks are now running</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRunStopping&#34;</p></td>
+<td><p>PipelineRunReasonStopping indicates that no new Tasks will be scheduled by the controller, and the
+pipeline will stop once all running tasks complete their work</p>
+</td>
+</tr><tr><td><p>&#34;Succeeded&#34;</p></td>
+<td><p>PipelineRunReasonSuccessful is the reason set when the PipelineRun completed successfully</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRunTimeout&#34;</p></td>
+<td><p>PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineRunResult">PipelineRunResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
+</p>
+<div>
+<p>PipelineRunResult used to describe the results of a pipeline</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the result&rsquo;s name as declared by the Pipeline</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamValue">
+ParamValue
+</a>
+</em>
+</td>
+<td>
+<p>Value is the result returned from the execution of this PipelineRun</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineRunRunStatus">PipelineRunRunStatus
+</h3>
+<div>
+<p>PipelineRunRunStatus contains the name of the PipelineTask for this Run and the Run&rsquo;s Status</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pipelineTaskName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PipelineTaskName is the name of the PipelineTask.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.RunStatus">
+RunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status is the RunStatus for the corresponding Run</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>whenExpressions</code><br/>
+<em>
+<a href="#tekton.dev/v1.WhenExpression">
+[]WhenExpression
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WhenExpressions is the list of checks guarding the execution of the PipelineTask</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineRunSpec">PipelineRunSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRun">PipelineRun</a>)
+</p>
+<div>
+<p>PipelineRunSpec defines the desired state of PipelineRun</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pipelineRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRef">
+PipelineRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineSpec">
+PipelineSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<p>Params is a list of parameter names and values.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRunSpecStatus">
+PipelineRunSpecStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for cancelling a pipelinerun (and maybe more later on)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeouts</code><br/>
+<em>
+<a href="#tekton.dev/v1.TimeoutFields">
+TimeoutFields
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the Pipeline times out.
+Currently three keys are accepted in the map
+pipeline, tasks and finally
+with Timeouts.pipeline &gt;= Timeouts.tasks + Timeouts.finally</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podTemplate</code><br/>
+<em>
+<a href="#tekton.dev/unversioned.Template">
+Template
+</a>
+</em>
+</td>
+<td>
+<p>PodTemplate holds pod specific configuration</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1.WorkspaceBinding">
+[]WorkspaceBinding
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces holds a set of workspace bindings that must match names
+with those declared in the pipeline.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskRunSpecs</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTaskRunSpec">
+[]PipelineTaskRunSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TaskRunSpecs holds a set of runtime specs</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineRunSpecStatus">PipelineRunSpecStatus
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>)
+</p>
+<div>
+<p>PipelineRunSpecStatus defines the pipelinerun spec status the user can provide</p>
+</div>
+<h3 id="tekton.dev/v1.PipelineRunStatus">PipelineRunStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRun">PipelineRun</a>)
+</p>
+<div>
+<p>PipelineRunStatus defines the observed state of PipelineRun</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Status</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1beta1#Status">
+knative.dev/pkg/apis/duck/v1beta1.Status
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Status</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>PipelineRunStatusFields</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRunStatusFields">
+PipelineRunStatusFields
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>PipelineRunStatusFields</code> are embedded into this type.)
+</p>
+<p>PipelineRunStatusFields inlines the status fields.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatus">PipelineRunStatus</a>)
+</p>
+<div>
+<p>PipelineRunStatusFields holds the fields of PipelineRunStatus&rsquo; status.
+This is defined separately and inlined so that other types can readily
+consume these fields via duck typing.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>startTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartTime is the time the PipelineRun is actually started.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>completionTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CompletionTime is the time the PipelineRun completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineRunResult">
+[]PipelineRunResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results are the list of results written out by the pipeline task&rsquo;s containers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineSpec">
+PipelineSpec
+</a>
+</em>
+</td>
+<td>
+<p>PipelineRunSpec contains the exact spec used to instantiate the run</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>skippedTasks</code><br/>
+<em>
+<a href="#tekton.dev/v1.SkippedTask">
+[]SkippedTask
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>list of tasks that were skipped due to when expressions evaluating to false</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>childReferences</code><br/>
+<em>
+<a href="#tekton.dev/v1.ChildStatusReference">
+[]ChildStatusReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>finallyStartTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus
+</h3>
+<div>
+<p>PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun&rsquo;s Status</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pipelineTaskName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PipelineTaskName is the name of the PipelineTask.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunStatus">
+TaskRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status is the TaskRunStatus for the corresponding TaskRun</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>whenExpressions</code><br/>
+<em>
+<a href="#tekton.dev/v1.WhenExpression">
+[]WhenExpression
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WhenExpressions is the list of checks guarding the execution of the PipelineTask</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.PipelineSpec">PipelineSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Pipeline">Pipeline</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Pipeline">Pipeline</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
 </p>
 <div>
 <p>PipelineSpec defines the desired state of Pipeline.</p>
@@ -1480,7 +2314,7 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <h3 id="tekton.dev/v1.PipelineTaskMetadata">PipelineTaskMetadata
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.EmbeddedTask">EmbeddedTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.EmbeddedTask">EmbeddedTask</a>, <a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>)
 </p>
 <div>
 <p>PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask</p>
@@ -1548,6 +2382,134 @@ string
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineTaskRun">PipelineTaskRun
+</h3>
+<div>
+<p>PipelineTaskRun reports the results of running a step in the Task. Each
+task has the potential to succeed or fail (based on the exit code)
+and produces logs.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>)
+</p>
+<div>
+<p>PipelineTaskRunSpec  can be used to configure specific
+specs for a concrete Task</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pipelineTaskName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>podTemplate</code><br/>
+<em>
+<a href="#tekton.dev/unversioned.Template">
+Template
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>stepOverrides</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunStepOverride">
+[]TaskRunStepOverride
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>sidecarOverrides</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSidecarOverride">
+[]TaskRunSidecarOverride
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTaskMetadata">
+PipelineTaskMetadata
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>computeResources</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Compute resources to use for this TaskRun</p>
 </td>
 </tr>
 </tbody>
@@ -1651,7 +2613,7 @@ requested.</p>
 <h3 id="tekton.dev/v1.ResolverRef">ResolverRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRef">TaskRef</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRef">PipelineRef</a>, <a href="#tekton.dev/v1.TaskRef">TaskRef</a>)
 </p>
 <div>
 <p>ResolverRef can be used to refer to a Pipeline or Task in a remote
@@ -2260,6 +3222,111 @@ string
 </td>
 </tr>
 </tbody>
+</table>
+<h3 id="tekton.dev/v1.SkippedTask">SkippedTask
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
+</p>
+<div>
+<p>SkippedTask is used to describe the Tasks that were skipped due to their When Expressions
+evaluating to False. This is a struct because we are looking into including more details
+about the When Expressions that caused this Task to be skipped.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the Pipeline Task name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reason</code><br/>
+<em>
+<a href="#tekton.dev/v1.SkippingReason">
+SkippingReason
+</a>
+</em>
+</td>
+<td>
+<p>Reason is the cause of the PipelineTask being skipped.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>whenExpressions</code><br/>
+<em>
+<a href="#tekton.dev/v1.WhenExpression">
+[]WhenExpression
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WhenExpressions is the list of checks guarding the execution of the PipelineTask</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.SkippingReason">SkippingReason
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.SkippedTask">SkippedTask</a>)
+</p>
+<div>
+<p>SkippingReason explains why a PipelineTask was skipped.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;PipelineRun Finally timeout has been reached&#34;</p></td>
+<td><p>FinallyTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Finally.</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRun was gracefully cancelled&#34;</p></td>
+<td><p>GracefullyCancelledSkip means the task was skipped because the pipeline run has been gracefully cancelled</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRun was gracefully stopped&#34;</p></td>
+<td><p>GracefullyStoppedSkip means the task was skipped because the pipeline run has been gracefully stopped</p>
+</td>
+</tr><tr><td><p>&#34;Results were missing&#34;</p></td>
+<td><p>MissingResultsSkip means the task was skipped because it&rsquo;s missing necessary results</p>
+</td>
+</tr><tr><td><p>&#34;None&#34;</p></td>
+<td><p>None means the task was not skipped</p>
+</td>
+</tr><tr><td><p>&#34;Parent Tasks were skipped&#34;</p></td>
+<td><p>ParentTasksSkip means the task was skipped because its parent was skipped</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRun timeout has been reached&#34;</p></td>
+<td><p>PipelineTimedOutSkip means the task was skipped because the PipelineRun has passed its overall timeout.</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRun was stopping&#34;</p></td>
+<td><p>StoppingSkip means the task was skipped because the pipeline run is stopping</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRun Tasks timeout has been reached&#34;</p></td>
+<td><p>TasksTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Tasks.</p>
+</td>
+</tr><tr><td><p>&#34;When Expressions evaluated to false&#34;</p></td>
+<td><p>WhenExpressionsSkip means the task was skipped due to at least one of its when expressions evaluating to false</p>
+</td>
+</tr></tbody>
 </table>
 <h3 id="tekton.dev/v1.Step">Step
 </h3>
@@ -3165,7 +4232,7 @@ ParamValue
 <h3 id="tekton.dev/v1.TaskRunSidecarOverride">TaskRunSidecarOverride
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.</p>
@@ -3436,7 +4503,7 @@ TaskRun was a part of has been cancelled.</p>
 <h3 id="tekton.dev/v1.TaskRunStatus">TaskRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRun">TaskRun</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRun">TaskRun</a>, <a href="#tekton.dev/v1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
 <p>TaskRunStatus defines the observed state of TaskRun</p>
@@ -3614,7 +4681,7 @@ TaskSpec
 <h3 id="tekton.dev/v1.TaskRunStepOverride">TaskRunStepOverride
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>TaskRunStepOverride is used to override the values of a Step in the corresponding Task.</p>
@@ -3782,8 +4849,68 @@ the steps start and end after the steps complete.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.TimeoutFields">TimeoutFields
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>)
+</p>
+<div>
+<p>TimeoutFields allows granular specification of pipeline, task, and finally timeouts</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pipeline</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>Pipeline sets the maximum allowed duration for execution of the entire pipeline. The sum of individual timeouts for tasks and finally must not exceed this value.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tasks</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>Tasks sets the maximum allowed duration of this pipeline&rsquo;s tasks</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>finally</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>Finally sets the maximum allowed duration of this pipeline&rsquo;s finally</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.WhenExpression">WhenExpression
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.ChildStatusReference">ChildStatusReference</a>, <a href="#tekton.dev/v1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus</a>, <a href="#tekton.dev/v1.SkippedTask">SkippedTask</a>)
+</p>
 <div>
 <p>WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run
 to determine whether the Task should be executed or skipped</p>
@@ -3844,7 +4971,7 @@ All of them need to evaluate to True for a guarded Task to be executed.</p>
 <h3 id="tekton.dev/v1.WorkspaceBinding">WorkspaceBinding
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>WorkspaceBinding maps a Task&rsquo;s declared workspace to a Volume.</p>
@@ -5051,7 +6178,7 @@ string
 <h3 id="tekton.dev/v1alpha1.RunStatus">RunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Run">Run</a>, <a href="#tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1alpha1.RunStatusFields">RunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Run">Run</a>, <a href="#tekton.dev/v1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1alpha1.RunStatusFields">RunStatusFields</a>)
 </p>
 <div>
 <p>RunStatus defines the observed state of Run</p>

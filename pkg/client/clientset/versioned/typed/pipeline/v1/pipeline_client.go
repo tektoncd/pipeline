@@ -29,6 +29,7 @@ import (
 type TektonV1Interface interface {
 	RESTClient() rest.Interface
 	PipelinesGetter
+	PipelineRunsGetter
 	TasksGetter
 	TaskRunsGetter
 }
@@ -40,6 +41,10 @@ type TektonV1Client struct {
 
 func (c *TektonV1Client) Pipelines(namespace string) PipelineInterface {
 	return newPipelines(c, namespace)
+}
+
+func (c *TektonV1Client) PipelineRuns(namespace string) PipelineRunInterface {
+	return newPipelineRuns(c, namespace)
 }
 
 func (c *TektonV1Client) Tasks(namespace string) TaskInterface {

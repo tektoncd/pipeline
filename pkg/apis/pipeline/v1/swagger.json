@@ -140,6 +140,35 @@
         }
       }
     },
+    "v1.ChildStatusReference": {
+      "description": "ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "description": "Name is the name of the TaskRun or Run this is referencing.",
+          "type": "string"
+        },
+        "pipelineTaskName": {
+          "description": "PipelineTaskName is the name of the PipelineTask this is referencing.",
+          "type": "string"
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WhenExpression"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
     "v1.EmbeddedTask": {
       "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
       "type": "object",
@@ -362,6 +391,20 @@
         }
       }
     },
+    "v1.PipelineRef": {
+      "description": "PipelineRef can be used to refer to a specific instance of a Pipeline.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "API version of the referent",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+          "type": "string"
+        }
+      }
+    },
     "v1.PipelineResult": {
       "description": "PipelineResult used to describe the results of a pipeline",
       "type": "object",
@@ -388,6 +431,298 @@
           "description": "Value the expression used to retrieve the value",
           "default": {},
           "$ref": "#/definitions/v1.ParamValue"
+        }
+      }
+    },
+    "v1.PipelineRun": {
+      "description": "PipelineRun represents a single execution of a Pipeline. PipelineRuns are how the graph of Tasks declared in a Pipeline are executed; they specify inputs to Pipelines such as parameter values and capture operational aspects of the Tasks execution such as service account and tolerations. Creating a PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "default": {},
+          "$ref": "#/definitions/v1.PipelineRunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/v1.PipelineRunStatus"
+        }
+      }
+    },
+    "v1.PipelineRunList": {
+      "description": "PipelineRunList contains a list of PipelineRun",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.PipelineRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1.PipelineRunResult": {
+      "description": "PipelineRunResult used to describe the results of a pipeline",
+      "type": "object",
+      "required": [
+        "name",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the result's name as declared by the Pipeline",
+          "type": "string",
+          "default": ""
+        },
+        "value": {
+          "description": "Value is the result returned from the execution of this PipelineRun",
+          "default": {},
+          "$ref": "#/definitions/v1.ParamValue"
+        }
+      }
+    },
+    "v1.PipelineRunRunStatus": {
+      "description": "PipelineRunRunStatus contains the name of the PipelineTask for this Run and the Run's Status",
+      "type": "object",
+      "properties": {
+        "pipelineTaskName": {
+          "description": "PipelineTaskName is the name of the PipelineTask.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status is the RunStatus for the corresponding Run",
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1alpha1.RunStatus"
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WhenExpression"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.PipelineRunSpec": {
+      "description": "PipelineRunSpec defines the desired state of PipelineRun",
+      "type": "object",
+      "properties": {
+        "params": {
+          "description": "Params is a list of parameter names and values.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "pipelineRef": {
+          "$ref": "#/definitions/v1.PipelineRef"
+        },
+        "pipelineSpec": {
+          "$ref": "#/definitions/v1.PipelineSpec"
+        },
+        "podTemplate": {
+          "description": "PodTemplate holds pod specific configuration",
+          "$ref": "#/definitions/pod.Template"
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "status": {
+          "description": "Used for cancelling a pipelinerun (and maybe more later on)",
+          "type": "string"
+        },
+        "taskRunSpecs": {
+          "description": "TaskRunSpecs holds a set of runtime specs",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.PipelineTaskRunSpec"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "timeouts": {
+          "description": "Time after which the Pipeline times out. Currently three keys are accepted in the map pipeline, tasks and finally with Timeouts.pipeline \u003e= Timeouts.tasks + Timeouts.finally",
+          "$ref": "#/definitions/v1.TimeoutFields"
+        },
+        "workspaces": {
+          "description": "Workspaces holds a set of workspace bindings that must match names with those declared in the pipeline.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.PipelineRunStatus": {
+      "description": "PipelineRunStatus defines the observed state of PipelineRun",
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "childReferences": {
+          "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ChildStatusReference"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the PipelineRun completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "finallyStartTime": {
+          "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "pipelineSpec": {
+          "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
+          "$ref": "#/definitions/v1.PipelineSpec"
+        },
+        "results": {
+          "description": "Results are the list of results written out by the pipeline task's containers",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.PipelineRunResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "skippedTasks": {
+          "description": "list of tasks that were skipped due to when expressions evaluating to false",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.SkippedTask"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "startTime": {
+          "description": "StartTime is the time the PipelineRun is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        }
+      }
+    },
+    "v1.PipelineRunStatusFields": {
+      "description": "PipelineRunStatusFields holds the fields of PipelineRunStatus' status. This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
+      "type": "object",
+      "properties": {
+        "childReferences": {
+          "description": "list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ChildStatusReference"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "completionTime": {
+          "description": "CompletionTime is the time the PipelineRun completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "finallyStartTime": {
+          "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "pipelineSpec": {
+          "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
+          "$ref": "#/definitions/v1.PipelineSpec"
+        },
+        "results": {
+          "description": "Results are the list of results written out by the pipeline task's containers",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.PipelineRunResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "skippedTasks": {
+          "description": "list of tasks that were skipped due to when expressions evaluating to false",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.SkippedTask"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "startTime": {
+          "description": "StartTime is the time the PipelineRun is actually started.",
+          "$ref": "#/definitions/v1.Time"
+        }
+      }
+    },
+    "v1.PipelineRunTaskRunStatus": {
+      "description": "PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status",
+      "type": "object",
+      "properties": {
+        "pipelineTaskName": {
+          "description": "PipelineTaskName is the name of the PipelineTask.",
+          "type": "string"
+        },
+        "status": {
+          "description": "Status is the TaskRunStatus for the corresponding TaskRun",
+          "$ref": "#/definitions/v1.TaskRunStatus"
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WhenExpression"
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -552,6 +887,53 @@
         "value": {
           "type": "string",
           "default": ""
+        }
+      }
+    },
+    "v1.PipelineTaskRun": {
+      "description": "PipelineTaskRun reports the results of running a step in the Task. Each task has the potential to succeed or fail (based on the exit code) and produces logs.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "v1.PipelineTaskRunSpec": {
+      "description": "PipelineTaskRunSpec  can be used to configure specific specs for a concrete Task",
+      "type": "object",
+      "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v1.PipelineTaskMetadata"
+        },
+        "pipelineTaskName": {
+          "type": "string"
+        },
+        "podTemplate": {
+          "$ref": "#/definitions/pod.Template"
+        },
+        "serviceAccountName": {
+          "type": "string"
+        },
+        "sidecarOverrides": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunSidecarOverride"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "stepOverrides": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.TaskRunStepOverride"
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -817,6 +1199,35 @@
         "waiting": {
           "description": "Details about a waiting container",
           "$ref": "#/definitions/v1.ContainerStateWaiting"
+        }
+      }
+    },
+    "v1.SkippedTask": {
+      "description": "SkippedTask is used to describe the Tasks that were skipped due to their When Expressions evaluating to False. This is a struct because we are looking into including more details about the When Expressions that caused this Task to be skipped.",
+      "type": "object",
+      "required": [
+        "name",
+        "reason"
+      ],
+      "properties": {
+        "name": {
+          "description": "Name is the Pipeline Task name",
+          "type": "string",
+          "default": ""
+        },
+        "reason": {
+          "description": "Reason is the cause of the PipelineTask being skipped.",
+          "type": "string",
+          "default": ""
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.WhenExpression"
+          },
+          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -1600,6 +2011,24 @@
             "$ref": "#/definitions/v1.WorkspaceDeclaration"
           },
           "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.TimeoutFields": {
+      "description": "TimeoutFields allows granular specification of pipeline, task, and finally timeouts",
+      "type": "object",
+      "properties": {
+        "finally": {
+          "description": "Finally sets the maximum allowed duration of this pipeline's finally",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "pipeline": {
+          "description": "Pipeline sets the maximum allowed duration for execution of the entire pipeline. The sum of individual timeouts for tasks and finally must not exceed this value.",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "tasks": {
+          "description": "Tasks sets the maximum allowed duration of this pipeline's tasks",
+          "$ref": "#/definitions/v1.Duration"
         }
       }
     },
