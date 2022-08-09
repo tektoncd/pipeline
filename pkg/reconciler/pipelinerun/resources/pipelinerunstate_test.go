@@ -2067,6 +2067,15 @@ spec:
 		}},
 		TaskRef: &v1beta1.TaskRef{Name: "unit-test-task"},
 	}
+	unscheduledPipelineTask := v1beta1.PipelineTask{
+		Name: "unit-test-2",
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo", "bar"},
+		}},
+		TaskRef: &v1beta1.TaskRef{Name: "unit-test-task"},
+	}
 
 	task := parse.MustParseTask(t, fmt.Sprintf(`
 metadata:
@@ -2101,6 +2110,12 @@ status:
 		PipelineTask: &pipelineTask,
 		TaskRunName:  "test-pipeline-run-success-unit-test-1",
 		TaskRun:      taskrun,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}, {
+		PipelineTask: &unscheduledPipelineTask,
+		TaskRunName:  "test-pipeline-run-success-unit-test-2",
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
@@ -2159,6 +2174,19 @@ spec:
 			Name:       "unit-test-run",
 		},
 	}
+	unscheduledPipelineTask := v1beta1.PipelineTask{
+		Name: "unit-test-2",
+		WhenExpressions: []v1beta1.WhenExpression{{
+			Input:    "foo",
+			Operator: selection.In,
+			Values:   []string{"foo", "bar"},
+		}},
+		TaskRef: &v1beta1.TaskRef{
+			APIVersion: "example.dev/v0",
+			Kind:       "Example",
+			Name:       "unit-test-run",
+		},
+	}
 
 	run := parse.MustParseRun(t, fmt.Sprintf(`
 metadata:
@@ -2175,6 +2203,10 @@ status:
 		CustomTask:   true,
 		RunName:      "test-pipeline-run-success-unit-test-1",
 		Run:          run,
+	}, {
+		PipelineTask: &unscheduledPipelineTask,
+		CustomTask:   true,
+		RunName:      "test-pipeline-run-success-unit-test-2",
 	}}
 	pr.Status.InitializeConditions(testClock)
 	status := state.GetRunsStatus(pr)
@@ -2442,14 +2474,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 					},
 				},
 			}},
-			childRefs: []v1beta1.ChildStatusReference{{
-				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1alpha1",
-					Kind:       "Run",
-				},
-				Name:             "unresolved-custom-task-run",
-				PipelineTaskName: "unresolved-custom-task-1",
-			}},
+			childRefs: nil,
 		},
 		{
 			name: "single-task",
