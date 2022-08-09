@@ -50,5 +50,6 @@ run:
   skip-dirs:
   - vendor
   - pkg/client
+  - pkg/spire/test
   timeout: 10m
   modules-download-mode: vendor
