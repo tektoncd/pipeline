@@ -199,10 +199,11 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 			continue
 		}
 
-		var prrs *v1beta1.PipelineRunRunStatus
-		if rpt.Run != nil {
-			prrs = pr.Status.Runs[rpt.RunName]
+		if rpt.Run == nil {
+			continue
 		}
+
+		prrs := pr.Status.Runs[rpt.RunName]
 
 		if prrs == nil {
 			prrs = &v1beta1.PipelineRunRunStatus{
@@ -210,10 +211,7 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 				WhenExpressions:  rpt.PipelineTask.WhenExpressions,
 			}
 		}
-
-		if rpt.Run != nil {
-			prrs.Status = &rpt.Run.Status
-		}
+		prrs.Status = &rpt.Run.Status
 
 		status[rpt.RunName] = prrs
 	}
