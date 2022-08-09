@@ -32,6 +32,7 @@ import (
 	"go.uber.org/zap"
 	jsonpatch "gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
@@ -73,6 +74,21 @@ func init() {
 
 func cancelRun(ctx context.Context, runName string, namespace string, clientSet clientset.Interface) error {
 	_, err := clientSet.TektonV1alpha1().Runs(namespace).Patch(ctx, runName, types.JSONPatchType, cancelRunPatchBytes, metav1.PatchOptions{}, "")
+	if errors.IsNotFound(err) {
+		// The resource may have been deleted in the meanwhile, but we should
+		// still be able to cancel the PipelineRun
+		return nil
+	}
+	return err
+}
+
+func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, clientSet clientset.Interface) error {
+	_, err := clientSet.TektonV1beta1().TaskRuns(namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, "")
+	if errors.IsNotFound(err) {
+		// The resource may have been deleted in the meanwhile, but we should
+		// still be able to cancel the PipelineRun
+		return nil
+	}
 	return err
 }
 
@@ -118,7 +134,7 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 	for _, taskRunName := range trNames {
 		logger.Infof("cancelling TaskRun %s", taskRunName)
 
-		if _, err := clientSet.TektonV1beta1().TaskRuns(pr.Namespace).Patch(ctx, taskRunName, types.JSONPatchType, cancelTaskRunPatchBytes, metav1.PatchOptions{}, ""); err != nil {
+		if err := cancelTaskRun(ctx, taskRunName, pr.Namespace, clientSet); err != nil {
 			errs = append(errs, fmt.Errorf("Failed to patch TaskRun `%s` with cancellation: %s", taskRunName, err).Error())
 			continue
 		}
