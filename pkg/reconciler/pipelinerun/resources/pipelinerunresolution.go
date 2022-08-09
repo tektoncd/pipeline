@@ -412,7 +412,7 @@ func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *Pipe
 		resolvedResultRefs, pt, err := ResolveResultRefs(facts.State, PipelineRunState{t})
 		rpt := facts.State.ToMap()[pt]
 		if rpt != nil {
-			if err != nil && (t.IsFinalTask(facts) || rpt.Skip(facts).SkippingReason == v1beta1.WhenExpressionsSkip) {
+			if err != nil && (t.IsFinalTask(facts) || rpt.skipBecauseWhenExpressionsEvaluatedToFalse(facts)) {
 				return true
 			}
 		}
