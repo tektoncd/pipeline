@@ -10004,3 +10004,94 @@ spec:
 		})
 	}
 }
+
+func TestReconcile_CancelUnscheduled(t *testing.T) {
+	testCases := []struct {
+		name              string
+		embeddedStatusVal string
+	}{
+		{
+			name:              "default embedded status",
+			embeddedStatusVal: config.DefaultEmbeddedStatus,
+		},
+		{
+			name:              "full embedded status",
+			embeddedStatusVal: config.FullEmbeddedStatus,
+		},
+		{
+			name:              "both embedded status",
+			embeddedStatusVal: config.BothEmbeddedStatus,
+		},
+		{
+			name:              "minimal embedded status",
+			embeddedStatusVal: config.MinimalEmbeddedStatus,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pipelineRunName := "cancel-test-run"
+			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `metadata:
+  name: cancel-test-run
+  namespace: foo
+spec:
+  pipelineSpec:
+    tasks:
+      - name: wait-1
+        taskSpec:
+          apiVersion: example.dev/v0
+          kind: Wait
+          params:
+            - name: duration
+              value: 1h
+      - name: wait-2
+        runAfter:
+          - wait-1
+        taskSpec:
+          apiVersion: example.dev/v0
+          kind: Wait
+          params:
+            - name: duration
+              value: 10s
+      - name: wait-3
+        runAfter:
+          - wait-1
+        taskRef:
+          name: hello-world
+`)}
+
+			ts := []*v1beta1.Task{simpleHelloWorldTask}
+
+			cms := []*corev1.ConfigMap{withEmbeddedStatus(withCustomTasks(newFeatureFlagsConfigMap()), tc.embeddedStatusVal)}
+
+			d := test.Data{
+				PipelineRuns: prs,
+				Tasks:        ts,
+				ConfigMaps:   cms,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			pr, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
+
+			if tc.embeddedStatusVal != config.MinimalEmbeddedStatus {
+				if len(pr.Status.Runs) > 1 {
+					t.Errorf("Expected one Run in status, but found %d", len(pr.Status.Runs))
+				}
+				if len(pr.Status.TaskRuns) > 0 {
+					t.Errorf("Expected no TaskRuns in status, but found %d", len(pr.Status.TaskRuns))
+				}
+			}
+			if tc.embeddedStatusVal != config.FullEmbeddedStatus {
+				if len(pr.Status.ChildReferences) > 1 {
+					t.Errorf("Expected one Run or TaskRun in child references, but found %d", len(pr.Status.ChildReferences))
+				}
+			}
+
+			err := cancelPipelineRun(prt.TestAssets.Ctx, logtesting.TestLogger(t), pr, clients.Pipeline)
+			if err != nil {
+				t.Fatalf("Error found: %v", err)
+			}
+		})
+	}
+}
