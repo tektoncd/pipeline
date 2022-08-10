@@ -19,6 +19,7 @@ weight: 11
 - [Fan Out](#fan-out)
   - [`PipelineTasks` with `Tasks`](#pipelinetasks-with-tasks)
   - [`PipelineTasks` with `Custom Tasks`](#pipelinetasks-with-custom-tasks)
+- [Retries](#retries)
 
 ## Overview
 
@@ -521,6 +522,47 @@ status:
       pipelineTaskName: platforms-and-browsers
 ```
 
+## Retries
+
+The `retries` field is used to specify the number of times a `PipelineTask` should be retried when its `TaskRun` or 
+`Run` fails, see the [documentation][retries] for further details. When a `PipelineTask` is fanned out using `Matrix`, 
+a given `TaskRun` or `Run` executed will be retried as much as the field in the `retries` field of the `PipelineTask`.
+
+For example, the `PipelineTask` in this `PipelineRun` will be fanned out into three `TaskRuns` each of which will be 
+retried once:
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: matrixed-pr-with-retries-
+spec:
+  pipelineSpec:
+    tasks:
+      - name: matrix-and-params
+        matrix:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+        params:
+          - name: browser
+            value: chrome
+        retries: 1
+        taskSpec:
+          params:
+            - name: platform
+            - name: browser
+          steps:
+            - name: echo
+              image: alpine
+              script: |
+                echo "$(params.platform) and $(params.browser)"
+                exit 1
+```
+
 [cel]: https://github.com/tektoncd/experimental/tree/1609827ea81d05c8d00f8933c5c9d6150cd36989/cel
 [pr-with-matrix]: ../examples/v1beta1/pipelineruns/alpha/pipelinerun-with-matrix.yaml
 [pr-with-matrix-and-results]: ../examples/v1beta1/pipelineruns/alpha/pipelinerun-with-matrix-and-results.yaml
+[retries]: pipelines.md#using-the-retries-field
