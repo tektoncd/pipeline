@@ -808,6 +808,10 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
 	if tr != nil {
+		// retry should happen only when the taskrun has failed
+		if !tr.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
+			return tr, nil
+		}
 		// Don't modify the lister cache's copy.
 		tr = tr.DeepCopy()
 		// is a retry
