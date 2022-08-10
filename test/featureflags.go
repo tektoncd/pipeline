@@ -31,7 +31,7 @@ func requireAnyGate(gates map[string]string) func(context.Context, *testing.T, *
 			}
 			pairs = append(pairs, fmt.Sprintf("%q: %q", name, value))
 		}
-		t.Skipf("No feature flag matching %s", strings.Join(pairs, " or "))
+		t.Skipf("No feature flag in namespace %q matching %s\nExisting feature flag: %#v", system.Namespace(), strings.Join(pairs, " or "), featureFlagsCM.Data)
 	}
 }
 
