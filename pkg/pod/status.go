@@ -227,18 +227,15 @@ func filterResultsAndResources(results []v1beta1.PipelineResourceResult) ([]v1be
 	for _, r := range results {
 		switch r.ResultType {
 		case v1beta1.TaskRunResultType:
-			aos := v1beta1.ArrayOrString{}
-			err := aos.UnmarshalJSON([]byte(r.Value))
+			v := v1beta1.ResultValue{}
+			err := v.UnmarshalJSON([]byte(r.Value))
 			if err != nil {
 				continue
 			}
-			// TODO(#4723): Validate that the type we inferred from aos is matching the
-			// TaskResult Type before setting it to the taskRunResult.
-			// TODO(#4723): Validate the taskrun results against taskresults for object val
 			taskRunResult := v1beta1.TaskRunResult{
 				Name:  r.Key,
-				Type:  v1beta1.ResultsType(aos.Type),
-				Value: aos,
+				Type:  v1beta1.ResultsType(v.Type),
+				Value: v,
 			}
 			taskResults = append(taskResults, taskRunResult)
 			filteredResults = append(filteredResults, r)

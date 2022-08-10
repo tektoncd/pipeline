@@ -97,7 +97,7 @@ func TestTaskRun_Validate(t *testing.T) {
 			Spec: v1beta1.TaskRunSpec{
 				Params: []v1beta1.Param{{
 					Name: "task-words",
-					Value: v1beta1.ArrayOrString{
+					Value: v1beta1.ParamValue{
 						ArrayVal: []string{"hello", "task run"},
 					},
 				}},
@@ -119,7 +119,7 @@ func TestTaskRun_Validate(t *testing.T) {
 			Spec: v1beta1.TaskRunSpec{
 				Params: []v1beta1.Param{{
 					Name: "task-words",
-					Value: v1beta1.ArrayOrString{
+					Value: v1beta1.ParamValue{
 						ArrayVal: []string{"hello", "task run"},
 					},
 				}},
@@ -150,7 +150,7 @@ func TestTaskRun_Validate(t *testing.T) {
 			Spec: v1beta1.TaskRunSpec{
 				Params: []v1beta1.Param{{
 					Name: "task-words",
-					Value: v1beta1.ArrayOrString{
+					Value: v1beta1.ParamValue{
 						ArrayVal: []string{"hello", "task run"},
 					},
 				}},
@@ -184,7 +184,7 @@ func TestTaskRun_Validate(t *testing.T) {
 			Spec: v1beta1.TaskRunSpec{
 				Params: []v1beta1.Param{{
 					Name: "task-words",
-					Value: v1beta1.ArrayOrString{
+					Value: v1beta1.ParamValue{
 						ArrayVal: []string{"hello", "task run"},
 					},
 				}},
@@ -358,10 +358,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "myname",
-				Value: *v1beta1.NewArrayOrString("value"),
+				Value: *v1beta1.NewStructuredValues("value"),
 			}, {
 				Name:  "myname",
-				Value: *v1beta1.NewArrayOrString("value"),
+				Value: *v1beta1.NewStructuredValues("value"),
 			}},
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
@@ -371,10 +371,10 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "FOO",
-				Value: *v1beta1.NewArrayOrString("value"),
+				Value: *v1beta1.NewStructuredValues("value"),
 			}, {
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("value"),
+				Value: *v1beta1.NewStructuredValues("value"),
 			}},
 			TaskRef: &v1beta1.TaskRef{Name: "mytask"},
 		},
@@ -588,7 +588,7 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 			Timeout: &metav1.Duration{Duration: 0},
 			Params: []v1beta1.Param{{
 				Name:  "name",
-				Value: *v1beta1.NewArrayOrString("value"),
+				Value: *v1beta1.NewStructuredValues("value"),
 			}},
 			TaskSpec: &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{

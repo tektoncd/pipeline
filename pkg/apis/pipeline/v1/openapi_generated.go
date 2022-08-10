@@ -32,10 +32,10 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	return map[string]common.OpenAPIDefinition{
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.AffinityAssistantTemplate":   schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                    schema_pkg_apis_pipeline_pod_Template(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString":                schema_pkg_apis_pipeline_v1_ArrayOrString(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask":                 schema_pkg_apis_pipeline_v1_EmbeddedTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param":                        schema_pkg_apis_pipeline_v1_Param(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec":                    schema_pkg_apis_pipeline_v1_ParamSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue":                   schema_pkg_apis_pipeline_v1_ParamValue(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Pipeline":                     schema_pkg_apis_pipeline_v1_Pipeline(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineList":                 schema_pkg_apis_pipeline_v1_PipelineList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineResult":               schema_pkg_apis_pipeline_v1_PipelineResult(ref),
@@ -330,69 +330,6 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 	}
 }
 
-func schema_pkg_apis_pipeline_v1_ArrayOrString(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings. consideration the object case after the community reaches an agreement on it.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"type": {
-						SchemaProps: spec.SchemaProps{
-							Default: "",
-							Type:    []string{"string"},
-							Format:  "",
-						},
-					},
-					"stringVal": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Represents the stored type of ArrayOrString.",
-							Default:     "",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"arrayVal": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-					"objectVal": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-				},
-				Required: []string{"type", "stringVal", "arrayVal", "objectVal"},
-			},
-		},
-	}
-}
-
 func schema_pkg_apis_pipeline_v1_EmbeddedTask(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -564,7 +501,7 @@ func schema_pkg_apis_pipeline_v1_Param(ref common.ReferenceCallback) common.Open
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Param declares an ArrayOrString to use for the parameter called name.",
+				Description: "Param declares an ParamValues to use for the parameter called name.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -577,7 +514,7 @@ func schema_pkg_apis_pipeline_v1_Param(ref common.ReferenceCallback) common.Open
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"),
+							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
 				},
@@ -585,7 +522,7 @@ func schema_pkg_apis_pipeline_v1_Param(ref common.ReferenceCallback) common.Open
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"},
 	}
 }
 
@@ -636,7 +573,7 @@ func schema_pkg_apis_pipeline_v1_ParamSpec(ref common.ReferenceCallback) common.
 					"default": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Default is the value a parameter takes if no input value is supplied. If default is set, a Task may be executed without a supplied value for the parameter.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
 				},
@@ -644,7 +581,70 @@ func schema_pkg_apis_pipeline_v1_ParamSpec(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_ParamValue(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ResultValue is a type alias of ParamValue",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"type": {
+						SchemaProps: spec.SchemaProps{
+							Default: "",
+							Type:    []string{"string"},
+							Format:  "",
+						},
+					},
+					"stringVal": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Represents the stored type of ParamValues.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"arrayVal": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"objectVal": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"type", "stringVal", "arrayVal", "objectVal"},
+			},
+		},
 	}
 }
 
@@ -773,7 +773,7 @@ func schema_pkg_apis_pipeline_v1_PipelineResult(ref common.ReferenceCallback) co
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the expression used to retrieve the value",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
 				},
@@ -781,7 +781,7 @@ func schema_pkg_apis_pipeline_v1_PipelineResult(ref common.ReferenceCallback) co
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"},
 	}
 }
 
@@ -2195,7 +2195,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunResult(ref common.ReferenceCallback) com
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the given value of the result",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
 						},
 					},
 				},
@@ -2203,7 +2203,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunResult(ref common.ReferenceCallback) com
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArrayOrString"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"},
 	}
 }
 

@@ -609,7 +609,7 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name: "array-param",
-				Value: v1beta1.ArrayOrString{
+				Value: v1beta1.ParamValue{
 					Type:     v1beta1.ParamTypeArray,
 					ArrayVal: []string{},
 				}},
@@ -621,7 +621,7 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewArrayOrString("foo"),
+				Value: *v1beta1.NewStructuredValues("foo"),
 			}},
 		},
 	}
@@ -630,7 +630,7 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewArrayOrString("foo", "bar", "third"),
+				Value: *v1beta1.NewStructuredValues("foo", "bar", "third"),
 			}},
 		},
 	}
@@ -639,10 +639,10 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewArrayOrString("foo", "bar", "third"),
+				Value: *v1beta1.NewStructuredValues("foo", "bar", "third"),
 			}, {
 				Name:  "another-array-param",
-				Value: *v1beta1.NewArrayOrString("part1", "part2"),
+				Value: *v1beta1.NewStructuredValues("part1", "part2"),
 			}},
 		},
 	}
@@ -651,10 +651,10 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewArrayOrString("middlefirst", "middlesecond"),
+				Value: *v1beta1.NewStructuredValues("middlefirst", "middlesecond"),
 			}, {
 				Name:  "normal-param",
-				Value: *v1beta1.NewArrayOrString("foo"),
+				Value: *v1beta1.NewStructuredValues("foo"),
 			}},
 		},
 	}
@@ -663,7 +663,7 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param",
-				Value: *v1beta1.NewArrayOrString("middlefirst", "middlesecond"),
+				Value: *v1beta1.NewStructuredValues("middlefirst", "middlesecond"),
 			}, {
 				Name: "myObject",
 				Value: *v1beta1.NewObject(map[string]string{
@@ -678,16 +678,16 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param1",
-				Value: *v1beta1.NewArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
+				Value: *v1beta1.NewStructuredValues("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
 				Name:  "array-param2",
-				Value: *v1beta1.NewArrayOrString("1-param2", "2-param2", "2-param3"),
+				Value: *v1beta1.NewStructuredValues("1-param2", "2-param2", "2-param3"),
 			}, {
 				Name:  "string-param1",
-				Value: *v1beta1.NewArrayOrString("foo"),
+				Value: *v1beta1.NewStructuredValues("foo"),
 			}, {
 				Name:  "string-param2",
-				Value: *v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewStructuredValues("bar"),
 			}},
 		},
 	}
@@ -696,10 +696,10 @@ var (
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "array-param1",
-				Value: *v1beta1.NewArrayOrString("1-param1", "2-param1", "3-param1", "4-param1"),
+				Value: *v1beta1.NewStructuredValues("1-param1", "2-param1", "3-param1", "4-param1"),
 			}, {
 				Name:  "array-param2",
-				Value: *v1beta1.NewArrayOrString("1-param2", "2-param2", "3-param3"),
+				Value: *v1beta1.NewStructuredValues("1-param2", "2-param2", "3-param3"),
 			}, {
 				Name: "myObject",
 				Value: *v1beta1.NewObject(map[string]string{
@@ -862,7 +862,7 @@ func TestApplyArrayParameters(t *testing.T) {
 			tr: &v1beta1.TaskRun{},
 			dp: []v1beta1.ParamSpec{{
 				Name:    "array-param",
-				Default: v1beta1.NewArrayOrString("defaulted", "value!"),
+				Default: v1beta1.NewStructuredValues("defaulted", "value!"),
 			}},
 		},
 		want: applyMutation(arrayParamTaskSpec, func(spec *v1beta1.TaskSpec) {
@@ -884,19 +884,19 @@ func TestApplyParameters(t *testing.T) {
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "myimage",
-				Value: *v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewStructuredValues("bar"),
 			}, {
 				Name:  "FOO",
-				Value: *v1beta1.NewArrayOrString("world"),
+				Value: *v1beta1.NewStructuredValues("world"),
 			}},
 		},
 	}
 	dp := []v1beta1.ParamSpec{{
 		Name:    "something",
-		Default: v1beta1.NewArrayOrString("mydefault"),
+		Default: v1beta1.NewStructuredValues("mydefault"),
 	}, {
 		Name:    "somethingelse",
-		Default: v1beta1.NewArrayOrString(""),
+		Default: v1beta1.NewStructuredValues(""),
 	}}
 	want := applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "world"
@@ -953,19 +953,19 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 		Spec: v1beta1.TaskRunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "myimage",
-				Value: *v1beta1.NewArrayOrString("bar", "foo"),
+				Value: *v1beta1.NewStructuredValues("bar", "foo"),
 			}, {
 				Name:  "FOO",
-				Value: *v1beta1.NewArrayOrString("hello", "world"),
+				Value: *v1beta1.NewStructuredValues("hello", "world"),
 			}},
 		},
 	}
 	dp := []v1beta1.ParamSpec{{
 		Name:    "something",
-		Default: v1beta1.NewArrayOrString("mydefault", "mydefault2"),
+		Default: v1beta1.NewStructuredValues("mydefault", "mydefault2"),
 	}, {
 		Name:    "somethingelse",
-		Default: v1beta1.NewArrayOrString(""),
+		Default: v1beta1.NewStructuredValues(""),
 	}}
 	want := applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 		spec.StepTemplate.Env[0].Value = "world"

@@ -235,9 +235,9 @@ spec:
 
 	// Validate the task's result reference to the custom task's result was resolved.
 	expectedTaskRunParams := []v1beta1.Param{{
-		Name: "input-result-from-custom-task-ref", Value: *v1beta1.NewArrayOrString("aResultValue"),
+		Name: "input-result-from-custom-task-ref", Value: *v1beta1.NewStructuredValues("aResultValue"),
 	}, {
-		Name: "input-result-from-custom-task-spec", Value: *v1beta1.NewArrayOrString("aResultValue"),
+		Name: "input-result-from-custom-task-spec", Value: *v1beta1.NewStructuredValues("aResultValue"),
 	}}
 
 	if d := cmp.Diff(expectedTaskRunParams, taskRun.Spec.Params); d != "" {
@@ -248,10 +248,10 @@ spec:
 
 	expectedPipelineResults := []v1beta1.PipelineRunResult{{
 		Name:  "prResult-ref",
-		Value: *v1beta1.NewArrayOrString("aResultValue"),
+		Value: *v1beta1.NewStructuredValues("aResultValue"),
 	}, {
 		Name:  "prResult-spec",
-		Value: *v1beta1.NewArrayOrString("aResultValue"),
+		Value: *v1beta1.NewStructuredValues("aResultValue"),
 	}}
 
 	if len(pr.Status.PipelineResults) != 2 {

@@ -229,12 +229,12 @@ var (
 				{
 					Name:    "myarghasdefault",
 					Type:    v1beta1.ParamTypeString,
-					Default: v1beta1.NewArrayOrString("dont see me"),
+					Default: v1beta1.NewStructuredValues("dont see me"),
 				},
 				{
 					Name:    "myarghasdefault2",
 					Type:    v1beta1.ParamTypeString,
-					Default: v1beta1.NewArrayOrString("thedefault"),
+					Default: v1beta1.NewStructuredValues("thedefault"),
 				},
 				{
 					Name: "configmapname",

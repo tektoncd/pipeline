@@ -255,26 +255,26 @@ func TestReadResultsFromDisk(t *testing.T) {
 	for _, c := range []struct {
 		desc          string
 		results       []string
-		resultContent []v1beta1.ArrayOrString
+		resultContent []v1beta1.ResultValue
 		want          []v1beta1.PipelineResourceResult
 	}{{
 		desc:          "read string result file",
 		results:       []string{"results"},
-		resultContent: []v1beta1.ArrayOrString{*v1beta1.NewArrayOrString("hello world")},
+		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello world")},
 		want: []v1beta1.PipelineResourceResult{
 			{Value: `"hello world"`,
 				ResultType: 1}},
 	}, {
 		desc:          "read array result file",
 		results:       []string{"results"},
-		resultContent: []v1beta1.ArrayOrString{*v1beta1.NewArrayOrString("hello", "world")},
+		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world")},
 		want: []v1beta1.PipelineResourceResult{
 			{Value: `["hello","world"]`,
 				ResultType: 1}},
 	}, {
 		desc:          "read string and array result files",
 		results:       []string{"resultsArray", "resultsString"},
-		resultContent: []v1beta1.ArrayOrString{*v1beta1.NewArrayOrString("hello", "world"), *v1beta1.NewArrayOrString("hello world")},
+		resultContent: []v1beta1.ResultValue{*v1beta1.NewStructuredValues("hello", "world"), *v1beta1.NewStructuredValues("hello world")},
 		want: []v1beta1.PipelineResourceResult{
 			{Value: `["hello","world"]`,
 				ResultType: 1},
@@ -324,8 +324,8 @@ func TestReadResultsFromDisk(t *testing.T) {
 			logger, _ := logging.NewLogger("", "status")
 			got, _ := termination.ParseMessage(logger, string(msg))
 			for _, g := range got {
-				aos := v1beta1.ArrayOrString{}
-				aos.UnmarshalJSON([]byte(g.Value))
+				v := v1beta1.ResultValue{}
+				v.UnmarshalJSON([]byte(g.Value))
 			}
 			if d := cmp.Diff(got, c.want); d != "" {
 				t.Fatalf("Diff(-want,+got): %v", d)

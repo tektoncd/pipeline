@@ -193,7 +193,7 @@ func TestTaskSpecValidate(t *testing.T) {
 			Params: []v1beta1.ParamSpec{{
 				Name:        "task",
 				Description: "param",
-				Default:     v1beta1.NewArrayOrString("default"),
+				Default:     v1beta1.NewStructuredValues("default"),
 			}},
 			Steps: validSteps,
 		},
@@ -204,7 +204,7 @@ func TestTaskSpecValidate(t *testing.T) {
 				Name:        "task",
 				Type:        v1beta1.ParamTypeString,
 				Description: "param",
-				Default:     v1beta1.NewArrayOrString("default"),
+				Default:     v1beta1.NewStructuredValues("default"),
 			}, {
 				Name:        "myobj",
 				Type:        v1beta1.ParamTypeObject,
@@ -535,7 +535,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "validparam",
 				Type:        v1beta1.ParamTypeString,
 				Description: "parameter",
-				Default:     v1beta1.NewArrayOrString("default"),
+				Default:     v1beta1.NewStructuredValues("default"),
 			}},
 		},
 		expectedError: apis.FieldError{
@@ -672,12 +672,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "foo",
 				Type:        v1beta1.ParamTypeString,
 				Description: "parameter",
-				Default:     v1beta1.NewArrayOrString("value1"),
+				Default:     v1beta1.NewStructuredValues("value1"),
 			}, {
 				Name:        "foo",
 				Type:        v1beta1.ParamTypeString,
 				Description: "parameter",
-				Default:     v1beta1.NewArrayOrString("value2"),
+				Default:     v1beta1.NewStructuredValues("value2"),
 			}},
 			Steps: validSteps,
 		},
@@ -692,12 +692,12 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "validparam",
 				Type:        v1beta1.ParamTypeString,
 				Description: "parameter",
-				Default:     v1beta1.NewArrayOrString("default"),
+				Default:     v1beta1.NewStructuredValues("default"),
 			}, {
 				Name:        "param-with-invalid-type",
 				Type:        "invalidtype",
 				Description: "invalidtypedesc",
-				Default:     v1beta1.NewArrayOrString("default"),
+				Default:     v1beta1.NewStructuredValues("default"),
 			}},
 			Steps: validSteps,
 		},
@@ -712,7 +712,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "task",
 				Type:        v1beta1.ParamTypeArray,
 				Description: "param",
-				Default:     v1beta1.NewArrayOrString("default"),
+				Default:     v1beta1.NewStructuredValues("default"),
 			}},
 			Steps: validSteps,
 		},
@@ -727,7 +727,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "task",
 				Type:        v1beta1.ParamTypeString,
 				Description: "param",
-				Default:     v1beta1.NewArrayOrString("default", "array"),
+				Default:     v1beta1.NewStructuredValues("default", "array"),
 			}},
 			Steps: validSteps,
 		},
@@ -761,7 +761,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Type:        v1beta1.ParamTypeObject,
 				Description: "param",
 				Properties:  map[string]v1beta1.PropertySpec{"key1": {}},
-				Default:     v1beta1.NewArrayOrString("var"),
+				Default:     v1beta1.NewStructuredValues("var"),
 			}},
 			Steps: validSteps,
 		},
@@ -826,7 +826,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				Name:        "validparam",
 				Type:        v1beta1.ParamTypeString,
 				Description: "parameter",
-				Default:     v1beta1.NewArrayOrString("default"),
+				Default:     v1beta1.NewStructuredValues("default"),
 			}},
 			Steps: []v1beta1.Step{},
 		},
@@ -972,10 +972,10 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{
 				Name:    "baz",
-				Default: v1beta1.NewArrayOrString("implied", "array", "type"),
+				Default: v1beta1.NewStructuredValues("implied", "array", "type"),
 			}, {
 				Name:    "foo-is-baz",
-				Default: v1beta1.NewArrayOrString("implied", "array", "type"),
+				Default: v1beta1.NewStructuredValues("implied", "array", "type"),
 			}},
 			Steps: []v1beta1.Step{{
 				Name:       "mystep",
@@ -994,10 +994,10 @@ func TestTaskSpecValidateError(t *testing.T) {
 		fields: fields{
 			Params: []v1beta1.ParamSpec{{
 				Name:    "baz",
-				Default: v1beta1.NewArrayOrString("implied", "array", "type"),
+				Default: v1beta1.NewStructuredValues("implied", "array", "type"),
 			}, {
 				Name:    "foo-is-baz",
-				Default: v1beta1.NewArrayOrString("implied", "array", "type"),
+				Default: v1beta1.NewStructuredValues("implied", "array", "type"),
 			}},
 			Steps: []v1beta1.Step{{
 				Name:       "mystep",
@@ -1106,7 +1106,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 				{
 					Name:        "foo",
 					Description: "param",
-					Default:     v1beta1.NewArrayOrString("default"),
+					Default:     v1beta1.NewStructuredValues("default"),
 				},
 			},
 			Steps: []v1beta1.Step{{
@@ -1127,7 +1127,7 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Params: []v1beta1.ParamSpec{{
 				Name:        "foo",
 				Description: "param",
-				Default:     v1beta1.NewArrayOrString("default"),
+				Default:     v1beta1.NewStructuredValues("default"),
 			}},
 			Steps: []v1beta1.Step{{
 				Name:  "mystep",

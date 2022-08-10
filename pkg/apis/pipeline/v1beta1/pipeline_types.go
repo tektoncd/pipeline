@@ -133,7 +133,7 @@ type PipelineResult struct {
 	Description string `json:"description"`
 
 	// Value the expression used to retrieve the value
-	Value ArrayOrString `json:"value"`
+	Value ResultValue `json:"value"`
 }
 
 // PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask

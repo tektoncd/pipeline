@@ -14,7 +14,7 @@
 - [Status Signalling](#status-signalling)
 - [Listing Resources](#listing-resources)
 - [Detailed Resource Types - v1beta1](#detailed-resource-types---v1beta1)
-  * [`ArrayOrString`](#arrayorstring)
+  * [`ParamValue`](#paramvalue)
   * [`ContainerStateRunning`](#containerstaterunning)
   * [`ContainerStateWaiting`](#containerstatewaiting)
   * [`ContainerStateTerminated`](#containerstateterminated)
@@ -186,13 +186,14 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 
 ## Detailed Resource Types - v1beta1
 
-### `ArrayOrString`
+### `ParamValue`
 
 | Field Name  | Field Type | Requirement |
 |-------------|------------|-------------|
-| `type`      | Enum:<br>- `"string"` (default)<br>- `"array"` | REQUIRED |
+| `type`      | Enum:<br>- `"string"` (default)<br>- `"array"` <br>- `"object"` | REQUIRED |
 | `stringVal` | string     | REQUIRED    |
 | `arrayVal`  | []string   | REQUIRED    |
+| `objectVal` | map<string,string>   | REQUIRED    |
 
 ### `ContainerStateRunning`
 
@@ -235,7 +236,7 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 | Field Name | Field Type      | Requirement |
 |------------|-----------------|-------------|
 | `name`     | string          | REQUIRED    |
-| `value`    | `ArrayOrString` | REQUIRED    |
+| `value`    | `ParamValue` | REQUIRED    |
 
 ### `ParamSpec`
 
@@ -244,7 +245,7 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 | `name`        | string     | REQUIRED    |
 | `description` | string     | REQUIRED    |
 | `type`        | Enum: <br>- `"string"` (default) <br>- `"array"` | REQUIRED |
-| `default`     | `ArrayOrString` | REQUIRED |
+| `default`     | `ParamValue` | REQUIRED |
 
 ### `Step`
 

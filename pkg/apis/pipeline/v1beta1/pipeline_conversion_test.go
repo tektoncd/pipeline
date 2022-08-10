@@ -104,13 +104,13 @@ func TestPipelineConversion(t *testing.T) {
 					RunAfter: []string{"task-1"},
 					Params: []v1beta1.Param{{
 						Name: "param-task-1",
-						Value: v1beta1.ArrayOrString{
+						Value: v1beta1.ParamValue{
 							ArrayVal: []string{"value-task-1"},
 						},
 					}},
 					Matrix: []v1beta1.Param{{
 						Name: "a-param",
-						Value: v1beta1.ArrayOrString{
+						Value: v1beta1.ParamValue{
 							Type:     v1beta1.ParamTypeArray,
 							ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"},
 						},
@@ -127,7 +127,7 @@ func TestPipelineConversion(t *testing.T) {
 					Type:        v1beta1.ParamTypeString,
 					Description: "My first pipeline param",
 					Properties:  map[string]v1beta1.PropertySpec{"foo": {Type: v1beta1.ParamTypeString}},
-					Default:     v1beta1.NewArrayOrString("bar"),
+					Default:     v1beta1.NewStructuredValues("bar"),
 				}},
 				Workspaces: []v1beta1.WorkspacePipelineDeclaration{{
 					Name:        "workspace",
@@ -138,7 +138,7 @@ func TestPipelineConversion(t *testing.T) {
 					Name:        "my-pipeline-result",
 					Type:        v1beta1.ResultsTypeObject,
 					Description: "this is my pipeline result",
-					Value:       *v1beta1.NewArrayOrString("foo.bar"),
+					Value:       *v1beta1.NewStructuredValues("foo.bar"),
 				}},
 				Finally: []v1beta1.PipelineTask{{
 					Name:    "final-task",

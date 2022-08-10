@@ -140,42 +140,6 @@
         }
       }
     },
-    "v1.ArrayOrString": {
-      "description": "ArrayOrString is a type that can hold a single string or string array. Used in JSON unmarshalling so that a single JSON field can accept either an individual string or an array of strings. consideration the object case after the community reaches an agreement on it.",
-      "type": "object",
-      "required": [
-        "type",
-        "stringVal",
-        "arrayVal",
-        "objectVal"
-      ],
-      "properties": {
-        "arrayVal": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "objectVal": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string",
-            "default": ""
-          }
-        },
-        "stringVal": {
-          "description": "Represents the stored type of ArrayOrString.",
-          "type": "string",
-          "default": ""
-        },
-        "type": {
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
     "v1.EmbeddedTask": {
       "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
       "type": "object",
@@ -260,7 +224,7 @@
       }
     },
     "v1.Param": {
-      "description": "Param declares an ArrayOrString to use for the parameter called name.",
+      "description": "Param declares an ParamValues to use for the parameter called name.",
       "type": "object",
       "required": [
         "name",
@@ -273,7 +237,7 @@
         },
         "value": {
           "default": {},
-          "$ref": "#/definitions/v1.ArrayOrString"
+          "$ref": "#/definitions/v1.ParamValue"
         }
       }
     },
@@ -286,7 +250,7 @@
       "properties": {
         "default": {
           "description": "Default is the value a parameter takes if no input value is supplied. If default is set, a Task may be executed without a supplied value for the parameter.",
-          "$ref": "#/definitions/v1.ArrayOrString"
+          "$ref": "#/definitions/v1.ParamValue"
         },
         "description": {
           "description": "Description is a user-facing description of the parameter that may be used to populate a UI.",
@@ -308,6 +272,42 @@
         "type": {
           "description": "Type is the user-specified type of the parameter. The possible types are currently \"string\", \"array\" and \"object\", and \"string\" is the default.",
           "type": "string"
+        }
+      }
+    },
+    "v1.ParamValue": {
+      "description": "ResultValue is a type alias of ParamValue",
+      "type": "object",
+      "required": [
+        "type",
+        "stringVal",
+        "arrayVal",
+        "objectVal"
+      ],
+      "properties": {
+        "arrayVal": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "objectVal": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "stringVal": {
+          "description": "Represents the stored type of ParamValues.",
+          "type": "string",
+          "default": ""
+        },
+        "type": {
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -387,7 +387,7 @@
         "value": {
           "description": "Value the expression used to retrieve the value",
           "default": {},
-          "$ref": "#/definitions/v1.ArrayOrString"
+          "$ref": "#/definitions/v1.ParamValue"
         }
       }
     },
@@ -1153,7 +1153,7 @@
         "value": {
           "description": "Value the given value of the result",
           "default": {},
-          "$ref": "#/definitions/v1.ArrayOrString"
+          "$ref": "#/definitions/v1.ParamValue"
         }
       }
     },

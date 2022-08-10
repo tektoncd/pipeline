@@ -297,7 +297,7 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 		Name: "x",
 		Params: []v1beta1.Param{{
 			Name:  "paramX",
-			Value: *v1beta1.NewArrayOrString("$(tasks.a.results.resultA)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.a.results.resultA)"),
 		}},
 	}
 	yDependsOnBRunsAfterC := v1beta1.PipelineTask{
@@ -305,21 +305,21 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 		RunAfter: []string{"c"},
 		Params: []v1beta1.Param{{
 			Name:  "paramB",
-			Value: *v1beta1.NewArrayOrString("$(tasks.b.results.resultB)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.b.results.resultB)"),
 		}},
 	}
 	zDependsOnDAndE := v1beta1.PipelineTask{
 		Name: "z",
 		Params: []v1beta1.Param{{
 			Name:  "paramZ",
-			Value: *v1beta1.NewArrayOrString("$(tasks.d.results.resultD) $(tasks.e.results.resultE)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.d.results.resultD) $(tasks.e.results.resultE)"),
 		}},
 	}
 	wDependsOnF := v1beta1.PipelineTask{
 		Name: "w",
 		Params: []v1beta1.Param{{
 			Name:  "paramw",
-			Value: *v1beta1.NewArrayOrString("$(tasks.f.results.resultF[*])"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.f.results.resultF[*])"),
 		}},
 	}
 
@@ -566,7 +566,7 @@ func testGraph(t *testing.T) *dag.Graph {
 		Name: "w",
 		Params: []v1beta1.Param{{
 			Name:  "foo",
-			Value: *v1beta1.NewArrayOrString("$(tasks.y.results.bar)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.y.results.bar)"),
 		}},
 		RunAfter: []string{"b"},
 	}, {

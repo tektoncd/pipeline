@@ -43,7 +43,7 @@ var pipelineRunState = PipelineRunState{{
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "aResult",
-					Value: *v1beta1.NewArrayOrString("aResultValue"),
+					Value: *v1beta1.NewStructuredValues("aResultValue"),
 				}},
 			},
 		},
@@ -58,7 +58,7 @@ var pipelineRunState = PipelineRunState{{
 		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 		Params: []v1beta1.Param{{
 			Name:  "bParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult)"),
 		}},
 	},
 }, {
@@ -87,7 +87,7 @@ var pipelineRunState = PipelineRunState{{
 		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 		Params: []v1beta1.Param{{
 			Name:  "bParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.missingResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.missingResult)"),
 		}},
 	},
 }, {
@@ -117,7 +117,7 @@ var pipelineRunState = PipelineRunState{{
 		TaskRef: &v1beta1.TaskRef{Name: "bTask"},
 		Params: []v1beta1.Param{{
 			Name:  "bParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aCustomPipelineTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aCustomPipelineTask.results.aResult)"),
 		}},
 	},
 }, {
@@ -133,7 +133,7 @@ var pipelineRunState = PipelineRunState{{
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "cResult",
-					Value: *v1beta1.NewArrayOrString("arrayResultOne", "arrayResultTwo"),
+					Value: *v1beta1.NewStructuredValues("arrayResultOne", "arrayResultTwo"),
 				}},
 			},
 		},
@@ -143,7 +143,7 @@ var pipelineRunState = PipelineRunState{{
 		TaskRef: &v1beta1.TaskRef{Name: "cTask"},
 		Params: []v1beta1.Param{{
 			Name:  "cParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.cTask.results.cResult[1])"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.cTask.results.cResult[1])"),
 		}},
 	},
 }, {
@@ -159,7 +159,7 @@ var pipelineRunState = PipelineRunState{{
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "dResult",
-					Value: *v1beta1.NewArrayOrString("arrayResultOne", "arrayResultTwo"),
+					Value: *v1beta1.NewStructuredValues("arrayResultOne", "arrayResultTwo"),
 				}},
 			},
 		},
@@ -169,7 +169,7 @@ var pipelineRunState = PipelineRunState{{
 		TaskRef: &v1beta1.TaskRef{Name: "dTask"},
 		Params: []v1beta1.Param{{
 			Name:  "dParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.dTask.results.dResult[3])"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.dTask.results.dResult[3])"),
 		}},
 	},
 }}
@@ -194,7 +194,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("explicitValueNoResultReference"),
+			Value: *v1beta1.NewStructuredValues("explicitValueNoResultReference"),
 		},
 		want:    nil,
 		wantErr: false,
@@ -211,7 +211,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
 							Name:  "aResult",
-							Value: *v1beta1.NewArrayOrString("aResultValue"),
+							Value: *v1beta1.NewStructuredValues("aResultValue"),
 						}},
 					},
 				},
@@ -223,10 +223,10 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult)"),
 		},
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
@@ -247,7 +247,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
 							Name:  "aResult",
-							Value: *v1beta1.NewArrayOrString("aResultValue"),
+							Value: *v1beta1.NewStructuredValues("aResultValue"),
 						}},
 					},
 				},
@@ -267,7 +267,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
 							Name:  "bResult",
-							Value: *v1beta1.NewArrayOrString("bResultValue"),
+							Value: *v1beta1.NewStructuredValues("bResultValue"),
 						}},
 					},
 				},
@@ -279,17 +279,17 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult) $(tasks.bTask.results.bResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult) $(tasks.bTask.results.bResult)"),
 		},
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
 			},
 			FromTaskRun: "aTaskRun",
 		}, {
-			Value: *v1beta1.NewArrayOrString("bResultValue"),
+			Value: *v1beta1.NewStructuredValues("bResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "bTask",
 				Result:       "bResult",
@@ -310,7 +310,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
 							Name:  "aResult",
-							Value: *v1beta1.NewArrayOrString("aResultValue"),
+							Value: *v1beta1.NewStructuredValues("aResultValue"),
 						}},
 					},
 				},
@@ -322,10 +322,10 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult) $(tasks.aTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult) $(tasks.aTask.results.aResult)"),
 		},
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
@@ -352,7 +352,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult)"),
 		},
 		want:    nil,
 		wantErr: true,
@@ -361,7 +361,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		pipelineRunState: PipelineRunState{},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult)"),
 		},
 		want:    nil,
 		wantErr: true,
@@ -375,7 +375,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult)"),
 		},
 		want:    nil,
 		wantErr: true,
@@ -398,7 +398,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult)"),
 		},
 		want:    nil,
 		wantErr: true,
@@ -428,10 +428,10 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aCustomPipelineTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aCustomPipelineTask.results.aResult)"),
 		},
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aCustomPipelineTask",
 				Result:       "aResult",
@@ -459,7 +459,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		}},
 		param: v1beta1.Param{
 			Name:  "targetParam",
-			Value: *v1beta1.NewArrayOrString("$(tasks.aCustomPipelineTask.results.aResult)"),
+			Value: *v1beta1.NewStructuredValues("$(tasks.aCustomPipelineTask.results.aResult)"),
 		},
 		want:    nil,
 		wantErr: true,
@@ -523,7 +523,7 @@ func TestResolveResultRefs(t *testing.T) {
 			pipelineRunState[1],
 		},
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
@@ -538,7 +538,7 @@ func TestResolveResultRefs(t *testing.T) {
 			pipelineRunState[7],
 		},
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("arrayResultOne", "arrayResultTwo"),
+			Value: *v1beta1.NewStructuredValues("arrayResultOne", "arrayResultTwo"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "cTask",
 				Result:       "cResult",
@@ -562,7 +562,7 @@ func TestResolveResultRefs(t *testing.T) {
 			pipelineRunState[2],
 		},
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
@@ -603,7 +603,7 @@ func TestResolveResultRefs(t *testing.T) {
 			pipelineRunState[6],
 		},
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aCustomPipelineTask",
 				Result:       "aResult",
@@ -641,7 +641,7 @@ func TestResolveResultRef(t *testing.T) {
 		pipelineRunState: pipelineRunState,
 		target:           pipelineRunState[1],
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
@@ -654,7 +654,7 @@ func TestResolveResultRef(t *testing.T) {
 		pipelineRunState: pipelineRunState,
 		target:           pipelineRunState[2],
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aTask",
 				Result:       "aResult",
@@ -687,7 +687,7 @@ func TestResolveResultRef(t *testing.T) {
 		pipelineRunState: pipelineRunState,
 		target:           pipelineRunState[6],
 		want: ResolvedResultRefs{{
-			Value: *v1beta1.NewArrayOrString("aResultValue"),
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
 			ResultReference: v1beta1.ResultRef{
 				PipelineTask: "aCustomPipelineTask",
 				Result:       "aResult",

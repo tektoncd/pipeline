@@ -45,16 +45,17 @@ type TaskRunResult struct {
 	Type ResultsType `json:"type,omitempty"`
 
 	// Value the given value of the result
-	Value ArrayOrString `json:"value"`
+	Value ResultValue `json:"value"`
 }
+
+// ResultValue is a type alias of ParamValue
+type ResultValue = ParamValue
 
 // ResultsType indicates the type of a result;
 // Used to distinguish between a single string and an array of strings.
 // Note that there is ResultType used to find out whether a
 // PipelineResourceResult is from a task result or not, which is different from
 // this ResultsType.
-// TODO(#4723): add "array" and "object" support
-// TODO(#4723): align ResultsType and ParamType in ArrayOrString
 type ResultsType string
 
 // Valid ResultsType:

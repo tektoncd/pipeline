@@ -35,7 +35,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "Test valid expression",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask.results.sumResult)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask.results.sumResult)"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask",
@@ -45,7 +45,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "refer whole array result",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask.results.sumResult[*])"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask.results.sumResult[*])"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask",
@@ -55,7 +55,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "Test valid expression with single object result property",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask.results.sumResult.key1)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask.results.sumResult.key1)"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask",
@@ -66,7 +66,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "refer array indexing result",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask.results.sumResult[1])"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask.results.sumResult[1])"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask",
@@ -77,7 +77,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "Test valid expression with multiple object result properties",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask.results.imageresult.digest), and another one $(tasks.sumTask.results.imageresult.tag)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask.results.imageresult.digest), and another one $(tasks.sumTask.results.imageresult.tag)"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask",
@@ -92,7 +92,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "substitution within string",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("sum-will-go-here -> $(tasks.sumTask.results.sumResult)"),
+			Value: *v1.NewStructuredValues("sum-will-go-here -> $(tasks.sumTask.results.sumResult)"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask",
@@ -102,7 +102,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "multiple substitution",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult), last one $(tasks.sumTask3.results.sumResult.key1)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult), last one $(tasks.sumTask3.results.sumResult.key1)"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask1",
@@ -119,7 +119,7 @@ func TestNewResultReference(t *testing.T) {
 		name: "multiple substitution with param",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(params.param) $(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult), last one $(tasks.sumTask3.results.sumResult.key1)"),
+			Value: *v1.NewStructuredValues("$(params.param) $(tasks.sumTask1.results.sumResult) and another $(tasks.sumTask2.results.sumResult), last one $(tasks.sumTask3.results.sumResult.key1)"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask1",
@@ -136,35 +136,35 @@ func TestNewResultReference(t *testing.T) {
 		name: "first separator typo",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(task.sumTasks.results.sumResult)"),
+			Value: *v1.NewStructuredValues("$(task.sumTasks.results.sumResult)"),
 		},
 		want: nil,
 	}, {
 		name: "third separator typo",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTasks.result.sumResult)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTasks.result.sumResult)"),
 		},
 		want: nil,
 	}, {
 		name: "more than 5 dot-separated components",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTasks.result.sumResult.key.extra)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTasks.result.sumResult.key.extra)"),
 		},
 		want: nil,
 	}, {
 		name: "param substitution shouldn't be considered result ref",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(params.paramName)"),
+			Value: *v1.NewStructuredValues("$(params.paramName)"),
 		},
 		want: nil,
 	}, {
 		name: "One bad and good result substitution",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("good -> $(tasks.sumTask1.results.sumResult) bad-> $(task.sumTask2.results.sumResult)"),
+			Value: *v1.NewStructuredValues("good -> $(tasks.sumTask1.results.sumResult) bad-> $(task.sumTask2.results.sumResult)"),
 		},
 		want: []*v1.ResultRef{{
 			PipelineTask: "sumTask1",
@@ -194,7 +194,7 @@ func TestHasResultReference(t *testing.T) {
 		name: "Test valid expression",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask.results.sumResult)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask.results.sumResult)"),
 		},
 		wantRef: []*v1.ResultRef{{
 			PipelineTask: "sumTask",
@@ -204,7 +204,7 @@ func TestHasResultReference(t *testing.T) {
 		name: "Test valid expression with dashes",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sum-task.results.sum-result)"),
+			Value: *v1.NewStructuredValues("$(tasks.sum-task.results.sum-result)"),
 		},
 		wantRef: []*v1.ResultRef{{
 			PipelineTask: "sum-task",
@@ -214,7 +214,7 @@ func TestHasResultReference(t *testing.T) {
 		name: "Test valid expression with underscores",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sum-task.results.sum_result)"),
+			Value: *v1.NewStructuredValues("$(tasks.sum-task.results.sum_result)"),
 		},
 		wantRef: []*v1.ResultRef{{
 			PipelineTask: "sum-task",
@@ -224,14 +224,14 @@ func TestHasResultReference(t *testing.T) {
 		name: "Test invalid expression: param substitution shouldn't be considered result ref",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(params.paramName)"),
+			Value: *v1.NewStructuredValues("$(params.paramName)"),
 		},
 		wantRef: nil,
 	}, {
 		name: "Test valid expression in array",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask.results.sumResult)", "$(tasks.sumTask2.results.sumResult2)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask.results.sumResult)", "$(tasks.sumTask2.results.sumResult2)"),
 		},
 		wantRef: []*v1.ResultRef{{
 			PipelineTask: "sumTask",
@@ -244,7 +244,7 @@ func TestHasResultReference(t *testing.T) {
 		name: "Test valid expression in array - no ref in first element",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("1", "$(tasks.sumTask2.results.sumResult2)"),
+			Value: *v1.NewStructuredValues("1", "$(tasks.sumTask2.results.sumResult2)"),
 		},
 		wantRef: []*v1.ResultRef{{
 			PipelineTask: "sumTask2",
@@ -301,56 +301,56 @@ func TestLooksLikeResultRef(t *testing.T) {
 		name: "test expression that is a result ref",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTasks.results.sumResult)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTasks.results.sumResult)"),
 		},
 		want: true,
 	}, {
 		name: "test expression: looks like result ref, but typo in 'task' separator",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(task.sumTasks.results.sumResult)"),
+			Value: *v1.NewStructuredValues("$(task.sumTasks.results.sumResult)"),
 		},
 		want: true,
 	}, {
 		name: "test expression: looks like result ref, but typo in 'results' separator",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTasks.result.sumResult)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTasks.result.sumResult)"),
 		},
 		want: true,
 	}, {
 		name: "test expression: missing 'task' separator",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(sumTasks.results.sumResult)"),
+			Value: *v1.NewStructuredValues("$(sumTasks.results.sumResult)"),
 		},
 		want: false,
 	}, {
 		name: "test expression: missing variable substitution",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("tasks.sumTasks.results.sumResult"),
+			Value: *v1.NewStructuredValues("tasks.sumTasks.results.sumResult"),
 		},
 		want: false,
 	}, {
 		name: "test expression: param substitution shouldn't be considered result ref",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(params.someParam)"),
+			Value: *v1.NewStructuredValues("$(params.someParam)"),
 		},
 		want: false,
 	}, {
 		name: "test expression: one good ref, one bad one should return true",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTasks.results.sumResult) $(task.sumTasks.results.sumResult)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTasks.results.sumResult) $(task.sumTasks.results.sumResult)"),
 		},
 		want: true,
 	}, {
 		name: "test expression: inside array parameter",
 		param: v1.Param{
 			Name:  "param",
-			Value: *v1.NewArrayOrString("$(tasks.sumTask.results.sumResult)", "$(tasks.sumTask2.results.sumResult2)"),
+			Value: *v1.NewStructuredValues("$(tasks.sumTask.results.sumResult)", "$(tasks.sumTask2.results.sumResult2)"),
 		},
 		want: true,
 	}} {
@@ -641,9 +641,9 @@ func TestLooksLikeResultRefWhenExpressionFalse(t *testing.T) {
 func TestPipelineTaskResultRefs(t *testing.T) {
 	pt := v1.PipelineTask{
 		Params: []v1.Param{{
-			Value: *v1.NewArrayOrString("$(tasks.pt1.results.r1)"),
+			Value: *v1.NewStructuredValues("$(tasks.pt1.results.r1)"),
 		}, {
-			Value: *v1.NewArrayOrString("$(tasks.pt2.results.r2)"),
+			Value: *v1.NewStructuredValues("$(tasks.pt2.results.r2)"),
 		}},
 		When: []v1.WhenExpression{{
 			Input:    "$(tasks.pt3.results.r3)",
@@ -653,9 +653,9 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 			},
 		}},
 		Matrix: []v1.Param{{
-			Value: *v1.NewArrayOrString("$(tasks.pt5.results.r5)", "$(tasks.pt6.results.r6)"),
+			Value: *v1.NewStructuredValues("$(tasks.pt5.results.r5)", "$(tasks.pt6.results.r6)"),
 		}, {
-			Value: *v1.NewArrayOrString("$(tasks.pt7.results.r7)", "$(tasks.pt8.results.r8)"),
+			Value: *v1.NewStructuredValues("$(tasks.pt7.results.r7)", "$(tasks.pt8.results.r8)"),
 		}},
 	}
 	refs := v1.PipelineTaskResultRefs(&pt)
@@ -729,7 +729,7 @@ func TestGetVarSubstitutionExpressionsForPipelineResult(t *testing.T) {
 		result: v1.PipelineResult{
 			Name:  "string result",
 			Type:  v1.ResultsTypeString,
-			Value: *v1.NewArrayOrString("$(tasks.task1.results.result1) and $(tasks.task2.results.result2)"),
+			Value: *v1.NewStructuredValues("$(tasks.task1.results.result1) and $(tasks.task2.results.result2)"),
 		},
 		want: []string{"tasks.task1.results.result1", "tasks.task2.results.result2"},
 	}, {
@@ -737,7 +737,7 @@ func TestGetVarSubstitutionExpressionsForPipelineResult(t *testing.T) {
 		result: v1.PipelineResult{
 			Name:  "array result",
 			Type:  v1.ResultsTypeString,
-			Value: *v1.NewArrayOrString("$(tasks.task1.results.result1)", "$(tasks.task2.results.result2)"),
+			Value: *v1.NewStructuredValues("$(tasks.task1.results.result1)", "$(tasks.task2.results.result2)"),
 		},
 		want: []string{"tasks.task1.results.result1", "tasks.task2.results.result2"},
 	}, {

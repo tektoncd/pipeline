@@ -31,7 +31,7 @@ type ResolvedResultRefs []*ResolvedResultRef
 // If the value is from a Result, then the ResultReference will be populated to point to the ResultReference
 // which resulted in the value
 type ResolvedResultRef struct {
-	Value           v1beta1.ArrayOrString
+	Value           v1beta1.ResultValue
 	ResultReference v1beta1.ResultRef
 	FromTaskRun     string
 	FromRun         string
@@ -151,12 +151,12 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	}
 
 	var runName, runValue, taskRunName string
-	var resultValue v1beta1.ArrayOrString
+	var resultValue v1beta1.ResultValue
 	var err error
 	if referencedPipelineTask.IsCustomTask() {
 		runName = referencedPipelineTask.Run.Name
 		runValue, err = findRunResultForParam(referencedPipelineTask.Run, resultRef)
-		resultValue = *v1beta1.NewArrayOrString(runValue)
+		resultValue = *v1beta1.NewStructuredValues(runValue)
 		if err != nil {
 			return nil, resultRef.PipelineTask, err
 		}
@@ -186,14 +186,14 @@ func findRunResultForParam(run *v1alpha1.Run, reference *v1beta1.ResultRef) (str
 	return "", fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
 }
 
-func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultRef) (v1beta1.ArrayOrString, error) {
+func findTaskResultForParam(taskRun *v1beta1.TaskRun, reference *v1beta1.ResultRef) (v1beta1.ResultValue, error) {
 	results := taskRun.Status.TaskRunStatusFields.TaskRunResults
 	for _, result := range results {
 		if result.Name == reference.Result {
 			return result.Value, nil
 		}
 	}
-	return v1beta1.ArrayOrString{}, fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
+	return v1beta1.ResultValue{}, fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)
 }
 
 func (rs ResolvedResultRefs) getStringReplacements() map[string]string {

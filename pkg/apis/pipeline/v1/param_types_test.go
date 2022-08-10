@@ -46,14 +46,14 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 		name: "inferred type from default value - array",
 		before: &v1.ParamSpec{
 			Name: "parametername",
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				ArrayVal: []string{"array"},
 			},
 		},
 		defaultsApplied: &v1.ParamSpec{
 			Name: "parametername",
 			Type: v1.ParamTypeArray,
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				ArrayVal: []string{"array"},
 			},
 		},
@@ -61,14 +61,14 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 		name: "inferred type from default value - string",
 		before: &v1.ParamSpec{
 			Name: "parametername",
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				StringVal: "an",
 			},
 		},
 		defaultsApplied: &v1.ParamSpec{
 			Name: "parametername",
 			Type: v1.ParamTypeString,
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				StringVal: "an",
 			},
 		},
@@ -76,14 +76,14 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 		name: "inferred type from default value - object",
 		before: &v1.ParamSpec{
 			Name: "parametername",
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				ObjectVal: map[string]string{"url": "test", "path": "test"},
 			},
 		},
 		defaultsApplied: &v1.ParamSpec{
 			Name: "parametername",
 			Type: v1.ParamTypeObject,
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				ObjectVal: map[string]string{"url": "test", "path": "test"},
 			},
 		},
@@ -115,7 +115,7 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Name:        "parametername",
 			Type:        v1.ParamTypeArray,
 			Description: "a description",
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				ArrayVal: []string{"array"},
 			},
 		},
@@ -123,7 +123,7 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Name:        "parametername",
 			Type:        v1.ParamTypeArray,
 			Description: "a description",
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				ArrayVal: []string{"array"},
 			},
 		},
@@ -133,7 +133,7 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Name:        "parametername",
 			Type:        v1.ParamTypeObject,
 			Description: "a description",
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				ObjectVal: map[string]string{"url": "test", "path": "test"},
 			},
 		},
@@ -141,7 +141,7 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 			Name:        "parametername",
 			Type:        v1.ParamTypeObject,
 			Description: "a description",
-			Default: &v1.ArrayOrString{
+			Default: &v1.ParamValue{
 				ObjectVal: map[string]string{"url": "test", "path": "test"},
 			},
 		},
@@ -157,9 +157,9 @@ func TestParamSpec_SetDefaults(t *testing.T) {
 	}
 }
 
-func TestArrayOrString_ApplyReplacements(t *testing.T) {
+func TestParamValues_ApplyReplacements(t *testing.T) {
 	type args struct {
-		input              *v1.ArrayOrString
+		input              *v1.ParamValue
 		stringReplacements map[string]string
 		arrayReplacements  map[string][]string
 		objectReplacements map[string]map[string]string
@@ -167,87 +167,87 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 	tests := []struct {
 		name           string
 		args           args
-		expectedOutput *v1.ArrayOrString
+		expectedOutput *v1.ParamValue
 	}{{
 		name: "no replacements on array",
 		args: args{
-			input:              v1.NewArrayOrString("an", "array"),
+			input:              v1.NewStructuredValues("an", "array"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"sdf", "sdfsd"}},
 		},
-		expectedOutput: v1.NewArrayOrString("an", "array"),
+		expectedOutput: v1.NewStructuredValues("an", "array"),
 	}, {
 		name: "single string replacement on string",
 		args: args{
-			input:              v1.NewArrayOrString("$(params.myString1)"),
+			input:              v1.NewStructuredValues("$(params.myString1)"),
 			stringReplacements: map[string]string{"params.myString1": "value1", "params.myString2": "value2"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: v1.NewArrayOrString("value1"),
+		expectedOutput: v1.NewStructuredValues("value1"),
 	}, {
 		name: "multiple string replacements on string",
 		args: args{
-			input:              v1.NewArrayOrString("astring$(some) asdf $(anotherkey)"),
+			input:              v1.NewStructuredValues("astring$(some) asdf $(anotherkey)"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: v1.NewArrayOrString("astringvalue asdf value"),
+		expectedOutput: v1.NewStructuredValues("astringvalue asdf value"),
 	}, {
 		name: "single array replacement",
 		args: args{
-			input:              v1.NewArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
+			input:              v1.NewStructuredValues("firstvalue", "$(arraykey)", "lastvalue"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: v1.NewArrayOrString("firstvalue", "array", "value", "lastvalue"),
+		expectedOutput: v1.NewStructuredValues("firstvalue", "array", "value", "lastvalue"),
 	}, {
 		name: "multiple array replacement",
 		args: args{
-			input:              v1.NewArrayOrString("firstvalue", "$(arraykey)", "lastvalue", "$(sdfdf)"),
+			input:              v1.NewStructuredValues("firstvalue", "$(arraykey)", "lastvalue", "$(sdfdf)"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {"array", "value"}, "sdfdf": {"asdf", "sdfsd"}},
 		},
-		expectedOutput: v1.NewArrayOrString("firstvalue", "array", "value", "lastvalue", "asdf", "sdfsd"),
+		expectedOutput: v1.NewStructuredValues("firstvalue", "array", "value", "lastvalue", "asdf", "sdfsd"),
 	}, {
 		name: "empty array replacement without extra elements",
 		args: args{
-			input:             v1.NewArrayOrString("$(arraykey)"),
+			input:             v1.NewStructuredValues("$(arraykey)"),
 			arrayReplacements: map[string][]string{"arraykey": {}},
 		},
-		expectedOutput: &v1.ArrayOrString{Type: v1.ParamTypeArray, ArrayVal: []string{}},
+		expectedOutput: &v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{}},
 	}, {
 		name: "empty array replacement with extra elements",
 		args: args{
-			input:              v1.NewArrayOrString("firstvalue", "$(arraykey)", "lastvalue"),
+			input:              v1.NewStructuredValues("firstvalue", "$(arraykey)", "lastvalue"),
 			stringReplacements: map[string]string{"some": "value", "anotherkey": "value"},
 			arrayReplacements:  map[string][]string{"arraykey": {}},
 		},
-		expectedOutput: v1.NewArrayOrString("firstvalue", "lastvalue"),
+		expectedOutput: v1.NewStructuredValues("firstvalue", "lastvalue"),
 	}, {
 		name: "array replacement on string val",
 		args: args{
-			input:             v1.NewArrayOrString("$(params.myarray)"),
+			input:             v1.NewStructuredValues("$(params.myarray)"),
 			arrayReplacements: map[string][]string{"params.myarray": {"a", "b", "c"}},
 		},
-		expectedOutput: v1.NewArrayOrString("a", "b", "c"),
+		expectedOutput: v1.NewStructuredValues("a", "b", "c"),
 	}, {
 		name: "array star replacement on string val",
 		args: args{
-			input:             v1.NewArrayOrString("$(params.myarray[*])"),
+			input:             v1.NewStructuredValues("$(params.myarray[*])"),
 			arrayReplacements: map[string][]string{"params.myarray": {"a", "b", "c"}},
 		},
-		expectedOutput: v1.NewArrayOrString("a", "b", "c"),
+		expectedOutput: v1.NewStructuredValues("a", "b", "c"),
 	}, {
 		name: "array indexing replacement on string val",
 		args: args{
-			input:              v1.NewArrayOrString("$(params.myarray[0])"),
+			input:              v1.NewStructuredValues("$(params.myarray[0])"),
 			stringReplacements: map[string]string{"params.myarray[0]": "a", "params.myarray[1]": "b"},
 		},
-		expectedOutput: v1.NewArrayOrString("a"),
+		expectedOutput: v1.NewStructuredValues("a"),
 	}, {
 		name: "object replacement on string val",
 		args: args{
-			input: v1.NewArrayOrString("$(params.object)"),
+			input: v1.NewStructuredValues("$(params.object)"),
 			objectReplacements: map[string]map[string]string{
 				"params.object": {
 					"url":    "abc.com",
@@ -262,7 +262,7 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 	}, {
 		name: "object star replacement on string val",
 		args: args{
-			input: v1.NewArrayOrString("$(params.object[*])"),
+			input: v1.NewStructuredValues("$(params.object[*])"),
 			objectReplacements: map[string]map[string]string{
 				"params.object": {
 					"url":    "abc.com",
@@ -301,46 +301,46 @@ func TestArrayOrString_ApplyReplacements(t *testing.T) {
 	}
 }
 
-type ArrayOrStringHolder struct {
-	AOrS v1.ArrayOrString `json:"val"`
+type ParamValuesHolder struct {
+	AOrS v1.ParamValue `json:"val"`
 }
 
-func TestArrayOrString_UnmarshalJSON(t *testing.T) {
+func TestParamValues_UnmarshalJSON(t *testing.T) {
 	cases := []struct {
 		input  map[string]interface{}
-		result v1.ArrayOrString
+		result v1.ParamValue
 	}{
 		{
 			input:  map[string]interface{}{"val": 123},
-			result: *v1.NewArrayOrString("123"),
+			result: *v1.NewStructuredValues("123"),
 		},
 		{
 			input:  map[string]interface{}{"val": "123"},
-			result: *v1.NewArrayOrString("123"),
+			result: *v1.NewStructuredValues("123"),
 		},
 		{
 			input:  map[string]interface{}{"val": ""},
-			result: *v1.NewArrayOrString(""),
+			result: *v1.NewStructuredValues(""),
 		},
 		{
 			input:  map[string]interface{}{"val": nil},
-			result: v1.ArrayOrString{Type: v1.ParamTypeString, ArrayVal: nil},
+			result: v1.ParamValue{Type: v1.ParamTypeString, ArrayVal: nil},
 		},
 		{
 			input:  map[string]interface{}{"val": []string{}},
-			result: v1.ArrayOrString{Type: v1.ParamTypeArray, ArrayVal: []string{}},
+			result: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{}},
 		},
 		{
 			input:  map[string]interface{}{"val": []string{"oneelement"}},
-			result: v1.ArrayOrString{Type: v1.ParamTypeArray, ArrayVal: []string{"oneelement"}},
+			result: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"oneelement"}},
 		},
 		{
 			input:  map[string]interface{}{"val": []string{"multiple", "elements"}},
-			result: v1.ArrayOrString{Type: v1.ParamTypeArray, ArrayVal: []string{"multiple", "elements"}},
+			result: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"multiple", "elements"}},
 		},
 		{
 			input:  map[string]interface{}{"val": map[string]string{"key1": "val1", "key2": "val2"}},
-			result: v1.ArrayOrString{Type: v1.ParamTypeObject, ObjectVal: map[string]string{"key1": "val1", "key2": "val2"}},
+			result: v1.ParamValue{Type: v1.ParamTypeObject, ObjectVal: map[string]string{"key1": "val1", "key2": "val2"}},
 		},
 	}
 
@@ -358,7 +358,7 @@ func TestArrayOrString_UnmarshalJSON(t *testing.T) {
 				t.Fatalf("error encoding json: %v", err)
 			}
 
-			var result ArrayOrStringHolder
+			var result ParamValuesHolder
 			if err := json.Unmarshal(b.Bytes(), &result); err != nil {
 				t.Errorf("Failed to unmarshal input '%v': %v", c.input, err)
 			}
@@ -369,33 +369,33 @@ func TestArrayOrString_UnmarshalJSON(t *testing.T) {
 	}
 }
 
-func TestArrayOrString_UnmarshalJSON_Directly(t *testing.T) {
+func TestParamValues_UnmarshalJSON_Directly(t *testing.T) {
 	cases := []struct {
 		desc     string
 		input    string
-		expected v1.ArrayOrString
+		expected v1.ParamValue
 	}{
-		{desc: "empty value", input: ``, expected: *v1.NewArrayOrString("")},
-		{desc: "int value", input: `1`, expected: *v1.NewArrayOrString("1")},
-		{desc: "int array", input: `[1,2,3]`, expected: *v1.NewArrayOrString("[1,2,3]")},
-		{desc: "nested array", input: `[1,\"2\",3]`, expected: *v1.NewArrayOrString(`[1,\"2\",3]`)},
-		{desc: "string value", input: `hello`, expected: *v1.NewArrayOrString("hello")},
-		{desc: "array value", input: `["hello","world"]`, expected: *v1.NewArrayOrString("hello", "world")},
+		{desc: "empty value", input: ``, expected: *v1.NewStructuredValues("")},
+		{desc: "int value", input: `1`, expected: *v1.NewStructuredValues("1")},
+		{desc: "int array", input: `[1,2,3]`, expected: *v1.NewStructuredValues("[1,2,3]")},
+		{desc: "nested array", input: `[1,\"2\",3]`, expected: *v1.NewStructuredValues(`[1,\"2\",3]`)},
+		{desc: "string value", input: `hello`, expected: *v1.NewStructuredValues("hello")},
+		{desc: "array value", input: `["hello","world"]`, expected: *v1.NewStructuredValues("hello", "world")},
 		{desc: "object value", input: `{"hello":"world"}`, expected: *v1.NewObject(map[string]string{"hello": "world"})},
 	}
 
 	for _, c := range cases {
-		aos := v1.ArrayOrString{}
-		if err := aos.UnmarshalJSON([]byte(c.input)); err != nil {
+		v := v1.ParamValue{}
+		if err := v.UnmarshalJSON([]byte(c.input)); err != nil {
 			t.Errorf("Failed to unmarshal input '%v': %v", c.input, err)
 		}
-		if !reflect.DeepEqual(aos, c.expected) {
-			t.Errorf("Failed to unmarshal input '%v': expected %+v, got %+v", c.input, c.expected, aos)
+		if !reflect.DeepEqual(v, c.expected) {
+			t.Errorf("Failed to unmarshal input '%v': expected %+v, got %+v", c.input, c.expected, v)
 		}
 	}
 }
 
-func TestArrayOrString_UnmarshalJSON_Error(t *testing.T) {
+func TestParamValues_UnmarshalJSON_Error(t *testing.T) {
 	cases := []struct {
 		desc  string
 		input string
@@ -405,26 +405,26 @@ func TestArrayOrString_UnmarshalJSON_Error(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		var result ArrayOrStringHolder
+		var result ParamValuesHolder
 		if err := json.Unmarshal([]byte(c.input), &result); err == nil {
 			t.Errorf("Should return err but got nil '%v'", c.input)
 		}
 	}
 }
 
-func TestArrayOrString_MarshalJSON(t *testing.T) {
+func TestParamValues_MarshalJSON(t *testing.T) {
 	cases := []struct {
-		input  v1.ArrayOrString
+		input  v1.ParamValue
 		result string
 	}{
-		{*v1.NewArrayOrString("123"), "{\"val\":\"123\"}"},
-		{*v1.NewArrayOrString("123", "1234"), "{\"val\":[\"123\",\"1234\"]}"},
-		{*v1.NewArrayOrString("a", "a", "a"), "{\"val\":[\"a\",\"a\",\"a\"]}"},
+		{*v1.NewStructuredValues("123"), "{\"val\":\"123\"}"},
+		{*v1.NewStructuredValues("123", "1234"), "{\"val\":[\"123\",\"1234\"]}"},
+		{*v1.NewStructuredValues("a", "a", "a"), "{\"val\":[\"a\",\"a\",\"a\"]}"},
 		{*v1.NewObject(map[string]string{"key1": "var1", "key2": "var2"}), "{\"val\":{\"key1\":\"var1\",\"key2\":\"var2\"}}"},
 	}
 
 	for _, c := range cases {
-		input := ArrayOrStringHolder{c.input}
+		input := ParamValuesHolder{c.input}
 		result, err := json.Marshal(&input)
 		if err != nil {
 			t.Errorf("Failed to marshal input '%v': %v", input, err)

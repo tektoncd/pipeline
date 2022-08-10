@@ -173,10 +173,10 @@ func TestRun_Invalid(t *testing.T) {
 				},
 				Params: []v1beta1.Param{{
 					Name:  "foo",
-					Value: *v1beta1.NewArrayOrString("foo"),
+					Value: *v1beta1.NewStructuredValues("foo"),
 				}, {
 					Name:  "foo",
-					Value: *v1beta1.NewArrayOrString("foo"),
+					Value: *v1beta1.NewStructuredValues("foo"),
 				}},
 			},
 		},
@@ -265,10 +265,10 @@ func TestRun_Valid(t *testing.T) {
 				},
 				Params: []v1beta1.Param{{
 					Name:  "foo",
-					Value: *v1beta1.NewArrayOrString("foo"),
+					Value: *v1beta1.NewStructuredValues("foo"),
 				}, {
 					Name:  "bar",
-					Value: *v1beta1.NewArrayOrString("bar"),
+					Value: *v1beta1.NewStructuredValues("bar"),
 				}},
 			},
 		},

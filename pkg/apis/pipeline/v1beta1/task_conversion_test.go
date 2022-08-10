@@ -144,7 +144,7 @@ func TestTaskConversion(t *testing.T) {
 					Type:        v1beta1.ParamTypeString,
 					Description: "My first param",
 					Properties:  map[string]v1beta1.PropertySpec{"foo": {Type: v1beta1.ParamTypeString}},
-					Default:     v1beta1.NewArrayOrString("bar"),
+					Default:     v1beta1.NewStructuredValues("bar"),
 				}},
 				Workspaces: []v1beta1.WorkspaceDeclaration{{
 					Name:        "workspace",

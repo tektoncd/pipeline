@@ -630,7 +630,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewArrayOrString("resultValue"),
+					Value: *v1beta1.NewStructuredValues("resultValue"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -669,7 +669,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewArrayOrString("resultValue"),
+					Value: *v1beta1.NewStructuredValues("resultValue"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -717,11 +717,11 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultNameOne",
 					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewArrayOrString("resultValueThree"),
+					Value: *v1beta1.NewStructuredValues("resultValueThree"),
 				}, {
 					Name:  "resultNameTwo",
 					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewArrayOrString("resultValueTwo"),
+					Value: *v1beta1.NewStructuredValues("resultValueTwo"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -811,7 +811,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultNameThree",
 					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewArrayOrString(""),
+					Value: *v1beta1.NewStructuredValues(""),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -850,7 +850,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultNameThree",
 					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewArrayOrString(""),
+					Value: *v1beta1.NewStructuredValues(""),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -1125,7 +1125,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewArrayOrString(""),
+					Value: *v1beta1.NewStructuredValues(""),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -1164,7 +1164,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
-					Value: *v1beta1.NewArrayOrString("hello"),
+					Value: *v1beta1.NewStructuredValues("hello"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -1203,7 +1203,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeArray,
-					Value: *v1beta1.NewArrayOrString("hello", "world"),
+					Value: *v1beta1.NewStructuredValues("hello", "world"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},

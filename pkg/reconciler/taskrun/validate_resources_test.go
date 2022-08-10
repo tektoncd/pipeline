@@ -164,13 +164,13 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	}
 	p := []v1beta1.Param{{
 		Name:  "foo",
-		Value: *v1beta1.NewArrayOrString("somethinggood"),
+		Value: *v1beta1.NewStructuredValues("somethinggood"),
 	}, {
 		Name:  "bar",
-		Value: *v1beta1.NewArrayOrString("somethinggood"),
+		Value: *v1beta1.NewStructuredValues("somethinggood"),
 	}, {
 		Name:  "arrayResultRef",
-		Value: *v1beta1.NewArrayOrString("$(results.resultname[*])"),
+		Value: *v1beta1.NewStructuredValues("$(results.resultname[*])"),
 	}, {
 		Name: "myobj",
 		Value: *v1beta1.NewObject(map[string]string{
@@ -181,7 +181,7 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 	}}
 	m := []v1beta1.Param{{
 		Name:  "zoo",
-		Value: *v1beta1.NewArrayOrString("a", "b", "c"),
+		Value: *v1beta1.NewStructuredValues("a", "b", "c"),
 	}}
 	if err := ValidateResolvedTaskResources(ctx, p, m, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
@@ -191,11 +191,11 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 		ctx := config.ToContext(ctx, &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
 		extra := v1beta1.Param{
 			Name:  "extra",
-			Value: *v1beta1.NewArrayOrString("i am an extra param"),
+			Value: *v1beta1.NewStructuredValues("i am an extra param"),
 		}
 		extraarray := v1beta1.Param{
 			Name:  "extraarray",
-			Value: *v1beta1.NewArrayOrString("i", "am", "an", "extra", "array", "param"),
+			Value: *v1beta1.NewStructuredValues("i", "am", "an", "extra", "array", "param"),
 		}
 		if err := ValidateResolvedTaskResources(ctx, append(p, extra), append(m, extraarray), rtr); err != nil {
 			t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
@@ -243,11 +243,11 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		},
 		params: []v1beta1.Param{{
 			Name:  "foobar",
-			Value: *v1beta1.NewArrayOrString("somethingfun"),
+			Value: *v1beta1.NewStructuredValues("somethingfun"),
 		}},
 		matrix: []v1beta1.Param{{
 			Name:  "barfoo",
-			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
 		}},
 	}, {
 		name: "invalid-type-in-params",
@@ -256,7 +256,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		},
 		params: []v1beta1.Param{{
 			Name:  "foo",
-			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
 		}},
 	}, {
 		name: "invalid-type-in-matrix",
@@ -265,7 +265,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		},
 		matrix: []v1beta1.Param{{
 			Name:  "bar",
-			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
 		}},
 	}, {
 		name: "missing object param keys",
@@ -595,12 +595,12 @@ func TestValidateResult(t *testing.T) {
 						{
 							Name:  "string-result",
 							Type:  v1beta1.ResultsTypeString,
-							Value: *v1beta1.NewArrayOrString("hello"),
+							Value: *v1beta1.NewStructuredValues("hello"),
 						},
 						{
 							Name:  "array-result",
 							Type:  v1beta1.ResultsTypeArray,
-							Value: *v1beta1.NewArrayOrString("hello", "world"),
+							Value: *v1beta1.NewStructuredValues("hello", "world"),
 						},
 						{
 							Name:  "object-result",
@@ -642,12 +642,12 @@ func TestValidateResult(t *testing.T) {
 						{
 							Name:  "string-result",
 							Type:  v1beta1.ResultsTypeString,
-							Value: *v1beta1.NewArrayOrString("hello"),
+							Value: *v1beta1.NewStructuredValues("hello"),
 						},
 						{
 							Name:  "array-result",
 							Type:  v1beta1.ResultsTypeArray,
-							Value: *v1beta1.NewArrayOrString("hello", "world"),
+							Value: *v1beta1.NewStructuredValues("hello", "world"),
 						},
 						{
 							Name:  "object-result",
@@ -690,7 +690,7 @@ func TestValidateResult(t *testing.T) {
 						{
 							Name:  "string-result",
 							Type:  v1beta1.ResultsTypeArray,
-							Value: *v1beta1.NewArrayOrString("hello", "world"),
+							Value: *v1beta1.NewStructuredValues("hello", "world"),
 						},
 						{
 							Name:  "array-result",
@@ -700,7 +700,7 @@ func TestValidateResult(t *testing.T) {
 						{
 							Name:  "object-result",
 							Type:  v1beta1.ResultsTypeString,
-							Value: *v1beta1.NewArrayOrString("hello"),
+							Value: *v1beta1.NewStructuredValues("hello"),
 						},
 					},
 				},
@@ -724,7 +724,7 @@ func TestValidateResult(t *testing.T) {
 						{
 							Name:  "string-result",
 							Type:  v1beta1.ResultsTypeArray,
-							Value: *v1beta1.NewArrayOrString("hello", "world"),
+							Value: *v1beta1.NewStructuredValues("hello", "world"),
 						},
 						{
 							Name:  "array-result",
@@ -734,7 +734,7 @@ func TestValidateResult(t *testing.T) {
 						{
 							Name:  "object-result",
 							Type:  v1beta1.ResultsTypeString,
-							Value: *v1beta1.NewArrayOrString("hello"),
+							Value: *v1beta1.NewStructuredValues("hello"),
 						},
 					},
 				},
@@ -849,12 +849,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		name: "steps reference invalid",
 		params: []v1beta1.Param{{
 			Name:  "array-params",
-			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
 		}},
 		taskspec: &v1beta1.TaskSpec{
 			Params: []v1beta1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewArrayOrString("bar", "foo"),
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
 			}},
 			Steps: []v1beta1.Step{{
 				Name:    "$(params.array-params[10])",
@@ -905,12 +905,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		name: "stepTemplate reference invalid",
 		params: []v1beta1.Param{{
 			Name:  "array-params",
-			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
 		}},
 		taskspec: &v1beta1.TaskSpec{
 			Params: []v1beta1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewArrayOrString("bar", "foo"),
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
 			}},
 			StepTemplate: &v1beta1.StepTemplate{
 				Image: "$(params.array-params[3])",
@@ -921,12 +921,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		name: "volumes reference invalid",
 		params: []v1beta1.Param{{
 			Name:  "array-params",
-			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
 		}},
 		taskspec: &v1beta1.TaskSpec{
 			Params: []v1beta1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewArrayOrString("bar", "foo"),
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
 			}},
 			Volumes: []v1.Volume{{
 				Name: "$(params.array-params[10])",
@@ -983,12 +983,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		name: "workspaces reference invalid",
 		params: []v1beta1.Param{{
 			Name:  "array-params",
-			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
 		}},
 		taskspec: &v1beta1.TaskSpec{
 			Params: []v1beta1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewArrayOrString("bar", "foo"),
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
 			}},
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
 				MountPath: "$(params.array-params[3])",
@@ -999,12 +999,12 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		name: "sidecar reference invalid",
 		params: []v1beta1.Param{{
 			Name:  "array-params",
-			Value: *v1beta1.NewArrayOrString("bar", "foo"),
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
 		}},
 		taskspec: &v1beta1.TaskSpec{
 			Params: []v1beta1.ParamSpec{{
 				Name:    "array-params",
-				Default: v1beta1.NewArrayOrString("bar", "foo"),
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
 			}},
 			Sidecars: []v1beta1.Sidecar{{
 				Script: "$(params.array-params[3])",

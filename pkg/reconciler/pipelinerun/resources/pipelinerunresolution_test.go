@@ -120,18 +120,18 @@ var pts = []v1beta1.PipelineTask{{
 }, {
 	Name:    "mytask15",
 	TaskRef: &v1beta1.TaskRef{Name: "taskWithReferenceToTaskResult"},
-	Params:  []v1beta1.Param{{Name: "param1", Value: *v1beta1.NewArrayOrString("$(tasks.mytask1.results.result1)")}},
+	Params:  []v1beta1.Param{{Name: "param1", Value: *v1beta1.NewStructuredValues("$(tasks.mytask1.results.result1)")}},
 }, {
 	Name: "mytask16",
 	Matrix: []v1beta1.Param{{
 		Name:  "browser",
-		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+		Value: v1beta1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
 	}},
 }, {
 	Name: "mytask17",
 	Matrix: []v1beta1.Param{{
 		Name:  "browser",
-		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+		Value: v1beta1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
 	}},
 }, {
 	Name:    "mytask18",
@@ -139,21 +139,21 @@ var pts = []v1beta1.PipelineTask{{
 	Retries: 1,
 	Matrix: []v1beta1.Param{{
 		Name:  "browser",
-		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+		Value: v1beta1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
 	}},
 }, {
 	Name:    "mytask19",
 	TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
 	Matrix: []v1beta1.Param{{
 		Name:  "browser",
-		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+		Value: v1beta1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
 	}},
 }, {
 	Name:    "mytask20",
 	TaskRef: &v1beta1.TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: "customtask"},
 	Matrix: []v1beta1.Param{{
 		Name:  "browser",
-		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+		Value: v1beta1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
 	}},
 }, {
 	Name:    "mytask21",
@@ -161,7 +161,7 @@ var pts = []v1beta1.PipelineTask{{
 	Retries: 2,
 	Matrix: []v1beta1.Param{{
 		Name:  "browser",
-		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+		Value: v1beta1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
 	}},
 }}
 
@@ -234,7 +234,7 @@ var matrixedPipelineTask = &v1beta1.PipelineTask{
 	Name: "task",
 	Matrix: []v1beta1.Param{{
 		Name:  "browser",
-		Value: v1beta1.ArrayOrString{ArrayVal: []string{"safari", "chrome"}},
+		Value: v1beta1.ParamValue{ArrayVal: []string{"safari", "chrome"}},
 	}},
 }
 
@@ -1069,7 +1069,7 @@ func TestIsSkipped(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "task"},
 				Params: []v1beta1.Param{{
 					Name:  "commit",
-					Value: *v1beta1.NewArrayOrString("$(tasks.mytask11.results.missingResult)"),
+					Value: *v1beta1.NewStructuredValues("$(tasks.mytask11.results.missingResult)"),
 				}},
 			},
 			TaskRunName: "pipelinerun-resource-dependent-task-1",
@@ -2059,10 +2059,10 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 		TaskRef: &v1beta1.TaskRef{Name: "task"},
 		Matrix: []v1beta1.Param{{
 			Name:  "foo",
-			Value: *v1beta1.NewArrayOrString("f", "o", "o"),
+			Value: *v1beta1.NewStructuredValues("f", "o", "o"),
 		}, {
 			Name:  "bar",
-			Value: *v1beta1.NewArrayOrString("b", "a", "r"),
+			Value: *v1beta1.NewStructuredValues("b", "a", "r"),
 		}},
 	}}
 	providedResources := map[string]*resourcev1alpha1.PipelineResource{}
@@ -2778,7 +2778,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "commit",
-					Value: *v1beta1.NewArrayOrString("SHA2"),
+					Value: *v1beta1.NewStructuredValues("SHA2"),
 				}},
 			},
 		},
@@ -2797,7 +2797,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 			Params: []v1beta1.Param{{
 				Name:  "commit",
-				Value: *v1beta1.NewArrayOrString("$(tasks.dag-task.results.commit)"),
+				Value: *v1beta1.NewStructuredValues("$(tasks.dag-task.results.commit)"),
 			}},
 		},
 	}, {
@@ -2806,7 +2806,7 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 			Params: []v1beta1.Param{{
 				Name:  "commit",
-				Value: *v1beta1.NewArrayOrString("$(tasks.dag-task.results.missingResult)"),
+				Value: *v1beta1.NewStructuredValues("$(tasks.dag-task.results.missingResult)"),
 			}},
 		},
 	}, {
@@ -3037,7 +3037,7 @@ func TestResolvedPipelineRunTask_IsFinalTask(t *testing.T) {
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "commit",
-					Value: *v1beta1.NewArrayOrString("SHA2"),
+					Value: *v1beta1.NewStructuredValues("SHA2"),
 				}},
 			},
 		},
@@ -3056,7 +3056,7 @@ func TestResolvedPipelineRunTask_IsFinalTask(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 			Params: []v1beta1.Param{{
 				Name:  "commit",
-				Value: *v1beta1.NewArrayOrString("$(tasks.dag-task.results.commit)"),
+				Value: *v1beta1.NewStructuredValues("$(tasks.dag-task.results.commit)"),
 			}},
 		},
 	},
@@ -3358,7 +3358,7 @@ func TestIsMatrixed(t *testing.T) {
 			},
 			Matrix: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 			}},
 		},
 		want: true,
@@ -3379,7 +3379,7 @@ func TestIsMatrixed(t *testing.T) {
 			},
 			Matrix: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 			}},
 		},
 		want: true,
@@ -3446,7 +3446,7 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		},
 		Matrix: []v1beta1.Param{{
 			Name:  "platform",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 		}},
 	}, {
 		Name: "pipelinetask",
@@ -3455,10 +3455,10 @@ func TestResolvePipelineRunTask_WithMatrix(t *testing.T) {
 		},
 		Matrix: []v1beta1.Param{{
 			Name:  "platform",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 		}, {
 			Name:  "browsers",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
 		}},
 	}}
 
@@ -3553,7 +3553,7 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 		},
 		Matrix: []v1beta1.Param{{
 			Name:  "platform",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 		}},
 	}, {
 		Name: "pipelinetask",
@@ -3564,10 +3564,10 @@ func TestResolvePipelineRunTask_WithMatrixedCustomTask(t *testing.T) {
 		},
 		Matrix: []v1beta1.Param{{
 			Name:  "platform",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 		}, {
 			Name:  "browsers",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
 		}},
 	}}
 
