@@ -42,6 +42,7 @@ func TestApplyStepReplacements(t *testing.T) {
 		Command:    []string{"$(array.replace.me)"},
 		Args:       []string{"$(array.replace.me)"},
 		WorkingDir: "$(replace.me)",
+		OnError:    "$(replace.me)",
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{
@@ -92,6 +93,7 @@ func TestApplyStepReplacements(t *testing.T) {
 		Command:    []string{"val1", "val2"},
 		Args:       []string{"val1", "val2"},
 		WorkingDir: "replaced!",
+		OnError:    "replaced!",
 		EnvFrom: []corev1.EnvFromSource{{
 			ConfigMapRef: &corev1.ConfigMapEnvSource{
 				LocalObjectReference: corev1.LocalObjectReference{

@@ -4,14 +4,24 @@ metadata:
   generateName: pipelinerun-with-failing-step-
 spec:
   serviceAccountName: 'default'
+  params:
+    - name: CONTINUE
+      value: "continue"
   pipelineSpec:
+    params:
+      - name: CONTINUE
     tasks:
       - name: task1
+        params:
+          - name: CONTINUE
+            value: "$(params.CONTINUE)"
         taskSpec:
+          params:
+          - name: CONTINUE
           steps:
             # not really doing anything here, just a hurdle to test the "ignore step error"
             - image: alpine
-              onError: continue
+              onError: $(params.CONTINUE)
               name: exit-with-1
               script: |
                 exit 1

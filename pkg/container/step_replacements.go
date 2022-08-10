@@ -24,6 +24,7 @@ import (
 // ApplyStepReplacements applies variable interpolation on a Step.
 func ApplyStepReplacements(step *v1beta1.Step, stringReplacements map[string]string, arrayReplacements map[string][]string) {
 	step.Script = substitution.ApplyReplacements(step.Script, stringReplacements)
+	step.OnError = substitution.ApplyReplacements(step.OnError, stringReplacements)
 	if step.StdoutConfig != nil {
 		step.StdoutConfig.Path = substitution.ApplyReplacements(step.StdoutConfig.Path, stringReplacements)
 	}
