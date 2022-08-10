@@ -286,7 +286,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 						Name: "echoit",
 						Params: []v1beta1.Param{{
 							Name: "task-words",
-							Value: v1beta1.ArrayOrString{
+							Value: v1beta1.ParamValue{
 								ArrayVal: []string{"$(params.pipeline-words)"},
 							},
 						}},

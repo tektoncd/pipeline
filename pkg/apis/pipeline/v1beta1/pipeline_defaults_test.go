@@ -86,14 +86,14 @@ func TestPipelineSpec_SetDefaults(t *testing.T) {
 		ps: &v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{{
 				Name: "string-param",
-				Default: &v1beta1.ArrayOrString{
+				Default: &v1beta1.ParamValue{
 					StringVal: "foo",
 				},
 			}},
 		},
 		want: &v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{{
-				Name: "string-param", Type: v1beta1.ParamTypeString, Default: &v1beta1.ArrayOrString{StringVal: "foo"},
+				Name: "string-param", Type: v1beta1.ParamTypeString, Default: &v1beta1.ParamValue{StringVal: "foo"},
 			}},
 		},
 	}, {

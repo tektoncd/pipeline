@@ -258,7 +258,7 @@ func (pr PipelineResult) convertTo(ctx context.Context, sink *v1.PipelineResult)
 	sink.Name = pr.Name
 	sink.Type = v1.ResultsType(pr.Type)
 	sink.Description = pr.Description
-	newValue := v1.ArrayOrString{}
+	newValue := v1.ParamValue{}
 	pr.Value.convertTo(ctx, &newValue)
 	sink.Value = newValue
 }
@@ -267,7 +267,7 @@ func (pr *PipelineResult) convertFrom(ctx context.Context, source v1.PipelineRes
 	pr.Name = source.Name
 	pr.Type = ResultsType(source.Type)
 	pr.Description = source.Description
-	newValue := ArrayOrString{}
+	newValue := ParamValue{}
 	newValue.convertFrom(ctx, source.Value)
 	pr.Value = newValue
 }

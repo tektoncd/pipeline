@@ -53,26 +53,26 @@ func TestGetParams(t *testing.T) {
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: *v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewStructuredValues("blah"),
 			}, {
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewStructuredValues("bar"),
 			}},
 		},
 		name: "foo",
 		want: &v1beta1.Param{
 			Name:  "foo",
-			Value: *v1beta1.NewArrayOrString("bar"),
+			Value: *v1beta1.NewStructuredValues("bar"),
 		},
 	}, {
 		desc: "not found",
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: *v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewStructuredValues("blah"),
 			}, {
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewStructuredValues("bar"),
 			}},
 		},
 		name: "bar",
@@ -85,19 +85,19 @@ func TestGetParams(t *testing.T) {
 		spec: v1alpha1.RunSpec{
 			Params: []v1beta1.Param{{
 				Name:  "first",
-				Value: *v1beta1.NewArrayOrString("blah"),
+				Value: *v1beta1.NewStructuredValues("blah"),
 			}, {
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewStructuredValues("bar"),
 			}, {
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("second bar"),
+				Value: *v1beta1.NewStructuredValues("second bar"),
 			}},
 		},
 		name: "foo",
 		want: &v1beta1.Param{
 			Name:  "foo",
-			Value: *v1beta1.NewArrayOrString("bar"),
+			Value: *v1beta1.NewStructuredValues("bar"),
 		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {

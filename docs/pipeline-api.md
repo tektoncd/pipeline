@@ -24,8 +24,160 @@ weight: 1000
 </div>
 Resource Types:
 <ul><li>
+<a href="#tekton.dev/v1.Pipeline">Pipeline</a>
+</li><li>
 <a href="#tekton.dev/v1.Task">Task</a>
 </li></ul>
+<h3 id="tekton.dev/v1.Pipeline">Pipeline
+</h3>
+<div>
+<p>Pipeline describes a list of Tasks to execute. It expresses how outputs
+of tasks feed into inputs of subsequent tasks.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+tekton.dev/v1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>Pipeline</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineSpec">
+PipelineSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec holds the desired state of the Pipeline from the client</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a user-facing description of the pipeline that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tasks</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTask">
+[]PipelineTask
+</a>
+</em>
+</td>
+<td>
+<p>Tasks declares the graph of Tasks that execute when this Pipeline is run.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamSpec">
+[]ParamSpec
+</a>
+</em>
+</td>
+<td>
+<p>Params declares a list of input parameters that must be supplied when
+this Pipeline is run.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineWorkspaceDeclaration">
+[]PipelineWorkspaceDeclaration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces declares a set of named workspaces that are expected to be
+provided by a PipelineRun.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineResult">
+[]PipelineResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results are values that this pipeline can output once run</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>finally</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTask">
+[]PipelineTask
+</a>
+</em>
+</td>
+<td>
+<p>Finally declares the list of Tasks that execute just before leaving the Pipeline
+i.e. either after all Tasks are finished executing successfully
+or after a failure which would result in ending the Pipeline</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.Task">Task
 </h3>
 <div>
@@ -205,17 +357,13 @@ the steps start and end after the steps complete.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1.ArrayOrString">ArrayOrString
+<h3 id="tekton.dev/v1.EmbeddedTask">EmbeddedTask
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
 </p>
 <div>
-<p>ArrayOrString is a type that can hold a single string or string array.
-Used in JSON unmarshalling so that a single JSON field can accept
-either an individual string or an array of strings.
-TODO (@chuangw6): This struct will be renamed or be embedded in a new struct to take into
-consideration the object case after the community reaches an agreement on it.</p>
+<p>EmbeddedTask is used to define a Task inline within a Pipeline&rsquo;s PipelineTasks.</p>
 </div>
 <table>
 <thead>
@@ -227,53 +375,83 @@ consideration the object case after the community reaches an agreement on it.</p
 <tbody>
 <tr>
 <td>
-<code>type</code><br/>
+<code>spec</code><br/>
 <em>
-<a href="#tekton.dev/v1.ParamType">
-ParamType
+k8s.io/apimachinery/pkg/runtime.RawExtension
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec is a specification of a custom task</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+[]byte
+</em>
+</td>
+<td>
+<p>Raw is the underlying serialization of this object.</p>
+<p>TODO: Determine how to detect ContentType and ContentEncoding of &lsquo;Raw&rsquo; data.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+k8s.io/apimachinery/pkg/runtime.Object
+</em>
+</td>
+<td>
+<p>Object can hold a representation of this extension - useful for working with versioned
+structs.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTaskMetadata">
+PipelineTaskMetadata
 </a>
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 </td>
 </tr>
 <tr>
 <td>
-<code>stringVal</code><br/>
+<code>TaskSpec</code><br/>
 <em>
-string
+<a href="#tekton.dev/v1.TaskSpec">
+TaskSpec
+</a>
 </em>
 </td>
 <td>
-<p>Represents the stored type of ArrayOrString.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>arrayVal</code><br/>
-<em>
-[]string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>objectVal</code><br/>
-<em>
-map[string]string
-</em>
-</td>
-<td>
+<p>
+(Members of <code>TaskSpec</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>TaskSpec is a specification of a task</p>
 </td>
 </tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+</p>
 <div>
-<p>Param declares an ArrayOrString to use for the parameter called name.</p>
+<p>Param declares an ParamValues to use for the parameter called name.</p>
 </div>
 <table>
 <thead>
@@ -297,8 +475,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1.ArrayOrString">
-ArrayOrString
+<a href="#tekton.dev/v1.ParamValue">
+ParamValue
 </a>
 </em>
 </td>
@@ -310,7 +488,7 @@ ArrayOrString
 <h3 id="tekton.dev/v1.ParamSpec">ParamSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskSpec">TaskSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineSpec">PipelineSpec</a>, <a href="#tekton.dev/v1.TaskSpec">TaskSpec</a>)
 </p>
 <div>
 <p>ParamSpec defines arbitrary parameters needed beyond typed inputs (such as
@@ -382,8 +560,8 @@ map[string]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec
 <td>
 <code>default</code><br/>
 <em>
-<a href="#tekton.dev/v1.ArrayOrString">
-ArrayOrString
+<a href="#tekton.dev/v1.ParamValue">
+ParamValue
 </a>
 </em>
 </td>
@@ -399,7 +577,7 @@ parameter.</p>
 <h3 id="tekton.dev/v1.ParamType">ParamType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.ArrayOrString">ArrayOrString</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PropertySpec">PropertySpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.ParamValue">ParamValue</a>, <a href="#tekton.dev/v1.PropertySpec">PropertySpec</a>)
 </p>
 <div>
 <p>ParamType indicates the type of an input parameter;
@@ -420,8 +598,476 @@ Used to distinguish between a single string and an array of strings.</p>
 <td></td>
 </tr></tbody>
 </table>
+<h3 id="tekton.dev/v1.ParamValue">ParamValue
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+</p>
+<div>
+<p>ResultValue is a type alias of ParamValue</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamType">
+ParamType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>stringVal</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Represents the stored type of ParamValues.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>arrayVal</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>objectVal</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineResult">PipelineResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineSpec">PipelineSpec</a>)
+</p>
+<div>
+<p>PipelineResult used to describe the results of a pipeline</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the given name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1.ResultsType">
+ResultsType
+</a>
+</em>
+</td>
+<td>
+<p>Type is the user-specified type of the result.
+The possible types are &lsquo;string&rsquo;, &lsquo;array&rsquo;, and &lsquo;object&rsquo;, with &lsquo;string&rsquo; as the default.
+&lsquo;array&rsquo; and &lsquo;object&rsquo; types are alpha features.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a human-readable description of the result</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamValue">
+ParamValue
+</a>
+</em>
+</td>
+<td>
+<p>Value the expression used to retrieve the value</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineSpec">PipelineSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Pipeline">Pipeline</a>)
+</p>
+<div>
+<p>PipelineSpec defines the desired state of Pipeline.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>description</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Description is a user-facing description of the pipeline that may be
+used to populate a UI.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tasks</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTask">
+[]PipelineTask
+</a>
+</em>
+</td>
+<td>
+<p>Tasks declares the graph of Tasks that execute when this Pipeline is run.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamSpec">
+[]ParamSpec
+</a>
+</em>
+</td>
+<td>
+<p>Params declares a list of input parameters that must be supplied when
+this Pipeline is run.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineWorkspaceDeclaration">
+[]PipelineWorkspaceDeclaration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces declares a set of named workspaces that are expected to be
+provided by a PipelineRun.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineResult">
+[]PipelineResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results are values that this pipeline can output once run</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>finally</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTask">
+[]PipelineTask
+</a>
+</em>
+</td>
+<td>
+<p>Finally declares the list of Tasks that execute just before leaving the Pipeline
+i.e. either after all Tasks are finished executing successfully
+or after a failure which would result in ending the Pipeline</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineTask">PipelineTask
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineSpec">PipelineSpec</a>)
+</p>
+<div>
+<p>PipelineTask defines a task in a Pipeline, passing inputs from both
+Params and from the output of previous tasks.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name of this task within the context of a Pipeline. Name is
+used as a coordinate with the <code>from</code> and <code>runAfter</code> fields to establish
+the execution order of tasks relative to one another.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRef">
+TaskRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TaskRef is a reference to a task definition.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1.EmbeddedTask">
+EmbeddedTask
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TaskSpec is a specification of a task</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>when</code><br/>
+<em>
+<a href="#tekton.dev/v1.WhenExpressions">
+WhenExpressions
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>When is a list of when expressions that need to be true for the task to run</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>runAfter</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RunAfter is the list of PipelineTask names that should be executed before
+this Task executes. (Used to force a specific ordering in graph execution.)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Parameters declares parameters passed to this task.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>matrix</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Matrix declares parameters used to fan out this task.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1.WorkspacePipelineTaskBinding">
+[]WorkspacePipelineTaskBinding
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces maps workspaces from the pipeline spec to the workspaces
+declared in the Task.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the TaskRun times out. Defaults to 1 hour.
+Specified TaskRun timeout should be less than 24h.
+Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineTaskMetadata">PipelineTaskMetadata
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.EmbeddedTask">EmbeddedTask</a>)
+</p>
+<div>
+<p>PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>labels</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineTaskParam">PipelineTaskParam
+</h3>
+<div>
+<p>PipelineTaskParam is used to provide arbitrary string parameters to a Task.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.PipelineWorkspaceDeclaration">PipelineWorkspaceDeclaration
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineSpec">PipelineSpec</a>)
+</p>
 <div>
 <p>WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
 is expected to populate with a workspace binding.
@@ -557,6 +1203,9 @@ passed to the resolver.</p>
 </table>
 <h3 id="tekton.dev/v1.ResolverRef">ResolverRef
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRef">TaskRef</a>)
+</p>
 <div>
 <p>ResolverRef can be used to refer to a Pipeline or Task in a remote
 location like a git repo. This feature is in alpha and these fields
@@ -604,19 +1253,72 @@ the chosen resolver.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.ResultRef">ResultRef
+</h3>
+<div>
+<p>ResultRef is a type that represents a reference to a task run result</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pipelineTask</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>result</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>resultsIndex</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>property</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.ResultsType">ResultsType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
 </p>
 <div>
 <p>ResultsType indicates the type of a result;
 Used to distinguish between a single string and an array of strings.
 Note that there is ResultType used to find out whether a
 PipelineResourceResult is from a task result or not, which is different from
-this ResultsType.
-TODO(#4723): add &ldquo;array&rdquo; and &ldquo;object&rdquo; support
-TODO(#4723): align ResultsType and ParamType in ArrayOrString</p>
+this ResultsType.</p>
 </div>
 <table>
 <thead>
@@ -1579,6 +2281,96 @@ More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/sec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.TaskKind">TaskKind
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRef">TaskRef</a>)
+</p>
+<div>
+<p>TaskKind defines the type of Task used by the pipeline.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Task&#34;</p></td>
+<td><p>NamespacedTaskKind indicates that the task type has a namespaced scope.</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="tekton.dev/v1.TaskRef">TaskRef
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+</p>
+<div>
+<p>TaskRef can be used to refer to a specific instance of a task.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the referent; More info: <a href="http://kubernetes.io/docs/user-guide/identifiers#names">http://kubernetes.io/docs/user-guide/identifiers#names</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskKind">
+TaskKind
+</a>
+</em>
+</td>
+<td>
+<p>TaskKind indicates the kind of the task, namespaced or cluster scoped.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>API version of the referent</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResolverRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.ResolverRef">
+ResolverRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ResolverRef allows referencing a Task in a remote location
+like a git repo. This field is only supported when the alpha
+feature gate is enabled.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.TaskResult">TaskResult
 </h3>
 <p>
@@ -1692,8 +2484,8 @@ is currently &ldquo;string&rdquo; and will support &ldquo;array&rdquo; in follow
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1.ArrayOrString">
-ArrayOrString
+<a href="#tekton.dev/v1.ParamValue">
+ParamValue
 </a>
 </em>
 </td>
@@ -1706,7 +2498,7 @@ ArrayOrString
 <h3 id="tekton.dev/v1.TaskSpec">TaskSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Task">Task</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Task">Task</a>, <a href="#tekton.dev/v1.EmbeddedTask">EmbeddedTask</a>)
 </p>
 <div>
 <p>TaskSpec defines the desired state of Task.</p>
@@ -1832,6 +2624,65 @@ the steps start and end after the steps complete.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.WhenExpression">WhenExpression
+</h3>
+<div>
+<p>WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run
+to determine whether the Task should be executed or skipped</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>input</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Input is the string for guard checking which can be a static input or an output from a parent Task</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>operator</code><br/>
+<em>
+k8s.io/apimachinery/pkg/selection.Operator
+</em>
+</td>
+<td>
+<p>Operator that represents an Input&rsquo;s relationship to the values</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>values</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Values is an array of strings, which is compared against the input, for guard checking
+It must be non-empty</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.WhenExpressions">WhenExpressions
+(<code>[]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+</p>
+<div>
+<p>WhenExpressions are used to specify whether a Task should be executed or skipped
+All of them need to evaluate to True for a guarded Task to be executed.</p>
+</div>
 <h3 id="tekton.dev/v1.WorkspaceBinding">WorkspaceBinding
 </h3>
 <div>
@@ -2024,6 +2875,9 @@ this field is false and so declared workspaces are required.</p>
 </table>
 <h3 id="tekton.dev/v1.WorkspacePipelineTaskBinding">WorkspacePipelineTaskBinding
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+</p>
 <div>
 <p>WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be
 mapped to a task&rsquo;s declared workspace.</p>
@@ -2242,6 +3096,20 @@ RunSpecStatus
 <td>
 <em>(Optional)</em>
 <p>Used for cancelling a run (and maybe more later on)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statusMessage</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.RunSpecStatusMessage">
+RunSpecStatusMessage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status message for cancellation.</p>
 </td>
 </tr>
 <tr>
@@ -2605,6 +3473,20 @@ RunSpecStatus
 </tr>
 <tr>
 <td>
+<code>statusMessage</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.RunSpecStatusMessage">
+RunSpecStatusMessage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>retries</code><br/>
 <em>
 int
@@ -2678,6 +3560,14 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 </p>
 <div>
 <p>RunSpecStatus defines the taskrun spec status the user can provide</p>
+</div>
+<h3 id="tekton.dev/v1alpha1.RunSpecStatusMessage">RunSpecStatusMessage
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>)
+</p>
+<div>
+<p>RunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
 </div>
 <h3 id="tekton.dev/v1alpha1.PipelineResourceSpec">PipelineResourceSpec
 </h3>
@@ -4066,6 +4956,20 @@ TaskRunSpecStatus
 </tr>
 <tr>
 <td>
+<code>statusMessage</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.TaskRunSpecStatusMessage">
+TaskRunSpecStatusMessage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -4168,71 +5072,6 @@ TaskRunStatus
 </td>
 <td>
 <em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tekton.dev/v1beta1.ArrayOrString">ArrayOrString
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Param">Param</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1beta1.TaskRunResult">TaskRunResult</a>)
-</p>
-<div>
-<p>ArrayOrString is a type that can hold a single string or string array.
-Used in JSON unmarshalling so that a single JSON field can accept
-either an individual string or an array of strings.
-TODO (@chuangw6): This struct will be renamed or be embedded in a new struct to take into
-consideration the object case after the community reaches an agreement on it.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>type</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.ParamType">
-ParamType
-</a>
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>stringVal</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Represents the stored type of ArrayOrString.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>arrayVal</code><br/>
-<em>
-[]string
-</em>
-</td>
-<td>
-</td>
-</tr>
-<tr>
-<td>
-<code>objectVal</code><br/>
-<em>
-map[string]string
-</em>
-</td>
-<td>
 </td>
 </tr>
 </tbody>
@@ -4573,7 +5412,7 @@ TaskSpec
 (<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
-<p>Param declares an ArrayOrString to use for the parameter called name.</p>
+<p>Param declares an ParamValues to use for the parameter called name.</p>
 </div>
 <table>
 <thead>
@@ -4597,8 +5436,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ArrayOrString">
-ArrayOrString
+<a href="#tekton.dev/v1beta1.ParamValue">
+ParamValue
 </a>
 </em>
 </td>
@@ -4682,8 +5521,8 @@ map[string]github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec
 <td>
 <code>default</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ArrayOrString">
-ArrayOrString
+<a href="#tekton.dev/v1beta1.ParamValue">
+ParamValue
 </a>
 </em>
 </td>
@@ -4699,7 +5538,7 @@ parameter.</p>
 <h3 id="tekton.dev/v1beta1.ParamType">ParamType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ArrayOrString">ArrayOrString</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.PropertySpec">PropertySpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.ParamValue">ParamValue</a>, <a href="#tekton.dev/v1beta1.PropertySpec">PropertySpec</a>)
 </p>
 <div>
 <p>ParamType indicates the type of an input parameter;
@@ -4719,6 +5558,67 @@ Used to distinguish between a single string and an array of strings.</p>
 </tr><tr><td><p>&#34;string&#34;</p></td>
 <td></td>
 </tr></tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.ParamValue">ParamValue
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Param">Param</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1beta1.TaskRunResult">TaskRunResult</a>)
+</p>
+<div>
+<p>ResultValue is a type alias of ParamValue</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ParamType">
+ParamType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>stringVal</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Represents the stored type of ParamValues.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>arrayVal</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>objectVal</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.PipelineDeclaredResource">PipelineDeclaredResource
 </h3>
@@ -5076,8 +5976,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ArrayOrString">
-ArrayOrString
+<a href="#tekton.dev/v1beta1.ParamValue">
+ParamValue
 </a>
 </em>
 </td>
@@ -5170,8 +6070,8 @@ string
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ArrayOrString">
-ArrayOrString
+<a href="#tekton.dev/v1beta1.ParamValue">
+ParamValue
 </a>
 </em>
 </td>
@@ -6570,9 +7470,7 @@ Note that ResultsType is another type which is used to define the data type
 Used to distinguish between a single string and an array of strings.
 Note that there is ResultType used to find out whether a
 PipelineResourceResult is from a task result or not, which is different from
-this ResultsType.
-TODO(#4723): add &ldquo;array&rdquo; and &ldquo;object&rdquo; support
-TODO(#4723): align ResultsType and ParamType in ArrayOrString</p>
+this ResultsType.</p>
 </div>
 <table>
 <thead>
@@ -8677,8 +9575,8 @@ is currently &ldquo;string&rdquo; and will support &ldquo;array&rdquo; in follow
 <td>
 <code>value</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ArrayOrString">
-ArrayOrString
+<a href="#tekton.dev/v1beta1.ParamValue">
+ParamValue
 </a>
 </em>
 </td>
@@ -8839,6 +9737,20 @@ TaskRunSpecStatus
 </tr>
 <tr>
 <td>
+<code>statusMessage</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.TaskRunSpecStatusMessage">
+TaskRunSpecStatusMessage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -8937,6 +9849,27 @@ Kubernetes core/v1.ResourceRequirements
 <div>
 <p>TaskRunSpecStatus defines the taskrun spec status the user can provide</p>
 </div>
+<h3 id="tekton.dev/v1beta1.TaskRunSpecStatusMessage">TaskRunSpecStatusMessage
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+</p>
+<div>
+<p>TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;TaskRun cancelled as the PipelineRun it belongs to has been cancelled.&#34;</p></td>
+<td><p>TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
+TaskRun was a part of has been cancelled.</p>
+</td>
+</tr></tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.TaskRunStatus">TaskRunStatus
 </h3>
 <p>

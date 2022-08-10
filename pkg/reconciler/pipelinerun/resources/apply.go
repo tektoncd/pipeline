@@ -363,7 +363,7 @@ func ApplyTaskResultsToPipelineResults(
 // taskResultValue returns the result value for a given pipeline task name and result name in a map of TaskRunResults for
 // pipeline task names. It returns nil if either the pipeline task name isn't present in the map, or if there is no
 // result with the result name in the pipeline task name's slice of results.
-func taskResultValue(taskName string, resultName string, taskResults map[string][]v1beta1.TaskRunResult) *v1beta1.ArrayOrString {
+func taskResultValue(taskName string, resultName string, taskResults map[string][]v1beta1.TaskRunResult) *v1beta1.ResultValue {
 	for _, trResult := range taskResults[taskName] {
 		if trResult.Name == resultName {
 			return &trResult.Value

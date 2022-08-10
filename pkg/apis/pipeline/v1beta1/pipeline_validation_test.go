@@ -105,7 +105,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 					},
 					Params: []Param{{
 						Name:  "param1",
-						Value: ArrayOrString{},
+						Value: ParamValue{},
 					}},
 					Workspaces: []WorkspacePipelineTaskBinding{{
 						Name:      "task-shared-workspace",
@@ -117,7 +117,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 					Name:        "param1",
 					Type:        ParamType("string"),
 					Description: "this is my param",
-					Default: &ArrayOrString{
+					Default: &ParamValue{
 						Type:      ParamType("string"),
 						StringVal: "pipeline-default",
 					},
@@ -129,7 +129,7 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				Results: []PipelineResult{{
 					Name:        "pipeline-result",
 					Description: "this is my pipeline result",
-					Value:       *NewArrayOrString("$(tasks.my-task.results.my-result)"),
+					Value:       *NewStructuredValues("$(tasks.my-task.results.my-result)"),
 				}},
 			},
 		},
@@ -1111,7 +1111,7 @@ func TestValidateParamResults_Success(t *testing.T) {
 		Name:    "foo",
 		TaskRef: &TaskRef{Name: "foo-task"},
 		Params: []Param{{
-			Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.foo) and $(tasks.a-task.results.output)"},
+			Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foo) and $(tasks.a-task.results.output)"},
 		}},
 	}}
 	if err := validateParamResults(tasks); err != nil {
@@ -1126,7 +1126,7 @@ func TestValidateParamResults_Failure(t *testing.T) {
 	}, {
 		Name: "b-task", TaskRef: &TaskRef{Name: "b-task"},
 		Params: []Param{{
-			Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.a-task.resultTypo.bResult)"}}},
+			Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.a-task.resultTypo.bResult)"}}},
 	}}
 	expectedError := apis.FieldError{
 		Message: `invalid value: expected all of the expressions [tasks.a-task.resultTypo.bResult] to be result expressions but only [] were`,
@@ -1146,11 +1146,11 @@ func TestValidatePipelineResults_Success(t *testing.T) {
 	results := []PipelineResult{{
 		Name:        "my-pipeline-result",
 		Description: "this is my pipeline result",
-		Value:       *NewArrayOrString("$(tasks.a-task.results.output)"),
+		Value:       *NewStructuredValues("$(tasks.a-task.results.output)"),
 	}, {
 		Name:        "my-pipeline-object-result",
 		Description: "this is my pipeline result",
-		Value:       *NewArrayOrString("$(tasks.a-task.results.gitrepo.commit)"),
+		Value:       *NewStructuredValues("$(tasks.a-task.results.gitrepo.commit)"),
 	}}
 	if err := validatePipelineResults(results, []PipelineTask{{Name: "a-task"}}, []PipelineTask{}); err != nil {
 		t.Errorf("Pipeline.validatePipelineResults() returned error for valid pipeline: %s: %v", desc, err)
@@ -1167,7 +1167,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
-			Value:       *NewArrayOrString("$(tasks.a-task.results.output.key1.extra)"),
+			Value:       *NewStructuredValues("$(tasks.a-task.results.output.key1.extra)"),
 		}},
 		expectedError: *apis.ErrInvalidValue(`expected all of the expressions [tasks.a-task.results.output.key1.extra] to be result expressions but only [] were`, "results[0].value").Also(
 			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
@@ -1176,7 +1176,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
-			Value:       *NewArrayOrString("$(finally.a-task.results.output.key1.extra)"),
+			Value:       *NewStructuredValues("$(finally.a-task.results.output.key1.extra)"),
 		}},
 		expectedError: *apis.ErrInvalidValue(`expected all of the expressions [finally.a-task.results.output.key1.extra] to be result expressions but only [] were`, "results[0].value").Also(
 			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
@@ -1185,7 +1185,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
-			Value:       *NewArrayOrString("foo.bar"),
+			Value:       *NewStructuredValues("foo.bar"),
 		}},
 		expectedError: *apis.ErrInvalidValue(`expected pipeline results to be task result expressions but an invalid expressions was found`, "results[0].value").Also(
 			apis.ErrInvalidValue(`expected pipeline results to be task result expressions but no expressions were found`, "results[0].value")).Also(
@@ -1195,7 +1195,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
-			Value:       *NewArrayOrString("$(foo.bar)"),
+			Value:       *NewStructuredValues("$(foo.bar)"),
 		}},
 		expectedError: *apis.ErrInvalidValue(`expected pipeline results to be task result expressions but an invalid expressions was found`, "results[0].value").Also(
 			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
@@ -1223,7 +1223,7 @@ func TestFinallyTaskResultsToPipelineResults_Success(t *testing.T) {
 			Spec: PipelineSpec{
 				Results: []PipelineResult{{
 					Name:  "initialized",
-					Value: *NewArrayOrString("$(tasks.clone-app-repo.results.initialized)"),
+					Value: *NewStructuredValues("$(tasks.clone-app-repo.results.initialized)"),
 				}},
 				Tasks: []PipelineTask{{
 					Name: "clone-app-repo",
@@ -1245,7 +1245,7 @@ func TestFinallyTaskResultsToPipelineResults_Success(t *testing.T) {
 			Spec: PipelineSpec{
 				Results: []PipelineResult{{
 					Name:  "initialized",
-					Value: *NewArrayOrString("$(finally.check-git-commit.results.init)"),
+					Value: *NewStructuredValues("$(finally.check-git-commit.results.init)"),
 				}},
 				Tasks: []PipelineTask{{
 					Name: "clone-app-repo",
@@ -1303,7 +1303,7 @@ func TestFinallyTaskResultsToPipelineResults_Failure(t *testing.T) {
 			Spec: PipelineSpec{
 				Results: []PipelineResult{{
 					Name:  "initialized",
-					Value: *NewArrayOrString("$(tasks.check-git-commit.results.init)"),
+					Value: *NewStructuredValues("$(tasks.check-git-commit.results.init)"),
 				}},
 				Tasks: []PipelineTask{{
 					Name: "clone-app-repo",
@@ -1342,7 +1342,7 @@ func TestFinallyTaskResultsToPipelineResults_Failure(t *testing.T) {
 			Spec: PipelineSpec{
 				Results: []PipelineResult{{
 					Name:  "initialized",
-					Value: *NewArrayOrString("$(finally.nonexistent-task.results.init)"),
+					Value: *NewStructuredValues("$(finally.nonexistent-task.results.init)"),
 				}},
 				Tasks: []PipelineTask{{
 					Name: "clone-app-repo",
@@ -1409,7 +1409,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.baz) and $(params.foo-is-baz)"},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz) and $(params.foo-is-baz)"},
 			}},
 		}},
 	}, {
@@ -1437,7 +1437,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 		params: []ParamSpec{{
 			Name: "baz", Type: ParamTypeString,
 		}, {
-			Name: "foo", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "foo", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
@@ -1451,7 +1451,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	}, {
 		name: "valid array parameter variables",
 		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
+			Name: "baz", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
 		}, {
 			Name: "foo-is-baz", Type: ParamTypeArray,
 		}},
@@ -1459,13 +1459,13 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"}},
 			}},
 		}},
 	}, {
 		name: "valid star array parameter variables",
 		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
+			Name: "baz", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
 		}, {
 			Name: "foo-is-baz", Type: ParamTypeArray,
 		}},
@@ -1473,7 +1473,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
 			}},
 		}},
 	}, {
@@ -1485,13 +1485,13 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(input.workspace.$(params.baz))"},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(input.workspace.$(params.baz))"},
 			}},
 		}},
 	}, {
 		name: "valid array parameter variables in matrix",
 		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
+			Name: "baz", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
 		}, {
 			Name: "foo-is-baz", Type: ParamTypeArray,
 		}},
@@ -1499,13 +1499,13 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"}},
 			}},
 		}},
 	}, {
 		name: "valid star array parameter variables in matrix",
 		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
+			Name: "baz", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
 		}, {
 			Name: "foo-is-baz", Type: ParamTypeArray,
 		}},
@@ -1513,7 +1513,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
 			}},
 		}},
 	}, {
@@ -1526,7 +1526,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param-intended-to-be-array", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myArray[*])"},
+				Name: "a-param-intended-to-be-array", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.myArray[*])"},
 			}},
 		}},
 	}, {
@@ -1543,7 +1543,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-string-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject.key1)"},
+				Name: "a-string-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.myObject.key1)"},
 			}},
 		}},
 	}, {
@@ -1560,7 +1560,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-string-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject.key1) and $(params.myObject.key2)"},
+				Name: "a-string-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.myObject.key1) and $(params.myObject.key2)"},
 			}},
 		}},
 	}, {
@@ -1577,7 +1577,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "an-array-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)", "another one $(params.myObject.key2)"}},
+				Name: "an-array-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)", "another one $(params.myObject.key2)"}},
 			}},
 		}},
 	}, {
@@ -1597,7 +1597,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "an-object-param", Value: ArrayOrString{Type: ParamTypeObject, ObjectVal: map[string]string{
+				Name: "an-object-param", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
 					"url":    "$(params.myObject.key1)",
 					"commit": "$(params.myString)",
 				}},
@@ -1617,7 +1617,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)", "and", "$(params.myObject.key2)"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)", "and", "$(params.myObject.key2)"}},
 			}},
 		}},
 	}, {
@@ -1634,7 +1634,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param-intended-to-be-object", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject[*])"},
+				Name: "a-param-intended-to-be-object", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.myObject[*])"},
 			}},
 		}},
 	}, {
@@ -1647,7 +1647,7 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 				"key2": {Type: "string"},
 			},
 		}, {
-			Name: "foo", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "foo", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
@@ -1683,7 +1683,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.does-not-exist)"},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.does-not-exist)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1723,7 +1723,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}, {
 		name: "invalid string parameter variables in when expression, array reference in input",
 		params: []ParamSpec{{
-			Name: "foo", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "foo", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
@@ -1741,7 +1741,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}, {
 		name: "Invalid array parameter variable in when expression, array reference in input with array notation [*]",
 		params: []ParamSpec{{
-			Name: "foo", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "foo", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
@@ -1765,7 +1765,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "foo-task",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.foo) and $(params.does-not-exist)"},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foo) and $(params.does-not-exist)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1781,9 +1781,9 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "foo-task",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.foo)"},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foo)"},
 			}, {
-				Name: "b-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.does-not-exist)"},
+				Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.does-not-exist)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1806,7 +1806,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}, {
 		name: "array parameter mismatching default type",
 		params: []ParamSpec{{
-			Name: "foo", Type: ParamTypeArray, Default: &ArrayOrString{Type: ParamTypeString, StringVal: "astring"},
+			Name: "foo", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeString, StringVal: "astring"},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "foo",
@@ -1819,7 +1819,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}, {
 		name: "string parameter mismatching default type",
 		params: []ParamSpec{{
-			Name: "foo", Type: ParamTypeString, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "foo", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "foo",
@@ -1832,13 +1832,13 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}, {
 		name: "array parameter used as string",
 		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.baz)"},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1848,13 +1848,13 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}, {
 		name: "star array parameter used as string",
 		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.baz[*])"},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.baz[*])"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1864,13 +1864,13 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}, {
 		name: "array parameter string template not isolated",
 		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz)", "last"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz)", "last"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1880,13 +1880,13 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 	}, {
 		name: "star array parameter string template not isolated",
 		params: []ParamSpec{{
-			Name: "baz", Type: ParamTypeString, Default: &ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
+			Name: "baz", Type: ParamTypeString, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"anarray", "elements"}},
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz[*])", "last"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"value: $(params.baz[*])", "last"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1944,7 +1944,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1960,7 +1960,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "foo-task",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)", "and", "$(params.does-not-exist)"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)", "and", "$(params.does-not-exist)"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -1976,9 +1976,9 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "foo-task",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)"}},
 			}, {
-				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -2047,7 +2047,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.non-exist-key)", "last"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.non-exist-key)", "last"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -2069,7 +2069,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.myObject.non-exist-key)"},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.myObject.non-exist-key)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -2094,7 +2094,7 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "an-object-param", Value: ArrayOrString{Type: ParamTypeObject, ObjectVal: map[string]string{
+				Name: "an-object-param", Value: ParamValue{Type: ParamTypeObject, ObjectVal: map[string]string{
 					"url":    "$(params.myObject.non-exist-key)",
 					"commit": "$(params.myString)",
 				}},
@@ -2119,9 +2119,9 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Name:    "foo-task",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)"}},
 			}, {
-				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.non-exist-key)"}},
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.non-exist-key)"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -2369,7 +2369,7 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 					Name:    "final-task-1",
 					TaskRef: &TaskRef{Name: "final-task"},
 					Params: []Param{{
-						Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.non-final-task.results.output)"},
+						Name: "param1", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.non-final-task.results.output)"},
 					}},
 				}},
 			},
@@ -2387,7 +2387,7 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 					Name:    "final-task-1",
 					TaskRef: &TaskRef{Name: "final-task"},
 					Params: []Param{{
-						Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(context.pipelineRun.name)"},
+						Name: "param1", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineRun.name)"},
 					}},
 				}},
 			},
@@ -2557,7 +2557,7 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 					Name:    "final-task",
 					TaskRef: &TaskRef{Name: "final-task"},
 					Params: []Param{{
-						Name: "final-param", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(params.foo) and $(params.does-not-exist)"},
+						Name: "final-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foo) and $(params.does-not-exist)"},
 					}},
 				}},
 			},
@@ -2632,7 +2632,7 @@ func TestValidatePipelineWithFinalTasks_Failure(t *testing.T) {
 					Name:    "final-task-1",
 					TaskRef: &TaskRef{Name: "final-task"},
 					Params: []Param{{
-						Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(context.pipelineRun.missing)"},
+						Name: "param1", Value: ParamValue{Type: ParamTypeString, StringVal: "$(context.pipelineRun.missing)"},
 					}},
 				}},
 			},
@@ -2750,7 +2750,7 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 			Name:    "final-task-2",
 			TaskRef: &TaskRef{Name: "final-task"},
 			Params: []Param{{
-				Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.final-task-1.results.output)"},
+				Name: "param1", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.final-task-1.results.output)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -2781,7 +2781,7 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 			Name:    "final-task",
 			TaskRef: &TaskRef{Name: "final-task"},
 			Params: []Param{{
-				Name: "param1", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.no-dag-task-1.results.output)"},
+				Name: "param1", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.no-dag-task-1.results.output)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -2812,10 +2812,10 @@ func TestContextValid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipeline.name)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipeline.name)"},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-mat", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.name)"}},
+				Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)"}},
 			}},
 		}},
 	}, {
@@ -2824,10 +2824,10 @@ func TestContextValid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineRun.name)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.name)"},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-mat", Value: ArrayOrString{ArrayVal: []string{"$(context.pipelineRun.name)"}},
+				Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.name)"}},
 			}},
 		}},
 	}, {
@@ -2836,10 +2836,10 @@ func TestContextValid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineRun.namespace)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.namespace)"},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-mat", Value: ArrayOrString{ArrayVal: []string{"$(context.pipelineRun.namespace)"}},
+				Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.namespace)"}},
 			}},
 		}},
 	}, {
@@ -2848,10 +2848,10 @@ func TestContextValid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineRun.uid)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.uid)"},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-mat", Value: ArrayOrString{ArrayVal: []string{"$(context.pipelineRun.uid)"}},
+				Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.uid)"}},
 			}},
 		}},
 	}, {
@@ -2860,10 +2860,10 @@ func TestContextValid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
+				Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-mat", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
+				Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
 			}},
 		}},
 	}, {
@@ -2872,10 +2872,10 @@ func TestContextValid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineTask.retries)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineTask.retries)"},
 			}},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineTask.retries)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineTask.retries)"},
 			}},
 		}},
 	}, {
@@ -2884,10 +2884,10 @@ func TestContextValid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
+				Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-mat", Value: ArrayOrString{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
+				Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
 			}},
 		}},
 	}}
@@ -2911,10 +2911,10 @@ func TestContextInvalid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipeline.missing)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipeline.missing)"},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-foo", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.missing-foo)"}},
+				Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing-foo)"}},
 			}},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
@@ -2930,10 +2930,10 @@ func TestContextInvalid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineRun.missing)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.missing)"},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-foo", Value: ArrayOrString{ArrayVal: []string{"$(context.pipelineRun.missing-foo)"}},
+				Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.missing-foo)"}},
 			}},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
@@ -2949,10 +2949,10 @@ func TestContextInvalid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{StringVal: "$(context.pipelineTask.missing)"},
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineTask.missing)"},
 			}},
 			Matrix: []Param{{
-				Name: "a-param-foo", Value: ArrayOrString{ArrayVal: []string{"$(context.pipelineTask.missing-foo)"}},
+				Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.missing-foo)"}},
 			}},
 		}},
 		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
@@ -2968,10 +2968,10 @@ func TestContextInvalid(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.missing)", "$(context.pipelineTask.missing)", "$(context.pipelineRun.missing)"}},
+				Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing)", "$(context.pipelineTask.missing)", "$(context.pipelineRun.missing)"}},
 			}},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{ArrayVal: []string{"$(context.pipeline.missing-foo)", "$(context.pipelineTask.missing-foo)", "$(context.pipelineRun.missing-foo)"}},
+				Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing-foo)", "$(context.pipelineTask.missing-foo)", "$(context.pipelineRun.missing-foo)"}},
 			}},
 		}},
 		expectedError: *apis.ErrGeneric(`non-existent variable in "$(context.pipeline.missing)"`, "value").
@@ -3009,9 +3009,9 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.foo.status)"},
+				Name: "foo-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo.status)"},
 			}, {
-				Name: "tasks-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.status)"},
+				Name: "tasks-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.status)"},
 			}},
 			WhenExpressions: WhenExpressions{{
 				Input:    "$(tasks.foo.status)",
@@ -3029,7 +3029,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.foo.results.status)"},
+				Name: "foo-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo.results.status)"},
 			}},
 			WhenExpressions: WhenExpressions{WhenExpression{
 				Input:    "$(tasks.foo.results.status)",
@@ -3046,7 +3046,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of foo is $(tasks.foo.status)."},
+				Name: "foo-status", Value: ParamValue{Type: ParamTypeString, StringVal: "Execution status of foo is $(tasks.foo.status)."},
 			}},
 		}},
 	}, {
@@ -3058,7 +3058,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "foo-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of $(tasks.taskname) is $(tasks.foo.status)."},
+				Name: "foo-status", Value: ParamValue{Type: ParamTypeString, StringVal: "Execution status of $(tasks.taskname) is $(tasks.foo.status)."},
 			}},
 		}},
 	}, {
@@ -3067,7 +3067,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
-				Name: "bar-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.bar.status)"},
+				Name: "bar-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.bar.status)"},
 			}},
 			WhenExpressions: WhenExpressions{WhenExpression{
 				Input:    "$(tasks.bar.status)",
@@ -3085,7 +3085,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
-				Name: "tasks-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.status)"},
+				Name: "tasks-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.status)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -3098,7 +3098,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
-				Name: "bar-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of bar is $(tasks.bar.status)"},
+				Name: "bar-status", Value: ParamValue{Type: ParamTypeString, StringVal: "Execution status of bar is $(tasks.bar.status)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -3111,7 +3111,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
-				Name: "bar-status", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar.status)"}},
+				Name: "bar-status", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar.status)"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -3124,7 +3124,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Params: []Param{{
-				Name: "tasks-status", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.status)"}},
+				Name: "tasks-status", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.status)"}},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -3137,7 +3137,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.notask.status)"},
+				Name: "notask-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.notask.status)"},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -3165,7 +3165,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "$(tasks.notask.status)"},
+				Name: "notask-status", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.notask.status)"},
 			}},
 		}, {
 			Name:    "foo",
@@ -3186,7 +3186,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of notask is $(tasks.notask.status)."},
+				Name: "notask-status", Value: ParamValue{Type: ParamTypeString, StringVal: "Execution status of notask is $(tasks.notask.status)."},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -3199,7 +3199,7 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Params: []Param{{
-				Name: "notask-status", Value: ArrayOrString{Type: ParamTypeString, StringVal: "Execution status of $(tasks.taskname) is $(tasks.notask.status)."},
+				Name: "notask-status", Value: ParamValue{Type: ParamTypeString, StringVal: "Execution status of $(tasks.taskname) is $(tasks.notask.status)."},
 			}},
 		}},
 		expectedError: apis.FieldError{
@@ -3241,7 +3241,7 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 				Name:    "a-task",
 				TaskRef: &TaskRef{Name: "a-task"},
 				Matrix: []Param{{
-					Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}},
 			}},
 		},
@@ -3257,7 +3257,7 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 				Name:    "b-task",
 				TaskRef: &TaskRef{Name: "b-task"},
 				Matrix: []Param{{
-					Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 				}},
 			}},
 		},
@@ -3309,10 +3309,10 @@ func Test_validateMatrix(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 			Params: []Param{{
-				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		}},
 		wantErrs: apis.ErrMultipleOneOf("[0].matrix[foobar]", "[0].params[foobar]"),
@@ -3322,10 +3322,10 @@ func Test_validateMatrix(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 			Params: []Param{{
-				Name: "barfoo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
 		}},
 	}, {
@@ -3334,15 +3334,15 @@ func Test_validateMatrix(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "foo", Value: ArrayOrString{Type: ParamTypeString, StringVal: "foo"},
+				Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
 			}, {
-				Name: "bar", Value: ArrayOrString{Type: ParamTypeString, StringVal: "bar"},
+				Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"},
 			}},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
 			Matrix: []Param{{
-				Name: "baz", Value: ArrayOrString{Type: ParamTypeString, StringVal: "baz"},
+				Name: "baz", Value: ParamValue{Type: ParamTypeString, StringVal: "baz"},
 			}},
 		}},
 		wantErrs: &apis.FieldError{
@@ -3355,9 +3355,9 @@ func Test_validateMatrix(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "foobar", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}, {
-				Name: "barfoo", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
 		}},
 	}, {
@@ -3366,13 +3366,13 @@ func Test_validateMatrix(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
 			}},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
 			Matrix: []Param{{
-				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
 			}},
 		}},
 	}}
@@ -3410,13 +3410,13 @@ func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
 			Params: []Param{{
-				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
 			}},
 		}},
 		wantErrs: &apis.FieldError{
@@ -3429,14 +3429,14 @@ func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		}},
 		finally: PipelineTaskList{{
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
 			Params: []Param{{
-				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
 			}},
 		}},
 		wantErrs: &apis.FieldError{
@@ -3449,20 +3449,20 @@ func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		}, {
 			Name:    "b-task",
 			TaskRef: &TaskRef{Name: "b-task"},
 			Params: []Param{{
-				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
 			}},
 		}},
 		finally: PipelineTaskList{{
 			Name:    "c-task",
 			TaskRef: &TaskRef{Name: "c-task"},
 			Params: []Param{{
-				Name: "b-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
 			}},
 		}},
 		wantErrs: &apis.FieldError{
@@ -3475,7 +3475,7 @@ func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		}, {
 			Name:    "b-task",
@@ -3496,7 +3496,7 @@ func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		}},
 		finally: PipelineTaskList{{
@@ -3518,7 +3518,7 @@ func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
 			Matrix: []Param{{
-				Name: "a-param", Value: ArrayOrString{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
 		}, {
 			Name:    "b-task",

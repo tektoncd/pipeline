@@ -67,7 +67,7 @@ func createCombination(i int, name string, value string, parameters []v1beta1.Pa
 		MatrixID: strconv.Itoa(i),
 		Params: append(parameters, v1beta1.Param{
 			Name:  name,
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: value},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: value},
 		}),
 	}
 }

@@ -436,7 +436,7 @@ func validateObjectDefault(objectParams []ParamSpec) (errs *apis.FieldError) {
 }
 
 // ValidateObjectKeys validates if object keys defined in properties are all provided in its value provider iff the provider is not nil.
-func ValidateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ArrayOrString) (errs *apis.FieldError) {
+func ValidateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ParamValue) (errs *apis.FieldError) {
 	if propertiesProvider == nil || propertiesProvider.ObjectVal == nil {
 		return nil
 	}

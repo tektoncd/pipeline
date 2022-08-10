@@ -1423,7 +1423,7 @@ func buildPipelineStateWithLargeDepencyGraph(t *testing.T) PipelineRunState {
 		for alpha = 'a'; alpha <= 'j'; alpha++ {
 			params = append(params, v1beta1.Param{
 				Name: fmt.Sprintf("%c", alpha),
-				Value: v1beta1.ArrayOrString{
+				Value: v1beta1.ParamValue{
 					Type:      v1beta1.ParamTypeString,
 					StringVal: fmt.Sprintf("$(tasks.t%d.results.%c)", dependFrom, alpha),
 				},
@@ -2567,10 +2567,10 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					TaskRunResults: []v1beta1.TaskRunResult{{
 						Name:  "foo",
-						Value: *v1beta1.NewArrayOrString("oof"),
+						Value: *v1beta1.NewStructuredValues("oof"),
 					}, {
 						Name:  "bar",
-						Value: *v1beta1.NewArrayOrString("rab"),
+						Value: *v1beta1.NewStructuredValues("rab"),
 					}},
 				},
 			},
@@ -2603,7 +2603,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					TaskRunResults: []v1beta1.TaskRunResult{{
 						Name:  "fail-foo",
-						Value: *v1beta1.NewArrayOrString("fail-oof"),
+						Value: *v1beta1.NewStructuredValues("fail-oof"),
 					}},
 				},
 			},
@@ -2622,7 +2622,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					TaskRunResults: []v1beta1.TaskRunResult{{
 						Name:  "unknown-foo",
-						Value: *v1beta1.NewArrayOrString("unknown-oof"),
+						Value: *v1beta1.NewStructuredValues("unknown-oof"),
 					}},
 				},
 			},
@@ -2730,10 +2730,10 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			},
 			Matrix: []v1beta1.Param{{
 				Name:  "foobar",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}, {
 				Name:  "quxbaz",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
 			}},
 		},
 		TaskRuns: []*v1beta1.TaskRun{{
@@ -2792,10 +2792,10 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			},
 			Matrix: []v1beta1.Param{{
 				Name:  "foobar",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}, {
 				Name:  "quxbaz",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
 			}},
 		},
 		Runs: []*v1alpha1.Run{{
@@ -2876,10 +2876,10 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 	expectedTaskResults := map[string][]v1beta1.TaskRunResult{
 		"successful-task-with-results-1": {{
 			Name:  "foo",
-			Value: *v1beta1.NewArrayOrString("oof"),
+			Value: *v1beta1.NewStructuredValues("oof"),
 		}, {
 			Name:  "bar",
-			Value: *v1beta1.NewArrayOrString("rab"),
+			Value: *v1beta1.NewStructuredValues("rab"),
 		}},
 		"successful-task-without-results-1": nil,
 	}
@@ -3086,10 +3086,10 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 					}},
 					Matrix: []v1beta1.Param{{
 						Name:  "foobar",
-						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 					}, {
 						Name:  "quxbaz",
-						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
 					}},
 				},
 				TaskRuns: []*v1beta1.TaskRun{nil, nil, nil, nil},
@@ -3114,10 +3114,10 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 					}},
 					Matrix: []v1beta1.Param{{
 						Name:  "foobar",
-						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 					}, {
 						Name:  "quxbaz",
-						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
 					}},
 				},
 				TaskRuns: []*v1beta1.TaskRun{{
@@ -3200,10 +3200,10 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 					}},
 					Matrix: []v1beta1.Param{{
 						Name:  "foobar",
-						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 					}, {
 						Name:  "quxbaz",
-						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
 					}},
 				},
 				CustomTask: true,
@@ -3226,10 +3226,10 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 					}},
 					Matrix: []v1beta1.Param{{
 						Name:  "foobar",
-						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 					}, {
 						Name:  "quxbaz",
-						Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
 					}},
 				},
 				CustomTask: true,

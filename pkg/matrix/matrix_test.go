@@ -29,116 +29,116 @@ func Test_FanOut(t *testing.T) {
 		name: "single array in matrix",
 		matrix: []v1beta1.Param{{
 			Name:  "platform",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 		}},
 		wantCombinations: Combinations{{
 			MatrixID: "0",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
 			}},
 		}, {
 			MatrixID: "1",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
 			}},
 		}, {
 			MatrixID: "2",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
 			}},
 		}},
 	}, {
 		name: "multiple arrays in matrix",
 		matrix: []v1beta1.Param{{
 			Name:  "platform",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
 		}, {
 			Name:  "browser",
-			Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
+			Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"chrome", "safari", "firefox"}},
 		}},
 		wantCombinations: Combinations{{
 			MatrixID: "0",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
 			}},
 		}, {
 			MatrixID: "1",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
 			}},
 		}, {
 			MatrixID: "2",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "chrome"},
 			}},
 		}, {
 			MatrixID: "3",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "safari"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
 			}},
 		}, {
 			MatrixID: "4",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "safari"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
 			}},
 		}, {
 			MatrixID: "5",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "safari"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "safari"},
 			}},
 		}, {
 			MatrixID: "6",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "linux"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "linux"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
 			}},
 		}, {
 			MatrixID: "7",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "mac"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "mac"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
 			}},
 		}, {
 			MatrixID: "8",
 			Params: []v1beta1.Param{{
 				Name:  "platform",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "windows"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "windows"},
 			}, {
 				Name:  "browser",
-				Value: v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
+				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeString, StringVal: "firefox"},
 			}},
 		}},
 	}}
