@@ -18,6 +18,7 @@ package pod
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -339,14 +340,6 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 }
 
 func TestEntryPointOnError(t *testing.T) {
-	taskSpec := v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
-			OnError: entrypoint.ContinueOnError,
-		}, {
-			OnError: entrypoint.FailOnError,
-		}},
-	}
-
 	steps := []corev1.Container{{
 		Name:    "failing-step",
 		Image:   "step-1",
@@ -357,42 +350,76 @@ func TestEntryPointOnError(t *testing.T) {
 		Command: []string{"cmd"},
 	}}
 
-	want := []corev1.Container{{
-		Name:    "failing-step",
-		Image:   "step-1",
-		Command: []string{entrypointBinary},
-		Args: []string{
-			"-wait_file", "/tekton/downward/ready",
-			"-wait_file_content",
-			"-post_file", "/tekton/run/0/out",
-			"-termination_path", "/tekton/termination",
-			"-step_metadata_dir", "/tekton/run/0/status",
-			"-on_error", "continue",
-			"-entrypoint", "cmd", "--",
+	for _, tc := range []struct {
+		desc           string
+		taskSpec       v1beta1.TaskSpec
+		wantContainers []corev1.Container
+		err            error
+	}{{
+		taskSpec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				OnError: entrypoint.ContinueOnError,
+			}, {
+				OnError: entrypoint.FailOnError,
+			}},
 		},
-		VolumeMounts:           []corev1.VolumeMount{downwardMount},
-		TerminationMessagePath: "/tekton/termination",
+		wantContainers: []corev1.Container{{
+			Name:    "failing-step",
+			Image:   "step-1",
+			Command: []string{entrypointBinary},
+			Args: []string{
+				"-wait_file", "/tekton/downward/ready",
+				"-wait_file_content",
+				"-post_file", "/tekton/run/0/out",
+				"-termination_path", "/tekton/termination",
+				"-step_metadata_dir", "/tekton/run/0/status",
+				"-on_error", "continue",
+				"-entrypoint", "cmd", "--",
+			},
+			VolumeMounts:           []corev1.VolumeMount{downwardMount},
+			TerminationMessagePath: "/tekton/termination",
+		}, {
+			Name:    "passing-step",
+			Image:   "step-2",
+			Command: []string{entrypointBinary},
+			Args: []string{
+				"-wait_file", "/tekton/run/0/out",
+				"-post_file", "/tekton/run/1/out",
+				"-termination_path", "/tekton/termination",
+				"-step_metadata_dir", "/tekton/run/1/status",
+				"-on_error", "stopAndFail",
+				"-entrypoint", "cmd", "--",
+			},
+			TerminationMessagePath: "/tekton/termination",
+		}},
 	}, {
-		Name:    "passing-step",
-		Image:   "step-2",
-		Command: []string{entrypointBinary},
-		Args: []string{
-			"-wait_file", "/tekton/run/0/out",
-			"-post_file", "/tekton/run/1/out",
-			"-termination_path", "/tekton/termination",
-			"-step_metadata_dir", "/tekton/run/1/status",
-			"-on_error", "stopAndFail",
-			"-entrypoint", "cmd", "--",
+		taskSpec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				OnError: "invalid-on-error",
+			}},
 		},
-		TerminationMessagePath: "/tekton/termination",
-	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
-	if err != nil {
-		t.Fatalf("orderContainers: %v", err)
+		err: errors.New("task step onError must be either continue or stopAndFail but it is set to an invalid value invalid-on-error"),
+	}} {
+		t.Run(tc.desc, func(t *testing.T) {
+			got, err := orderContainers([]string{}, steps, &tc.taskSpec, nil, true)
+			if len(tc.wantContainers) == 0 {
+				if err == nil {
+					t.Fatalf("expected an error for an invalid value for onError but received none")
+				}
+				if d := cmp.Diff(tc.err.Error(), err.Error()); d != "" {
+					t.Errorf("Diff %s", diff.PrintWantGot(d))
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("orderContainers: %v", err)
+				}
+				if d := cmp.Diff(tc.wantContainers, got); d != "" {
+					t.Errorf("Diff %s", diff.PrintWantGot(d))
+				}
+			}
+		})
 	}
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("Diff %s", diff.PrintWantGot(d))
-	}
+
 }
 
 func TestEntryPointStepOutputConfigs(t *testing.T) {
