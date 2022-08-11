@@ -52,3 +52,28 @@ func TestSerializationRoundTrip(t *testing.T) {
 		t.Errorf("Unexpected diff after serialization/deserialization round trip: %s", d)
 	}
 }
+
+func TestSliceSerializationRoundTrip(t *testing.T) {
+	meta := metav1.ObjectMeta{}
+	source := []testStruct{{Field: "foo"}, {Field: "bar"}}
+	key := "my-key"
+	err := version.SerializeToMetadata(&meta, source, key)
+	if err != nil {
+		t.Fatalf("Serialization error: %s", err)
+	}
+
+	sink := []testStruct{}
+	err = version.DeserializeFromMetadata(&meta, &sink, key)
+	if err != nil {
+		t.Fatalf("Deserialization error: %s", err)
+	}
+
+	_, ok := meta.Annotations[key]
+	if ok {
+		t.Errorf("Expected key %s not to be present in annotations but it was", key)
+	}
+
+	if d := cmp.Diff(source, sink); d != "" {
+		t.Errorf("Unexpected diff after serialization/deserialization round trip: %s", d)
+	}
+}
