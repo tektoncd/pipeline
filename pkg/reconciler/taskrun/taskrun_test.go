@@ -417,7 +417,7 @@ var (
 	}
 )
 
-const fakeVersion string = "a728ce3"
+const fakeVersion string = "unknown"
 
 func placeToolsInitContainer(steps []string) corev1.Container {
 	return corev1.Container{
