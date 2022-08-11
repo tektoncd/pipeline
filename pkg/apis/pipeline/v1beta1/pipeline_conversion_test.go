@@ -170,7 +170,6 @@ func TestPipelineConversion(t *testing.T) {
 	}
 }
 
-// TODO handle resources and bundles in #4546
 func TestPipelineConversionFromDeprecated(t *testing.T) {
 	versions := []apis.Convertible{&v1.Pipeline{}}
 	tests := []struct {
@@ -185,18 +184,36 @@ func TestPipelineConversionFromDeprecated(t *testing.T) {
 				Namespace: "bar",
 			},
 			Spec: v1beta1.PipelineSpec{
-				Resources: []v1beta1.PipelineDeclaredResource{{
-					Name:     "pipeline resource",
-					Type:     v1beta1.PipelineResourceTypeGit,
-					Optional: true,
-				}},
+				Resources: []v1beta1.PipelineDeclaredResource{
+					{
+						Name:     "1st pipeline resource",
+						Type:     v1beta1.PipelineResourceTypeGit,
+						Optional: true,
+					}, {
+						Name:     "2nd pipeline resource",
+						Type:     v1beta1.PipelineResourceTypeGit,
+						Optional: false,
+					},
+				},
 			}},
 		want: &v1beta1.Pipeline{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "bar",
 			},
-			Spec: v1beta1.PipelineSpec{},
+			Spec: v1beta1.PipelineSpec{
+				Resources: []v1beta1.PipelineDeclaredResource{
+					{
+						Name:     "1st pipeline resource",
+						Type:     v1beta1.PipelineResourceTypeGit,
+						Optional: true,
+					}, {
+						Name:     "2nd pipeline resource",
+						Type:     v1beta1.PipelineResourceTypeGit,
+						Optional: false,
+					},
+				},
+			},
 		},
 	}}
 
