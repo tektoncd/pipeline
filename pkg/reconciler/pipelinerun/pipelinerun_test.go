@@ -4806,6 +4806,8 @@ spec:
         name: a-task
     - name: b-task
       taskRef:
+        apiVersion: example.dev/v0
+        kind: Example
         name: b-task
 `)}
 	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t,
@@ -4823,20 +4825,6 @@ status:
   - name: a-Result
     value: aResultValue
 `), mustParseTaskRunWithObjectMeta(t,
-		taskRunObjectMeta("test-pipeline-run-finally-results-task-run-b", "foo",
-			"test-pipeline-run-finally-results", "test-pipeline", "b-task", true),
-		`
-spec:
-  taskRef:
-    name: hello-world
-status:
-  conditions:
-  - status: "True"
-    type: Succeeded
-  taskResults:
-  - name: b-Result
-    value: bResultValue
-`), mustParseTaskRunWithObjectMeta(t,
 		taskRunObjectMeta("test-pipeline-run-finally-results-task-run-c", "foo",
 			"test-pipeline-run-finally-results", "test-pipeline", "c-task", true),
 		`
@@ -4847,6 +4835,22 @@ status:
   conditions:
   - status: "True"
     type: Succeeded
+`)}
+	rs := []*v1alpha1.Run{mustParseRunWithObjectMeta(t,
+		taskRunObjectMeta("test-pipeline-run-finally-results-task-run-b", "foo",
+			"test-pipeline-run-finally-results", "test-pipeline", "b-task", true),
+		`
+spec:
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+status:
+  conditions:
+  - status: "True"
+    type: Succeeded
+  results:
+  - name: b-Result
+    value: bResultValue
 `)}
 	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
 metadata:
@@ -4862,17 +4866,6 @@ status:
     reason: Succeeded
 `)}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
-metadata:
-  name: b-task
-  namespace: foo
-spec:
-  taskRef:
-    apiVersion: example.dev/v0
-    kind: Example
-  results:
-  - name: b-Result
-`),
 		parse.MustParseTask(t, `
 metadata:
   name: a-task
@@ -4900,7 +4893,8 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
-		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
+		Runs:         rs,
+		ConfigMaps:   []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))},
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -4917,7 +4911,6 @@ spec:
   pipelineRef:
     name: test-pipeline
 status:
-  runs: {}
   pipelineSpec: 
     results:
     - description: pipeline result
@@ -4938,8 +4931,9 @@ status:
         kind: Task
     - name: b-task
       taskRef:
-        name: b-task
-        kind: Task    
+        apiVersion: example.dev/v0
+        kind: Example
+        name: b-task  
   conditions:
   - status: "True"
     type: Succeeded
@@ -4960,21 +4954,22 @@ status:
         taskResults:
         - name: a-Result
           value: aResultValue
-    test-pipeline-run-finally-results-task-run-b:
-      pipelineTaskName: b-task
-      status:
-        conditions:
-        - status: "True"
-          type: Succeeded
-        taskResults:
-        - name: b-Result
-          value: bResultValue
     test-pipeline-run-finally-results-task-run-c:
       pipelineTaskName: c-task
       status:
         conditions:
         - status: "True"
           type: Succeeded
+  runs:
+    test-pipeline-run-finally-results-task-run-b:
+      pipelineTaskName: b-task
+      status:
+        conditions:
+        - status: "True"
+          type: Succeeded
+        results:
+        - name: b-Result
+          value: bResultValue
 `)
 
 	expectedPrBothStatus := parse.MustParsePipelineRun(t, `
@@ -4988,7 +4983,6 @@ spec:
   pipelineRef:
     name: test-pipeline
 status:
-  runs: {}
   pipelineSpec: 
     results:
     - description: pipeline result
@@ -5010,7 +5004,8 @@ status:
     - name: b-task
       taskRef: 
         name: b-task
-        kind: Task
+        apiVersion: example.dev/v0
+        kind: Example
   conditions:
   - status: "True"
     type: Succeeded
@@ -5030,8 +5025,8 @@ status:
     kind: TaskRun
     name: test-pipeline-run-finally-results-task-run-a
     pipelineTaskName: a-task
-  - apiVersion: tekton.dev/v1beta1
-    kind: TaskRun
+  - apiVersion: tekton.dev/v1alpha1
+    kind: Run
     name: test-pipeline-run-finally-results-task-run-b
     pipelineTaskName: b-task
   taskRuns:
@@ -5044,21 +5039,22 @@ status:
         taskResults:
         - name: a-Result
           value: aResultValue
-    test-pipeline-run-finally-results-task-run-b:
-      pipelineTaskName: b-task
-      status:
-        conditions:
-        - status: "True"
-          type: Succeeded
-        taskResults:
-        - name: b-Result
-          value: bResultValue
     test-pipeline-run-finally-results-task-run-c:
       pipelineTaskName: c-task
       status:
         conditions:
         - status: "True"
           type: Succeeded
+  runs:
+    test-pipeline-run-finally-results-task-run-b:
+      pipelineTaskName: b-task
+      status:
+        conditions:
+        - status: "True"
+          type: Succeeded
+        results:
+        - name: b-Result
+          value: bResultValue
 `)
 
 	expectedPrMinimalStatus := parse.MustParsePipelineRun(t, `
@@ -5094,7 +5090,8 @@ status:
     - name: b-task
       taskRef: 
         name: b-task
-        kind: Task
+        apiVersion: example.dev/v0
+        kind: Example
   conditions:
   - status: "True"
     type: Succeeded
@@ -5115,8 +5112,8 @@ status:
     kind: TaskRun
     name: test-pipeline-run-finally-results-task-run-a
     pipelineTaskName: a-task
-  - apiVersion: tekton.dev/v1beta1
-    kind: TaskRun
+  - apiVersion: tekton.dev/v1alpha1
+    kind: Run
     name: test-pipeline-run-finally-results-task-run-b
     pipelineTaskName: b-task
 `)
