@@ -75,15 +75,14 @@ func NewLogger(configJSON string, levelOverride string, opts ...zap.Option) (*za
 }
 
 func enrichLoggerWithCommitID(logger *zap.Logger) *zap.SugaredLogger {
-	commitID, err := changeset.Get()
-	if err != nil {
-		logger.Info("Fetch GitHub commit ID from kodata failed", zap.Error(err))
+	revision := changeset.Get()
+	if revision == changeset.Unknown {
+		logger.Info("Unable to read vcs.revision from binary")
 		return logger.Sugar()
 	}
 
-	// Enrich logs with GitHub commit ID.
-	return logger.With(zap.String(logkey.GitHubCommitID, commitID)).Sugar()
-
+	// Enrich logs with the components git revision.
+	return logger.With(zap.String(logkey.Commit, revision)).Sugar()
 }
 
 // NewLoggerFromConfig creates a logger using the provided Config

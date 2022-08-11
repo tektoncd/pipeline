@@ -25,11 +25,6 @@ import (
 // NewKlogr returns a logger that is functionally identical to
 // klogr.NewWithOptions(klogr.FormatKlog), i.e. it passes through to klog. The
 // difference is that it uses a simpler implementation.
-//
-// Experimental
-//
-// Notice: This function is EXPERIMENTAL and may be changed or removed in a
-// later release.
 func NewKlogr() Logger {
 	return New(&klogger{})
 }
@@ -48,11 +43,11 @@ func (l *klogger) Init(info logr.RuntimeInfo) {
 }
 
 func (l klogger) Info(level int, msg string, kvList ...interface{}) {
-	trimmed := serialize.TrimDuplicates(l.values, kvList)
+	merged := serialize.MergeKVs(l.values, kvList)
 	if l.prefix != "" {
 		msg = l.prefix + ": " + msg
 	}
-	V(Level(level)).InfoSDepth(l.callDepth+1, msg, append(trimmed[0], trimmed[1]...)...)
+	V(Level(level)).InfoSDepth(l.callDepth+1, msg, merged...)
 }
 
 func (l klogger) Enabled(level int) bool {
@@ -60,11 +55,11 @@ func (l klogger) Enabled(level int) bool {
 }
 
 func (l klogger) Error(err error, msg string, kvList ...interface{}) {
-	trimmed := serialize.TrimDuplicates(l.values, kvList)
+	merged := serialize.MergeKVs(l.values, kvList)
 	if l.prefix != "" {
 		msg = l.prefix + ": " + msg
 	}
-	ErrorSDepth(l.callDepth+1, err, msg, append(trimmed[0], trimmed[1]...)...)
+	ErrorSDepth(l.callDepth+1, err, msg, merged...)
 }
 
 // WithName returns a new logr.Logger with the specified name appended.  klogr

@@ -23,6 +23,8 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
 	clientgentypes "k8s.io/code-generator/cmd/client-gen/types"
@@ -330,7 +332,8 @@ func (g *clientGenerator) GenerateType(c *generator.Context, t *types.Type, w io
 						if e.IsSubresource() {
 							opts["Subresource"] = e.SubResourcePath
 						}
-						sw.Do(strings.Replace(tmpl, " "+strings.Title(e.VerbType), " "+e.VerbName, -1), opts)
+						caser := cases.Title(language.English)
+						sw.Do(strings.Replace(tmpl, " "+caser.String(e.VerbType), " "+e.VerbName, -1), opts)
 					}
 				}
 			}

@@ -59,7 +59,7 @@ const (
 	// KubernetesService is the key used to represent a Kubernetes service name in logs
 	KubernetesService = "knative.dev/k8sservice"
 
-	// GitHubCommitID is the key used to represent the GitHub Commit ID where the
-	// Knative component was built from in logs
-	GitHubCommitID = "commit"
+	// Commit is the logging key used to represent the VCS revision that the
+	// Knative component was built from
+	Commit = "commit"
 )
