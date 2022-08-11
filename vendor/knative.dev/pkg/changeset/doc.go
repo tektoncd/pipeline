@@ -14,10 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package changeset provides Knative utilities for fetching GitHub Commit ID
-// from kodata directory. It requires GitHub HEAD file to be linked into
-// Knative component source code via the following command:
-//   ln -s -r .git/HEAD ./cmd/<knative-component-name>/kodata/
-// Then ko will build this file into $KO_DATA_PATH when building the container
-// for a Knative component.
+// Package changeset returns version control info that was embedded in the
+// golang binary
 package changeset

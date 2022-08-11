@@ -141,13 +141,13 @@ func (ac *reconciler) decodeRequestAndPrepareContext(
 		ctx = apis.WithDryRun(ctx)
 	}
 
-	if newObj != nil && oldObj != nil && req.SubResource == "" {
-		ctx = apis.WithinSubResourceUpdate(ctx, oldObj, req.SubResource)
-	}
-
 	switch req.Operation {
 	case admissionv1.Update:
-		ctx = apis.WithinUpdate(ctx, oldObj)
+		if req.SubResource != "" {
+			ctx = apis.WithinSubResourceUpdate(ctx, oldObj, req.SubResource)
+		} else {
+			ctx = apis.WithinUpdate(ctx, oldObj)
+		}
 	case admissionv1.Create:
 		ctx = apis.WithinCreate(ctx)
 	case admissionv1.Delete:
