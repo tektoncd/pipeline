@@ -359,6 +359,7 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		status := http.StatusOK
+		var errMsg string
 		if res != nil {
 			var result *Result
 			switch {
@@ -366,7 +367,7 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 				if result.StatusCode > 100 && result.StatusCode < 600 {
 					status = result.StatusCode
 				}
-
+				errMsg = fmt.Errorf(result.Format, result.Args...).Error()
 			case !protocol.IsACK(res):
 				// Map client errors to http status code
 				validationError := event.ValidationError{}
@@ -390,6 +391,9 @@ func (p *Protocol) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		}
 
 		rw.WriteHeader(status)
+		if _, err := rw.Write([]byte(errMsg)); err != nil {
+			return err
+		}
 		return nil
 	}
 
