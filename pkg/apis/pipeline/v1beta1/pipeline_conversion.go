@@ -279,6 +279,16 @@ func (pr *PipelineResult) convertFrom(ctx context.Context, source v1.PipelineRes
 	pr.Value = newValue
 }
 
+func (ptm PipelineTaskMetadata) convertTo(ctx context.Context, sink *v1.PipelineTaskMetadata) {
+	sink.Labels = ptm.Labels
+	sink.Annotations = ptm.Annotations
+}
+
+func (ptm *PipelineTaskMetadata) convertFrom(ctx context.Context, source v1.PipelineTaskMetadata) {
+	ptm.Labels = source.Labels
+	ptm.Annotations = source.Labels
+}
+
 func serializePipelineResources(meta *metav1.ObjectMeta, spec *PipelineSpec) error {
 	if spec.Resources == nil {
 		return nil
