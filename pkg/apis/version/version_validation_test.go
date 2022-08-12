@@ -14,19 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package version
+package version_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 )
 
 func TestValidateEnabledAPIFields(t *testing.T) {
-	version := "alpha"
+	testVersion := "alpha"
 	flags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": version,
+		"enable-api-fields": testVersion,
 	})
 	if err != nil {
 		t.Fatalf("error creating feature flags from map: %v", err)
@@ -35,7 +36,7 @@ func TestValidateEnabledAPIFields(t *testing.T) {
 		FeatureFlags: flags,
 	}
 	ctx := config.ToContext(context.Background(), cfg)
-	if err := ValidateEnabledAPIFields(ctx, "test feature", version); err != nil {
+	if err := version.ValidateEnabledAPIFields(ctx, "test feature", testVersion); err != nil {
 		t.Errorf("unexpected error for compatible feature gates: %q", err)
 	}
 }
@@ -51,7 +52,7 @@ func TestValidateEnabledAPIFieldsError(t *testing.T) {
 		FeatureFlags: flags,
 	}
 	ctx := config.ToContext(context.Background(), cfg)
-	err = ValidateEnabledAPIFields(ctx, "test feature", "alpha")
+	err = version.ValidateEnabledAPIFields(ctx, "test feature", "alpha")
 
 	if err == nil {
 		t.Errorf("error expected for incompatible feature gates")
