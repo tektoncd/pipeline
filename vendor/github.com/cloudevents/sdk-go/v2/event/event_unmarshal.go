@@ -370,6 +370,9 @@ func consumeDataAsBytes(e *Event, isBase64 bool, b []byte) error {
 		iter := jsoniter.ParseBytes(jsoniter.ConfigFastest, b)
 		src := iter.ReadString() // handles escaping
 		e.DataEncoded = []byte(src)
+		if iter.Error != nil {
+			return fmt.Errorf("unexpected data payload for media type %q, expected a string: %w", mt, iter.Error)
+		}
 		return nil
 	}
 
@@ -397,6 +400,9 @@ func consumeData(e *Event, isBase64 bool, iter *jsoniter.Iterator) error {
 		// If not json, then data is encoded as string
 		src := iter.ReadString() // handles escaping
 		e.DataEncoded = []byte(src)
+		if iter.Error != nil {
+			return fmt.Errorf("unexpected data payload for media type %q, expected a string: %w", mt, iter.Error)
+		}
 		return nil
 	}
 
