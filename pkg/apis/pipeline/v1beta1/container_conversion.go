@@ -28,7 +28,7 @@ func (s Step) convertTo(ctx context.Context, sink *v1.Step) {
 		w.convertTo(ctx, &new)
 		sink.Workspaces = append(sink.Workspaces, new)
 	}
-	sink.OnError = s.OnError
+	sink.OnError = (v1.OnErrorType)(s.OnError)
 	sink.StdoutConfig = (*v1.StepOutputConfig)(s.StdoutConfig)
 	sink.StderrConfig = (*v1.StepOutputConfig)(s.StderrConfig)
 
@@ -59,7 +59,7 @@ func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
 		new.convertFrom(ctx, w)
 		s.Workspaces = append(s.Workspaces, new)
 	}
-	s.OnError = source.OnError
+	s.OnError = (OnErrorType)(source.OnError)
 	s.StdoutConfig = (*StepOutputConfig)(source.StdoutConfig)
 	s.StderrConfig = (*StepOutputConfig)(source.StderrConfig)
 }

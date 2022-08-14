@@ -242,7 +242,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	if s.OnError != "" {
-		if s.OnError != "continue" && s.OnError != "stopAndFail" {
+		if s.OnError != Continue && s.OnError != StopAndFail {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("invalid value: %v", s.OnError),
 				Paths:   []string{"onError"},

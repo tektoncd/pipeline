@@ -3368,7 +3368,7 @@ func schema_pkg_apis_pipeline_v1beta1_Step(ref common.ReferenceCallback) common.
 					},
 					"onError": {
 						SchemaProps: spec.SchemaProps{
-							Description: "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ] stopAndFail indicates exit the taskRun if the container exits with non-zero exit code continue indicates continue executing the rest of the steps irrespective of the container exit code",
+							Description: "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ]",
 							Type:        []string{"string"},
 							Format:      "",
 						},

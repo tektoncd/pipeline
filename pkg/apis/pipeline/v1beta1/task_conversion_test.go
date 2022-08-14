@@ -95,7 +95,7 @@ func TestTaskConversion(t *testing.T) {
 					Script:          "echo hello",
 					Timeout:         &metav1.Duration{Duration: time.Hour},
 					Workspaces:      []v1beta1.WorkspaceUsage{{Name: "workspace"}},
-					OnError:         "continue",
+					OnError:         v1beta1.Continue,
 					StdoutConfig:    &v1beta1.StepOutputConfig{Path: "/path"},
 					StderrConfig:    &v1beta1.StepOutputConfig{Path: "/another-path"},
 				}},

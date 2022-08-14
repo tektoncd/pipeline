@@ -188,9 +188,7 @@ type Step struct {
 
 	// OnError defines the exiting behavior of a container on error
 	// can be set to [ continue | stopAndFail ]
-	// stopAndFail indicates exit the taskRun if the container exits with non-zero exit code
-	// continue indicates continue executing the rest of the steps irrespective of the container exit code
-	OnError string `json:"onError,omitempty"`
+	OnError OnErrorType `json:"onError,omitempty"`
 
 	// Stores configuration for the stdout stream of the step.
 	// +optional
@@ -199,6 +197,16 @@ type Step struct {
 	// +optional
 	StderrConfig *StepOutputConfig `json:"stderrConfig,omitempty"`
 }
+
+// OnErrorType defines a list of supported exiting behavior of a container on error
+type OnErrorType string
+
+const (
+	// StopAndFail indicates exit the taskRun if the container exits with non-zero exit code
+	StopAndFail OnErrorType = "stopAndFail"
+	// Continue indicates continue executing the rest of the steps irrespective of the container exit code
+	Continue OnErrorType = "continue"
+)
 
 // StepOutputConfig stores configuration for a step output stream.
 type StepOutputConfig struct {
