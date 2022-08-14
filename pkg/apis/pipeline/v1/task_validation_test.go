@@ -1386,14 +1386,14 @@ func TestStepOnError(t *testing.T) {
 	}{{
 		name: "valid step - valid onError usage - set to continue - alpha API",
 		steps: []v1.Step{{
-			OnError: "continue",
+			OnError: v1.Continue,
 			Image:   "image",
 			Args:    []string{"arg"},
 		}},
 	}, {
 		name: "valid step - valid onError usage - set to stopAndFail - alpha API",
 		steps: []v1.Step{{
-			OnError: "stopAndFail",
+			OnError: v1.StopAndFail,
 			Image:   "image",
 			Args:    []string{"arg"},
 		}},

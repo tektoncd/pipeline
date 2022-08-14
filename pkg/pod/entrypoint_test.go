@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -358,9 +357,9 @@ func TestEntryPointOnError(t *testing.T) {
 	}{{
 		taskSpec: v1beta1.TaskSpec{
 			Steps: []v1beta1.Step{{
-				OnError: entrypoint.ContinueOnError,
+				OnError: v1beta1.Continue,
 			}, {
-				OnError: entrypoint.FailOnError,
+				OnError: v1beta1.StopAndFail,
 			}},
 		},
 		wantContainers: []corev1.Container{{

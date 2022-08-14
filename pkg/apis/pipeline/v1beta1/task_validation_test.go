@@ -1501,14 +1501,14 @@ func TestStepOnError(t *testing.T) {
 	}{{
 		name: "valid step - valid onError usage - set to continue",
 		steps: []v1beta1.Step{{
-			OnError: "continue",
+			OnError: v1beta1.Continue,
 			Image:   "image",
 			Args:    []string{"arg"},
 		}},
 	}, {
 		name: "valid step - valid onError usage - set to stopAndFail",
 		steps: []v1beta1.Step{{
-			OnError: "stopAndFail",
+			OnError: v1beta1.StopAndFail,
 			Image:   "image",
 			Args:    []string{"arg"},
 		}},
@@ -1516,7 +1516,7 @@ func TestStepOnError(t *testing.T) {
 		name: "valid step - valid onError usage - set to a task parameter",
 		params: []v1beta1.ParamSpec{{
 			Name:    "CONTINUE",
-			Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: "continue"},
+			Default: &v1beta1.ArrayOrString{Type: v1beta1.ParamTypeString, StringVal: string(v1beta1.Continue)},
 		}},
 		steps: []v1beta1.Step{{
 			OnError: "$(params.CONTINUE)",

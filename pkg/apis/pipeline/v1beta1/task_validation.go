@@ -243,9 +243,8 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 		}
 	}
 
-	// validate static values in onError if specified - onError can only be set to continue or stopAndFail
 	if s.OnError != "" {
-		if !isParamRefs(s.OnError) && s.OnError != "continue" && s.OnError != "stopAndFail" {
+		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("invalid value: %v", s.OnError),
 				Paths:   []string{"onError"},
@@ -603,7 +602,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 		errs = errs.Also(validateTaskVariable(v.MountPath, prefix, vars).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
 		errs = errs.Also(validateTaskVariable(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
-	errs = errs.Also(validateTaskVariable(step.OnError, prefix, vars).ViaField("onError"))
+	errs = errs.Also(validateTaskVariable(string(step.OnError), prefix, vars).ViaField("onError"))
 	return errs
 }
 

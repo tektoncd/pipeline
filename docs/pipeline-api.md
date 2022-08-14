@@ -445,6 +445,117 @@ TaskSpec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.EmbeddedTask">EmbeddedTask
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+</p>
+<div>
+<p>EmbeddedTask is used to define a Task inline within a Pipeline&rsquo;s PipelineTasks.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+k8s.io/apimachinery/pkg/runtime.RawExtension
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec is a specification of a custom task</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+[]byte
+</em>
+</td>
+<td>
+<p>Raw is the underlying serialization of this object.</p>
+<p>TODO: Determine how to detect ContentType and ContentEncoding of &lsquo;Raw&rsquo; data.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+k8s.io/apimachinery/pkg/runtime.Object
+</em>
+</td>
+<td>
+<p>Object can hold a representation of this extension - useful for working with versioned
+structs.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="#tekton.dev/v1.PipelineTaskMetadata">
+PipelineTaskMetadata
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>TaskSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskSpec">
+TaskSpec
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TaskSpec</code> are embedded into this type.)
+</p>
+<em>(Optional)</em>
+<p>TaskSpec is a specification of a task</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.OnErrorType">OnErrorType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Step">Step</a>)
+</p>
+<div>
+<p>OnErrorType defines a list of supported exiting behavior of a container on error</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;continue&#34;</p></td>
+<td><p>Continue indicates continue executing the rest of the steps irrespective of the container exit code</p>
+</td>
+</tr><tr><td><p>&#34;stopAndFail&#34;</p></td>
+<td><p>StopAndFail indicates exit the taskRun if the container exits with non-zero exit code</p>
+</td>
+</tr></tbody>
+</table>
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
 <p>
@@ -1359,8 +1470,8 @@ string
 </em>
 </td>
 <td>
-<p>Name of the container specified as a DNS_LABEL.
-Each container in a pod must have a unique name (DNS_LABEL).
+<p>Name of the Sidecar specified as a DNS_LABEL.
+Each Sidecar in a Task must have a unique name (DNS_LABEL).
 Cannot be updated.</p>
 </td>
 </tr>
@@ -1373,7 +1484,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Docker image name.
+<p>Image reference name.
 More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a>
 This field is optional to allow higher level config management to default or override
 container images in workload controllers like Deployments and StatefulSets.</p>
@@ -1389,8 +1500,8 @@ container images in workload controllers like Deployments and StatefulSets.</p>
 <td>
 <em>(Optional)</em>
 <p>Entrypoint array. Not executed within a shell.
-The docker image&rsquo;s ENTRYPOINT is used if this is not provided.
-Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+The image&rsquo;s ENTRYPOINT is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the Sidecar&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
 produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
@@ -1408,8 +1519,8 @@ More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/def
 <td>
 <em>(Optional)</em>
 <p>Arguments to the entrypoint.
-The docker image&rsquo;s CMD is used if this is not provided.
-Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+The image&rsquo;s CMD is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the Sidecar&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
 produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
@@ -1426,7 +1537,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Container&rsquo;s working directory.
+<p>Sidecar&rsquo;s working directory.
 If not specified, the container runtime&rsquo;s default will be used, which
 might be configured in the container image.
 Cannot be updated.</p>
@@ -1443,7 +1554,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of ports to expose from the container. Exposing a port here gives
+<p>List of ports to expose from the Sidecar. Exposing a port here gives
 the system additional information about the network connections a
 container uses, but is primarily informational. Not specifying a port here
 DOES NOT prevent that port from being exposed. Any port which is
@@ -1463,7 +1574,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of sources to populate environment variables in the container.
+<p>List of sources to populate environment variables in the Sidecar.
 The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 will be reported as an event when the container is starting. When a key exists in multiple
 sources, the value associated with the last source will take precedence.
@@ -1482,7 +1593,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container.
+<p>List of environment variables to set in the Sidecar.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -1497,7 +1608,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this container.
+<p>Compute Resources required by this Sidecar.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -1513,7 +1624,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 </td>
 <td>
 <em>(Optional)</em>
-<p>Pod volumes to mount into the container&rsquo;s filesystem.
+<p>Volumes to mount into the Sidecar&rsquo;s filesystem.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -1528,7 +1639,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>volumeDevices is the list of block devices to be used by the container.</p>
+<p>volumeDevices is the list of block devices to be used by the Sidecar.</p>
 </td>
 </tr>
 <tr>
@@ -1542,7 +1653,7 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Periodic probe of container liveness.
+<p>Periodic probe of Sidecar liveness.
 Container will be restarted if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
@@ -1559,7 +1670,7 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Periodic probe of container service readiness.
+<p>Periodic probe of Sidecar service readiness.
 Container will be removed from service endpoints if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
@@ -1576,7 +1687,7 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>StartupProbe indicates that the Pod has successfully initialized.
+<p>StartupProbe indicates that the Pod the Sidecar is running in has successfully initialized.
 If specified, no other probes are executed until this completes successfully.
 If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
 This can be used to provide different probe parameters at the beginning of a Pod&rsquo;s lifecycle,
@@ -1596,7 +1707,7 @@ Kubernetes core/v1.Lifecycle
 </td>
 <td>
 <em>(Optional)</em>
-<p>Actions that the management system should take in response to container lifecycle events.
+<p>Actions that the management system should take in response to Sidecar lifecycle events.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -1609,8 +1720,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Path at which the file to which the container&rsquo;s termination message
-will be written is mounted into the container&rsquo;s filesystem.
+<p>Optional: Path at which the file to which the Sidecar&rsquo;s termination message
+will be written is mounted into the Sidecar&rsquo;s filesystem.
 Message written is intended to be brief final status, such as an assertion failure message.
 Will be truncated by the node if greater than 4096 bytes. The total message length across
 all containers will be limited to 12kb.
@@ -1630,9 +1741,9 @@ Kubernetes core/v1.TerminationMessagePolicy
 <td>
 <em>(Optional)</em>
 <p>Indicate how the termination message should be populated. File will use the contents of
-terminationMessagePath to populate the container status message on both success and failure.
-FallbackToLogsOnError will use the last chunk of container log output if the termination
-message file is empty and the container exited with an error.
+terminationMessagePath to populate the Sidecar status message on both success and failure.
+FallbackToLogsOnError will use the last chunk of Sidecar log output if the termination
+message file is empty and the Sidecar exited with an error.
 The log output is limited to 2048 bytes or 80 lines, whichever is smaller.
 Defaults to File.
 Cannot be updated.</p>
@@ -1667,7 +1778,7 @@ Kubernetes core/v1.SecurityContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>SecurityContext defines the security options the container should be run with.
+<p>SecurityContext defines the security options the Sidecar should be run with.
 If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
 </td>
@@ -1681,8 +1792,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Whether this container should allocate a buffer for stdin in the container runtime. If this
-is not set, reads from stdin in the container will always result in EOF.
+<p>Whether this Sidecar should allocate a buffer for stdin in the container runtime. If this
+is not set, reads from stdin in the Sidecar will always result in EOF.
 Default is false.</p>
 </td>
 </tr>
@@ -1697,9 +1808,9 @@ bool
 <em>(Optional)</em>
 <p>Whether the container runtime should close the stdin channel after it has been opened by
 a single attach. When stdin is true the stdin stream will remain open across multiple attach
-sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the
+sessions. If stdinOnce is set to true, stdin is opened on Sidecar start, is empty until the
 first client attaches to stdin, and then remains open and accepts data until the client disconnects,
-at which time stdin is closed and remains closed until the container is restarted. If this
+at which time stdin is closed and remains closed until the Sidecar is restarted. If this
 flag is false, a container processes that reads from stdin will never receive an EOF.
 Default is false</p>
 </td>
@@ -1713,7 +1824,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Whether this container should allocate a TTY for itself, also requires &lsquo;stdin&rsquo; to be true.
+<p>Whether this Sidecar should allocate a TTY for itself, also requires &lsquo;stdin&rsquo; to be true.
 Default is false.</p>
 </td>
 </tr>
@@ -1775,9 +1886,8 @@ string
 </em>
 </td>
 <td>
-<p>Name of the container specified as a DNS_LABEL.
-Each container in a pod must have a unique name (DNS_LABEL).
-Cannot be updated.</p>
+<p>Name of the Step specified as a DNS_LABEL.
+Each Step in a Task must have a unique name.</p>
 </td>
 </tr>
 <tr>
@@ -1790,9 +1900,7 @@ string
 <td>
 <em>(Optional)</em>
 <p>Docker image name.
-More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a>
-This field is optional to allow higher level config management to default or override
-container images in workload controllers like Deployments and StatefulSets.</p>
+More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a></p>
 </td>
 </tr>
 <tr>
@@ -1805,7 +1913,7 @@ container images in workload controllers like Deployments and StatefulSets.</p>
 <td>
 <em>(Optional)</em>
 <p>Entrypoint array. Not executed within a shell.
-The docker image&rsquo;s ENTRYPOINT is used if this is not provided.
+The image&rsquo;s ENTRYPOINT is used if this is not provided.
 Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
@@ -1824,7 +1932,7 @@ More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/def
 <td>
 <em>(Optional)</em>
 <p>Arguments to the entrypoint.
-The docker image&rsquo;s CMD is used if this is not provided.
+The image&rsquo;s CMD is used if this is not provided.
 Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
@@ -1842,7 +1950,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Container&rsquo;s working directory.
+<p>Step&rsquo;s working directory.
 If not specified, the container runtime&rsquo;s default will be used, which
 might be configured in the container image.
 Cannot be updated.</p>
@@ -1859,9 +1967,9 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of sources to populate environment variables in the container.
+<p>List of sources to populate environment variables in the Step.
 The keys defined within a source must be a C_IDENTIFIER. All invalid keys
-will be reported as an event when the container is starting. When a key exists in multiple
+will be reported as an event when the Step is starting. When a key exists in multiple
 sources, the value associated with the last source will take precedence.
 Values defined by an Env with a duplicate key will take precedence.
 Cannot be updated.</p>
@@ -1878,7 +1986,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container.
+<p>List of environment variables to set in the Step.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -1893,7 +2001,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this container.
+<p>Compute Resources required by this Step.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -1909,7 +2017,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 </td>
 <td>
 <em>(Optional)</em>
-<p>Pod volumes to mount into the container&rsquo;s filesystem.
+<p>Volumes to mount into the Step&rsquo;s filesystem.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -1924,7 +2032,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>volumeDevices is the list of block devices to be used by the container.</p>
+<p>volumeDevices is the list of block devices to be used by the Step.</p>
 </td>
 </tr>
 <tr>
@@ -1956,7 +2064,7 @@ Kubernetes core/v1.SecurityContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>SecurityContext defines the security options the container should be run with.
+<p>SecurityContext defines the security options the Step should be run with.
 If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
 </td>
@@ -2012,14 +2120,14 @@ not have access to it.</p>
 <td>
 <code>onError</code><br/>
 <em>
-string
+<a href="#tekton.dev/v1.OnErrorType">
+OnErrorType
+</a>
 </em>
 </td>
 <td>
 <p>OnError defines the exiting behavior of a container on error
-can be set to [ continue | stopAndFail ]
-stopAndFail indicates exit the taskRun if the container exits with non-zero exit code
-continue indicates continue executing the rest of the steps irrespective of the container exit code</p>
+can be set to [ continue | stopAndFail ]</p>
 </td>
 </tr>
 <tr>
@@ -2107,7 +2215,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Docker image name.
+<p>Image reference name.
 More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a>
 This field is optional to allow higher level config management to default or override
 container images in workload controllers like Deployments and StatefulSets.</p>
@@ -2123,8 +2231,8 @@ container images in workload controllers like Deployments and StatefulSets.</p>
 <td>
 <em>(Optional)</em>
 <p>Entrypoint array. Not executed within a shell.
-The docker image&rsquo;s ENTRYPOINT is used if this is not provided.
-Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+The image&rsquo;s ENTRYPOINT is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the Step&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
 produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
@@ -2142,8 +2250,8 @@ More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/def
 <td>
 <em>(Optional)</em>
 <p>Arguments to the entrypoint.
-The docker image&rsquo;s CMD is used if this is not provided.
-Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+The image&rsquo;s CMD is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the Step&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
 produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
@@ -2160,7 +2268,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Container&rsquo;s working directory.
+<p>Step&rsquo;s working directory.
 If not specified, the container runtime&rsquo;s default will be used, which
 might be configured in the container image.
 Cannot be updated.</p>
@@ -2177,9 +2285,9 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of sources to populate environment variables in the container.
+<p>List of sources to populate environment variables in the Step.
 The keys defined within a source must be a C_IDENTIFIER. All invalid keys
-will be reported as an event when the container is starting. When a key exists in multiple
+will be reported as an event when the Step is starting. When a key exists in multiple
 sources, the value associated with the last source will take precedence.
 Values defined by an Env with a duplicate key will take precedence.
 Cannot be updated.</p>
@@ -2196,7 +2304,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container.
+<p>List of environment variables to set in the Step.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -2211,7 +2319,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this container.
+<p>Compute Resources required by this Step.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -2227,7 +2335,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 </td>
 <td>
 <em>(Optional)</em>
-<p>Pod volumes to mount into the container&rsquo;s filesystem.
+<p>Volumes to mount into the Step&rsquo;s filesystem.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -2242,7 +2350,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>volumeDevices is the list of block devices to be used by the container.</p>
+<p>volumeDevices is the list of block devices to be used by the Step.</p>
 </td>
 </tr>
 <tr>
@@ -2274,7 +2382,7 @@ Kubernetes core/v1.SecurityContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>SecurityContext defines the security options the container should be run with.
+<p>SecurityContext defines the security options the Step should be run with.
 If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
 </td>
@@ -5406,6 +5514,29 @@ TaskSpec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.OnErrorType">OnErrorType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Step">Step</a>)
+</p>
+<div>
+<p>OnErrorType defines a list of supported exiting behavior of a container on error</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;continue&#34;</p></td>
+<td><p>Continue indicates continue executing the rest of the steps irrespective of the container exit code</p>
+</td>
+</tr><tr><td><p>&#34;stopAndFail&#34;</p></td>
+<td><p>StopAndFail indicates exit the taskRun if the container exits with non-zero exit code</p>
+</td>
+</tr></tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
@@ -7511,8 +7642,8 @@ string
 </em>
 </td>
 <td>
-<p>Name of the container specified as a DNS_LABEL.
-Each container in a pod must have a unique name (DNS_LABEL).
+<p>Name of the Sidecar specified as a DNS_LABEL.
+Each Sidecar in a Task must have a unique name (DNS_LABEL).
 Cannot be updated.</p>
 </td>
 </tr>
@@ -7525,10 +7656,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Docker image name.
-More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a>
-This field is optional to allow higher level config management to default or override
-container images in workload controllers like Deployments and StatefulSets.</p>
+<p>Image name to be used by the Sidecar.
+More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a></p>
 </td>
 </tr>
 <tr>
@@ -7541,8 +7670,8 @@ container images in workload controllers like Deployments and StatefulSets.</p>
 <td>
 <em>(Optional)</em>
 <p>Entrypoint array. Not executed within a shell.
-The docker image&rsquo;s ENTRYPOINT is used if this is not provided.
-Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+The image&rsquo;s ENTRYPOINT is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the Sidecar&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
 produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
@@ -7560,7 +7689,7 @@ More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/def
 <td>
 <em>(Optional)</em>
 <p>Arguments to the entrypoint.
-The docker image&rsquo;s CMD is used if this is not provided.
+The image&rsquo;s CMD is used if this is not provided.
 Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
@@ -7578,7 +7707,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Container&rsquo;s working directory.
+<p>Sidecar&rsquo;s working directory.
 If not specified, the container runtime&rsquo;s default will be used, which
 might be configured in the container image.
 Cannot be updated.</p>
@@ -7595,7 +7724,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of ports to expose from the container. Exposing a port here gives
+<p>List of ports to expose from the Sidecar. Exposing a port here gives
 the system additional information about the network connections a
 container uses, but is primarily informational. Not specifying a port here
 DOES NOT prevent that port from being exposed. Any port which is
@@ -7615,9 +7744,9 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of sources to populate environment variables in the container.
+<p>List of sources to populate environment variables in the Sidecar.
 The keys defined within a source must be a C_IDENTIFIER. All invalid keys
-will be reported as an event when the container is starting. When a key exists in multiple
+will be reported as an event when the Sidecar is starting. When a key exists in multiple
 sources, the value associated with the last source will take precedence.
 Values defined by an Env with a duplicate key will take precedence.
 Cannot be updated.</p>
@@ -7634,7 +7763,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of environment variables to set in the container.
+<p>List of environment variables to set in the Sidecar.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -7649,7 +7778,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this container.
+<p>Compute Resources required by this Sidecar.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -7665,7 +7794,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 </td>
 <td>
 <em>(Optional)</em>
-<p>Pod volumes to mount into the container&rsquo;s filesystem.
+<p>Volumes to mount into the Sidecar&rsquo;s filesystem.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -7680,7 +7809,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>volumeDevices is the list of block devices to be used by the container.</p>
+<p>volumeDevices is the list of block devices to be used by the Sidecar.</p>
 </td>
 </tr>
 <tr>
@@ -7694,7 +7823,7 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Periodic probe of container liveness.
+<p>Periodic probe of Sidecar liveness.
 Container will be restarted if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
@@ -7711,7 +7840,7 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Periodic probe of container service readiness.
+<p>Periodic probe of Sidecar service readiness.
 Container will be removed from service endpoints if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
@@ -7728,7 +7857,7 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>StartupProbe indicates that the Pod has successfully initialized.
+<p>StartupProbe indicates that the Pod the Sidecar is running in has successfully initialized.
 If specified, no other probes are executed until this completes successfully.
 If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
 This can be used to provide different probe parameters at the beginning of a Pod&rsquo;s lifecycle,
@@ -7748,7 +7877,7 @@ Kubernetes core/v1.Lifecycle
 </td>
 <td>
 <em>(Optional)</em>
-<p>Actions that the management system should take in response to container lifecycle events.
+<p>Actions that the management system should take in response to Sidecar lifecycle events.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -7761,8 +7890,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Optional: Path at which the file to which the container&rsquo;s termination message
-will be written is mounted into the container&rsquo;s filesystem.
+<p>Optional: Path at which the file to which the Sidecar&rsquo;s termination message
+will be written is mounted into the Sidecar&rsquo;s filesystem.
 Message written is intended to be brief final status, such as an assertion failure message.
 Will be truncated by the node if greater than 4096 bytes. The total message length across
 all containers will be limited to 12kb.
@@ -7782,9 +7911,9 @@ Kubernetes core/v1.TerminationMessagePolicy
 <td>
 <em>(Optional)</em>
 <p>Indicate how the termination message should be populated. File will use the contents of
-terminationMessagePath to populate the container status message on both success and failure.
-FallbackToLogsOnError will use the last chunk of container log output if the termination
-message file is empty and the container exited with an error.
+terminationMessagePath to populate the Sidecar status message on both success and failure.
+FallbackToLogsOnError will use the last chunk of Sidecar log output if the termination
+message file is empty and the Sidecar exited with an error.
 The log output is limited to 2048 bytes or 80 lines, whichever is smaller.
 Defaults to File.
 Cannot be updated.</p>
@@ -7819,7 +7948,7 @@ Kubernetes core/v1.SecurityContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>SecurityContext defines the security options the container should be run with.
+<p>SecurityContext defines the security options the Sidecar should be run with.
 If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
 </td>
@@ -7833,8 +7962,8 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Whether this container should allocate a buffer for stdin in the container runtime. If this
-is not set, reads from stdin in the container will always result in EOF.
+<p>Whether this Sidecar should allocate a buffer for stdin in the container runtime. If this
+is not set, reads from stdin in the Sidecar will always result in EOF.
 Default is false.</p>
 </td>
 </tr>
@@ -7849,9 +7978,9 @@ bool
 <em>(Optional)</em>
 <p>Whether the container runtime should close the stdin channel after it has been opened by
 a single attach. When stdin is true the stdin stream will remain open across multiple attach
-sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the
+sessions. If stdinOnce is set to true, stdin is opened on Sidecar start, is empty until the
 first client attaches to stdin, and then remains open and accepts data until the client disconnects,
-at which time stdin is closed and remains closed until the container is restarted. If this
+at which time stdin is closed and remains closed until the Sidecar is restarted. If this
 flag is false, a container processes that reads from stdin will never receive an EOF.
 Default is false</p>
 </td>
@@ -7865,7 +7994,7 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Whether this container should allocate a TTY for itself, also requires &lsquo;stdin&rsquo; to be true.
+<p>Whether this Sidecar should allocate a TTY for itself, also requires &lsquo;stdin&rsquo; to be true.
 Default is false.</p>
 </td>
 </tr>
@@ -8086,9 +8215,8 @@ string
 </em>
 </td>
 <td>
-<p>Name of the container specified as a DNS_LABEL.
-Each container in a pod must have a unique name (DNS_LABEL).
-Cannot be updated.</p>
+<p>Name of the Step specified as a DNS_LABEL.
+Each Step in a Task must have a unique name.</p>
 </td>
 </tr>
 <tr>
@@ -8100,10 +8228,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Docker image name.
-More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a>
-This field is optional to allow higher level config management to default or override
-container images in workload controllers like Deployments and StatefulSets.</p>
+<p>Image reference name to run for this Step.
+More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a></p>
 </td>
 </tr>
 <tr>
@@ -8116,7 +8242,7 @@ container images in workload controllers like Deployments and StatefulSets.</p>
 <td>
 <em>(Optional)</em>
 <p>Entrypoint array. Not executed within a shell.
-The docker image&rsquo;s ENTRYPOINT is used if this is not provided.
+The image&rsquo;s ENTRYPOINT is used if this is not provided.
 Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
@@ -8135,7 +8261,7 @@ More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/def
 <td>
 <em>(Optional)</em>
 <p>Arguments to the entrypoint.
-The docker image&rsquo;s CMD is used if this is not provided.
+The image&rsquo;s CMD is used if this is not provided.
 Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
@@ -8153,7 +8279,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Container&rsquo;s working directory.
+<p>Step&rsquo;s working directory.
 If not specified, the container runtime&rsquo;s default will be used, which
 might be configured in the container image.
 Cannot be updated.</p>
@@ -8171,7 +8297,7 @@ Cannot be updated.</p>
 <td>
 <em>(Optional)</em>
 <p>Deprecated. This field will be removed in a future release.
-List of ports to expose from the container. Exposing a port here gives
+List of ports to expose from the Step&rsquo;s container. Exposing a port here gives
 the system additional information about the network connections a
 container uses, but is primarily informational. Not specifying a port here
 DOES NOT prevent that port from being exposed. Any port which is
@@ -8225,7 +8351,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this container.
+<p>Compute Resources required by this Step.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -8241,7 +8367,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 </td>
 <td>
 <em>(Optional)</em>
-<p>Pod volumes to mount into the container&rsquo;s filesystem.
+<p>Volumes to mount into the Step&rsquo;s filesystem.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -8256,7 +8382,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>volumeDevices is the list of block devices to be used by the container.</p>
+<p>volumeDevices is the list of block devices to be used by the Step.</p>
 </td>
 </tr>
 <tr>
@@ -8272,7 +8398,7 @@ Kubernetes core/v1.Probe
 <em>(Optional)</em>
 <p>Deprecated. This field will be removed in a future release.
 Periodic probe of container liveness.
-Container will be restarted if the probe fails.
+Step will be restarted if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
 </td>
@@ -8290,7 +8416,7 @@ Kubernetes core/v1.Probe
 <em>(Optional)</em>
 <p>Deprecated. This field will be removed in a future release.
 Periodic probe of container service readiness.
-Container will be removed from service endpoints if the probe fails.
+Step will be removed from service endpoints if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
 </td>
@@ -8307,7 +8433,7 @@ Kubernetes core/v1.Probe
 <td>
 <em>(Optional)</em>
 <p>Deprecated. This field will be removed in a future release.
-DeprecatedStartupProbe indicates that the Pod has successfully initialized.
+DeprecatedStartupProbe indicates that the Pod this Step runs in has successfully initialized.
 If specified, no other probes are executed until this completes successfully.
 If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
 This can be used to provide different probe parameters at the beginning of a Pod&rsquo;s lifecycle,
@@ -8341,14 +8467,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Optional: Path at which the file to which the container&rsquo;s termination message
-will be written is mounted into the container&rsquo;s filesystem.
-Message written is intended to be brief final status, such as an assertion failure message.
-Will be truncated by the node if greater than 4096 bytes. The total message length across
-all containers will be limited to 12kb.
-Defaults to /dev/termination-log.
-Cannot be updated.</p>
+<p>Deprecated. This field will be removed in a future release and can&rsquo;t be meaningfully used.</p>
 </td>
 </tr>
 <tr>
@@ -8362,14 +8481,7 @@ Kubernetes core/v1.TerminationMessagePolicy
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Indicate how the termination message should be populated. File will use the contents of
-terminationMessagePath to populate the container status message on both success and failure.
-FallbackToLogsOnError will use the last chunk of container log output if the termination
-message file is empty and the container exited with an error.
-The log output is limited to 2048 bytes or 80 lines, whichever is smaller.
-Defaults to File.
-Cannot be updated.</p>
+<p>Deprecated. This field will be removed in a future release and can&rsquo;t be meaningfully used.</p>
 </td>
 </tr>
 <tr>
@@ -8401,7 +8513,7 @@ Kubernetes core/v1.SecurityContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>SecurityContext defines the security options the container should be run with.
+<p>SecurityContext defines the security options the Step should be run with.
 If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
 </td>
@@ -8505,14 +8617,14 @@ not have access to it.</p>
 <td>
 <code>onError</code><br/>
 <em>
-string
+<a href="#tekton.dev/v1beta1.OnErrorType">
+OnErrorType
+</a>
 </em>
 </td>
 <td>
 <p>OnError defines the exiting behavior of a container on error
-can be set to [ continue | stopAndFail ]
-stopAndFail indicates exit the taskRun if the container exits with non-zero exit code
-continue indicates continue executing the rest of the steps irrespective of the container exit code</p>
+can be set to [ continue | stopAndFail ]</p>
 </td>
 </tr>
 <tr>
@@ -8663,8 +8775,8 @@ string
 </td>
 <td>
 <p>Deprecated. This field will be removed in a future release.
-DeprecatedName of the container specified as a DNS_LABEL.
-Each container in a pod must have a unique name (DNS_LABEL).
+Default name for each Step specified as a DNS_LABEL.
+Each Step in a Task must have a unique name.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -8677,7 +8789,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Docker image name.
+<p>Default image name to use for each Step.
 More info: <a href="https://kubernetes.io/docs/concepts/containers/images">https://kubernetes.io/docs/concepts/containers/images</a>
 This field is optional to allow higher level config management to default or override
 container images in workload controllers like Deployments and StatefulSets.</p>
@@ -8694,7 +8806,7 @@ container images in workload controllers like Deployments and StatefulSets.</p>
 <em>(Optional)</em>
 <p>Entrypoint array. Not executed within a shell.
 The docker image&rsquo;s ENTRYPOINT is used if this is not provided.
-Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+Variable references $(VAR_NAME) are expanded using the Step&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
 produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
@@ -8712,8 +8824,8 @@ More info: <a href="https://kubernetes.io/docs/tasks/inject-data-application/def
 <td>
 <em>(Optional)</em>
 <p>Arguments to the entrypoint.
-The docker image&rsquo;s CMD is used if this is not provided.
-Variable references $(VAR_NAME) are expanded using the container&rsquo;s environment. If a variable
+The image&rsquo;s CMD is used if this is not provided.
+Variable references $(VAR_NAME) are expanded using the Step&rsquo;s environment. If a variable
 cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced
 to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. &ldquo;$$(VAR_NAME)&rdquo; will
 produce the string literal &ldquo;$(VAR_NAME)&rdquo;. Escaped references will never be expanded, regardless
@@ -8730,7 +8842,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Container&rsquo;s working directory.
+<p>Step&rsquo;s working directory.
 If not specified, the container runtime&rsquo;s default will be used, which
 might be configured in the container image.
 Cannot be updated.</p>
@@ -8748,7 +8860,7 @@ Cannot be updated.</p>
 <td>
 <em>(Optional)</em>
 <p>Deprecated. This field will be removed in a future release.
-List of ports to expose from the container. Exposing a port here gives
+List of ports to expose from the Step&rsquo;s container. Exposing a port here gives
 the system additional information about the network connections a
 container uses, but is primarily informational. Not specifying a port here
 DOES NOT prevent that port from being exposed. Any port which is
@@ -8768,7 +8880,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>List of sources to populate environment variables in the container.
+<p>List of sources to populate environment variables in the Step.
 The keys defined within a source must be a C_IDENTIFIER. All invalid keys
 will be reported as an event when the container is starting. When a key exists in multiple
 sources, the value associated with the last source will take precedence.
@@ -8802,7 +8914,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this container.
+<p>Compute Resources required by this Step.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -8818,7 +8930,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 </td>
 <td>
 <em>(Optional)</em>
-<p>Pod volumes to mount into the container&rsquo;s filesystem.
+<p>Volumes to mount into the Step&rsquo;s filesystem.
 Cannot be updated.</p>
 </td>
 </tr>
@@ -8833,7 +8945,7 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>volumeDevices is the list of block devices to be used by the container.</p>
+<p>volumeDevices is the list of block devices to be used by the Step.</p>
 </td>
 </tr>
 <tr>
@@ -8918,14 +9030,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Optional: Path at which the file to which the container&rsquo;s termination message
-will be written is mounted into the container&rsquo;s filesystem.
-Message written is intended to be brief final status, such as an assertion failure message.
-Will be truncated by the node if greater than 4096 bytes. The total message length across
-all containers will be limited to 12kb.
-Defaults to /dev/termination-log.
-Cannot be updated.</p>
+<p>Deprecated. This field will be removed in a future release and cannot be meaningfully used.</p>
 </td>
 </tr>
 <tr>
@@ -8939,14 +9044,7 @@ Kubernetes core/v1.TerminationMessagePolicy
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Indicate how the termination message should be populated. File will use the contents of
-terminationMessagePath to populate the container status message on both success and failure.
-FallbackToLogsOnError will use the last chunk of container log output if the termination
-message file is empty and the container exited with an error.
-The log output is limited to 2048 bytes or 80 lines, whichever is smaller.
-Defaults to File.
-Cannot be updated.</p>
+<p>Deprecated. This field will be removed in a future release and cannot be meaningfully used.</p>
 </td>
 </tr>
 <tr>
@@ -8978,7 +9076,7 @@ Kubernetes core/v1.SecurityContext
 </td>
 <td>
 <em>(Optional)</em>
-<p>SecurityContext defines the security options the container should be run with.
+<p>SecurityContext defines the security options the Step should be run with.
 If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext.
 More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">https://kubernetes.io/docs/tasks/configure-pod-container/security-context/</a></p>
 </td>
@@ -8993,8 +9091,8 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Deprecated. This field will be removed in a future release.
-Whether this container should allocate a buffer for stdin in the container runtime. If this
-is not set, reads from stdin in the container will always result in EOF.
+Whether this Step should allocate a buffer for stdin in the container runtime. If this
+is not set, reads from stdin in the Step will always result in EOF.
 Default is false.</p>
 </td>
 </tr>
@@ -9027,7 +9125,7 @@ bool
 <td>
 <em>(Optional)</em>
 <p>Deprecated. This field will be removed in a future release.
-Whether this container should allocate a DeprecatedTTY for itself, also requires &lsquo;stdin&rsquo; to be true.
+Whether this Step should allocate a DeprecatedTTY for itself, also requires &lsquo;stdin&rsquo; to be true.
 Default is false.</p>
 </td>
 </tr>

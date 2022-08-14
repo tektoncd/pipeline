@@ -28,7 +28,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -138,11 +137,11 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 		if taskSpec != nil {
 			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 {
 				if taskSpec.Steps[i].OnError != "" {
-					if taskSpec.Steps[i].OnError != entrypoint.ContinueOnError && taskSpec.Steps[i].OnError != entrypoint.FailOnError {
+					if taskSpec.Steps[i].OnError != v1beta1.Continue && taskSpec.Steps[i].OnError != v1beta1.StopAndFail {
 						return nil, fmt.Errorf("task step onError must be either %s or %s but it is set to an invalid value %s",
-							entrypoint.ContinueOnError, entrypoint.FailOnError, taskSpec.Steps[i].OnError)
+							v1beta1.Continue, v1beta1.StopAndFail, taskSpec.Steps[i].OnError)
 					}
-					argsForEntrypoint = append(argsForEntrypoint, "-on_error", taskSpec.Steps[i].OnError)
+					argsForEntrypoint = append(argsForEntrypoint, "-on_error", string(taskSpec.Steps[i].OnError))
 				}
 				if taskSpec.Steps[i].Timeout != nil {
 					argsForEntrypoint = append(argsForEntrypoint, "-timeout", taskSpec.Steps[i].Timeout.Duration.String())
