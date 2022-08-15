@@ -1,12 +1,9 @@
 /*
 Copyright 2022 The Tekton Authors
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -487,770 +484,770 @@ func TestTaskSpecValidateError(t *testing.T) {
 		name          string
 		fields        fields
 		expectedError apis.FieldError
-	}{ /*{
-			name: "empty spec",
-			expectedError: apis.FieldError{
-				Message: `missing field(s)`,
-				Paths:   []string{"steps"},
-			},
-		}, {
-			name: "no step",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "validparam",
-					Type:        v1.ParamTypeString,
-					Description: "parameter",
-					Default:     v1.NewStructuredValues("default"),
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `missing field(s)`,
-				Paths:   []string{"steps"},
-			},
-		}, */{
-			name: "invalid param name format",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "_validparam1",
-					Description: "valid param name format",
-				}, {
-					Name:        "valid_param2",
-					Description: "valid param name format",
-				}, {
-					Name:        "",
-					Description: "invalid param name format",
-				}, {
-					Name:        "a^b",
-					Description: "invalid param name format",
-				}, {
-					Name:        "0ab",
-					Description: "invalid param name format",
-				}, {
-					Name:        "f oo",
-					Description: "invalid param name format",
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: fmt.Sprintf("The format of following array and string variable names is invalid: %s", []string{"", "0ab", "a^b", "f oo"}),
-				Paths:   []string{"params"},
-				Details: "String/Array Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)\nMust begin with a letter or an underscore (_)",
-			},
-		}, {
-			name: "invalid object param format - object param name and key name shouldn't contain dots.",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "invalid.name1",
-					Description: "object param name contains dots",
-					Properties: map[string]v1.PropertySpec{
-						"invalid.key1": {},
-						"mykey2":       {},
-					},
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: fmt.Sprintf("Object param name and key name format is invalid: %v", map[string][]string{
-					"invalid.name1": {"invalid.key1"},
+	}{{
+		name: "empty spec",
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"steps"},
+		},
+	}, {
+		name: "no step",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "validparam",
+				Type:        v1.ParamTypeString,
+				Description: "parameter",
+				Default:     v1.NewStructuredValues("default"),
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"steps"},
+		},
+	}, {
+		name: "invalid param name format",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "_validparam1",
+				Description: "valid param name format",
+			}, {
+				Name:        "valid_param2",
+				Description: "valid param name format",
+			}, {
+				Name:        "",
+				Description: "invalid param name format",
+			}, {
+				Name:        "a^b",
+				Description: "invalid param name format",
+			}, {
+				Name:        "0ab",
+				Description: "invalid param name format",
+			}, {
+				Name:        "f oo",
+				Description: "invalid param name format",
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("The format of following array and string variable names is invalid: %s", []string{"", "0ab", "a^b", "f oo"}),
+			Paths:   []string{"params"},
+			Details: "String/Array Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_), and dots (.)\nMust begin with a letter or an underscore (_)",
+		},
+	}, {
+		name: "invalid object param format - object param name and key name shouldn't contain dots.",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "invalid.name1",
+				Description: "object param name contains dots",
+				Properties: map[string]v1.PropertySpec{
+					"invalid.key1": {},
+					"mykey2":       {},
+				},
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("Object param name and key name format is invalid: %v", map[string][]string{
+				"invalid.name1": {"invalid.key1"},
+			}),
+			Paths:   []string{"params"},
+			Details: "Object Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_) \nMust begin with a letter or an underscore (_)",
+		},
+	}, {
+		name: "duplicated param names",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "foo",
+				Type:        v1.ParamTypeString,
+				Description: "parameter",
+				Default:     v1.NewStructuredValues("value1"),
+			}, {
+				Name:        "foo",
+				Type:        v1.ParamTypeString,
+				Description: "parameter",
+				Default:     v1.NewStructuredValues("value2"),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `parameter appears more than once`,
+			Paths:   []string{"params[foo]"},
+		},
+	}, {
+		name: "invalid param type",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "validparam",
+				Type:        v1.ParamTypeString,
+				Description: "parameter",
+				Default:     v1.NewStructuredValues("default"),
+			}, {
+				Name:        "param-with-invalid-type",
+				Type:        "invalidtype",
+				Description: "invalidtypedesc",
+				Default:     v1.NewStructuredValues("default"),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: invalidtype`,
+			Paths:   []string{"params.param-with-invalid-type.type"},
+		},
+	}, {
+		name: "param mismatching default/type 1",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "task",
+				Type:        v1.ParamTypeArray,
+				Description: "param",
+				Default:     v1.NewStructuredValues("default"),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `"array" type does not match default value's type: "string"`,
+			Paths:   []string{"params.task.type", "params.task.default.type"},
+		},
+	}, {
+		name: "param mismatching default/type 2",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "task",
+				Type:        v1.ParamTypeString,
+				Description: "param",
+				Default:     v1.NewStructuredValues("default", "array"),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `"string" type does not match default value's type: "array"`,
+			Paths:   []string{"params.task.type", "params.task.default.type"},
+		},
+	}, {
+		name: "param mismatching default/type 3",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "task",
+				Type:        v1.ParamTypeArray,
+				Description: "param",
+				Default: v1.NewObject(map[string]string{
+					"key1": "var1",
+					"key2": "var2",
 				}),
-				Paths:   []string{"params"},
-				Details: "Object Names: \nMust only contain alphanumeric characters, hyphens (-), underscores (_) \nMust begin with a letter or an underscore (_)",
-			},
-		}, {
-			name: "duplicated param names",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "foo",
-					Type:        v1.ParamTypeString,
-					Description: "parameter",
-					Default:     v1.NewStructuredValues("value1"),
-				}, {
-					Name:        "foo",
-					Type:        v1.ParamTypeString,
-					Description: "parameter",
-					Default:     v1.NewStructuredValues("value2"),
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: `parameter appears more than once`,
-				Paths:   []string{"params[foo]"},
-			},
-		}, {
-			name: "invalid param type",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "validparam",
-					Type:        v1.ParamTypeString,
-					Description: "parameter",
-					Default:     v1.NewStructuredValues("default"),
-				}, {
-					Name:        "param-with-invalid-type",
-					Type:        "invalidtype",
-					Description: "invalidtypedesc",
-					Default:     v1.NewStructuredValues("default"),
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: `invalid value: invalidtype`,
-				Paths:   []string{"params.param-with-invalid-type.type"},
-			},
-		}, {
-			name: "param mismatching default/type 1",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "task",
-					Type:        v1.ParamTypeArray,
-					Description: "param",
-					Default:     v1.NewStructuredValues("default"),
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: `"array" type does not match default value's type: "string"`,
-				Paths:   []string{"params.task.type", "params.task.default.type"},
-			},
-		}, {
-			name: "param mismatching default/type 2",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "task",
-					Type:        v1.ParamTypeString,
-					Description: "param",
-					Default:     v1.NewStructuredValues("default", "array"),
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: `"string" type does not match default value's type: "array"`,
-				Paths:   []string{"params.task.type", "params.task.default.type"},
-			},
-		}, {
-			name: "param mismatching default/type 3",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "task",
-					Type:        v1.ParamTypeArray,
-					Description: "param",
-					Default: v1.NewObject(map[string]string{
-						"key1": "var1",
-						"key2": "var2",
-					}),
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: `"array" type does not match default value's type: "object"`,
-				Paths:   []string{"params.task.type", "params.task.default.type"},
-			},
-		}, {
-			name: "param mismatching default/type 4",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "task",
-					Type:        v1.ParamTypeObject,
-					Description: "param",
-					Properties:  map[string]v1.PropertySpec{"key1": {}},
-					Default:     v1.NewStructuredValues("var"),
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: `"object" type does not match default value's type: "string"`,
-				Paths:   []string{"params.task.type", "params.task.default.type"},
-			},
-		}, {
-			name: "the spec of object type parameter misses the definition of properties",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "task",
-					Type:        v1.ParamTypeObject,
-					Description: "param",
-				}},
-				Steps: validSteps,
-			},
-			expectedError: *apis.ErrMissingField(fmt.Sprintf("params.task.properties")),
-		}, {
-			name: "PropertySpec type is set with unsupported type",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "task",
-					Type:        v1.ParamTypeObject,
-					Description: "param",
-					Properties: map[string]v1.PropertySpec{
-						"key1": {Type: "number"},
-						"key2": {Type: "string"},
-					},
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: fmt.Sprintf("The value type specified for these keys %v is invalid", []string{"key1"}),
-				Paths:   []string{"params.task.properties"},
-			},
-		}, {
-			name: "keys defined in properties are missed in default",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "myobjectParam",
-					Description: "param",
-					Properties: map[string]v1.PropertySpec{
-						"key1": {},
-						"key2": {},
-					},
-					Default: v1.NewObject(map[string]string{
-						"key1": "var1",
-						"key3": "var1",
-					}),
-				}},
-				Steps: validSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: fmt.Sprintf("Required key(s) %s are missing in the value provider.", []string{"key2"}),
-				Paths:   []string{"myobjectParam.properties", "myobjectParam.default"},
-			},
-		}, {
-			name: "invalid step",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:        "validparam",
-					Type:        v1.ParamTypeString,
-					Description: "parameter",
-					Default:     v1.NewStructuredValues("default"),
-				}},
-				Steps: []v1.Step{},
-			},
-			expectedError: apis.FieldError{
-				Message: "missing field(s)",
-				Paths:   []string{"steps"},
-			},
-		}, {
-			name: "invalid step name",
-			fields: fields{
-				Steps: invalidSteps,
-			},
-			expectedError: apis.FieldError{
-				Message: `invalid value "replaceImage"`,
-				Paths:   []string{"steps[0].name"},
-				Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
-			},
-		}, {
-			name: "inexistent param variable",
-			fields: fields{
-				Steps: []v1.Step{{
-					Name:  "mystep",
-					Image: "myimage",
-					Args:  []string{"--flag=$(params.inexistent)"},
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `non-existent variable in "--flag=$(params.inexistent)"`,
-				Paths:   []string{"steps[0].args[0]"},
-			},
-		}, {
-			name: "array used in unaccepted field",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "baz",
-					Type: v1.ParamTypeArray,
-				}, {
-					Name: "foo-is-baz",
-					Type: v1.ParamTypeArray,
-				}},
-				Steps: []v1.Step{{
-					Name:       "mystep",
-					Image:      "$(params.baz)",
-					Command:    []string{"$(params.foo-is-baz)"},
-					Args:       []string{"$(params.baz)", "middle string", "url"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable type invalid in "$(params.baz)"`,
-				Paths:   []string{"steps[0].image"},
-			},
-		}, {
-			name: "array star used in unaccepted field",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "baz",
-					Type: v1.ParamTypeArray,
-				}, {
-					Name: "foo-is-baz",
-					Type: v1.ParamTypeArray,
-				}},
-				Steps: []v1.Step{{
-					Name:       "mystep",
-					Image:      "$(params.baz[*])",
-					Command:    []string{"$(params.foo-is-baz)"},
-					Args:       []string{"$(params.baz)", "middle string", "url"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable type invalid in "$(params.baz[*])"`,
-				Paths:   []string{"steps[0].image"},
-			},
-		}, {
-			name: "array star used illegaly in script field",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "baz",
-					Type: v1.ParamTypeArray,
-				}, {
-					Name: "foo-is-baz",
-					Type: v1.ParamTypeArray,
-				}},
-				Steps: []v1.Step{
-					{
-						Script:     "$(params.baz[*])",
-						Name:       "mystep",
-						Image:      "my-image",
-						WorkingDir: "/foo/bar/src/",
-					}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable type invalid in "$(params.baz[*])"`,
-				Paths:   []string{"steps[0].script"},
-			},
-		}, {
-			name: "array not properly isolated",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "baz",
-					Type: v1.ParamTypeArray,
-				}, {
-					Name: "foo-is-baz",
-					Type: v1.ParamTypeArray,
-				}},
-				Steps: []v1.Step{{
-					Name:       "mystep",
-					Image:      "someimage",
-					Command:    []string{"$(params.foo-is-baz)"},
-					Args:       []string{"not isolated: $(params.baz)", "middle string", "url"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable is not properly isolated in "not isolated: $(params.baz)"`,
-				Paths:   []string{"steps[0].args[0]"},
-			},
-		}, {
-			name: "array star not properly isolated",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "baz",
-					Type: v1.ParamTypeArray,
-				}, {
-					Name: "foo-is-baz",
-					Type: v1.ParamTypeArray,
-				}},
-				Steps: []v1.Step{{
-					Name:       "mystep",
-					Image:      "someimage",
-					Command:    []string{"$(params.foo-is-baz)"},
-					Args:       []string{"not isolated: $(params.baz[*])", "middle string", "url"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
-				Paths:   []string{"steps[0].args[0]"},
-			},
-		}, {
-			name: "inferred array not properly isolated",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:    "baz",
-					Default: v1.NewStructuredValues("implied", "array", "type"),
-				}, {
-					Name:    "foo-is-baz",
-					Default: v1.NewStructuredValues("implied", "array", "type"),
-				}},
-				Steps: []v1.Step{{
-					Name:       "mystep",
-					Image:      "someimage",
-					Command:    []string{"$(params.foo-is-baz)"},
-					Args:       []string{"not isolated: $(params.baz)", "middle string", "url"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable is not properly isolated in "not isolated: $(params.baz)"`,
-				Paths:   []string{"steps[0].args[0]"},
-			},
-		}, {
-			name: "inferred array star not properly isolated",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name:    "baz",
-					Default: v1.NewStructuredValues("implied", "array", "type"),
-				}, {
-					Name:    "foo-is-baz",
-					Default: v1.NewStructuredValues("implied", "array", "type"),
-				}},
-				Steps: []v1.Step{{
-					Name:       "mystep",
-					Image:      "someimage",
-					Command:    []string{"$(params.foo-is-baz)"},
-					Args:       []string{"not isolated: $(params.baz[*])", "middle string", "url"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
-				Paths:   []string{"steps[0].args[0]"},
-			},
-		}, {
-			name: "object used in a string field",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "gitrepo",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"url":    {},
-						"commit": {},
-					},
-				}},
-				Steps: []v1.Step{{
-					Name:       "do-the-clone",
-					Image:      "$(params.gitrepo)",
-					Args:       []string{"echo"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable type invalid in "$(params.gitrepo)"`,
-				Paths:   []string{"steps[0].image"},
-			},
-		}, {
-			name: "object star used in a string field",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "gitrepo",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"url":    {},
-						"commit": {},
-					},
-				}},
-				Steps: []v1.Step{{
-					Name:       "do-the-clone",
-					Image:      "$(params.gitrepo[*])",
-					Args:       []string{"echo"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable type invalid in "$(params.gitrepo[*])"`,
-				Paths:   []string{"steps[0].image"},
-			},
-		}, {
-			name: "object used in a field that can accept array type",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "gitrepo",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"url":    {},
-						"commit": {},
-					},
-				}},
-				Steps: []v1.Step{{
-					Name:       "do-the-clone",
-					Image:      "myimage",
-					Args:       []string{"$(params.gitrepo)"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable type invalid in "$(params.gitrepo)"`,
-				Paths:   []string{"steps[0].args[0]"},
-			},
-		}, {
-			name: "object star used in a field that can accept array type",
-			fields: fields{
-				Params: []v1.ParamSpec{{
-					Name: "gitrepo",
-					Type: v1.ParamTypeObject,
-					Properties: map[string]v1.PropertySpec{
-						"url":    {},
-						"commit": {},
-					},
-				}},
-				Steps: []v1.Step{{
-					Name:       "do-the-clone",
-					Image:      "some-git-image",
-					Args:       []string{"$(params.gitrepo[*])"},
-					WorkingDir: "/foo/bar/src/",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `variable type invalid in "$(params.gitrepo[*])"`,
-				Paths:   []string{"steps[0].args[0]"},
-			},
-		}, {
-			name: "Inexistent param variable in volumeMount with existing",
-			fields: fields{
-				Params: []v1.ParamSpec{
-					{
-						Name:        "foo",
-						Description: "param",
-						Default:     v1.NewStructuredValues("default"),
-					},
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `"array" type does not match default value's type: "object"`,
+			Paths:   []string{"params.task.type", "params.task.default.type"},
+		},
+	}, {
+		name: "param mismatching default/type 4",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "task",
+				Type:        v1.ParamTypeObject,
+				Description: "param",
+				Properties:  map[string]v1.PropertySpec{"key1": {}},
+				Default:     v1.NewStructuredValues("var"),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `"object" type does not match default value's type: "string"`,
+			Paths:   []string{"params.task.type", "params.task.default.type"},
+		},
+	}, {
+		name: "the spec of object type parameter misses the definition of properties",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "task",
+				Type:        v1.ParamTypeObject,
+				Description: "param",
+			}},
+			Steps: validSteps,
+		},
+		expectedError: *apis.ErrMissingField("params.task.properties"),
+	}, {
+		name: "PropertySpec type is set with unsupported type",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "task",
+				Type:        v1.ParamTypeObject,
+				Description: "param",
+				Properties: map[string]v1.PropertySpec{
+					"key1": {Type: "number"},
+					"key2": {Type: "string"},
 				},
-				Steps: []v1.Step{{
-					Name:  "mystep",
-					Image: "myimage",
-					VolumeMounts: []corev1.VolumeMount{{
-						Name: "$(params.inexistent)-foo",
-					}},
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("The value type specified for these keys %v is invalid", []string{"key1"}),
+			Paths:   []string{"params.task.properties"},
+		},
+	}, {
+		name: "keys defined in properties are missed in default",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "myobjectParam",
+				Description: "param",
+				Properties: map[string]v1.PropertySpec{
+					"key1": {},
+					"key2": {},
+				},
+				Default: v1.NewObject(map[string]string{
+					"key1": "var1",
+					"key3": "var1",
+				}),
+			}},
+			Steps: validSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: fmt.Sprintf("Required key(s) %s are missing in the value provider.", []string{"key2"}),
+			Paths:   []string{"myobjectParam.properties", "myobjectParam.default"},
+		},
+	}, {
+		name: "invalid step",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "validparam",
+				Type:        v1.ParamTypeString,
+				Description: "parameter",
+				Default:     v1.NewStructuredValues("default"),
+			}},
+			Steps: []v1.Step{},
+		},
+		expectedError: apis.FieldError{
+			Message: "missing field(s)",
+			Paths:   []string{"steps"},
+		},
+	}, {
+		name: "invalid step name",
+		fields: fields{
+			Steps: invalidSteps,
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value "replaceImage"`,
+			Paths:   []string{"steps[0].name"},
+			Details: "Task step name must be a valid DNS Label, For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
+		},
+	}, {
+		name: "inexistent param variable",
+		fields: fields{
+			Steps: []v1.Step{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"--flag=$(params.inexistent)"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "--flag=$(params.inexistent)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "array used in unaccepted field",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "baz",
+				Type: v1.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1.ParamTypeArray,
+			}},
+			Steps: []v1.Step{{
+				Name:       "mystep",
+				Image:      "$(params.baz)",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"$(params.baz)", "middle string", "url"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.baz)"`,
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "array star used in unaccepted field",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "baz",
+				Type: v1.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1.ParamTypeArray,
+			}},
+			Steps: []v1.Step{{
+				Name:       "mystep",
+				Image:      "$(params.baz[*])",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"$(params.baz)", "middle string", "url"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.baz[*])"`,
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "array star used illegaly in script field",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "baz",
+				Type: v1.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1.ParamTypeArray,
+			}},
+			Steps: []v1.Step{
+				{
+					Script:     "$(params.baz[*])",
+					Name:       "mystep",
+					Image:      "my-image",
+					WorkingDir: "/foo/bar/src/",
 				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `non-existent variable in "$(params.inexistent)-foo"`,
-				Paths:   []string{"steps[0].volumeMount[0].name"},
-			},
-		}, {
-			name: "Inexistent param variable with existing",
-			fields: fields{
-				Params: []v1.ParamSpec{{
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.baz[*])"`,
+			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "array not properly isolated",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "baz",
+				Type: v1.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1.ParamTypeArray,
+			}},
+			Steps: []v1.Step{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"not isolated: $(params.baz)", "middle string", "url"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: $(params.baz)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "array star not properly isolated",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "baz",
+				Type: v1.ParamTypeArray,
+			}, {
+				Name: "foo-is-baz",
+				Type: v1.ParamTypeArray,
+			}},
+			Steps: []v1.Step{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"not isolated: $(params.baz[*])", "middle string", "url"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "inferred array not properly isolated",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:    "baz",
+				Default: v1.NewStructuredValues("implied", "array", "type"),
+			}, {
+				Name:    "foo-is-baz",
+				Default: v1.NewStructuredValues("implied", "array", "type"),
+			}},
+			Steps: []v1.Step{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"not isolated: $(params.baz)", "middle string", "url"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: $(params.baz)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "inferred array star not properly isolated",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:    "baz",
+				Default: v1.NewStructuredValues("implied", "array", "type"),
+			}, {
+				Name:    "foo-is-baz",
+				Default: v1.NewStructuredValues("implied", "array", "type"),
+			}},
+			Steps: []v1.Step{{
+				Name:       "mystep",
+				Image:      "someimage",
+				Command:    []string{"$(params.foo-is-baz)"},
+				Args:       []string{"not isolated: $(params.baz[*])", "middle string", "url"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable is not properly isolated in "not isolated: $(params.baz[*])"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "object used in a string field",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1.ParamTypeObject,
+				Properties: map[string]v1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1.Step{{
+				Name:       "do-the-clone",
+				Image:      "$(params.gitrepo)",
+				Args:       []string{"echo"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "object star used in a string field",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1.ParamTypeObject,
+				Properties: map[string]v1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1.Step{{
+				Name:       "do-the-clone",
+				Image:      "$(params.gitrepo[*])",
+				Args:       []string{"echo"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo[*])"`,
+			Paths:   []string{"steps[0].image"},
+		},
+	}, {
+		name: "object used in a field that can accept array type",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1.ParamTypeObject,
+				Properties: map[string]v1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1.Step{{
+				Name:       "do-the-clone",
+				Image:      "myimage",
+				Args:       []string{"$(params.gitrepo)"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "object star used in a field that can accept array type",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1.ParamTypeObject,
+				Properties: map[string]v1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1.Step{{
+				Name:       "do-the-clone",
+				Image:      "some-git-image",
+				Args:       []string{"$(params.gitrepo[*])"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `variable type invalid in "$(params.gitrepo[*])"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "Inexistent param variable in volumeMount with existing",
+		fields: fields{
+			Params: []v1.ParamSpec{
+				{
 					Name:        "foo",
 					Description: "param",
 					Default:     v1.NewStructuredValues("default"),
-				}},
-				Steps: []v1.Step{{
-					Name:  "mystep",
-					Image: "myimage",
-					Args:  []string{"$(params.foo) && $(params.inexistent)"},
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `non-existent variable in "$(params.foo) && $(params.inexistent)"`,
-				Paths:   []string{"steps[0].args[0]"},
-			},
-		}, {
-			name: "Multiple volumes with same name",
-			fields: fields{
-				Steps: validSteps,
-				Volumes: []corev1.Volume{{
-					Name: "workspace",
-				}, {
-					Name: "workspace",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `multiple volumes with same name "workspace"`,
-				Paths:   []string{"volumes[1].name"},
-			},
-		}, {
-			name: "step with script and command",
-			fields: fields{
-				Steps: []v1.Step{{
-					Image:   "myimage",
-					Command: []string{"command"},
-					Script:  "script",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: "script cannot be used with command",
-				Paths:   []string{"steps[0].script"},
-			},
-		}, {
-			name: "step volume mounts under /tekton/",
-			fields: fields{
-				Steps: []v1.Step{{
-					Image: "myimage",
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "foo",
-						MountPath: "/tekton/foo",
-					}},
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
-				Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
-			},
-		}, {
-			name: "step volume mount name starts with tekton-internal-",
-			fields: fields{
-				Steps: []v1.Step{{
-					Image: "myimage",
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "tekton-internal-foo",
-						MountPath: "/this/is/fine",
-					}},
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
-				Paths:   []string{"steps[0].volumeMounts[0].name"},
-			},
-		}, {
-			name: "declared workspaces names are not unique",
-			fields: fields{
-				Steps: validSteps,
-				Workspaces: []v1.WorkspaceDeclaration{{
-					Name:      "same-workspace",
-					MountPath: "/foo",
-				}, {
-					Name:      "same-workspace",
-					MountPath: "/bar",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: "workspace name \"same-workspace\" must be unique",
-				Paths:   []string{"workspaces[1].name"},
-			},
-		}, {
-			name: "declared workspaces clash with each other",
-			fields: fields{
-				Steps: validSteps,
-				Workspaces: []v1.WorkspaceDeclaration{{
-					Name:      "some-workspace",
-					MountPath: "/foo",
-				}, {
-					Name:      "another-workspace",
-					MountPath: "/foo",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: "workspace mount path \"/foo\" must be unique",
-				Paths:   []string{"workspaces[1].mountpath"},
-			},
-		}, {
-			name: "workspace mount path already in volumeMounts",
-			fields: fields{
-				Steps: []v1.Step{{
-					Image:   "myimage",
-					Command: []string{"command"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "my-mount",
-						MountPath: "/foo",
-					}},
-				}},
-				Workspaces: []v1.WorkspaceDeclaration{{
-					Name:      "some-workspace",
-					MountPath: "/foo",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: "workspace mount path \"/foo\" must be unique",
-				Paths:   []string{"workspaces[0].mountpath"},
-			},
-		}, {
-			name: "workspace default mount path already in volumeMounts",
-			fields: fields{
-				Steps: []v1.Step{{
-					Image:   "myimage",
-					Command: []string{"command"},
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "my-mount",
-						MountPath: "/workspace/some-workspace/",
-					}},
-				}},
-				Workspaces: []v1.WorkspaceDeclaration{{
-					Name: "some-workspace",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
-				Paths:   []string{"workspaces[0].mountpath"},
-			},
-		}, {
-			name: "workspace mount path already in stepTemplate",
-			fields: fields{
-				StepTemplate: &v1.StepTemplate{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "my-mount",
-						MountPath: "/foo",
-					}},
 				},
-				Steps: validSteps,
-				Workspaces: []v1.WorkspaceDeclaration{{
-					Name:      "some-workspace",
+			},
+			Steps: []v1.Step{{
+				Name:  "mystep",
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name: "$(params.inexistent)-foo",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.inexistent)-foo"`,
+			Paths:   []string{"steps[0].volumeMount[0].name"},
+		},
+	}, {
+		name: "Inexistent param variable with existing",
+		fields: fields{
+			Params: []v1.ParamSpec{{
+				Name:        "foo",
+				Description: "param",
+				Default:     v1.NewStructuredValues("default"),
+			}},
+			Steps: []v1.Step{{
+				Name:  "mystep",
+				Image: "myimage",
+				Args:  []string{"$(params.foo) && $(params.inexistent)"},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.foo) && $(params.inexistent)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
+		name: "Multiple volumes with same name",
+		fields: fields{
+			Steps: validSteps,
+			Volumes: []corev1.Volume{{
+				Name: "workspace",
+			}, {
+				Name: "workspace",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `multiple volumes with same name "workspace"`,
+			Paths:   []string{"volumes[1].name"},
+		},
+	}, {
+		name: "step with script and command",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image:   "myimage",
+				Command: []string{"command"},
+				Script:  "script",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "script cannot be used with command",
+			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "step volume mounts under /tekton/",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "foo",
+					MountPath: "/tekton/foo",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount cannot be mounted under /tekton/ (volumeMount "foo" mounted at "/tekton/foo")`,
+			Paths:   []string{"steps[0].volumeMounts[0].mountPath"},
+		},
+	}, {
+		name: "step volume mount name starts with tekton-internal-",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image: "myimage",
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "tekton-internal-foo",
+					MountPath: "/this/is/fine",
+				}},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `volumeMount name "tekton-internal-foo" cannot start with "tekton-internal-"`,
+			Paths:   []string{"steps[0].volumeMounts[0].name"},
+		},
+	}, {
+		name: "declared workspaces names are not unique",
+		fields: fields{
+			Steps: validSteps,
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name:      "same-workspace",
+				MountPath: "/foo",
+			}, {
+				Name:      "same-workspace",
+				MountPath: "/bar",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace name \"same-workspace\" must be unique",
+			Paths:   []string{"workspaces[1].name"},
+		},
+	}, {
+		name: "declared workspaces clash with each other",
+		fields: fields{
+			Steps: validSteps,
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name:      "some-workspace",
+				MountPath: "/foo",
+			}, {
+				Name:      "another-workspace",
+				MountPath: "/foo",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/foo\" must be unique",
+			Paths:   []string{"workspaces[1].mountpath"},
+		},
+	}, {
+		name: "workspace mount path already in volumeMounts",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image:   "myimage",
+				Command: []string{"command"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "my-mount",
+					MountPath: "/foo",
+				}},
+			}},
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name:      "some-workspace",
+				MountPath: "/foo",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/foo\" must be unique",
+			Paths:   []string{"workspaces[0].mountpath"},
+		},
+	}, {
+		name: "workspace default mount path already in volumeMounts",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image:   "myimage",
+				Command: []string{"command"},
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "my-mount",
+					MountPath: "/workspace/some-workspace/",
+				}},
+			}},
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name: "some-workspace",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
+			Paths:   []string{"workspaces[0].mountpath"},
+		},
+	}, {
+		name: "workspace mount path already in stepTemplate",
+		fields: fields{
+			StepTemplate: &v1.StepTemplate{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "my-mount",
 					MountPath: "/foo",
 				}},
 			},
-			expectedError: apis.FieldError{
-				Message: "workspace mount path \"/foo\" must be unique",
-				Paths:   []string{"workspaces[0].mountpath"},
-			},
-		}, {
-			name: "workspace default mount path already in stepTemplate",
-			fields: fields{
-				StepTemplate: &v1.StepTemplate{
-					VolumeMounts: []corev1.VolumeMount{{
-						Name:      "my-mount",
-						MountPath: "/workspace/some-workspace",
-					}},
-				},
-				Steps: validSteps,
-				Workspaces: []v1.WorkspaceDeclaration{{
-					Name: "some-workspace",
+			Steps: validSteps,
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name:      "some-workspace",
+				MountPath: "/foo",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/foo\" must be unique",
+			Paths:   []string{"workspaces[0].mountpath"},
+		},
+	}, {
+		name: "workspace default mount path already in stepTemplate",
+		fields: fields{
+			StepTemplate: &v1.StepTemplate{
+				VolumeMounts: []corev1.VolumeMount{{
+					Name:      "my-mount",
+					MountPath: "/workspace/some-workspace",
 				}},
 			},
-			expectedError: apis.FieldError{
-				Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
-				Paths:   []string{"workspaces[0].mountpath"},
-			},
-		}, {
-			name: "result name not validate",
-			fields: fields{
-				Steps: validSteps,
-				Results: []v1.TaskResult{{
-					Name:        "MY^RESULT",
-					Description: "my great result",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `invalid key name "MY^RESULT"`,
-				Paths:   []string{"results[0].name"},
-				Details: "Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$')",
-			},
-		}, {
-			name: "result type not validate",
-			fields: fields{
-				Steps: validSteps,
-				Results: []v1.TaskResult{{
-					Name:        "MY-RESULT",
-					Type:        "wrong",
-					Description: "my great result",
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `invalid value: wrong`,
-				Paths:   []string{"results[0].type"},
-				Details: "type must be string",
-			},
-		}, {
-			name: "context not validate",
-			fields: fields{
-				Steps: []v1.Step{{
-					Image: "my-image",
-					Args:  []string{"arg"},
-					Script: `
+			Steps: validSteps,
+			Workspaces: []v1.WorkspaceDeclaration{{
+				Name: "some-workspace",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "workspace mount path \"/workspace/some-workspace\" must be unique",
+			Paths:   []string{"workspaces[0].mountpath"},
+		},
+	}, {
+		name: "result name not validate",
+		fields: fields{
+			Steps: validSteps,
+			Results: []v1.TaskResult{{
+				Name:        "MY^RESULT",
+				Description: "my great result",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid key name "MY^RESULT"`,
+			Paths:   []string{"results[0].name"},
+			Details: "Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$')",
+		},
+	}, {
+		name: "result type not validate",
+		fields: fields{
+			Steps: validSteps,
+			Results: []v1.TaskResult{{
+				Name:        "MY-RESULT",
+				Type:        "wrong",
+				Description: "my great result",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: wrong`,
+			Paths:   []string{"results[0].type"},
+			Details: "type must be string",
+		},
+	}, {
+		name: "context not validate",
+		fields: fields{
+			Steps: []v1.Step{{
+				Image: "my-image",
+				Args:  []string{"arg"},
+				Script: `
 				#!/usr/bin/env  bash
 				hello "$(context.task.missing)"`,
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\""`,
-				Paths:   []string{"steps[0].script"},
-			},
-		}, {
-			name: "negative timeout string",
-			fields: fields{
-				Steps: []v1.Step{{
-					Timeout: &metav1.Duration{Duration: -10 * time.Second},
-				}},
-			},
-			expectedError: apis.FieldError{
-				Message: "invalid value: -10s",
-				Paths:   []string{"steps[0].negative timeout"},
-			},
-		}}
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env  bash\n\t\t\t\thello \"$(context.task.missing)\""`,
+			Paths:   []string{"steps[0].script"},
+		},
+	}, {
+		name: "negative timeout string",
+		fields: fields{
+			Steps: []v1.Step{{
+				Timeout: &metav1.Duration{Duration: -10 * time.Second},
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: "invalid value: -10s",
+			Paths:   []string{"steps[0].negative timeout"},
+		},
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1.TaskSpec{
@@ -1408,7 +1405,7 @@ func TestStepOnError(t *testing.T) {
 			Args:    []string{"arg"},
 		}},
 		expectedError: &apis.FieldError{
-			Message: fmt.Sprintf("invalid value: onError"),
+			Message: "invalid value: onError",
 			Paths:   []string{"onError"},
 			Details: "Task step onError must be either continue or stopAndFail",
 		},
