@@ -25,14 +25,29 @@ import (
 )
 
 // ValidateEnabledAPIFields checks that the enable-api-fields feature gate is set
-// to the wantVersion value and, if not, returns an error stating which feature
+// to a version at most as stable as wantVersion, if not, returns an error stating which feature
 // is dependent on the version and what the current version actually is.
-func ValidateEnabledAPIFields(ctx context.Context, featureName, wantVersion string) *apis.FieldError {
+func ValidateEnabledAPIFields(ctx context.Context, featureName string, wantVersion string) *apis.FieldError {
 	currentVersion := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields
-	if currentVersion != wantVersion {
-		var errs *apis.FieldError
-		message := fmt.Sprintf(`%s requires "enable-api-fields" feature gate to be %q but it is %q`, featureName, wantVersion, currentVersion)
-		return errs.Also(apis.ErrGeneric(message))
+	var errs *apis.FieldError
+	message := `%s requires "enable-api-fields" feature gate to be %q but it is %q`
+	switch wantVersion {
+	case config.StableAPIFields:
+		// If the feature is stable, it doesn't matter what the current version is
+	case config.BetaAPIFields:
+		// If the feature requires "beta" fields to be enabled, the current version may be "beta" or "alpha"
+		if currentVersion != config.BetaAPIFields && currentVersion != config.AlphaAPIFields {
+			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%s or %s", config.AlphaAPIFields, config.BetaAPIFields), currentVersion)
+			errs = apis.ErrGeneric(message)
+		}
+	case config.AlphaAPIFields:
+		// If the feature requires "alpha" fields to be enabled, the current version must be "alpha"
+		if currentVersion != wantVersion {
+			message = fmt.Sprintf(message, featureName, config.AlphaAPIFields, currentVersion)
+			errs = apis.ErrGeneric(message)
+		}
+	default:
+		errs = apis.ErrGeneric("invalid wantVersion %s, must be one of (%s, %s, %s)", wantVersion, config.AlphaAPIFields, config.BetaAPIFields, config.StableAPIFields)
 	}
-	return nil
+	return errs
 }

@@ -25,36 +25,93 @@ import (
 )
 
 func TestValidateEnabledAPIFields(t *testing.T) {
-	testVersion := "alpha"
-	flags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": testVersion,
-	})
-	if err != nil {
-		t.Fatalf("error creating feature flags from map: %v", err)
-	}
-	cfg := &config.Config{
-		FeatureFlags: flags,
-	}
-	ctx := config.ToContext(context.Background(), cfg)
-	if err := version.ValidateEnabledAPIFields(ctx, "test feature", testVersion); err != nil {
-		t.Errorf("unexpected error for compatible feature gates: %q", err)
+	tcs := []struct {
+		name           string
+		wantVersion    string
+		currentVersion string
+	}{{
+		name:           "alpha fields w/ alpha",
+		wantVersion:    "alpha",
+		currentVersion: "alpha",
+	}, {
+		name:           "beta fields w/ alpha",
+		wantVersion:    "beta",
+		currentVersion: "alpha",
+	}, {
+		name:           "beta fields w/ beta",
+		wantVersion:    "beta",
+		currentVersion: "beta",
+	}, {
+		name:           "stable fields w/ alpha",
+		wantVersion:    "stable",
+		currentVersion: "alpha",
+	}, {
+		name:           "stable fields w/ beta",
+		wantVersion:    "stable",
+		currentVersion: "beta",
+	}, {
+		name:           "stable fields w/ stable",
+		wantVersion:    "stable",
+		currentVersion: "stable",
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			flags, err := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": tc.currentVersion,
+			})
+			if err != nil {
+				t.Fatalf("error creating feature flags from map: %v", err)
+			}
+			cfg := &config.Config{
+				FeatureFlags: flags,
+			}
+			ctx := config.ToContext(context.Background(), cfg)
+			if err := version.ValidateEnabledAPIFields(ctx, "test feature", tc.wantVersion); err != nil {
+				t.Errorf("unexpected error for compatible feature gates: %q", err)
+			}
+		})
 	}
 }
 
 func TestValidateEnabledAPIFieldsError(t *testing.T) {
-	flags, err := config.NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": "stable",
-	})
-	if err != nil {
-		t.Fatalf("error creating feature flags from map: %v", err)
-	}
-	cfg := &config.Config{
-		FeatureFlags: flags,
-	}
-	ctx := config.ToContext(context.Background(), cfg)
-	err = version.ValidateEnabledAPIFields(ctx, "test feature", "alpha")
+	tcs := []struct {
+		name           string
+		wantVersion    string
+		currentVersion string
+	}{{
+		name:           "alpha fields w/ stable",
+		wantVersion:    "alpha",
+		currentVersion: "stable",
+	}, {
+		name:           "alpha fields w/ beta",
+		wantVersion:    "alpha",
+		currentVersion: "beta",
+	}, {
+		name:           "beta fields w/ stable",
+		wantVersion:    "beta",
+		currentVersion: "stable",
+	}, {
+		name:           "invalid wantVersion",
+		wantVersion:    "foo",
+		currentVersion: "stable",
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			flags, err := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": tc.currentVersion,
+			})
+			if err != nil {
+				t.Fatalf("error creating feature flags from map: %v", err)
+			}
+			cfg := &config.Config{
+				FeatureFlags: flags,
+			}
+			ctx := config.ToContext(context.Background(), cfg)
+			fieldErr := version.ValidateEnabledAPIFields(ctx, "test feature", tc.wantVersion)
 
-	if err == nil {
-		t.Errorf("error expected for incompatible feature gates")
+			if fieldErr == nil {
+				t.Errorf("error expected for incompatible feature gates")
+			}
+		})
 	}
 }
