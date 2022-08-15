@@ -76,7 +76,7 @@ data:
   # an alpha feature.
   enable-custom-tasks: "false"
   # Setting this flag will determine which gated features are enabled.
-  # Acceptable values are "stable" or "alpha".
+  # Acceptable values are "stable", "beta", or "alpha".
   enable-api-fields: "stable"
   # Setting this flag to "true" enables CloudEvents for Runs, as long as a
   # CloudEvents sink is configured in the config-defaults config map

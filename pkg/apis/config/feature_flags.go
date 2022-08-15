@@ -31,6 +31,8 @@ const (
 	StableAPIFields = "stable"
 	// AlphaAPIFields is the value used for "enable-api-fields" when alpha APIs should be usable as well.
 	AlphaAPIFields = "alpha"
+	// BetaAPIFields is the value used for "enable-api-fields" when beta APIs should be usable as well.
+	BetaAPIFields = "beta"
 	// FullEmbeddedStatus is the value used for "embedded-status" when the full statuses of TaskRuns and Runs should be
 	// embedded in PipelineRunStatusFields, but ChildReferences should not be used.
 	FullEmbeddedStatus = "full"
@@ -167,7 +169,7 @@ func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature 
 		value = strings.ToLower(cfg)
 	}
 	switch value {
-	case AlphaAPIFields, StableAPIFields:
+	case AlphaAPIFields, BetaAPIFields, StableAPIFields:
 		*feature = value
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enableAPIFields, value)
@@ -196,10 +198,19 @@ func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, erro
 	return NewFeatureFlagsFromMap(config.Data)
 }
 
-// EnableAlphaAPIFields enables alpha feature in an existing context (for use in testing)
+// EnableAlphaAPIFields enables alpha features in an existing context (for use in testing)
 func EnableAlphaAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, "alpha")
+}
+
+// EnableBetaAPIFields enables beta features in an existing context (for use in testing)
+func EnableBetaAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, "beta")
+}
+
+func setEnableAPIFields(ctx context.Context, want string) context.Context {
 	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{
-		"enable-api-fields": "alpha",
+		"enable-api-fields": want,
 	})
 	cfg := &Config{
 		Defaults: &Defaults{

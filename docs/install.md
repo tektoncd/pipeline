@@ -23,6 +23,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 - [Customizing basic execution parameters](#customizing-basic-execution-parameters)
     - [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
     - [Alpha Features](#alpha-features)
+    - [Beta Features](#beta-features)
 - [Configuring High Availability](#configuring-high-availability)
 - [Configuring tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
 - [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
@@ -450,6 +451,7 @@ Alpha features are still in development and their syntax is subject to change.
 To enable these, set the `enable-api-fields` feature flag to `"alpha"` in
 the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment via
 `kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"enable-api-fields":"alpha"}}'`.
+Setting `enable-api-fields` to "alpha" also enables [beta features](#beta-features).
 
 Features currently in "alpha" are:
 
@@ -471,6 +473,15 @@ Features currently in "alpha" are:
 | [CSI Workspace Type](workspaces.md#csi)                                                               | N/A                                                                                                                        | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 | [Object Params and Results](pipelineruns.md#specifying-parameters)                                    | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 | [Array Results](pipelineruns.md#specifying-parameters)                                                | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)                                | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
+
+### Beta Features
+
+Beta features are fields of stable CRDs that follow our "beta" [compatibility policy](../api_compatibility_policy.md).
+To enable these features, set the `enable-api-fields` feature flag to `"beta"` in
+the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment via
+`kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"enable-api-fields":"beta"}}'`.
+
+For beta versions of Tekton CRDs, setting `enable-api-fields` to "beta" is the same as setting it to "stable".
 
 ## Configuring High Availability
 

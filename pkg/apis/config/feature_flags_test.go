@@ -96,6 +96,22 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
+		{
+			expectedConfig: &config.FeatureFlags{
+				EnableAPIFields: "beta",
+
+				EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
+				EnableCustomTasks:                config.DefaultEnableCustomTasks,
+				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
+				DisableCredsInit:                 config.DefaultDisableCredsInit,
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
+				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
+				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
+			},
+			fileName: "feature-flags-beta-api-fields",
+		},
 	}
 
 	for _, tc := range testCases {
