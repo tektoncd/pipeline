@@ -133,7 +133,7 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 	tpl := &pod.AffinityAssistantTemplate{}
 	// merge pod template from spec and default if any of them are defined
 	if pr.Spec.PodTemplate != nil || defaultAATpl != nil {
-		tpl = v1beta1.MergeAAPodTemplateWithDefault(pr.Spec.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
+		tpl = pod.MergeAAPodTemplateWithDefault(pr.Spec.PodTemplate.ToAffinityAssistantTemplate(), defaultAATpl)
 	}
 
 	containers := []corev1.Container{{

@@ -119,7 +119,7 @@ func schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref common.Reference
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "AAPodTemplate holds pod specific configuration for the affinity-assistant",
+				Description: "AffinityAssistantTemplate holds pod specific configuration and is a subset of the generic pod Template",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"nodeSelector": {
@@ -188,7 +188,7 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "PodTemplate holds pod specific configuration",
+				Description: "Template holds pod specific configuration",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"nodeSelector": {

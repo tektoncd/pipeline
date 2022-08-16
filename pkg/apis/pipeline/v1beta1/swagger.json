@@ -8,7 +8,7 @@
   "paths": {},
   "definitions": {
     "pod.AffinityAssistantTemplate": {
-      "description": "AAPodTemplate holds pod specific configuration for the affinity-assistant",
+      "description": "AffinityAssistantTemplate holds pod specific configuration and is a subset of the generic pod Template",
       "type": "object",
       "properties": {
         "imagePullSecrets": {
@@ -40,7 +40,7 @@
       }
     },
     "pod.Template": {
-      "description": "PodTemplate holds pod specific configuration",
+      "description": "Template holds pod specific configuration",
       "type": "object",
       "properties": {
         "affinity": {
