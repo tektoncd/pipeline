@@ -22,16 +22,18 @@ package test
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 
 	"github.com/tektoncd/pipeline/test/parse"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -45,8 +47,8 @@ import (
 )
 
 const (
-	apiVersion = "example.dev/v0"
-	kind       = "Example"
+	apiVersion = "wait.testing.tekton.dev/v1alpha1"
+	kind       = "Wait"
 )
 
 var supportedFeatureGates = map[string]string{
@@ -399,5 +401,132 @@ spec:
 
 	if _, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{}); err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
+	}
+}
+
+func applyController(t *testing.T) {
+	t.Log("Creating Wait Custom Task Controller...")
+	cmd := exec.Command("ko", "apply", "-f", "./config/controller.yaml")
+	cmd.Dir = "./wait-task"
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to create Wait Custom Task Controller: %s, Output: %s", err, out)
+	}
+}
+
+func cleanUpController(t *testing.T) {
+	t.Log("Tearing down Wait Custom Task Controller...")
+	cmd := exec.Command("ko", "delete", "-f", "./config/controller.yaml")
+	cmd.Dir = "./wait-task"
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to tear down Wait Custom Task Controller: %s, Output: %s", err, out)
+	}
+}
+
+func TestWaitCustomTask(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, namespace := setup(ctx, t, requireAnyGate(supportedFeatureGates))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	// Create a custom task controller
+	applyController(t)
+	// Cleanup the controller after finishing the test
+	defer cleanUpController(t)
+
+	for _, tc := range []struct {
+		name                string
+		duration            string
+		conditionAccessorFn func(string) ConditionAccessorFn
+		wantConditionType   apis.ConditionType
+		wantConditionStatus corev1.ConditionStatus
+		wantConditionReason string
+	}{{
+		name:                "Wait Task Has Passed",
+		duration:            "1s",
+		conditionAccessorFn: Succeed,
+		wantConditionType:   apis.ConditionSucceeded,
+		wantConditionStatus: corev1.ConditionTrue,
+		wantConditionReason: "DurationElapsed",
+	}, {
+		name:                "Wait Task Is Running",
+		duration:            "2s",
+		conditionAccessorFn: Running,
+		wantConditionType:   apis.ConditionSucceeded,
+		wantConditionStatus: corev1.ConditionUnknown,
+		wantConditionReason: "Running",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			runName := helpers.ObjectNameForTest(t)
+			run := parse.MustParseRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  ref:
+    apiVersion: %s
+    kind: %s
+  params:
+  - name: duration
+    value: %s
+`, runName, apiVersion, kind, tc.duration))
+			if _, err := c.RunClient.Create(ctx, run, metav1.CreateOptions{}); err != nil {
+				t.Fatalf("Failed to create TaskRun %q: %v", runName, err)
+			}
+
+			// Wait for the Run.
+			if err := WaitForRunState(ctx, c, runName, time.Minute, tc.conditionAccessorFn(runName), tc.wantConditionReason); err != nil {
+				t.Fatalf("Waiting for Run to finish running: %v", err)
+			}
+
+			// Get the actual Run
+			gotRun, err := c.RunClient.Get(ctx, runName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("%v", err)
+			}
+
+			gotCondition := gotRun.GetStatus().GetCondition(apis.ConditionSucceeded)
+			if gotCondition == nil {
+				t.Fatal("The Run failed to succeed")
+			}
+
+			// Compose the expected Run
+			runYAML := fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  ref:
+    apiVersion: %s
+    kind: %s
+  params:
+  - name: duration
+    value: %s
+  serviceAccountName: default
+status:
+  conditions:
+  - reason: %s
+    status: %q
+    type: %s
+  observedGeneration: 1
+  `, runName, namespace, apiVersion, kind, tc.duration, tc.wantConditionReason, tc.wantConditionStatus, tc.wantConditionType)
+			wantRun := parse.MustParseRun(t, runYAML)
+			var (
+				filterTypeMeta   = cmpopts.IgnoreFields(v1alpha1.Run{}, "TypeMeta")
+				filterObjectMeta = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields")
+				filterCondition  = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
+				filterRunStatus  = cmpopts.IgnoreFields(v1alpha1.RunStatusFields{}, "StartTime", "CompletionTime")
+			)
+			if d := cmp.Diff(wantRun, gotRun,
+				filterTypeMeta,
+				filterObjectMeta,
+				filterCondition,
+				filterRunStatus,
+			); d != "" {
+				t.Errorf("-got +want: %v", d)
+			}
+		})
 	}
 }
