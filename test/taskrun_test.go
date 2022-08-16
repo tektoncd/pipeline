@@ -128,8 +128,8 @@ spec:
 	}
 
 	releaseAnnotation, ok := taskrun.Annotations[pod.ReleaseAnnotation]
-	// This should always contain a commit truncated to ~7 characters (based on knative.dev/pkg/changeset)
-	commitIDRegexp := regexp.MustCompile(`^[a-f0-9]{7}$`)
+	// This should always contain a commit truncated to 7 characters, possibly with "-dirty" suffix (based on knative.dev/pkg/changeset)
+	commitIDRegexp := regexp.MustCompile(`^[a-f0-9]{7}(-dirty)?$`)
 	if !ok || !commitIDRegexp.MatchString(releaseAnnotation) {
 		t.Fatalf("expected Taskrun to be annotated with %s=devel or with nightly release tag, got %s=%s", pod.ReleaseAnnotation, pod.ReleaseAnnotation, releaseAnnotation)
 	}
