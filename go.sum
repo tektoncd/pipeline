@@ -1317,8 +1317,9 @@ github.com/tdakkota/asciicheck v0.0.0-20200416200610-e657995f937b/go.mod h1:yHp0
 github.com/tektoncd/ahmetb-gen-crd-api-reference-docs v0.3.1-0.20220729140133-6ce2d5aafcb4 h1:E5MV/fepEo6WUfYi+rE5y4oL5BUncZmO7e1FJm7F+sI=
 github.com/tektoncd/ahmetb-gen-crd-api-reference-docs v0.3.1-0.20220729140133-6ce2d5aafcb4/go.mod h1:lQON0TD5PnAUl7Q6H5FNV+/AqCSeltYf72OGIkegB/o=
 github.com/tektoncd/plumbing v0.0.0-20220304154415-13228ac1f4a4/go.mod h1:b9esRuV1absBvaPzKkjYdKXjC5Tgs8/vh1sz++RiTdc=
-github.com/tektoncd/plumbing v0.0.0-20220728121531-8a725746af4f h1:0yfTcfbYoWluJ7jj3ldBeNdahE7pIAXqTioQpAe3EGo=
 github.com/tektoncd/plumbing v0.0.0-20220728121531-8a725746af4f/go.mod h1:uJBaI0AL/kjPThiMYZcWRujEz7D401v643d6s/21GAg=
+github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb h1:LUUCR8pLF+MzdQ7kOQQrMzDahIPZLdPCzfnNow1Um3Y=
+github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb/go.mod h1:uJBaI0AL/kjPThiMYZcWRujEz7D401v643d6s/21GAg=
 github.com/tektoncd/resolution v0.0.0-20220331203013-e4203c70c5eb h1:bSrsnmoOJJh1JorlaTDSusq/eIBnk5zRKAVXOhnJyD8=
 github.com/tektoncd/resolution v0.0.0-20220331203013-e4203c70c5eb/go.mod h1:u7+LospaKMTW8f1mKHpul2XmGXYSG86kMrbJqUr2w0Q=
 github.com/tenntenn/modver v1.0.1/go.mod h1:bePIyQPb7UeioSRkw3Q0XeMhYZSMx9B8ePqg6SAMGH0=
