@@ -32,12 +32,14 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 4 {
-		log.Fatal("expected exactly 3 args (src1, src2, dst)")
+	if len(os.Args) < 4 {
+		log.Fatal("expected at least 3 args (src1, src2, ... dst)")
 	}
 
-	src1, src2, dst := os.Args[1], os.Args[2], os.Args[3]
-	log.Println("combining", src1, src2, "into", dst)
+	srcs := os.Args[1 : len(os.Args)-1]
+	dst := os.Args[len(os.Args)-1]
+
+	log.Println("combining", srcs, "into", dst)
 	dstr, err := name.ParseReference(dst)
 	if err != nil {
 		log.Fatal(err)
@@ -49,14 +51,6 @@ func main() {
 			return nil, err
 		}
 		return remote.Index(r)
-	}
-	src1i, err := pull(src1)
-	if err != nil {
-		log.Fatalf("pulling %q: %v", src1, err)
-	}
-	src2i, err := pull(src2)
-	if err != nil {
-		log.Fatalf("pulling %q: %v", src2, err)
 	}
 
 	plats := map[string]bool{}
@@ -70,7 +64,6 @@ func main() {
 			if desc.Platform == nil {
 				return fmt.Errorf("found nil platform for manifest %s", desc.Digest)
 			}
-
 			b, err := json.Marshal(desc.Platform)
 			if err != nil {
 				return fmt.Errorf("marshalling platform: %w", err)
@@ -92,13 +85,16 @@ func main() {
 		}
 		return nil
 	}
-	log.Println("---", src1, "---")
-	if err := add(src1i); err != nil {
-		log.Fatalf("adding manifests from src1: %v", err)
-	}
-	log.Println("---", src2, "---")
-	if err := add(src2i); err != nil {
-		log.Fatalf("adding manifests from src2: %v", err)
+
+	for _, src := range srcs {
+		log.Println("---", src, "---")
+		srci, err := pull(src)
+		if err != nil {
+			log.Fatalf("pulling %q: %v", src, err)
+		}
+		if err := add(srci); err != nil {
+			log.Fatalf("adding manifests from src %q: %v", src, err)
+		}
 	}
 
 	dsti := mutate.AppendManifests(mutate.IndexMediaType(empty.Index, types.DockerManifestList), adds...)
