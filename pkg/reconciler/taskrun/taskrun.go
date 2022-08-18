@@ -62,16 +62,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var version string
-
-func init() {
-	var err error
-	version, err = changeset.Get()
-	if err != nil {
-		version = "unknown"
-	}
-}
-
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
 	KubeClientSet     kubernetes.Interface
@@ -110,7 +100,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	if len(tr.Annotations) == 0 {
 		tr.Annotations = map[string]string{}
 	}
-	tr.Annotations[podconvert.ReleaseAnnotation] = version
+	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
 
 	defer emitEvents(ctx, tr, before)
 
