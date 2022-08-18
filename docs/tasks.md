@@ -975,13 +975,17 @@ overlap occurs.
 
 In the example below, the `Task` specifies a `stepTemplate` field with the environment variable
 `FOO` set to `bar`. The first `Step` in the `Task` uses that value for `FOO`, but the second `Step`
-overrides the value set in the template with `baz`.
+overrides the value set in the template with `baz`. Additional, the `Task` specifies a `stepTemplate`
+field with the environment variable `TOKEN` set to `public`. The last one `Step` in the `Task` uses
+`private` in the referenced secret to override the value set in the template.
 
 ```yaml
 stepTemplate:
   env:
     - name: "FOO"
       value: "bar"
+    - name: "TOKEN"
+      value: "public"
 steps:
   - image: ubuntu
     command: [echo]
@@ -992,6 +996,20 @@ steps:
     env:
       - name: "FOO"
         value: "baz"
+  - image: ubuntu
+    command: [echo]
+    args: ["TOKEN is ${TOKEN}"]
+    env:
+      - name: "TOKEN"
+        valueFrom:
+          secretKeyRef:
+            key: "token"
+            name: "test"
+---
+# The secret 'test' part data is as follows.
+data:
+  # The decoded value of 'cHJpdmF0ZQo=' is 'private'. 
+  token: "cHJpdmF0ZQo="
 ```
 
 ### Specifying `Sidecars`

@@ -126,6 +126,62 @@ func TestMergeStepsWithStepTemplate(t *testing.T) {
 				MountPath: "/workspace/data",
 			}},
 		}},
+	}, {
+		name: "merge-env-by-step",
+		template: &StepTemplate{
+			Env: []corev1.EnvVar{{
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}, {
+				Name: "SOME_KEY_1",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key:                  "A_KEY",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "A_NAME"},
+					},
+				},
+			}, {
+				Name:  "SOME_KEY_2",
+				Value: "VALUE_2",
+			}},
+		},
+		steps: []Step{{
+			Env: []corev1.EnvVar{{
+				Name:  "NEW_KEY",
+				Value: "A_VALUE",
+			}, {
+				Name:  "SOME_KEY_1",
+				Value: "VALUE_1",
+			}, {
+				Name: "SOME_KEY_2",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key:                  "A_KEY",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "A_NAME"},
+					},
+				},
+			}},
+		}},
+		expected: []Step{{
+			Env: []corev1.EnvVar{{
+				Name:  "NEW_KEY",
+				Value: "A_VALUE",
+			}, {
+				Name:  "KEEP_THIS",
+				Value: "A_VALUE",
+			}, {
+				Name:  "SOME_KEY_1",
+				Value: "VALUE_1",
+			}, {
+				Name: "SOME_KEY_2",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key:                  "A_KEY",
+						LocalObjectReference: corev1.LocalObjectReference{Name: "A_NAME"},
+					},
+				},
+			}},
+		}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := MergeStepsWithStepTemplate(tc.template, tc.steps)
