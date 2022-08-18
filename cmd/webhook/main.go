@@ -57,7 +57,8 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1beta1.SchemeGroupVersion.WithKind("TaskRun"):     &v1beta1.TaskRun{},
 	v1beta1.SchemeGroupVersion.WithKind("PipelineRun"): &v1beta1.PipelineRun{},
 	// v1
-	v1.SchemeGroupVersion.WithKind("Task"): &v1.Task{},
+	v1.SchemeGroupVersion.WithKind("Task"):     &v1.Task{},
+	v1.SchemeGroupVersion.WithKind("Pipeline"): &v1.Pipeline{},
 }
 
 func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -148,6 +149,14 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 				Zygotes: map[string]conversion.ConvertibleObject{
 					v1beta1GroupVersion: &v1beta1.Task{},
 					v1GroupVersion:      &v1.Task{},
+				},
+			},
+			v1.Kind("Pipeline"): {
+				DefinitionName: pipeline.PipelineResource.String(),
+				HubVersion:     v1beta1GroupVersion,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					v1beta1GroupVersion: &v1beta1.Pipeline{},
+					v1GroupVersion:      &v1.Pipeline{},
 				},
 			},
 		},

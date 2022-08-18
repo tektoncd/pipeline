@@ -28,8 +28,6 @@ spec:
   - name: v1beta1
     served: true
     storage: true
-    # Opt into the status subresource so metadata.generation
-    # starts to increment
     subresources:
       status: {}
     schema:
@@ -43,6 +41,24 @@ spec:
         # See https://kubernetes.io/blog/2019/06/20/crd-structural-schema/
         # See issue: https://github.com/knative/serving/issues/912
         x-kubernetes-preserve-unknown-fields: true
+  - name: v1
+    served: false
+    storage: false
+    schema:
+      openAPIV3Schema:
+        type: object
+        # OpenAPIV3 schema allows Kubernetes to perform validation on the schema fields
+        # and use the schema in tooling such as `kubectl explain`.
+        # Using "x-kubernetes-preserve-unknown-fields: true"
+        # at the root of the schema (or within it) allows arbitrary fields.
+        # We currently perform our own validation separately.
+        # See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#specifying-a-structural-schema
+        # for more info.
+        x-kubernetes-preserve-unknown-fields: true
+    # Opt into the status subresource so metadata.generation
+    # starts to increment
+    subresources:
+      status: {}
   names:
     kind: Pipeline
     plural: pipelines
@@ -54,7 +70,7 @@ spec:
   conversion:
     strategy: Webhook
     webhook:
-      conversionReviewVersions: ["v1beta1"]
+      conversionReviewVersions: ["v1beta1", "v1"]
       clientConfig:
         service:
           name: tekton-pipelines-webhook
