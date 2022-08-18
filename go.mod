@@ -23,16 +23,19 @@ require (
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	k8s.io/api v0.23.9
-	k8s.io/apimachinery v0.23.9
+	k8s.io/apimachinery v0.24.4
 	k8s.io/client-go v0.23.9
 	k8s.io/code-generator v0.23.9
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf
+	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42
 	knative.dev/pkg v0.0.0-20220805012121-7b8b06028e4f
 	sigs.k8s.io/yaml v1.3.0
 )
 
-require github.com/benbjohnson/clock v1.1.0 // indirect
+require (
+	github.com/benbjohnson/clock v1.1.0 // indirect
+	github.com/google/gnostic v0.5.7-v3refs // indirect
+)
 
 require (
 	cloud.google.com/go/compute v1.5.0 // indirect
