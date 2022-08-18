@@ -1,6 +1,6 @@
 module github.com/tektoncd/pipeline
 
-go 1.17
+go 1.18
 
 require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.1-0.20220720053627-e327d0730470 // Waiting for https://github.com/ahmetb/gen-crd-api-reference-docs/pull/43/files to merge
