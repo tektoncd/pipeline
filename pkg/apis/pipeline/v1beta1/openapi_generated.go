@@ -1764,6 +1764,12 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref common.ReferenceCall
 							},
 						},
 					},
+					"finallyStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
+						},
+					},
 				},
 			},
 		},
@@ -1880,6 +1886,12 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref common.Referen
 									},
 								},
 							},
+						},
+					},
+					"finallyStartTime": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
+							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
 				},

@@ -286,6 +286,37 @@ func TestPipelineRunHasTimedOut(t *testing.T) {
 				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
 			}
 		})
+		t.Run("pipeline.timeouts.tasks "+tc.name, func(t *testing.T) {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.PipelineRunSpec{
+					Timeouts: &v1beta1.TimeoutFields{Tasks: &metav1.Duration{Duration: tc.timeout}},
+				},
+				Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: tc.starttime},
+				}},
+			}
+
+			if pr.HaveTasksTimedOut(context.Background(), testClock) != tc.expected {
+				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
+			}
+		})
+		t.Run("pipeline.timeouts.finally "+tc.name, func(t *testing.T) {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.PipelineRunSpec{
+					Timeouts: &v1beta1.TimeoutFields{Finally: &metav1.Duration{Duration: tc.timeout}},
+				},
+				Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime:        &metav1.Time{Time: tc.starttime},
+					FinallyStartTime: &metav1.Time{Time: tc.starttime},
+				}},
+			}
+
+			if pr.HasFinallyTimedOut(context.Background(), testClock) != tc.expected {
+				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
+			}
+		})
 	}
 }
 

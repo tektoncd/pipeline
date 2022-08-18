@@ -19,6 +19,7 @@ package resources
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
@@ -55,6 +56,7 @@ type PipelineRunFacts struct {
 	SpecStatus      v1beta1.PipelineRunSpecStatus
 	TasksGraph      *dag.Graph
 	FinalTasksGraph *dag.Graph
+	TimeoutsState   PipelineRunTimeoutsState
 
 	// SkipCache is a hash of PipelineTask names that stores whether a task will be
 	// executed or not, because it's either not reachable via the DAG due to the pipeline
@@ -65,6 +67,17 @@ type PipelineRunFacts struct {
 	// The skip data is sensitive to changes in the state. The ResetSkippedCache method
 	// can be used to clean the cache and force re-computation when needed.
 	SkipCache map[string]TaskSkipStatus
+}
+
+// PipelineRunTimeoutsState records information about start times and timeouts for the PipelineRun, so that the PipelineRunFacts
+// can reference those values in its functions.
+type PipelineRunTimeoutsState struct {
+	StartTime        *time.Time
+	FinallyStartTime *time.Time
+	PipelineTimeout  *time.Duration
+	TasksTimeout     *time.Duration
+	FinallyTimeout   *time.Duration
+	Clock            clock.PassiveClock
 }
 
 // pipelineRunStatusCount holds the count of successful, failed, cancelled, skipped, and incomplete tasks
@@ -79,6 +92,8 @@ type pipelineRunStatusCount struct {
 	Cancelled int
 	// number of tasks which are still pending, have not executed
 	Incomplete int
+	// count of tasks skipped due to the relevant timeout having elapsed before the task is launched
+	SkippedDueToTimeout int
 }
 
 // ResetSkippedCache resets the skipped cache in the facts map
@@ -362,7 +377,7 @@ func (facts *PipelineRunFacts) IsStopping() bool {
 func (facts *PipelineRunFacts) IsRunning() bool {
 	for _, t := range facts.State {
 		if facts.isDAGTask(t.PipelineTask.Name) {
-			if t.isRunning() {
+			if t.IsRunning() {
 				return true
 			}
 		}
@@ -407,6 +422,30 @@ func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 		tasks = facts.State.getRetryableTasks(candidateTasks)
 	}
 	return tasks, nil
+}
+
+// GetFinalTaskNames returns a list of all final task names
+func (facts *PipelineRunFacts) GetFinalTaskNames() sets.String {
+	names := sets.NewString()
+	// return list of tasks with all final tasks
+	for _, t := range facts.State {
+		if facts.isFinalTask(t.PipelineTask.Name) {
+			names.Insert(t.PipelineTask.Name)
+		}
+	}
+	return names
+}
+
+// GetTaskNames returns a list of all non-final task names
+func (facts *PipelineRunFacts) GetTaskNames() sets.String {
+	names := sets.NewString()
+	// return list of tasks with all final tasks
+	for _, t := range facts.State {
+		if !facts.isFinalTask(t.PipelineTask.Name) {
+			names.Insert(t.PipelineTask.Name)
+		}
+	}
+	return names
 }
 
 // GetFinalTasks returns a list of final tasks which needs to be executed next
@@ -467,7 +506,7 @@ func (facts *PipelineRunFacts) GetPipelineConditionStatus(ctx context.Context, p
 		}
 
 		switch {
-		case s.Failed > 0:
+		case s.Failed > 0 || s.SkippedDueToTimeout > 0:
 			// Set reason to ReasonFailed - At least one failed
 			reason = v1beta1.PipelineRunReasonFailed.String()
 			status = corev1.ConditionFalse
@@ -630,23 +669,33 @@ func (facts *PipelineRunFacts) checkFinalTasksDone() bool {
 // getPipelineTasksCount returns the count of successful tasks, failed tasks, cancelled tasks, skipped task, and incomplete tasks
 func (facts *PipelineRunFacts) getPipelineTasksCount() pipelineRunStatusCount {
 	s := pipelineRunStatusCount{
-		Skipped:    0,
-		Succeeded:  0,
-		Failed:     0,
-		Cancelled:  0,
-		Incomplete: 0,
+		Skipped:             0,
+		Succeeded:           0,
+		Failed:              0,
+		Cancelled:           0,
+		Incomplete:          0,
+		SkippedDueToTimeout: 0,
 	}
 	for _, t := range facts.State {
 		switch {
 		// increment success counter since the task is successful
 		case t.isSuccessful():
 			s.Succeeded++
+		// increment failure counter since the task is cancelled due to a timeout
+		case t.isCancelledForTimeOut():
+			s.Failed++
 		// increment cancelled counter since the task is cancelled
 		case t.isCancelled():
 			s.Cancelled++
 		// increment failure counter since the task has failed
 		case t.isFailure():
 			s.Failed++
+		// increment skipped and skipped due to timeout counters since the task was skipped due to the pipeline, tasks, or finally timeout being reached before the task was launched
+		case t.Skip(facts).SkippingReason == v1beta1.PipelineTimedOutSkip ||
+			t.Skip(facts).SkippingReason == v1beta1.TasksTimedOutSkip ||
+			t.IsFinallySkipped(facts).SkippingReason == v1beta1.FinallyTimedOutSkip:
+			s.Skipped++
+			s.SkippedDueToTimeout++
 		// increment skip counter since the task is skipped
 		case t.Skip(facts).IsSkipped:
 			s.Skipped++

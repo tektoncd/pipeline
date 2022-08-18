@@ -22,6 +22,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -112,7 +113,7 @@ spec:
 		wg.Add(1)
 		go func(name string) {
 			defer wg.Done()
-			err := WaitForTaskRunState(ctx, c, name, FailedWithReason("TaskRunTimeout", name), "TaskRunTimeout")
+			err := WaitForTaskRunState(ctx, c, name, FailedWithReason(v1beta1.TaskRunReasonCancelled.String(), name), v1beta1.TaskRunReasonCancelled.String())
 			if err != nil {
 				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)
 			}
@@ -413,7 +414,7 @@ spec:
 					}
 
 					if tr.Spec.TaskRef.Name == task2.Name && cond.Status == corev1.ConditionFalse {
-						if cond.Reason == "TaskRunTimeout" {
+						if cond.Reason == v1beta1.TaskRunReasonTimedOut.String() {
 							return true, nil
 						}
 						return true, fmt.Errorf("taskRun %q completed with the wrong reason: %s", task2.Name, cond.Reason)
@@ -422,7 +423,7 @@ spec:
 					}
 				}
 				return false, nil
-			}, "TaskRunTimeout")
+			}, v1beta1.TaskRunReasonCancelled.String())
 			if err != nil {
 				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)
 			}
@@ -439,7 +440,7 @@ func TestPipelineRunTasksTimeout(t *testing.T) {
 	// cancel the context after we have waited a suitable buffer beyond the given deadline.
 	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
-	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "alpha"}))
+	c, namespace := setup(ctx, t)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
 	defer tearDown(context.Background(), t, c, namespace)
@@ -537,7 +538,10 @@ spec:
 					}
 
 					if tr.Spec.TaskRef.Name == task.Name && cond.Status == corev1.ConditionFalse {
-						if cond.Reason == "TaskRunTimeout" {
+						if !strings.Contains(cond.Message, string(v1beta1.TaskRunCancelledByPipelineTimeoutMsg)) {
+							return true, fmt.Errorf("taskRun %s completed with the wrong message: %s", task.Name, cond.Message)
+						}
+						if cond.Reason == v1beta1.TaskRunReasonCancelled.String() {
 							return true, nil
 						}
 						return true, fmt.Errorf("taskRun %q completed with the wrong reason: %s", task.Name, cond.Reason)
@@ -546,7 +550,7 @@ spec:
 					}
 				}
 				return false, nil
-			}, "TaskRunTimeout")
+			}, v1beta1.TaskRunReasonCancelled.String())
 
 			if err != nil {
 				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)

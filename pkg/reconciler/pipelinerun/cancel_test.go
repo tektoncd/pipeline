@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -388,11 +390,12 @@ func TestCancelPipelineRun(t *testing.T) {
 	}
 }
 
-func TestGetChildObjectsFromPRStatus(t *testing.T) {
+func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 	testCases := []struct {
 		name             string
 		embeddedStatus   string
 		prStatus         v1beta1.PipelineRunStatus
+		taskNames        sets.String
 		expectedTRNames  []string
 		expectedRunNames []string
 		hasError         bool
@@ -432,6 +435,21 @@ func TestGetChildObjectsFromPRStatus(t *testing.T) {
 			}},
 			expectedTRNames:  []string{"t1"},
 			expectedRunNames: []string{"r1"},
+			hasError:         false,
+		}, {
+			name:           "taskrun and run, default embedded, just want taskrun",
+			embeddedStatus: config.DefaultEmbeddedStatus,
+			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
+					"t1": {PipelineTaskName: "task-1"},
+				},
+				Runs: map[string]*v1beta1.PipelineRunRunStatus{
+					"r1": {PipelineTaskName: "run-1"},
+				},
+			}},
+			taskNames:        sets.NewString("task-1"),
+			expectedTRNames:  []string{"t1"},
+			expectedRunNames: nil,
 			hasError:         false,
 		}, {
 			name:           "full embedded",
@@ -516,7 +534,7 @@ func TestGetChildObjectsFromPRStatus(t *testing.T) {
 			cfg.OnConfigChanged(withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus)))
 			ctx = cfg.ToContext(ctx)
 
-			trNames, runNames, err := getChildObjectsFromPRStatus(ctx, tc.prStatus)
+			trNames, runNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, tc.prStatus, tc.taskNames)
 
 			if tc.hasError {
 				if err == nil {

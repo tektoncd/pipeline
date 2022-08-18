@@ -227,6 +227,9 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 				State:           tc.state,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 
 			isDone := facts.checkTasksDone(d)
@@ -1113,6 +1116,9 @@ func TestDAGExecutionQueue(t *testing.T) {
 				SpecStatus:      tc.specStatus,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			queue, err := facts.DAGExecutionQueue()
 			if err != nil {
@@ -1199,6 +1205,9 @@ func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
 				SpecStatus:      tc.specStatus,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			queue, err := facts.DAGExecutionQueue()
 			if err != nil {
@@ -1288,6 +1297,9 @@ func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
 				SpecStatus:      tc.specStatus,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			queue, err := facts.DAGExecutionQueue()
 			if err != nil {
@@ -1377,6 +1389,9 @@ func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 				SpecStatus:      tc.specStatus,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			names := facts.completedOrSkippedDAGTasks()
 			if d := cmp.Diff(names, tc.expectedNames); d != "" {
@@ -1445,7 +1460,7 @@ func buildPipelineStateWithLargeDepencyGraph(t *testing.T) PipelineRunState {
 	return pipelineRunState
 }
 
-func TestPipelineRunState_GetFinalTasks(t *testing.T) {
+func TestPipelineRunState_GetFinalTasksAndNames(t *testing.T) {
 	tcs := []struct {
 		name               string
 		desc               string
@@ -1453,6 +1468,8 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks           []v1beta1.PipelineTask
 		finalTasks         []v1beta1.PipelineTask
 		expectedFinalTasks PipelineRunState
+		expectedFinalNames sets.String
+		expectedTaskNames  sets.String
 	}{{
 		// tasks: [ mytask1, mytask2]
 		// none finally
@@ -1463,6 +1480,8 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0], pts[1]},
 		finalTasks:         []v1beta1.PipelineTask{},
 		expectedFinalTasks: PipelineRunState{},
+		expectedFinalNames: nil,
+		expectedTaskNames:  sets.NewString(pts[0].Name, pts[1].Name),
 	}, {
 		// tasks: [ mytask1]
 		// finally: [mytask2]
@@ -1472,6 +1491,8 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{},
+		expectedFinalNames: sets.NewString(pts[1].Name),
+		expectedTaskNames:  sets.NewString(pts[0].Name),
 	}, {
 		// tasks: [ mytask1]
 		// finally: [mytask2]
@@ -1481,6 +1502,8 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{},
+		expectedFinalNames: sets.NewString(pts[1].Name),
+		expectedTaskNames:  sets.NewString(pts[0].Name),
 	}, {
 		// tasks: [ mytask1]
 		// finally: [mytask2]
@@ -1490,6 +1513,8 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{oneFinishedState[1]},
+		expectedFinalNames: sets.NewString(pts[1].Name),
+		expectedTaskNames:  sets.NewString(pts[0].Name),
 	}, {
 		// tasks: [ mytask1]
 		// finally: [mytask2]
@@ -1499,6 +1524,8 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{oneFinishedState[1]},
+		expectedFinalNames: sets.NewString(pts[1].Name),
+		expectedTaskNames:  sets.NewString(pts[0].Name),
 	}, {
 		// tasks: [ mytask1]
 		// finally: [mytask2]
@@ -1508,6 +1535,8 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{},
+		expectedFinalNames: sets.NewString(pts[1].Name),
+		expectedTaskNames:  sets.NewString(pts[0].Name),
 	}, {
 		// tasks: [ mytask1]
 		// finally: [mytask4]
@@ -1517,6 +1546,8 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
 		finalTasks:         []v1beta1.PipelineTask{pts[3]},
 		expectedFinalTasks: PipelineRunState{retryableFinalState[1]},
+		expectedFinalNames: sets.NewString(pts[3].Name),
+		expectedTaskNames:  sets.NewString(pts[0].Name),
 	}}
 	for _, tc := range tcs {
 		dagGraph, err := dag.Build(v1beta1.PipelineTaskList(tc.DAGTasks), v1beta1.PipelineTaskList(tc.DAGTasks).Deps())
@@ -1532,10 +1563,23 @@ func TestPipelineRunState_GetFinalTasks(t *testing.T) {
 				State:           tc.state,
 				TasksGraph:      dagGraph,
 				FinalTasksGraph: finalGraph,
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			next := facts.GetFinalTasks()
 			if d := cmp.Diff(tc.expectedFinalTasks, next); d != "" {
 				t.Errorf("Didn't get expected final Tasks for %s (%s): %s", tc.name, tc.desc, diff.PrintWantGot(d))
+			}
+
+			finalTaskNames := facts.GetFinalTaskNames()
+			if d := cmp.Diff(tc.expectedFinalNames, finalTaskNames); d != "" {
+				t.Errorf("Didn't get expected final Task names for %s (%s): %s", tc.name, tc.desc, diff.PrintWantGot(d))
+			}
+
+			nonFinalTaskNames := facts.GetTaskNames()
+			if d := cmp.Diff(tc.expectedTaskNames, nonFinalTaskNames); d != "" {
+				t.Errorf("Didn't get expected non-final Task names for %s (%s): %s", tc.name, tc.desc, diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -1556,6 +1600,12 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeFailed(trs[0])),
+	}}
+
+	var taskCancelledFailedTimedOut = PipelineRunState{{
+		PipelineTask: &pts[4],
+		TaskRunName:  "pipelinerun-mytask1",
+		TaskRun:      withCancelledForTimeout(makeFailed(trs[0])),
 	}}
 
 	var cancelledTask = PipelineRunState{{
@@ -1588,6 +1638,30 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				}}},
 			},
 		},
+	}}
+
+	var timedOutRun = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask14",
+		Run: &v1alpha1.Run{
+			Spec: v1alpha1.RunSpec{
+				StatusMessage: v1alpha1.RunCancelledByPipelineTimeoutMsg,
+			},
+			Status: v1alpha1.RunStatus{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: corev1.ConditionFalse,
+					Reason: v1alpha1.RunReasonCancelled,
+				}}},
+			},
+		},
+	}}
+
+	var notRunningRun = PipelineRunState{{
+		PipelineTask: &pts[12],
+		CustomTask:   true,
+		RunName:      "pipelinerun-mytask14",
 	}}
 
 	// 6 Tasks, 4 that run in parallel in the beginning
@@ -1625,11 +1699,15 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		TaskRun:      makeFailed(trs[0]),
 	}}
 
+	tenMinutesAgo := now.Add(-10 * time.Minute)
+	fiveMinuteDuration := 5 * time.Minute
+
 	tcs := []struct {
 		name               string
 		state              PipelineRunState
 		finallyState       PipelineRunState
 		specStatus         v1beta1.PipelineRunSpecStatus
+		timeoutsState      PipelineRunTimeoutsState
 		expectedStatus     corev1.ConditionStatus
 		expectedReason     string
 		expectedSucceeded  int
@@ -1713,6 +1791,12 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedStatus:    corev1.ConditionFalse,
 		expectedCancelled: 1,
 	}, {
+		name:           "task that was cancelled for timeout",
+		state:          taskCancelledFailedTimedOut,
+		expectedReason: v1beta1.PipelineRunReasonFailed.String(),
+		expectedStatus: corev1.ConditionFalse,
+		expectedFailed: 1,
+	}, {
 		name:               "task with multiple failures",
 		state:              taskMultipleFailuresSkipRunning,
 		expectedReason:     v1beta1.PipelineRunReasonStopping.String(),
@@ -1752,6 +1836,22 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		expectedStatus:    corev1.ConditionFalse,
 		expectedReason:    v1beta1.PipelineRunReasonCancelled.String(),
 		expectedCancelled: 1,
+	}, {
+		name:           "cancelled for timeout run should result in failed pipeline",
+		state:          timedOutRun,
+		expectedStatus: corev1.ConditionFalse,
+		expectedReason: v1beta1.PipelineRunReasonFailed.String(),
+		expectedFailed: 1,
+	}, {
+		name:  "skipped for timeout run should result in failed pipeline",
+		state: notRunningRun,
+		timeoutsState: PipelineRunTimeoutsState{
+			StartTime:    &tenMinutesAgo,
+			TasksTimeout: &fiveMinuteDuration,
+		},
+		expectedStatus:  corev1.ConditionFalse,
+		expectedReason:  v1beta1.PipelineRunReasonFailed.String(),
+		expectedSkipped: 1,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1771,11 +1871,18 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Unexpected error while building DAG for finally state %v: %v", tc.finallyState, err)
 			}
+
+			timeoutsState := tc.timeoutsState
+			if timeoutsState.Clock == nil {
+				timeoutsState.Clock = testClock
+			}
+
 			facts := PipelineRunFacts{
 				State:           tc.state,
 				SpecStatus:      tc.specStatus,
 				TasksGraph:      d,
 				FinalTasksGraph: dfinally,
+				TimeoutsState:   timeoutsState,
 			}
 			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
 			wantCondition := &apis.Condition{
@@ -1918,6 +2025,9 @@ func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
 				State:           tc.state,
 				TasksGraph:      d,
 				FinalTasksGraph: df,
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
 			wantCondition := &apis.Condition{
@@ -1955,6 +2065,9 @@ func TestGetPipelineConditionStatus_PipelineTimeoutDeprecated(t *testing.T) {
 		State:           oneFinishedState,
 		TasksGraph:      d,
 		FinalTasksGraph: &dag.Graph{},
+		TimeoutsState: PipelineRunTimeoutsState{
+			Clock: testClock,
+		},
 	}
 	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
 	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
@@ -1985,6 +2098,9 @@ func TestGetPipelineConditionStatus_PipelineTimeouts(t *testing.T) {
 		State:           oneFinishedState,
 		TasksGraph:      d,
 		FinalTasksGraph: &dag.Graph{},
+		TimeoutsState: PipelineRunTimeoutsState{
+			Clock: testClock,
+		},
 	}
 	c := facts.GetPipelineConditionStatus(context.Background(), pr, zap.NewNop().Sugar(), testClock)
 	if c.Status != corev1.ConditionFalse && c.Reason != v1beta1.PipelineRunReasonTimedOut.String() {
@@ -2240,6 +2356,9 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 				State:           tc.state,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			s := facts.GetPipelineTaskStatus()
 			if d := cmp.Diff(tc.expectedStatus, s); d != "" {
@@ -2300,6 +2419,9 @@ func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
 				State:           tc.state,
 				TasksGraph:      d,
 				FinalTasksGraph: df,
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			actualSkippedTasks := facts.GetSkippedTasks()
 			if d := cmp.Diff(tc.expectedSkippedTasks, actualSkippedTasks); d != "" {
@@ -2352,6 +2474,9 @@ func TestPipelineRunFacts_IsRunning(t *testing.T) {
 				State:           tc.state,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			if tc.expected != facts.IsRunning() {
 				t.Errorf("IsRunning expected to be %v", tc.expected)

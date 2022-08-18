@@ -77,8 +77,8 @@ func (t ResolvedPipelineTask) isDone(facts *PipelineRunFacts) bool {
 	return t.Skip(facts).IsSkipped || t.isSuccessful() || t.isFailure()
 }
 
-// isRunning returns true only if the task is neither succeeded, cancelled nor failed
-func (t ResolvedPipelineTask) isRunning() bool {
+// IsRunning returns true only if the task is neither succeeded, cancelled nor failed
+func (t ResolvedPipelineTask) IsRunning() bool {
 	switch {
 	case t.IsCustomTask() && t.IsMatrixed():
 		if len(t.Runs) == 0 {
@@ -145,6 +145,9 @@ func (t ResolvedPipelineTask) isSuccessful() bool {
 // If the PipelineTask has a Matrix, isFailure returns true if any run has failed (no remaining retries)
 // and all other runs are done.
 func (t ResolvedPipelineTask) isFailure() bool {
+	if t.isCancelledForTimeOut() {
+		return true
+	}
 	if t.isCancelled() {
 		return true
 	}
@@ -236,6 +239,59 @@ func (t ResolvedPipelineTask) hasRemainingRetries() bool {
 		retriesDone = len(t.TaskRun.Status.RetriesStatus)
 	}
 	return retriesDone < t.PipelineTask.Retries
+}
+
+// isCancelledForTimeOut returns true only if the run is cancelled due to PipelineRun-controlled timeout
+// If the PipelineTask has a Matrix, isCancelled returns true if any run is cancelled due to PipelineRun-controlled timeout and all other runs are done.
+func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
+	switch {
+	case t.IsCustomTask() && t.IsMatrixed():
+		if len(t.Runs) == 0 {
+			return false
+		}
+		isDone := true
+		atLeastOneCancelled := false
+		for _, run := range t.Runs {
+			isDone = isDone && run.IsDone()
+			c := run.Status.GetCondition(apis.ConditionSucceeded)
+			runCancelled := c.IsFalse() &&
+				c.Reason == v1alpha1.RunReasonCancelled &&
+				run.Spec.StatusMessage == v1alpha1.RunCancelledByPipelineTimeoutMsg
+			atLeastOneCancelled = atLeastOneCancelled || runCancelled
+		}
+		return atLeastOneCancelled && isDone
+	case t.IsCustomTask():
+		if t.Run == nil {
+			return false
+		}
+		c := t.Run.Status.GetCondition(apis.ConditionSucceeded)
+		return c != nil && c.IsFalse() &&
+			c.Reason == v1alpha1.RunReasonCancelled &&
+			t.Run.Spec.StatusMessage == v1alpha1.RunCancelledByPipelineTimeoutMsg
+	case t.IsMatrixed():
+		if len(t.TaskRuns) == 0 {
+			return false
+		}
+		isDone := true
+		atLeastOneCancelled := false
+		for _, taskRun := range t.TaskRuns {
+			isDone = isDone && taskRun.IsDone()
+			c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
+			taskRunCancelled := c.IsFalse() &&
+				c.Reason == v1beta1.TaskRunReasonCancelled.String() &&
+				taskRun.Spec.StatusMessage == v1beta1.TaskRunCancelledByPipelineTimeoutMsg
+			atLeastOneCancelled = atLeastOneCancelled || taskRunCancelled
+		}
+		return atLeastOneCancelled && isDone
+	default:
+		if t.TaskRun == nil {
+			return false
+		}
+		c := t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
+		return c != nil && c.IsFalse() &&
+			c.Reason == v1beta1.TaskRunReasonCancelled.String() &&
+			t.TaskRun.Spec.StatusMessage == v1beta1.TaskRunCancelledByPipelineTimeoutMsg
+	}
 }
 
 // isCancelled returns true only if the run is cancelled
@@ -346,6 +402,10 @@ func (t *ResolvedPipelineTask) skip(facts *PipelineRunFacts) TaskSkipStatus {
 		skippingReason = v1beta1.MissingResultsSkip
 	case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
 		skippingReason = v1beta1.WhenExpressionsSkip
+	case t.skipBecausePipelineRunPipelineTimeoutReached(facts):
+		skippingReason = v1beta1.PipelineTimedOutSkip
+	case t.skipBecausePipelineRunTasksTimeoutReached(facts):
+		skippingReason = v1beta1.TasksTimedOutSkip
 	default:
 		skippingReason = v1beta1.None
 	}
@@ -422,6 +482,45 @@ func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *Pipe
 	return false
 }
 
+// skipBecausePipelineRunPipelineTimeoutReached returns true if the task shouldn't be launched because the elapsed time since
+// the PipelineRun started is greater than the PipelineRun's pipeline timeout
+func (t *ResolvedPipelineTask) skipBecausePipelineRunPipelineTimeoutReached(facts *PipelineRunFacts) bool {
+	if t.checkParentsDone(facts) {
+		if facts.TimeoutsState.PipelineTimeout != nil && *facts.TimeoutsState.PipelineTimeout != config.NoTimeoutDuration && facts.TimeoutsState.StartTime != nil {
+			// If the elapsed time since the PipelineRun's start time is greater than the the PipelineRun's Pipeline timeout, skip.
+			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.StartTime) > *facts.TimeoutsState.PipelineTimeout
+		}
+	}
+
+	return false
+}
+
+// skipBecausePipelineRunTasksTimeoutReached returns true if the task shouldn't be launched because the elapsed time since
+// the PipelineRun started is greater than the PipelineRun's tasks timeout
+func (t *ResolvedPipelineTask) skipBecausePipelineRunTasksTimeoutReached(facts *PipelineRunFacts) bool {
+	if t.checkParentsDone(facts) && !t.IsFinalTask(facts) {
+		if facts.TimeoutsState.TasksTimeout != nil && *facts.TimeoutsState.TasksTimeout != config.NoTimeoutDuration && facts.TimeoutsState.StartTime != nil {
+			// If the elapsed time since the PipelineRun's start time is greater than the the PipelineRun's Tasks timeout, skip.
+			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.StartTime) > *facts.TimeoutsState.TasksTimeout
+		}
+	}
+
+	return false
+}
+
+// skipBecausePipelineRunFinallyTimeoutReached returns true if the task shouldn't be launched because the elapsed time since
+// finally tasks started being executed is greater than the PipelineRun's finally timeout
+func (t *ResolvedPipelineTask) skipBecausePipelineRunFinallyTimeoutReached(facts *PipelineRunFacts) bool {
+	if t.checkParentsDone(facts) && t.IsFinalTask(facts) {
+		if facts.TimeoutsState.FinallyTimeout != nil && *facts.TimeoutsState.FinallyTimeout != config.NoTimeoutDuration && facts.TimeoutsState.FinallyStartTime != nil {
+			// If the elapsed time since the PipelineRun's finally start time is greater than the the PipelineRun's finally timeout, skip.
+			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.FinallyStartTime) > *facts.TimeoutsState.FinallyTimeout
+		}
+	}
+
+	return false
+}
+
 // IsFinalTask returns true if a task is a finally task
 func (t *ResolvedPipelineTask) IsFinalTask(facts *PipelineRunFacts) bool {
 	return facts.isFinalTask(t.PipelineTask.Name)
@@ -440,6 +539,10 @@ func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSki
 			skippingReason = v1beta1.MissingResultsSkip
 		case t.skipBecauseWhenExpressionsEvaluatedToFalse(facts):
 			skippingReason = v1beta1.WhenExpressionsSkip
+		case t.skipBecausePipelineRunPipelineTimeoutReached(facts):
+			skippingReason = v1beta1.PipelineTimedOutSkip
+		case t.skipBecausePipelineRunFinallyTimeoutReached(facts):
+			skippingReason = v1beta1.FinallyTimedOutSkip
 		default:
 			skippingReason = v1beta1.None
 		}
