@@ -1179,6 +1179,11 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "resultWorkspace": {
+          "description": "ResultWorkspace declares a single named workspaces that is expected to be provided by a PipelineRun and used by this pipeline for storing results with resultType as reference.",
+          "default": {},
+          "$ref": "#/definitions/v1beta1.PipelineWorkspaceDeclaration"
+        },
         "results": {
           "description": "Results are values that this pipeline can output once run",
           "type": "array",

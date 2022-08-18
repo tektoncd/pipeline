@@ -8032,7 +8032,7 @@ spec:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
+			_, _, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
 
 			if err == nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() did not return error for invalid workspace")
@@ -8088,7 +8088,7 @@ spec:
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
+			_, _, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
 
 			if err != nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() returned error for valid pipeline: %v", err)

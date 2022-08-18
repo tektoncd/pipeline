@@ -1,0 +1,118 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-task-storage
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: gen-random-text
+spec:
+  workspaces:
+    - name: result-storages
+  results:
+    - name: text
+      type: reference
+      description: large randomly generated string
+  steps:
+    - name: add
+      image: alpine
+      command: ["/bin/sh", "-c"]
+      args:
+        - cat /dev/urandom | head -c 1024 | base64 | tee $(results.text.path);
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: concat-text
+spec:
+  workspaces:
+    - name: result-storages
+  params:
+    - name: first
+      description: the first operand
+    - name: second
+      description: the second operand
+  results:
+    - name: concatenated-text
+      description: concatenate strings
+      type: reference
+  steps:
+    - name: concat
+      image: alpine
+      command: ["/bin/sh", "-c"]
+      args:
+        - cat $(params.first) $(params.second) | tee $(results.concatenated-text.path) ;
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: concat-text-pipeline
+spec:
+  params:
+    - name: first
+      description: the first operand
+    - name: second
+      description: the second operand
+  tasks:
+    - name: first-task
+      taskRef:
+        name: gen-random-text
+      workspaces:
+        - name: result-storages
+          workspace: shared-data
+    - name: second-task
+      runAfter:
+        - first-task
+      taskRef:
+        name: gen-random-text
+      workspaces:
+        - name: result-storages
+          workspace: shared-data
+    - name: third-task
+      runAfter:
+        - second-task
+      params:
+        - name: first
+          value: $(tasks.first-task.results.text)
+        - name: second
+          value: $(tasks.second-task.results.text)
+      taskRef:
+        name: concat-text
+      workspaces:
+        - name: result-storages
+          workspace: shared-data
+  results:
+    - name: sum
+      type: reference
+      description: the concat of all texts
+      value:  $(tasks.third-task.results.concatenated-text)
+  workspaces:
+    - name: shared-data
+  resultWorkspace: # Specify which workspace should be used for storing results.
+      name: shared-data
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: concat-text-pipeline-run
+spec:
+  pipelineRef:
+    name: concat-text-pipeline
+  params:
+    - name: first
+      value: "2"
+    - name: second
+      value: "10"
+  workspaces:
+  - name: shared-data
+    persistentVolumeClaim:
+      claimName: shared-task-storage

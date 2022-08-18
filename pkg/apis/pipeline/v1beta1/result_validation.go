@@ -28,7 +28,7 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return apis.ErrInvalidKeyName(tr.Name, "name", fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
 	}
 	// Array and Object is alpha feature
-	if tr.Type == ResultsTypeArray || tr.Type == ResultsTypeObject {
+	if tr.Type == ResultsTypeArray || tr.Type == ResultsTypeObject || tr.Type == ResultsTypeReference {
 		errs := validateObjectResult(tr)
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "results type", config.AlphaAPIFields))
 		return errs

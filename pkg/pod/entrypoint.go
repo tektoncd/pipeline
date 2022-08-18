@@ -109,7 +109,7 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug, waitForReadyAnnotation bool) ([]corev1.Container, error) {
+func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug, resultsWsDir string, waitForReadyAnnotation bool) ([]corev1.Container, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("No steps specified")
 	}
@@ -133,6 +133,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			"-post_file", filepath.Join(runDir, idx, "out"),
 			"-termination_path", terminationPath,
 			"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
+			"-results_ws_dir", resultsWsDir,
 		)
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
 		if taskSpec != nil {
@@ -155,6 +156,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				}
 			}
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
+			argsForEntrypoint = append(argsForEntrypoint, referenceTypeResultArgument(steps, taskSpec.Results)...)
 		}
 
 		if breakpointConfig != nil && len(breakpointConfig.Breakpoint) > 0 {
@@ -189,6 +191,23 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 	return steps, nil
 }
 
+func referenceTypeResultArgument(steps []corev1.Container, results []v1beta1.TaskResult) []string {
+	if len(results) == 0 {
+		return nil
+	}
+	resultNames := make([]string, len(results))
+	for _, r := range results {
+		fmt.Println("Result in type ref loop..:", r)
+		if r.Type == v1beta1.ResultsTypeReference {
+			resultNames = append(resultNames, r.Name)
+		}
+	}
+	if len(resultNames) > 0 {
+		return []string{"-ref_results", strings.Join(resultNames, ",")}
+	}
+	return []string{}
+}
+
 func resultArgument(steps []corev1.Container, results []v1beta1.TaskResult) []string {
 	if len(results) == 0 {
 		return nil
@@ -199,7 +218,9 @@ func resultArgument(steps []corev1.Container, results []v1beta1.TaskResult) []st
 func collectResultsName(results []v1beta1.TaskResult) string {
 	var resultNames []string
 	for _, r := range results {
-		resultNames = append(resultNames, r.Name)
+		if r.Type != v1beta1.ResultsTypeReference { // Ref type results are passed seperately.
+			resultNames = append(resultNames, r.Name)
+		}
 	}
 	return strings.Join(resultNames, ",")
 }

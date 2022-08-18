@@ -2027,6 +2027,13 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"resultWorkspace": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ResultWorkspace declares a single named workspaces that is expected to be provided by a PipelineRun and used by this pipeline for storing results with resultType as reference.",
+							Default:     map[string]interface{}{},
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration"),
+						},
+					},
 					"results": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{

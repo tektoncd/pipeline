@@ -94,7 +94,7 @@ func TestOrderContainers(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, nil, nil, true)
+	got, err := orderContainers([]string{}, steps, nil, nil, "", true)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestOrderContainersWithNoWait(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{volumeMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, nil, nil, false)
+	got, err := orderContainers([]string{}, steps, nil, nil, "", false)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -174,7 +174,7 @@ func TestOrderContainersWithDebugOnFailure(t *testing.T) {
 	taskRunDebugConfig := &v1beta1.TaskRunDebug{
 		Breakpoint: []string{"onFailure"},
 	}
-	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, true)
+	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, "", true)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -252,7 +252,7 @@ func TestEntryPointResults(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, "", true)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestEntryPointResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, "", true)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -330,7 +330,7 @@ func TestEntryPointSingleResultsSingleStep(t *testing.T) {
 		VolumeMounts:           []corev1.VolumeMount{downwardMount},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, "", true)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}
@@ -401,7 +401,7 @@ func TestEntryPointOnError(t *testing.T) {
 		err: errors.New("task step onError must be either continue or stopAndFail but it is set to an invalid value invalid-on-error"),
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
-			got, err := orderContainers([]string{}, steps, &tc.taskSpec, nil, true)
+			got, err := orderContainers([]string{}, steps, &tc.taskSpec, nil, "", true)
 			if len(tc.wantContainers) == 0 {
 				if err == nil {
 					t.Fatalf("expected an error for an invalid value for onError but received none")
@@ -501,7 +501,7 @@ func TestEntryPointStepOutputConfigs(t *testing.T) {
 		},
 		TerminationMessagePath: "/tekton/termination",
 	}}
-	got, err := orderContainers([]string{}, steps, &taskSpec, nil, true)
+	got, err := orderContainers([]string{}, steps, &taskSpec, nil, "", true)
 	if err != nil {
 		t.Fatalf("orderContainers: %v", err)
 	}

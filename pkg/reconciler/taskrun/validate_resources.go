@@ -32,6 +32,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// These types are intercompatible for seemless conversion i.e.
+// a param type of type A is compatible with result or param type of CompatibleType[A]
+var CompatibleTypes = map[string]string{"reference": "string"}
+
 func validateResources(requiredResources []v1beta1.TaskResource, providedResources map[string]*resourcev1alpha1.PipelineResource) error {
 	required := make([]string, 0, len(requiredResources))
 	optional := make([]string, 0, len(requiredResources))
@@ -201,6 +205,11 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 		if _, ok := neededKeys[p]; !ok {
 			// Ignore any missing objects - this happens when object param is provided with default
 			continue
+		}
+		for i, r := range neededKeys[p] {
+			if val, ok := CompatibleTypes[r]; ok {
+				neededKeys[p][i] = val
+			}
 		}
 		missedKeys := list.DiffLeft(neededKeys[p], keys)
 		if len(missedKeys) != 0 {

@@ -679,8 +679,8 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 		pr.Status.MarkFailed(ReasonInvalidTaskResultReference, err.Error())
 		return controller.NewPermanentError(err)
 	}
-
 	resources.ApplyTaskResults(nextRpts, resolvedResultRefs)
+
 	// After we apply Task Results, we may be able to evaluate more
 	// when expressions, so reset the skipped cache
 	pipelineRunFacts.ResetSkippedCache()
@@ -810,6 +810,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	logger := logging.FromContext(ctx)
 
 	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
+	logger.Infof("Got task run: %#v", tr)
 	if tr != nil {
 		// retry should happen only when the taskrun has failed
 		if !tr.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
@@ -826,6 +827,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	}
 
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask)
+	logger.Infof("Extracted pipelineTask: %#v", rpt.PipelineTask)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
 	tr = &v1beta1.TaskRun{
@@ -853,13 +855,13 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		tr.Spec.TaskSpec = rpt.ResolvedTaskResources.TaskSpec
 	}
 
-	var pipelinePVCWorkspaceName string
+	var pipelinePVCWorkspaceName, resultWsSubpath string
 	var err error
-	tr.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rpt)
+	tr.Spec.Workspaces, pipelinePVCWorkspaceName, resultWsSubpath, err = getTaskrunWorkspaces(pr, rpt)
 	if err != nil {
 		return nil, err
 	}
-
+	tr.ObjectMeta.Annotations["ref-result-path"] = resultWsSubpath
 	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
 		tr.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
 	}
@@ -921,9 +923,10 @@ func (c *Reconciler) createRun(ctx context.Context, runName string, params []v1b
 			},
 		}
 	}
-	var pipelinePVCWorkspaceName string
+	var pipelinePVCWorkspaceName, resultWsSubpath string
 	var err error
-	r.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(pr, rpt)
+	r.Spec.Workspaces, pipelinePVCWorkspaceName, resultWsSubpath, err = getTaskrunWorkspaces(pr, rpt)
+	r.ObjectMeta.Annotations["ref-result-path"] = resultWsSubpath
 	if err != nil {
 		return nil, err
 	}
@@ -938,16 +941,27 @@ func (c *Reconciler) createRun(ctx context.Context, runName string, params []v1b
 	return c.PipelineClientSet.TektonV1alpha1().Runs(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
 }
 
-func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1beta1.WorkspaceBinding, string, error) {
+func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1beta1.WorkspaceBinding, string, string, error) {
 	var workspaces []v1beta1.WorkspaceBinding
 	var pipelinePVCWorkspaceName string
 	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
 	for _, binding := range pr.Spec.Workspaces {
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
+	rWs := pr.Status.PipelineSpec.ResultWorkspace
+	rWsDeclaredName := ""
+	for _, ws := range rpt.PipelineTask.Workspaces {
+		if ws.Workspace == rWs.Name {
+			rWsDeclaredName = ws.Name
+		}
+	}
+
+	resultWsSubpath := ""
 	for _, ws := range rpt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
-
+		if taskWorkspaceName == rWsDeclaredName && pipelineWorkspaceName == rWs.Name { // only one ws can be configured for storing results.
+			resultWsSubpath = filepath.Join(taskWorkspaceName, pipelineTaskSubPath)
+		}
 		pipelineWorkspace := pipelineWorkspaceName
 
 		if pipelineWorkspaceName == "" {
@@ -970,12 +984,12 @@ func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipeli
 				}
 			}
 			if !workspaceIsOptional {
-				return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspace, rpt.PipelineTask.Name)
+				return nil, "", "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspace, rpt.PipelineTask.Name)
 			}
 		}
 
 	}
-	return workspaces, pipelinePVCWorkspaceName, nil
+	return workspaces, pipelinePVCWorkspaceName, resultWsSubpath, nil
 }
 
 // taskWorkspaceByWorkspaceVolumeSource is returning the WorkspaceBinding with the TaskRun specified name.

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -60,14 +61,16 @@ type Entrypointer struct {
 
 	// Termination path is the path of a file to write the starting time of this endpopint
 	TerminationPath string
-
+	// Workspace dir
+	ResultWorkspaceDir string
 	// Waiter encapsulates waiting for files to exist.
 	Waiter Waiter
 	// Runner encapsulates running commands.
 	Runner Runner
 	// PostWriter encapsulates writing files when complete.
 	PostWriter PostWriter
-
+	// Results and their reference workspace
+	ReferenceTypeResults []string
 	// Results is the set of files that might contain task results
 	Results []string
 	// Timeout is an optional user-specified duration within which the Step must complete
@@ -180,7 +183,19 @@ func (e Entrypointer) Go() error {
 		// for a step without continue on error and any error, write a post file with .err
 		e.WritePostFile(e.PostFile, err)
 	}
-
+	var filteredRefTypeResults []string
+	for _, t := range e.ReferenceTypeResults {
+		if t != "" {
+			filteredRefTypeResults = append(filteredRefTypeResults, t)
+		}
+	}
+	if len(filteredRefTypeResults) >= 1 {
+		logger.Infof("Found ref type result - handling it in a different way. %d - %s", len(filteredRefTypeResults), strings.Join(filteredRefTypeResults, ","))
+		err = e.copyResultsToWorskpace(pipeline.DefaultResultPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
 	// This creates an error when trying to open the result folder as a file.
 	if len(e.Results) >= 1 && e.Results[0] != "" {
@@ -188,14 +203,68 @@ func (e Entrypointer) Go() error {
 			logger.Fatalf("Error while handling results: %s", err)
 		}
 	}
-
 	return err
+}
+
+func (e Entrypointer) copyResultsToWorskpace(resultDir string) error {
+	output := []v1beta1.PipelineResourceResult{}
+	for _, resultFile := range e.ReferenceTypeResults {
+		if resultFile == "" {
+			continue
+		}
+		dstBasePath := e.ResultWorkspaceDir
+		resultSrcFilePath := filepath.Join(resultDir, resultFile)
+		resultDstFilePath := filepath.Join(dstBasePath, resultFile)
+		fmt.Println("resultRefSrcFile:", resultSrcFilePath)
+		src, err := os.Open(resultSrcFilePath)
+		if os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		err = os.MkdirAll(dstBasePath, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create workspace dir for results. Error: %s", err)
+		}
+		dst, err := os.Create(resultDstFilePath)
+		if err != nil {
+			return err
+		}
+		if _, err = io.Copy(dst, src); err != nil {
+			return err
+		}
+		if err = dst.Sync(); err != nil {
+			return err
+		}
+		fmt.Println("resultRefDstFile:", resultDstFilePath)
+		fileContents, err := ioutil.ReadFile(resultDstFilePath)
+		if os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		fmt.Println("FileContents:", fileContents)
+		// if the file doesn't exist, ignore it
+		output = append(output, v1beta1.PipelineResourceResult{
+			Key:        resultFile,
+			Value:      resultDstFilePath,
+			ResultType: v1beta1.TaskRunResultType,
+		})
+	}
+	// push output only the refs (not content) to termination path
+	if len(output) != 0 {
+		if err := termination.WriteMessage(e.TerminationPath, output); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (e Entrypointer) readResultsFromDisk(resultDir string) error {
 	output := []v1beta1.PipelineResourceResult{}
 	for _, resultFile := range e.Results {
-		if resultFile == "" {
+		if resultFile == "" || strings.Contains(strings.Join(e.ReferenceTypeResults, ","), resultFile) {
 			continue
 		}
 		fileContents, err := ioutil.ReadFile(filepath.Join(resultDir, resultFile))

@@ -47,6 +47,8 @@ var (
 	timeout             = flag.Duration("timeout", time.Duration(0), "If specified, sets timeout for step")
 	stdoutPath          = flag.String("stdout_path", "", "If specified, file to copy stdout to")
 	stderrPath          = flag.String("stderr_path", "", "If specified, file to copy stderr to")
+	resultsWsDir        = flag.String("results_ws_dir", "", "store referenced results in the specified dir.")
+	refResults          = flag.String("ref_results", "", "If specified, script shall treat referenced results differently.")
 	breakpointOnFailure = flag.Bool("breakpoint_on_failure", false, "If specified, expect steps to not skip on failure")
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
@@ -72,6 +74,11 @@ func checkForBreakpointOnFailure(e entrypoint.Entrypointer, breakpointExitPostFi
 		}
 		os.Exit(exitCode)
 	}
+}
+
+func parseReferencedResults(str string) []string {
+	strs := strings.Split(str, ",")
+	return strs
 }
 
 func main() {
@@ -142,12 +149,14 @@ func main() {
 			stdoutPath: *stdoutPath,
 			stderrPath: *stderrPath,
 		},
-		PostWriter:          &realPostWriter{},
-		Results:             strings.Split(*results, ","),
-		Timeout:             timeout,
-		BreakpointOnFailure: *breakpointOnFailure,
-		OnError:             *onError,
-		StepMetadataDir:     *stepMetadataDir,
+		ReferenceTypeResults: parseReferencedResults(*refResults),
+		PostWriter:           &realPostWriter{},
+		Results:              strings.Split(*results, ","),
+		ResultWorkspaceDir:   *resultsWsDir,
+		Timeout:              timeout,
+		BreakpointOnFailure:  *breakpointOnFailure,
+		OnError:              *onError,
+		StepMetadataDir:      *stepMetadataDir,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current

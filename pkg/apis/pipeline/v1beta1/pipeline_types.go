@@ -107,6 +107,11 @@ type PipelineSpec struct {
 	// +optional
 	// +listType=atomic
 	Workspaces []PipelineWorkspaceDeclaration `json:"workspaces,omitempty"`
+	// ResultWorkspace declares a single named workspaces that is expected to be
+	// provided by a PipelineRun and used by this pipeline for storing results with
+	// resultType as reference.
+	// +optional
+	ResultWorkspace PipelineWorkspaceDeclaration `json:"resultWorkspace,omitempty"`
 	// Results are values that this pipeline can output once run
 	// +optional
 	// +listType=atomic
