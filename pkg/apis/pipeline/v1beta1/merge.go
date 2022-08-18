@@ -58,6 +58,8 @@ func MergeStepsWithStepTemplate(template *StepTemplate, steps []Step) ([]Step, e
 			merged.Args = []string{}
 		}
 
+		amendConflictingContainerFields(&merged, s)
+
 		// Pass through original step Script, for later conversion.
 		newStep := Step{Script: s.Script, OnError: s.OnError, Timeout: s.Timeout, StdoutConfig: s.StdoutConfig, StderrConfig: s.StderrConfig}
 		newStep.SetContainerFields(merged)
@@ -173,4 +175,25 @@ func mergeObjWithTemplateBytes(md *mergeData, obj, out interface{}) error {
 	}
 	// Unmarshal the merged JSON to a pointer, and return it.
 	return json.Unmarshal(mergedAsJSON, out)
+}
+
+// amendConflictingContainerFields amends conflicting container fields after merge, and overrides conflicting fields
+// by fields in step.
+func amendConflictingContainerFields(container *corev1.Container, step Step) {
+	if container == nil || len(step.Env) == 0 {
+		return
+	}
+
+	envNameToStepEnv := make(map[string]corev1.EnvVar, len(step.Env))
+	for _, e := range step.Env {
+		envNameToStepEnv[e.Name] = e
+	}
+
+	for index, env := range container.Env {
+		if env.ValueFrom != nil && len(env.Value) > 0 {
+			if e, ok := envNameToStepEnv[env.Name]; ok {
+				container.Env[index] = e
+			}
+		}
+	}
 }
