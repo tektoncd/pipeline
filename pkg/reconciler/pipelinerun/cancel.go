@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -34,6 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -108,9 +108,14 @@ func cancelPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1bet
 
 // cancelPipelineTaskRuns patches `TaskRun` and `Run` with canceled status
 func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface) []string {
+	return cancelPipelineTaskRunsForTaskNames(ctx, logger, pr, clientSet, sets.NewString())
+}
+
+// cancelPipelineTaskRunsForTaskNames patches `TaskRun`s and `Run`s for the given task names, or all if no task names are given, with canceled status
+func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, clientSet clientset.Interface, taskNames sets.String) []string {
 	errs := []string{}
 
-	trNames, runNames, err := getChildObjectsFromPRStatus(ctx, pr.Status)
+	trNames, runNames, err := getChildObjectsFromPRStatusForTaskNames(ctx, pr.Status, taskNames)
 	if err != nil {
 		errs = append(errs, err.Error())
 	}
@@ -136,9 +141,9 @@ func cancelPipelineTaskRuns(ctx context.Context, logger *zap.SugaredLogger, pr *
 	return errs
 }
 
-// getChildObjectsFromPRStatus returns taskruns and runs in the PipelineRunStatus's ChildReferences or TaskRuns/Runs,
-// based on the value of the embedded status flag.
-func getChildObjectsFromPRStatus(ctx context.Context, prs v1beta1.PipelineRunStatus) ([]string, []string, error) {
+// getChildObjectsFromPRStatusForTaskNames returns taskruns and runs in the PipelineRunStatus's ChildReferences or TaskRuns/Runs,
+// based on the value of the embedded status flag and the given set of PipelineTask names. If that set is empty, all are returned.
+func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1beta1.PipelineRunStatus, taskNames sets.String) ([]string, []string, error) {
 	cfg := config.FromContextOrDefaults(ctx)
 
 	var trNames []string
@@ -147,21 +152,27 @@ func getChildObjectsFromPRStatus(ctx context.Context, prs v1beta1.PipelineRunSta
 
 	if cfg.FeatureFlags.EmbeddedStatus != config.FullEmbeddedStatus {
 		for _, cr := range prs.ChildReferences {
-			switch cr.Kind {
-			case "TaskRun":
-				trNames = append(trNames, cr.Name)
-			case "Run":
-				runNames = append(runNames, cr.Name)
-			default:
-				unknownChildKinds[cr.Name] = cr.Kind
+			if taskNames.Len() == 0 || taskNames.Has(cr.PipelineTaskName) {
+				switch cr.Kind {
+				case "TaskRun":
+					trNames = append(trNames, cr.Name)
+				case "Run":
+					runNames = append(runNames, cr.Name)
+				default:
+					unknownChildKinds[cr.Name] = cr.Kind
+				}
 			}
 		}
 	} else {
-		for trName := range prs.TaskRuns {
-			trNames = append(trNames, trName)
+		for trName, trs := range prs.TaskRuns {
+			if taskNames.Len() == 0 || taskNames.Has(trs.PipelineTaskName) {
+				trNames = append(trNames, trName)
+			}
 		}
-		for runName := range prs.Runs {
-			runNames = append(runNames, runName)
+		for runName, runStatus := range prs.Runs {
+			if taskNames.Len() == 0 || taskNames.Has(runStatus.PipelineTaskName) {
+				runNames = append(runNames, runName)
+			}
 		}
 	}
 

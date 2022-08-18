@@ -1015,6 +1015,10 @@
           "x-kubernetes-patch-merge-key": "type",
           "x-kubernetes-patch-strategy": "merge"
         },
+        "finallyStartTime": {
+          "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
+          "$ref": "#/definitions/v1.Time"
+        },
         "observedGeneration": {
           "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
           "type": "integer",
@@ -1077,6 +1081,10 @@
         },
         "completionTime": {
           "description": "CompletionTime is the time the PipelineRun completed.",
+          "$ref": "#/definitions/v1.Time"
+        },
+        "finallyStartTime": {
+          "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
           "$ref": "#/definitions/v1.Time"
         },
         "pipelineResults": {

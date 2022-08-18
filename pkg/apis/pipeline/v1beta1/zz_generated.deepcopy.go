@@ -709,6 +709,10 @@ func (in *PipelineRunStatusFields) DeepCopyInto(out *PipelineRunStatusFields) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.FinallyStartTime != nil {
+		in, out := &in.FinallyStartTime, &out.FinallyStartTime
+		*out = (*in).DeepCopy()
+	}
 	return
 }
 

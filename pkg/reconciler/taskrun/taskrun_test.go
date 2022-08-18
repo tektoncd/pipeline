@@ -2148,6 +2148,79 @@ status:
 	}
 }
 
+func TestReconcileOnTimedOutTaskRun(t *testing.T) {
+	taskRun := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-run-timedout
+  namespace: foo
+spec:
+  status: TaskRunCancelled
+  statusMessage: TaskRun cancelled as pipeline has been cancelled.
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - status: Unknown
+    type: Succeeded
+  podName: test-taskrun-run-timedout-pod
+`)
+	pod, err := makePod(taskRun, simpleTask)
+	if err != nil {
+		t.Fatalf("MakePod: %v", err)
+	}
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{simpleTask},
+		Pods:     []*corev1.Pod{pod},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+	newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", taskRun.Name, err)
+	}
+
+	expectedStatus := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  v1beta1.TaskRunReasonCancelled.String(),
+		Message: `TaskRun "test-taskrun-run-timedout" was cancelled. TaskRun cancelled as pipeline has been cancelled.`,
+	}
+	if d := cmp.Diff(expectedStatus, newTr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
+		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
+	}
+
+	wantEvents := []string{
+		"Normal Started",
+		"Warning Failed TaskRun \"test-taskrun-run-timedout\" was cancelled. TaskRun cancelled as pipeline has been cancelled.",
+	}
+	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-timedout-taskrun", wantEvents)
+	if !(err == nil) {
+		t.Errorf(err.Error())
+	}
+
+	// reconcile the completed TaskRun again without the pod as that was deleted
+	d = test.Data{
+		TaskRuns: []*v1beta1.TaskRun{newTr},
+		Tasks:    []*v1beta1.Task{simpleTask},
+	}
+
+	testAssets, cancel = getTaskRunController(t, d)
+	defer cancel()
+	c = testAssets.Controller
+
+	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(newTr)); err != nil {
+		t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+	}
+}
+
 func TestReconcilePodFailuresStepImagePullFailed(t *testing.T) {
 	taskRun := parse.MustParseTaskRun(t, `
 metadata:

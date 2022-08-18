@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -285,7 +286,19 @@ func withCancelled(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
 	return tr
 }
 
+func withCancelledForTimeout(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
+	tr.Spec.StatusMessage = v1beta1.TaskRunCancelledByPipelineTimeoutMsg
+	tr.Status.Conditions[0].Reason = v1beta1.TaskRunSpecStatusCancelled
+	return tr
+}
+
 func withRunCancelled(run *v1alpha1.Run) *v1alpha1.Run {
+	run.Status.Conditions[0].Reason = v1alpha1.RunReasonCancelled
+	return run
+}
+
+func withRunCancelledForTimeout(run *v1alpha1.Run) *v1alpha1.Run {
+	run.Spec.StatusMessage = v1alpha1.RunCancelledByPipelineTimeoutMsg
 	run.Status.Conditions[0].Reason = v1alpha1.RunReasonCancelled
 	return run
 }
@@ -752,9 +765,12 @@ func dagFromState(state PipelineRunState) (*dag.Graph, error) {
 
 func TestIsSkipped(t *testing.T) {
 	for _, tc := range []struct {
-		name     string
-		state    PipelineRunState
-		expected map[string]bool
+		name            string
+		state           PipelineRunState
+		startTime       time.Time
+		tasksTimeout    time.Duration
+		pipelineTimeout time.Duration
+		expected        map[string]bool
 	}{{
 		name:  "tasks-failed",
 		state: oneFailedState,
@@ -1129,6 +1145,42 @@ func TestIsSkipped(t *testing.T) {
 			"mytask22": true,
 			"mytask23": true,
 		},
+	}, {
+		name:         "pipeline-tasks-timeout-not-reached",
+		state:        oneStartedState,
+		startTime:    now.Add(-5 * time.Minute),
+		tasksTimeout: 10 * time.Minute,
+		expected: map[string]bool{
+			"mytask1": false,
+			"mytask2": false,
+		},
+	}, {
+		name:            "pipeline-timeout-not--reached",
+		state:           oneStartedState,
+		startTime:       now.Add(-5 * time.Minute),
+		pipelineTimeout: 10 * time.Minute,
+		expected: map[string]bool{
+			"mytask1": false,
+			"mytask2": false,
+		},
+	}, {
+		name:         "pipeline-tasks-timeout-reached",
+		state:        oneStartedState,
+		startTime:    now.Add(-5 * time.Minute),
+		tasksTimeout: 4 * time.Minute,
+		expected: map[string]bool{
+			"mytask1": false,
+			"mytask2": true,
+		},
+	}, {
+		name:            "pipeline-timeout-reached",
+		state:           oneStartedState,
+		startTime:       now.Add(-5 * time.Minute),
+		pipelineTimeout: 4 * time.Minute,
+		expected: map[string]bool{
+			"mytask1": false,
+			"mytask2": true,
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			d, err := dagFromState(tc.state)
@@ -1136,10 +1188,24 @@ func TestIsSkipped(t *testing.T) {
 				t.Fatalf("Could not get a dag from the TC state %#v: %v", tc.state, err)
 			}
 			stateMap := tc.state.ToMap()
+			startTime := tc.startTime
+			if startTime.IsZero() {
+				startTime = now
+			}
 			facts := PipelineRunFacts{
 				State:           tc.state,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					StartTime: &startTime,
+					Clock:     testClock,
+				},
+			}
+			if tc.tasksTimeout != 0 {
+				facts.TimeoutsState.TasksTimeout = &tc.tasksTimeout
+			}
+			if tc.pipelineTimeout != 0 {
+				facts.TimeoutsState.PipelineTimeout = &tc.pipelineTimeout
 			}
 			for taskName, isSkipped := range tc.expected {
 				rpt := stateMap[taskName]
@@ -1267,10 +1333,25 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: false,
 	}, {
+		name: "taskrun cancelled for timeout",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			TaskRun:      withCancelledForTimeout(makeFailed(trs[0])),
+		},
+		want: true,
+	}, {
 		name: "run cancelled",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
 			Run:          withRunCancelled(makeRunFailed(runs[0])),
+			CustomTask:   true,
+		},
+		want: true,
+	}, {
+		name: "run cancelled for timeout",
+		rpt: ResolvedPipelineTask{
+			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
+			Run:          withRunCancelledForTimeout(makeRunFailed(runs[0])),
 			CustomTask:   true,
 		},
 		want: true,
@@ -1688,6 +1769,9 @@ func TestSkipBecauseParentTaskWasSkipped(t *testing.T) {
 				State:           tc.state,
 				TasksGraph:      d,
 				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 			for taskName, isSkipped := range tc.expected {
 				rpt := stateMap[taskName]
@@ -2851,46 +2935,129 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 		},
 	}}
 
-	expected := map[string]bool{
-		"final-task-1": false,
-		"final-task-2": true,
-		"final-task-3": false,
-		"final-task-4": true,
-		"final-task-5": false,
-		"final-task-6": true,
+	testCases := []struct {
+		name             string
+		startTime        time.Time
+		finallyStartTime time.Time
+		finallyTimeout   time.Duration
+		pipelineTimeout  time.Duration
+		expected         map[string]bool
+	}{
+		{
+			name: "no finally timeout",
+			expected: map[string]bool{
+				"final-task-1": false,
+				"final-task-2": true,
+				"final-task-3": false,
+				"final-task-4": true,
+				"final-task-5": false,
+				"final-task-6": true,
+			},
+		}, {
+			name:             "finally timeout not yet reached",
+			finallyStartTime: now.Add(-5 * time.Minute),
+			finallyTimeout:   10 * time.Minute,
+			expected: map[string]bool{
+				"final-task-1": false,
+				"final-task-2": true,
+				"final-task-3": false,
+				"final-task-4": true,
+				"final-task-5": false,
+				"final-task-6": true,
+			},
+		}, {
+			name:            "pipeline timeout not yet reached",
+			startTime:       now.Add(-5 * time.Minute),
+			pipelineTimeout: 10 * time.Minute,
+			expected: map[string]bool{
+				"final-task-1": false,
+				"final-task-2": true,
+				"final-task-3": false,
+				"final-task-4": true,
+				"final-task-5": false,
+				"final-task-6": true,
+			},
+		}, {
+			name:             "finally timeout passed",
+			finallyStartTime: now.Add(-5 * time.Minute),
+			finallyTimeout:   4 * time.Minute,
+			expected: map[string]bool{
+				"final-task-1": true,
+				"final-task-2": true,
+				"final-task-3": true,
+				"final-task-4": true,
+				"final-task-5": true,
+				"final-task-6": true,
+			},
+		}, {
+			name:            "pipeline timeout passed",
+			startTime:       now.Add(-5 * time.Minute),
+			pipelineTimeout: 4 * time.Minute,
+			expected: map[string]bool{
+				"final-task-1": true,
+				"final-task-2": true,
+				"final-task-3": true,
+				"final-task-4": true,
+				"final-task-5": true,
+				"final-task-6": true,
+			},
+		},
 	}
 
-	tasks := v1beta1.PipelineTaskList([]v1beta1.PipelineTask{*state[0].PipelineTask})
-	d, err := dag.Build(tasks, tasks.Deps())
-	if err != nil {
-		t.Fatalf("Could not get a dag from the dag tasks %#v: %v", state[0], err)
-	}
-
-	// build graph with finally tasks
-	var pts []v1beta1.PipelineTask
-	for i := range state {
-		if i > 0 { // first one is a dag task that produces a result
-			pts = append(pts, *state[i].PipelineTask)
-		}
-	}
-	dfinally, err := dag.Build(v1beta1.PipelineTaskList(pts), map[string][]string{})
-	if err != nil {
-		t.Fatalf("Could not get a dag from the finally tasks %#v: %v", pts, err)
-	}
-
-	facts := &PipelineRunFacts{
-		State:           state,
-		TasksGraph:      d,
-		FinalTasksGraph: dfinally,
-	}
-
-	for i := range state {
-		if i > 0 { // first one is a dag task that produces a result
-			finallyTaskName := state[i].PipelineTask.Name
-			if d := cmp.Diff(expected[finallyTaskName], state[i].IsFinallySkipped(facts).IsSkipped); d != "" {
-				t.Fatalf("Didn't get expected isFinallySkipped from finally task %s: %s", finallyTaskName, diff.PrintWantGot(d))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tasks := v1beta1.PipelineTaskList([]v1beta1.PipelineTask{*state[0].PipelineTask})
+			d, err := dag.Build(tasks, tasks.Deps())
+			if err != nil {
+				t.Fatalf("Could not get a dag from the dag tasks %#v: %v", state[0], err)
 			}
-		}
+
+			// build graph with finally tasks
+			var pts []v1beta1.PipelineTask
+			for i := range state {
+				if i > 0 { // first one is a dag task that produces a result
+					pts = append(pts, *state[i].PipelineTask)
+				}
+			}
+			dfinally, err := dag.Build(v1beta1.PipelineTaskList(pts), map[string][]string{})
+			if err != nil {
+				t.Fatalf("Could not get a dag from the finally tasks %#v: %v", pts, err)
+			}
+
+			finallyStartTime := tc.finallyStartTime
+			if finallyStartTime.IsZero() {
+				finallyStartTime = now
+			}
+			prStartTime := tc.startTime
+			if prStartTime.IsZero() {
+				prStartTime = now
+			}
+			facts := &PipelineRunFacts{
+				State:           state,
+				TasksGraph:      d,
+				FinalTasksGraph: dfinally,
+				TimeoutsState: PipelineRunTimeoutsState{
+					StartTime:        &prStartTime,
+					FinallyStartTime: &finallyStartTime,
+					Clock:            testClock,
+				},
+			}
+			if tc.finallyTimeout != 0 {
+				facts.TimeoutsState.FinallyTimeout = &tc.finallyTimeout
+			}
+			if tc.pipelineTimeout != 0 {
+				facts.TimeoutsState.PipelineTimeout = &tc.pipelineTimeout
+			}
+
+			for i := range state {
+				if i > 0 { // first one is a dag task that produces a result
+					finallyTaskName := state[i].PipelineTask.Name
+					if d := cmp.Diff(tc.expected[finallyTaskName], state[i].IsFinallySkipped(facts).IsSkipped); d != "" {
+						t.Fatalf("Didn't get expected isFinallySkipped from finally task %s: %s", finallyTaskName, diff.PrintWantGot(d))
+					}
+				}
+			}
+		})
 	}
 }
 
@@ -3008,6 +3175,9 @@ func TestResolvedPipelineRunTask_IsFinallySkippedByCondition(t *testing.T) {
 				State:           tc.state,
 				TasksGraph:      d,
 				FinalTasksGraph: dfinally,
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
 			}
 
 			for _, state := range tc.state[1:] {
@@ -3080,6 +3250,9 @@ func TestResolvedPipelineRunTask_IsFinalTask(t *testing.T) {
 		State:           state,
 		TasksGraph:      d,
 		FinalTasksGraph: dfinally,
+		TimeoutsState: PipelineRunTimeoutsState{
+			Clock: testClock,
+		},
 	}
 
 	finallyTaskName := state[1].PipelineTask.Name
@@ -4484,8 +4657,8 @@ func TestIsRunning(t *testing.T) {
 		want: true,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.rpt.isRunning(); got != tc.want {
-				t.Errorf("expected isRunning: %t but got %t", tc.want, got)
+			if got := tc.rpt.IsRunning(); got != tc.want {
+				t.Errorf("expected IsRunning: %t but got %t", tc.want, got)
 			}
 
 		})
