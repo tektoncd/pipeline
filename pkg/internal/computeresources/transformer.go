@@ -67,54 +67,24 @@ func transformPodBasedOnLimitRange(p *corev1.Pod, limitRange *corev1.LimitRange)
 	}
 
 	// FIXME(#4230) maxLimitRequestRatio to support later
-	defaultContainerLimits := getDefaultLimits(limitRange)
-	defaultContainerRequests := getDefaultContainerRequest(limitRange)
 	defaultStepContainerRequests := getDefaultStepContainerRequest(limitRange, nbStepContainers)
 
-	for i := range p.Spec.InitContainers {
-		// We are trying to set the smallest requests possible
-		if p.Spec.InitContainers[i].Resources.Requests == nil {
-			p.Spec.InitContainers[i].Resources.Requests = defaultContainerRequests
-		} else {
-			for _, name := range resourceNames {
-				setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Requests, defaultContainerRequests)
-			}
-		}
-		// We are trying to set the highest limits possible
-		if p.Spec.InitContainers[i].Resources.Limits == nil {
-			p.Spec.InitContainers[i].Resources.Limits = defaultContainerLimits
-		} else {
-			for _, name := range resourceNames {
-				setRequestsOrLimits(name, p.Spec.InitContainers[i].Resources.Limits, defaultContainerLimits)
-			}
-		}
-	}
-
 	for i, c := range p.Spec.Containers {
-		var defaultRequests = defaultContainerRequests
-		if pod.IsContainerStep(c.Name) {
-			defaultRequests = defaultStepContainerRequests
+		if !pod.IsContainerStep(c.Name) {
+			continue
 		}
-
 		if p.Spec.Containers[i].Resources.Requests == nil {
-			p.Spec.Containers[i].Resources.Requests = defaultRequests
+			p.Spec.Containers[i].Resources.Requests = defaultStepContainerRequests
 		} else {
 			for _, name := range resourceNames {
-				setRequestsOrLimits(name, p.Spec.Containers[i].Resources.Requests, defaultRequests)
-			}
-		}
-		if p.Spec.Containers[i].Resources.Limits == nil {
-			p.Spec.Containers[i].Resources.Limits = defaultContainerLimits
-		} else {
-			for _, name := range resourceNames {
-				setRequestsOrLimits(name, p.Spec.Containers[i].Resources.Limits, defaultContainerLimits)
+				setRequests(name, p.Spec.Containers[i].Resources.Requests, defaultStepContainerRequests)
 			}
 		}
 	}
 	return p
 }
 
-func setRequestsOrLimits(name corev1.ResourceName, dst, src corev1.ResourceList) {
+func setRequests(name corev1.ResourceName, dst, src corev1.ResourceList) {
 	if compare.IsZero(dst[name]) && !compare.IsZero(src[name]) {
 		dst[name] = src[name]
 	}
@@ -157,36 +127,4 @@ func getDefaultStepContainerRequest(limitRange *corev1.LimitRange, nbContainers 
 		return nil
 	}
 	return r
-}
-
-// Returns the default requests to use for each init container, determined by the LimitRange default requests and minimums
-func getDefaultContainerRequest(limitRange *corev1.LimitRange) corev1.ResourceList {
-	// Support only Type Container to start with
-	var r corev1.ResourceList
-	for _, item := range limitRange.Spec.Limits {
-		// Only support LimitTypeContainer
-		if item.Type == corev1.LimitTypeContainer {
-			if item.DefaultRequest != nil {
-				r = item.DefaultRequest
-			} else if item.Min != nil {
-				r = item.Min
-			}
-		}
-	}
-	return r
-}
-
-func getDefaultLimits(limitRange *corev1.LimitRange) corev1.ResourceList {
-	// Support only Type Container to start with
-	var l corev1.ResourceList
-	for _, item := range limitRange.Spec.Limits {
-		if item.Type == corev1.LimitTypeContainer {
-			if item.Default != nil {
-				l = item.Default
-			} else if item.Max != nil {
-				l = item.Max
-			}
-		}
-	}
-	return l
 }
