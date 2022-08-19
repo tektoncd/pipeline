@@ -158,23 +158,18 @@ will be applied to the init containers that Tekton injects into a `TaskRun`'s po
 
 ### Requests
 
-If a container does not have requests defined, the resulting container's requests are the larger of:
-- the LimitRange minimum resource requests 
-- the LimitRange default resource requests (for init and Sidecar containers) or the LimitRange default resource requests divided by the number of Step containers (for Step containers)
+If a Step container does not have requests defined, Tekton will divide a LimitRange's `defaultRequests` by the number of Step containers and apply these requests to the Steps.
+This results in a TaskRun with overall requests equal to LimitRange `defaultRequests`.
+If this value is less than the LimitRange minimum, the LimitRange minimum will be used instead.
+LimitRange `defaultRequests` are applied as-is to init containers or Sidecar containers that don't specify requests.
 
-If a container has requests defined, the resulting container's requests are the larger of:
-- the container's requests
-- the LimitRange minimum resource requests
+Containers that do specify requests will not be modified. If these requests are lower than LimitRange minimums, Kubernetes will reject the resulting TaskRun's pod.
 
 ### Limits
 
-If a container does not have limits defined, the resulting container's limits are the smaller of:
-- the LimitRange maximum resource limits 
-- the LimitRange default resource limits
-
-If a container has limits defined, the resulting container's limits are the smaller of:
-- the container's limits
-- the LimitRange maximum resource limits
+Tekton does not adjust container limits, regardless of whether a container is a Step, Sidecar, or init container.
+If a container does not have limits defined, Kubernetes will apply the LimitRange `default` to the container's limits.
+If a container does define limits, and they are less than the LimitRange `default`, Kubernetes will reject the resulting TaskRun's pod.
 
 ### Examples
 
