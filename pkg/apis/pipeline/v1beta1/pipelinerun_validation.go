@@ -65,6 +65,10 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 		ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
 	}
+
+	// Validate PipelineRun parameters
+	errs = errs.Also(ps.validatePipelineRunParameters(ctx))
+
 	// Validate propagated parameters
 	errs = errs.Also(ps.validateInlineParameters(ctx))
 
@@ -112,6 +116,32 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	}
 	for idx, trs := range ps.TaskRunSpecs {
 		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
+	}
+
+	return errs
+}
+
+func (ps *PipelineRunSpec) validatePipelineRunParameters(ctx context.Context) (errs *apis.FieldError) {
+	if len(ps.Params) == 0 {
+		return errs
+	}
+
+	// Validate parameter types and uniqueness
+	errs = errs.Also(ValidateParameters(ctx, ps.Params).ViaField("params"))
+
+	// Validate that task results aren't used in param values
+	for _, param := range ps.Params {
+		expressions, ok := GetVarSubstitutionExpressionsForParam(param)
+		if ok {
+			if LooksLikeContainsResultRefs(expressions) {
+				expressions = filter(expressions, looksLikeResultRef)
+				resultRefs := NewResultRefs(expressions)
+				if len(resultRefs) > 0 {
+					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("cannot use result expressions in %v as PipelineRun parameter values", expressions),
+						"value").ViaFieldKey("params", param.Name))
+				}
+			}
+		}
 	}
 
 	return errs

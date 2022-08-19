@@ -151,6 +151,79 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
 	}, {
+		name: "duplicate param names",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "some-param",
+					Value: v1beta1.ArrayOrString{
+						ArrayVal: []string{"hello", "pipeline"},
+					},
+				}, {
+					Name: "some-param",
+					Value: v1beta1.ArrayOrString{
+						ArrayVal: []string{"goodbye", "pipeline"},
+					},
+				}},
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "expected exactly one, got both",
+			Paths:   []string{"spec.params[some-param].name"},
+		},
+	}, {
+		name: "task result in string param value",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "some-param",
+					Value: v1beta1.ArrayOrString{
+						StringVal: "$(tasks.some-task.results.foo)",
+						Type:      v1beta1.ParamTypeString,
+					},
+				}},
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "invalid value: cannot use result expressions in [tasks.some-task.results.foo] as PipelineRun parameter values",
+			Paths:   []string{"spec.params[some-param].value"},
+		},
+	}, {
+		name: "task result in array param value",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "some-param",
+					Value: v1beta1.ArrayOrString{
+						ArrayVal: []string{"$(tasks.some-task.results.foo)"},
+						Type:     v1beta1.ParamTypeArray,
+					},
+				}},
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: "invalid value: cannot use result expressions in [tasks.some-task.results.foo] as PipelineRun parameter values",
+			Paths:   []string{"spec.params[some-param].value"},
+		},
+	}, {
 		name: "params with pipelinespec and taskspec",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
