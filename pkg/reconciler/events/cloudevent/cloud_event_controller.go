@@ -149,7 +149,7 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
 		// In case of Run event, check cache if cloudevent is already sent
 		if isRun {
-			cloudEventSent, err := cache.IsCloudEventSent(cacheClient, event)
+			cloudEventSent, err := cache.ContainsOrAddCloudEvent(cacheClient, event)
 			if err != nil {
 				logger.Errorf("error while checking cache: %s", err)
 			}
@@ -163,14 +163,9 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 			recorder := controller.GetEventRecorder(ctx)
 			if recorder == nil {
 				logger.Warnf("No recorder in context, cannot emit error event")
+				return
 			}
 			recorder.Event(object, corev1.EventTypeWarning, "Cloud Event Failure", result.Error())
-		}
-		// In case of Run event, add to the cache to avoid duplicate events
-		if isRun {
-			if err := cache.AddEventSentToCache(cacheClient, event); err != nil {
-				logger.Errorf("error while adding sent event to cache: %s", err)
-			}
 		}
 	}()
 

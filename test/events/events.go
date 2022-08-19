@@ -26,6 +26,8 @@ import (
 // in the same order.
 func CheckEventsOrdered(t *testing.T, eventChan chan string, testName string, wantEvents []string) error {
 	t.Helper()
+	// Sleep 50ms to make sure events have delivered
+	time.Sleep(50 * time.Millisecond)
 	err := eventsFromChannel(eventChan, wantEvents)
 	if err != nil {
 		return fmt.Errorf("error in test %s: %v", testName, err)
@@ -37,6 +39,8 @@ func CheckEventsOrdered(t *testing.T, eventChan chan string, testName string, wa
 // were received via the given chan, in any order.
 func CheckEventsUnordered(t *testing.T, eventChan chan string, testName string, wantEvents []string) error {
 	t.Helper()
+	// Sleep 50ms to make sure events have delivered
+	time.Sleep(50 * time.Millisecond)
 	err := eventsFromChannelUnordered(eventChan, wantEvents)
 	if err != nil {
 		return fmt.Errorf("error in test %s: %v", testName, err)
