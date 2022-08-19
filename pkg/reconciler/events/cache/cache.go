@@ -31,21 +31,8 @@ type eventData struct {
 	Run *v1alpha1.Run `json:"run,omitempty"`
 }
 
-// AddEventSentToCache adds the particular object to cache marking it as sent
-func AddEventSentToCache(cacheClient *lru.Cache, event *cloudevents.Event) error {
-	if cacheClient == nil {
-		return errors.New("cache client is nil")
-	}
-	eventKey, err := EventKey(event)
-	if err != nil {
-		return err
-	}
-	cacheClient.Add(eventKey, nil)
-	return nil
-}
-
-// IsCloudEventSent checks if the event exists in the cache
-func IsCloudEventSent(cacheClient *lru.Cache, event *cloudevents.Event) (bool, error) {
+// ContainsOrAddCloudEvent checks if the event exists in the cache
+func ContainsOrAddCloudEvent(cacheClient *lru.Cache, event *cloudevents.Event) (bool, error) {
 	if cacheClient == nil {
 		return false, errors.New("cache client is nil")
 	}
@@ -53,7 +40,8 @@ func IsCloudEventSent(cacheClient *lru.Cache, event *cloudevents.Event) (bool, e
 	if err != nil {
 		return false, err
 	}
-	return cacheClient.Contains(eventKey), nil
+	isPresent, _ := cacheClient.ContainsOrAdd(eventKey, nil)
+	return isPresent, nil
 }
 
 // EventKey defines whether an event is considered different from another
