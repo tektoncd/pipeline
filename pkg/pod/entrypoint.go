@@ -221,7 +221,7 @@ func resultArgument(steps []corev1.Container, results []v1beta1.TaskResult) []st
 func collectResultsName(results []v1beta1.TaskResult) string {
 	var resultNames []string
 	for _, r := range results {
-		if r.Type != v1beta1.ResultsTypeReference { // Ref type results are passed seperately.
+		if r.Type != v1beta1.ResultsTypeReference { // Ref type results are passed separately.
 			resultNames = append(resultNames, r.Name)
 		}
 	}
