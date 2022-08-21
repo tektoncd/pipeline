@@ -32,7 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// These types are intercompatible for seemless conversion i.e.
+// CompatibleTypes These types are intercompatible for seemless conversion i.e.
 // a param type of type A is compatible with result or param type of CompatibleType[A]
 var CompatibleTypes = map[string]string{"reference": "string"}
 

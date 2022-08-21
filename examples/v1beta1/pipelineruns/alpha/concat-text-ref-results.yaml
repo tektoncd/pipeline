@@ -6,7 +6,7 @@ metadata:
 spec:
   resources:
     requests:
-      storage: 16Mi
+      storage: 32Mi
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
@@ -27,7 +27,7 @@ spec:
       image: alpine
       command: ["/bin/sh", "-c"]
       args:
-        - cat /dev/urandom | head -c 1024 | base64 | tee $(results.text.path);
+        - cat /dev/urandom | base64 | head -c 4096 | tee $(results.text.path);
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -57,11 +57,6 @@ kind: Pipeline
 metadata:
   name: concat-text-pipeline
 spec:
-  params:
-    - name: first
-      description: the first operand
-    - name: second
-      description: the second operand
   tasks:
     - name: first-task
       taskRef:
@@ -94,11 +89,12 @@ spec:
     - name: sum
       type: reference
       description: the concat of all texts
-      value:  $(tasks.third-task.results.concatenated-text)
+      value: $(tasks.third-task.results.concatenated-text)
   workspaces:
     - name: shared-data
-  resultWorkspace: # Specify which workspace should be used for storing results.
-      name: shared-data
+  # Specify which workspace should be used for storing results.
+  resultWorkspace:
+    name: shared-data
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -107,11 +103,6 @@ metadata:
 spec:
   pipelineRef:
     name: concat-text-pipeline
-  params:
-    - name: first
-      value: "2"
-    - name: second
-      value: "10"
   workspaces:
   - name: shared-data
     persistentVolumeClaim:

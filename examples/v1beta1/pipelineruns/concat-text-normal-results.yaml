@@ -11,7 +11,7 @@ spec:
       image: alpine
       command: ["/bin/sh", "-c"]
       args:
-        - cat /dev/urandom | head -c 1024 | base64 | tee $(results.text.path);
+        - cat /dev/urandom | base64 | head -c 1024 | tee $(results.text.path);
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -38,11 +38,6 @@ kind: Pipeline
 metadata:
   name: concat-text-pipeline
 spec:
-  params:
-    - name: first
-      description: the first operand
-    - name: second
-      description: the second operand
   tasks:
     - name: first-task
       taskRef:
@@ -65,7 +60,7 @@ spec:
   results:
     - name: sum
       description: the concat of all texts
-      value:  $(tasks.third-task.results.concatenated-text)
+      value: $(tasks.third-task.results.concatenated-text)
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -74,8 +69,3 @@ metadata:
 spec:
   pipelineRef:
     name: concat-text-pipeline
-  params:
-    - name: first
-      value: "2"
-    - name: second
-      value: "10"

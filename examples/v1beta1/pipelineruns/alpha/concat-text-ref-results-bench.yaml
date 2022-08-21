@@ -332,11 +332,12 @@ spec:
     - name: sum
       type: reference
       description: the concat of all texts
-      value:  $(tasks.third-task.results.concatenated-text)
+      value: $(tasks.third-task.results.concatenated-text)
   workspaces:
     - name: shared-data
-  resultWorkspace: # Specify which workspace should be used for storing results.
-      name: shared-data
+  # Specify which workspace should be used for storing results.
+  resultWorkspace:
+    name: shared-data
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun

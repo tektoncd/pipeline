@@ -946,24 +946,26 @@ func (c *Reconciler) createRun(ctx context.Context, runName string, params []v1b
 }
 
 func getTaskrunWorkspaces(pr *v1beta1.PipelineRun, rpt *resources.ResolvedPipelineTask) ([]v1beta1.WorkspaceBinding, string, string, error) {
+
 	var workspaces []v1beta1.WorkspaceBinding
 	var pipelinePVCWorkspaceName string
 	pipelineRunWorkspaces := make(map[string]v1beta1.WorkspaceBinding)
 	for _, binding := range pr.Spec.Workspaces {
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
-	rWs := pr.Status.PipelineSpec.ResultWorkspace
-	rWsDeclaredName := ""
-	for _, ws := range rpt.PipelineTask.Workspaces {
-		if ws.Workspace == rWs.Name {
-			rWsDeclaredName = ws.Name
+	var rWsDeclaredName string
+	if pr.Status.PipelineSpec != nil {
+		rWs := pr.Status.PipelineSpec.ResultWorkspace
+		for _, ws := range rpt.PipelineTask.Workspaces {
+			if ws.Workspace == rWs.Name {
+				rWsDeclaredName = ws.Name
+			}
 		}
 	}
-
-	resultWsSubpath := ""
+	var resultWsSubpath string
 	for _, ws := range rpt.PipelineTask.Workspaces {
 		taskWorkspaceName, pipelineTaskSubPath, pipelineWorkspaceName := ws.Name, ws.SubPath, ws.Workspace
-		if taskWorkspaceName == rWsDeclaredName && pipelineWorkspaceName == rWs.Name { // only one ws can be configured for storing results.
+		if taskWorkspaceName == rWsDeclaredName && rWsDeclaredName != "" { // only one ws can be configured for storing results.
 			resultWsSubpath = filepath.Join(taskWorkspaceName, pipelineTaskSubPath)
 		}
 		pipelineWorkspace := pipelineWorkspaceName

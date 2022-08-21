@@ -8033,6 +8033,7 @@ spec:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, _, _, err := getTaskrunWorkspaces(tt.pr, tt.rprt)
+			fmt.Println("chk2:", tt.pr)
 
 			if err == nil {
 				t.Errorf("Pipeline.getTaskrunWorkspaces() did not return error for invalid workspace")
