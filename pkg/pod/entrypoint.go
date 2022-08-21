@@ -133,8 +133,8 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			"-post_file", filepath.Join(runDir, idx, "out"),
 			"-termination_path", terminationPath,
 			"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
-			"-results_ws_dir", resultsWsDir,
 		)
+
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
 		if taskSpec != nil {
 			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 {
@@ -156,7 +156,11 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 				}
 			}
 			argsForEntrypoint = append(argsForEntrypoint, resultArgument(steps, taskSpec.Results)...)
-			argsForEntrypoint = append(argsForEntrypoint, referenceTypeResultArgument(steps, taskSpec.Results)...)
+			refResults := referenceTypeResultArgument(steps, taskSpec.Results)
+			if len(refResults) > 0 && resultsWsDir != "" {
+				argsForEntrypoint = append(argsForEntrypoint, "-results_ws_dir", resultsWsDir)
+				argsForEntrypoint = append(argsForEntrypoint, refResults...)
+			}
 		}
 
 		if breakpointConfig != nil && len(breakpointConfig.Breakpoint) > 0 {
@@ -197,8 +201,7 @@ func referenceTypeResultArgument(steps []corev1.Container, results []v1beta1.Tas
 	}
 	resultNames := make([]string, len(results))
 	for _, r := range results {
-		fmt.Println("Result in type ref loop..:", r)
-		if r.Type == v1beta1.ResultsTypeReference {
+		if r.Type == v1beta1.ResultsTypeReference && r.Name != "" {
 			resultNames = append(resultNames, r.Name)
 		}
 	}

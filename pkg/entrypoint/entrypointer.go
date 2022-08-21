@@ -190,10 +190,10 @@ func (e Entrypointer) Go() error {
 		}
 	}
 	if len(filteredRefTypeResults) >= 1 {
-		logger.Infof("Found ref type result - handling it in a different way. %d - %s", len(filteredRefTypeResults), strings.Join(filteredRefTypeResults, ","))
+		logger.Infof("Found ref type result - %s", strings.Join(filteredRefTypeResults, ","))
 		err = e.copyResultsToWorskpace(pipeline.DefaultResultPath)
 		if err != nil {
-			log.Fatal(err)
+			logger.Error(err)
 		}
 	}
 	// strings.Split(..) with an empty string returns an array that contains one element, an empty string.
@@ -215,12 +215,8 @@ func (e Entrypointer) copyResultsToWorskpace(resultDir string) error {
 		dstBasePath := e.ResultWorkspaceDir
 		resultSrcFilePath := filepath.Join(resultDir, resultFile)
 		resultDstFilePath := filepath.Join(dstBasePath, resultFile)
-		fmt.Println("resultRefSrcFile:", resultSrcFilePath)
 		src, err := os.Open(resultSrcFilePath)
-		if os.IsNotExist(err) {
-			continue
-		} else if err != nil {
-			log.Fatal(err)
+		if err != nil {
 			return err
 		}
 		err = os.MkdirAll(dstBasePath, os.ModePerm)
@@ -237,14 +233,6 @@ func (e Entrypointer) copyResultsToWorskpace(resultDir string) error {
 		if err = dst.Sync(); err != nil {
 			return err
 		}
-		fmt.Println("resultRefDstFile:", resultDstFilePath)
-		fileContents, err := ioutil.ReadFile(resultDstFilePath)
-		if os.IsNotExist(err) {
-			continue
-		} else if err != nil {
-			return err
-		}
-		fmt.Println("FileContents:", fileContents)
 		// if the file doesn't exist, ignore it
 		output = append(output, v1beta1.PipelineResourceResult{
 			Key:        resultFile,
@@ -264,7 +252,7 @@ func (e Entrypointer) copyResultsToWorskpace(resultDir string) error {
 func (e Entrypointer) readResultsFromDisk(resultDir string) error {
 	output := []v1beta1.PipelineResourceResult{}
 	for _, resultFile := range e.Results {
-		if resultFile == "" || strings.Contains(strings.Join(e.ReferenceTypeResults, ","), resultFile) {
+		if resultFile == "" || strings.Contains(strings.Join(e.ReferenceTypeResults, ","), resultFile) { // i.e. do not process reference type results here.
 			continue
 		}
 		fileContents, err := ioutil.ReadFile(filepath.Join(resultDir, resultFile))

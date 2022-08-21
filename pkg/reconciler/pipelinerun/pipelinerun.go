@@ -861,7 +861,9 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	if err != nil {
 		return nil, err
 	}
-	tr.ObjectMeta.Annotations["ref-result-path"] = resultWsSubpath
+	if resultWsSubpath != "" {
+		tr.ObjectMeta.Annotations["ref-result-path"] = resultWsSubpath
+	}
 	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
 		tr.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
 	}
@@ -926,7 +928,9 @@ func (c *Reconciler) createRun(ctx context.Context, runName string, params []v1b
 	var pipelinePVCWorkspaceName, resultWsSubpath string
 	var err error
 	r.Spec.Workspaces, pipelinePVCWorkspaceName, resultWsSubpath, err = getTaskrunWorkspaces(pr, rpt)
-	r.ObjectMeta.Annotations["ref-result-path"] = resultWsSubpath
+	if resultWsSubpath != "" {
+		r.ObjectMeta.Annotations["ref-result-path"] = resultWsSubpath
+	}
 	if err != nil {
 		return nil, err
 	}
