@@ -60,6 +60,7 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// v1
 	v1.SchemeGroupVersion.WithKind("Task"):     &v1.Task{},
 	v1.SchemeGroupVersion.WithKind("Pipeline"): &v1.Pipeline{},
+	v1.SchemeGroupVersion.WithKind("TaskRun"):  &v1.TaskRun{},
 
 	// resolution
 	// v1alpha1
@@ -162,6 +163,14 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 				Zygotes: map[string]conversion.ConvertibleObject{
 					v1beta1GroupVersion: &v1beta1.Pipeline{},
 					v1GroupVersion:      &v1.Pipeline{},
+				},
+			},
+			v1.Kind("TaskRun"): {
+				DefinitionName: pipeline.TaskRunResource.String(),
+				HubVersion:     v1beta1GroupVersion,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					v1beta1GroupVersion: &v1beta1.TaskRun{},
+					v1GroupVersion:      &v1.TaskRun{},
 				},
 			},
 		},
