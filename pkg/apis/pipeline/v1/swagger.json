@@ -1266,6 +1266,10 @@
           "description": "ConfigMap represents a configMap that should populate this workspace.",
           "$ref": "#/definitions/v1.ConfigMapVolumeSource"
         },
+        "csi": {
+          "description": "CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.",
+          "$ref": "#/definitions/v1.CSIVolumeSource"
+        },
         "emptyDir": {
           "description": "EmptyDir represents a temporary directory that shares a Task's lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir Either this OR PersistentVolumeClaim can be used.",
           "$ref": "#/definitions/v1.EmptyDirVolumeSource"
@@ -1278,6 +1282,10 @@
         "persistentVolumeClaim": {
           "description": "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
           "$ref": "#/definitions/v1.PersistentVolumeClaimVolumeSource"
+        },
+        "projected": {
+          "description": "Projected represents a projected volume that should populate this workspace.",
+          "$ref": "#/definitions/v1.ProjectedVolumeSource"
         },
         "secret": {
           "description": "Secret represents a secret that should populate this workspace.",

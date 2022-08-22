@@ -77,6 +77,12 @@ type WorkspaceBinding struct {
 	// Secret represents a secret that should populate this workspace.
 	// +optional
 	Secret *corev1.SecretVolumeSource `json:"secret,omitempty"`
+	// Projected represents a projected volume that should populate this workspace.
+	// +optional
+	Projected *corev1.ProjectedVolumeSource `json:"projected,omitempty"`
+	// CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
+	// +optional
+	CSI *corev1.CSIVolumeSource `json:"csi,omitempty"`
 }
 
 // WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
