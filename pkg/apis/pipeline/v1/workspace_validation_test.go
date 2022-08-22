@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -30,6 +31,7 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		binding *v1.WorkspaceBinding
+		wc      func(context.Context) context.Context
 	}{{
 		name: "Valid PVC",
 		binding: &v1.WorkspaceBinding{
@@ -80,9 +82,43 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 				SecretName: "my-secret",
 			},
 		},
+	}, {
+		name: "Valid projected",
+		binding: &v1.WorkspaceBinding{
+			Name: "beth",
+			Projected: &corev1.ProjectedVolumeSource{
+				Sources: []corev1.VolumeProjection{{
+					ConfigMap: &corev1.ConfigMapProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "a-configmap-name",
+						},
+					},
+				}, {
+					Secret: &corev1.SecretProjection{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "my-secret",
+						},
+					},
+				}},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "Valid csi",
+		binding: &v1.WorkspaceBinding{
+			Name: "beth",
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "my-csi",
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.binding.Validate(context.Background()); err != nil {
+			ctx := context.Background()
+			if tc.wc != nil {
+				ctx = tc.wc(ctx)
+			}
+			if err := tc.binding.Validate(ctx); err != nil {
 				t.Errorf("didnt expect error for valid binding but got: %v", err)
 			}
 		})
@@ -94,6 +130,7 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		binding *v1.WorkspaceBinding
+		wc      func(context.Context) context.Context
 	}{{
 		name:    "no binding provided",
 		binding: nil,
@@ -129,9 +166,43 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 			Name:   "beth",
 			Secret: &corev1.SecretVolumeSource{},
 		},
+	}, {
+		name: "projected workspace should be disallowed without alpha feature gate",
+		binding: &v1.WorkspaceBinding{
+			Name:      "beth",
+			Projected: &corev1.ProjectedVolumeSource{},
+		},
+	}, {
+		name: "Provide projected without sources",
+		binding: &v1.WorkspaceBinding{
+			Name:      "beth",
+			Projected: &corev1.ProjectedVolumeSource{},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "csi workspace should be disallowed without alpha feature gate",
+		binding: &v1.WorkspaceBinding{
+			Name: "beth",
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "csi-driver",
+			},
+		},
+	}, {
+		name: "Provide csi without a driver",
+		binding: &v1.WorkspaceBinding{
+			Name: "beth",
+			CSI: &corev1.CSIVolumeSource{
+				Driver: "",
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := tc.binding.Validate(context.Background()); err == nil {
+			ctx := context.Background()
+			if tc.wc != nil {
+				ctx = tc.wc(ctx)
+			}
+			if err := tc.binding.Validate(ctx); err == nil {
 				t.Errorf("expected error for invalid binding but didn't get any!")
 			}
 		})
