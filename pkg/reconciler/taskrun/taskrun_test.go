@@ -2698,6 +2698,12 @@ status:
 		expectedStatus corev1.ConditionStatus
 		expectedReason string
 	}{{
+		description:    "ResourceQuotaConflictError does not fail taskrun",
+		err:            k8sapierrors.NewConflict(k8sruntimeschema.GroupResource{Group: "v1", Resource: "resourcequotas"}, "dummy", errors.New("operation cannot be fulfilled on resourcequotas dummy the object has been modified please apply your changes to the latest version and try again")),
+		expectedType:   apis.ConditionSucceeded,
+		expectedStatus: corev1.ConditionUnknown,
+		expectedReason: podconvert.ReasonPending,
+	}, {
 		description:    "exceeded quota errors are surfaced in taskrun condition but do not fail taskrun",
 		err:            k8sapierrors.NewForbidden(k8sruntimeschema.GroupResource{Group: "foo", Resource: "bar"}, "baz", errors.New("exceeded quota")),
 		expectedType:   apis.ConditionSucceeded,
@@ -2720,14 +2726,20 @@ status:
 		t.Run(tc.description, func(t *testing.T) {
 			c.handlePodCreationError(taskRun, tc.err)
 			foundCondition := false
+			reason := ""
+			var status corev1.ConditionStatus
 			for _, cond := range taskRun.Status.Conditions {
-				if cond.Type == tc.expectedType && cond.Status == tc.expectedStatus && cond.Reason == tc.expectedReason {
-					foundCondition = true
-					break
+				if cond.Type == tc.expectedType {
+					reason = cond.Reason
+					status = cond.Status
+					if status == tc.expectedStatus && reason == tc.expectedReason {
+						foundCondition = true
+						break
+					}
 				}
 			}
 			if !foundCondition {
-				t.Errorf("expected to find condition type %q, status %q and reason %q", tc.expectedType, tc.expectedStatus, tc.expectedReason)
+				t.Errorf("expected to find condition type %q, status %q and reason %q [Found reason: %q ] [Found status: %q]", tc.expectedType, tc.expectedStatus, tc.expectedReason, reason, status)
 			}
 		})
 	}
