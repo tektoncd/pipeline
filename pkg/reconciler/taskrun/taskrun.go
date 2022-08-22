@@ -575,6 +575,11 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1
 
 func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) error {
 	switch {
+	case isResourceQuotaConflictError(err):
+		// Requeue if it runs into ResourceQuotaConflictError Error i.e https://github.com/kubernetes/kubernetes/issues/67761
+		tr.Status.StartTime = nil
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, fmt.Sprint("tried to create pod, but it failed with ResourceQuotaConflictError"))
+		return controller.NewRequeueAfter(time.Second)
 	case isExceededResourceQuotaError(err):
 		// If we are struggling to create the pod, then it hasn't started.
 		tr.Status.StartTime = nil
@@ -731,6 +736,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 	// to fetch it.
 	podName := pod.Name
 	pod, err = c.KubeClientSet.CoreV1().Pods(tr.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+
 	if err == nil && willOverwritePodSetAffinity(tr) {
 		if recorder := controller.GetEventRecorder(ctx); recorder != nil {
 			recorder.Eventf(tr, corev1.EventTypeWarning, "PodAffinityOverwrite", "Pod template affinity is overwritten by affinity assistant for pod %q", pod.Name)
@@ -892,4 +898,18 @@ func willOverwritePodSetAffinity(taskRun *v1beta1.TaskRun) bool {
 		podTemplate = *taskRun.Spec.PodTemplate
 	}
 	return taskRun.Annotations[workspace.AnnotationAffinityAssistantName] != "" && podTemplate.Affinity != nil
+}
+
+// isResourceQuotaConflictError returns a bool indicating whether the
+// k8 error is of kind resourcequotas or not
+func isResourceQuotaConflictError(err error) bool {
+	k8Err, ok := err.(k8serrors.APIStatus)
+	if !ok {
+		return false
+	}
+	k8ErrStatus := k8Err.Status()
+	if k8ErrStatus.Reason != metav1.StatusReasonConflict {
+		return false
+	}
+	return k8ErrStatus.Details != nil && k8ErrStatus.Details.Kind == "resourcequotas"
 }
