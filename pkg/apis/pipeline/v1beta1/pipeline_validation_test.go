@@ -1673,9 +1673,10 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := config.EnableAlphaAPIFields(context.Background())
-			err := validatePipelineParameterVariables(ctx, tt.tasks, tt.params)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
+			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err != nil {
-				t.Errorf("Pipeline.validatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)
+				t.Errorf("Pipeline.ValidatePipelineParameterVariables() returned error for valid pipeline parameters: %v", err)
 			}
 		})
 	}
@@ -2151,9 +2152,10 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			if tt.api == "alpha" {
 				ctx = config.EnableAlphaAPIFields(context.Background())
 			}
-			err := validatePipelineParameterVariables(ctx, tt.tasks, tt.params)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
+			err := ValidatePipelineParameterVariables(ctx, tt.tasks, tt.params)
 			if err == nil {
-				t.Errorf("Pipeline.validatePipelineParameterVariables() did not return error for invalid pipeline parameters")
+				t.Errorf("Pipeline.ValidatePipelineParameterVariables() did not return error for invalid pipeline parameters")
 			}
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))

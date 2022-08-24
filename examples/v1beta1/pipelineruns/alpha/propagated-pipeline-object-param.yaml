@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-object-param-result
+spec:
+  params:
+    - name: gitrepo
+      value:
+        url: abc.com
+        commit: sha123
+  pipelineSpec:
+    tasks:
+      - name: task1
+        params:
+          - name: gitrepo
+            value:
+              branch: main
+              url: xyz.com
+        taskSpec:
+          steps:
+            - name: write-result
+              image: bash
+              args: [
+                "echo",
+                "--url=$(params.gitrepo.url)",
+                "--commit=$(params.gitrepo.commit)",
+                "--branch=$(params.gitrepo.branch)",
+              ]

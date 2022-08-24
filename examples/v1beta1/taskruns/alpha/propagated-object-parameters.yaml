@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: object-param-result-
+spec:
+  params:
+    - name: gitrepo
+      value:
+        url: "xyz.com"
+        commit: "sha123"
+  taskSpec:
+    steps:
+      - name: echo-object-params
+        image: bash
+        args: [
+          "echo",
+          "--url=$(params.gitrepo.url)",
+          "--commit=$(params.gitrepo.commit)",
+        ]

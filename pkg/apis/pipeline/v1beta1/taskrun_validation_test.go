@@ -64,6 +64,61 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
 		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating object params not provided but used by step",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words.hello)"},
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `non-existent variable in "$(params.task-words.hello)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating object properties not provided",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "task-words",
+						Type: v1beta1.ParamTypeObject,
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeObject,
+							ObjectVal: map[string]string{"hello": "task run def"},
+						},
+					}},
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words.hello)"},
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `missing field(s)`,
+			Paths:   []string{"spec.task-words.properties"},
+		},
+		wc: config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -98,6 +153,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
+						Type:     v1beta1.ParamTypeArray,
 						ArrayVal: []string{"hello", "task run"},
 					},
 				}},
@@ -113,6 +169,62 @@ func TestTaskRun_Validate(t *testing.T) {
 		},
 		wc: config.EnableAlphaAPIFields,
 	}, {
+		name: "propagating object params with taskrun",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words.hello)"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating object params with taskrun no value provided",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ParamValue{
+						Type: v1beta1.ParamTypeObject,
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "task-words",
+						Type: v1beta1.ParamTypeObject,
+						Properties: map[string]v1beta1.PropertySpec{
+							"hello": {Type: v1beta1.ParamTypeString},
+						},
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeObject,
+							ObjectVal: map[string]string{"hello": "task run def"},
+						},
+					}},
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words.hello)"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
 		name: "propagating partial params with different provided and default names",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
@@ -120,6 +232,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
+						Type:     v1beta1.ParamTypeArray,
 						ArrayVal: []string{"hello", "task run"},
 					},
 				}},
@@ -144,6 +257,40 @@ func TestTaskRun_Validate(t *testing.T) {
 		},
 		wc: config.EnableAlphaAPIFields,
 	}, {
+		name: "propagating object params with one declared in taskspec and other provided by taskrun",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "task-words-2",
+						Type: v1beta1.ParamTypeObject,
+						Properties: map[string]v1beta1.PropertySpec{
+							"hello": {Type: v1beta1.ParamTypeString},
+						},
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeObject,
+							ObjectVal: map[string]string{"hello": "task run def"},
+						},
+					}},
+					Steps: []v1beta1.Step{{
+						Name:    "task-echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words.hello)", "$(params.task-words-2.hello)"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
 		name: "propagating partial params in taskrun",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
@@ -151,6 +298,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
+						Type:     v1beta1.ParamTypeArray,
 						ArrayVal: []string{"hello", "task run"},
 					},
 				}},
@@ -178,6 +326,41 @@ func TestTaskRun_Validate(t *testing.T) {
 		},
 		wc: config.EnableAlphaAPIFields,
 	}, {
+		name: "propagating partial object params with multiple keys",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "task-words",
+						Type: v1beta1.ParamTypeObject,
+						Properties: map[string]v1beta1.PropertySpec{
+							"hello": {Type: v1beta1.ParamTypeString},
+							"hi":    {Type: v1beta1.ParamTypeString},
+						},
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeObject,
+							ObjectVal: map[string]string{"hello": "task run def", "hi": "task"},
+						},
+					}},
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words.hello)", "$(params.task-words.hi)"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
 		name: "propagating params with taskrun same names",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
@@ -185,6 +368,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name: "task-words",
 					Value: v1beta1.ParamValue{
+						Type:     v1beta1.ParamTypeArray,
 						ArrayVal: []string{"hello", "task run"},
 					},
 				}},
@@ -198,6 +382,40 @@ func TestTaskRun_Validate(t *testing.T) {
 						Image:   "ubuntu",
 						Command: []string{"echo"},
 						Args:    []string{"$(params.task-words[*])"},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "object params without propagation",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "task-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "task run"},
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "task-words",
+						Type: v1beta1.ParamTypeObject,
+						Properties: map[string]v1beta1.PropertySpec{
+							"hello": {Type: v1beta1.ParamTypeString},
+						},
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeObject,
+							ObjectVal: map[string]string{"hello": "task run def"},
+						},
+					}},
+					Steps: []v1beta1.Step{{
+						Name:    "echo",
+						Image:   "ubuntu",
+						Command: []string{"echo"},
+						Args:    []string{"$(params.task-words.hello)"},
 					}},
 				},
 			},

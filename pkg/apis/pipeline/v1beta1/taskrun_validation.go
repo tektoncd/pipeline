@@ -114,30 +114,80 @@ func (ts *TaskRunSpec) validateInlineParameters(ctx context.Context) (errs *apis
 	if ts.TaskSpec == nil {
 		return errs
 	}
-	var paramSpec []ParamSpec
+	paramSpecForValidation := make(map[string]ParamSpec)
 	for _, p := range ts.Params {
-		pSpec := ParamSpec{
-			Name:    p.Name,
-			Default: &p.Value,
-		}
-		paramSpec = append(paramSpec, pSpec)
+		paramSpecForValidation = createParamSpecFromParam(p, paramSpecForValidation)
 	}
+
 	for _, p := range ts.TaskSpec.Params {
-		skip := false
-		for _, ps := range paramSpec {
-			if ps.Name == p.Name {
-				skip = true
-				break
-			}
+		var err *apis.FieldError
+		paramSpecForValidation, err = combineParamSpec(p, paramSpecForValidation)
+		if err != nil {
+			errs = errs.Also(err)
 		}
-		if !skip {
-			paramSpec = append(paramSpec, p)
-		}
+	}
+	var paramSpec []ParamSpec
+	for _, v := range paramSpecForValidation {
+		paramSpec = append(paramSpec, v)
 	}
 	if ts.TaskSpec != nil && ts.TaskSpec.Steps != nil {
+		errs = errs.Also(ValidateParameterTypes(ctx, paramSpec))
 		errs = errs.Also(ValidateParameterVariables(config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), ts.TaskSpec.Steps, paramSpec))
 	}
 	return errs
+}
+
+func createParamSpecFromParam(p Param, paramSpecForValidation map[string]ParamSpec) map[string]ParamSpec {
+	value := p.Value
+	pSpec := ParamSpec{
+		Name:    p.Name,
+		Default: &value,
+		Type:    p.Value.Type,
+	}
+	if p.Value.ObjectVal != nil {
+		pSpec.Properties = make(map[string]PropertySpec)
+		prop := make(map[string]PropertySpec)
+		for k := range p.Value.ObjectVal {
+			prop[k] = PropertySpec{Type: ParamTypeString}
+		}
+		pSpec.Properties = prop
+	}
+	paramSpecForValidation[p.Name] = pSpec
+	return paramSpecForValidation
+}
+
+func combineParamSpec(p ParamSpec, paramSpecForValidation map[string]ParamSpec) (map[string]ParamSpec, *apis.FieldError) {
+	if pSpec, ok := paramSpecForValidation[p.Name]; ok {
+		// Merge defaults with provided values in the taskrun.
+		if p.Default != nil && p.Default.ObjectVal != nil {
+			for k, v := range p.Default.ObjectVal {
+				if pSpec.Default.ObjectVal == nil {
+					pSpec.Default.ObjectVal = map[string]string{k: v}
+				} else {
+					pSpec.Default.ObjectVal[k] = v
+				}
+			}
+			// If Default values of object type are provided then Properties must also be fully declared.
+			if p.Properties == nil {
+				return paramSpecForValidation, apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+			}
+		}
+
+		// Properties must be defined if paramSpec is of object Type
+		if pSpec.Type == ParamTypeObject {
+			if p.Properties == nil {
+				return paramSpecForValidation, apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+			}
+			// Expect Properties to be complete
+			pSpec.Properties = p.Properties
+		}
+		paramSpecForValidation[p.Name] = pSpec
+	} else {
+		// No values provided by task run but found a paramSpec declaration.
+		// Expect it to be fully speced out.
+		paramSpecForValidation[p.Name] = p
+	}
+	return paramSpecForValidation, nil
 }
 
 // validateDebug

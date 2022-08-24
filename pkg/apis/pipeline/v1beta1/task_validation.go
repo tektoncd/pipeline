@@ -280,13 +280,13 @@ func ValidateParameterTypes(ctx context.Context, params []ParamSpec) (errs *apis
 			// when the enable-api-fields feature gate is not "alpha".
 			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.AlphaAPIFields))
 		}
-		errs = errs.Also(p.ValidateType())
+		errs = errs.Also(p.ValidateType(ctx))
 	}
 	return errs
 }
 
 // ValidateType checks that the type of a ParamSpec is allowed and its default value matches that type
-func (p ParamSpec) ValidateType() *apis.FieldError {
+func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 	// Ensure param has a valid type.
 	validType := false
 	for _, allowedType := range AllParamTypes {
@@ -311,15 +311,19 @@ func (p ParamSpec) ValidateType() *apis.FieldError {
 	}
 
 	// Check object type and its PropertySpec type
-	return p.ValidateObjectType()
+	return p.ValidateObjectType(ctx)
 }
 
 // ValidateObjectType checks that object type parameter does not miss the
 // definition of `properties` section and the type of a PropertySpec is allowed.
 // (Currently, only string is allowed)
-func (p ParamSpec) ValidateObjectType() *apis.FieldError {
+func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 	if p.Type == ParamTypeObject && p.Properties == nil {
-		return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+		// If this we are not skipping validation checks due to propagated params
+		// then properties field is required.
+		if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
+			return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+		}
 	}
 
 	invalidKeys := []string{}
@@ -365,9 +369,9 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParamSpecs))
 	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
 		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
+		errs = errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
 	}
-	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
-	return errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
+	return errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 }
 
 func validateTaskContextVariables(ctx context.Context, steps []Step) *apis.FieldError {

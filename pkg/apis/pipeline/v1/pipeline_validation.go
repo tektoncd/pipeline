@@ -55,8 +55,8 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateGraph(ps.Tasks))
 	errs = errs.Also(validateParamResults(ps.Tasks))
 	// The parameter variables should be valid
-	errs = errs.Also(validatePipelineParameterVariables(ctx, ps.Tasks, ps.Params).ViaField("tasks"))
-	errs = errs.Also(validatePipelineParameterVariables(ctx, ps.Finally, ps.Params).ViaField("finally"))
+	errs = errs.Also(ValidatePipelineParameterVariables(ctx, ps.Tasks, ps.Params).ViaField("tasks"))
+	errs = errs.Also(ValidatePipelineParameterVariables(ctx, ps.Finally, ps.Params).ViaField("finally"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
@@ -118,10 +118,10 @@ func validatePipelineWorkspacesUsage(wss []PipelineWorkspaceDeclaration, pts []P
 	return errs
 }
 
-// validatePipelineParameterVariables validates parameters with those specified by each pipeline task,
+// ValidatePipelineParameterVariables validates parameters with those specified by each pipeline task,
 // (1) it validates the type of parameter is either string or array (2) parameter default value matches
 // with the type of that param (3) ensures that the referenced param variable is defined is part of the param declarations
-func validatePipelineParameterVariables(ctx context.Context, tasks []PipelineTask, params []ParamSpec) (errs *apis.FieldError) {
+func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTask, params []ParamSpec) (errs *apis.FieldError) {
 	parameterNames := sets.NewString()
 	arrayParameterNames := sets.NewString()
 	objectParameterNameKeys := map[string][]string{}
@@ -145,7 +145,10 @@ func validatePipelineParameterVariables(ctx context.Context, tasks []PipelineTas
 			}
 		}
 	}
-	return errs.Also(validatePipelineParametersVariables(tasks, "params", parameterNames, arrayParameterNames, objectParameterNameKeys))
+	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
+		errs = errs.Also(validatePipelineParametersVariables(tasks, "params", parameterNames, arrayParameterNames, objectParameterNameKeys))
+	}
+	return errs
 }
 
 func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {

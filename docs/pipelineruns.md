@@ -20,6 +20,7 @@ weight: 500
         - [Scope and Precedence](#scope-and-precedence)
         - [Default Values](#default-values)
         - [Referenced Resources](#referenced-resources)
+        - [Object Parameters](#object-parameters) 
     - [Specifying custom <code>ServiceAccount</code> credentials](#specifying-custom-serviceaccount-credentials)
     - [Mapping <code>ServiceAccount</code> credentials to <code>Tasks</code>](#mapping-serviceaccount-credentials-to-tasks)
     - [Specifying a <code>Pod</code> template](#specifying-a-pod-template)
@@ -660,6 +661,136 @@ status:
     status: "False"
     type: Succeeded
   ...
+```
+
+##### Object Parameters
+
+When using an inlined spec, object parameters from the parent `PipelineRun` will also be
+propagated to any inlined specs without needing to be explicitly defined. This
+allows authors to simplify specs by automatically propagating top-level
+parameters down to other inlined resources.
+When propagating object parameters, scope and precedence also holds as shown below.
+ 
+```yaml
+apiVersion: tekton.dev/v1beta1 
+kind: PipelineRun              
+metadata:
+  generateName: pipelinerun-object-param-result 
+spec:
+  params:
+    - name: gitrepo            
+      value:                   
+        url: abc.com           
+        commit: sha123         
+  pipelineSpec:                
+    tasks:                     
+      - name: task1            
+        params:                
+          - name: gitrepo      
+            value:
+              branch: main     
+              url: xyz.com     
+        taskSpec:
+          steps:
+            - name: write-result            
+              image: bash      
+              args: [          
+                "echo",        
+                "--url=$(params.gitrepo.url)",  
+                "--commit=$(params.gitrepo.commit)",
+                "--branch=$(params.gitrepo.branch)",
+              ]      
+```
+
+resolves to
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-object-param-resultpxp59
+  ...
+spec:
+  params:
+  - name: gitrepo
+    value:
+      commit: sha123
+      url: abc.com
+  pipelineSpec:
+    tasks:
+    - name: task1
+      params:
+      - name: gitrepo
+        value:
+          branch: main
+          url: xyz.com
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+        - args:
+          - echo
+          - --url=$(params.gitrepo.url)
+          - --commit=$(params.gitrepo.commit)
+          - --branch=$(params.gitrepo.branch)
+          image: bash
+          name: write-result
+          resources: {}
+status:
+  completionTime: "2022-09-08T17:22:01Z"
+  conditions:
+  - lastTransitionTime: "2022-09-08T17:22:01Z"
+    message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0'
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+  pipelineSpec:
+    tasks:
+    - name: task1
+      params:
+      - name: gitrepo
+        value:
+          branch: main
+          url: xyz.com
+      taskSpec:
+        metadata: {}
+        spec: null
+        steps:
+        - args:
+          - echo
+          - --url=xyz.com
+          - --commit=sha123
+          - --branch=main
+          image: bash
+          name: write-result
+          resources: {}
+  startTime: "2022-09-08T17:21:57Z"
+  taskRuns:
+    pipelinerun-object-param-resultpxp59-task1:
+      pipelineTaskName: task1
+      status:
+        completionTime: "2022-09-08T17:22:01Z"
+        conditions:
+        - lastTransitionTime: "2022-09-08T17:22:01Z"
+          message: All Steps have completed executing
+          reason: Succeeded
+          status: "True"
+          type: Succeeded
+        podName: pipelinerun-object-param-resultpxp59-task1-pod
+        startTime: "2022-09-08T17:21:57Z"
+        steps:
+        - container: step-write-result
+          ...
+	taskSpec:
+          steps:
+          - args:
+            - echo
+            - --url=xyz.com
+            - --commit=sha123
+            - --branch=main
+            image: bash
+            name: write-result
+            resources: {}
 ```
 
 ### Specifying custom `ServiceAccount` credentials
