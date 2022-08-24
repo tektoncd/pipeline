@@ -14,6 +14,12 @@ the pipelines repo, a terminal window and a text editor.
    most recent commit at https://github.com/tektoncd/pipeline/commits/main
    and note the commit's full (40-digit) hash.
 
+1. Ensure the correct version of the release pipeline is installed on the cluster:
+
+    ```bash
+    kustomize build tekton | kubectl --context dogfooding replace -f -
+    ```
+
 1. Create environment variables for bash scripts in later steps.
 
     ```bash
