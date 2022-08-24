@@ -96,6 +96,7 @@ spec:
       # Combine Distroless with a Windows base image, used for the entrypoint image.
       COMBINED_BASE_IMAGE=$(go run ./vendor/github.com/tektoncd/plumbing/cmd/combine/main.go \
         distroless.dev/static \
+        mcr.microsoft.com/windows/nanoserver:1809 \
         mcr.microsoft.com/windows/nanoserver:ltsc2019 \
         mcr.microsoft.com/windows/nanoserver:ltsc2022 \
         ${CONTAINER_REGISTRY}/$(params.package)/combined-base-image:latest)
