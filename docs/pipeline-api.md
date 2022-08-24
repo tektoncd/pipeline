@@ -6456,6 +6456,49 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.ConfigMapParamSource">ConfigMapParamSource
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ParamFromSource">ParamFromSource</a>)
+</p>
+<div>
+<p>ConfigMapParamSource selects a ConfigMap to populate the param
+variables with.
+The contents of the target ConfigMap&rsquo;s Data field will represent the
+key-value pairs as param variables.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The ConfigMap to select from.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>key</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The key to select from configmap</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.EmbeddedTask">EmbeddedTask
 </h3>
 <p>
@@ -6658,6 +6701,38 @@ ParamValue
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.ParamFromSource">ParamFromSource
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>)
+</p>
+<div>
+<p>ParamFromSource represents the source of a set of ConfigMaps</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>configMapRef</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ConfigMapParamSource">
+ConfigMapParamSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>The ConfigMap to select from</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.ParamSpec">ParamSpec
 </h3>
 <p>
@@ -6743,6 +6818,20 @@ ParamValue
 <p>Default is the value a parameter takes if no input value is supplied. If
 default is set, a Task may be executed without a supplied value for the
 parameter.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>valueFrom</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ParamFromSource">
+ParamFromSource
+</a>
+</em>
+</td>
+<td>
+<p>ValueFrom is the user-specified param value from
+The possible valueFrom are currently &ldquo;configMap&rdquo;.</p>
 </td>
 </tr>
 </tbody>

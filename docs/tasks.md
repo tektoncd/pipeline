@@ -639,6 +639,38 @@ spec:
         - "--someotherflag"
 ```
 
+#### Use `ConfigMap` values for parameter
+When defining parameters for a `Task` in `Pipeline`, users can use values for the parameters which defined in `ConfigMap`.
+for example to override default values with values from configmap
+([full example](../examples/v1beta1/taskruns/image-params-from-configmap.yaml)) :
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: image-params-configmap
+spec:
+  params:
+  - name: image
+    type: string
+    default: ubuntu
+    valueFrom:
+      configMapRef:
+        name: image-configmap
+        key: image
+  - name: imagePullPolicy
+    type: string
+    default: IfNotPresent
+    valueFrom:
+      configMapRef:
+        name: image-configmap
+        key: pullPolicy
+  steps:
+  - image: $(params.image)
+    imagePullPolicy: $(params.imagePullPolicy)
+    script: echo hello
+```
+
 ### Specifying `Resources`
 
 > :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**

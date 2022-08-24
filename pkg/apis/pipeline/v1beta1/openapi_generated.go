@@ -37,9 +37,11 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDeliveryState":          schema_pkg_apis_pipeline_v1beta1_CloudEventDeliveryState(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask":                      schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTaskList":                  schema_pkg_apis_pipeline_v1beta1_ClusterTaskList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigMapParamSource":             schema_pkg_apis_pipeline_v1beta1_ConfigMapParamSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedTask":                     schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.InternalTaskModifier":             schema_pkg_apis_pipeline_v1beta1_InternalTaskModifier(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param":                            schema_pkg_apis_pipeline_v1beta1_Param(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamFromSource":                  schema_pkg_apis_pipeline_v1beta1_ParamFromSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec":                        schema_pkg_apis_pipeline_v1beta1_ParamSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue":                       schema_pkg_apis_pipeline_v1beta1_ParamValue(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Pipeline":                         schema_pkg_apis_pipeline_v1beta1_Pipeline(ref),
@@ -607,6 +609,36 @@ func schema_pkg_apis_pipeline_v1beta1_ClusterTaskList(ref common.ReferenceCallba
 	}
 }
 
+func schema_pkg_apis_pipeline_v1beta1_ConfigMapParamSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ConfigMapParamSource selects a ConfigMap to populate the param variables with. The contents of the target ConfigMap's Data field will represent the key-value pairs as param variables.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The ConfigMap to select from.",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"key": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The key to select from configmap",
+							Default:     "",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"name", "key"},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -879,6 +911,27 @@ func schema_pkg_apis_pipeline_v1beta1_Param(ref common.ReferenceCallback) common
 	}
 }
 
+func schema_pkg_apis_pipeline_v1beta1_ParamFromSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ParamFromSource represents the source of a set of ConfigMaps",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"configMapRef": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The ConfigMap to select from",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigMapParamSource"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigMapParamSource"},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1beta1_ParamSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -929,12 +982,18 @@ func schema_pkg_apis_pipeline_v1beta1_ParamSpec(ref common.ReferenceCallback) co
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue"),
 						},
 					},
+					"valueFrom": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ValueFrom is the user-specified param value from The possible valueFrom are currently \"configMap\".",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamFromSource"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamFromSource", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec"},
 	}
 }
 

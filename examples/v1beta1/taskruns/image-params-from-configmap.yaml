@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: image-configmap
+data:
+  image: busybox
+  pullPolicy: Always
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: image-params-configmap
+spec:
+  params:
+  - name: image
+    type: string
+    default: ubuntu
+    valueFrom:
+      configMapRef:
+        name: image-configmap
+        key: image
+  - name: imagePullPolicy
+    type: string
+    default: IfNotPresent
+    valueFrom:
+      configMapRef:
+        name: image-configmap
+        key: pullPolicy
+  steps:
+  - image: $(params.image)
+    imagePullPolicy: $(params.imagePullPolicy)
+    script: echo hello
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: image-params-configmap
+spec:
+  taskRef:
+    name: image-params-configmap
+    kind: Task

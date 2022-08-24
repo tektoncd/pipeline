@@ -18,12 +18,14 @@ package resources
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // GetTask is a function used to retrieve Tasks.
@@ -70,4 +72,43 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 		return nil, nil, fmt.Errorf("taskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
 	}
 	return &taskMeta, &taskSpec, nil
+}
+
+// ResolveTaskParamFrom is function used to get value from configmap
+// and replace the default value with the obtained value
+func ResolveTaskParamFrom(ctx context.Context, k8s kubernetes.Interface, namespace string, ts *v1beta1.TaskSpec) error {
+	for i := range ts.Params {
+		param := &ts.Params[i]
+		if param.ValueFrom != nil && param.ValueFrom.ConfigMapRef != nil {
+			if param.Default == nil {
+				param.Default = &v1beta1.ParamValue{}
+			}
+			configRef := param.ValueFrom.ConfigMapRef
+			configMap, err := k8s.CoreV1().ConfigMaps(namespace).Get(ctx, configRef.Name, metav1.GetOptions{})
+			refData := configMap.Data[configRef.Key]
+			if err != nil {
+				return err
+			}
+			switch param.Type {
+			case v1beta1.ParamTypeObject:
+				param.Default.Type = v1beta1.ParamTypeObject
+				var objData map[string]string
+				if err := json.Unmarshal([]byte(refData), &objData); err != nil {
+					return err
+				}
+				param.Default.ObjectVal = objData
+			case v1beta1.ParamTypeArray:
+				param.Default.Type = v1beta1.ParamTypeArray
+				var arrData []string
+				if err := json.Unmarshal([]byte(refData), &arrData); err != nil {
+					return err
+				}
+				param.Default.ArrayVal = arrData
+			default:
+				param.Default.Type = v1beta1.ParamTypeString
+				param.Default.StringVal = refData
+			}
+		}
+	}
+	return nil
 }

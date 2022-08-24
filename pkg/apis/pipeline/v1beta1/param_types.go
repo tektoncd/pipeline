@@ -53,6 +53,27 @@ type ParamSpec struct {
 	// parameter.
 	// +optional
 	Default *ParamValue `json:"default,omitempty"`
+	// ValueFrom is the user-specified param value from
+	// The possible valueFrom are currently "configMap".
+	ValueFrom *ParamFromSource `json:"valueFrom,omitempty"`
+}
+
+// ParamFromSource represents the source of a set of ConfigMaps
+type ParamFromSource struct {
+	// The ConfigMap to select from
+	// +optional
+	ConfigMapRef *ConfigMapParamSource `json:"configMapRef,omitempty""`
+}
+
+// ConfigMapParamSource selects a ConfigMap to populate the param
+// variables with.
+// The contents of the target ConfigMap's Data field will represent the
+// key-value pairs as param variables.
+type ConfigMapParamSource struct {
+	// The ConfigMap to select from.
+	Name string `json:"name"`
+	// The key to select from configmap
+	Key string `json:"key"`
 }
 
 // PropertySpec defines the struct for object keys

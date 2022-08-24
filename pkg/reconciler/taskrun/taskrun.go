@@ -364,6 +364,12 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if err := resources.ResolveTaskParamFrom(ctx, c.KubeClientSet, tr.Namespace, taskSpec); err != nil {
+		logger.Errorf("TaskRun %s taskSpec param value from are invalid: %v", tr.Name, err)
+		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
+		return nil, nil, controller.NewPermanentError(err)
+	}
+
 	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)

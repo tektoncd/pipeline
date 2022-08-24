@@ -22,10 +22,13 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestGetTaskSpec_Ref(t *testing.T) {
@@ -235,5 +238,98 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 	_, _, err := GetTaskData(ctx, tr, getTask)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Task but got none")
+	}
+}
+
+func TestResolveTaskParamFrom(t *testing.T) {
+	type arg struct {
+		taskSpec *v1beta1.TaskSpec
+	}
+	testcases := []struct {
+		name     string
+		arg      arg
+		expected []v1beta1.ParamSpec
+	}{
+		{
+			name: "default value without valueFrom",
+			arg: arg{
+				taskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{
+						{
+							Type: v1beta1.ParamTypeString,
+							Name: "param1",
+							Default: &v1beta1.ParamValue{
+								Type:      v1beta1.ParamTypeString,
+								StringVal: "param1 value",
+							},
+						},
+					},
+				},
+			},
+			expected: []v1beta1.ParamSpec{
+				{
+					Type: v1beta1.ParamTypeString,
+					Name: "param1",
+					Default: &v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "param1 value",
+					},
+				},
+			},
+		},
+		{
+			name: "default value with value from configmap",
+			arg: arg{
+				taskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{
+						{
+							Type: v1beta1.ParamTypeString,
+							Name: "param1",
+							Default: &v1beta1.ParamValue{
+								Type:      v1beta1.ParamTypeString,
+								StringVal: "param1 value",
+							},
+							ValueFrom: &v1beta1.ParamFromSource{
+								ConfigMapRef: &v1beta1.ConfigMapParamSource{
+									Name: "param1",
+									Key:  "param1",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []v1beta1.ParamSpec{
+				{
+					Type: v1beta1.ParamTypeString,
+					Name: "param1",
+					Default: &v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "param1 value from configmap",
+					},
+				},
+			},
+		},
+	}
+	ctx := context.Background()
+	namespace := "default"
+	kubeClient := fake.NewSimpleClientset(&corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "param1",
+			Namespace: "default",
+		},
+		Data: map[string]string{
+			"param1": "param1 value from configmap",
+		},
+	})
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ResolveTaskParamFrom(ctx, kubeClient, namespace, tc.arg.taskSpec)
+			assert.NoError(t, err)
+			if tc.arg.taskSpec.Params[0].Default.StringVal != tc.expected[0].Default.StringVal {
+				t.Errorf("got param  value: %s not equal expected value: %s", tc.arg.taskSpec.Params[0].Default.StringVal,
+					tc.expected[0].Default.StringVal)
+			}
+		})
 	}
 }

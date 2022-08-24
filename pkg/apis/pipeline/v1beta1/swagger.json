@@ -551,6 +551,26 @@
         }
       }
     },
+    "v1beta1.ConfigMapParamSource": {
+      "description": "ConfigMapParamSource selects a ConfigMap to populate the param variables with. The contents of the target ConfigMap's Data field will represent the key-value pairs as param variables.",
+      "type": "object",
+      "required": [
+        "name",
+        "key"
+      ],
+      "properties": {
+        "key": {
+          "description": "The key to select from configmap",
+          "type": "string",
+          "default": ""
+        },
+        "name": {
+          "description": "The ConfigMap to select from.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "v1beta1.EmbeddedTask": {
       "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
       "type": "object",
@@ -691,6 +711,16 @@
         }
       }
     },
+    "v1beta1.ParamFromSource": {
+      "description": "ParamFromSource represents the source of a set of ConfigMaps",
+      "type": "object",
+      "properties": {
+        "configMapRef": {
+          "description": "The ConfigMap to select from",
+          "$ref": "#/definitions/v1beta1.ConfigMapParamSource"
+        }
+      }
+    },
     "v1beta1.ParamSpec": {
       "description": "ParamSpec defines arbitrary parameters needed beyond typed inputs (such as resources). Parameter values are provided by users as inputs on a TaskRun or PipelineRun.",
       "type": "object",
@@ -722,6 +752,10 @@
         "type": {
           "description": "Type is the user-specified type of the parameter. The possible types are currently \"string\", \"array\" and \"object\", and \"string\" is the default.",
           "type": "string"
+        },
+        "valueFrom": {
+          "description": "ValueFrom is the user-specified param value from The possible valueFrom are currently \"configMap\".",
+          "$ref": "#/definitions/v1beta1.ParamFromSource"
         }
       }
     },
