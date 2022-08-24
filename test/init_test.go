@@ -117,6 +117,8 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 		if err := cs.KubeClient.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{}); err != nil {
 			t.Errorf("Failed to delete namespace %s: %s", namespace, err)
 		}
+	} else {
+		t.Logf("Not deleting namespace %s", namespace)
 	}
 }
 
