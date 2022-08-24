@@ -120,6 +120,17 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "propagating object params valid step with script skip validation",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Name:  "propagatingobjectparams",
+				Image: "my-image",
+				Script: `
+				#!/usr/bin/env bash
+				$(params.message.foo)`,
+			}},
+		},
+	}, {
 		name: "propagating params valid step with args",
 		fields: fields{
 			Steps: []v1beta1.Step{{
@@ -127,6 +138,16 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 				Image:   "my-image",
 				Command: []string{"$(params.command)"},
 				Args:    []string{"$(params.message)"},
+			}},
+		},
+	}, {
+		name: "propagating object params valid step with args",
+		fields: fields{
+			Steps: []v1beta1.Step{{
+				Name:    "propagatingobjectparams",
+				Image:   "my-image",
+				Command: []string{"$(params.command.foo)"},
+				Args:    []string{"$(params.message.bar)"},
 			}},
 		},
 	}}
@@ -443,6 +464,16 @@ func TestTaskSpecValidate(t *testing.T) {
 					"commit": {"string"},
 				},
 			}},
+		},
+	}, {
+		name: "the spec of object type parameter misses the definition of properties",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name:        "task",
+				Type:        v1beta1.ParamTypeObject,
+				Description: "param",
+			}},
+			Steps: validSteps,
 		},
 	}, {
 		name: "valid task name context",
@@ -780,17 +811,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Message: `"object" type does not match default value's type: "string"`,
 			Paths:   []string{"params.task.type", "params.task.default.type"},
 		},
-	}, {
-		name: "the spec of object type parameter misses the definition of properties",
-		fields: fields{
-			Params: []v1beta1.ParamSpec{{
-				Name:        "task",
-				Type:        v1beta1.ParamTypeObject,
-				Description: "param",
-			}},
-			Steps: validSteps,
-		},
-		expectedError: *apis.ErrMissingField(fmt.Sprintf("params.task.properties")),
 	}, {
 		name: "PropertySpec type is set with unsupported type",
 		fields: fields{

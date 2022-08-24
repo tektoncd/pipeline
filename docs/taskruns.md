@@ -15,6 +15,7 @@ weight: 300
   - [Remote Tasks](#remote-tasks)
   - [Specifying `Parameters`](#specifying-parameters)
     - [Propagated Parameters](#propagated-parameters)
+    - [Propagated Object Parameters](#propagated-object-parameters)
     - [Extra Parameters](#extra-parameters)
   - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Resource` limits](#specifying-resource-limits)
@@ -264,6 +265,85 @@ status:
       resources: {}
       script: |
         echo "hello world!"
+```
+
+#### Propagated Object Parameters
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+
+When using an inlined `taskSpec`, object parameters from the parent `TaskRun` will be
+available to the `Task` without needing to be explicitly defined.
+
+
+**Note:** If an object parameter is being defined explicitly then you must define the spec of the object in `Properties`.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: object-param-result-
+spec:
+  params:
+  - name: gitrepo
+    value:
+      commit: sha123
+      url: xyz.com
+  taskSpec:
+    steps:
+    - name: echo-object-params
+      image: bash
+      args:
+      - echo
+      - --url=$(params.gitrepo.url)
+      - --commit=$(params.gitrepo.commit)
+```
+
+On executing the task run, the object parameters will be interpolated during resolution.
+The specifications are not mutated before storage and so it remains the same.
+The status is updated.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: object-param-result-vlnmb
+  ...
+spec:
+  params:
+  - name: gitrepo
+    value:
+      commit: sha123
+      url: xyz.com
+  serviceAccountName: default
+  taskSpec:
+    steps:
+    - args:
+      - echo
+      - --url=$(params.gitrepo.url)
+      - --commit=$(params.gitrepo.commit)
+      image: bash
+      name: echo-object-params
+      resources: {}
+status:
+  completionTime: "2022-09-08T17:09:37Z"
+  conditions:
+  - lastTransitionTime: "2022-09-08T17:09:37Z"
+    message: All Steps have completed executing
+    reason: Succeeded
+    status: "True"
+    type: Succeeded
+    ...
+  steps:
+  - container: step-echo-object-params
+    ...
+  taskSpec:
+    steps:
+    - args:
+      - echo
+      - --url=xyz.com
+      - --commit=sha123
+      image: bash
+      name: echo-object-params
+      resources: {}
 ```
 
 #### Extra Parameters

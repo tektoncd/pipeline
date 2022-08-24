@@ -119,7 +119,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
 	}, {
-		name: "propagating params with pipelinespec and taskspec",
+		name: "propagating object params with pipelinespec and taskspec params not provided",
 		pr: v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pipelinelinename",
@@ -127,7 +127,125 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Spec: v1beta1.PipelineRunSpec{
 				Params: []v1beta1.Param{{
 					Name: "pipeline-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "pipeline"},
+					},
+				}},
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.pipeline-words.not-hello)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `non-existent variable in "$(params.pipeline-words.not-hello)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating object params with pipelinespec and taskspec params not provided",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Params: []v1beta1.ParamSpec{{
+								Name: "pipeline-words",
+								Type: v1beta1.ParamTypeObject,
+								Properties: map[string]v1beta1.PropertySpec{
+									"hello": {Type: v1beta1.ParamTypeString},
+								},
+								Default: &v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeObject,
+									ObjectVal: map[string]string{"hello": "taskspec"},
+								},
+							}},
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.pipeline-words.not-hello)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `non-existent variable in "$(params.pipeline-words.not-hello)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating object params with pipelinespec and taskspec params provided in taskrun",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Params: []v1beta1.Param{{
+							Name: "pipeline-words",
+							Value: v1beta1.ParamValue{
+								Type:      v1beta1.ParamTypeObject,
+								ObjectVal: map[string]string{"hello": "pipeline"},
+							},
+						}},
+						Name: "echoit",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Params: []v1beta1.ParamSpec{{
+								Name: "pipeline-words",
+								Type: v1beta1.ParamTypeObject,
+								Properties: map[string]v1beta1.PropertySpec{
+									"hello": {Type: v1beta1.ParamTypeString},
+								},
+								Default: &v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeObject,
+									ObjectVal: map[string]string{"hello": "taskspec"},
+								},
+							}},
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.pipeline-words.not-hello)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `non-existent variable in "$(params.pipeline-words.not-hello)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating params with pipelinespec and taskspec",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "pipeline-words",
 					Value: v1beta1.ArrayOrString{
+						Type:     v1beta1.ParamTypeArray,
 						ArrayVal: []string{"hello", "pipeline"},
 					},
 				}},
@@ -150,6 +268,69 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			Message: `non-existent variable in "$(params.random-words[*])"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
+	}, {
+		name: "propagating object params with pipelinespec and taskspec",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "objectpipelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "pipeline-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "pipeline"},
+					},
+				}},
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "pipeline-words",
+						Type: v1beta1.ParamTypeObject,
+						Properties: map[string]v1beta1.PropertySpec{
+							"hello": {Type: v1beta1.ParamTypeString},
+						},
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeObject,
+							ObjectVal: map[string]string{"hello": "pipelinespec"},
+						},
+					}},
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						Params: []v1beta1.Param{{
+							Name: "pipeline-words",
+							Value: v1beta1.ParamValue{
+								Type:      v1beta1.ParamTypeObject,
+								ObjectVal: map[string]string{"hello": "task"},
+							},
+						}},
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Params: []v1beta1.ParamSpec{{
+								Name: "pipeline-words",
+								Type: v1beta1.ParamTypeObject,
+								Properties: map[string]v1beta1.PropertySpec{
+									"hello": {Type: v1beta1.ParamTypeString},
+								},
+								Default: &v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeObject,
+									ObjectVal: map[string]string{"hello": "taskspec"},
+								},
+							}},
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.pipeline-words.not-hello)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		want: &apis.FieldError{
+			Message: `non-existent variable in "$(params.pipeline-words.not-hello)"`,
+			Paths:   []string{"spec.steps[0].args[0]"},
+		},
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "duplicate param names",
 		pr: v1beta1.PipelineRun{
@@ -233,6 +414,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name: "pipeline-words",
 					Value: v1beta1.ArrayOrString{
+						Type:     v1beta1.ParamTypeArray,
 						ArrayVal: []string{"hello", "pipeline"},
 					},
 				}},
@@ -246,6 +428,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 						Params: []v1beta1.Param{{
 							Name: "pipeline-words",
 							Value: v1beta1.ArrayOrString{
+								Type:     v1beta1.ParamTypeArray,
 								ArrayVal: []string{"$(params.pipeline-words)"},
 							},
 						}},
@@ -347,6 +530,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name: "pipeline-words",
 					Value: v1beta1.ArrayOrString{
+						Type:     v1beta1.ParamTypeArray,
 						ArrayVal: []string{"hello", "pipeline"},
 					},
 				}},
@@ -360,6 +544,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 						Params: []v1beta1.Param{{
 							Name: "task-words",
 							Value: v1beta1.ParamValue{
+								Type:     v1beta1.ParamTypeArray,
 								ArrayVal: []string{"$(params.pipeline-words)"},
 							},
 						}},
@@ -405,6 +590,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 				Params: []v1beta1.Param{{
 					Name: "pipeline-words",
 					Value: v1beta1.ArrayOrString{
+						Type:     v1beta1.ParamTypeArray,
 						ArrayVal: []string{"hello", "pipeline"},
 					},
 				}},
@@ -417,6 +603,117 @@ func TestPipelineRun_Validate(t *testing.T) {
 								Image:   "ubuntu",
 								Command: []string{"echo"},
 								Args:    []string{"$(params.pipeline-words[*])"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating object params with pipelinespec and taskspec",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "pipeline-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "pipeline"},
+					},
+				}},
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.pipeline-words.hello)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating object params no value in params but value in default",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "pipeline-words",
+					Value: v1beta1.ParamValue{
+						Type: v1beta1.ParamTypeObject,
+					},
+				}},
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "pipeline-words",
+						Type: v1beta1.ParamTypeObject,
+						Properties: map[string]v1beta1.PropertySpec{
+							"hello": {Type: v1beta1.ParamTypeString},
+						},
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeObject,
+							ObjectVal: map[string]string{"hello": "pipelinespec"},
+						},
+					}},
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.pipeline-words.hello)"},
+							}},
+						}},
+					}},
+				},
+			},
+		},
+		wc: config.EnableAlphaAPIFields,
+	}, {
+		name: "propagating object params with some params defined in taskspec only",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "pipeline-words",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"hello": "pipeline"},
+					},
+				}},
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "echoit",
+						TaskSpec: &v1beta1.EmbeddedTask{TaskSpec: v1beta1.TaskSpec{
+							Params: []v1beta1.ParamSpec{{
+								Name: "task-words",
+								Type: v1beta1.ParamTypeObject,
+								Properties: map[string]v1beta1.PropertySpec{
+									"hello": {Type: v1beta1.ParamTypeString},
+								},
+								Default: &v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeObject,
+									ObjectVal: map[string]string{"hello": "taskspec"},
+								},
+							}},
+							Steps: []v1beta1.Step{{
+								Name:    "echo",
+								Image:   "ubuntu",
+								Command: []string{"echo"},
+								Args:    []string{"$(params.pipeline-words.hello)", "$(params.task-words.hello)"},
 							}},
 						}},
 					}},
