@@ -474,6 +474,8 @@ func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 	return nil
 }
 
+// isPartOfPipeline return true if TaskRun is a part of a Pipeline.
+// It also return the name of Pipeline and PipelineRun
 func isPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
 	pipelineLabel, hasPipelineLabel := tr.Labels[pipeline.PipelineLabelKey]
 	pipelineRunLabel, hasPipelineRunLabel := tr.Labels[pipeline.PipelineRunLabelKey]
