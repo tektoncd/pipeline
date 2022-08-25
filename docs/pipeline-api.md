@@ -9,6 +9,9 @@ weight: 1000
 <p>Packages:</p>
 <ul>
 <li>
+<a href="#resolution.tekton.dev%2fv1alpha1">resolution.tekton.dev/v1alpha1</a>
+</li>
+<li>
 <a href="#tekton.dev%2fv1">tekton.dev/v1</a>
 </li>
 <li>
@@ -18,6 +21,206 @@ weight: 1000
 <a href="#tekton.dev%2fv1beta1">tekton.dev/v1beta1</a>
 </li>
 </ul>
+<h2 id="resolution.tekton.dev/v1alpha1">resolution.tekton.dev/v1alpha1</h2>
+<div>
+</div>
+Resource Types:
+<ul></ul>
+<h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequest">ResolutionRequest
+</h3>
+<div>
+<p>ResolutionRequest is an object for requesting the content of
+a Tekton resource like a pipeline.yaml.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestSpec">
+ResolutionRequestSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec holds the information for the request part of the resource request.</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Parameters are the runtime attributes passed to
+the resolver to help it figure out how to resolve the
+resource being requested. For example: repo URL, commit SHA,
+path to file, the kind of authentication to leverage, etc.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatus">
+ResolutionRequestStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status communicates the state of the request and, ultimately,
+the content of the resolved resource.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequestSpec">ResolutionRequestSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1alpha1.ResolutionRequest">ResolutionRequest</a>)
+</p>
+<div>
+<p>ResolutionRequestSpec are all the fields in the spec of the
+ResolutionRequest CRD.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Parameters are the runtime attributes passed to
+the resolver to help it figure out how to resolve the
+resource being requested. For example: repo URL, commit SHA,
+path to file, the kind of authentication to leverage, etc.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequestStatus">ResolutionRequestStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1alpha1.ResolutionRequest">ResolutionRequest</a>)
+</p>
+<div>
+<p>ResolutionRequestStatus are all the fields in a ResolutionRequest&rsquo;s
+status subresource.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Status</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Status</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ResolutionRequestStatusFields</code><br/>
+<em>
+<a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">
+ResolutionRequestStatusFields
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ResolutionRequestStatusFields</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">ResolutionRequestStatusFields
+</h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatus">ResolutionRequestStatus</a>)
+</p>
+<div>
+<p>ResolutionRequestStatusFields are the ResolutionRequest-specific fields
+for the status subresource.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>data</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Data is a string representation of the resolved content
+of the requested resource in-lined into the ResolutionRequest
+object.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<hr/>
 <h2 id="tekton.dev/v1">tekton.dev/v1</h2>
 <div>
 <p>Package v1 contains API Schema definitions for the pipeline v1 API group</p>
@@ -27,6 +230,8 @@ Resource Types:
 <a href="#tekton.dev/v1.Pipeline">Pipeline</a>
 </li><li>
 <a href="#tekton.dev/v1.Task">Task</a>
+</li><li>
+<a href="#tekton.dev/v1.TaskRun">TaskRun</a>
 </li></ul>
 <h3 id="tekton.dev/v1.Pipeline">Pipeline
 </h3>
@@ -357,13 +562,12 @@ the steps start and end after the steps complete.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1.EmbeddedTask">EmbeddedTask
+<h3 id="tekton.dev/v1.TaskRun">TaskRun
 </h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
-</p>
 <div>
-<p>EmbeddedTask is used to define a Task inline within a Pipeline&rsquo;s PipelineTasks.</p>
+<p>TaskRun represents a single execution of a Task. TaskRuns are how the steps
+specified in a Task are executed; they specify the parameters and resources
+used to run the steps in a Task.</p>
 </div>
 <table>
 <thead>
@@ -375,50 +579,56 @@ the steps start and end after the steps complete.</p>
 <tbody>
 <tr>
 <td>
-<code>spec</code><br/>
-<em>
-k8s.io/apimachinery/pkg/runtime.RawExtension
-</em>
-</td>
+<code>apiVersion</code><br/>
+string</td>
 <td>
-<em>(Optional)</em>
-<p>Spec is a specification of a custom task</p>
-<br/>
-<br/>
-<table>
-<tr>
-<td>
-<code>-</code><br/>
-<em>
-[]byte
-</em>
-</td>
-<td>
-<p>Raw is the underlying serialization of this object.</p>
-<p>TODO: Determine how to detect ContentType and ContentEncoding of &lsquo;Raw&rsquo; data.</p>
+<code>
+tekton.dev/v1
+</code>
 </td>
 </tr>
 <tr>
 <td>
-<code>-</code><br/>
-<em>
-k8s.io/apimachinery/pkg/runtime.Object
-</em>
+<code>kind</code><br/>
+string
 </td>
-<td>
-<p>Object can hold a representation of this extension - useful for working with versioned
-structs.</p>
-</td>
-</tr>
-</table>
-</td>
+<td><code>TaskRun</code></td>
 </tr>
 <tr>
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="#tekton.dev/v1.PipelineTaskMetadata">
-PipelineTaskMetadata
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSpec">
+TaskRunSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>debug</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunDebug">
+TaskRunDebug
 </a>
 </em>
 </td>
@@ -428,7 +638,45 @@ PipelineTaskMetadata
 </tr>
 <tr>
 <td>
-<code>TaskSpec</code><br/>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRef">
+TaskRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>no more than one of the TaskRef and TaskSpec may be specified.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskSpec</code><br/>
 <em>
 <a href="#tekton.dev/v1.TaskSpec">
 TaskSpec
@@ -436,11 +684,141 @@ TaskSpec
 </em>
 </td>
 <td>
-<p>
-(Members of <code>TaskSpec</code> are embedded into this type.)
-</p>
 <em>(Optional)</em>
-<p>TaskSpec is a specification of a task</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSpecStatus">
+TaskRunSpecStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for cancelling a taskrun (and maybe more later on)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statusMessage</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSpecStatusMessage">
+TaskRunSpecStatusMessage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the build times out. Defaults to 1 hour.
+Specified build timeout should be less than 24h.
+Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podTemplate</code><br/>
+<em>
+<a href="#tekton.dev/unversioned.Template">
+Template
+</a>
+</em>
+</td>
+<td>
+<p>PodTemplate holds pod specific configuration</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1.WorkspaceBinding">
+[]WorkspaceBinding
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces is a list of WorkspaceBindings from volumes to workspaces.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>stepOverrides</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunStepOverride">
+[]TaskRunStepOverride
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Overrides to apply to Steps in this TaskRun.
+If a field is specified in both a Step and a StepOverride,
+the value from the StepOverride will be used.
+This field is only supported when the alpha feature gate is enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sidecarOverrides</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSidecarOverride">
+[]TaskRunSidecarOverride
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Overrides to apply to Sidecars in this TaskRun.
+If a field is specified in both a Sidecar and a SidecarOverride,
+the value from the SidecarOverride will be used.
+This field is only supported when the alpha feature gate is enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>computeResources</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Compute resources to use for this TaskRun</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunStatus">
+TaskRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -559,7 +937,7 @@ TaskSpec
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -1270,48 +1648,6 @@ ParamType
 <p>ResolverName is the name of a resolver from which a resource can be
 requested.</p>
 </div>
-<h3 id="tekton.dev/v1.ResolverParam">ResolverParam
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>)
-</p>
-<div>
-<p>ResolverParam is a single parameter passed to a resolver.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name of the parameter that will be passed to the
-resolver.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>value</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Value is the string value of the parameter that will be
-passed to the resolver.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1.ResolverRef">ResolverRef
 </h3>
 <p>
@@ -1347,16 +1683,16 @@ resolution of the referenced Tekton resource, such as &ldquo;git&rdquo;.</p>
 </tr>
 <tr>
 <td>
-<code>resource</code><br/>
+<code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1.ResolverParam">
-[]ResolverParam
+<a href="#tekton.dev/v1.Param">
+[]Param
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Resource contains the parameters used to identify the
+<p>Params contains the parameters used to identify the
 referenced Tekton resource. Example entries might include
 &ldquo;repo&rdquo; or &ldquo;path&rdquo; but the set of params ultimately depends on
 the chosen resolver.</p>
@@ -1862,6 +2198,69 @@ not have access to it.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.SidecarState">SidecarState
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+<p>SidecarState reports the results of running a sidecar in a Task.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ContainerState</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerstate-v1-core">
+Kubernetes core/v1.ContainerState
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ContainerState</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>container</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>imageID</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.Step">Step
 </h3>
 <p>
@@ -2190,6 +2589,69 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.StepState">StepState
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+<p>StepState reports the results of running a step in a Task.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ContainerState</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerstate-v1-core">
+Kubernetes core/v1.ContainerState
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ContainerState</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>container</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>imageID</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.StepTemplate">StepTemplate
 </h3>
 <p>
@@ -2412,7 +2874,7 @@ More info: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/sec
 <h3 id="tekton.dev/v1.TaskRef">TaskRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>TaskRef can be used to refer to a specific instance of a task.</p>
@@ -2549,8 +3011,105 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.TaskRunDebug">TaskRunDebug
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+</p>
+<div>
+<p>TaskRunDebug defines the breakpoint config for a particular TaskRun</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>breakpoint</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.TaskRunInputs">TaskRunInputs
+</h3>
+<div>
+<p>TaskRunInputs holds the input values that this task was invoked with.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.TaskRunReason">TaskRunReason
+(<code>string</code> alias)</h3>
+<div>
+<p>TaskRunReason is an enum used to store all TaskRun reason for
+the Succeeded condition that are controlled by the TaskRun itself. Failure
+reasons that emerge from underlying resources are not included here</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;TaskRunCancelled&#34;</p></td>
+<td><p>TaskRunReasonCancelled is the reason set when the Taskrun is cancelled by the user</p>
+</td>
+</tr><tr><td><p>&#34;Failed&#34;</p></td>
+<td><p>TaskRunReasonFailed is the reason set when the TaskRun completed with a failure</p>
+</td>
+</tr><tr><td><p>&#34;TaskRunImagePullFailed&#34;</p></td>
+<td><p>TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled</p>
+</td>
+</tr><tr><td><p>&#34;Running&#34;</p></td>
+<td><p>TaskRunReasonRunning is the reason set when the TaskRun is running</p>
+</td>
+</tr><tr><td><p>&#34;Started&#34;</p></td>
+<td><p>TaskRunReasonStarted is the reason set when the TaskRun has just started</p>
+</td>
+</tr><tr><td><p>&#34;Succeeded&#34;</p></td>
+<td><p>TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully</p>
+</td>
+</tr><tr><td><p>&#34;TaskRunTimeout&#34;</p></td>
+<td><p>TaskRunReasonTimedOut is the reason set when the Taskrun has timed out</p>
+</td>
+</tr></tbody>
+</table>
 <h3 id="tekton.dev/v1.TaskRunResult">TaskRunResult
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
 <div>
 <p>TaskRunResult used to describe the results of a task</p>
 </div>
@@ -2603,10 +3162,501 @@ ParamValue
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.TaskRunSidecarOverride">TaskRunSidecarOverride
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+</p>
+<div>
+<p>TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The name of the Sidecar to override.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>The resource requirements to apply to the Sidecar.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.TaskRunSpec">TaskRunSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRun">TaskRun</a>)
+</p>
+<div>
+<p>TaskRunSpec defines the desired state of TaskRun</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>debug</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunDebug">
+TaskRunDebug
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskRef</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRef">
+TaskRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>no more than one of the TaskRef and TaskSpec may be specified.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskSpec">
+TaskSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSpecStatus">
+TaskRunSpecStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for cancelling a taskrun (and maybe more later on)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statusMessage</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSpecStatusMessage">
+TaskRunSpecStatusMessage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the build times out. Defaults to 1 hour.
+Specified build timeout should be less than 24h.
+Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podTemplate</code><br/>
+<em>
+<a href="#tekton.dev/unversioned.Template">
+Template
+</a>
+</em>
+</td>
+<td>
+<p>PodTemplate holds pod specific configuration</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1.WorkspaceBinding">
+[]WorkspaceBinding
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces is a list of WorkspaceBindings from volumes to workspaces.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>stepOverrides</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunStepOverride">
+[]TaskRunStepOverride
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Overrides to apply to Steps in this TaskRun.
+If a field is specified in both a Step and a StepOverride,
+the value from the StepOverride will be used.
+This field is only supported when the alpha feature gate is enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sidecarOverrides</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunSidecarOverride">
+[]TaskRunSidecarOverride
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Overrides to apply to Sidecars in this TaskRun.
+If a field is specified in both a Sidecar and a SidecarOverride,
+the value from the SidecarOverride will be used.
+This field is only supported when the alpha feature gate is enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>computeResources</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Compute resources to use for this TaskRun</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.TaskRunSpecStatus">TaskRunSpecStatus
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+</p>
+<div>
+<p>TaskRunSpecStatus defines the taskrun spec status the user can provide</p>
+</div>
+<h3 id="tekton.dev/v1.TaskRunSpecStatusMessage">TaskRunSpecStatusMessage
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+</p>
+<div>
+<p>TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;TaskRun cancelled as the PipelineRun it belongs to has been cancelled.&#34;</p></td>
+<td><p>TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
+TaskRun was a part of has been cancelled.</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="tekton.dev/v1.TaskRunStatus">TaskRunStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRun">TaskRun</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+<p>TaskRunStatus defines the observed state of TaskRun</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Status</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Status</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>TaskRunStatusFields</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunStatusFields">
+TaskRunStatusFields
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>TaskRunStatusFields</code> are embedded into this type.)
+</p>
+<p>TaskRunStatusFields inlines the status fields.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunStatus">TaskRunStatus</a>)
+</p>
+<div>
+<p>TaskRunStatusFields holds the fields of TaskRun&rsquo;s status.  This is defined
+separately and inlined so that other types can readily consume these fields
+via duck typing.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PodName is the name of the pod responsible for executing this task&rsquo;s steps.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartTime is the time the build is actually started.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>completionTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CompletionTime is the time the build completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>steps</code><br/>
+<em>
+<a href="#tekton.dev/v1.StepState">
+[]StepState
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Steps describes the state of each build step container.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retriesStatus</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunStatus">
+[]TaskRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
+All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskRunResult">
+[]TaskRunResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results are the list of results written out by the task&rsquo;s containers</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sidecars</code><br/>
+<em>
+<a href="#tekton.dev/v1.SidecarState">
+[]SidecarState
+</a>
+</em>
+</td>
+<td>
+<p>The list has one entry per sidecar in the manifest. Each entry is
+represents the imageid of the corresponding sidecar.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>taskSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1.TaskSpec">
+TaskSpec
+</a>
+</em>
+</td>
+<td>
+<p>TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.TaskRunStepOverride">TaskRunStepOverride
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+</p>
+<div>
+<p>TaskRunStepOverride is used to override the values of a Step in the corresponding Task.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The name of the Step to override.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>The resource requirements to apply to the Step.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.TaskSpec">TaskSpec
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Task">Task</a>, <a href="#tekton.dev/v1.EmbeddedTask">EmbeddedTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Task">Task</a>, <a href="#tekton.dev/v1.EmbeddedTask">EmbeddedTask</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
 </p>
 <div>
 <p>TaskSpec defines the desired state of Task.</p>
@@ -2793,6 +3843,9 @@ All of them need to evaluate to True for a guarded Task to be executed.</p>
 </div>
 <h3 id="tekton.dev/v1.WorkspaceBinding">WorkspaceBinding
 </h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+</p>
 <div>
 <p>WorkspaceBinding maps a Task&rsquo;s declared workspace to a Volume.</p>
 </div>
@@ -2900,6 +3953,34 @@ Kubernetes core/v1.SecretVolumeSource
 <td>
 <em>(Optional)</em>
 <p>Secret represents a secret that should populate this workspace.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>projected</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#projectedvolumesource-v1-core">
+Kubernetes core/v1.ProjectedVolumeSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Projected represents a projected volume that should populate this workspace.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>csi</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#csivolumesource-v1-core">
+Kubernetes core/v1.CSIVolumeSource
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.</p>
 </td>
 </tr>
 </tbody>
@@ -5540,7 +6621,7 @@ TaskSpec
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -6629,6 +7710,20 @@ PipelineSpec
 <p>list of TaskRun and Run names, PipelineTask names, and API versions/kinds for children of this PipelineRun.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>finallyStartTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus
@@ -7420,48 +8515,6 @@ ParamType
 <p>ResolverName is the name of a resolver from which a resource can be
 requested.</p>
 </div>
-<h3 id="tekton.dev/v1beta1.ResolverParam">ResolverParam
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>)
-</p>
-<div>
-<p>ResolverParam is a single parameter passed to a resolver.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name of the parameter that will be passed to the
-resolver.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>value</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Value is the string value of the parameter that will be
-passed to the resolver.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.ResolverRef">ResolverRef
 </h3>
 <p>
@@ -7497,16 +8550,16 @@ resolution of the referenced Tekton resource, such as &ldquo;git&rdquo;.</p>
 </tr>
 <tr>
 <td>
-<code>resource</code><br/>
+<code>params</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.ResolverParam">
-[]ResolverParam
+<a href="#tekton.dev/v1beta1.Param">
+[]Param
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Resource contains the parameters used to identify the
+<p>Params contains the parameters used to identify the
 referenced Tekton resource. Example entries might include
 &ldquo;repo&rdquo; or &ldquo;path&rdquo; but the set of params ultimately depends on
 the chosen resolver.</p>
@@ -8168,7 +9221,10 @@ SkippingReason
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr><td><p>&#34;PipelineRun was gracefully cancelled&#34;</p></td>
+<tbody><tr><td><p>&#34;PipelineRun Finally timeout has been reached&#34;</p></td>
+<td><p>FinallyTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Finally.</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRun was gracefully cancelled&#34;</p></td>
 <td><p>GracefullyCancelledSkip means the task was skipped because the pipeline run has been gracefully cancelled</p>
 </td>
 </tr><tr><td><p>&#34;PipelineRun was gracefully stopped&#34;</p></td>
@@ -8183,8 +9239,14 @@ SkippingReason
 </tr><tr><td><p>&#34;Parent Tasks were skipped&#34;</p></td>
 <td><p>ParentTasksSkip means the task was skipped because its parent was skipped</p>
 </td>
+</tr><tr><td><p>&#34;PipelineRun timeout has been reached&#34;</p></td>
+<td><p>PipelineTimedOutSkip means the task was skipped because the PipelineRun has passed its overall timeout.</p>
+</td>
 </tr><tr><td><p>&#34;PipelineRun was stopping&#34;</p></td>
 <td><p>StoppingSkip means the task was skipped because the pipeline run is stopping</p>
+</td>
+</tr><tr><td><p>&#34;PipelineRun Tasks timeout has been reached&#34;</p></td>
+<td><p>TasksTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Tasks.</p>
 </td>
 </tr><tr><td><p>&#34;When Expressions evaluated to false&#34;</p></td>
 <td><p>WhenExpressionsSkip means the task was skipped due to at least one of its when expressions evaluating to false</p>
@@ -9965,6 +11027,9 @@ Kubernetes core/v1.ResourceRequirements
 <tbody><tr><td><p>&#34;TaskRun cancelled as the PipelineRun it belongs to has been cancelled.&#34;</p></td>
 <td><p>TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
 TaskRun was a part of has been cancelled.</p>
+</td>
+</tr><tr><td><p>&#34;TaskRun cancelled as the PipelineRun it belongs to has timed out.&#34;</p></td>
+<td><p>TaskRunCancelledByPipelineTimeoutMsg indicates that the TaskRun was cancelled because the PipelineRun running it timed out.</p>
 </td>
 </tr></tbody>
 </table>

@@ -234,6 +234,127 @@
       "description": "PipelineResourceStatus does not contain anything because PipelineResources on their own do not have a status Deprecated",
       "type": "object"
     },
+    "v1alpha1.ResolutionRequest": {
+      "description": "ResolutionRequest is an object for requesting the content of a Tekton resource like a pipeline.yaml.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the information for the request part of the resource request.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ResolutionRequestSpec"
+        },
+        "status": {
+          "description": "Status communicates the state of the request and, ultimately, the content of the resolved resource.",
+          "default": {},
+          "$ref": "#/definitions/v1alpha1.ResolutionRequestStatus"
+        }
+      }
+    },
+    "v1alpha1.ResolutionRequestList": {
+      "description": "ResolutionRequestList is a list of ResolutionRequests.",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1alpha1.ResolutionRequest"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1alpha1.ResolutionRequestSpec": {
+      "description": "ResolutionRequestSpec are all the fields in the spec of the ResolutionRequest CRD.",
+      "type": "object",
+      "properties": {
+        "params": {
+          "description": "Parameters are the runtime attributes passed to the resolver to help it figure out how to resolve the resource being requested. For example: repo URL, commit SHA, path to file, the kind of authentication to leverage, etc.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      }
+    },
+    "v1alpha1.ResolutionRequestStatus": {
+      "description": "ResolutionRequestStatus are all the fields in a ResolutionRequest's status subresource.",
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "annotations": {
+          "description": "Annotations is additional Status fields for the Resource to save some additional State as well as convey more information to the user. This is roughly akin to Annotations on any k8s resource, just the reconciler conveying richer information outwards.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "conditions": {
+          "description": "Conditions the latest available observations of a resource's current state.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/knative.Condition"
+          },
+          "x-kubernetes-patch-merge-key": "type",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "data": {
+          "description": "Data is a string representation of the resolved content of the requested resource in-lined into the ResolutionRequest object.",
+          "type": "string",
+          "default": ""
+        },
+        "observedGeneration": {
+          "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "v1alpha1.ResolutionRequestStatusFields": {
+      "description": "ResolutionRequestStatusFields are the ResolutionRequest-specific fields for the status subresource.",
+      "type": "object",
+      "required": [
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "description": "Data is a string representation of the resolved content of the requested resource in-lined into the ResolutionRequest object.",
+          "type": "string",
+          "default": ""
+        }
+      }
+    },
     "v1alpha1.ResourceDeclaration": {
       "description": "ResourceDeclaration defines an input or output PipelineResource declared as a requirement by another type such as a Task or Condition. The Name field will be used to refer to these PipelineResources within the type's definition, and when provided as an Input, the Name will be the path to the volume mounted containing this PipelineResource as an input (e.g. an input Resource named `workspace` will be mounted at `/workspace`).",
       "type": "object",
@@ -1480,42 +1601,22 @@
         }
       }
     },
-    "v1beta1.ResolverParam": {
-      "description": "ResolverParam is a single parameter passed to a resolver.",
-      "type": "object",
-      "required": [
-        "name",
-        "value"
-      ],
-      "properties": {
-        "name": {
-          "description": "Name is the name of the parameter that will be passed to the resolver.",
-          "type": "string",
-          "default": ""
-        },
-        "value": {
-          "description": "Value is the string value of the parameter that will be passed to the resolver.",
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
     "v1beta1.ResolverRef": {
       "description": "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
       "type": "object",
       "properties": {
-        "resolver": {
-          "description": "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
-          "type": "string"
-        },
-        "resource": {
-          "description": "Resource contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
+        "params": {
+          "description": "Params contains the parameters used to identify the referenced Tekton resource. Example entries might include \"repo\" or \"path\" but the set of params ultimately depends on the chosen resolver.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1beta1.ResolverParam"
+            "$ref": "#/definitions/v1beta1.Param"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "resolver": {
+          "description": "Resolver is the name of the resolver that should perform resolution of the referenced Tekton resource, such as \"git\".",
+          "type": "string"
         }
       }
     },

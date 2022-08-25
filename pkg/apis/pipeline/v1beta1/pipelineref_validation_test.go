@@ -71,18 +71,18 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		},
 		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
-		name: "pipelineref resource disallowed without alpha feature gate",
+		name: "pipelineref params disallowed without alpha feature gate",
 		ref: &v1beta1.PipelineRef{
 			ResolverRef: v1beta1.ResolverRef{
-				Resource: []v1beta1.ResolverParam{},
+				Params: []v1beta1.Param{},
 			},
 		},
-		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resource requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
 	}, {
-		name: "pipelineref resource disallowed without resolver",
+		name: "pipelineref params disallowed without resolver",
 		ref: &v1beta1.PipelineRef{
 			ResolverRef: v1beta1.ResolverRef{
-				Resource: []v1beta1.ResolverParam{},
+				Params: []v1beta1.Param{},
 			},
 		},
 		wantErr:     apis.ErrMissingField("resolver"),
@@ -108,31 +108,54 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		wantErr:     apis.ErrMultipleOneOf("bundle", "resolver"),
 		withContext: config.EnableAlphaAPIFields,
 	}, {
-		name: "pipelineref resource disallowed in conjunction with pipelineref name",
+		name: "pipelineref params disallowed in conjunction with pipelineref name",
 		ref: &v1beta1.PipelineRef{
 			Name: "bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Resource: []v1beta1.ResolverParam{{
-					Name:  "foo",
-					Value: "bar",
+				Params: []v1beta1.Param{{
+					Name: "foo",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "bar",
+					},
 				}},
 			},
 		},
-		wantErr:     apis.ErrMultipleOneOf("name", "resource").Also(apis.ErrMissingField("resolver")),
+		wantErr:     apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
 		withContext: config.EnableAlphaAPIFields,
 	}, {
-		name: "pipelineref resource disallowed in conjunction with pipelineref bundle",
+		name: "pipelineref params disallowed in conjunction with pipelineref bundle",
 		ref: &v1beta1.PipelineRef{
 			Bundle: "bar",
 			ResolverRef: v1beta1.ResolverRef{
-				Resource: []v1beta1.ResolverParam{{
-					Name:  "foo",
-					Value: "bar",
+				Params: []v1beta1.Param{{
+					Name: "foo",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: "bar",
+					},
 				}},
 			},
 		},
-		wantErr:     apis.ErrMultipleOneOf("bundle", "resource").Also(apis.ErrMissingField("resolver")),
+		wantErr:     apis.ErrMultipleOneOf("bundle", "params").Also(apis.ErrMissingField("resolver")),
 		withContext: config.EnableAlphaAPIFields,
+	}, {
+		name: "pipelineref param object requires alpha",
+		ref: &v1beta1.PipelineRef{
+			ResolverRef: v1beta1.ResolverRef{
+				Resolver: "some-resolver",
+				Params: []v1beta1.Param{{
+					Name: "foo",
+					Value: v1beta1.ParamValue{
+						Type:      v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{"bar": "baz"},
+					},
+				}},
+			},
+		},
+		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").
+			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
+			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
 	}}
 
 	for _, tc := range tests {
@@ -162,13 +185,19 @@ func TestPipelineRef_Valid(t *testing.T) {
 		ref:  &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
 		wc:   config.EnableAlphaAPIFields,
 	}, {
-		name: "alpha feature: valid resolver with resource parameters",
-		ref: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Resource: []v1beta1.ResolverParam{{
-			Name:  "repo",
-			Value: "https://github.com/tektoncd/pipeline.git",
+		name: "alpha feature: valid resolver with params",
+		ref: &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Params: []v1beta1.Param{{
+			Name: "repo",
+			Value: v1beta1.ParamValue{
+				Type:      v1beta1.ParamTypeString,
+				StringVal: "https://github.com/tektoncd/pipeline.git",
+			},
 		}, {
-			Name:  "branch",
-			Value: "baz",
+			Name: "branch",
+			Value: v1beta1.ParamValue{
+				Type:      v1beta1.ParamTypeString,
+				StringVal: "baz",
+			},
 		}}}},
 		wc: config.EnableAlphaAPIFields,
 	}}

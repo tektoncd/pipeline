@@ -24,7 +24,6 @@ import (
 
 	tektonv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	tektonv1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
 	"k8s.io/klog"
 	"k8s.io/kube-openapi/pkg/common"
 	spec "k8s.io/kube-openapi/pkg/validation/spec"
@@ -80,6 +79,7 @@ func swaggify(name string) string {
 	name = strings.ReplaceAll(name, "./pkg/apis/pipeline/", "")
 	name = strings.ReplaceAll(name, "./pkg/apis/resource/", "")
 	name = strings.ReplaceAll(name, "github.com/tektoncd/pipeline/pkg/apis/pipeline/", "")
+	name = strings.ReplaceAll(name, "github.com/tektoncd/pipeline/pkg/apis/resolution/", "")
 	name = strings.ReplaceAll(name, "github.com/tektoncd/pipeline/pkg/apis/resource/", "")
 	name = strings.ReplaceAll(name, "k8s.io/api/core/", "")
 	name = strings.ReplaceAll(name, "k8s.io/apimachinery/pkg/apis/meta/", "")

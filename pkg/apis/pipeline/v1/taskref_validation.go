@@ -31,21 +31,25 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return
 	}
 
-	switch {
-	case ref.Resolver != "":
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.AlphaAPIFields).ViaField("resolver"))
-		if ref.Name != "" {
-			errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
+	if ref.Resolver != "" || ref.Params != nil {
+		if ref.Resolver != "" {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.AlphaAPIFields).ViaField("resolver"))
+			if ref.Name != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
+			}
 		}
-	case ref.Resource != nil:
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resource", config.AlphaAPIFields).ViaField("resource"))
-		if ref.Name != "" {
-			errs = errs.Also(apis.ErrMultipleOneOf("name", "resource"))
+		if ref.Params != nil {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "params", config.AlphaAPIFields).ViaField("params"))
+			if ref.Name != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
+			}
+			if ref.Resolver == "" {
+				errs = errs.Also(apis.ErrMissingField("resolver"))
+			}
+			// TODO(abayer): Uncomment this when taskrun_validation.go is added with the ValidateParameters function.
+			// errs = errs.Also(ValidateParameters(ctx, ref.Params))
 		}
-		if ref.Resolver == "" {
-			errs = errs.Also(apis.ErrMissingField("resolver"))
-		}
-	case ref.Name == "":
+	} else if ref.Name == "" {
 		errs = errs.Also(apis.ErrMissingField("name"))
 	}
 	return

@@ -33,32 +33,38 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return
 	}
 
-	switch {
-	case ref.Resolver != "":
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.AlphaAPIFields).ViaField("resolver"))
-		if ref.Name != "" {
-			errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
+	if ref.Resolver != "" || ref.Params != nil {
+		if ref.Resolver != "" {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.AlphaAPIFields).ViaField("resolver"))
+			if ref.Name != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
+			}
+			if ref.Bundle != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
+			}
+		}
+		if ref.Params != nil {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "params", config.AlphaAPIFields).ViaField("params"))
+			if ref.Name != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
+			}
+			if ref.Bundle != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("bundle", "params"))
+			}
+			if ref.Resolver == "" {
+				errs = errs.Also(apis.ErrMissingField("resolver"))
+			}
+			errs = errs.Also(ValidateParameters(ctx, ref.Params))
+		}
+	} else {
+		if ref.Name == "" {
+			errs = errs.Also(apis.ErrMissingField("name"))
 		}
 		if ref.Bundle != "" {
-			errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resolver"))
-		}
-	case ref.Resource != nil:
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resource", config.AlphaAPIFields).ViaField("resource"))
-		if ref.Name != "" {
-			errs = errs.Also(apis.ErrMultipleOneOf("name", "resource"))
-		}
-		if ref.Bundle != "" {
-			errs = errs.Also(apis.ErrMultipleOneOf("bundle", "resource"))
-		}
-		if ref.Resolver == "" {
-			errs = errs.Also(apis.ErrMissingField("resolver"))
-		}
-	case ref.Name == "":
-		errs = errs.Also(apis.ErrMissingField("name"))
-	case ref.Bundle != "":
-		errs = errs.Also(validateBundleFeatureFlag(ctx, "bundle", true).ViaField("bundle"))
-		if _, err := name.ParseReference(ref.Bundle); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
+			errs = errs.Also(validateBundleFeatureFlag(ctx, "bundle", true).ViaField("bundle"))
+			if _, err := name.ParseReference(ref.Bundle); err != nil {
+				errs = errs.Also(apis.ErrInvalidValue("invalid bundle reference", "bundle", err.Error()))
+			}
 		}
 	}
 	return

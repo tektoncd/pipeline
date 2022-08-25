@@ -7650,6 +7650,9 @@ spec:
     - name: some-task
       taskRef:
         resolver: foobar
+        params:
+        - name: foo
+          value: bar
   serviceAccountName: default
 `)
 
@@ -7684,6 +7687,9 @@ spec:
 	resolutionRequestType := resreq.ObjectMeta.Labels["resolution.tekton.dev/type"]
 	if resolutionRequestType != resolverName {
 		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
+	}
+	if resreq.Spec.Parameters["foo"] != "bar" {
+		t.Fatalf("expected resource request parameter 'bar', but got '%s'", resreq.Spec.Parameters["foo"])
 	}
 
 	taskBytes := []byte(`
