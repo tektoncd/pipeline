@@ -468,20 +468,6 @@ func (tr *TaskRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: tr.Namespace, Name: tr.Name}
 }
 
-// IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
-// It also return the name of Pipeline and PipelineRun
-func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
-	if tr == nil || len(tr.Labels) == 0 {
-		return false, "", ""
-	}
-
-	if pl, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
-		return true, pl, tr.Labels[pipeline.PipelineRunLabelKey]
-	}
-
-	return false, "", ""
-}
-
 // HasVolumeClaimTemplate returns true if TaskRun contains volumeClaimTemplates that is
 // used for creating PersistentVolumeClaims with an OwnerReference for each run
 func (tr *TaskRun) HasVolumeClaimTemplate() bool {
