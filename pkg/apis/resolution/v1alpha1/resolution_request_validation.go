@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/tektoncd/resolution/pkg/common"
+	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"knative.dev/pkg/apis"
 )
 

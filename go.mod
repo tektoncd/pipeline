@@ -34,6 +34,8 @@ require (
 
 require github.com/benbjohnson/clock v1.1.0 // indirect
 
+require k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
+
 require (
 	cloud.google.com/go/compute v1.5.0 // indirect
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
@@ -120,7 +122,6 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.8.0 // indirect
-	github.com/tektoncd/resolution v0.0.0-20220331203013-e4203c70c5eb
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/automaxprocs v1.4.0 // indirect
@@ -147,7 +148,6 @@ require (
 	k8s.io/apiextensions-apiserver v0.23.9 // indirect
 	k8s.io/gengo v0.0.0-20220613173612-397b4ae3bce7 // indirect
 	k8s.io/klog/v2 v2.70.2-0.20220707122935-0990e81f1a8f // indirect
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 )

@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	resolutioncommon "github.com/tektoncd/resolution/pkg/common"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 )

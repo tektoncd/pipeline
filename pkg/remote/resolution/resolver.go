@@ -20,8 +20,8 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"github.com/tektoncd/pipeline/pkg/remote"
-	resolutioncommon "github.com/tektoncd/resolution/pkg/common"
-	remoteresource "github.com/tektoncd/resolution/pkg/resource"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/kmeta"
 )

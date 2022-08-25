@@ -1197,8 +1197,6 @@ github.com/tektoncd/ahmetb-gen-crd-api-reference-docs v0.3.1-0.20220729140133-6c
 github.com/tektoncd/ahmetb-gen-crd-api-reference-docs v0.3.1-0.20220729140133-6ce2d5aafcb4/go.mod h1:lQON0TD5PnAUl7Q6H5FNV+/AqCSeltYf72OGIkegB/o=
 github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb h1:LUUCR8pLF+MzdQ7kOQQrMzDahIPZLdPCzfnNow1Um3Y=
 github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb/go.mod h1:uJBaI0AL/kjPThiMYZcWRujEz7D401v643d6s/21GAg=
-github.com/tektoncd/resolution v0.0.0-20220331203013-e4203c70c5eb h1:bSrsnmoOJJh1JorlaTDSusq/eIBnk5zRKAVXOhnJyD8=
-github.com/tektoncd/resolution v0.0.0-20220331203013-e4203c70c5eb/go.mod h1:u7+LospaKMTW8f1mKHpul2XmGXYSG86kMrbJqUr2w0Q=
 github.com/tenntenn/modver v1.0.1/go.mod h1:bePIyQPb7UeioSRkw3Q0XeMhYZSMx9B8ePqg6SAMGH0=
 github.com/tenntenn/text/transform v0.0.0-20200319021203-7eef512accb3/go.mod h1:ON8b8w4BN/kE1EOhwT0o+d62W65a6aPw1nouo9LMgyY=
 github.com/tetafro/godot v1.4.11/go.mod h1:LR3CJpxDVGlYOWn3ZZg1PgNZdTUvzsZWu8xaEohUpn8=
