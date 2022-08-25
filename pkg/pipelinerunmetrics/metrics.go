@@ -294,12 +294,16 @@ func (r *Recorder) ReportRunningPipelineRuns(ctx context.Context, lister listers
 	logger := logging.FromContext(ctx)
 
 	for {
+		delay := time.NewTimer(r.ReportingPeriod)
 		select {
 		case <-ctx.Done():
 			// When the context is cancelled, stop reporting.
+			if !delay.Stop() {
+				<-delay.C
+			}
 			return
 
-		case <-time.After(r.ReportingPeriod):
+		case <-delay.C:
 			// Every 30s surface a metric for the number of running pipelines.
 			if err := r.RunningPipelineRuns(lister); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)

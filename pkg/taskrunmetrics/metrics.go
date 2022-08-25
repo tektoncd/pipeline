@@ -377,12 +377,16 @@ func (r *Recorder) RunningTaskRuns(ctx context.Context, lister listers.TaskRunLi
 func (r *Recorder) ReportRunningTaskRuns(ctx context.Context, lister listers.TaskRunLister) {
 	logger := logging.FromContext(ctx)
 	for {
+		delay := time.NewTimer(r.ReportingPeriod)
 		select {
 		case <-ctx.Done():
 			// When the context is cancelled, stop reporting.
+			if !delay.Stop() {
+				<-delay.C
+			}
 			return
 
-		case <-time.After(r.ReportingPeriod):
+		case <-delay.C:
 			// Every 30s surface a metric for the number of running tasks.
 			if err := r.RunningTaskRuns(ctx, lister); err != nil {
 				logger.Warnf("Failed to log the metrics : %v", err)
