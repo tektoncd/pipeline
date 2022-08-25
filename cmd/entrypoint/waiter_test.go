@@ -44,11 +44,16 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 		}
 		close(doneCh)
 	}()
+
+	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
+	case <-delay.C:
+		// Success
 	case <-doneCh:
 		t.Errorf("did not expect Wait() to have detected a file at path %q", tmp.Name())
-	case <-time.After(2 * testWaitPollingInterval):
-		// Success
+		if !delay.Stop() {
+			<-delay.C
+		}
 	}
 }
 
@@ -67,10 +72,11 @@ func TestRealWaiterWaitWithFile(t *testing.T) {
 		}
 		close(doneCh)
 	}()
+	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
 	case <-doneCh:
 		// Success
-	case <-time.After(2 * testWaitPollingInterval):
+	case <-delay.C:
 		t.Errorf("expected Wait() to have detected the file's existence by now")
 	}
 }
@@ -90,11 +96,15 @@ func TestRealWaiterWaitMissingContent(t *testing.T) {
 		}
 		close(doneCh)
 	}()
+	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
+	case <-delay.C:
+		// Success
 	case <-doneCh:
 		t.Errorf("no data was written to tmp file, did not expect Wait() to have detected a non-zero file size and returned")
-	case <-time.After(2 * testWaitPollingInterval):
-		// Success
+		if !delay.Stop() {
+			<-delay.C
+		}
 	}
 }
 
@@ -116,10 +126,11 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 	if err := ioutil.WriteFile(tmp.Name(), []byte("😺"), 0700); err != nil {
 		t.Errorf("error writing content to temp file: %v", err)
 	}
+	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
 	case <-doneCh:
 		// Success
-	case <-time.After(2 * testWaitPollingInterval):
+	case <-delay.C:
 		t.Errorf("expected Wait() to have detected a non-zero file size by now")
 	}
 }
@@ -146,10 +157,11 @@ func TestRealWaiterWaitWithErrorWaitfile(t *testing.T) {
 			t.Errorf("unexpected error type %T", typ)
 		}
 	}()
+	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
 	case <-doneCh:
 		// Success
-	case <-time.After(2 * testWaitPollingInterval):
+	case <-delay.C:
 		t.Errorf("expected Wait() to have detected a non-zero file size by now")
 	}
 }
@@ -171,10 +183,11 @@ func TestRealWaiterWaitWithBreakpointOnFailure(t *testing.T) {
 		}
 		close(doneCh)
 	}()
+	delay := time.NewTimer(2 * testWaitPollingInterval)
 	select {
 	case <-doneCh:
 		// Success
-	case <-time.After(2 * testWaitPollingInterval):
+	case <-delay.C:
 		t.Errorf("expected Wait() to have detected a non-zero file size by now")
 	}
 }
