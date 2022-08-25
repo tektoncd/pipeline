@@ -195,9 +195,6 @@ func TestTaskrunConversion(t *testing.T) {
 }
 
 func TestTaskRunConversionFromDeprecated(t *testing.T) {
-	// TODO(#4546): We're just dropping Resources when converting from
-	// v1beta1 to v1. Before moving the stored version to v1, we should
-	// come up with a better strategy
 	versions := []apis.Convertible{&v1.TaskRun{}}
 	tests := []struct {
 		name string
@@ -229,7 +226,19 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				Name:      "foo",
 				Namespace: "bar",
 			},
-			Spec: v1beta1.TaskRunSpec{},
+			Spec: v1beta1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Inputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							ResourceRef: &v1beta1.PipelineResourceRef{
+								Name: "the-git-with-branch",
+							},
+							Name: "gitspace",
+						},
+						Paths: []string{"test-path"},
+					}},
+				},
+			},
 		},
 	}, {
 		name: "output resources",
@@ -257,7 +266,19 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				Name:      "foo",
 				Namespace: "bar",
 			},
-			Spec: v1beta1.TaskRunSpec{},
+			Spec: v1beta1.TaskRunSpec{
+				Resources: &v1beta1.TaskRunResources{
+					Outputs: []v1beta1.TaskResourceBinding{{
+						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+							ResourceRef: &v1beta1.PipelineResourceRef{
+								Name: "the-git-with-branch",
+							},
+							Name: "gitspace",
+						},
+						Paths: []string{"test-path"},
+					}},
+				},
+			},
 		},
 	}}
 	for _, test := range tests {
