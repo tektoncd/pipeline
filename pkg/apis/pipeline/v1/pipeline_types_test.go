@@ -208,9 +208,9 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 		},
 		enableAPIFields: true,
 	}, {
-		name: "pipeline task - use of resource with the feature flag set",
+		name: "pipeline task - use of resolver params with the feature flag set",
 		tasks: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resource: []ResolverParam{{}}}},
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: []Param{{}}}},
 		},
 		enableAPIFields: true,
 	}}
@@ -275,11 +275,11 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 		},
 		expectedError: *apis.ErrDisallowedFields("taskref.resolver"),
 	}, {
-		name: "pipeline task - use of resource without the feature flag set",
+		name: "pipeline task - use of resolver params without the feature flag set",
 		task: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resource: []ResolverParam{{}}}},
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: []Param{{}}}},
 		},
-		expectedError: *apis.ErrDisallowedFields("taskref.resource"),
+		expectedError: *apis.ErrDisallowedFields("taskref.params"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

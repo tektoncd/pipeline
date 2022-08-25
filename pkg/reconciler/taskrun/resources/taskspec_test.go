@@ -140,9 +140,12 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{
 				ResolverRef: v1beta1.ResolverRef{
 					Resolver: "foo",
-					Resource: []v1beta1.ResolverParam{{
-						Name:  "bar",
-						Value: "baz",
+					Params: []v1beta1.Param{{
+						Name: "bar",
+						Value: v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "baz",
+						},
 					}},
 				},
 			},

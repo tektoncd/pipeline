@@ -29,3 +29,4 @@ API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,StepTemplate,DeprecatedTTY
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,StepTemplate,DeprecatedTerminationMessagePath
 API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1,StepTemplate,DeprecatedTerminationMessagePolicy
+API rule violation: names_match,github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1,ResolutionRequestSpec,Parameters

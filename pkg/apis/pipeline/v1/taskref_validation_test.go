@@ -43,12 +43,12 @@ func TestTaskRef_Valid(t *testing.T) {
 		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "alpha feature: valid resolver with resource parameters",
-		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git", Resource: []v1.ResolverParam{{
+		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: []v1.Param{{
 			Name:  "repo",
-			Value: "https://github.com/tektoncd/pipeline.git",
+			Value: *v1.NewStructuredValues("https://github.com/tektoncd/pipeline.git"),
 		}, {
 			Name:  "branch",
-			Value: "baz",
+			Value: *v1.NewStructuredValues("baz"),
 		}}}},
 		wc: config.EnableAlphaAPIFields,
 	}}
@@ -87,15 +87,15 @@ func TestTaskRef_Invalid(t *testing.T) {
 		name: "taskref resource disallowed without alpha feature gate",
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{
-				Resource: []v1.ResolverParam{},
+				Params: []v1.Param{},
 			},
 		},
-		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("resource requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
 	}, {
-		name: "taskref resource disallowed without resolver",
+		name: "taskref resolver params disallowed without resolver",
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{
-				Resource: []v1.ResolverParam{},
+				Params: []v1.Param{},
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver"),
@@ -111,17 +111,17 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "taskref resource disallowed in conjunction with taskref name",
+		name: "taskref resolver params disallowed in conjunction with taskref name",
 		taskRef: &v1.TaskRef{
 			Name: "bar",
 			ResolverRef: v1.ResolverRef{
-				Resource: []v1.ResolverParam{{
+				Params: []v1.Param{{
 					Name:  "foo",
-					Value: "bar",
+					Value: *v1.NewStructuredValues("bar"),
 				}},
 			},
 		},
-		wantErr: apis.ErrMultipleOneOf("name", "resource").Also(apis.ErrMissingField("resolver")),
+		wantErr: apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
 		wc:      config.EnableAlphaAPIFields,
 	}}
 	for _, ts := range tests {
