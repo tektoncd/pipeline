@@ -493,6 +493,50 @@ func TestRecordPodLatency(t *testing.T) {
 
 }
 
+func TestTaskRunIsOfPipelinerun(t *testing.T) {
+	tests := []struct {
+		name                  string
+		tr                    *v1beta1.TaskRun
+		expectedValue         bool
+		expetectedPipeline    string
+		expetectedPipelineRun string
+	}{{
+		name: "yes",
+		tr: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					pipeline.PipelineLabelKey:    "pipeline",
+					pipeline.PipelineRunLabelKey: "pipelinerun",
+				},
+			},
+		},
+		expectedValue:         true,
+		expetectedPipeline:    "pipeline",
+		expetectedPipelineRun: "pipelinerun",
+	}, {
+		name:          "no",
+		tr:            &v1beta1.TaskRun{},
+		expectedValue: false,
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			value, pipeline, pipelineRun := IsPartOfPipeline(test.tr)
+			if value != test.expectedValue {
+				t.Fatalf("Expecting %v got %v", test.expectedValue, value)
+			}
+
+			if pipeline != test.expetectedPipeline {
+				t.Fatalf("Mismatch in pipeline: got %s expected %s", pipeline, test.expetectedPipeline)
+			}
+
+			if pipelineRun != test.expetectedPipelineRun {
+				t.Fatalf("Mismatch in pipelinerun: got %s expected %s", pipelineRun, test.expetectedPipelineRun)
+			}
+		})
+	}
+}
+
 func TestRecordCloudEvents(t *testing.T) {
 	for _, c := range []struct {
 		name          string

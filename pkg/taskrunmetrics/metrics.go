@@ -309,7 +309,7 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1beta1.TaskRun, be
 		status = "failed"
 	}
 
-	if ok, pipeline, pipelinerun := isPartOfPipeline(tr); ok {
+	if ok, pipeline, pipelinerun := IsPartOfPipeline(tr); ok {
 		ctx, err := tag.New(
 			ctx,
 			append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
@@ -446,7 +446,7 @@ func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 		status = "failed"
 	}
 
-	if ok, pipeline, pipelinerun := isPartOfPipeline(tr); ok {
+	if ok, pipeline, pipelinerun := IsPartOfPipeline(tr); ok {
 		ctx, err := tag.New(
 			ctx,
 			append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
@@ -474,9 +474,9 @@ func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 	return nil
 }
 
-// isPartOfPipeline return true if TaskRun is a part of a Pipeline.
+// IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
 // It also return the name of Pipeline and PipelineRun
-func isPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
+func IsPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
 	pipelineLabel, hasPipelineLabel := tr.Labels[pipeline.PipelineLabelKey]
 	pipelineRunLabel, hasPipelineRunLabel := tr.Labels[pipeline.PipelineRunLabelKey]
 
