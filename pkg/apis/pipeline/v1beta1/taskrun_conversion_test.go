@@ -280,6 +280,39 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "bundle",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name:   "test-bundle-name",
+					Bundle: "test-bundle",
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				TaskRef: &v1beta1.TaskRef{
+					Name: "test-bundle-name",
+					ResolverRef: v1beta1.ResolverRef{
+						Resolver: "bundles",
+						Params: []v1beta1.Param{
+							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle"}},
+							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name"}},
+							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task"}},
+						},
+					},
+				},
+			},
+		},
 	}}
 	for _, test := range tests {
 		for _, version := range versions {
