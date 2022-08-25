@@ -24,6 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	"go.opencensus.io/stats"
@@ -308,7 +309,7 @@ func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1beta1.TaskRun, be
 		status = "failed"
 	}
 
-	if ok, pipeline, pipelinerun := tr.IsPartOfPipeline(); ok {
+	if ok, pipeline, pipelinerun := isPartOfPipeline(tr); ok {
 		ctx, err := tag.New(
 			ctx,
 			append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
@@ -445,7 +446,7 @@ func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 		status = "failed"
 	}
 
-	if ok, pipeline, pipelinerun := tr.IsPartOfPipeline(); ok {
+	if ok, pipeline, pipelinerun := isPartOfPipeline(tr); ok {
 		ctx, err := tag.New(
 			ctx,
 			append([]tag.Mutator{tag.Insert(namespaceTag, tr.Namespace),
@@ -471,6 +472,17 @@ func (r *Recorder) CloudEvents(ctx context.Context, tr *v1beta1.TaskRun) error {
 	metrics.Record(ctx, cloudEvents.M(sentCloudEvents(tr)))
 
 	return nil
+}
+
+func isPartOfPipeline(tr *v1beta1.TaskRun) (bool, string, string) {
+	pipelineLabel, hasPipelineLabel := tr.Labels[pipeline.PipelineLabelKey]
+	pipelineRunLabel, hasPipelineRunLabel := tr.Labels[pipeline.PipelineRunLabelKey]
+
+	if hasPipelineLabel && hasPipelineRunLabel {
+		return true, pipelineLabel, pipelineRunLabel
+	}
+
+	return false, "", ""
 }
 
 func sentCloudEvents(tr *v1beta1.TaskRun) int64 {

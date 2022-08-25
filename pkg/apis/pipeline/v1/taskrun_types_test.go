@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -220,50 +219,6 @@ func TestTaskRunHasStarted(t *testing.T) {
 			tr.Status = tc.trStatus
 			if tr.HasStarted() != tc.expectedValue {
 				t.Fatalf("Expected taskrun HasStarted() to return %t but got %t", tc.expectedValue, tr.HasStarted())
-			}
-		})
-	}
-}
-
-func TestTaskRunIsOfPipelinerun(t *testing.T) {
-	tests := []struct {
-		name                  string
-		tr                    *v1.TaskRun
-		expectedValue         bool
-		expetectedPipeline    string
-		expetectedPipelineRun string
-	}{{
-		name: "yes",
-		tr: &v1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					pipeline.PipelineLabelKey:    "pipeline",
-					pipeline.PipelineRunLabelKey: "pipelinerun",
-				},
-			},
-		},
-		expectedValue:         true,
-		expetectedPipeline:    "pipeline",
-		expetectedPipelineRun: "pipelinerun",
-	}, {
-		name:          "no",
-		tr:            &v1.TaskRun{},
-		expectedValue: false,
-	}}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			value, pipeline, pipelineRun := test.tr.IsPartOfPipeline()
-			if value != test.expectedValue {
-				t.Fatalf("Expecting %v got %v", test.expectedValue, value)
-			}
-
-			if pipeline != test.expetectedPipeline {
-				t.Fatalf("Mismatch in pipeline: got %s expected %s", pipeline, test.expetectedPipeline)
-			}
-
-			if pipelineRun != test.expetectedPipelineRun {
-				t.Fatalf("Mismatch in pipelinerun: got %s expected %s", pipelineRun, test.expetectedPipelineRun)
 			}
 		})
 	}
