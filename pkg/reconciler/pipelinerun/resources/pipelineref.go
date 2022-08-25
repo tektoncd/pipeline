@@ -29,7 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"github.com/tektoncd/pipeline/pkg/remote/oci"
 	"github.com/tektoncd/pipeline/pkg/remote/resolution"
-	remoteresource "github.com/tektoncd/resolution/pkg/resource"
+	remoteresource "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -74,7 +74,6 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 		return func(ctx context.Context, name string) (v1beta1.PipelineObject, error) {
 			params := map[string]string{}
 			for _, p := range pr.Params {
-				// TODO(abayer): This will be changed to pass p.Value directly once we switch the reconciler over to the new resolution code
 				params[p.Name] = p.Value.StringVal
 			}
 			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", params)

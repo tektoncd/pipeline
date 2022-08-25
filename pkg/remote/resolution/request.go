@@ -14,7 +14,7 @@ limitations under the License.
 package resolution
 
 import (
-	resolution "github.com/tektoncd/resolution/pkg/resource"
+	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/kmeta"
 )

@@ -45,6 +45,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
+	resolutionversioned "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
+	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1alpha1"
 	resourceversioned "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/typed/resource/v1alpha1"
 	"k8s.io/client-go/kubernetes"
@@ -55,13 +57,14 @@ import (
 type clients struct {
 	KubeClient kubernetes.Interface
 
-	PipelineClient         v1beta1.PipelineInterface
-	ClusterTaskClient      v1beta1.ClusterTaskInterface
-	TaskClient             v1beta1.TaskInterface
-	TaskRunClient          v1beta1.TaskRunInterface
-	PipelineRunClient      v1beta1.PipelineRunInterface
-	PipelineResourceClient resourcev1alpha1.PipelineResourceInterface
-	RunClient              v1alpha1.RunInterface
+	PipelineClient          v1beta1.PipelineInterface
+	ClusterTaskClient       v1beta1.ClusterTaskInterface
+	TaskClient              v1beta1.TaskInterface
+	TaskRunClient           v1beta1.TaskRunInterface
+	PipelineRunClient       v1beta1.PipelineRunInterface
+	PipelineResourceClient  resourcev1alpha1.PipelineResourceInterface
+	RunClient               v1alpha1.RunInterface
+	ResolutionRequestclient resolutionv1alpha1.ResolutionRequestInterface
 }
 
 // newClients instantiates and returns several clientsets required for making requests to the
@@ -89,7 +92,11 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	}
 	rcs, err := resourceversioned.NewForConfig(cfg)
 	if err != nil {
-		t.Fatalf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
+		t.Fatalf("failed to create pipeline resource clientset from config file at %s: %s", configPath, err)
+	}
+	rrcs, err := resolutionversioned.NewForConfig(cfg)
+	if err != nil {
+		t.Fatalf("failed to create resolution clientset from config file at %s: %s", configPath, err)
 	}
 	c.PipelineClient = cs.TektonV1beta1().Pipelines(namespace)
 	c.ClusterTaskClient = cs.TektonV1beta1().ClusterTasks()
@@ -98,5 +105,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)
 	c.PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
 	c.RunClient = cs.TektonV1alpha1().Runs(namespace)
+	c.ResolutionRequestclient = rrcs.ResolutionV1alpha1().ResolutionRequests(namespace)
 	return c
 }

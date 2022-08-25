@@ -22,10 +22,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tektoncd/resolution/pkg/apis/resolution/v1alpha1"
-	rrclient "github.com/tektoncd/resolution/pkg/client/clientset/versioned"
-	rrlisters "github.com/tektoncd/resolution/pkg/client/listers/resolution/v1alpha1"
-	resolutioncommon "github.com/tektoncd/resolution/pkg/common"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
+	rrlisters "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1alpha1"
+	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
