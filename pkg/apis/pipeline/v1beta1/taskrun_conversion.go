@@ -21,6 +21,8 @@ import (
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -34,6 +36,9 @@ func (tr *TaskRun) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.TaskRun:
 		sink.ObjectMeta = tr.ObjectMeta
+		if err := serializeTaskRunResources(&sink.ObjectMeta, &tr.Spec); err != nil {
+			return err
+		}
 		return tr.Spec.ConvertTo(ctx, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
@@ -98,6 +103,9 @@ func (tr *TaskRun) ConvertFrom(ctx context.Context, from apis.Convertible) error
 	switch source := from.(type) {
 	case *v1.TaskRun:
 		tr.ObjectMeta = source.ObjectMeta
+		if err := deserializeTaskRunResources(&tr.ObjectMeta, &tr.Spec); err != nil {
+			return err
+		}
 		return tr.Spec.ConvertFrom(ctx, &source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", tr)
@@ -183,4 +191,23 @@ func (trso TaskRunSidecarOverride) convertTo(ctx context.Context, sink *v1.TaskR
 func (trso *TaskRunSidecarOverride) convertFrom(ctx context.Context, source v1.TaskRunSidecarOverride) {
 	trso.Name = source.Name
 	trso.Resources = source.Resources
+}
+
+func serializeTaskRunResources(meta *metav1.ObjectMeta, spec *TaskRunSpec) error {
+	if spec.Resources == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+}
+
+func deserializeTaskRunResources(meta *metav1.ObjectMeta, spec *TaskRunSpec) error {
+	resources := &TaskRunResources{}
+	err := version.DeserializeFromMetadata(meta, resources, resourcesAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if resources.Inputs != nil || resources.Outputs != nil {
+		spec.Resources = resources
+	}
+	return nil
 }
