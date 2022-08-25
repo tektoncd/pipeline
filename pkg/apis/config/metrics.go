@@ -50,7 +50,7 @@ const (
 	// when it isn't specified in configmap
 	DefaultPipelinerunLevel = PipelinerunLevelAtPipeline
 	// PipelinerunLevelAtPipelinerun specify that aggregation will be done at
-	// pipelienrun level
+	// pipelinerun level
 	PipelinerunLevelAtPipelinerun = "pipelinerun"
 	// PipelinerunLevelAtPipeline specify that aggregation will be done at
 	// pipeline level
@@ -132,8 +132,8 @@ func newMetricsFromMap(cfgMap map[string]string) (*Metrics, error) {
 	if durationTaskrun, ok := cfgMap[metricsDurationTaskrunType]; ok {
 		tc.DurationTaskrunType = durationTaskrun
 	}
-	if durationPipelienrun, ok := cfgMap[metricsDurationPipelinerunType]; ok {
-		tc.DurationPipelinerunType = durationPipelienrun
+	if durationPipelinerun, ok := cfgMap[metricsDurationPipelinerunType]; ok {
+		tc.DurationPipelinerunType = durationPipelinerun
 	}
 	return &tc, nil
 }
