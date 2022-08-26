@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/reconciler/run"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	corev1 "k8s.io/api/core/v1"
@@ -106,6 +107,7 @@ func main() {
 		taskrun.NewController(opts, clock.RealClock{}),
 		pipelinerun.NewController(opts, clock.RealClock{}),
 		run.NewController(),
+		resolutionrequest.NewController(clock.RealClock{}),
 	)
 }
 
