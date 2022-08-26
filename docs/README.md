@@ -73,6 +73,7 @@ See the following topics to learn how to use Tekton Pipelines in your project:
 - [Pipelines metrics](metrics.md)
 - [Variable Substitutions](tasks.md#using-variable-substitution)
 - [Running a Custom Task (alpha)](runs.md)
+- [Remote resolution of Pipelines and Tasks](resolution.md)
 
 ## Contributing to Tekton Pipelines
 

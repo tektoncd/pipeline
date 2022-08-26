@@ -18,6 +18,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
         - [Example configuration for an S3 bucket](#example-configuration-for-an-s3-bucket)
         - [Example configuration for a GCS bucket](#example-configuration-for-a-gcs-bucket)
 - [Configuring CloudEvents notifications](#configuring-cloudevents-notifications)
+- [Installing and configuring remote Task and Pipeline resolution](#installing-and-configuring-remote-task-and-pipeline-resolution)
 - [Configuring self-signed cert for private registry](#configuring-self-signed-cert-for-private-registry)
 - [Customizing basic execution parameters](#customizing-basic-execution-parameters)
     - [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
@@ -265,6 +266,33 @@ data:
   bucket.service.account.secret.key: gcs-config
   bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS
 ```
+
+## Installing and configuring remote Task and Pipeline resolution
+
+**NOTE**: Remote resolution is currently [an `alpha` feature](#alpha-features).
+
+To install the latest release of the [built-in remote resolvers](#built-in-resolvers),
+run the following command:
+
+   ```bash
+   kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/resolvers.yaml
+   ```
+
+To install a specific version, see [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes).
+Change `release.yaml` to `resolvers.yaml`.
+
+### Built-in Resolvers
+
+Three remote resolvers are currently provided as part of the `resolvers.yaml` installation.
+By default, these remote resolvers are disabled. Each resolver is enabled by setting 
+[the appropriate feature flag](#customizing-the-pipelines-controller-behavior).
+
+1. [The `bundle` resolver](./bundle-resolver.md), enabled by setting the `enable-tekton-oci-bundles` 
+  feature flag to `true`.
+1. [The `git` resolver](./git-resolver.md), enabled by setting the `enable-git-resolver`
+   feature flag to `true`.
+1. [The `hub` resolver](./hub-resolver.md), enabled by setting the `enable-hub-resolver`
+   feature flag to `true`.
 
 ## Configuring CloudEvents notifications
 
