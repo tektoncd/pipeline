@@ -171,10 +171,10 @@ func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) err
 		sink.Params = append(sink.Params, new)
 	}
 	sink.Matrix = nil
-	for _, m := range pt.Matrix {
-		new := v1.Param{}
-		m.convertTo(ctx, &new)
-		sink.Matrix = append(sink.Matrix, new)
+	if pt.IsMatrixed() {
+		new := v1.Matrix{}
+		pt.Matrix.convertTo(ctx, &new)
+		sink.Matrix = &new
 	}
 	sink.Workspaces = nil
 	for _, w := range pt.Workspaces {
@@ -217,10 +217,10 @@ func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask)
 		pt.Params = append(pt.Params, new)
 	}
 	pt.Matrix = nil
-	for _, m := range source.Matrix {
-		new := Param{}
-		new.convertFrom(ctx, m)
-		pt.Matrix = append(pt.Matrix, new)
+	if source.IsMatrixed() {
+		new := Matrix{}
+		new.convertFrom(ctx, *source.Matrix)
+		pt.Matrix = &new
 	}
 	pt.Workspaces = nil
 	for _, w := range source.Workspaces {
@@ -259,6 +259,22 @@ func (we *WhenExpression) convertFrom(ctx context.Context, source v1.WhenExpress
 	we.Input = source.Input
 	we.Operator = source.Operator
 	we.Values = source.Values
+}
+
+func (m *Matrix) convertTo(ctx context.Context, sink *v1.Matrix) {
+	for _, param := range m.Params {
+		new := v1.Param{}
+		param.convertTo(ctx, &new)
+		sink.Params = append(sink.Params, new)
+	}
+}
+
+func (m *Matrix) convertFrom(ctx context.Context, source v1.Matrix) {
+	for _, param := range source.Params {
+		new := Param{}
+		new.convertFrom(ctx, param)
+		m.Params = append(m.Params, new)
+	}
 }
 
 func (pr PipelineResult) convertTo(ctx context.Context, sink *v1.PipelineResult) {

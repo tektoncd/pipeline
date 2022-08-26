@@ -204,8 +204,7 @@ type PipelineTask struct {
 
 	// Matrix declares parameters used to fan out this task.
 	// +optional
-	// +listType=atomic
-	Matrix []Param `json:"matrix,omitempty"`
+	Matrix *Matrix `json:"matrix,omitempty"`
 
 	// Workspaces maps workspaces from the pipeline spec to the workspaces
 	// declared in the Task.
@@ -218,6 +217,16 @@ type PipelineTask struct {
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
+}
+
+// Matrix is used to fan out Tasks in a Pipeline
+type Matrix struct {
+	// Params is a list of parameters used to fan out the pipelineTask
+	// Params takes only `Parameters` of type `"array"`
+	// Each array element is supplied to the `PipelineTask` by substituting `params` of type `"string"` in the underlying `Task`.
+	// The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.
+	// +listType=atomic
+	Params []Param `json:"params,omitempty"`
 }
 
 // validateRefOrSpec validates at least one of taskRef or taskSpec is specified
@@ -303,8 +312,13 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 	return errs
 }
 
+// IsMatrixed return whether pipeline task is matrixed
+func (pt *PipelineTask) IsMatrixed() bool {
+	return pt.Matrix != nil && len(pt.Matrix.Params) > 0
+}
+
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
-	if len(pt.Matrix) != 0 {
+	if pt.IsMatrixed() {
 		// This is an alpha feature and will fail validation if it's used in a pipeline spec
 		// when the enable-api-fields feature gate is anything but "alpha".
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
@@ -349,11 +363,11 @@ func (pt PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
 
 // GetMatrixCombinationsCount returns the count of combinations of Parameters generated from the Matrix in PipelineTask.
 func (pt *PipelineTask) GetMatrixCombinationsCount() int {
-	if len(pt.Matrix) == 0 {
+	if !pt.IsMatrixed() {
 		return 0
 	}
 	count := 1
-	for _, param := range pt.Matrix {
+	for _, param := range pt.Matrix.Params {
 		count *= len(param.Value.ArrayVal)
 	}
 	return count

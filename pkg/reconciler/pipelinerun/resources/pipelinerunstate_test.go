@@ -2929,13 +2929,14 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				Kind:       "Task",
 				APIVersion: "v1beta1",
 			},
-			Matrix: []v1beta1.Param{{
-				Name:  "foobar",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}, {
-				Name:  "quxbaz",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-			}},
+			Matrix: &v1beta1.Matrix{
+				Params: []v1beta1.Param{{
+					Name:  "foobar",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}, {
+					Name:  "quxbaz",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+				}}},
 		},
 		TaskRuns: []*v1beta1.TaskRun{{
 			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
@@ -2991,13 +2992,14 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 				Kind:       "Example",
 				APIVersion: "example.dev/v0",
 			},
-			Matrix: []v1beta1.Param{{
-				Name:  "foobar",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}, {
-				Name:  "quxbaz",
-				Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-			}},
+			Matrix: &v1beta1.Matrix{
+				Params: []v1beta1.Param{{
+					Name:  "foobar",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}, {
+					Name:  "quxbaz",
+					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+				}}},
 		},
 		Runs: []*v1alpha1.Run{{
 			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
@@ -3285,13 +3287,14 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Operator: selection.In,
 						Values:   []string{"foo", "bar"},
 					}},
-					Matrix: []v1beta1.Param{{
-						Name:  "foobar",
-						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-					}, {
-						Name:  "quxbaz",
-						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-					}},
+					Matrix: &v1beta1.Matrix{
+						Params: []v1beta1.Param{{
+							Name:  "foobar",
+							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						}, {
+							Name:  "quxbaz",
+							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						}}},
 				},
 				TaskRuns: []*v1beta1.TaskRun{nil, nil, nil, nil},
 			}},
@@ -3313,13 +3316,14 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Operator: selection.In,
 						Values:   []string{"foo", "bar"},
 					}},
-					Matrix: []v1beta1.Param{{
-						Name:  "foobar",
-						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-					}, {
-						Name:  "quxbaz",
-						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-					}},
+					Matrix: &v1beta1.Matrix{
+						Params: []v1beta1.Param{{
+							Name:  "foobar",
+							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						}, {
+							Name:  "quxbaz",
+							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						}}},
 				},
 				TaskRuns: []*v1beta1.TaskRun{{
 					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
@@ -3399,13 +3403,14 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Operator: selection.In,
 						Values:   []string{"foo", "bar"},
 					}},
-					Matrix: []v1beta1.Param{{
-						Name:  "foobar",
-						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-					}, {
-						Name:  "quxbaz",
-						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-					}},
+					Matrix: &v1beta1.Matrix{
+						Params: []v1beta1.Param{{
+							Name:  "foobar",
+							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						}, {
+							Name:  "quxbaz",
+							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						}}},
 				},
 				CustomTask: true,
 			}},
@@ -3425,13 +3430,14 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Operator: selection.In,
 						Values:   []string{"foo", "bar"},
 					}},
-					Matrix: []v1beta1.Param{{
-						Name:  "foobar",
-						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-					}, {
-						Name:  "quxbaz",
-						Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
-					}},
+					Matrix: &v1beta1.Matrix{
+						Params: []v1beta1.Param{{
+							Name:  "foobar",
+							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+						}, {
+							Name:  "quxbaz",
+							Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
+						}}},
 				},
 				CustomTask: true,
 				Runs: []*v1alpha1.Run{{

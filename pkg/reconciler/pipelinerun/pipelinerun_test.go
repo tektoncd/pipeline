@@ -8427,16 +8427,17 @@ spec:
       taskRef:
         name: mytask
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
-            - windows
-        - name: browser
-          value:
-            - chrome
-            - safari
-            - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
       params:
         - name: version
           value: v0.33.0
@@ -8460,16 +8461,17 @@ status:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
-            - windows
-        - name: browser
-          value:
-            - chrome
-            - safari
-            - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
       params:
         - name: version
           value: v0.33.0
@@ -8542,16 +8544,17 @@ spec:
       taskRef:
         name: mytask
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
-            - windows
-        - name: browser
-          value:
-            - chrome
-            - safari
-            - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
       params:
         - name: version
           value: v0.33.0
@@ -8611,16 +8614,17 @@ status:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
-            - windows
-        - name: browser
-          value:
-            - chrome
-            - safari
-            - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
       params:
         - name: version
           value: v0.33.0
@@ -8973,16 +8977,17 @@ spec:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - $(tasks.pt-with-result.results.platform-1)
-            - $(tasks.pt-with-result.results.platform-2)
-            - $(tasks.pt-with-result.results.platform-3)
-        - name: browser
-          value:
-            - $(tasks.pt-with-result.results.browser-1)
-            - $(tasks.pt-with-result.results.browser-2)
-            - $(tasks.pt-with-result.results.browser-3)
+        params:
+          - name: platform
+            value:
+              - $(tasks.pt-with-result.results.platform-1)
+              - $(tasks.pt-with-result.results.platform-2)
+              - $(tasks.pt-with-result.results.platform-3)
+          - name: browser
+            value:
+              - $(tasks.pt-with-result.results.browser-1)
+              - $(tasks.pt-with-result.results.browser-2)
+              - $(tasks.pt-with-result.results.browser-3)
       params:
         - name: version
           value: $(tasks.pt-with-result.results.version)
@@ -9049,16 +9054,17 @@ status:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - $(tasks.pt-with-result.results.platform-1)
-            - $(tasks.pt-with-result.results.platform-2)
-            - $(tasks.pt-with-result.results.platform-3)
-        - name: browser
-          value:
-            - $(tasks.pt-with-result.results.browser-1)
-            - $(tasks.pt-with-result.results.browser-2)
-            - $(tasks.pt-with-result.results.browser-3)
+        params:
+          - name: platform
+            value:
+              - $(tasks.pt-with-result.results.platform-1)
+              - $(tasks.pt-with-result.results.platform-2)
+              - $(tasks.pt-with-result.results.platform-3)
+          - name: browser
+            value:
+              - $(tasks.pt-with-result.results.browser-1)
+              - $(tasks.pt-with-result.results.browser-2)
+              - $(tasks.pt-with-result.results.browser-3)
       params:
         - name: version
           value: $(tasks.pt-with-result.results.version)
@@ -9137,16 +9143,17 @@ spec:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - $(tasks.pt-with-result.results.platform-1)
-            - $(tasks.pt-with-result.results.platform-2)
-            - $(tasks.pt-with-result.results.platform-3)
-        - name: browser
-          value:
-            - $(tasks.pt-with-result.results.browser-1)
-            - $(tasks.pt-with-result.results.browser-2)
-            - $(tasks.pt-with-result.results.browser-3)
+        params:
+          - name: platform
+            value:
+              - $(tasks.pt-with-result.results.platform-1)
+              - $(tasks.pt-with-result.results.platform-2)
+              - $(tasks.pt-with-result.results.platform-3)
+          - name: browser
+            value:
+              - $(tasks.pt-with-result.results.browser-1)
+              - $(tasks.pt-with-result.results.browser-2)
+              - $(tasks.pt-with-result.results.browser-3)
       params:
         - name: version
           value: $(tasks.pt-with-result.results.version)
@@ -9215,16 +9222,17 @@ status:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - $(tasks.pt-with-result.results.platform-1)
-            - $(tasks.pt-with-result.results.platform-2)
-            - $(tasks.pt-with-result.results.platform-3)
-        - name: browser
-          value:
-            - $(tasks.pt-with-result.results.browser-1)
-            - $(tasks.pt-with-result.results.browser-2)
-            - $(tasks.pt-with-result.results.browser-3)
+        params:
+          - name: platform
+            value:
+              - $(tasks.pt-with-result.results.platform-1)
+              - $(tasks.pt-with-result.results.platform-2)
+              - $(tasks.pt-with-result.results.platform-3)
+          - name: browser
+            value:
+              - $(tasks.pt-with-result.results.browser-1)
+              - $(tasks.pt-with-result.results.browser-2)
+              - $(tasks.pt-with-result.results.browser-3)
       params:
         - name: version
           value: $(tasks.pt-with-result.results.version)
@@ -9427,10 +9435,11 @@ status:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
       params:
         - name: browser
           value: chrome
@@ -9472,10 +9481,11 @@ status:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
       params:
         - name: browser
           value: chrome
@@ -9607,10 +9617,11 @@ status:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
       params:
         - name: browser
           value: chrome
@@ -9652,10 +9663,11 @@ status:
         name: mytask
         kind: Task
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
       params:
         - name: browser
           value: chrome
@@ -9996,16 +10008,17 @@ spec:
         apiVersion: example.dev/v0
         kind: Example
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
-            - windows
-        - name: browser
-          value:
-            - chrome
-            - safari
-            - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
       params:
         - name: version
           value: v0.1
@@ -10029,16 +10042,17 @@ status:
         apiVersion: example.dev/v0
         kind: Example
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
-            - windows
-        - name: browser
-          value:
-            - chrome
-            - safari
-            - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
       params:
         - name: version
           value: v0.1
@@ -10112,16 +10126,17 @@ spec:
         apiVersion: example.dev/v0
         kind: Example
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
-            - windows
-        - name: browser
-          value:
-            - chrome
-            - safari
-            - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
       params:
         - name: version
           value: v0.1
@@ -10181,16 +10196,17 @@ status:
         apiVersion: example.dev/v0
         kind: Example
       matrix:
-        - name: platform
-          value:
-            - linux
-            - mac
-            - windows
-        - name: browser
-          value:
-            - chrome
-            - safari
-            - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+            value:
+              - chrome
+              - safari
+              - firefox
       params:
         - name: version
           value: v0.1

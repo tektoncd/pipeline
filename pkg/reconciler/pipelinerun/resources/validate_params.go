@@ -103,7 +103,9 @@ func ValidateParamArrayIndex(ctx context.Context, p *v1beta1.PipelineSpec, pr *v
 	// collect all the references
 	for i := range p.Tasks {
 		findInvalidParamArrayReferences(p.Tasks[i].Params, arrayParams, &outofBoundParams)
-		findInvalidParamArrayReferences(p.Tasks[i].Matrix, arrayParams, &outofBoundParams)
+		if p.Tasks[i].IsMatrixed() {
+			findInvalidParamArrayReferences(p.Tasks[i].Matrix.Params, arrayParams, &outofBoundParams)
+		}
 		for j := range p.Tasks[i].Workspaces {
 			findInvalidParamArrayReference(p.Tasks[i].Workspaces[j].SubPath, arrayParams, &outofBoundParams)
 		}
@@ -117,7 +119,9 @@ func ValidateParamArrayIndex(ctx context.Context, p *v1beta1.PipelineSpec, pr *v
 
 	for i := range p.Finally {
 		findInvalidParamArrayReferences(p.Finally[i].Params, arrayParams, &outofBoundParams)
-		findInvalidParamArrayReferences(p.Finally[i].Matrix, arrayParams, &outofBoundParams)
+		if p.Finally[i].IsMatrixed() {
+			findInvalidParamArrayReferences(p.Finally[i].Matrix.Params, arrayParams, &outofBoundParams)
+		}
 		for _, wes := range p.Finally[i].WhenExpressions {
 			for _, v := range wes.Values {
 				findInvalidParamArrayReference(v, arrayParams, &outofBoundParams)

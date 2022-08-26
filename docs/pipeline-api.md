@@ -1171,6 +1171,40 @@ TaskSpec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1.Matrix">Matrix
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>)
+</p>
+<div>
+<p>Matrix is used to fan out Tasks in a Pipeline</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<p>Params is a list of parameters used to fan out the pipelineTask
+Params takes only <code>Parameters</code> of type <code>&quot;array&quot;</code>
+Each array element is supplied to the <code>PipelineTask</code> by substituting <code>params</code> of type <code>&quot;string&quot;</code> in the underlying <code>Task</code>.
+The names of the <code>params</code> in the <code>Matrix</code> must match the names of the <code>params</code> in the underlying <code>Task</code> that they will be substituting.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1.OnErrorType">OnErrorType
 (<code>string</code> alias)</h3>
 <p>
@@ -1197,7 +1231,7 @@ TaskSpec
 <h3 id="tekton.dev/v1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Matrix">Matrix</a>, <a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -2268,8 +2302,8 @@ this Task executes. (Used to force a specific ordering in graph execution.)</p>
 <td>
 <code>matrix</code><br/>
 <em>
-<a href="#tekton.dev/v1.Param">
-[]Param
+<a href="#tekton.dev/v1.Matrix">
+Matrix
 </a>
 </em>
 </td>
@@ -8126,6 +8160,40 @@ TaskSpec
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.Matrix">Matrix
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
+</p>
+<div>
+<p>Matrix is used to fan out Tasks in a Pipeline</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<p>Params is a list of parameters used to fan out the pipelineTask
+Params takes only <code>Parameters</code> of type <code>&quot;array&quot;</code>
+Each array element is supplied to the <code>PipelineTask</code> by substituting <code>params</code> of type <code>&quot;string&quot;</code> in the underlying <code>Task</code>.
+The names of the <code>params</code> in the <code>Matrix</code> must match the names of the <code>params</code> in the underlying <code>Task</code> that they will be substituting.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.OnErrorType">OnErrorType
 (<code>string</code> alias)</h3>
 <p>
@@ -8137,7 +8205,7 @@ TaskSpec
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -9483,8 +9551,8 @@ outputs.</p>
 <td>
 <code>matrix</code><br/>
 <em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
+<a href="#tekton.dev/v1beta1.Matrix">
+Matrix
 </a>
 </em>
 </td>

@@ -799,6 +799,21 @@
         }
       }
     },
+    "v1beta1.Matrix": {
+      "description": "Matrix is used to fan out Tasks in a Pipeline",
+      "type": "object",
+      "properties": {
+        "params": {
+          "description": "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
     "v1beta1.Param": {
       "description": "Param declares an ParamValues to use for the parameter called name.",
       "type": "object",
@@ -1469,12 +1484,7 @@
       "properties": {
         "matrix": {
           "description": "Matrix declares parameters used to fan out this task.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
+          "$ref": "#/definitions/v1beta1.Matrix"
         },
         "name": {
           "description": "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",

@@ -101,10 +101,11 @@ spec:
     ...
   - name: test
     matrix:
-      - name: platform
-        value: $(params.platforms)
-      - name: browser
-        value: $(params.browsers)
+      params:
+        - name: platform
+          value: $(params.platforms)
+        - name: browser
+          value: $(params.browsers)
     taskRef:
       name: browser-test
   ...
@@ -134,11 +135,12 @@ spec:
     ...
   - name: test
     matrix:
-      - name: browser
-        value:
-          - chrome
-          - safari
-          - firefox
+      params:
+        - name: browser
+          value:
+            - chrome
+            - safari
+            - firefox
     params:
       - name: platform
         value: linux
@@ -243,16 +245,17 @@ spec:
     tasks:
       - name: platforms-and-browsers
         matrix:
-          - name: platform
-            value:
-              - linux
-              - mac
-              - windows
-          - name: browser
-            value:
-              - chrome
-              - safari
-              - firefox
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+            - name: browser
+              value:
+                - chrome
+                - safari
+                - firefox
         taskRef:
           name: platform-browsers
 ```
@@ -291,16 +294,17 @@ spec:
   pipelineSpec:
     tasks:
     - matrix:
-      - name: platform
-        value:
-        - linux
-        - mac
-        - windows
-      - name: browser
-        value:
-        - chrome
-        - safari
-        - firefox
+        params:
+          - name: platform
+            value:
+              - linux
+              - mac
+              - windows
+          - name: browser
+              value:
+                - chrome
+                - safari
+                - firefox
       name: platforms-and-browsers
       taskRef:
         kind: Task
@@ -311,16 +315,17 @@ status:
   pipelineSpec:
     tasks:
       - matrix:
-          - name: platform
-            value:
-              - linux
-              - mac
-              - windows
-          - name: browser
-            value:
-              - chrome
-              - safari
-              - firefox
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+            - name: browser
+              value:
+                - chrome
+                - safari
+                - firefox
         name: platforms-and-browsers
         taskRef:
           kind: Task
@@ -392,18 +397,19 @@ spec:
     tasks:
       - name: platforms-and-browsers
         matrix:
-          - name: type
-            value:
-              - "type(1)"
-              - "type(1.0)"
-          - name: colors
-            value:
-              - "{'blue': '0x000080', 'red': '0xFF0000'}['blue']"
-              - "{'blue': '0x000080', 'red': '0xFF0000'}['red']"
-          - name: bool
-            value:
-              - "type(1) == int"
-              - "{'blue': '0x000080', 'red': '0xFF0000'}['red'] == '0xFF0000'"
+          params:
+            - name: type
+              value:
+                - "type(1)"
+                - "type(1.0)"
+            - name: colors
+              value:
+                - "{'blue': '0x000080', 'red': '0xFF0000'}['blue']"
+                - "{'blue': '0x000080', 'red': '0xFF0000'}['red']"
+            - name: bool
+              value:
+                - "type(1) == int"
+                - "{'blue': '0x000080', 'red': '0xFF0000'}['red'] == '0xFF0000'"
         taskRef:
           apiVersion: cel.tekton.dev/v1alpha1
           kind: CEL
@@ -441,18 +447,19 @@ spec:
   pipelineSpec:
     tasks:
       - matrix:
-          - name: type
-            value:
-              - type(1)
-              - type(1.0)
-          - name: colors
-            value:
-              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''blue'']'
-              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red'']'
-          - name: bool
-            value:
-              - type(1) == int
-              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red''] == ''0xFF0000'''
+          params:
+            - name: type
+              value:
+                - type(1)
+                - type(1.0)
+            - name: colors
+              value:
+                - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''blue'']'
+                - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red'']'
+            - name: bool
+              value:
+                - type(1) == int
+                - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red''] == ''0xFF0000'''
         name: platforms-and-browsers
         taskRef:
           apiVersion: cel.tekton.dev/v1alpha1
@@ -463,18 +470,19 @@ status:
   pipelineSpec:
     tasks:
       - matrix:
-          - name: type
-            value:
-              - type(1)
-              - type(1.0)
-          - name: colors
-            value:
-              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''blue'']'
-              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red'']'
-          - name: bool
-            value:
-              - type(1) == int
-              - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red''] == ''0xFF0000'''
+          params:
+            - name: type
+              value:
+                - type(1)
+                - type(1.0)
+            - name: colors
+              value:
+                - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''blue'']'
+                - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red'']'
+            - name: bool
+              value:
+                - type(1) == int
+                - '{''blue'': ''0x000080'', ''red'': ''0xFF0000''}[''red''] == ''0xFF0000'''
         name: platforms-and-browsers
         taskRef:
           apiVersion: cel.tekton.dev/v1alpha1
@@ -541,11 +549,12 @@ spec:
     tasks:
       - name: matrix-and-params
         matrix:
-          - name: platform
-            value:
-              - linux
-              - mac
-              - windows
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
         params:
           - name: browser
             value: chrome
