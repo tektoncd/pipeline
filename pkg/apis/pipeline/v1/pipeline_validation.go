@@ -151,7 +151,9 @@ func validatePipelineParameterVariables(ctx context.Context, tasks []PipelineTas
 func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
-		errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
+		if task.IsMatrixed() {
+			errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
+		}
 		errs = errs.Also(task.When.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 	}
 	return errs
@@ -171,7 +173,11 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	)
 	var paramValues []string
 	for _, task := range tasks {
-		for _, param := range append(task.Params, task.Matrix...) {
+		var matrixParams []Param
+		if task.IsMatrixed() {
+			matrixParams = task.Matrix.Params
+		}
+		for _, param := range append(task.Params, matrixParams...) {
 			paramValues = append(paramValues, param.Value.StringVal)
 			paramValues = append(paramValues, param.Value.ArrayVal...)
 		}
@@ -394,7 +400,7 @@ func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.Field
 func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, finally []PipelineTask) (errs *apis.FieldError) {
 	matrixedPipelineTasks := sets.String{}
 	for _, pt := range tasks {
-		if len(pt.Matrix) != 0 {
+		if pt.IsMatrixed() {
 			matrixedPipelineTasks.Insert(pt.Name)
 		}
 	}

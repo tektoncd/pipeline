@@ -71,16 +71,20 @@ func validateResources(requiredResources []v1beta1.TaskResource, providedResourc
 	return nil
 }
 
-func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param, matrix []v1beta1.Param) error {
+func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param, matrix *v1beta1.Matrix) error {
 	neededParamsNames, neededParamsTypes := neededParamsNamesAndTypes(paramSpecs)
-	providedParamsNames := providedParamsNames(append(params, matrix...))
+	var matrixParams []v1beta1.Param
+	if matrix != nil {
+		matrixParams = matrix.Params
+	}
+	providedParamsNames := providedParamsNames(append(params, matrixParams...))
 	if missingParamsNames := missingParamsNames(neededParamsNames, providedParamsNames, paramSpecs); len(missingParamsNames) != 0 {
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
 	}
 	if extraParamsNames := extraParamsNames(ctx, neededParamsNames, providedParamsNames); len(extraParamsNames) != 0 {
 		return fmt.Errorf("didn't need these params but they were provided anyway: %s", extraParamsNames)
 	}
-	if wrongTypeParamNames := wrongTypeParamsNames(params, matrix, neededParamsTypes); len(wrongTypeParamNames) != 0 {
+	if wrongTypeParamNames := wrongTypeParamsNames(params, matrixParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
 	}
 	if missingKeysObjectParamNames := MissingKeysObjectParamNames(paramSpecs, params); len(missingKeysObjectParamNames) != 0 {
@@ -212,7 +216,7 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 }
 
 // ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
-func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, matrix []v1beta1.Param, rtr *resources.ResolvedTaskResources) error {
+func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, matrix *v1beta1.Matrix, rtr *resources.ResolvedTaskResources) error {
 	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix); err != nil {
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}

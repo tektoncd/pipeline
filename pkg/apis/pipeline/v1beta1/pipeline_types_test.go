@@ -485,14 +485,15 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			Name: "task-1",
 		}, {
 			Name: "task-2",
-			Matrix: []Param{{
-				Value: ParamValue{
-					Type: ParamTypeArray,
-					ArrayVal: []string{
-						"$(tasks.task-1.results.result)",
-					},
-				}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Value: ParamValue{
+						Type: ParamTypeArray,
+						ArrayVal: []string{
+							"$(tasks.task-1.results.result)",
+						},
+					}},
+				}}},
 		},
 		expectedDeps: map[string][]string{
 			"task-2": {"task-1"},
@@ -546,14 +547,15 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-6",
 			RunAfter: []string{"task-1"},
-			Matrix: []Param{{
-				Value: ParamValue{
-					Type: ParamTypeArray,
-					ArrayVal: []string{
-						"$(tasks.task-2.results.result)",
-						"$(tasks.task-5.results.result)",
-					},
-				}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Value: ParamValue{
+						Type: ParamTypeArray,
+						ArrayVal: []string{
+							"$(tasks.task-2.results.result)",
+							"$(tasks.task-5.results.result)",
+						},
+					}}},
 			},
 		}},
 		expectedDeps: map[string][]string{
@@ -641,14 +643,15 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 				Operator: "in",
 				Values:   []string{"foo"},
 			}},
-			Matrix: []Param{{
-				Value: ParamValue{
-					Type: ParamTypeArray,
-					ArrayVal: []string{
-						"$(tasks.task-2.results.result)",
-						"$(tasks.task-5.results.result)",
-					},
-				}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Value: ParamValue{
+						Type: ParamTypeArray,
+						ArrayVal: []string{
+							"$(tasks.task-2.results.result)",
+							"$(tasks.task-5.results.result)",
+						},
+					}}},
 			},
 		}, {
 			Name: "task-7",
@@ -804,9 +807,10 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		name: "parameter duplicated in matrix and params",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
 			Params: []Param{{
 				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
 			}},
@@ -816,9 +820,10 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		name: "parameters unique in matrix and params",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
 			Params: []Param{{
 				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
 			}},
@@ -827,11 +832,12 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		name: "parameters in matrix are strings",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
-			}, {
-				Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
+				}, {
+					Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"},
+				}}},
 		},
 		wantErrs: &apis.FieldError{
 			Message: "invalid value: parameters of type array only are allowed in matrix",
@@ -841,29 +847,32 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		name: "parameters in matrix are arrays",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}, {
-				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}, {
+					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+				}}},
 		},
 	}, {
 		name: "parameters in matrix contain results references",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
+				}}},
 		},
 	}, {
 		name: "count of combinations of parameters in the matrix exceeds the maximum",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
-			}, {
-				Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox", "safari"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+				}, {
+					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox", "safari"}},
+				}}},
 		},
 		wantErrs: &apis.FieldError{
 			Message: "expected 0 <= 9 <= 4",
@@ -873,21 +882,23 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		name: "count of combinations of parameters in the matrix equals the maximum",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
-			}, {
-				Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+				}, {
+					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox"}},
+				}}},
 		},
 	}, {
 		name: "pipeline has a matrix but embedded status is full",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}, {
-				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}, {
+					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+				}}},
 		},
 		embeddedStatus: config.FullEmbeddedStatus,
 		wantErrs: &apis.FieldError{
@@ -897,11 +908,12 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 		name: "pipeline has a matrix but embedded status is both",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}, {
-				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}, {
+					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+				}}},
 		},
 		embeddedStatus: config.BothEmbeddedStatus,
 		wantErrs: &apis.FieldError{
@@ -947,55 +959,60 @@ func TestPipelineTask_GetMatrixCombinationsCount(t *testing.T) {
 		name: "combinations count is one from one parameter",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+				}}},
 		},
 		matrixCombinationsCount: 1,
 	}, {
 		name: "combinations count is one from two parameters",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
-			}, {
-				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+				}, {
+					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
+				}}},
 		},
 		matrixCombinationsCount: 1,
 	}, {
 		name: "combinations count is two from one parameter",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
 		},
 		matrixCombinationsCount: 2,
 	}, {
 		name: "combinations count is nine",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
-			}, {
-				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+				}, {
+					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+				}}},
 		},
 		matrixCombinationsCount: 9,
 	}, {
 		name: "combinations count is large",
 		pt: &PipelineTask{
 			Name: "task",
-			Matrix: []Param{{
-				Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
-			}, {
-				Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
-			}, {
-				Name: "quz", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
-			}, {
-				Name: "xyzzy", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
-			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+				}, {
+					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+				}, {
+					Name: "quz", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
+				}, {
+					Name: "xyzzy", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
+				}}},
 		},
 		matrixCombinationsCount: 135,
 	}}
@@ -1090,6 +1107,52 @@ func TestPipelineTask_ValidateEmbeddedOrType(t *testing.T) {
 				if d := cmp.Diff(tc.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 					t.Errorf("PipelineTask.validateEmbeddedOrType() errors diff %s", diff.PrintWantGot(d))
 				}
+			}
+		})
+	}
+}
+
+func TestPipelineTask_IsMatrixed(t *testing.T) {
+	type arg struct {
+		*Matrix
+	}
+	testCases := []struct {
+		name     string
+		arg      arg
+		expected bool
+	}{
+		{
+			name: "nil matrix",
+			arg: arg{
+				Matrix: nil,
+			},
+			expected: false,
+		},
+		{
+			name: "empty matrix",
+			arg: arg{
+				Matrix: &Matrix{},
+			},
+			expected: false,
+		},
+		{
+			name: "matrixed",
+			arg: arg{
+				Matrix: &Matrix{
+					Params: []Param{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+				},
+			},
+			expected: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pt := &PipelineTask{
+				Matrix: tc.arg.Matrix,
+			}
+			isMatrixed := pt.IsMatrixed()
+			if isMatrixed != tc.expected {
+				t.Errorf("PipelineTask.IsMatrixed() return bool: %v, but wanted: %v", isMatrixed, tc.expected)
 			}
 		})
 	}

@@ -160,7 +160,9 @@ func ApplyPipelineTaskContexts(pt *v1beta1.PipelineTask) *v1beta1.PipelineTask {
 		"context.pipelineTask.retries": strconv.Itoa(pt.Retries),
 	}
 	pt.Params = replaceParamValues(pt.Params, replacements, map[string][]string{}, map[string]map[string]string{})
-	pt.Matrix = replaceParamValues(pt.Matrix, replacements, map[string][]string{}, map[string]map[string]string{})
+	if pt.IsMatrixed() {
+		pt.Matrix.Params = replaceParamValues(pt.Matrix.Params, replacements, map[string][]string{}, map[string]map[string]string{})
+	}
 	return pt
 }
 
@@ -173,7 +175,9 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 		if resolvedPipelineRunTask.PipelineTask != nil {
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, objectReplacements)
-			pipelineTask.Matrix = replaceParamValues(pipelineTask.Matrix, stringReplacements, nil, nil)
+			if pipelineTask.IsMatrixed() {
+				pipelineTask.Matrix.Params = replaceParamValues(pipelineTask.Matrix.Params, stringReplacements, nil, nil)
+			}
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, arrayReplacements)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
 				pipelineTask.TaskRef.Params = replaceParamValues(pipelineTask.TaskRef.Params, stringReplacements, arrayReplacements, objectReplacements)
@@ -220,7 +224,9 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 
 	for i := range p.Tasks {
 		p.Tasks[i].Params = replaceParamValues(p.Tasks[i].Params, replacements, arrayReplacements, objectReplacements)
-		p.Tasks[i].Matrix = replaceParamValues(p.Tasks[i].Matrix, replacements, arrayReplacements, objectReplacements)
+		if p.Tasks[i].IsMatrixed() {
+			p.Tasks[i].Matrix.Params = replaceParamValues(p.Tasks[i].Matrix.Params, replacements, arrayReplacements, objectReplacements)
+		}
 		for j := range p.Tasks[i].Workspaces {
 			p.Tasks[i].Workspaces[j].SubPath = substitution.ApplyReplacements(p.Tasks[i].Workspaces[j].SubPath, replacements)
 		}
@@ -233,7 +239,9 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 
 	for i := range p.Finally {
 		p.Finally[i].Params = replaceParamValues(p.Finally[i].Params, replacements, arrayReplacements, objectReplacements)
-		p.Finally[i].Matrix = replaceParamValues(p.Finally[i].Matrix, replacements, arrayReplacements, objectReplacements)
+		if p.Finally[i].IsMatrixed() {
+			p.Finally[i].Matrix.Params = replaceParamValues(p.Finally[i].Matrix.Params, replacements, arrayReplacements, objectReplacements)
+		}
 		p.Finally[i].WhenExpressions = p.Finally[i].WhenExpressions.ReplaceWhenExpressionsVariables(replacements, arrayReplacements)
 		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
 			p.Finally[i].TaskRef.Params = replaceParamValues(p.Finally[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)

@@ -51,14 +51,15 @@ spec:
                 printf firefox | tee /tekton/results/three
       - name: platforms-and-browsers-dag
         matrix:
-          - name: platform
-            value:
-              - $(tasks.get-platforms.results.one)
-              - $(tasks.get-platforms.results.two)
-              - $(tasks.get-platforms.results.three)
-          - name: browser
-            value:
-              - $(tasks.get-browsers.results.one)
-              - $(tasks.get-browsers.results.two)
+          params:
+            - name: platform
+              value:
+                - $(tasks.get-platforms.results.one)
+                - $(tasks.get-platforms.results.two)
+                - $(tasks.get-platforms.results.three)
+            - name: browser
+              value:
+                - $(tasks.get-browsers.results.one)
+                - $(tasks.get-browsers.results.two)
         taskRef:
           name: platform-browsers

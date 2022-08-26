@@ -107,7 +107,7 @@ func (t ResolvedPipelineTask) IsCustomTask() bool {
 
 // IsMatrixed return true if the PipelineTask has a Matrix.
 func (t ResolvedPipelineTask) IsMatrixed() bool {
-	return len(t.PipelineTask.Matrix) > 0
+	return t.PipelineTask.Matrix != nil && len(t.PipelineTask.Matrix.Params) > 0
 }
 
 // isSuccessful returns true only if the run has completed successfully
@@ -444,10 +444,11 @@ func (t *ResolvedPipelineTask) skipBecauseWhenExpressionsEvaluatedToFalse(facts 
 }
 
 // skipBecauseParentTaskWasSkipped loops through the parent tasks and checks if the parent task skipped:
-//    if yes, is it because of when expressions?
-//        if yes, it ignores this parent skip and continue evaluating other parent tasks
-//        if no, it returns true to skip the current task because this parent task was skipped
-//    if no, it continues checking the other parent tasks
+//
+//	if yes, is it because of when expressions?
+//	    if yes, it ignores this parent skip and continue evaluating other parent tasks
+//	    if no, it returns true to skip the current task because this parent task was skipped
+//	if no, it continues checking the other parent tasks
 func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(facts *PipelineRunFacts) bool {
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
@@ -922,7 +923,11 @@ func resolvePipelineTaskResources(pt v1beta1.PipelineTask, ts *v1beta1.TaskSpec,
 }
 
 func (t *ResolvedPipelineTask) hasResultReferences() bool {
-	for _, param := range append(t.PipelineTask.Params, t.PipelineTask.Matrix...) {
+	var matrixParams []v1beta1.Param
+	if t.PipelineTask.IsMatrixed() {
+		matrixParams = t.PipelineTask.Params
+	}
+	for _, param := range append(t.PipelineTask.Params, matrixParams...) {
 		if ps, ok := v1beta1.GetVarSubstitutionExpressionsForParam(param); ok {
 			if v1beta1.LooksLikeContainsResultRefs(ps) {
 				return true

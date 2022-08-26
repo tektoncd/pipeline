@@ -652,11 +652,12 @@ func TestPipelineTaskResultRefs(t *testing.T) {
 				"$(tasks.pt4.results.r4)",
 			},
 		}},
-		Matrix: []v1beta1.Param{{
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt5.results.r5)", "$(tasks.pt6.results.r6)"),
-		}, {
-			Value: *v1beta1.NewStructuredValues("$(tasks.pt7.results.r7)", "$(tasks.pt8.results.r8)"),
-		}},
+		Matrix: &v1beta1.Matrix{
+			Params: []v1beta1.Param{{
+				Value: *v1beta1.NewStructuredValues("$(tasks.pt5.results.r5)", "$(tasks.pt6.results.r6)"),
+			}, {
+				Value: *v1beta1.NewStructuredValues("$(tasks.pt7.results.r7)", "$(tasks.pt8.results.r8)"),
+			}}},
 	}
 	refs := v1beta1.PipelineTaskResultRefs(&pt)
 	expectedRefs := []*v1beta1.ResultRef{{

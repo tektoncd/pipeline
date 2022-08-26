@@ -1596,20 +1596,22 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"])`),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"])`),
+					}}},
 			},
 		}},
 		want: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues("aResultValue"),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues("aResultValue"),
+					}}},
 			},
 		}},
 	}, {
@@ -1626,20 +1628,22 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][1])`),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][1])`),
+					}}},
 			},
 		}},
 		want: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues("arrayResultValueTwo"),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues("arrayResultValueTwo"),
+					}}},
 			},
 		}},
 	}, {
@@ -1656,20 +1660,22 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
+					}}},
 			},
 		}},
 		want: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results["a.Result"][3])`),
+					}}},
 			},
 		}},
 	}, {
@@ -1971,20 +1977,22 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)"),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult)"),
+					}}},
 			},
 		}},
 		want: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues("Result value --> aResultValue"),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues("Result value --> aResultValue"),
+					}}},
 			},
 		}},
 	}, {
@@ -2001,20 +2009,22 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])"),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues("Result value --> $(tasks.aTask.results.aResult[0])"),
+					}}},
 			},
 		}},
 		want: PipelineRunState{{
 			PipelineTask: &v1beta1.PipelineTask{
 				Name:    "bTask",
 				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
-				Matrix: []v1beta1.Param{{
-					Name:  "bParam",
-					Value: *v1beta1.NewStructuredValues("Result value --> arrayResultValueOne"),
-				}},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues("Result value --> arrayResultValueOne"),
+					}}},
 			},
 		}},
 	}, {
@@ -2232,15 +2242,16 @@ func TestContext(t *testing.T) {
 				Spec: v1beta1.PipelineSpec{
 					Tasks: []v1beta1.PipelineTask{{
 						Params: []v1beta1.Param{tc.original},
-						Matrix: []v1beta1.Param{tc.original},
-					}},
+						Matrix: &v1beta1.Matrix{
+							Params: []v1beta1.Param{tc.original},
+						}}},
 				},
 			}
 			got := ApplyContexts(ctx, &orig.Spec, orig.Name, tc.pr)
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Params[0]); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
-			if d := cmp.Diff(tc.expected, got.Tasks[0].Matrix[0]); d != "" {
+			if d := cmp.Diff(tc.expected, got.Tasks[0].Matrix.Params[0]); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
 		})
@@ -2260,10 +2271,11 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Name:  "retries",
 				Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 			}},
-			Matrix: []v1beta1.Param{{
-				Name:  "retries",
-				Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
-			}},
+			Matrix: &v1beta1.Matrix{
+				Params: []v1beta1.Param{{
+					Name:  "retries",
+					Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
+				}}},
 		},
 		want: v1beta1.PipelineTask{
 			Retries: 5,
@@ -2271,10 +2283,11 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Name:  "retries",
 				Value: *v1beta1.NewStructuredValues("5"),
 			}},
-			Matrix: []v1beta1.Param{{
-				Name:  "retries",
-				Value: *v1beta1.NewStructuredValues("5"),
-			}},
+			Matrix: &v1beta1.Matrix{
+				Params: []v1beta1.Param{{
+					Name:  "retries",
+					Value: *v1beta1.NewStructuredValues("5"),
+				}}},
 		},
 	}, {
 		description: "context retries replacement with no defined retries",
@@ -2283,20 +2296,22 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 				Name:  "retries",
 				Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
 			}},
-			Matrix: []v1beta1.Param{{
-				Name:  "retries",
-				Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
-			}},
+			Matrix: &v1beta1.Matrix{
+				Params: []v1beta1.Param{{
+					Name:  "retries",
+					Value: *v1beta1.NewStructuredValues("$(context.pipelineTask.retries)"),
+				}}},
 		},
 		want: v1beta1.PipelineTask{
 			Params: []v1beta1.Param{{
 				Name:  "retries",
 				Value: *v1beta1.NewStructuredValues("0"),
 			}},
-			Matrix: []v1beta1.Param{{
-				Name:  "retries",
-				Value: *v1beta1.NewStructuredValues("0"),
-			}},
+			Matrix: &v1beta1.Matrix{
+				Params: []v1beta1.Param{{
+					Name:  "retries",
+					Value: *v1beta1.NewStructuredValues("0"),
+				}}},
 		},
 	}} {
 		t.Run(tc.description, func(t *testing.T) {

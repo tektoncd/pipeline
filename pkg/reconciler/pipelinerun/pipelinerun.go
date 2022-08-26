@@ -864,7 +864,7 @@ func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
 
 func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, storageBasePath string) ([]*v1beta1.TaskRun, error) {
 	var taskRuns []*v1beta1.TaskRun
-	matrixCombinations := matrix.FanOut(rpt.PipelineTask.Matrix).ToMap()
+	matrixCombinations := matrix.FanOut(rpt.PipelineTask.Matrix.Params).ToMap()
 	for i, taskRunName := range rpt.TaskRunNames {
 		params := matrixCombinations[strconv.Itoa(i)]
 		taskRun, err := c.createTaskRun(ctx, taskRunName, params, rpt, pr, storageBasePath)
@@ -944,7 +944,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 
 func (c *Reconciler) createRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun) ([]*v1alpha1.Run, error) {
 	var runs []*v1alpha1.Run
-	matrixCombinations := matrix.FanOut(rpt.PipelineTask.Matrix).ToMap()
+	matrixCombinations := matrix.FanOut(rpt.PipelineTask.Matrix.Params).ToMap()
 	for i, runName := range rpt.RunNames {
 		params := matrixCombinations[strconv.Itoa(i)]
 		run, err := c.createRun(ctx, runName, params, rpt, pr)

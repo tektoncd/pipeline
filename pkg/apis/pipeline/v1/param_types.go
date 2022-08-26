@@ -320,19 +320,23 @@ func validatePipelineParametersVariablesInMatrixParameters(matrix []Param, prefi
 	return errs
 }
 
-func validateParametersInTaskMatrix(matrix []Param) (errs *apis.FieldError) {
-	for _, param := range matrix {
-		if param.Value.Type != ParamTypeArray {
-			errs = errs.Also(apis.ErrInvalidValue("parameters of type array only are allowed in matrix", "").ViaFieldKey("matrix", param.Name))
+func validateParametersInTaskMatrix(matrix *Matrix) (errs *apis.FieldError) {
+	if matrix != nil {
+		for _, param := range matrix.Params {
+			if param.Value.Type != ParamTypeArray {
+				errs = errs.Also(apis.ErrInvalidValue("parameters of type array only are allowed in matrix", "").ViaFieldKey("matrix", param.Name))
+			}
 		}
 	}
 	return errs
 }
 
-func validateParameterInOneOfMatrixOrParams(matrix []Param, params []Param) (errs *apis.FieldError) {
+func validateParameterInOneOfMatrixOrParams(matrix *Matrix, params []Param) (errs *apis.FieldError) {
 	matrixParameterNames := sets.NewString()
-	for _, param := range matrix {
-		matrixParameterNames.Insert(param.Name)
+	if matrix != nil {
+		for _, param := range matrix.Params {
+			matrixParameterNames.Insert(param.Name)
+		}
 	}
 	for _, param := range params {
 		if matrixParameterNames.Has(param.Name) {

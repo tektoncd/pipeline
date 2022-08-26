@@ -108,13 +108,14 @@ func TestPipelineConversion(t *testing.T) {
 							ArrayVal: []string{"value-task-1"},
 						},
 					}},
-					Matrix: []v1beta1.Param{{
-						Name: "a-param",
-						Value: v1beta1.ParamValue{
-							Type:     v1beta1.ParamTypeArray,
-							ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"},
-						},
-					}},
+					Matrix: &v1beta1.Matrix{
+						Params: []v1beta1.Param{{
+							Name: "a-param",
+							Value: v1beta1.ParamValue{
+								Type:     v1beta1.ParamTypeArray,
+								ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"},
+							},
+						}}},
 					Workspaces: []v1beta1.WorkspacePipelineTaskBinding{{
 						Name:      "my-task-workspace",
 						Workspace: "source",

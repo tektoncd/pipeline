@@ -25,25 +25,27 @@ spec:
     tasks:
       - name: platforms-and-browsers
         matrix:
-          - name: platform
-            value:
-              - linux
-              - mac
-              - windows
-          - name: browser
-            value:
-              - chrome
-              - safari
-              - firefox
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
+            - name: browser
+              value:
+                - chrome
+                - safari
+                - firefox
         taskRef:
           name: platform-browsers
       - name: matrix-and-params
         matrix:
-          - name: platform
-            value:
-              - linux
-              - mac
-              - windows
+          params:
+            - name: platform
+              value:
+                - linux
+                - mac
+                - windows
         params:
           - name: browser
             value: chrome
