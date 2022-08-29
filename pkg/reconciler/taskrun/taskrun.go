@@ -221,8 +221,9 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.Ta
 		if err != nil && !k8serrors.IsNotFound(err) {
 			logger.Errorf("Error getting TaskRun %s when updating metrics: %w", tr.Name, err)
 			return
-		} else if k8serrors.IsNotFound(err) {
+		} else if k8serrors.IsNotFound(err) || newTr == nil {
 			logger.Debugf("TaskRun %s not found when updating metrics: %w", tr.Name, err)
+			return
 		}
 
 		before := newTr.Status.GetCondition(apis.ConditionSucceeded)

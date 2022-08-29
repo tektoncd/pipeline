@@ -262,8 +262,9 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1beta1.Pi
 		if err != nil && !kerrors.IsNotFound(err) {
 			logger.Errorf("Error getting PipelineRun %s when updating metrics: %w", pr.Name, err)
 			return
-		} else if kerrors.IsNotFound(err) {
+		} else if kerrors.IsNotFound(err) || newPr == nil {
 			logger.Debugf("Pipelinerun %s not found when updating metrics: %w", pr.Name, err)
+			return
 		}
 
 		before := newPr.Status.GetCondition(apis.ConditionSucceeded)
