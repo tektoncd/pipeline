@@ -54,12 +54,16 @@ A `Run` definition supports the following fields:
 - Optional:
   - [`params`](#specifying-parameters) - Specifies the desired execution
     parameters for the custom task.
+  - [`status`](#) - Used for cancelling a `Run`.
+  - [`statusMessage`](#) - Status message for cancellation.
+  - [`retries`](#) - Specifies propagating retries count to custom tasks.
   - [`serviceAccountName`](#specifying-a-serviceaccount) - Specifies a `ServiceAccount`
     object that provides custom credentials for executing the `Run`.
-  - [`workspaces`](#specifying-workspaces) - Specifies the physical volumes to use for the
-    [`Workspaces`](workspaces.md) required by a custom task.
   - [`podTemplate`](#specifying-a-pod-template) - Specifies a [`Pod` template](podtemplates.md) to use
     to configure pods created by the custom task.
+  - [`timeout`](#) - Time after which the custom-task times out.
+  - [`workspaces`](#specifying-workspaces) - Specifies the physical volumes to use for the
+    [`Workspaces`](workspaces.md) required by a custom task.
 
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
