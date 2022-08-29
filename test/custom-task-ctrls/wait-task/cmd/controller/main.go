@@ -23,6 +23,7 @@ import (
 	runreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/run"
 	tkncontroller "github.com/tektoncd/pipeline/pkg/controller"
 	"github.com/tektoncd/pipeline/test/wait-task/pkg/reconciler"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -36,7 +37,9 @@ func main() {
 }
 
 func newController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	c := &reconciler.Reconciler{}
+	c := &reconciler.Reconciler{
+		Clock: clock.RealClock{},
+	}
 	impl := runreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 		return controller.Options{
 			AgentName: controllerName,
