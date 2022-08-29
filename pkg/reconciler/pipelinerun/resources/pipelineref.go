@@ -73,7 +73,9 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 	case cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields && pr != nil && pr.Resolver != "" && requester != nil:
 		return func(ctx context.Context, name string) (v1beta1.PipelineObject, error) {
 			params := map[string]string{}
-			for _, p := range pr.Params {
+			stringReplacements, arrayReplacements, objectReplacements := paramsFromPipelineRun(ctx, pipelineRun)
+			replacedParams := replaceParamValues(pr.Params, stringReplacements, arrayReplacements, objectReplacements)
+			for _, p := range replacedParams {
 				params[p.Name] = p.Value.StringVal
 			}
 			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", params)

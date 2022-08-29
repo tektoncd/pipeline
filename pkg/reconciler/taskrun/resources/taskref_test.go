@@ -542,6 +542,91 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 	}
 }
 
+func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	task := parse.MustParseTask(t, taskYAMLString)
+	taskRef := &v1beta1.TaskRef{
+		ResolverRef: v1beta1.ResolverRef{
+			Resolver: "git",
+			Params: []v1beta1.Param{{
+				Name:  "foo",
+				Value: *v1beta1.NewArrayOrString("$(params.resolver-param)"),
+			}},
+		},
+	}
+	taskYAML := strings.Join([]string{
+		"kind: Task",
+		"apiVersion: tekton.dev/v1beta1",
+		taskYAMLString,
+	}, "\n")
+	resolved := test.NewResolvedResource([]byte(taskYAML), nil, nil)
+	requester := &test.Requester{
+		ResolvedResource: resolved,
+		Params:           map[string]string{"foo": "bar"},
+	}
+	tr := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef:            taskRef,
+			ServiceAccountName: "default",
+			Params: []v1beta1.Param{{
+				Name:  "resolver-param",
+				Value: *v1beta1.NewArrayOrString("bar"),
+			}},
+		},
+	}
+	fn, err := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
+	if err != nil {
+		t.Fatalf("failed to get task fn: %s", err.Error())
+	}
+
+	resolvedTask, err := fn(ctx, taskRef.Name)
+	if err != nil {
+		t.Fatalf("failed to call pipelinefn: %s", err.Error())
+	}
+
+	if d := cmp.Diff(task, resolvedTask); d != "" {
+		t.Error(d)
+	}
+
+	taskRefNotMatching := &v1beta1.TaskRef{
+		ResolverRef: v1beta1.ResolverRef{
+			Resolver: "git",
+			Params: []v1beta1.Param{{
+				Name:  "foo",
+				Value: *v1beta1.NewArrayOrString("$(params.resolver-param)"),
+			}},
+		},
+	}
+
+	trNotMatching := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef:            taskRefNotMatching,
+			ServiceAccountName: "default",
+			Params: []v1beta1.Param{{
+				Name:  "resolver-param",
+				Value: *v1beta1.NewArrayOrString("banana"),
+			}},
+		},
+	}
+	fnNotMatching, err := resources.GetTaskFunc(ctx, nil, nil, requester, trNotMatching, trNotMatching.Spec.TaskRef, "", "default", "default")
+	if err != nil {
+		t.Fatalf("failed to get task fn: %s", err.Error())
+	}
+
+	_, err = fnNotMatching(ctx, taskRefNotMatching.Name)
+	if err == nil {
+		t.Fatal("expected error for non-matching params, did not get one")
+	}
+	if !strings.Contains(err.Error(), "expected foo param to be bar, but was banana") {
+		t.Fatalf("did not receive expected error, got '%s'", err.Error())
+	}
+}
+
 func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)

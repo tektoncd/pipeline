@@ -296,6 +296,89 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 	}
 }
 
+func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
+	ctx := context.Background()
+	cfg := config.FromContextOrDefaults(ctx)
+	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	ctx = config.ToContext(ctx, cfg)
+	pipeline := parse.MustParsePipeline(t, pipelineYAMLString)
+	pipelineRef := &v1beta1.PipelineRef{
+		ResolverRef: v1beta1.ResolverRef{
+			Resolver: "git",
+			Params: []v1beta1.Param{{
+				Name:  "foo",
+				Value: *v1beta1.NewArrayOrString("$(params.resolver-param)"),
+			}},
+		},
+	}
+	pipelineYAML := strings.Join([]string{
+		"kind: Pipeline",
+		"apiVersion: tekton.dev/v1beta1",
+		pipelineYAMLString,
+	}, "\n")
+	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, nil)
+	requester := &test.Requester{
+		ResolvedResource: resolved,
+		Params:           map[string]string{"foo": "bar"},
+	}
+	fn, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef:        pipelineRef,
+			ServiceAccountName: "default",
+			Params: []v1beta1.Param{{
+				Name:  "resolver-param",
+				Value: *v1beta1.NewArrayOrString("bar"),
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to get pipeline fn: %s", err.Error())
+	}
+
+	resolvedPipeline, err := fn(ctx, pipelineRef.Name)
+	if err != nil {
+		t.Fatalf("failed to call pipelinefn: %s", err.Error())
+	}
+
+	if diff := cmp.Diff(pipeline, resolvedPipeline); diff != "" {
+		t.Error(diff)
+	}
+
+	pipelineRefNotMatching := &v1beta1.PipelineRef{
+		ResolverRef: v1beta1.ResolverRef{
+			Resolver: "git",
+			Params: []v1beta1.Param{{
+				Name:  "foo",
+				Value: *v1beta1.NewArrayOrString("$(params.resolver-param)"),
+			}},
+		},
+	}
+
+	fnNotMatching, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		Spec: v1beta1.PipelineRunSpec{
+			PipelineRef:        pipelineRefNotMatching,
+			ServiceAccountName: "default",
+			Params: []v1beta1.Param{{
+				Name:  "resolver-param",
+				Value: *v1beta1.NewArrayOrString("banana"),
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to get pipeline fn: %s", err.Error())
+	}
+
+	_, err = fnNotMatching(ctx, pipelineRefNotMatching.Name)
+	if err == nil {
+		t.Fatal("expected error for non-matching params, did not get one")
+	}
+	if !strings.Contains(err.Error(), "expected foo param to be bar, but was banana") {
+		t.Fatalf("did not receive expected error, got '%s'", err.Error())
+	}
+}
+
 func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)

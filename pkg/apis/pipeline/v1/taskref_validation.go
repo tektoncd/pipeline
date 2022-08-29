@@ -18,6 +18,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
@@ -46,11 +47,22 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			if ref.Resolver == "" {
 				errs = errs.Also(apis.ErrMissingField("resolver"))
 			}
-			// TODO(abayer): Uncomment this when taskrun_validation.go is added with the ValidateParameters function.
-			// errs = errs.Also(ValidateParameters(ctx, ref.Params))
+			errs = errs.Also(ValidateParameters(ctx, ref.Params))
+			errs = errs.Also(validateResolutionParamTypes(ref.Params).ViaField("params"))
 		}
 	} else if ref.Name == "" {
 		errs = errs.Also(apis.ErrMissingField("name"))
 	}
 	return
+}
+
+func validateResolutionParamTypes(params []Param) (errs *apis.FieldError) {
+	for i, p := range params {
+		if p.Value.Type == ParamTypeArray || p.Value.Type == ParamTypeObject {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("remote resolution parameter type must be %s, not %s",
+				string(ParamTypeString), string(p.Value.Type))).ViaIndex(i))
+		}
+	}
+
+	return errs
 }
