@@ -47,8 +47,9 @@ import (
 )
 
 const (
-	apiVersion = "wait.testing.tekton.dev/v1alpha1"
-	kind       = "Wait"
+	apiVersion  = "wait.testing.tekton.dev/v1alpha1"
+	kind        = "Wait"
+	waitTaskDir = "./custom-task-ctrls/wait-task"
 )
 
 var (
@@ -415,7 +416,7 @@ spec:
 func applyController(t *testing.T) {
 	t.Log("Creating Wait Custom Task Controller...")
 	cmd := exec.Command("ko", "apply", "-f", "./config/controller.yaml")
-	cmd.Dir = "./wait-task"
+	cmd.Dir = waitTaskDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to create Wait Custom Task Controller: %s, Output: %s", err, out)
@@ -425,7 +426,7 @@ func applyController(t *testing.T) {
 func cleanUpController(t *testing.T) {
 	t.Log("Tearing down Wait Custom Task Controller...")
 	cmd := exec.Command("ko", "delete", "-f", "./config/controller.yaml")
-	cmd.Dir = "./wait-task"
+	cmd.Dir = waitTaskDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to tear down Wait Custom Task Controller: %s, Output: %s", err, out)
