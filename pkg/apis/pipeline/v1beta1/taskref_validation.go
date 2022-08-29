@@ -54,6 +54,7 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 				errs = errs.Also(apis.ErrMissingField("resolver"))
 			}
 			errs = errs.Also(ValidateParameters(ctx, ref.Params))
+			errs = errs.Also(validateResolutionParamTypes(ref.Params).ViaField("params"))
 		}
 	} else {
 		if ref.Name == "" {

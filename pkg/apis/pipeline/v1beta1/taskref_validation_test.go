@@ -187,6 +187,23 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf("bundle", "params").Also(apis.ErrMissingField("resolver")),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
+		name: "taskref param array not allowed",
+		taskRef: &v1beta1.TaskRef{
+			ResolverRef: v1beta1.ResolverRef{
+				Resolver: "some-resolver",
+				Params: []v1beta1.Param{{
+					Name: "foo",
+					Value: v1beta1.ParamValue{
+						Type:     v1beta1.ParamTypeArray,
+						ArrayVal: []string{"bar", "baz"},
+					},
+				}},
+			},
+		},
+		wantErr: apis.ErrGeneric("remote resolution parameter type must be string, not array").
+			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
+			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+	}, {
 		name: "taskref param object requires alpha",
 		taskRef: &v1beta1.TaskRef{
 			ResolverRef: v1beta1.ResolverRef{
@@ -201,6 +218,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").
+			Also(apis.ErrGeneric("remote resolution parameter type must be string, not object")).
 			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
 			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
 	}}

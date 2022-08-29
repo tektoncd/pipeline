@@ -140,7 +140,24 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		wantErr:     apis.ErrMultipleOneOf("bundle", "params").Also(apis.ErrMissingField("resolver")),
 		withContext: config.EnableAlphaAPIFields,
 	}, {
-		name: "pipelineref param object requires alpha",
+		name: "pipelineref param array not allowed",
+		ref: &v1beta1.PipelineRef{
+			ResolverRef: v1beta1.ResolverRef{
+				Resolver: "some-resolver",
+				Params: []v1beta1.Param{{
+					Name: "foo",
+					Value: v1beta1.ParamValue{
+						Type:     v1beta1.ParamTypeArray,
+						ArrayVal: []string{"bar", "baz"},
+					},
+				}},
+			},
+		},
+		wantErr: apis.ErrGeneric("remote resolution parameter type must be string, not array").
+			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
+			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+	}, {
+		name: "pipelineref param object not allowed",
 		ref: &v1beta1.PipelineRef{
 			ResolverRef: v1beta1.ResolverRef{
 				Resolver: "some-resolver",
@@ -154,6 +171,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").
+			Also(apis.ErrGeneric("remote resolution parameter type must be string, not object")).
 			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
 			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
 	}}
