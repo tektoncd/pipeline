@@ -54,6 +54,14 @@ var (
 			APIVersion: "tekton.dev/v1beta1",
 		},
 	}
+
+	sampleConfigSource = &v1beta1.ConfigSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
 )
 
 func TestLocalPipelineRef(t *testing.T) {
@@ -96,16 +104,21 @@ func TestLocalPipelineRef(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			task, err := lc.GetPipeline(ctx, tc.ref.Name)
+			resolvedPipeline, resolvedConfigSource, err := lc.GetPipeline(ctx, tc.ref.Name)
 			if tc.wantErr && err == nil {
 				t.Fatal("Expected error but found nil instead")
 			} else if !tc.wantErr && err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 
-			if d := cmp.Diff(task, tc.expected); tc.expected != nil && d != "" {
+			if d := cmp.Diff(resolvedPipeline, tc.expected); tc.expected != nil && d != "" {
 				t.Error(diff.PrintWantGot(d))
 			}
+
+			if resolvedConfigSource != nil {
+				t.Errorf("expected configsource is nil, but got %v", resolvedConfigSource)
+			}
+
 		})
 	}
 }
@@ -197,13 +210,17 @@ func TestGetPipelineFunc(t *testing.T) {
 				t.Fatalf("failed to get pipeline fn: %s", err.Error())
 			}
 
-			pipeline, err := fn(ctx, tc.ref.Name)
+			pipeline, configSource, err := fn(ctx, tc.ref.Name)
 			if err != nil {
 				t.Fatalf("failed to call pipelinefn: %s", err.Error())
 			}
 
 			if diff := cmp.Diff(pipeline, tc.expected); tc.expected != nil && diff != "" {
 				t.Error(diff)
+			}
+
+			if configSource != nil {
+				t.Errorf("expected configsource is nil, but got %v", configSource)
 			}
 		})
 	}
@@ -240,6 +257,9 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 		},
 		Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 			PipelineSpec: &pipelineSpec,
+			Provenance: &v1beta1.Provenance{
+				ConfigSource: sampleConfigSource.DeepCopy(),
+			},
 		}},
 	}
 	expectedPipeline := &v1beta1.Pipeline{
@@ -254,13 +274,17 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get pipeline fn: %s", err.Error())
 	}
-	actualPipeline, err := fn(ctx, name)
+	actualPipeline, actualConfigSource, err := fn(ctx, name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
 
 	if diff := cmp.Diff(actualPipeline, expectedPipeline); expectedPipeline != nil && diff != "" {
 		t.Error(diff)
+	}
+
+	if d := cmp.Diff(sampleConfigSource, actualConfigSource); d != "" {
+		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -275,7 +299,8 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 		"apiVersion: tekton.dev/v1beta1",
 		pipelineYAMLString,
 	}, "\n")
-	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, nil)
+
+	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, sampleConfigSource.DeepCopy(), nil)
 	requester := test.NewRequester(resolved, nil)
 	fn, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
@@ -288,13 +313,17 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 		t.Fatalf("failed to get pipeline fn: %s", err.Error())
 	}
 
-	resolvedPipeline, err := fn(ctx, pipelineRef.Name)
+	resolvedPipeline, resolvedConfigSource, err := fn(ctx, pipelineRef.Name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
 
 	if diff := cmp.Diff(pipeline, resolvedPipeline); diff != "" {
 		t.Error(diff)
+	}
+
+	if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
+		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -320,7 +349,8 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		"apiVersion: tekton.dev/v1beta1",
 		pipelineYAMLString,
 	}, "\n")
-	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, nil)
+
+	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, sampleConfigSource.DeepCopy(), nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
 		Params: []v1beta1.Param{{
@@ -349,13 +379,17 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		t.Fatalf("failed to get pipeline fn: %s", err.Error())
 	}
 
-	resolvedPipeline, err := fn(ctx, pipelineRef.Name)
+	resolvedPipeline, resolvedConfigSource, err := fn(ctx, pipelineRef.Name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
 
 	if diff := cmp.Diff(pipeline, resolvedPipeline); diff != "" {
 		t.Error(diff)
+	}
+
+	if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
+		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
 	}
 
 	pipelineRefNotMatching := &v1beta1.PipelineRef{
@@ -389,7 +423,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		t.Fatalf("failed to get pipeline fn: %s", err.Error())
 	}
 
-	_, err = fnNotMatching(ctx, pipelineRefNotMatching.Name)
+	_, _, err = fnNotMatching(ctx, pipelineRefNotMatching.Name)
 	if err == nil {
 		t.Fatal("expected error for non-matching params, did not get one")
 	}
@@ -404,7 +438,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx = config.ToContext(ctx, cfg)
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 	resolvesTo := []byte("INVALID YAML")
-	resource := test.NewResolvedResource(resolvesTo, nil, nil)
+	resource := test.NewResolvedResource(resolvesTo, nil, nil, nil)
 	requester := test.NewRequester(resource, nil)
 	fn, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
@@ -416,7 +450,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get pipeline fn: %s", err.Error())
 	}
-	if _, err := fn(ctx, pipelineRef.Name); err == nil {
+	if _, _, err := fn(ctx, pipelineRef.Name); err == nil {
 		t.Fatalf("expected error due to invalid pipeline data but saw none")
 	}
 }
@@ -517,12 +551,15 @@ func TestLocalPipelineRef_TrustedResourceVerification_Success(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			pipeline, err := lc.GetPipeline(ctx, tc.ref.Name)
+			pipeline, source, err := lc.GetPipeline(ctx, tc.ref.Name)
 			if err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 			if d := cmp.Diff(pipeline, tc.expected); d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+			if source != nil {
+				t.Errorf("expected source is nil, but got %v", source)
 			}
 		})
 	}
@@ -591,12 +628,16 @@ func TestLocalPipelineRef_TrustedResourceVerification_Error(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			pipeline, err := lc.GetPipeline(ctx, tc.ref.Name)
+			pipeline, source, err := lc.GetPipeline(ctx, tc.ref.Name)
 			if err == nil || !errors.Is(err, tc.expectedErr) {
 				t.Fatalf("Expected error %v but found %v instead", tc.expectedErr, err)
 			}
 			if d := cmp.Diff(pipeline, tc.expected); d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+
+			if source != nil {
+				t.Errorf("expected source is nil, but got %v", source)
 			}
 		})
 	}
@@ -615,7 +656,7 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Success(t 
 		t.Fatal("fail to marshal pipeline", err)
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
 	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed")
@@ -627,7 +668,7 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Success(t 
 		t.Fatal("fail to marshal pipeline", err)
 	}
 
-	resolvedSigned := test.NewResolvedResource(signedPipelineBytes, nil, nil)
+	resolvedSigned := test.NewResolvedResource(signedPipelineBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterSigned := test.NewRequester(resolvedSigned, nil)
 
 	tamperedPipeline := signedPipeline.DeepCopy()
@@ -636,7 +677,7 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Success(t 
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	resolvedTampered := test.NewResolvedResource(tamperedPipelineBytes, nil, nil)
+	resolvedTampered := test.NewResolvedResource(tamperedPipelineBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterTampered := test.NewRequester(resolvedTampered, nil)
 
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
@@ -699,12 +740,15 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Success(t 
 				t.Fatalf("failed to get pipeline fn: %s", err.Error())
 			}
 
-			resolvedPipeline, err := fn(ctx, pipelineRef.Name)
+			resolvedPipeline, source, err := fn(ctx, pipelineRef.Name)
 			if err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
 			}
 			if d := cmp.Diff(tc.expected, resolvedPipeline); d != "" {
 				t.Error(d)
+			}
+			if d := cmp.Diff(sampleConfigSource, source); d != "" {
+				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -723,7 +767,7 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Error(t *t
 		t.Fatal("fail to marshal pipeline", err)
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
 	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed")
@@ -737,7 +781,7 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Error(t *t
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
 	}
-	resolvedTampered := test.NewResolvedResource(tamperedPipelineBytes, nil, nil)
+	resolvedTampered := test.NewResolvedResource(tamperedPipelineBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterTampered := test.NewRequester(resolvedTampered, nil)
 
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
@@ -778,12 +822,15 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Error(t *t
 				t.Fatalf("failed to get pipeline fn: %s", err.Error())
 			}
 
-			resolvedPipeline, err := fn(ctx, pipelineRef.Name)
+			resolvedPipeline, source, err := fn(ctx, pipelineRef.Name)
 			if err == nil || !errors.Is(err, tc.expectedErr) {
 				t.Fatalf("Expected error %v but found %v instead", tc.expectedErr, err)
 			}
 			if d := cmp.Diff(tc.expected, resolvedPipeline); d != "" {
 				t.Error(d)
+			}
+			if source != nil {
+				t.Errorf("expected source is nil, but got %v", source)
 			}
 		})
 	}

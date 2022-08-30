@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -27,10 +28,11 @@ func NewRequester(resource resolution.ResolvedResource, err error) *Requester {
 // NewResolvedResource creates a mock resolved resource that is
 // populated with the given data and annotations or returns the given
 // error from its Data() method.
-func NewResolvedResource(data []byte, annotations map[string]string, dataErr error) *ResolvedResource {
+func NewResolvedResource(data []byte, annotations map[string]string, source *v1beta1.ConfigSource, dataErr error) *ResolvedResource {
 	return &ResolvedResource{
 		ResolvedData:        data,
 		ResolvedAnnotations: annotations,
+		ResolvedSource:      source,
 		DataErr:             dataErr,
 	}
 }

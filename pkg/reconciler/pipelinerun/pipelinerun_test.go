@@ -37,6 +37,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -5523,7 +5524,7 @@ status:
 	}
 }
 
-func Test_storePipelineSpec(t *testing.T) {
+func Test_storePipelineSpecAndConfigSource(t *testing.T) {
 	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
@@ -5532,6 +5533,13 @@ metadata:
   annotations:
     io.annotation: value
 `)
+	configSource := &v1beta1.ConfigSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
 
 	ps := v1beta1.PipelineSpec{Description: "foo-pipeline"}
 	ps1 := v1beta1.PipelineSpec{Description: "bar-pipeline"}
@@ -5540,24 +5548,75 @@ metadata:
 	want.Status = v1beta1.PipelineRunStatus{
 		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 			PipelineSpec: ps.DeepCopy(),
+			Provenance: &v1beta1.Provenance{
+				ConfigSource: configSource.DeepCopy(),
+			},
 		},
 	}
 	want.ObjectMeta.Labels["tekton.dev/pipeline"] = pr.ObjectMeta.Name
 
-	// The first time we set it, it should get copied.
-	if err := storePipelineSpecAndMergeMeta(pr, &ps, &pr.ObjectMeta); err != nil {
-		t.Errorf("storePipelineSpec() error = %v", err)
-	}
-	if d := cmp.Diff(pr, want); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+	type args struct {
+		pipelineSpec       *v1beta1.PipelineSpec
+		resolvedObjectMeta *resolutionutil.ResolvedObjectMeta
 	}
 
-	// The next time, it should not get overwritten
-	if err := storePipelineSpecAndMergeMeta(pr, &ps1, &metav1.ObjectMeta{}); err != nil {
-		t.Errorf("storePipelineSpec() error = %v", err)
+	var tests = []struct {
+		name            string
+		reconcile1Args  *args
+		reconcile2Args  *args
+		wantPipelineRun *v1beta1.PipelineRun
+	}{
+		{
+			name: "spec and source are available in the same reconcile",
+			reconcile1Args: &args{
+				pipelineSpec: &ps,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
+					ObjectMeta:   &pr.ObjectMeta,
+					ConfigSource: configSource.DeepCopy(),
+				},
+			},
+			reconcile2Args: &args{
+				pipelineSpec:       &ps1,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{},
+			},
+			wantPipelineRun: want,
+		},
+		{
+			name: "spec comes in the first reconcile and source comes in next reconcile",
+			reconcile1Args: &args{
+				pipelineSpec: &ps,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
+					ObjectMeta: &pr.ObjectMeta,
+				},
+			},
+			reconcile2Args: &args{
+				pipelineSpec: &ps,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
+					ConfigSource: configSource.DeepCopy(),
+				},
+			},
+			wantPipelineRun: want,
+		},
 	}
-	if d := cmp.Diff(pr, want); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := ttesting.EnableFeatureFlagField(context.Background(), t, "enable-provenance-in-status")
+			// mock first reconcile
+			if err := storePipelineSpecAndMergeMeta(ctx, pr, tc.reconcile1Args.pipelineSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+				t.Errorf("storePipelineSpec() error = %v", err)
+			}
+			if d := cmp.Diff(pr, tc.wantPipelineRun); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+
+			// mock second reconcile
+			if err := storePipelineSpecAndMergeMeta(ctx, pr, tc.reconcile2Args.pipelineSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+				t.Errorf("storePipelineSpec() error = %v", err)
+			}
+			if d := cmp.Diff(pr, tc.wantPipelineRun); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
@@ -5573,7 +5632,9 @@ func Test_storePipelineSpec_metadata(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Labels: pipelinerunlabels, Annotations: pipelinerunannotations},
 	}
 	meta := metav1.ObjectMeta{Name: "bar", Labels: pipelinelabels, Annotations: pipelineannotations}
-	if err := storePipelineSpecAndMergeMeta(pr, &v1beta1.PipelineSpec{}, &meta); err != nil {
+	if err := storePipelineSpecAndMergeMeta(context.Background(), pr, &v1beta1.PipelineSpec{}, &resolutionutil.ResolvedObjectMeta{
+		ObjectMeta: &meta,
+	}); err != nil {
 		t.Errorf("storePipelineSpecAndMergeMeta error = %v", err)
 	}
 	if d := cmp.Diff(pr.ObjectMeta.Labels, wantedlabels); d != "" {

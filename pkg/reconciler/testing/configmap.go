@@ -17,10 +17,12 @@ limitations under the License.
 package testing
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -44,4 +46,20 @@ func ConfigMapFromTestFile(t *testing.T, name string) *corev1.ConfigMap {
 	}
 
 	return &cm
+}
+
+// EnableFeatureFlagField enables a boolean feature flag in an existing context (for use in testing).
+func EnableFeatureFlagField(ctx context.Context, t *testing.T, flagName string) context.Context {
+	featureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
+		flagName: "true",
+	})
+
+	if err != nil {
+		t.Fatalf("Fail to create a feature config: %v", err)
+	}
+
+	cfg := &config.Config{
+		FeatureFlags: featureFlags,
+	}
+	return config.ToContext(ctx, cfg)
 }

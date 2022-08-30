@@ -57,7 +57,7 @@ function set_feature_gate() {
   kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
   if [ "$gate" == "alpha" ]; then
     printf "enabling resolvers\n"
-    jsonpatch=$(printf "{\"data\": {\"enable-git-resolver\": \"true\", \"enable-hub-resolver\": \"true\", \"enable-bundles-resolver\": \"true\", \"enable-cluster-resolver\": \"true\"}}")
+    jsonpatch=$(printf "{\"data\": {\"enable-git-resolver\": \"true\", \"enable-hub-resolver\": \"true\", \"enable-bundles-resolver\": \"true\", \"enable-cluster-resolver\": \"true\", \"enable-provenance-in-status\": \"true\"}}")
     echo "resolvers-feature-flags ConfigMap patch: ${jsonpatch}"
     kubectl patch configmap resolvers-feature-flags -n tekton-pipelines-resolvers -p "$jsonpatch"
   fi

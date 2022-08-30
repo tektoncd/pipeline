@@ -778,7 +778,9 @@ func resolveTask(
 			spec = *taskRun.Status.TaskSpec
 			taskName = pipelineTask.TaskRef.Name
 		} else {
-			t, err = getTask(ctx, pipelineTask.TaskRef.Name)
+			// Following minimum status principle (TEP-0100), no need to propagate the source about PipelineTask up to PipelineRun status.
+			// Instead, the child TaskRun's status will be the place recording the source of individual task.
+			t, _, err = getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
 			case errors.Is(err, remote.ErrorRequestInProgress):
 				return v1beta1.TaskSpec{}, "", "", err
