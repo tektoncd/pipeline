@@ -199,7 +199,7 @@ func (arrayOrString *ArrayOrString) ApplyReplacements(stringReplacements map[str
 	if arrayOrString.Type == ParamTypeString {
 		arrayOrString.StringVal = substitution.ApplyReplacements(arrayOrString.StringVal, stringReplacements)
 	} else {
-		var newArrayVal []string
+		newArrayVal := []string{}
 		for _, v := range arrayOrString.ArrayVal {
 			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
