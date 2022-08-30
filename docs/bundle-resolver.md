@@ -2,7 +2,7 @@
 
 ## Resolver Type
 
-This Resolver responds to type `bundle`.
+This Resolver responds to type `bundles`.
 
 ## Parameters
 
@@ -17,7 +17,7 @@ This Resolver responds to type `bundle`.
 
 - A cluster running Tekton Pipeline v0.40.0 or later, with the `alpha` feature gate enabled.
 - The [built-in remote resolvers installed](./install.md#installing-and-configuring-remote-task-and-pipeline-resolution).
-- The `enable-tekton-oci-bundles` feature flag set to `true`.
+- The `enable-bundles-resolver` feature flag set to `true`.
 
 ## Configuration
 

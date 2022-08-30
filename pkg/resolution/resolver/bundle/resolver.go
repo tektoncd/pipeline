@@ -18,14 +18,18 @@ package bundle
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/client/injection/kube/client"
 )
+
+const disabledError = "cannot handle resolution request, enable-bundles-resolver feature flag not true"
 
 // LabelValueBundleResolverType is the value to use for the
 // resolution.tekton.dev/type label on resource requests
@@ -65,6 +69,9 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 
 // ValidateParams ensures parameters from a request are as expected.
 func (r *Resolver) ValidateParams(ctx context.Context, params map[string]string) error {
+	if r.isDisabled(ctx) {
+		return errors.New(disabledError)
+	}
 	if _, err := OptionsFromParams(ctx, params); err != nil {
 		return err
 	}
@@ -73,6 +80,9 @@ func (r *Resolver) ValidateParams(ctx context.Context, params map[string]string)
 
 // Resolve uses the given params to resolve the requested file or resource.
 func (r *Resolver) Resolve(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
+	if r.isDisabled(ctx) {
+		return nil, errors.New(disabledError)
+	}
 	opts, err := OptionsFromParams(ctx, params)
 	if err != nil {
 		return nil, err
@@ -85,4 +95,13 @@ func (r *Resolver) Resolve(ctx context.Context, params map[string]string) (frame
 	ctx, cancelFn := context.WithTimeout(ctx, timeoutDuration)
 	defer cancelFn()
 	return GetEntry(ctx, kc, opts)
+}
+
+func (r *Resolver) isDisabled(ctx context.Context) bool {
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EnableTektonOCIBundles || cfg.FeatureFlags.EnableBundleResolver {
+		return false
+	}
+
+	return true
 }

@@ -60,6 +60,12 @@ const (
 	DefaultSendCloudEventsForRuns = false
 	// DefaultEmbeddedStatus is the default value for "embedded-status".
 	DefaultEmbeddedStatus = FullEmbeddedStatus
+	// DefaultEnableGitResolver is the default value for "enable-git-resolver".
+	DefaultEnableGitResolver = false
+	// DefaultEnableHubResolver is the default value for "enable-hub-resolver".
+	DefaultEnableHubResolver = false
+	// DefaultEnableBundlesResolver is the default value for "enable-bundles-resolver".
+	DefaultEnableBundlesResolver = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -71,6 +77,13 @@ const (
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
 	embeddedStatus                      = "embedded-status"
+
+	// EnableGitResolver is the flag used to enable the git remote resolver
+	EnableGitResolver = "enable-git-resolver"
+	// EnableHubResolver is the flag used to enable the hub remote resolver
+	EnableHubResolver = "enable-hub-resolver"
+	// EnableBundlesResolver is the flag used to enable the bundle remote resolver
+	EnableBundlesResolver = "enable-bundles-resolver"
 )
 
 // FeatureFlags holds the features configurations
@@ -87,6 +100,9 @@ type FeatureFlags struct {
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
 	EmbeddedStatus                   string
+	EnableGitResolver                bool
+	EnableHubResolver                bool
+	EnableBundleResolver             bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -138,6 +154,15 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setEmbeddedStatus(cfgMap, DefaultEmbeddedStatus, &tc.EmbeddedStatus); err != nil {
 		return nil, err
 	}
+	if err := setFeature(EnableGitResolver, DefaultEnableGitResolver, &tc.EnableGitResolver); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableHubResolver, DefaultEnableHubResolver, &tc.EnableHubResolver); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableBundlesResolver, DefaultEnableBundlesResolver, &tc.EnableBundleResolver); err != nil {
+		return nil, err
+	}
 
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
 	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of
@@ -147,6 +172,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	// defeat the purpose of having a single shared gate for all alpha features.
 	if tc.EnableAPIFields == AlphaAPIFields {
 		tc.EnableTektonOCIBundles = true
+		tc.EnableBundleResolver = true
 		tc.EnableCustomTasks = true
 	} else {
 		if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {

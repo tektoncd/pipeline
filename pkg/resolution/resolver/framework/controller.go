@@ -167,17 +167,8 @@ func watchConfigChanges(ctx context.Context, reconciler *Reconciler, cmw configm
 		if resolverConfigName == "" {
 			panic("resolver returned empty config name")
 		}
-		reconciler.configStore = &ConfigStore{
-			resolverConfigName: resolverConfigName,
-			untyped: configmap.NewUntypedStore(
-				"resolver-config",
-				logger,
-				configmap.Constructors{
-					resolverConfigName: DataFromConfigMap,
-				},
-			),
-		}
-		reconciler.configStore.untyped.WatchConfigs(cmw)
+		reconciler.configStore = NewConfigStore(resolverConfigName, logger)
+		reconciler.configStore.WatchConfigs(cmw)
 	}
 }
 

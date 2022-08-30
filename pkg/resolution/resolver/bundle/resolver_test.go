@@ -20,7 +20,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
+	"github.com/tektoncd/pipeline/test/diff"
 )
 
 func TestGetSelector(t *testing.T) {
@@ -42,7 +45,7 @@ func TestValidateParams(t *testing.T) {
 		ParamBundle:         "bar",
 		ParamServiceAccount: "baz",
 	}
-	if err := resolver.ValidateParams(context.Background(), paramsWithTask); err != nil {
+	if err := resolver.ValidateParams(resolverContext(), paramsWithTask); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 
@@ -52,8 +55,29 @@ func TestValidateParams(t *testing.T) {
 		ParamBundle:         "bar",
 		ParamServiceAccount: "baz",
 	}
-	if err := resolver.ValidateParams(context.Background(), paramsWithPipeline); err != nil {
+	if err := resolver.ValidateParams(resolverContext(), paramsWithPipeline); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
+	}
+}
+
+func TestValidateParamsDisabled(t *testing.T) {
+	resolver := Resolver{}
+
+	var err error
+
+	params := map[string]string{
+		ParamKind:           "task",
+		ParamName:           "foo",
+		ParamBundle:         "bar",
+		ParamServiceAccount: "baz",
+	}
+	err = resolver.ValidateParams(context.Background(), params)
+	if err == nil {
+		t.Fatalf("expected disabled err")
+	}
+
+	if d := cmp.Diff(disabledError, err.Error()); d != "" {
+		t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -67,7 +91,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		ParamName:           "foo",
 		ParamServiceAccount: "baz",
 	}
-	err = resolver.ValidateParams(context.Background(), paramsMissingBundle)
+	err = resolver.ValidateParams(resolverContext(), paramsMissingBundle)
 	if err == nil {
 		t.Fatalf("expected missing kind err")
 	}
@@ -77,9 +101,34 @@ func TestValidateParamsMissing(t *testing.T) {
 		ParamBundle:         "bar",
 		ParamServiceAccount: "baz",
 	}
-	err = resolver.ValidateParams(context.Background(), paramsMissingName)
+	err = resolver.ValidateParams(resolverContext(), paramsMissingName)
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
 
+}
+
+func TestResolveDisabled(t *testing.T) {
+	resolver := Resolver{}
+
+	var err error
+
+	params := map[string]string{
+		ParamKind:           "task",
+		ParamName:           "foo",
+		ParamBundle:         "bar",
+		ParamServiceAccount: "baz",
+	}
+	_, err = resolver.Resolve(context.Background(), params)
+	if err == nil {
+		t.Fatalf("expected disabled err")
+	}
+
+	if d := cmp.Diff(disabledError, err.Error()); d != "" {
+		t.Errorf("unexpected error: %s", diff.PrintWantGot(d))
+	}
+}
+
+func resolverContext() context.Context {
+	return frtesting.ContextWithBundlesResolverEnabled(context.Background())
 }
