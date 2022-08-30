@@ -27,6 +27,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var (
+	sampleConfigSource = &v1beta1.ConfigSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
+)
+
 func TestGetTaskSpec_Ref(t *testing.T) {
 	task := &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{
@@ -48,19 +58,25 @@ func TestGetTaskSpec_Ref(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, error) { return task, nil }
-	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
+
+	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
+		return task, sampleConfigSource.DeepCopy(), nil
+	}
+	resolvedObjectMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
 	}
 
-	if taskMeta.Name != "orchestrate" {
-		t.Errorf("Expected task name to be `orchestrate` but was %q", taskMeta.Name)
+	if resolvedObjectMeta.Name != "orchestrate" {
+		t.Errorf("Expected task name to be `orchestrate` but was %q", resolvedObjectMeta.Name)
 	}
 
 	if len(taskSpec.Steps) != 1 || taskSpec.Steps[0].Name != "step1" {
 		t.Errorf("Task Spec not resolved as expected, expected referenced Task spec but got: %v", taskSpec)
+	}
+	if d := cmp.Diff(sampleConfigSource, resolvedObjectMeta.ConfigSource); d != "" {
+		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -77,21 +93,26 @@ func TestGetTaskSpec_Embedded(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
-		return nil, errors.New("shouldn't be called")
+	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
+		return nil, nil, errors.New("shouldn't be called")
 	}
-	taskMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
+	resolvedObjectMeta, taskSpec, err := GetTaskData(context.Background(), tr, gt)
 
 	if err != nil {
 		t.Fatalf("Did not expect error getting task spec but got: %s", err)
 	}
 
-	if taskMeta.Name != "mytaskrun" {
-		t.Errorf("Expected task name for embedded task to default to name of task run but was %q", taskMeta.Name)
+	if resolvedObjectMeta.Name != "mytaskrun" {
+		t.Errorf("Expected task name for embedded task to default to name of task run but was %q", resolvedObjectMeta.Name)
 	}
 
 	if len(taskSpec.Steps) != 1 || taskSpec.Steps[0].Name != "step1" {
 		t.Errorf("Task Spec not resolved as expected, expected embedded Task spec but got: %v", taskSpec)
+	}
+
+	// embedded tasks have empty source for now. This may be changed in future.
+	if resolvedObjectMeta.ConfigSource != nil {
+		t.Errorf("resolved configsource for embedded task is expected to be empty, but got %v", resolvedObjectMeta.ConfigSource)
 	}
 }
 
@@ -101,8 +122,8 @@ func TestGetTaskSpec_Invalid(t *testing.T) {
 			Name: "mytaskrun",
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
-		return nil, errors.New("shouldn't be called")
+	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
+		return nil, nil, errors.New("shouldn't be called")
 	}
 	_, _, err := GetTaskData(context.Background(), tr, gt)
 	if err == nil {
@@ -121,8 +142,8 @@ func TestGetTaskSpec_Error(t *testing.T) {
 			},
 		},
 	}
-	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
-		return nil, errors.New("something went wrong")
+	gt := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
+		return nil, nil, errors.New("something went wrong")
 	}
 	_, _, err := GetTaskData(context.Background(), tr, gt)
 	if err == nil {
@@ -160,11 +181,12 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 			Script: `echo "hello world!"`,
 		}},
 	}
-	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
+
+	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
 		return &v1beta1.Task{
 			ObjectMeta: *sourceMeta.DeepCopy(),
 			Spec:       *sourceSpec.DeepCopy(),
-		}, nil
+		}, sampleConfigSource.DeepCopy(), nil
 	}
 	ctx := context.Background()
 	resolvedMeta, resolvedSpec, err := GetTaskData(ctx, tr, getTask)
@@ -174,6 +196,11 @@ func TestGetTaskData_ResolutionSuccess(t *testing.T) {
 	if sourceMeta.Name != resolvedMeta.Name {
 		t.Errorf("Expected name %q but resolved to %q", sourceMeta.Name, resolvedMeta.Name)
 	}
+
+	if d := cmp.Diff(sampleConfigSource, resolvedMeta.ConfigSource); d != "" {
+		t.Errorf("configsource did not match: %s", diff.PrintWantGot(d))
+	}
+
 	if d := cmp.Diff(sourceSpec, *resolvedSpec); d != "" {
 		t.Errorf(diff.PrintWantGot(d))
 	}
@@ -192,8 +219,8 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
-		return nil, errors.New("something went wrong")
+	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
+		return nil, nil, errors.New("something went wrong")
 	}
 	ctx := context.Background()
 	_, _, err := GetTaskData(ctx, tr, getTask)
@@ -215,8 +242,8 @@ func TestGetTaskData_ResolvedNilTask(t *testing.T) {
 			},
 		},
 	}
-	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, error) {
-		return nil, nil
+	getTask := func(ctx context.Context, n string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
+		return nil, nil, nil
 	}
 	ctx := context.Background()
 	_, _, err := GetTaskData(ctx, tr, getTask)

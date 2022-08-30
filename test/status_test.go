@@ -21,14 +21,30 @@ package test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
+	"sigs.k8s.io/yaml"
+)
+
+var (
+	provenanceFeatureFlags = requireAllGates(map[string]string{
+		"enable-provenance-in-status": "true",
+	})
+	embeddedStatusFlag = requireAllGates(map[string]string{
+		"embedded-status": "full",
+	})
 )
 
 // TestTaskRunPipelineRunStatus is an integration test that will
@@ -98,4 +114,184 @@ spec:
 	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "BuildValidationFailed"); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
+}
+
+// TestProvenanceFieldInPipelineRunTaskRunStatus is an integration test that will
+// verify if the provenance field in TaskRun and PipelineRun Status is populated
+// with correct data.
+// [Setup]: PipelineRun refers to a remote/in-cluster pipeline that will be resolved
+// by cluster resolver, and the in-cluster pipeline uses a remote/in-cluster task that
+// will also be resolved by cluster resolver.
+// [Expectation]: PipelineRun status should contain the provenance about the remote pipeline
+// i.e. configsource info, and the child TaskRun status should contain the provnenace
+// about the remote task i.e. configsource info .
+func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
+	ctx := context.Background()
+	c, namespace := setup(ctx, t, clusterFeatureFlags, provenanceFeatureFlags, embeddedStatusFlag)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	embeddedStatusValue := GetEmbeddedStatus(ctx, t, c.KubeClient)
+
+	// example task
+	taskName := helpers.ObjectNameForTest(t)
+	exampleTask, err := c.V1beta1TaskClient.Create(ctx, getExampleTask(t, taskName, namespace), metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
+	}
+	taskSpec, err := yaml.Marshal(exampleTask.Spec)
+	if err != nil {
+		t.Fatalf("couldn't marshal task spec: %v", err)
+	}
+	expectedTaskRunProvenance := &v1beta1.Provenance{
+		ConfigSource: &v1beta1.ConfigSource{
+			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1beta1.SchemeGroupVersion.String(), namespace, "task", exampleTask.Name, exampleTask.UID),
+			Digest: map[string]string{"sha256": sha256CheckSum(taskSpec)},
+		},
+	}
+
+	// example pipeline
+	pipelineName := helpers.ObjectNameForTest(t)
+	examplePipeline, err := c.V1beta1PipelineClient.Create(ctx, getExamplePipeline(t, pipelineName, taskName, namespace), metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", pipelineName, err)
+	}
+	pipelineSpec, err := yaml.Marshal(examplePipeline.Spec)
+	if err != nil {
+		t.Fatalf("couldn't marshal pipeline spec: %v", err)
+	}
+	expectedPipelineRunProvenance := &v1beta1.Provenance{
+		ConfigSource: &v1beta1.ConfigSource{
+			URI:    fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", v1beta1.SchemeGroupVersion.String(), namespace, "pipeline", examplePipeline.Name, examplePipeline.UID),
+			Digest: map[string]string{"sha256": sha256CheckSum(pipelineSpec)},
+		},
+	}
+
+	// pipelinerun
+	prName := helpers.ObjectNameForTest(t)
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, getExamplePipelineRun(t, prName, pipelineName, namespace), metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+
+	// Get the updated status of the PipelineRun.
+	pr, err := c.V1beta1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get PipelineRun %q after it completed: %v", prName, err)
+	}
+
+	// check the provenance field in the PipelineRun status
+	if d := cmp.Diff(expectedPipelineRunProvenance, pr.Status.Provenance); d != "" {
+		t.Errorf("provenance did not match: %s", diff.PrintWantGot(d))
+	}
+
+	// Get the TaskRun name.
+	var taskRunName string
+
+	if embeddedStatusValue != config.MinimalEmbeddedStatus {
+		if len(pr.Status.TaskRuns) != 1 {
+			t.Fatalf("PipelineRun had unexpected .status.taskRuns; got %d, want 1", len(pr.Status.TaskRuns))
+		}
+		for k := range pr.Status.TaskRuns {
+			taskRunName = k
+			break
+		}
+	}
+
+	if embeddedStatusValue != config.FullEmbeddedStatus {
+		for _, cr := range pr.Status.ChildReferences {
+			if cr.Kind == "TaskRun" {
+				taskRunName = cr.Name
+			}
+		}
+		if taskRunName == "" {
+			t.Fatal("PipelineRun does not have expected TaskRun in .status.childReferences")
+		}
+	}
+
+	t.Logf("Waiting for TaskRun %s in namespace %s to complete", taskRunName, namespace)
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for TaskRun %s to finish: %s", taskRunName, err)
+	}
+	// Get the TaskRun.
+	taskRun, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get TaskRun %q: %v", taskRunName, err)
+	}
+
+	// check the provenance field in the PipelineRun status
+	if d := cmp.Diff(expectedTaskRunProvenance, taskRun.Status.Provenance); d != "" {
+		t.Errorf("provenance did not match: %s", diff.PrintWantGot(d))
+	}
+
+}
+
+func getExampleTask(t *testing.T, taskName, namespace string) *v1beta1.Task {
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  params:
+  - name: HELLO
+    default: "hello world!"
+  steps:
+  - image: ubuntu
+    script: |
+      #!/usr/bin/env bash
+      echo "$(params.HELLO)"
+`, taskName, namespace))
+}
+
+func getExamplePipeline(t *testing.T, pipelineName, taskName, namespace string) *v1beta1.Pipeline {
+	return parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: %s
+  namespace: %s
+spec:
+ tasks:
+ - name: task1
+   taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: %s
+    - name: namespace
+      value: %s
+`, pipelineName, namespace, taskName, namespace))
+}
+
+func getExamplePipelineRun(t *testing.T, prName, pipelineName, namespace string) *v1beta1.PipelineRun {
+	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: %s
+    - name: namespace
+      value: %s
+`, prName, namespace, pipelineName, namespace))
+}
+
+func sha256CheckSum(input []byte) string {
+	h := sha256.New()
+	h.Write(input)
+	return hex.EncodeToString(h.Sum(nil))
 }

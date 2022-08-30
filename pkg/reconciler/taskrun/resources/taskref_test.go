@@ -73,6 +73,13 @@ var (
 			}},
 		},
 	}
+	sampleConfigSource = &v1beta1.ConfigSource{
+		URI: "abc.com",
+		Digest: map[string]string{
+			"sha1": "a123",
+		},
+		EntryPoint: "foo/bar",
+	}
 )
 
 func TestGetTaskKind(t *testing.T) {
@@ -205,7 +212,7 @@ func TestLocalTaskRef(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			task, err := lc.GetTask(ctx, tc.ref.Name)
+			task, configSource, err := lc.GetTask(ctx, tc.ref.Name)
 			if tc.wantErr && err == nil {
 				t.Fatal("Expected error but found nil instead")
 			} else if !tc.wantErr && err != nil {
@@ -214,6 +221,11 @@ func TestLocalTaskRef(t *testing.T) {
 
 			if d := cmp.Diff(task, tc.expected); tc.expected != nil && d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+
+			// local cluster tasks have empty source for now. This may be changed in future.
+			if configSource != nil {
+				t.Errorf("expected configsource is nil, but got %v", configSource)
 			}
 		})
 	}
@@ -438,13 +450,18 @@ func TestGetTaskFunc(t *testing.T) {
 				t.Fatalf("failed to get task fn: %s", err.Error())
 			}
 
-			task, err := fn(ctx, tc.ref.Name)
+			task, configSource, err := fn(ctx, tc.ref.Name)
 			if err != nil {
 				t.Fatalf("failed to call taskfn: %s", err.Error())
 			}
 
 			if diff := cmp.Diff(task, tc.expected); tc.expected != nil && diff != "" {
 				t.Error(diff)
+			}
+
+			// local cluster task and  bundle task have empty source for now. This may be changed in future.
+			if configSource != nil {
+				t.Errorf("expected configsource is nil, but got %v", configSource)
 			}
 		})
 	}
@@ -472,6 +489,7 @@ echo hello
 `,
 		}},
 	}
+
 	TaskRun := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 		Spec: v1beta1.TaskRunSpec{
@@ -484,6 +502,9 @@ echo hello
 		},
 		Status: v1beta1.TaskRunStatus{TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 			TaskSpec: &TaskSpec,
+			Provenance: &v1beta1.Provenance{
+				ConfigSource: sampleConfigSource.DeepCopy(),
+			},
 		}},
 	}
 	expectedTask := &v1beta1.Task{
@@ -498,7 +519,7 @@ echo hello
 	if err != nil {
 		t.Fatalf("failed to get Task fn: %s", err.Error())
 	}
-	actualTask, err := fn(ctx, name)
+	actualTask, actualConfigSource, err := fn(ctx, name)
 	if err != nil {
 		t.Fatalf("failed to call Taskfn: %s", err.Error())
 	}
@@ -506,6 +527,11 @@ echo hello
 	if diff := cmp.Diff(actualTask, expectedTask); expectedTask != nil && diff != "" {
 		t.Error(diff)
 	}
+
+	if d := cmp.Diff(sampleConfigSource, actualConfigSource); d != "" {
+		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
+	}
+
 }
 
 func TestGetTaskFunc_RemoteResolution(t *testing.T) {
@@ -519,7 +545,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 		"apiVersion: tekton.dev/v1beta1",
 		taskYAMLString,
 	}, "\n")
-	resolved := test.NewResolvedResource([]byte(taskYAML), nil, nil)
+	resolved := test.NewResolvedResource([]byte(taskYAML), nil, sampleConfigSource.DeepCopy(), nil)
 	requester := test.NewRequester(resolved, nil)
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
@@ -533,9 +559,13 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 		t.Fatalf("failed to get task fn: %s", err.Error())
 	}
 
-	resolvedTask, err := fn(ctx, taskRef.Name)
+	resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
+	}
+
+	if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
+		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 	}
 
 	if d := cmp.Diff(task, resolvedTask); d != "" {
@@ -565,7 +595,8 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		"apiVersion: tekton.dev/v1beta1",
 		taskYAMLString,
 	}, "\n")
-	resolved := test.NewResolvedResource([]byte(taskYAML), nil, nil)
+
+	resolved := test.NewResolvedResource([]byte(taskYAML), nil, sampleConfigSource.DeepCopy(), nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
 		Params: []v1beta1.Param{{
@@ -595,13 +626,17 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		t.Fatalf("failed to get task fn: %s", err.Error())
 	}
 
-	resolvedTask, err := fn(ctx, taskRef.Name)
+	resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
 	}
 
 	if d := cmp.Diff(task, resolvedTask); d != "" {
 		t.Error(d)
+	}
+
+	if d := cmp.Diff(sampleConfigSource, resolvedConfigSource); d != "" {
+		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 	}
 
 	taskRefNotMatching := &v1beta1.TaskRef{
@@ -636,7 +671,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		t.Fatalf("failed to get task fn: %s", err.Error())
 	}
 
-	_, err = fnNotMatching(ctx, taskRefNotMatching.Name)
+	_, _, err = fnNotMatching(ctx, taskRefNotMatching.Name)
 	if err == nil {
 		t.Fatal("expected error for non-matching params, did not get one")
 	}
@@ -651,7 +686,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx = config.ToContext(ctx, cfg)
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 	resolvesTo := []byte("INVALID YAML")
-	resource := test.NewResolvedResource(resolvesTo, nil, nil)
+	resource := test.NewResolvedResource(resolvesTo, nil, nil, nil)
 	requester := test.NewRequester(resource, nil)
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
@@ -664,7 +699,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get pipeline fn: %s", err.Error())
 	}
-	if _, err := fn(ctx, taskRef.Name); err == nil {
+	if _, _, err := fn(ctx, taskRef.Name); err == nil {
 		t.Fatalf("expected error due to invalid pipeline data but saw none")
 	}
 }
@@ -762,13 +797,17 @@ func TestLocalTaskRef_TrustedResourceVerification_Success(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			task, err := lc.GetTask(ctx, tc.ref.Name)
+			task, source, err := lc.GetTask(ctx, tc.ref.Name)
 			if err != nil {
 				t.Fatalf("Received unexpected error %#v", err)
 			}
 
 			if d := cmp.Diff(task, tc.expected); d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+
+			if source != nil {
+				t.Errorf("expected source for local task is nil, but got %v", source)
 			}
 		})
 	}
@@ -835,12 +874,15 @@ func TestLocalTaskRef_TrustedResourceVerification_Error(t *testing.T) {
 				Tektonclient: tektonclient,
 			}
 
-			task, err := lc.GetTask(ctx, tc.ref.Name)
+			task, source, err := lc.GetTask(ctx, tc.ref.Name)
 			if err == nil || !errors.Is(err, tc.expectedErr) {
 				t.Fatalf("Expected error %v but found %v instead", tc.expectedErr, err)
 			}
 			if d := cmp.Diff(task, tc.expected); d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+			if source != nil {
+				t.Errorf("expected source for local task is nil, but got %v", source)
 			}
 		})
 	}
@@ -859,7 +901,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Success(t *tes
 		t.Fatal("fail to marshal task", err)
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
 	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
@@ -871,7 +913,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Success(t *tes
 		t.Fatal("fail to marshal task", err)
 	}
 
-	resolvedSigned := test.NewResolvedResource(signedTaskBytes, nil, nil)
+	resolvedSigned := test.NewResolvedResource(signedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterSigned := test.NewRequester(resolvedSigned, nil)
 
 	tamperedTask := signedTask.DeepCopy()
@@ -880,7 +922,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Success(t *tes
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	resolvedTampered := test.NewResolvedResource(tamperedTaskBytes, nil, nil)
+	resolvedTampered := test.NewResolvedResource(tamperedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterTampered := test.NewRequester(resolvedTampered, nil)
 
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
@@ -942,7 +984,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Success(t *tes
 				t.Fatalf("failed to get task fn: %s", err.Error())
 			}
 
-			resolvedTask, err := fn(ctx, taskRef.Name)
+			resolvedTask, source, err := fn(ctx, taskRef.Name)
 
 			if err != nil {
 				t.Fatalf("Received unexpected error ( %#v )", err)
@@ -950,6 +992,10 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Success(t *tes
 
 			if d := cmp.Diff(tc.expected, resolvedTask); d != "" {
 				t.Error(d)
+			}
+
+			if d := cmp.Diff(sampleConfigSource, source); d != "" {
+				t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 			}
 		})
 	}
@@ -968,7 +1014,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Error(t *testi
 		t.Fatal("fail to marshal task", err)
 	}
 
-	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, nil)
+	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
 	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
@@ -982,7 +1028,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Error(t *testi
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
 	}
-	resolvedTampered := test.NewResolvedResource(tamperedTaskBytes, nil, nil)
+	resolvedTampered := test.NewResolvedResource(tamperedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterTampered := test.NewRequester(resolvedTampered, nil)
 
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
@@ -1022,7 +1068,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Error(t *testi
 				t.Fatalf("failed to get task fn: %s", err.Error())
 			}
 
-			resolvedTask, err := fn(ctx, taskRef.Name)
+			resolvedTask, source, err := fn(ctx, taskRef.Name)
 
 			if err == nil || !errors.Is(err, tc.expectedErr) {
 				t.Fatalf("Expected error %v but found %v instead", tc.expectedErr, err)
@@ -1030,6 +1076,10 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Error(t *testi
 
 			if d := cmp.Diff(tc.expected, resolvedTask); d != "" {
 				t.Error(d)
+			}
+
+			if source != nil {
+				t.Errorf("expected source is nil, but got: %v", source)
 			}
 		})
 	}

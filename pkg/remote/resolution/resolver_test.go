@@ -69,7 +69,7 @@ func TestGet_Successful(t *testing.T) {
 			ResolvedResource: resolved,
 		}
 		resolver := NewResolver(requester, owner, "git", "", "", nil)
-		if _, err := resolver.Get(ctx, "foo", "bar"); err != nil {
+		if _, _, err := resolver.Get(ctx, "foo", "bar"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
@@ -123,9 +123,12 @@ func TestGet_Errors(t *testing.T) {
 			ResolvedResource: tc.resolvedResource,
 		}
 		resolver := NewResolver(requester, owner, "git", "", "", nil)
-		obj, err := resolver.Get(ctx, "foo", "bar")
+		obj, source, err := resolver.Get(ctx, "foo", "bar")
 		if obj != nil {
 			t.Errorf("received unexpected resolved resource")
+		}
+		if source != nil {
+			t.Errorf("expected source is nil, but received %v", source)
 		}
 		if !errors.Is(err, tc.expectedGetErr) {
 			t.Fatalf("expected %v received %v", tc.expectedGetErr, err)

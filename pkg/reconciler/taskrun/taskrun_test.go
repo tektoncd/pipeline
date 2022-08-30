@@ -38,6 +38,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
@@ -4056,7 +4057,7 @@ status:
 	}
 }
 
-func Test_storeTaskSpec(t *testing.T) {
+func Test_storeTaskSpecAndConfigSource(t *testing.T) {
 	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   annotations:
@@ -4069,34 +4070,95 @@ spec:
     name: foo-task
 `)
 
+	configSource := &v1beta1.ConfigSource{
+		URI: "https://abc.com.git",
+		Digest: map[string]string{
+			"sha1": "xyz",
+		},
+		EntryPoint: "foo/bar",
+	}
+
 	ts := v1beta1.TaskSpec{
 		Description: "foo-task",
 	}
 	ts1 := v1beta1.TaskSpec{
 		Description: "bar-task",
 	}
+
 	want := tr.DeepCopy()
 	want.Status = v1beta1.TaskRunStatus{
 		TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 			TaskSpec: ts.DeepCopy(),
+			Provenance: &v1beta1.Provenance{
+				ConfigSource: configSource.DeepCopy(),
+			},
 		},
 	}
 	want.ObjectMeta.Labels["tekton.dev/task"] = tr.ObjectMeta.Name
 
-	// The first time we set it, it should get copied.
-	if err := storeTaskSpecAndMergeMeta(tr, &ts, &tr.ObjectMeta); err != nil {
-		t.Errorf("storeTaskSpec() error = %v", err)
-	}
-	if d := cmp.Diff(tr, want); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+	type args struct {
+		taskSpec           *v1beta1.TaskSpec
+		resolvedObjectMeta *resolutionutil.ResolvedObjectMeta
 	}
 
-	// The next time, it should not get overwritten
-	if err := storeTaskSpecAndMergeMeta(tr, &ts1, &metav1.ObjectMeta{}); err != nil {
-		t.Errorf("storeTaskSpec() error = %v", err)
+	var tests = []struct {
+		name           string
+		reconcile1Args *args
+		reconcile2Args *args
+		wantTaskRun    *v1beta1.TaskRun
+	}{
+		{
+			name: "spec and source are available in the same reconcile",
+			reconcile1Args: &args{
+				taskSpec: &ts,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
+					ObjectMeta:   &tr.ObjectMeta,
+					ConfigSource: configSource.DeepCopy(),
+				},
+			},
+			reconcile2Args: &args{
+				taskSpec:           &ts1,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{},
+			},
+			wantTaskRun: want,
+		},
+		{
+			name: "spec comes in the first reconcile and source comes in next reconcile",
+			reconcile1Args: &args{
+				taskSpec: &ts,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
+					ObjectMeta: &tr.ObjectMeta,
+				},
+			},
+			reconcile2Args: &args{
+				taskSpec: &ts,
+				resolvedObjectMeta: &resolutionutil.ResolvedObjectMeta{
+					ConfigSource: configSource.DeepCopy(),
+				},
+			},
+			wantTaskRun: want,
+		},
 	}
-	if d := cmp.Diff(tr, want); d != "" {
-		t.Fatalf(diff.PrintWantGot(d))
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := ttesting.EnableFeatureFlagField(context.Background(), t, "enable-provenance-in-status")
+			// mock first reconcile
+			if err := storeTaskSpecAndMergeMeta(ctx, tr, tc.reconcile1Args.taskSpec, tc.reconcile1Args.resolvedObjectMeta); err != nil {
+				t.Errorf("storePipelineSpec() error = %v", err)
+			}
+			if d := cmp.Diff(tr, tc.wantTaskRun); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+
+			// mock second reconcile
+			if err := storeTaskSpecAndMergeMeta(ctx, tr, tc.reconcile2Args.taskSpec, tc.reconcile2Args.resolvedObjectMeta); err != nil {
+				t.Errorf("storePipelineSpec() error = %v", err)
+			}
+			if d := cmp.Diff(tr, tc.wantTaskRun); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
@@ -4111,8 +4173,11 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Labels: taskrunlabels, Annotations: taskrunannotations},
 	}
-	meta := metav1.ObjectMeta{Labels: tasklabels, Annotations: taskannotations}
-	if err := storeTaskSpecAndMergeMeta(tr, &v1beta1.TaskSpec{}, &meta); err != nil {
+	resolvedMeta := resolutionutil.ResolvedObjectMeta{
+		ObjectMeta: &metav1.ObjectMeta{Labels: tasklabels, Annotations: taskannotations},
+	}
+
+	if err := storeTaskSpecAndMergeMeta(context.Background(), tr, &v1beta1.TaskSpec{}, &resolvedMeta); err != nil {
 		t.Errorf("storeTaskSpecAndMergeMeta error = %v", err)
 	}
 	if d := cmp.Diff(tr.ObjectMeta.Labels, wantedlabels); d != "" {

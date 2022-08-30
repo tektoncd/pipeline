@@ -29,6 +29,7 @@ import (
 	imgname "github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	ociremote "github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -89,33 +90,33 @@ func (o *Resolver) List(ctx context.Context) ([]remote.ResolvedObject, error) {
 }
 
 // Get retrieves a specific object with the given Kind and name
-func (o *Resolver) Get(ctx context.Context, kind, name string) (runtime.Object, error) {
+func (o *Resolver) Get(ctx context.Context, kind, name string) (runtime.Object, *v1beta1.ConfigSource, error) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.timeout)
 	defer cancel()
 	img, err := o.retrieveImage(timeoutCtx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	manifest, err := img.Manifest()
 	if err != nil {
-		return nil, fmt.Errorf("could not parse image manifest: %w", err)
+		return nil, nil, fmt.Errorf("could not parse image manifest: %w", err)
 	}
 
 	if err := o.checkImageCompliance(manifest); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	layers, err := img.Layers()
 	if err != nil {
-		return nil, fmt.Errorf("could not read image layers: %w", err)
+		return nil, nil, fmt.Errorf("could not read image layers: %w", err)
 	}
 
 	layerMap := map[string]v1.Layer{}
 	for _, l := range layers {
 		digest, err := l.Digest()
 		if err != nil {
-			return nil, fmt.Errorf("failed to find digest for layer: %w", err)
+			return nil, nil, fmt.Errorf("failed to find digest for layer: %w", err)
 		}
 		layerMap[digest.String()] = l
 	}
@@ -128,12 +129,13 @@ func (o *Resolver) Get(ctx context.Context, kind, name string) (runtime.Object, 
 			obj, err := readTarLayer(layerMap[l.Digest.String()])
 			if err != nil {
 				// This could still be a raw layer so try to read it as that instead.
-				return readRawLayer(layers[idx])
+				obj, err := readRawLayer(layers[idx])
+				return obj, nil, err
 			}
-			return obj, nil
+			return obj, nil, nil
 		}
 	}
-	return nil, fmt.Errorf("could not find object in image with kind: %s and name: %s", kind, name)
+	return nil, nil, fmt.Errorf("could not find object in image with kind: %s and name: %s", kind, name)
 }
 
 // retrieveImage will fetch the image's contents and manifest.
