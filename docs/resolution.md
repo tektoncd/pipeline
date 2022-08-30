@@ -7,7 +7,7 @@ For new users getting started with Tekton Pipeilne remote resolution, check out 
 
 ## Built-in Resolvers
 
-1. [The `bundle` resolver](./bundle-resolver.md), enabled by setting the `enable-tekton-oci-bundles`
+1. [The `bundles` resolver](./bundle-resolver.md), enabled by setting the `enable-bundles-resolver`
    feature flag to `true`.
 1. [The `git` resolver](./git-resolver.md), enabled by setting the `enable-git-resolver`
    feature flag to `true`.

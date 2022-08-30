@@ -287,7 +287,7 @@ Three remote resolvers are currently provided as part of the `resolvers.yaml` in
 By default, these remote resolvers are disabled. Each resolver is enabled by setting 
 [the appropriate feature flag](#customizing-the-pipelines-controller-behavior).
 
-1. [The `bundle` resolver](./bundle-resolver.md), enabled by setting the `enable-tekton-oci-bundles` 
+1. [The `bundles` resolver](./bundle-resolver.md), enabled by setting the `enable-bundles-resolver` 
   feature flag to `true`.
 1. [The `git` resolver](./git-resolver.md), enabled by setting the `enable-git-resolver`
    feature flag to `true`.

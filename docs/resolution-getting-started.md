@@ -37,7 +37,7 @@ kubectl patch -n tekton-pipelines configmap feature-flags -p '{"data":{"enable-a
 
 The feature flags for the built-in resolvers are:
 
-* The `bundles` resolver: `enable-tekton-oci-bundles`
+* The `bundles` resolver: `enable-bundles-resolver`
 * The `git` resolver: `enable-git-resolver`
 * The `hub` resolver: `enable-hub-resolver`
 
