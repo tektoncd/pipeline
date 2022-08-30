@@ -224,11 +224,8 @@ Supporting retries is optional but recommended.
 
 #### Developer guide for custom controllers supporting `retries`
 
-1. Tekton controllers will use the entire `timeout` duration for exhausting
-    all the retries the custom task is configured to run with. In other words,
-    tekton does not discriminate, if the failure was due to a stuck up process or
-    exhausting all the retries. Custom task developers are recommended to use the
-    same strategy for implementing their timeout for the custom task.
+1. Timeout is for each Custom Task Run retries, meaning if retry balance is
+    not 0 and the run fails because of timeout, it should be retried.
 2. Those custom task who do not wish to support retry, can simply ignore it.
 3. It is recommended, that custom task should update the field `RetriesStatus`
    of a `Run` on each retry performed by the custom task.
