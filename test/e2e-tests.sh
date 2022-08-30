@@ -43,12 +43,16 @@ failed=0
 
 function set_feature_gate() {
   local gate="$1"
+  local resolver="false"
   if [ "$gate" != "alpha" ] && [ "$gate" != "stable" ] && [ "$gate" != "beta" ] ; then
     printf "Invalid gate %s\n" ${gate}
     exit 255
   fi
+  if [ "$gate" == "alpha" ]; then
+    resolver="true"
+  fi
   printf "Setting feature gate to %s\n", ${gate}
-  jsonpatch=$(printf "{\"data\": {\"enable-api-fields\": \"%s\"}}" $1)
+  jsonpatch=$(printf "{\"data\": {\"enable-api-fields\": \"%s\", \"enable-git-resolver\": \"%s\", \"enable-hub-resolver\": \"%s\"}}" $1 "${resolver}" "${resolver}")
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
   kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }
