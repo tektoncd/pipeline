@@ -33,6 +33,7 @@ import (
 )
 
 const (
+	// #nosec
 	credsInitHomeMountPrefix = "tekton-creds-init-home"
 	sshKnownHosts            = "known_hosts"
 )
