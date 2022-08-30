@@ -77,8 +77,7 @@ func substituteEnv(input []byte, namespace string) ([]byte, error) {
 	}
 	output := defaultKoDockerRepoRE.ReplaceAll(input, []byte(val))
 
-	// Strip any "namespace: default"s, all resources will be created in
-	// the test namespace using `ko create -n`
+	// Replace any "namespace: default"s with the test namespace.
 	output = defaultNamespaceRE.ReplaceAll(output, []byte("namespace: "+namespace))
 
 	// Replace image names to arch specific ones, where it's necessary
@@ -91,7 +90,7 @@ func substituteEnv(input []byte, namespace string) ([]byte, error) {
 // koCreate wraps the ko binary and invokes `ko create` for input within
 // namespace
 func koCreate(input []byte, namespace string) ([]byte, error) {
-	cmd := exec.Command("ko", "create", "--platform", "linux/"+getTestArch(), "-n", namespace, "-f", "-")
+	cmd := exec.Command("ko", "create", "--platform", "linux/"+getTestArch(), "-f", "-", "--", "--namespace", namespace)
 	cmd.Stdin = bytes.NewReader(input)
 	return cmd.CombinedOutput()
 }
