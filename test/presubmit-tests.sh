@@ -72,7 +72,8 @@ function ko_resolve() {
       github.com/tektoncd/pipeline/cmd/git-init: distroless.dev/git
 EOF
 
-  KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -R -f config 1>/dev/null
+  KO_DOCKER_REPO=example.com ko resolve -l 'app.kubernetes.io/component!=resolvers' --platform=all --push=false -R -f config 1>/dev/null
+  KO_DOCKER_REPO=example.com ko resolve --platform=all --push=false -f config/resolvers 1>/dev/null
 }
 
 function post_build_tests() {
