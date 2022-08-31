@@ -17,7 +17,6 @@ limitations under the License.
 package config_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -142,12 +141,8 @@ func TestGetFeatureFlagsConfigName(t *testing.T) {
 		expected:            "feature-flags-test",
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			original := os.Getenv("CONFIG_FEATURE_FLAGS_NAME")
-			defer t.Cleanup(func() {
-				os.Setenv("CONFIG_FEATURE_FLAGS_NAME", original)
-			})
 			if tc.featureFlagEnvValue != "" {
-				os.Setenv("CONFIG_FEATURE_FLAGS_NAME", tc.featureFlagEnvValue)
+				t.Setenv("CONFIG_FEATURE_FLAGS_NAME", tc.featureFlagEnvValue)
 			}
 			got := config.GetFeatureFlagsConfigName()
 			want := tc.expected

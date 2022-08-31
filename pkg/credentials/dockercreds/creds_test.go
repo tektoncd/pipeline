@@ -53,7 +53,7 @@ func TestFlagHandling(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
@@ -103,7 +103,7 @@ func TestFlagHandlingTwice(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
@@ -281,7 +281,7 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
@@ -313,7 +313,7 @@ func TestNoAuthProvided(t *testing.T) {
 	if err != nil {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}

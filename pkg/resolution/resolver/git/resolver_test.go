@@ -627,27 +627,10 @@ func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir stri
 }
 
 // withTemporaryGitConfig resets the .gitconfig for the duration of the test.
-func withTemporaryGitConfig(t *testing.T) func() {
+func withTemporaryGitConfig(t *testing.T) {
 	gitConfigDir := t.TempDir()
 	key := "GIT_CONFIG_GLOBAL"
-	t.Helper()
-	oldValue, envVarExists := os.LookupEnv(key)
-	if err := os.Setenv(key, filepath.Join(gitConfigDir, "config")); err != nil {
-		t.Fatal(err)
-	}
-	clean := func() {
-		t.Helper()
-		if !envVarExists {
-			if err := os.Unsetenv(key); err != nil {
-				t.Fatal(err)
-			}
-			return
-		}
-		if err := os.Setenv(key, oldValue); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return clean
+	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
 }
 
 func createRequest(repoURL, pathInRepo, revision, specificCommit string, useNthCommit int, commitsByBranch map[string][]string) *v1alpha1.ResolutionRequest {
