@@ -6,11 +6,11 @@ This Resolver responds to type `git`.
 
 ## Parameters
 
-| Param Name | Description                                                                  | Example Value                                               |
-|------------|------------------------------------------------------------------------------|-------------------------------------------------------------|
-| `url`      | URL of the repo to fetch.                                                    | `https://github.com/tektoncd/catalog.git`                   |
-| `revision` | Git revision to checkout a file from. This can be commit SHA, branch or tag. | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
-| `pathInRepo` | Where to find the file in the repo.                                        | `/task/golang-build/0.3/golang-build.yaml`                  |
+| Param Name   | Description                                                                  | Example Value                                               |
+|--------------|------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `url`        | URL of the repo to fetch.                                                    | `https://github.com/tektoncd/catalog.git`                   |
+| `revision`   | Git revision to checkout a file from. This can be commit SHA, branch or tag. | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
+| `pathInRepo` | Where to find the file in the repo.                                          | `/task/golang-build/0.3/golang-build.yaml`                  |
 
 ## Requirements
 
@@ -26,11 +26,11 @@ for the name, namespace and defaults that the resolver ships with.
 
 ### Options
 
-| Option Name      | Description                                                                                                                                             | Example Values                            |
-|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|
-| `fetch-timeout`  | The maximum time any single git resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                       |
-| `default-url`    | The default git repository URL to use if none is specified                                                                                              | `https://github.com/tektoncd/catalog.git` |
-| `default-branch` | The default git branch to use if none is specified                                                                                                      | `main`                                    |
+| Option Name        | Description                                                                                                                                             | Example Values                            |
+|--------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|
+| `fetch-timeout`    | The maximum time any single git resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                       |
+| `default-url`      | The default git repository URL to use if none is specified                                                                                              | `https://github.com/tektoncd/catalog.git` |
+| `default-revision` | The default git revision to use if none is specified                                                                                                    | `main`                                    |
 
 ## Usage
 
