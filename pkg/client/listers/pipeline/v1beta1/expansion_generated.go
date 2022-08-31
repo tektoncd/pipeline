@@ -22,6 +22,14 @@ package v1beta1
 // ClusterTaskLister.
 type ClusterTaskListerExpansion interface{}
 
+// CustomRunListerExpansion allows custom methods to be added to
+// CustomRunLister.
+type CustomRunListerExpansion interface{}
+
+// CustomRunNamespaceListerExpansion allows custom methods to be added to
+// CustomRunNamespaceLister.
+type CustomRunNamespaceListerExpansion interface{}
+
 // PipelineListerExpansion allows custom methods to be added to
 // PipelineLister.
 type PipelineListerExpansion interface{}

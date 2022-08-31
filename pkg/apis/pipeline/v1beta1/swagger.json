@@ -551,6 +551,132 @@
         }
       }
     },
+    "v1beta1.CustomRun": {
+      "description": "CustomRun represents a single execution of a Custom Task.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "default": {},
+          "$ref": "#/definitions/v1beta1.CustomRunSpec"
+        },
+        "status": {
+          "default": {},
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1beta1.CustomRunStatus"
+        }
+      }
+    },
+    "v1beta1.CustomRunList": {
+      "description": "CustomRunList contains a list of CustomRun",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.CustomRun"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1beta1.CustomRunSpec": {
+      "description": "CustomRunSpec defines the desired state of CustomRun",
+      "type": "object",
+      "properties": {
+        "customRef": {
+          "$ref": "#/definitions/v1beta1.TaskRef"
+        },
+        "customSpec": {
+          "description": "Spec is a specification of a custom task",
+          "$ref": "#/definitions/v1beta1.EmbeddedCustomRunSpec"
+        },
+        "params": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "retries": {
+          "description": "Used for propagating retries count to custom tasks",
+          "type": "integer",
+          "format": "int32"
+        },
+        "serviceAccountName": {
+          "type": "string",
+          "default": ""
+        },
+        "status": {
+          "description": "Used for cancelling a customrun (and maybe more later on)",
+          "type": "string"
+        },
+        "statusMessage": {
+          "description": "Status message for cancellation.",
+          "type": "string"
+        },
+        "timeout": {
+          "description": "Time after which the custom-task times out. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "$ref": "#/definitions/v1.Duration"
+        },
+        "workspaces": {
+          "description": "Workspaces is a list of WorkspaceBindings from volumes to workspaces.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.WorkspaceBinding"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1beta1.EmbeddedCustomRunSpec": {
+      "description": "EmbeddedCustomRunSpec allows custom task definitions to be embedded",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1beta1.PipelineTaskMetadata"
+        },
+        "spec": {
+          "description": "Spec is a specification of a custom task",
+          "default": {},
+          "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
+        }
+      }
+    },
     "v1beta1.EmbeddedTask": {
       "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
       "type": "object",
