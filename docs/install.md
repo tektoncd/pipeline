@@ -416,7 +416,8 @@ data:
 
 Alpha features are still in development and their syntax is subject to change.
 To enable these, set the `enable-api-fields` feature flag to `"alpha"` in
-the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment.
+the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment via
+`kubectl edit configmap feature-flags -n tekton-pipelines`.
 
 Features currently in "alpha" are:
 
