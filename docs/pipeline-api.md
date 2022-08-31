@@ -6322,6 +6322,8 @@ Resource Types:
 <ul><li>
 <a href="#tekton.dev/v1beta1.ClusterTask">ClusterTask</a>
 </li><li>
+<a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>
+</li><li>
 <a href="#tekton.dev/v1beta1.Pipeline">Pipeline</a>
 </li><li>
 <a href="#tekton.dev/v1beta1.PipelineRun">PipelineRun</a>
@@ -6520,6 +6522,203 @@ the steps start and end after the steps complete.</p>
 </td>
 </tr>
 </table>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.CustomRun">CustomRun
+</h3>
+<div>
+<p>CustomRun represents a single execution of a Custom Task.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+tekton.dev/v1beta1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CustomRun</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunSpec">
+CustomRunSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>customRef</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.TaskRef">
+TaskRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>customSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.EmbeddedCustomRunSpec">
+EmbeddedCustomRunSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec is a specification of a custom task</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunSpecStatus">
+CustomRunSpecStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for cancelling a customrun (and maybe more later on)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statusMessage</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunSpecStatusMessage">
+CustomRunSpecStatusMessage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for propagating retries count to custom tasks</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the custom-task times out.
+Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.WorkspaceBinding">
+[]WorkspaceBinding
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces is a list of WorkspaceBindings from volumes to workspaces.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunStatus">
+CustomRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>
@@ -7454,26 +7653,6 @@ string
 <div>
 <p>CloudEventCondition is a string that represents the condition of the event.</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;Failed&#34;</p></td>
-<td><p>CloudEventConditionFailed means that there was one or more attempts to
-send the event, and none was successful so far.</p>
-</td>
-</tr><tr><td><p>&#34;Sent&#34;</p></td>
-<td><p>CloudEventConditionSent means that the event was sent successfully</p>
-</td>
-</tr><tr><td><p>&#34;Unknown&#34;</p></td>
-<td><p>CloudEventConditionUnknown means that the condition for the event to be
-triggered was not met yet, or we don&rsquo;t know the state yet.</p>
-</td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.CloudEventDelivery">CloudEventDelivery
 </h3>
 <p>
@@ -7579,6 +7758,231 @@ int32
 </td>
 <td>
 <p>RetryCount is the number of attempts of sending the cloud event</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>)
+</p>
+<div>
+<p>CustomRunSpec defines the desired state of CustomRun</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>customRef</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.TaskRef">
+TaskRef
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>customSpec</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.EmbeddedCustomRunSpec">
+EmbeddedCustomRunSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec is a specification of a custom task</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>params</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Param">
+[]Param
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunSpecStatus">
+CustomRunSpecStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for cancelling a customrun (and maybe more later on)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>statusMessage</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunSpecStatusMessage">
+CustomRunSpecStatusMessage
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for propagating retries count to custom tasks</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Time after which the custom-task times out.
+Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workspaces</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.WorkspaceBinding">
+[]WorkspaceBinding
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Workspaces is a list of WorkspaceBindings from volumes to workspaces.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.CustomRunSpecStatus">CustomRunSpecStatus
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>)
+</p>
+<div>
+<p>CustomRunSpecStatus defines the taskrun spec status the user can provide</p>
+</div>
+<h3 id="tekton.dev/v1beta1.CustomRunSpecStatusMessage">CustomRunSpecStatusMessage
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>)
+</p>
+<div>
+<p>CustomRunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
+</div>
+<h3 id="tekton.dev/v1beta1.EmbeddedCustomRunSpec">EmbeddedCustomRunSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>)
+</p>
+<div>
+<p>EmbeddedCustomRunSpec allows custom task definitions to be embedded</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.PipelineTaskMetadata">
+PipelineTaskMetadata
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+k8s.io/apimachinery/pkg/runtime.RawExtension
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Spec is a specification of a custom task</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+[]byte
+</em>
+</td>
+<td>
+<p>Raw is the underlying serialization of this object.</p>
+<p>TODO: Determine how to detect ContentType and ContentEncoding of &lsquo;Raw&rsquo; data.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>-</code><br/>
+<em>
+k8s.io/apimachinery/pkg/runtime.Object
+</em>
+</td>
+<td>
+<p>Object can hold a representation of this extension - useful for working with versioned
+structs.</p>
+</td>
+</tr>
+</table>
 </td>
 </tr>
 </tbody>
@@ -7730,25 +8134,10 @@ TaskSpec
 <div>
 <p>OnErrorType defines a list of supported exiting behavior of a container on error</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;continue&#34;</p></td>
-<td><p>Continue indicates continue executing the rest of the steps irrespective of the container exit code</p>
-</td>
-</tr><tr><td><p>&#34;stopAndFail&#34;</p></td>
-<td><p>StopAndFail indicates exit the taskRun if the container exits with non-zero exit code</p>
-</td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -7883,21 +8272,6 @@ parameter.</p>
 <p>ParamType indicates the type of an input parameter;
 Used to distinguish between a single string and an array of strings.</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;array&#34;</p></td>
-<td></td>
-</tr><tr><td><p>&#34;object&#34;</p></td>
-<td></td>
-</tr><tr><td><p>&#34;string&#34;</p></td>
-<td></td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.ParamValue">ParamValue
 </h3>
 <p>
@@ -8331,53 +8705,6 @@ ParamValue
 <div>
 <p>PipelineRunReason represents a reason for the pipeline run &ldquo;Succeeded&rdquo; condition</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;Cancelled&#34;</p></td>
-<td><p>PipelineRunReasonCancelled is the reason set when the PipelineRun cancelled by the user
-This reason may be found with a corev1.ConditionFalse status, if the cancellation was processed successfully
-This reason may be found with a corev1.ConditionUnknown status, if the cancellation is being processed or failed</p>
-</td>
-</tr><tr><td><p>&#34;CancelledRunningFinally&#34;</p></td>
-<td><p>PipelineRunReasonCancelledRunningFinally indicates that pipeline has been gracefully cancelled
-and no new Tasks will be scheduled by the controller, but final tasks are now running</p>
-</td>
-</tr><tr><td><p>&#34;Completed&#34;</p></td>
-<td><p>PipelineRunReasonCompleted is the reason set when the PipelineRun completed successfully with one or more skipped Tasks</p>
-</td>
-</tr><tr><td><p>&#34;Failed&#34;</p></td>
-<td><p>PipelineRunReasonFailed is the reason set when the PipelineRun completed with a failure</p>
-</td>
-</tr><tr><td><p>&#34;PipelineRunPending&#34;</p></td>
-<td><p>PipelineRunReasonPending is the reason set when the PipelineRun is in the pending state</p>
-</td>
-</tr><tr><td><p>&#34;Running&#34;</p></td>
-<td><p>PipelineRunReasonRunning is the reason set when the PipelineRun is running</p>
-</td>
-</tr><tr><td><p>&#34;Started&#34;</p></td>
-<td><p>PipelineRunReasonStarted is the reason set when the PipelineRun has just started</p>
-</td>
-</tr><tr><td><p>&#34;StoppedRunningFinally&#34;</p></td>
-<td><p>PipelineRunReasonStoppedRunningFinally indicates that pipeline has been gracefully stopped
-and no new Tasks will be scheduled by the controller, but final tasks are now running</p>
-</td>
-</tr><tr><td><p>&#34;PipelineRunStopping&#34;</p></td>
-<td><p>PipelineRunReasonStopping indicates that no new Tasks will be scheduled by the controller, and the
-pipeline will stop once all running tasks complete their work</p>
-</td>
-</tr><tr><td><p>&#34;Succeeded&#34;</p></td>
-<td><p>PipelineRunReasonSuccessful is the reason set when the PipelineRun completed successfully</p>
-</td>
-</tr><tr><td><p>&#34;PipelineRunTimeout&#34;</p></td>
-<td><p>PipelineRunReasonTimedOut is the reason set when the PipelineRun has timed out</p>
-</td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult
 </h3>
 <p>
@@ -9257,7 +9584,7 @@ string
 <h3 id="tekton.dev/v1beta1.PipelineTaskMetadata">PipelineTaskMetadata
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.EmbeddedRunSpec">EmbeddedRunSpec</a>, <a href="#tekton.dev/v1beta1.EmbeddedTask">EmbeddedTask</a>, <a href="#tekton.dev/v1beta1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.EmbeddedRunSpec">EmbeddedRunSpec</a>, <a href="#tekton.dev/v1beta1.EmbeddedCustomRunSpec">EmbeddedCustomRunSpec</a>, <a href="#tekton.dev/v1beta1.EmbeddedTask">EmbeddedTask</a>, <a href="#tekton.dev/v1beta1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>)
 </p>
 <div>
 <p>PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask</p>
@@ -9759,18 +10086,6 @@ string
 Note that ResultsType is another type which is used to define the data type
 (e.g. string, array, etc) we used for Results</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>1</p></td>
-<td><p>TaskRunResultType default task run result value</p>
-</td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.ResultsType">ResultsType
 (<code>string</code> alias)</h3>
 <p>
@@ -9783,21 +10098,6 @@ Note that there is ResultType used to find out whether a
 PipelineResourceResult is from a task result or not, which is different from
 this ResultsType.</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;array&#34;</p></td>
-<td></td>
-</tr><tr><td><p>&#34;object&#34;</p></td>
-<td></td>
-</tr><tr><td><p>&#34;string&#34;</p></td>
-<td></td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.Sidecar">Sidecar
 </h3>
 <p>
@@ -10341,45 +10641,6 @@ SkippingReason
 <div>
 <p>SkippingReason explains why a PipelineTask was skipped.</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;PipelineRun Finally timeout has been reached&#34;</p></td>
-<td><p>FinallyTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Finally.</p>
-</td>
-</tr><tr><td><p>&#34;PipelineRun was gracefully cancelled&#34;</p></td>
-<td><p>GracefullyCancelledSkip means the task was skipped because the pipeline run has been gracefully cancelled</p>
-</td>
-</tr><tr><td><p>&#34;PipelineRun was gracefully stopped&#34;</p></td>
-<td><p>GracefullyStoppedSkip means the task was skipped because the pipeline run has been gracefully stopped</p>
-</td>
-</tr><tr><td><p>&#34;Results were missing&#34;</p></td>
-<td><p>MissingResultsSkip means the task was skipped because it&rsquo;s missing necessary results</p>
-</td>
-</tr><tr><td><p>&#34;None&#34;</p></td>
-<td><p>None means the task was not skipped</p>
-</td>
-</tr><tr><td><p>&#34;Parent Tasks were skipped&#34;</p></td>
-<td><p>ParentTasksSkip means the task was skipped because its parent was skipped</p>
-</td>
-</tr><tr><td><p>&#34;PipelineRun timeout has been reached&#34;</p></td>
-<td><p>PipelineTimedOutSkip means the task was skipped because the PipelineRun has passed its overall timeout.</p>
-</td>
-</tr><tr><td><p>&#34;PipelineRun was stopping&#34;</p></td>
-<td><p>StoppingSkip means the task was skipped because the pipeline run is stopping</p>
-</td>
-</tr><tr><td><p>&#34;PipelineRun Tasks timeout has been reached&#34;</p></td>
-<td><p>TasksTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Tasks.</p>
-</td>
-</tr><tr><td><p>&#34;When Expressions evaluated to false&#34;</p></td>
-<td><p>WhenExpressionsSkip means the task was skipped due to at least one of its when expressions evaluating to false</p>
-</td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.Step">Step
 </h3>
 <p>
@@ -11328,21 +11589,6 @@ Default is false.</p>
 <div>
 <p>TaskKind defines the type of Task used by the pipeline.</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;ClusterTask&#34;</p></td>
-<td><p>ClusterTaskKind indicates that task type has a cluster scope.</p>
-</td>
-</tr><tr><td><p>&#34;Task&#34;</p></td>
-<td><p>NamespacedTaskKind indicates that the task type has a namespaced scope.</p>
-</td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.TaskModifier">TaskModifier
 </h3>
 <div>
@@ -11356,7 +11602,7 @@ Default is false.</p>
 <h3 id="tekton.dev/v1beta1.TaskRef">TaskRef
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>TaskRef can be used to refer to a specific instance of a task.</p>
@@ -11742,36 +11988,6 @@ string
 the Succeeded condition that are controlled by the TaskRun itself. Failure
 reasons that emerge from underlying resources are not included here</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;TaskRunCancelled&#34;</p></td>
-<td><p>TaskRunReasonCancelled is the reason set when the Taskrun is cancelled by the user</p>
-</td>
-</tr><tr><td><p>&#34;Failed&#34;</p></td>
-<td><p>TaskRunReasonFailed is the reason set when the TaskRun completed with a failure</p>
-</td>
-</tr><tr><td><p>&#34;TaskRunImagePullFailed&#34;</p></td>
-<td><p>TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled</p>
-</td>
-</tr><tr><td><p>&#34;Running&#34;</p></td>
-<td><p>TaskRunReasonRunning is the reason set when the TaskRun is running</p>
-</td>
-</tr><tr><td><p>&#34;Started&#34;</p></td>
-<td><p>TaskRunReasonStarted is the reason set when the TaskRun has just started</p>
-</td>
-</tr><tr><td><p>&#34;Succeeded&#34;</p></td>
-<td><p>TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully</p>
-</td>
-</tr><tr><td><p>&#34;TaskRunTimeout&#34;</p></td>
-<td><p>TaskRunReasonTimedOut is the reason set when the Taskrun has timed out</p>
-</td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.TaskRunResources">TaskRunResources
 </h3>
 <p>
@@ -12144,22 +12360,6 @@ Kubernetes core/v1.ResourceRequirements
 <div>
 <p>TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
 </div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;TaskRun cancelled as the PipelineRun it belongs to has been cancelled.&#34;</p></td>
-<td><p>TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
-TaskRun was a part of has been cancelled.</p>
-</td>
-</tr><tr><td><p>&#34;TaskRun cancelled as the PipelineRun it belongs to has timed out.&#34;</p></td>
-<td><p>TaskRunCancelledByPipelineTimeoutMsg indicates that the TaskRun was cancelled because the PipelineRun running it timed out.</p>
-</td>
-</tr></tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.TaskRunStatus">TaskRunStatus
 </h3>
 <p>
@@ -12677,7 +12877,7 @@ All of them need to evaluate to True for a guarded Task to be executed.</p>
 <h3 id="tekton.dev/v1beta1.WorkspaceBinding">WorkspaceBinding
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
 <p>WorkspaceBinding maps a Task&rsquo;s declared workspace to a Volume.</p>
@@ -12988,6 +13188,184 @@ string
 <td>
 <p>MountPath is the path that the workspace should be mounted to inside the Step or Sidecar,
 overriding any MountPath specified in the Task&rsquo;s WorkspaceDeclaration.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.CustomRunResult">CustomRunResult
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
+</p>
+<div>
+<p>CustomRunResult used to describe the results of a task</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name the given name</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Value the given value of the result</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
+</p>
+<div>
+<p>CustomRunStatus defines the observed state of CustomRun</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>Status</code><br/>
+<em>
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>Status</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>CustomRunStatusFields</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunStatusFields">
+CustomRunStatusFields
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>CustomRunStatusFields</code> are embedded into this type.)
+</p>
+<p>CustomRunStatusFields inlines the status fields.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus</a>)
+</p>
+<div>
+<p>CustomRunStatusFields holds the fields of CustomRun&rsquo;s status.  This is defined
+separately and inlined so that other types can readily consume these fields
+via duck typing.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>startTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>StartTime is the time the build is actually started.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>completionTime</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>CompletionTime is the time the build completed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>results</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunResult">
+[]CustomRunResult
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Results reports any output result values to be consumed by later
+tasks in a pipeline.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retriesStatus</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunStatus">
+[]CustomRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RetriesStatus contains the history of CustomRunStatus, in case of a retry.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>extraFields</code><br/>
+<em>
+k8s.io/apimachinery/pkg/runtime.RawExtension
+</em>
+</td>
+<td>
+<p>ExtraFields holds arbitrary fields provided by the custom task
+controller.</p>
 </td>
 </tr>
 </tbody>

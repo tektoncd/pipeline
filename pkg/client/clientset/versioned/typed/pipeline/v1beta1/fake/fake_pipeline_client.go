@@ -32,6 +32,10 @@ func (c *FakeTektonV1beta1) ClusterTasks() v1beta1.ClusterTaskInterface {
 	return &FakeClusterTasks{c}
 }
 
+func (c *FakeTektonV1beta1) CustomRuns(namespace string) v1beta1.CustomRunInterface {
+	return &FakeCustomRuns{c, namespace}
+}
+
 func (c *FakeTektonV1beta1) Pipelines(namespace string) v1beta1.PipelineInterface {
 	return &FakePipelines{c, namespace}
 }
