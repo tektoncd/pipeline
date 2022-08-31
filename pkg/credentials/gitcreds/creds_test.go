@@ -53,7 +53,7 @@ func TestBasicFlagHandling(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
@@ -117,7 +117,7 @@ func TestBasicFlagHandlingTwice(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
@@ -209,7 +209,7 @@ func TestSSHFlagHandling(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
@@ -294,7 +294,7 @@ func TestSSHFlagHandlingThrice(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
@@ -472,7 +472,7 @@ func TestBasicBackslashInUsername(t *testing.T) {
 		t.Fatalf("flag.CommandLine.Parse() = %v", err)
 	}
 
-	os.Setenv("HOME", credentials.VolumePath)
+	t.Setenv("HOME", credentials.VolumePath)
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}

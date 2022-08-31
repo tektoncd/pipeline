@@ -84,8 +84,7 @@ func TestPullRequest(t *testing.T) {
 			// If provided, set the AUTH_TOKEN environment variable that the
 			// pullrequest binary expects.
 			if tc.token != "" {
-				os.Setenv("AUTH_TOKEN", tc.token)
-				defer os.Unsetenv("AUTH_TOKEN")
+				t.Setenv("AUTH_TOKEN", tc.token)
 			}
 
 			if *proxy {
@@ -138,7 +137,7 @@ func startProxy(t *testing.T, dataPath string, header http.Header) {
 			fmt.Println("http.Serve:", err)
 		}
 	}()
-	os.Setenv("http_proxy", l.Addr().String())
+	t.Setenv("http_proxy", l.Addr().String())
 }
 
 // updateDeps makes sure command is installed locally to resolve any

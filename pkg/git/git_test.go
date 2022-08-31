@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,27 +29,10 @@ import (
 
 const fileMode = 0755 // rwxr-xr-x
 
-func withTemporaryGitConfig(t *testing.T) func() {
+func withTemporaryGitConfig(t *testing.T) {
 	gitConfigDir := t.TempDir()
 	key := "GIT_CONFIG_GLOBAL"
-	t.Helper()
-	oldValue, envVarExists := os.LookupEnv(key)
-	if err := os.Setenv(key, filepath.Join(gitConfigDir, "config")); err != nil {
-		t.Fatal(err)
-	}
-	clean := func() {
-		t.Helper()
-		if !envVarExists {
-			if err := os.Unsetenv(key); err != nil {
-				t.Fatal(err)
-			}
-			return
-		}
-		if err := os.Setenv(key, oldValue); err != nil {
-			t.Fatal(err)
-		}
-	}
-	return clean
+	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
 }
 
 func TestValidateGitSSHURLFormat(t *testing.T) {
@@ -264,8 +247,7 @@ func TestEnsureHomeEnv(t *testing.T) {
 				homeenv = t.TempDir()
 			}
 			if tt.homeenvSet {
-				cleanup := setEnv("HOME", homeenv, t)
-				defer cleanup()
+				t.Setenv("HOME", homeenv)
 			}
 			// Create SSH creds directory in directory specified by HOME envvar
 			if err := os.MkdirAll(filepath.Join(homeenv, ".ssh"), fileMode); err != nil {
@@ -430,14 +412,6 @@ func createTempGit(t *testing.T, logger *zap.SugaredLogger, gitDir string, submo
 			t.Fatal(err.Error())
 		}
 	}
-}
-
-func setEnv(key, value string, t *testing.T) func() {
-	previous := os.Getenv(key)
-	if err := os.Setenv(key, value); err != nil {
-		t.Errorf("Error setting env var %s to %s: %v", key, value, err)
-	}
-	return func() { os.Setenv(key, previous) }
 }
 
 func checkLogMessage(logMessage string, log *observer.ObservedLogs, logLine int, t *testing.T) {

@@ -17,7 +17,6 @@ limitations under the License.
 package config_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -77,12 +76,8 @@ func TestGetArtifactPVCConfigName(t *testing.T) {
 		expected:             "config-artifact-pvc-test",
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			original := os.Getenv("CONFIG_ARTIFACT_PVC_NAME")
-			defer t.Cleanup(func() {
-				os.Setenv("CONFIG_ARTIFACT_PVC_NAME", original)
-			})
 			if tc.artifactsPVCEnvValue != "" {
-				os.Setenv("CONFIG_ARTIFACT_PVC_NAME", tc.artifactsPVCEnvValue)
+				t.Setenv("CONFIG_ARTIFACT_PVC_NAME", tc.artifactsPVCEnvValue)
 			}
 			got := config.GetArtifactPVCConfigName()
 			want := tc.expected

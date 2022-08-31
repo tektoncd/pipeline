@@ -17,7 +17,6 @@ limitations under the License.
 package config_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -79,12 +78,8 @@ func TestGetArtifactBucketConfigName(t *testing.T) {
 		expected:                "config-artifact-bucket-test",
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			original := os.Getenv("CONFIG_ARTIFACT_BUCKET_NAME")
-			defer t.Cleanup(func() {
-				os.Setenv("CONFIG_ARTIFACT_BUCKET_NAME", original)
-			})
 			if tc.artifactsBucketEnvValue != "" {
-				os.Setenv("CONFIG_ARTIFACT_BUCKET_NAME", tc.artifactsBucketEnvValue)
+				t.Setenv("CONFIG_ARTIFACT_BUCKET_NAME", tc.artifactsBucketEnvValue)
 			}
 			got := config.GetArtifactBucketConfigName()
 			want := tc.expected
