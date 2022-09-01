@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/bundle"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/cluster"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/hub"
@@ -49,5 +50,6 @@ func main() {
 	sharedmain.MainWithContext(ctx, "controller",
 		framework.NewController(ctx, &git.Resolver{}),
 		framework.NewController(ctx, &hub.Resolver{HubURL: hubURL}),
-		framework.NewController(ctx, &bundle.Resolver{}))
+		framework.NewController(ctx, &bundle.Resolver{}),
+		framework.NewController(ctx, &cluster.Resolver{}))
 }

@@ -52,7 +52,7 @@ function set_feature_gate() {
     resolver="true"
   fi
   printf "Setting feature gate to %s\n", ${gate}
-  jsonpatch=$(printf "{\"data\": {\"enable-api-fields\": \"%s\", \"enable-git-resolver\": \"%s\", \"enable-hub-resolver\": \"%s\"}}" $1 "${resolver}" "${resolver}")
+  jsonpatch=$(printf "{\"data\": {\"enable-api-fields\": \"%s\", \"enable-git-resolver\": \"%s\", \"enable-hub-resolver\": \"%s\"}, \"enable-cluster-resolver\": \"%s\"}" $1 "${resolver}" "${resolver}" "${resolver}")
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
   kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
 }

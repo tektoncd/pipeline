@@ -13,6 +13,8 @@ For new users getting started with Tekton Pipeilne remote resolution, check out 
    feature flag to `true`.
 1. [The `hub` resolver](./hub-resolver.md), enabled by setting the `enable-hub-resolver`
    feature flag to `true`.
+1. [The `cluster` resolver](./cluster-resolver.md), enabled by setting the `enable-cluster-resolver`
+   feature flag to `true`.
 
 ## Developer Howto: Writing a Resolver From Scratch
 

@@ -40,6 +40,7 @@ The feature flags for the built-in resolvers are:
 * The `bundles` resolver: `enable-bundles-resolver`
 * The `git` resolver: `enable-git-resolver`
 * The `hub` resolver: `enable-hub-resolver`
+* The `cluster` resolver: `enable-cluster-resolver`
 
 ## Step 3: Try it out!
 

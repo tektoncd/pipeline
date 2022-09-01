@@ -293,6 +293,8 @@ By default, these remote resolvers are disabled. Each resolver is enabled by set
    feature flag to `true`.
 1. [The `hub` resolver](./hub-resolver.md), enabled by setting the `enable-hub-resolver`
    feature flag to `true`.
+1. [The `cluster` resolver](./cluster-resolver.md), enabled by setting the `enable-cluster-resolver`
+   feature flag to `true`.
 
 ## Configuring CloudEvents notifications
 
