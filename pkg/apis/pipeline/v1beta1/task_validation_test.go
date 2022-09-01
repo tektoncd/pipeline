@@ -1100,6 +1100,28 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"steps[0].args[0]"},
 		},
 	}, {
+		name: "non-existent individual key of an object param is used in task step",
+		fields: fields{
+			Params: []v1beta1.ParamSpec{{
+				Name: "gitrepo",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"url":    {},
+					"commit": {},
+				},
+			}},
+			Steps: []v1beta1.Step{{
+				Name:       "do-the-clone",
+				Image:      "some-git-image",
+				Args:       []string{"$(params.gitrepo.non-exist-key)"},
+				WorkingDir: "/foo/bar/src/",
+			}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.gitrepo.non-exist-key)"`,
+			Paths:   []string{"steps[0].args[0]"},
+		},
+	}, {
 		name: "Inexistent param variable in volumeMount with existing",
 		fields: fields{
 			Params: []v1beta1.ParamSpec{
