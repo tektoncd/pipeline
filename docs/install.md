@@ -429,6 +429,12 @@ features](#alpha-features) to be used.
   name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to
   do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses).
 
+- `enable-bundles-resolver`: set this flag to `"true"` to enable the use of [the `bundles` remote resolver](./bundle-resolver.md). This requires that `enable-api-fields` be set to "alpha".
+
+- `enable-git-resolver`: set this flag to `"true"` to enable the use of [the `git` remote resolver](./git-resolver.md). This requires that `enable-api-fields` be set to "alpha".
+
+- `enable-hub-resolver`: set this flag to `"true"` to enable the use of [the `hub` remote resolver](./hub-resolver.md). This requires that `enable-api-fields` be set to "alpha".
+
 For example:
 
 ```yaml
