@@ -54,11 +54,15 @@ var (
 // reconciles the given request. It then checks for the expected error, if any, and compares the resulting status with
 // the expected status.
 func RunResolverReconcileTest(ctx context.Context, t *testing.T, d test.Data, resolver framework.Resolver, request *v1alpha1.ResolutionRequest,
-	expectedStatus *v1alpha1.ResolutionRequestStatus, expectedErr error) {
+	expectedStatus *v1alpha1.ResolutionRequestStatus, expectedErr error, resolverModifiers ...func(resolver framework.Resolver, testAssets test.Assets)) {
 	t.Helper()
 
 	testAssets, cancel := GetResolverFrameworkController(ctx, t, d, resolver, setClockOnReconciler)
 	defer cancel()
+
+	for _, rm := range resolverModifiers {
+		rm(resolver, testAssets)
+	}
 
 	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRequestName(request))
 	if expectedErr != nil {

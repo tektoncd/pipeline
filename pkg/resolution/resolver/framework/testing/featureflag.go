@@ -38,6 +38,11 @@ func ContextWithBundlesResolverEnabled(ctx context.Context) context.Context {
 	return contextWithResolverEnabled(ctx, "enable-bundles-resolver")
 }
 
+// ContextWithClusterResolverEnabled returns a context containing a Config with the enable-cluster-resolver feature flag enabled.
+func ContextWithClusterResolverEnabled(ctx context.Context) context.Context {
+	return contextWithResolverEnabled(ctx, "enable-cluster-resolver")
+}
+
 func contextWithResolverEnabled(ctx context.Context, resolverFlag string) context.Context {
 	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
 		resolverFlag: "true",

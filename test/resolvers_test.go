@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/pod"
+	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/test/parse"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -40,6 +41,11 @@ var hubFeatureFlags = requireAllGates(map[string]string{
 var gitFeatureFlags = requireAllGates(map[string]string{
 	"enable-git-resolver": "true",
 	"enable-api-fields":   "alpha",
+})
+
+var clusterFeatureFlags = requireAllGates(map[string]string{
+	"enable-cluster-resolver": "true",
+	"enable-api-fields":       "alpha",
 })
 
 func TestHubResolver(t *testing.T) {
@@ -269,5 +275,110 @@ spec:
 				t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 			}
 		})
+	}
+}
+
+func TestClusterResolver(t *testing.T) {
+	ctx := context.Background()
+	c, namespace := setup(ctx, t, clusterFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	pipelineName := helpers.ObjectNameForTest(t)
+	examplePipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  tasks:
+  - name: some-pipeline-task
+    taskSpec:
+      steps:
+      - name: echo
+        image: ubuntu
+        script: |
+          #!/usr/bin/env bash
+          # Sleep for 10s
+          sleep 10
+`, pipelineName, namespace))
+
+	_, err := c.PipelineClient.Create(ctx, examplePipeline, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create Pipeline `%s`: %s", pipelineName, err)
+	}
+
+	prName := helpers.ObjectNameForTest(t)
+
+	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: %s
+    - name: namespace
+      value: %s
+`, prName, namespace, pipelineName, namespace))
+
+	_, err = c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+}
+
+func TestClusterResolver_Failure(t *testing.T) {
+	ctx := context.Background()
+	c, namespace := setup(ctx, t, clusterFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := helpers.ObjectNameForTest(t)
+
+	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: pipeline
+    - name: name
+      value: does-not-exist
+    - name: namespace
+      value: %s
+`, prName, namespace, namespace))
+
+	_, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout,
+		Chain(
+			FailedWithReason(pipelinerun.ReasonCouldntGetPipeline, prName),
+			FailedWithMessage("pipelines.tekton.dev \"does-not-exist\" not found", prName),
+		), "PipelineRunFailed"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}
 }

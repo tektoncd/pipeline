@@ -417,9 +417,13 @@ func TestController(t *testing.T) {
 					}},
 				},
 			},
-			expectedErr: errors.New(`error getting "Git" "foo/rr": error opening file "foo/bar/some other file": file does not exist`),
+			expectedErr: &resolutioncommon.ErrorGettingResource{
+				ResolverName: GitResolverName,
+				Key:          "foo/rr",
+				Original:     errors.New(`error opening file "foo/bar/some other file": file does not exist`),
+			},
 		}, {
-			name: "branch does not exist",
+			name: "revision does not exist",
 			commits: []commitForRepo{{
 				Dir:      "foo/bar",
 				Filename: "somefile",
@@ -436,26 +440,11 @@ func TestController(t *testing.T) {
 					}},
 				},
 			},
-			expectedErr: errors.New(`error getting "Git" "foo/rr": revision error: reference not found`),
-		}, {
-			name: "commit does not exist",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}},
-			specificCommit: "does-not-exist",
-			pathInRepo:     "foo/bar/some other file",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-						Reason: resolutioncommon.ReasonResolutionFailed,
-					}},
-				},
+			expectedErr: &resolutioncommon.ErrorGettingResource{
+				ResolverName: GitResolverName,
+				Key:          "foo/rr",
+				Original:     errors.New("revision error: reference not found"),
 			},
-			expectedErr: errors.New(`error getting "Git" "foo/rr": revision error: reference not found`),
 		},
 	}
 
