@@ -397,7 +397,7 @@ func TestEntryPointOnError(t *testing.T) {
 				OnError: "invalid-on-error",
 			}},
 		},
-		err: errors.New("task step onError must be either continue or stopAndFail but it is set to an invalid value invalid-on-error"),
+		err: errors.New("task step onError must be either \"continue\" or \"stopAndFail\" but it is set to an invalid value \"invalid-on-error\""),
 	}} {
 		t.Run(tc.desc, func(t *testing.T) {
 			got, err := orderContainers([]string{}, steps, &tc.taskSpec, nil, true)

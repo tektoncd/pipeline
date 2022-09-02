@@ -138,7 +138,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 {
 				if taskSpec.Steps[i].OnError != "" {
 					if taskSpec.Steps[i].OnError != v1beta1.Continue && taskSpec.Steps[i].OnError != v1beta1.StopAndFail {
-						return nil, fmt.Errorf("task step onError must be either %s or %s but it is set to an invalid value %s",
+						return nil, fmt.Errorf("task step onError must be either \"%s\" or \"%s\" but it is set to an invalid value \"%s\"",
 							v1beta1.Continue, v1beta1.StopAndFail, taskSpec.Steps[i].OnError)
 					}
 					argsForEntrypoint = append(argsForEntrypoint, "-on_error", string(taskSpec.Steps[i].OnError))

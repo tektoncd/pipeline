@@ -246,9 +246,9 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	if s.OnError != "" {
 		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail {
 			errs = errs.Also(&apis.FieldError{
-				Message: fmt.Sprintf("invalid value: %v", s.OnError),
+				Message: fmt.Sprintf("invalid value: \"%v\"", s.OnError),
 				Paths:   []string{"onError"},
-				Details: "Task step onError must be either continue or stopAndFail",
+				Details: "Task step onError must be either \"continue\" or \"stopAndFail\"",
 			})
 		}
 	}
