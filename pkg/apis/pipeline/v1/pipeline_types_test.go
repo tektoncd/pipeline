@@ -366,6 +366,176 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		expectedDeps: map[string][]string{
 			"task-2": {"task-1"},
 		},
+	}, {
+		name: "valid pipeline with Task Results deps",
+		tasks: []PipelineTask{{
+			Name: "task-1",
+		}, {
+			Name: "task-2",
+			Params: []Param{{
+				Value: ParamValue{
+					Type:      "string",
+					StringVal: "$(tasks.task-1.results.result)",
+				}},
+			}},
+		},
+		expectedDeps: map[string][]string{
+			"task-2": {"task-1"},
+		},
+	}, {
+		name: "valid pipeline with Task Results in Matrix deps",
+		tasks: []PipelineTask{{
+			Name: "task-1",
+		}, {
+			Name: "task-2",
+			Matrix: []Param{{
+				Value: ParamValue{
+					Type: ParamTypeArray,
+					ArrayVal: []string{
+						"$(tasks.task-1.results.result)",
+					},
+				}},
+			}},
+		},
+		expectedDeps: map[string][]string{
+			"task-2": {"task-1"},
+		},
+	}, {
+		name: "valid pipeline with When Expressions deps",
+		tasks: []PipelineTask{{
+			Name: "task-1",
+		}, {
+			Name: "task-2",
+			When: WhenExpressions{{
+				Input:    "$(tasks.task-1.results.result)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}},
+		}},
+		expectedDeps: map[string][]string{
+			"task-2": {"task-1"},
+		},
+	}, {
+		name: "valid pipeline with ordering deps and resource deps",
+		tasks: []PipelineTask{{
+			Name: "task-1",
+		}, {
+			Name: "task-2", RunAfter: []string{"task-1"},
+		}, {
+			Name:     "task-3",
+			RunAfter: []string{"task-1"},
+		}, {
+			Name:     "task-4",
+			RunAfter: []string{"task-1"},
+			Params: []Param{{
+				Value: ParamValue{
+					Type:      "string",
+					StringVal: "$(tasks.task-3.results.result)",
+				}},
+			},
+		}, {
+			Name:     "task-5",
+			RunAfter: []string{"task-1"},
+			When: WhenExpressions{{
+				Input:    "$(tasks.task-4.results.result)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}},
+		}, {
+			Name:     "task-6",
+			RunAfter: []string{"task-1"},
+			Matrix: []Param{{
+				Value: ParamValue{
+					Type: ParamTypeArray,
+					ArrayVal: []string{
+						"$(tasks.task-2.results.result)",
+						"$(tasks.task-5.results.result)",
+					},
+				}},
+			},
+		}},
+		expectedDeps: map[string][]string{
+			"task-2": {"task-1"},
+			"task-3": {"task-1"},
+			"task-4": {"task-1", "task-3"},
+			"task-5": {"task-1", "task-4"},
+			"task-6": {"task-1", "task-2", "task-5"},
+		},
+	}, {
+		name: "valid pipeline with ordering deps and resource deps - verify unique dependencies",
+		tasks: []PipelineTask{{
+			Name: "task-1",
+		}, {
+			Name: "task-2", RunAfter: []string{"task-1"},
+		}, {
+			Name:     "task-3",
+			RunAfter: []string{"task-1"},
+		}, {
+			Name:     "task-4",
+			RunAfter: []string{"task-1", "task-3"},
+			Params: []Param{{
+				Value: ParamValue{
+					Type:      "string",
+					StringVal: "$(tasks.task-2.results.result)",
+				}}, {
+				Value: ParamValue{
+					Type:      "string",
+					StringVal: "$(tasks.task-3.results.result)",
+				}},
+			},
+		}, {
+			Name:     "task-5",
+			RunAfter: []string{"task-1", "task-2", "task-3", "task-4"},
+			Params: []Param{{
+				Value: ParamValue{
+					Type:      "string",
+					StringVal: "$(tasks.task-4.results.result)",
+				}},
+			},
+			When: WhenExpressions{{
+				Input:    "$(tasks.task-3.results.result)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}, {
+				Input:    "$(tasks.task-4.results.result)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}},
+		}, {
+			Name:     "task-6",
+			RunAfter: []string{"task-1", "task-2", "task-3", "task-4", "task-5"},
+			Params: []Param{{
+				Value: ParamValue{
+					Type:      "string",
+					StringVal: "$(tasks.task-4.results.result)",
+				}},
+			},
+			When: WhenExpressions{{
+				Input:    "$(tasks.task-3.results.result)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}, {
+				Input:    "$(tasks.task-4.results.result)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}},
+			Matrix: []Param{{
+				Value: ParamValue{
+					Type: ParamTypeArray,
+					ArrayVal: []string{
+						"$(tasks.task-2.results.result)",
+						"$(tasks.task-5.results.result)",
+					},
+				}},
+			},
+		}},
+		expectedDeps: map[string][]string{
+			"task-2": {"task-1"},
+			"task-3": {"task-1"},
+			"task-4": {"task-1", "task-2", "task-3"},
+			"task-5": {"task-1", "task-2", "task-3", "task-4"},
+			"task-6": {"task-1", "task-2", "task-3", "task-4", "task-5"},
+		},
 	}}
 	for _, tc := range pipelines {
 		t.Run(tc.name, func(t *testing.T) {
