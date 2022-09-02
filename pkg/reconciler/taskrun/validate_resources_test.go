@@ -149,11 +149,27 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 					Name: "arrayResultRef",
 					Type: v1beta1.ParamTypeArray,
 				}, {
-					Name: "myobj",
+					Name: "myObjWithoutDefault",
 					Type: v1beta1.ParamTypeObject,
 					Properties: map[string]v1beta1.PropertySpec{
 						"key1": {},
 						"key2": {},
+					},
+				}, {
+					Name: "myObjWithDefault",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {},
+						"key2": {},
+						"key3": {},
+					},
+					Default: &v1beta1.ParamValue{
+						Type: v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{
+							"key1": "val1-default",
+							"key2": "val2-default", // key2 is also provided and will be overridden by taskrun
+							// key3 will be provided by taskrun
+						},
 					},
 				},
 			},
@@ -172,11 +188,17 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 		Name:  "arrayResultRef",
 		Value: *v1beta1.NewStructuredValues("$(results.resultname[*])"),
 	}, {
-		Name: "myobj",
+		Name: "myObjWithoutDefault",
 		Value: *v1beta1.NewObject(map[string]string{
 			"key1":      "val1",
 			"key2":      "val2",
 			"extra_key": "val3",
+		}),
+	}, {
+		Name: "myObjWithDefault",
+		Value: *v1beta1.NewObject(map[string]string{
+			"key2": "val2",
+			"key3": "val3",
 		}),
 	}}
 	m := []v1beta1.Param{{
@@ -221,11 +243,27 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 					Type: v1beta1.ParamTypeArray,
 				},
 				{
-					Name: "myobj",
+					Name: "myObjWithoutDefault",
 					Type: v1beta1.ParamTypeObject,
 					Properties: map[string]v1beta1.PropertySpec{
 						"key1": {},
 						"key2": {},
+					},
+				}, {
+					Name: "myObjWithDefault",
+					Type: v1beta1.ParamTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{
+						"key1": {},
+						"key2": {},
+						"key3": {},
+					},
+					Default: &v1beta1.ParamValue{
+						Type: v1beta1.ParamTypeObject,
+						ObjectVal: map[string]string{
+							"key1": "default",
+							// key2 is not provided by default nor taskrun, which is why error is epected.
+							// key3 is provided by taskrun
+						},
 					},
 				},
 			},
@@ -276,10 +314,21 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 			TaskSpec: &task.Spec,
 		},
 		params: []v1beta1.Param{{
-			Name: "myobj",
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("test"),
+		}, {
+			Name:  "bar",
+			Value: *v1beta1.NewStructuredValues("a", "b"),
+		}, {
+			Name: "myObjWithoutDefault",
 			Value: *v1beta1.NewObject(map[string]string{
 				"key1":    "val1",
 				"misskey": "val2",
+			}),
+		}, {
+			Name: "myObjWithDefault",
+			Value: *v1beta1.NewObject(map[string]string{
+				"key3": "val3",
 			}),
 		}},
 	},
