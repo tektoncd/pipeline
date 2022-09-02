@@ -17,6 +17,7 @@ limitations under the License.
 package dag_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -535,6 +536,78 @@ func TestBuild_InvalidDAG(t *testing.T) {
 	}
 }
 
+func TestBuildGraphWithHundredsOfTasks_Success(t *testing.T) {
+	var tasks []v1beta1.PipelineTask
+	// separate branches with sequential tasks and redundant links (each task explicitly depends on all predecessors)
+	// b00 - 000 - 001 - ... - 100
+	// b01 - 000 - 001 - ... - 100
+	// ..
+	// b04 - 000 - 001 - ... - 100
+	nBranches, nTasks := 5, 100
+	for branchIdx := 0; branchIdx < nBranches; branchIdx++ {
+		var taskDeps []string
+		firstTaskName := fmt.Sprintf("b%02d", branchIdx)
+		firstTask := v1beta1.PipelineTask{
+			Name:     firstTaskName,
+			TaskRef:  &v1beta1.TaskRef{Name: firstTaskName + "-task"},
+			RunAfter: taskDeps,
+		}
+		tasks = append(tasks, firstTask)
+		taskDeps = append(taskDeps, firstTaskName)
+		for taskIdx := 0; taskIdx < nTasks; taskIdx++ {
+			taskName := fmt.Sprintf("%s-%03d", firstTaskName, taskIdx)
+			task := v1beta1.PipelineTask{
+				Name:     taskName,
+				TaskRef:  &v1beta1.TaskRef{Name: taskName + "-task"},
+				RunAfter: taskDeps,
+			}
+			tasks = append(tasks, task)
+			taskDeps = append(taskDeps, taskName)
+		}
+	}
+
+	_, err := dag.Build(v1beta1.PipelineTaskList(tasks), v1beta1.PipelineTaskList(tasks).Deps())
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestBuildGraphWithHundredsOfTasks_InvalidDAG(t *testing.T) {
+	var tasks []v1beta1.PipelineTask
+	// branches with circular interdependencies
+	nBranches, nTasks := 5, 100
+	for branchIdx := 0; branchIdx < nBranches; branchIdx++ {
+		depBranchIdx := branchIdx + 1
+		if depBranchIdx == nBranches {
+			depBranchIdx = 0
+		}
+		taskDeps := []string{fmt.Sprintf("b%02d", depBranchIdx)}
+		firstTaskName := fmt.Sprintf("b%02d", branchIdx)
+		firstTask := v1beta1.PipelineTask{
+			Name:     firstTaskName,
+			TaskRef:  &v1beta1.TaskRef{Name: firstTaskName + "-task"},
+			RunAfter: taskDeps,
+		}
+		tasks = append(tasks, firstTask)
+		taskDeps = append(taskDeps, firstTaskName)
+		for taskIdx := 0; taskIdx < nTasks; taskIdx++ {
+			taskName := fmt.Sprintf("%s-%03d", firstTaskName, taskIdx)
+			task := v1beta1.PipelineTask{
+				Name:     taskName,
+				TaskRef:  &v1beta1.TaskRef{Name: taskName + "-task"},
+				RunAfter: taskDeps,
+			}
+			tasks = append(tasks, task)
+			taskDeps = append(taskDeps, taskName)
+		}
+	}
+
+	_, err := dag.Build(v1beta1.PipelineTaskList(tasks), v1beta1.PipelineTaskList(tasks).Deps())
+	if err == nil {
+		t.Errorf("Pipeline.Validate() did not return error for invalid pipeline with cycles")
+	}
+}
+
 func testGraph(t *testing.T) *dag.Graph {
 	//  b     a
 	//  |    / \
@@ -615,4 +688,70 @@ func assertSameDAG(t *testing.T, l, r *dag.Graph) {
 			t.Errorf("The %s nodes in the DAG have different next nodes: %v", k, err)
 		}
 	}
+}
+
+func TestFindCyclesInDependencies(t *testing.T) {
+	deps := map[string][]string{
+		"a": {},
+		"b": {"c", "d"},
+		"c": {},
+		"d": {},
+	}
+
+	err := dag.FindCyclesInDependencies(deps)
+	if err != nil {
+		t.Error(err)
+	}
+
+	tcs := []struct {
+		name string
+		deps map[string][]string
+		err  string
+	}{{
+		name: "valid-empty-deps",
+		deps: map[string][]string{
+			"a": {},
+			"b": {"c", "d"},
+			"c": {},
+			"d": {},
+		},
+	}, {
+		name: "self-link",
+		deps: map[string][]string{
+			"a": {"a"},
+		},
+		err: `task "a" depends on "a"`,
+	}, {
+		name: "interdependent-tasks",
+		deps: map[string][]string{
+			"a": {"b"},
+			"b": {"a"},
+		},
+		err: `task "a" depends on "b"`,
+	}, {
+		name: "multiple-cycles",
+		deps: map[string][]string{
+			"a": {"b", "c"},
+			"b": {"a"},
+			"c": {"d"},
+			"d": {"a", "b"},
+		},
+		err: `task "a" depends on "b", "c"`,
+	},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := dag.FindCyclesInDependencies(tc.deps)
+			if tc.err == "" {
+				if err != nil {
+					t.Errorf("expected to see no error for valid DAG but had: %v", err)
+				}
+			} else {
+				if err == nil || !strings.Contains(err.Error(), tc.err) {
+					t.Errorf("expected to see an error: %q for invalid DAG but had: %v", tc.err, err)
+				}
+			}
+		})
+	}
+
 }
