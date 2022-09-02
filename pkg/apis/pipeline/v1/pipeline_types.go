@@ -472,6 +472,7 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 func (pt PipelineTask) Deps() []string {
 	deps := []string{}
 
+	deps = append(deps, pt.resultDeps()...)
 	deps = append(deps, pt.orderingDeps()...)
 
 	uniqueDeps := sets.NewString()
@@ -483,6 +484,17 @@ func (pt PipelineTask) Deps() []string {
 	}
 
 	return uniqueDeps.List()
+}
+
+func (pt PipelineTask) resultDeps() []string {
+	resultDeps := []string{}
+
+	// Add any dependents from result references.
+	for _, ref := range PipelineTaskResultRefs(&pt) {
+		resultDeps = append(resultDeps, ref.PipelineTask)
+	}
+
+	return resultDeps
 }
 
 func (pt PipelineTask) orderingDeps() []string {
