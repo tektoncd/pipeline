@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
-	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -368,7 +367,6 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
 	}
 	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
-	errs = errs.Also(validateObjectDefault(objectParamSpecs))
 	return errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
 }
 
@@ -423,45 +421,6 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 	}
 
 	return errs.Also(validateObjectUsageAsWhole(steps, "params", objectParameterNames))
-}
-
-// validateObjectDefault validates the keys of all the object params within a
-// slice of ParamSpecs are provided in default iff the default section is provided.
-func validateObjectDefault(objectParams []ParamSpec) (errs *apis.FieldError) {
-	for _, p := range objectParams {
-		errs = errs.Also(ValidateObjectKeys(p.Properties, p.Default).ViaField(p.Name))
-	}
-	return errs
-}
-
-// ValidateObjectKeys validates if object keys defined in properties are all provided in its value provider iff the provider is not nil.
-func ValidateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ParamValue) (errs *apis.FieldError) {
-	if propertiesProvider == nil || propertiesProvider.ObjectVal == nil {
-		return nil
-	}
-
-	neededKeys := []string{}
-	providedKeys := []string{}
-
-	// collect all needed keys
-	for key := range properties {
-		neededKeys = append(neededKeys, key)
-	}
-
-	// collect all provided keys
-	for key := range propertiesProvider.ObjectVal {
-		providedKeys = append(providedKeys, key)
-	}
-
-	missings := list.DiffLeft(neededKeys, providedKeys)
-	if len(missings) != 0 {
-		return &apis.FieldError{
-			Message: fmt.Sprintf("Required key(s) %s are missing in the value provider.", missings),
-			Paths:   []string{fmt.Sprintf("properties"), fmt.Sprintf("default")},
-		}
-	}
-
-	return nil
 }
 
 // validateObjectUsageAsWhole makes sure the object params are not used as whole when providing values for strings

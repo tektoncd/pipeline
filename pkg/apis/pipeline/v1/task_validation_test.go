@@ -189,6 +189,17 @@ func TestTaskSpecValidate(t *testing.T) {
 					"key1": {},
 					"key2": {},
 				},
+			}, {
+				Name:        "myobjWithDefaultPartialKeys",
+				Type:        v1.ParamTypeObject,
+				Description: "param",
+				Properties: map[string]v1.PropertySpec{
+					"key1": {},
+					"key2": {},
+				},
+				Default: v1.NewObject(map[string]string{
+					"key1": "default",
+				}),
 			}},
 			Steps: validSteps,
 		},
@@ -685,27 +696,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: fmt.Sprintf("The value type specified for these keys %v is invalid", []string{"key1"}),
 			Paths:   []string{"params.task.properties"},
-		},
-	}, {
-		name: "keys defined in properties are missed in default",
-		fields: fields{
-			Params: []v1.ParamSpec{{
-				Name:        "myobjectParam",
-				Description: "param",
-				Properties: map[string]v1.PropertySpec{
-					"key1": {},
-					"key2": {},
-				},
-				Default: v1.NewObject(map[string]string{
-					"key1": "var1",
-					"key3": "var1",
-				}),
-			}},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: fmt.Sprintf("Required key(s) %s are missing in the value provider.", []string{"key2"}),
-			Paths:   []string{"myobjectParam.properties", "myobjectParam.default"},
 		},
 	}, {
 		name: "invalid step",

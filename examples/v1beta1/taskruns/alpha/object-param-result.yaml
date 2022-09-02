@@ -6,7 +6,6 @@ spec:
   params:
     - name: gitrepo
       value:
-        url: "xyz.com"
         commit: "sha123"
   taskSpec:
     params:
@@ -15,6 +14,8 @@ spec:
         properties:
           url: {type: string}
           commit: {type: string}
+        default:
+          url: "github.example.com"
     results:
       - name: object-results
         type: object

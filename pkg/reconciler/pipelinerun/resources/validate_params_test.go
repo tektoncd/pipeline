@@ -253,6 +253,31 @@ func TestValidateObjectParamRequiredKeys_Valid(t *testing.T) {
 		pp   []v1beta1.ParamSpec
 		prp  []v1beta1.Param
 	}{{
+		name: "some keys are provided by default, and the rest are provided in value",
+		pp: []v1beta1.ParamSpec{
+			{
+				Name: "an-object-param",
+				Type: v1beta1.ParamTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{
+					"key1": {Type: "string"},
+					"key2": {Type: "string"},
+				},
+				Default: &v1beta1.ParamValue{
+					Type: v1beta1.ParamTypeObject,
+					ObjectVal: map[string]string{
+						"key1": "val1",
+					},
+				},
+			},
+		},
+		prp: []v1beta1.Param{
+			{
+				Name: "an-object-param",
+				Value: *v1beta1.NewObject(map[string]string{
+					"key2": "val2",
+				})},
+		},
+	}, {
 		name: "all keys are provided with a value",
 		pp: []v1beta1.ParamSpec{
 			{

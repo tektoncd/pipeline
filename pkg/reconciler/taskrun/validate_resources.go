@@ -168,21 +168,28 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, needed
 	return wrongTypeParamNames
 }
 
-// MissingKeysObjectParamNames checks if all required keys of object type params are provided in taskrun params.
+// MissingKeysObjectParamNames checks if all required keys of object type params are provided in taskrun params or taskSpec's default.
 func MissingKeysObjectParamNames(paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) map[string][]string {
 	neededKeys := make(map[string][]string)
 	providedKeys := make(map[string][]string)
 
-	// collect needed keys for object parameters
 	for _, spec := range paramSpecs {
 		if spec.Type == v1beta1.ParamTypeObject {
+			// collect required keys from properties section
 			for key := range spec.Properties {
 				neededKeys[spec.Name] = append(neededKeys[spec.Name], key)
+			}
+
+			// collect provided keys from default
+			if spec.Default != nil && spec.Default.ObjectVal != nil {
+				for key := range spec.Default.ObjectVal {
+					providedKeys[spec.Name] = append(providedKeys[spec.Name], key)
+				}
 			}
 		}
 	}
 
-	// collect provided keys for object parameters
+	// collect provided keys from run level value
 	for _, p := range params {
 		if p.Value.Type == v1beta1.ParamTypeObject {
 			for key := range p.Value.ObjectVal {
@@ -194,7 +201,7 @@ func MissingKeysObjectParamNames(paramSpecs []v1beta1.ParamSpec, params []v1beta
 	return findMissingKeys(neededKeys, providedKeys)
 }
 
-// findMissingKeys checks if objects have missing keys in its provider (either taskrun value or result value)
+// findMissingKeys checks if objects have missing keys in its providers (taskrun value and default)
 func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]string {
 	missings := map[string][]string{}
 	for p, keys := range providedKeys {
