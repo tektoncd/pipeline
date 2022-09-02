@@ -569,9 +569,11 @@ func TestPipelineSpec_Validate_Failure_CycleDAG(t *testing.T) {
 	name := "invalid pipeline spec with DAG having cyclic dependency"
 	ps := &PipelineSpec{
 		Tasks: []PipelineTask{{
-			Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}, RunAfter: []string{"bar"},
+			Name: "foo", TaskRef: &TaskRef{Name: "foo-task"}, RunAfter: []string{"baz"},
 		}, {
 			Name: "bar", TaskRef: &TaskRef{Name: "bar-task"}, RunAfter: []string{"foo"},
+		}, {
+			Name: "baz", TaskRef: &TaskRef{Name: "baz-task"}, RunAfter: []string{"bar"},
 		}},
 	}
 	ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), false)
@@ -679,9 +681,15 @@ func TestValidateGraph_Failure(t *testing.T) {
 	}, {
 		Name: "bar", TaskRef: &TaskRef{Name: "bar-task"}, RunAfter: []string{"foo"},
 	}}
-	if err := validateGraph(tasks); err == nil {
+	expectedError := apis.FieldError{
+		Message: `invalid value: cycle detected; task "bar" depends on "foo"`,
+		Paths:   []string{"tasks"},
+	}
+	err := validateGraph(tasks)
+	if err == nil {
 		t.Error("Pipeline.validateGraph() did not return error for invalid DAG of pipeline tasks:", desc)
-
+	} else if d := cmp.Diff(expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+		t.Errorf("Pipeline.validateGraph() errors diff %s", diff.PrintWantGot(d))
 	}
 }
 
