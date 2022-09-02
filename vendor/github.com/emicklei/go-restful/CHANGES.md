@@ -1,5 +1,9 @@
 # Change history of go-restful (v2 only)
 
+## v2.16.0 - 2022-07-11
+
+- Backported CORS filter. #489 (#493) #503
+
 ## v2.15.0 - 2020-11-10
 
 - Add OPTIONS in Webservice
