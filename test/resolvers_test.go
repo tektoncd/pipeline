@@ -165,6 +165,66 @@ spec:
 	}
 }
 
+func TestGitResolver(t *testing.T) {
+	ctx := context.Background()
+	c, namespace := setup(ctx, t, gitFeatureFlags)
+
+	t.Parallel()
+
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	prName := helpers.ObjectNameForTest(t)
+
+	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  workspaces:
+    - name: output # this workspace name must be declared in the Pipeline
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
+          resources:
+            requests:
+              storage: 1Gi
+  pipelineSpec:
+    workspaces:
+      - name: output
+    tasks:
+      - name: task1
+        workspaces:
+          - name: output
+        taskRef:
+          resolver: git
+          params:
+          - name: url
+            value: https://github.com/tektoncd/catalog.git
+          - name: pathInRepo
+            value: /task/git-clone/0.7/git-clone.yaml
+          - name: revision
+            value: main
+        params:
+        params:
+          - name: url
+            value: https://github.com/tektoncd/pipeline
+          - name: deleteExisting
+            value: "true"
+`, prName, namespace))
+
+	_, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
+	if err != nil {
+		t.Fatalf("Failed to create PipelineRun `%s`: %s", prName, err)
+	}
+
+	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+}
+
 func TestGitResolver_Failure(t *testing.T) {
 	defaultURL := "https://github.com/tektoncd/catalog.git"
 	defaultPathInRepo := "/task/git-clone/0.7/git-clone.yaml"
