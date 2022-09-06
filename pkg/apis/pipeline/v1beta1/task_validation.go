@@ -86,6 +86,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		})
 	}
 
+	errs = errs.Also(warnTaskFieldsDeprecation(ctx, ts))
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
@@ -626,4 +627,20 @@ func validateTaskArraysIsolated(value, prefix string, arrayNames sets.String) *a
 // This is useful to make sure the specified value looks like a Parameter Reference before performing any strict validation
 func isParamRefs(s string) bool {
 	return strings.HasPrefix(s, "$("+ParamsPrefix)
+}
+
+func warnTaskFieldsDeprecation(ctx context.Context, ts *TaskSpec) (errs *apis.FieldError) {
+	if ts.Resources != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "Resources field is deprecated in v1 Task",
+			Paths:   []string{"Resources"},
+		})
+	}
+	if ts.StepTemplate != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "StepTemplate field is deprecated in v1 Task",
+			Paths:   []string{"StepTemplate"},
+		})
+	}
+	return errs.At(apis.WarningLevel)
 }

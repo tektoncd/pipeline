@@ -529,3 +529,19 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 	}
 	return errs
 }
+
+func warnPipelineFieldsDeprecation(ctx context.Context, ps *PipelineSpec) (errs *apis.FieldError) {
+	if ps.Resources != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "Resources field is deprecated in v1 Pipeline",
+			Paths:   []string{"Resources"},
+		})
+	}
+	// if ps. != nil {
+	// 	errs = errs.Also(&apis.FieldError{
+	// 		Message: "Bundle field is deprecated in v1 Pipeline",
+	// 		Paths:   []string{"Bundle"},
+	// 	})
+	// }
+	return errs.At(apis.WarningLevel)
+}

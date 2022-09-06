@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -881,6 +882,61 @@ func TestResources_Invalidate(t *testing.T) {
 			err := ts.resources.Validate(context.Background())
 			if d := cmp.Diff(err.Error(), ts.wantErr.Error()); d != "" {
 				t.Error(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestTaskRunDeprecationWarning(t *testing.T) {
+	tests := []struct {
+		name          string
+		taskRunSpec   *v1beta1.TaskRunSpec
+		expectedError *apis.FieldError
+	}{{
+		name: "Resources",
+		taskRunSpec: &v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: "test",
+				Kind: v1beta1.NamespacedTaskKind,
+			},
+			Resources: &v1beta1.TaskRunResources{
+				Inputs: []v1beta1.TaskResourceBinding{{
+					PipelineResourceBinding: v1beta1.PipelineResourceBinding{
+						ResourceRef: &v1beta1.PipelineResourceRef{
+							Name: "testresource",
+						},
+						Name: "workspace",
+					},
+				}},
+			}},
+		expectedError: &apis.FieldError{
+			Message: "Resources field is deprecated in v1 TaskRun",
+			Paths:   []string{"Resources"},
+		},
+	}, {
+		name: "Bundle",
+		taskRunSpec: &v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name:   "test",
+				Kind:   v1beta1.NamespacedTaskKind,
+				Bundle: "docker.io/foo",
+			},
+		},
+		expectedError: &apis.FieldError{
+			Message: "Bundle field is deprecated in v1 TaskRun",
+			Paths:   []string{"Bundle"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := tt.taskRunSpec
+			ctx := context.Background()
+			err := ts.Validate(enableTektonOCIBundles(t)(ctx))
+			if err == nil && tt.expectedError.Error() != "" {
+				t.Fatalf("Expected an error, got nothing for %v", ts)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}

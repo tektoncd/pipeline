@@ -101,6 +101,8 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
+	errs = errs.Also(warnTaskRunFieldsDeprecation(ctx, ts))
+
 	return errs
 }
 
@@ -234,4 +236,20 @@ func validateNoDuplicateNames(names []string, byIndex bool) (errs *apis.FieldErr
 		seen.Insert(strings.ToLower(n))
 	}
 	return errs
+}
+
+func warnTaskRunFieldsDeprecation(ctx context.Context, trs *TaskRunSpec) (errs *apis.FieldError) {
+	if trs.Resources != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "Resources field is deprecated in v1 TaskRun",
+			Paths:   []string{"Resources"},
+		})
+	}
+	if trs.TaskRef.Bundle != "" {
+		errs = errs.Also(&apis.FieldError{
+			Message: "Bundle field is deprecated in v1 TaskRun",
+			Paths:   []string{"Bundle"},
+		})
+	}
+	return errs.At(apis.WarningLevel)
 }
