@@ -16,15 +16,15 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-pipelines-resolvers
-  namespace: tekton-pipelines
+  namespace: tekton-pipelines-resolvers
   labels:
-    app.kubernetes.io/component: controller
+    app.kubernetes.io/component: resolvers
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 subjects:
   - kind: ServiceAccount
     name: tekton-pipelines-resolvers
-    namespace: tekton-pipelines
+    namespace: tekton-pipelines-resolvers
 roleRef:
   kind: ClusterRole
   name: tekton-pipelines-resolvers-resolution-request-updates

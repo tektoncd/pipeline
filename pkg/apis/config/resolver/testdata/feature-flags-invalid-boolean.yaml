@@ -13,11 +13,9 @@
 # limitations under the License.
 
 apiVersion: v1
-kind: ServiceAccount
+kind: ConfigMap
 metadata:
-  name: tekton-pipelines-resolvers
+  name: resolvers-feature-flags
   namespace: tekton-pipelines-resolvers
-  labels:
-    app.kubernetes.io/component: resolvers
-    app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  "enable-git-resolver": "im-really-not-a-valid-boolean"

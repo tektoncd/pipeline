@@ -285,7 +285,8 @@ Change `release.yaml` to `resolvers.yaml`.
 
 Three remote resolvers are currently provided as part of the `resolvers.yaml` installation.
 By default, these remote resolvers are disabled. Each resolver is enabled by setting 
-[the appropriate feature flag](#customizing-the-pipelines-controller-behavior).
+the appropriate feature flag in the `resolvers-feature-flags` ConfigMap in the `tekton-pipelines-resolvers` 
+namespace:
 
 1. [The `bundles` resolver](./bundle-resolver.md), enabled by setting the `enable-bundles-resolver` 
   feature flag to `true`.
@@ -430,12 +431,6 @@ features](#alpha-features) to be used.
  `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the `PipelineRun` status with
   name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to
   do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses).
-
-- `enable-bundles-resolver`: set this flag to `"true"` to enable the use of [the `bundles` remote resolver](./bundle-resolver.md). This requires that `enable-api-fields` be set to "alpha".
-
-- `enable-git-resolver`: set this flag to `"true"` to enable the use of [the `git` remote resolver](./git-resolver.md). This requires that `enable-api-fields` be set to "alpha".
-
-- `enable-hub-resolver`: set this flag to `"true"` to enable the use of [the `hub` remote resolver](./hub-resolver.md). This requires that `enable-api-fields` be set to "alpha".
 
 For example:
 

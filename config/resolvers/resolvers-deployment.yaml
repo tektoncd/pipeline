@@ -15,7 +15,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tekton-pipelines-remote-resolvers
-  namespace: tekton-pipelines
+  namespace: tekton-pipelines-resolvers
   labels:
     app.kubernetes.io/name: resolvers
     app.kubernetes.io/component: resolvers
@@ -82,16 +82,10 @@ spec:
         # If you are changing these names, you will also need to update
         # the controller's Role in 200-role.yaml to include the new
         # values in the "configmaps" "get" rule.
-        - name: CONFIG_DEFAULTS_NAME
-          value: config-defaults
         - name: CONFIG_LOGGING_NAME
           value: config-logging
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
-        - name: CONFIG_ARTIFACT_BUCKET_NAME
-          value: config-artifact-bucket
-        - name: CONFIG_ARTIFACT_PVC_NAME
-          value: config-artifact-pvc
         - name: CONFIG_FEATURE_FLAGS_NAME
           value: feature-flags
         - name: CONFIG_LEADERELECTION_NAME

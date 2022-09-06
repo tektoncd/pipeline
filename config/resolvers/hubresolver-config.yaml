@@ -16,7 +16,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: hubresolver-config
-  namespace: tekton-pipelines
+  namespace: tekton-pipelines-resolvers
   labels:
     app.kubernetes.io/component: resolvers
     app.kubernetes.io/instance: default

@@ -16,7 +16,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: tekton-pipelines-resolvers-namespace-rbac
-  namespace: tekton-pipelines
+  namespace: tekton-pipelines-resolvers
   labels:
     app.kubernetes.io/component: resolvers
     app.kubernetes.io/instance: default
@@ -24,7 +24,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: tekton-pipelines-resolvers
-    namespace: tekton-pipelines
+    namespace: tekton-pipelines-resolvers
 roleRef:
   kind: Role
   name: tekton-pipelines-resolvers-namespace-rbac

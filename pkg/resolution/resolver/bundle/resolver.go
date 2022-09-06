@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"k8s.io/client-go/kubernetes"
@@ -98,8 +98,8 @@ func (r *Resolver) Resolve(ctx context.Context, params map[string]string) (frame
 }
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableTektonOCIBundles || cfg.FeatureFlags.EnableBundleResolver {
+	cfg := resolverconfig.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EnableBundleResolver {
 		return false
 	}
 

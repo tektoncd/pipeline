@@ -31,7 +31,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -477,14 +477,17 @@ func TestController(t *testing.T) {
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resolver.GetConfigName(ctx),
-						Namespace: system.Namespace(),
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 					},
 					Data: map[string]string{
 						ConfigFieldTimeout: "1m",
 						ConfigRevision:     plumbing.Master.Short(),
 					},
 				}, {
-					ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+						Name:      resolverconfig.GetFeatureFlagsConfigName(),
+					},
 					Data: map[string]string{
 						"enable-git-resolver": "true",
 					},
