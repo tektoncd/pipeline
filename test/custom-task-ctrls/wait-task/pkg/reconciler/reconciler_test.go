@@ -62,7 +62,7 @@ func TestReconcile(t *testing.T) {
 		wantRunConditionType   apis.ConditionType
 		wantRunConditionStatus corev1.ConditionStatus
 		wantRunConditionReason string
-		isParentPRCancelled    bool
+		isCancelled            bool
 	}{{
 		name: "duration elapsed",
 		params: `
@@ -84,13 +84,13 @@ func TestReconcile(t *testing.T) {
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "UnexpectedName",
-		isParentPRCancelled:    false,
+		isCancelled:            false,
 	}, {
 		name:                   "no duration param",
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "MissingDuration",
-		isParentPRCancelled:    false,
+		isCancelled:            false,
 	}, {
 		name: "extra param",
 		params: `
@@ -102,7 +102,7 @@ func TestReconcile(t *testing.T) {
 `, wantRunConditionType: apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "UnexpectedParams",
-		isParentPRCancelled:    false,
+		isCancelled:            false,
 	}, {
 		name: "duration param is not a string",
 		params: `
@@ -116,7 +116,7 @@ func TestReconcile(t *testing.T) {
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "MissingDuration",
-		isParentPRCancelled:    false,
+		isCancelled:            false,
 	}, {
 		name: "invalid duration value",
 		params: `
@@ -127,7 +127,7 @@ func TestReconcile(t *testing.T) {
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "InvalidDuration",
-		isParentPRCancelled:    false,
+		isCancelled:            false,
 	}, {
 		name:    "timeout",
 		timeout: "1s",
@@ -139,7 +139,7 @@ func TestReconcile(t *testing.T) {
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "TimedOut",
-		isParentPRCancelled:    false,
+		isCancelled:            false,
 	}, {
 		name:    "timeout equals duration",
 		timeout: "1s",
@@ -151,7 +151,7 @@ func TestReconcile(t *testing.T) {
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "InvalidTimeOut",
-		isParentPRCancelled:    false,
+		isCancelled:            false,
 	}, {
 		name:    "parent pr timeout",
 		timeout: "1s",
@@ -163,7 +163,7 @@ func TestReconcile(t *testing.T) {
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "Cancelled",
-		isParentPRCancelled:    true,
+		isCancelled:            true,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -186,40 +186,11 @@ spec:
 				runYAML = runYAML + tc.params
 			}
 			r := parse.MustParseRun(t, runYAML)
-			if tc.isParentPRCancelled {
+			if tc.isCancelled {
 				r.Spec.Status = v1alpha1.RunSpecStatusCancelled
-				r.Spec.StatusMessage = v1alpha1.RunCancelledByPipelineMsg
 			}
 
-			// Start reconciling the Run.
-			// This will not return until the second Reconcile is done.
-			err := rec.ReconcileKind(ctx, r)
-
-			t.Logf("%#v", r)
-
-			for err != nil {
-				if strings.Contains(err.Error(), "requeue") {
-					// simulate EnqueueAfter
-					var dur time.Duration
-					var dr error
-					for _, p := range r.Spec.Params {
-						if p.Name == "duration" {
-							dur, dr = time.ParseDuration(p.Value.StringVal)
-							if dr != nil {
-								t.Error("failed to parse duration")
-							}
-							break
-						}
-					}
-					to := r.GetTimeout()
-					sleep := int(math.Min(to.Seconds(), dur.Seconds()))
-					testClock.SetTime(testClock.Now().Add(time.Duration(sleep) * time.Second))
-					rec.Clock = testClock
-					err = rec.ReconcileKind(ctx, r)
-				} else {
-					t.Fatalf("ReconcileKind() = %v", err)
-				}
-			}
+			fakeReconcile(t, ctx, rec, r)
 
 			// Compose expected Run
 			wantRunYAML := fmt.Sprintf(`
@@ -244,9 +215,8 @@ status:
   observedGeneration: 0
 `, tc.wantRunConditionReason, tc.wantRunConditionStatus, tc.wantRunConditionType)
 			wantRun := parse.MustParseRun(t, wantRunYAML)
-			if tc.isParentPRCancelled {
+			if tc.isCancelled {
 				wantRun.Spec.Status = v1alpha1.RunSpecStatusCancelled
-				wantRun.Spec.StatusMessage = v1alpha1.RunCancelledByPipelineMsg
 			}
 
 			if d := cmp.Diff(wantRun, r,
@@ -258,5 +228,151 @@ status:
 				t.Errorf("-got +want: %v", d)
 			}
 		})
+	}
+}
+
+func TestReconcile_Retries(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		duration    string
+		timeout     string
+		retries     int
+		params      string
+		wantStatus  string
+		isCancelled bool
+	}{{
+		name:     "retry when timeout",
+		duration: "2s",
+		timeout:  "1s",
+		retries:  1,
+		wantStatus: fmt.Sprintf(`
+status:
+  conditions:
+  - reason: %s
+    status: %q
+    type: %s
+  observedGeneration: 0
+  retriesStatus:
+  - conditions:
+    - reason: %s
+      status: %q
+      type: %s
+`, "TimedOut", corev1.ConditionFalse, apis.ConditionSucceeded, "TimedOut", corev1.ConditionFalse, apis.ConditionSucceeded),
+		isCancelled: false,
+	}, {
+		name:     "don't retry if retries unspecified",
+		duration: "2s",
+		timeout:  "1s",
+		wantStatus: fmt.Sprintf(`
+status:
+  conditions:
+  - reason: %s
+    status: %q
+    type: %s
+  observedGeneration: 0
+`, "TimedOut", corev1.ConditionFalse, apis.ConditionSucceeded),
+		isCancelled: false,
+	}, {
+		name:     "don't retry when canceled",
+		duration: "2s",
+		wantStatus: fmt.Sprintf(`
+status:
+  conditions:
+  - reason: %s
+    status: %q
+    type: %s
+  observedGeneration: 0
+`, "Cancelled", corev1.ConditionFalse, apis.ConditionSucceeded),
+		isCancelled: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			rec := &Reconciler{
+				Clock: testClock,
+			}
+
+			runName := helpers.ObjectNameForTest(t)
+			runYAML := fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  retries: %d
+  timeout: %s
+  ref:
+    apiVersion: %s
+    kind: %s
+  params:
+  - name: duration
+    value: %s
+`, runName, tc.retries, tc.timeout, apiVersion, kind, tc.duration)
+			r := parse.MustParseRun(t, runYAML)
+			if tc.isCancelled {
+				r.Spec.Status = v1alpha1.RunSpecStatusCancelled
+			}
+
+			fakeReconcile(t, ctx, rec, r)
+
+			// Compose expected Run
+			wantRunYAML := fmt.Sprintf(`
+metadata:
+  name: %s
+spec:
+  retries: %d
+  timeout: %s
+  ref:
+    apiVersion: %s
+    kind: %s
+  params:
+  - name: duration
+    value: %s
+`, runName, tc.retries, tc.timeout, apiVersion, kind, tc.duration)
+			wantRunYAML = wantRunYAML + tc.wantStatus
+			wantRun := parse.MustParseRun(t, wantRunYAML)
+			if tc.isCancelled {
+				wantRun.Spec.Status = v1alpha1.RunSpecStatusCancelled
+			}
+
+			if d := cmp.Diff(wantRun, r,
+				filterTypeMeta,
+				filterObjectMeta,
+				filterCondition,
+				filterRunStatus,
+			); d != "" {
+				t.Errorf("-got +want: %v", d)
+			}
+		})
+	}
+}
+
+// TODO(#5456) Avoid duplicate reconcile logic
+func fakeReconcile(t *testing.T, ctx context.Context, rec *Reconciler, r *v1alpha1.Run) {
+	t.Helper()
+
+	// Start reconciling the Run.
+	// This will not return until the second Reconcile is done.
+	err := rec.ReconcileKind(ctx, r)
+
+	for err != nil {
+		if strings.Contains(err.Error(), "requeue") {
+			// simulate EnqueueAfter
+			var dur time.Duration
+			var dr error
+			for _, p := range r.Spec.Params {
+				if p.Name == "duration" {
+					dur, dr = time.ParseDuration(p.Value.StringVal)
+					if dr != nil {
+						t.Error("failed to parse duration")
+					}
+					break
+				}
+			}
+			to := r.GetTimeout()
+			sleep := int(math.Min(to.Seconds(), dur.Seconds()))
+			testClock.SetTime(testClock.Now().Add(time.Duration(sleep) * time.Second))
+			rec.Clock = testClock
+			err = rec.ReconcileKind(ctx, r)
+		} else {
+			t.Fatalf("ReconcileKind() = %v", err)
+		}
 	}
 }

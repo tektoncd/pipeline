@@ -7,4 +7,4 @@ wait custom task removed.
 It provides a [Tekton Custom
 Task](https://tekton.dev/docs/pipelines/runs/) that, when run, simply waits a
 given amount of time before succeeding, specified by an input parameter named
-`duration`.
+`duration`. It also supports `timeout` and `retries`.
