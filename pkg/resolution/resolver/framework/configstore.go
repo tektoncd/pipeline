@@ -19,7 +19,7 @@ package framework
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/configmap"
 )
@@ -45,7 +45,7 @@ func DataFromConfigMap(config *corev1.ConfigMap) (map[string]string, error) {
 // ConfigStore wraps a knative untyped store and provides helper methods
 // for working with a resolver's configuration data.
 type ConfigStore struct {
-	*config.Store
+	*resolverconfig.Store
 	resolverConfigName string
 	untyped            *configmap.UntypedStore
 }
@@ -53,7 +53,7 @@ type ConfigStore struct {
 // NewConfigStore creates a new untyped store for the resolver's configuration and a config.Store for general Pipeline configuration.
 func NewConfigStore(resolverConfigName string, logger configmap.Logger) *ConfigStore {
 	return &ConfigStore{
-		Store:              config.NewStore(logger),
+		Store:              resolverconfig.NewStore(logger),
 		resolverConfigName: resolverConfigName,
 		untyped: configmap.NewUntypedStore(
 			"resolver-config",

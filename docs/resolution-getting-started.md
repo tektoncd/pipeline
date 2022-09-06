@@ -33,6 +33,9 @@ flags as well:
 ```sh
 # update the feature-flags configmap in the tekton-pipelines namespace
 kubectl patch -n tekton-pipelines configmap feature-flags -p '{"data":{"enable-api-fields":"alpha","enable-git-resolver":"true"}}'
+
+# update the resolvers-feature-flags configmap in the tekton-pipelines-resolvers namespace
+kubectl patch -n tekton-pipelines-resolvers configmap resolvers-feature-flags -p '{"data":{"enable-git-resolver":"true"}}'
 ```
 
 The feature flags for the built-in resolvers are:

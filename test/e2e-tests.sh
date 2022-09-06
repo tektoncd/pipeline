@@ -52,9 +52,15 @@ function set_feature_gate() {
     resolver="true"
   fi
   printf "Setting feature gate to %s\n", ${gate}
-  jsonpatch=$(printf "{\"data\": {\"enable-api-fields\": \"%s\", \"enable-git-resolver\": \"%s\", \"enable-hub-resolver\": \"%s\"}, \"enable-cluster-resolver\": \"%s\"}" $1 "${resolver}" "${resolver}" "${resolver}")
+  jsonpatch=$(printf "{\"data\": {\"enable-api-fields\": \"%s\"}}" $1)
   echo "feature-flags ConfigMap patch: ${jsonpatch}"
   kubectl patch configmap feature-flags -n tekton-pipelines -p "$jsonpatch"
+  if [ "$gate" == "alpha" ]; then
+    printf "enabling resolvers\n"
+    jsonpatch=$(printf "{\"data\": {\"enable-git-resolver\": \"true\", \"enable-hub-resolver\": \"true\", \"enable-bundles-resolver\": \"true\", \"enable-cluster-resolver\": \"true\"}}")
+    echo "resolvers-feature-flags ConfigMap patch: ${jsonpatch}"
+    kubectl patch configmap resolvers-feature-flags -n tekton-pipelines-resolvers -p "$jsonpatch"
+  fi
 }
 
 function set_embedded_status() {

@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -348,11 +348,14 @@ func TestResolve(t *testing.T) {
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      configMapName,
-						Namespace: system.Namespace(),
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 					},
 					Data: confMap,
 				}, {
-					ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+						Name:      resolverconfig.GetFeatureFlagsConfigName(),
+					},
 					Data: map[string]string{
 						"enable-cluster-resolver": "true",
 					},

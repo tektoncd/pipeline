@@ -20,7 +20,7 @@ package testing
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 )
 
 // ContextWithGitResolverEnabled returns a context containing a Config with the enable-git-resolver feature flag enabled.
@@ -44,11 +44,11 @@ func ContextWithClusterResolverEnabled(ctx context.Context) context.Context {
 }
 
 func contextWithResolverEnabled(ctx context.Context, resolverFlag string) context.Context {
-	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+	featureFlags, _ := resolverconfig.NewFeatureFlagsFromMap(map[string]string{
 		resolverFlag: "true",
 	})
-	cfg := &config.Config{
+	cfg := &resolverconfig.Config{
 		FeatureFlags: featureFlags,
 	}
-	return config.ToContext(ctx, cfg)
+	return resolverconfig.ToContext(ctx, cfg)
 }

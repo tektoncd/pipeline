@@ -81,19 +81,3 @@ data:
   # Setting this flag to "true" enables CloudEvents for Runs, as long as a
   # CloudEvents sink is configured in the config-defaults config map
   send-cloudevents-for-runs: "false"
-  # Setting this flag to "true" enables remote resolution of Tekton OCI bundles.
-  # This is an experimental feature and thus should still be considered
-  # an alpha feature.
-  enable-bundles-resolver: "false"
-  # Setting this flag to "true" enables remote resolution of tasks and pipelines via the Tekton Hub.
-  # This is an experimental feature and thus should still be considered
-  # an alpha feature.
-  enable-hub-resolver: "false"
-  # Setting this flag to "true" enables remote resolution of tasks and pipelines from Git repositories.
-  # This is an experimental feature and thus should still be considered
-  # an alpha feature.
-  enable-git-resolver: "false"
-  # Setting this flag to "true" enables remote resolution of tasks and pipelines from other namespaces within the cluster.
-  # This is an experimental feature and thus should still be considered
-  # an alpha feature.
-  enable-cluster-resolver: "false"

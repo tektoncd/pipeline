@@ -16,7 +16,8 @@ This Resolver responds to type `git`.
 
 - A cluster running Tekton Pipeline v0.40.0 or later, with the `alpha` feature gate enabled.
 - The [built-in remote resolvers installed](./install.md#installing-and-configuring-remote-task-and-pipeline-resolution).
-- The `enable-git-resolver` feature flag set to `true`.
+- The `enable-git-resolver` feature flag in the `resolvers-feature-flags` ConfigMap in the
+  `tekton-pipelines-resolvers` namespace set to `true`.
 
 ## Configuration
 

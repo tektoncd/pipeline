@@ -21,7 +21,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
@@ -161,7 +161,7 @@ func (*ResolvedHubResource) Annotations() map[string]string {
 }
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
-	cfg := config.FromContextOrDefaults(ctx)
+	cfg := resolverconfig.FromContextOrDefaults(ctx)
 	if cfg.FeatureFlags.EnableHubResolver {
 		return false
 	}

@@ -7,6 +7,9 @@ For new users getting started with Tekton Pipeilne remote resolution, check out 
 
 ## Built-in Resolvers
 
+These resolvers are enabled by setting the appropriate feature flag in the `resolvers-feature-flags` 
+ConfigMap in the `tekton-pipelines-resolvers` namespace.
+
 1. [The `bundles` resolver](./bundle-resolver.md), enabled by setting the `enable-bundles-resolver`
    feature flag to `true`.
 1. [The `git` resolver](./git-resolver.md), enabled by setting the `enable-git-resolver`

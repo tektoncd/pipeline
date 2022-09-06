@@ -24,7 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/test"
@@ -103,7 +103,7 @@ func initializeResolverFrameworkControllerAssets(ctx context.Context, t *testing
 	ctx, cancel := context.WithCancel(ctx)
 	ensureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
-	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
+	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, resolverconfig.ResolversNamespace(system.Namespace()))
 	ctl := framework.NewController(ctx, resolver, modifiers...)(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
@@ -134,52 +134,19 @@ func setClockOnReconciler(r *framework.Reconciler) {
 }
 
 func ensureConfigurationConfigMapsExist(d *test.Data) {
-	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists, metricsExists bool
+	var featureFlagsExists bool
 	for _, cm := range d.ConfigMaps {
-		if cm.Name == config.GetDefaultsConfigName() {
-			defaultsExists = true
-		}
-		if cm.Name == config.GetFeatureFlagsConfigName() {
+		if cm.Name == resolverconfig.GetFeatureFlagsConfigName() {
 			featureFlagsExists = true
 		}
-		if cm.Name == config.GetArtifactBucketConfigName() {
-			artifactBucketExists = true
-		}
-		if cm.Name == config.GetArtifactPVCConfigName() {
-			artifactPVCExists = true
-		}
-		if cm.Name == config.GetMetricsConfigName() {
-			metricsExists = true
-		}
-	}
-	if !defaultsExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
 	}
 	if !featureFlagsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !artifactBucketExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !artifactPVCExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !metricsExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetMetricsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      resolverconfig.GetFeatureFlagsConfigName(),
+				Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
+			},
+			Data: map[string]string{},
 		})
 	}
 }

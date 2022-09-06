@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -148,7 +148,7 @@ func (r *Resolver) GetConfigName(context.Context) string {
 }
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
-	cfg := config.FromContextOrDefaults(ctx)
+	cfg := resolverconfig.FromContextOrDefaults(ctx)
 	if cfg.FeatureFlags.EnableClusterResolver {
 		return false
 	}

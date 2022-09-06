@@ -6,10 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"k8s.io/client-go/kubernetes"
-
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/system"
 )
 
@@ -23,15 +24,30 @@ func requireAnyGate(gates map[string]string) func(context.Context, *testing.T, *
 		if err != nil {
 			t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
 		}
+		resolverFeatureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(resolverconfig.ResolversNamespace(system.Namespace())).
+			Get(ctx, resolverconfig.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			t.Fatalf("Failed to get ConfigMap `%s`: %s", resolverconfig.GetFeatureFlagsConfigName(), err)
+		}
+		resolverMap := make(map[string]string)
+		if resolverFeatureFlagsCM != nil {
+			resolverMap = resolverFeatureFlagsCM.Data
+		}
 		pairs := []string{}
 		for name, value := range gates {
 			actual, ok := featureFlagsCM.Data[name]
 			if ok && value == actual {
 				return
 			}
+			actual, ok = resolverMap[name]
+			if ok && value == actual {
+				return
+			}
 			pairs = append(pairs, fmt.Sprintf("%q: %q", name, value))
 		}
-		t.Skipf("No feature flag in namespace %q matching %s\nExisting feature flag: %#v", system.Namespace(), strings.Join(pairs, " or "), featureFlagsCM.Data)
+		t.Skipf("No feature flag in namespace %q matching %s\nExisting feature flag: %#v\nExisting resolver feature flag (in namespace %q): %#v",
+			system.Namespace(), strings.Join(pairs, " or "), featureFlagsCM.Data,
+			resolverconfig.ResolversNamespace(system.Namespace()), resolverMap)
 	}
 }
 
@@ -45,10 +61,24 @@ func requireAllGates(gates map[string]string) func(context.Context, *testing.T, 
 		if err != nil {
 			t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
 		}
+		resolverFeatureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(resolverconfig.ResolversNamespace(system.Namespace())).
+			Get(ctx, resolverconfig.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			t.Fatalf("Failed to get ConfigMap `%s`: %s", resolverconfig.GetFeatureFlagsConfigName(), err)
+		}
+		resolverMap := make(map[string]string)
+		if resolverFeatureFlagsCM != nil {
+			resolverMap = resolverFeatureFlagsCM.Data
+		}
 		pairs := []string{}
 		for name, value := range gates {
 			actual, ok := featureFlagsCM.Data[name]
-			if !ok || value != actual {
+			if !ok {
+				actual, ok = resolverMap[name]
+				if !ok || value != actual {
+					pairs = append(pairs, fmt.Sprintf("%q is %q, want %s", name, actual, value))
+				}
+			} else if value != actual {
 				pairs = append(pairs, fmt.Sprintf("%q is %q, want %s", name, actual, value))
 			}
 		}
