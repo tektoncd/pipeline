@@ -127,9 +127,30 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 		logger.Infof("The Custom Task Run %v timed out", r.GetName())
 		r.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
 		r.Status.MarkRunFailed("TimedOut", WaitTaskCancelledByRunTimeoutMsg)
+
+		// Retry if the current RetriesStatus hasn't reached the retries limit
+		if r.Spec.Retries > len(r.Status.RetriesStatus) {
+			logger.Infof("Run timed out, retrying... %#v", r.Status)
+			retryRun(r)
+			return controller.NewRequeueImmediately()
+		}
+
 		return nil
 	}
 
 	// Don't emit events on nop-reconciliations, it causes scale problems.
 	return nil
+}
+
+func retryRun(run *v1alpha1.Run) {
+	// Add retry history
+	newStatus := *run.Status.DeepCopy()
+	newStatus.RetriesStatus = nil
+	run.Status.RetriesStatus = append(run.Status.RetriesStatus, newStatus)
+
+	// Clear status
+	run.Status.StartTime = nil
+	run.Status.CompletionTime = nil
+
+	run.Status.MarkRunRunning("", "")
 }
