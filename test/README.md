@@ -2,17 +2,24 @@
 
 To run tests:
 
-```shell
-# Land the latest codes
-ko apply -R -f ./config/
-
+[Unit tests](#unit-tests) and build tests (those run by [presubmits](#presubmit-tests)) run against your Pipelines clone:
+```sh
 # Unit tests
 go test ./...
+# Build tests
+./test/presubmit-tests.sh --build-tests
+```
 
-# Integration tests (against your current kube cluster)
+[E2E tests](#end-to-end-tests) run test cases in your local Pipelines clone
+against the Pipelines installation on your current kube cluster.
+To ensure your local changes are reflected on your cluster, you must first build
+and install them with `ko apply -R -f ./config/`.
+
+```shell
+# Integration tests
 go test -v -count=1 -tags=e2e -timeout=20m ./test
 
-# Conformance tests  (against your current kube cluster)
+# Conformance tests
 go test -v -count=1 -tags=conformance -timeout=10m ./test
 ```
 
