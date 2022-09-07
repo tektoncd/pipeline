@@ -301,3 +301,28 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 	}
 	return errs
 }
+
+// Instead of rejecting the deprecated field entirely, warnPipelineRunFieldsDeprecation
+// emits a WarningLevel FieldError to notify users that the CRD created contains one
+// or more fields that are deprecated.
+func warnPipelineRunFieldsDeprecation(ctx context.Context, prs PipelineRunSpec) (errs *apis.FieldError) {
+	if prs.Resources != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "Resources field is deprecated in v1 PipelineRun",
+			Paths:   []string{"Resources"},
+		})
+	}
+	if prs.Timeout != nil {
+		errs = errs.Also(&apis.FieldError{
+			Message: "Timeout field is deprecated in v1 PipelineRun",
+			Paths:   []string{"Timeout"},
+		})
+	}
+	if prs.PipelineRef.Bundle != "" {
+		errs = errs.Also(&apis.FieldError{
+			Message: "Bundle field is deprecated in v1 PipelineRun",
+			Paths:   []string{"Bundle"},
+		})
+	}
+	return errs.At(apis.WarningLevel)
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -3580,5 +3581,51 @@ func enableFeatures(t *testing.T, features []string) func(context.Context) conte
 			Data:       data,
 		})
 		return s.ToContext(ctx)
+	}
+}
+
+func TestPipelineDeprecationWarning(t *testing.T) {
+	tests := []struct {
+		name          string
+		taskSpec      *v1beta1.TaskSpec
+		expectedError *apis.FieldError
+	}{{
+		name: "Resources",
+		taskSpec: &v1beta1.TaskSpec{
+			Steps: validSteps,
+			Resources: TaskResources{
+				Inputs: []v1beta1.TaskResource{validResource},
+			},
+		},
+		expectedError: &apis.FieldError{
+			Message: "Resources field is deprecated in v1 Task",
+			Paths:   []string{"Resources"},
+		},
+	}, {
+		name: "StepTemplate",
+		taskSpec: &v1beta1.TaskSpec{
+			Steps: validSteps,
+			StepTemplate: &v1beta1.StepTemplate{
+				Env:  []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
+				Args: []string{"template", "args"},
+			},
+		},
+		expectedError: &apis.FieldError{
+			Message: "StepTemplate field is deprecated in v1 Task",
+			Paths:   []string{"StepTemplate"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ts := tt.taskSpec
+			ctx := context.Background()
+			err := ts.Validate(ctx)
+			if err == nil && tt.expectedError.Error() != "" {
+				t.Fatalf("Expected an error, got nothing for %v", ts)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }

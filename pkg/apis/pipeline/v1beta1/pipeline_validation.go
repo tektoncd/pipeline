@@ -78,6 +78,8 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateResultsFromMatrixedPipelineTasksNotConsumed(ps.Tasks, ps.Finally))
+	// Emit warnings for deprecated fields
+	errs = errs.Also(warnPipelineFieldsDeprecation(ctx, ps))
 	return errs
 }
 
@@ -530,6 +532,9 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 	return errs
 }
 
+// Instead of rejecting the deprecated field entirely, warnPipelineFieldsDeprecation
+// emits a WarningLevel FieldError to notify users that the CRD created contains one
+// or more fields that are deprecated.
 func warnPipelineFieldsDeprecation(ctx context.Context, ps *PipelineSpec) (errs *apis.FieldError) {
 	if ps.Resources != nil {
 		errs = errs.Also(&apis.FieldError{
@@ -537,11 +542,14 @@ func warnPipelineFieldsDeprecation(ctx context.Context, ps *PipelineSpec) (errs 
 			Paths:   []string{"Resources"},
 		})
 	}
-	// if ps. != nil {
-	// 	errs = errs.Also(&apis.FieldError{
-	// 		Message: "Bundle field is deprecated in v1 Pipeline",
-	// 		Paths:   []string{"Bundle"},
-	// 	})
-	// }
+	for _, pt := range ps.Tasks {
+		if pt.TaskRef.Bundle != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "Bundle field is deprecated in v1 Pipeline",
+				Paths:   []string{"Bundle"},
+			})
+			break
+		}
+	}
 	return errs.At(apis.WarningLevel)
 }
