@@ -469,51 +469,38 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 // Deps returns all other PipelineTask dependencies of this PipelineTask, based on resource usage or ordering
 func (pt PipelineTask) Deps() []string {
-	deps := []string{}
+	// hold the list of dependencies in a set to avoid duplicates
+	deps := sets.NewString()
 
-	deps = append(deps, pt.resourceDeps()...)
-	deps = append(deps, pt.orderingDeps()...)
-
-	uniqueDeps := sets.NewString()
-	for _, w := range deps {
-		if uniqueDeps.Has(w) {
-			continue
-		}
-		uniqueDeps.Insert(w)
-	}
-
-	return uniqueDeps.List()
-}
-
-func (pt PipelineTask) resourceDeps() []string {
-	resourceDeps := []string{}
+	// add any new dependents from a resource/workspace
 	if pt.Resources != nil {
 		for _, rd := range pt.Resources.Inputs {
-			resourceDeps = append(resourceDeps, rd.From...)
+			for _, f := range rd.From {
+				deps.Insert(f)
+			}
 		}
 	}
 
 	// Add any dependents from conditional resources.
 	for _, cond := range pt.Conditions {
 		for _, rd := range cond.Resources {
-			resourceDeps = append(resourceDeps, rd.From...)
+			for _, f := range rd.From {
+				deps.Insert(f)
+			}
 		}
 	}
 
-	// Add any dependents from result references.
+	// add any new dependents from result references - resource dependency
 	for _, ref := range PipelineTaskResultRefs(&pt) {
-		resourceDeps = append(resourceDeps, ref.PipelineTask)
+		deps.Insert(ref.PipelineTask)
 	}
 
-	return resourceDeps
-}
-
-func (pt PipelineTask) orderingDeps() []string {
-	orderingDeps := []string{}
+	// add any new dependents from runAfter - order dependency
 	for _, runAfter := range pt.RunAfter {
-		orderingDeps = append(orderingDeps, runAfter)
+		deps.Insert(runAfter)
 	}
-	return orderingDeps
+
+	return deps.List()
 }
 
 // PipelineTaskList is a list of PipelineTasks
