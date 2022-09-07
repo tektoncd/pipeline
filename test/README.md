@@ -23,6 +23,15 @@ go test -v -count=1 -tags=e2e -timeout=20m ./test
 go test -v -count=1 -tags=conformance -timeout=10m ./test
 ```
 
+By running the commands above, you start the tests on the cluster of `current-context`
+in local kubeconfig file (~/.kube/config by default) in you local machine.
+
+> Sometimes local tests pass but presubmit tests fail, one possible reason
+is the difference of running environments. The envs that our presubmit test
+uses are stored in ./*.env files. Specifically,
+> - e2e-tests-kind-prow-alpha.env for [`pull-tekton-pipeline-alpha-integration-tests`](https://github.com/tektoncd/plumbing/blob/d2c8ccb63d02c6e72c62def788af32d63ff1981a/prow/config.yaml#L1304)
+> - e2e-tests-kind-prow.env for [`pull-tekton-pipeline-integration-tests`](https://github.com/tektoncd/plumbing/blob/d2c8ccb63d02c6e72c62def788af32d63ff1981a/prow/config.yaml#L1249)
+
 ## Unit tests
 
 Unit tests live side by side with the code they are testing and can be run with:
