@@ -33,8 +33,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/tools/record"
+	testclock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
@@ -45,7 +45,7 @@ import (
 
 var (
 	now                      = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
-	testClock                = clock.NewFakePassiveClock(now)
+	testClock                = testclock.NewFakePassiveClock(now)
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
 )
 
