@@ -640,13 +640,50 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 					},
 				}},
 			},
+		}, {
+			Name: "task-7",
+			Resources: &PipelineTaskResources{
+				Inputs: []PipelineTaskInputResource{{
+					From: []string{"task-1", "task-1"},
+				}},
+			},
+		}, {
+			Name: "task-8",
+			WhenExpressions: WhenExpressions{{
+				Input:    "$(tasks.task-3.results.result1)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}, {
+				Input:    "$(tasks.task-3.results.result2)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}},
+		}, {
+			Name: "task-9",
+			Params: []Param{{
+				Value: ArrayOrString{
+					Type:      "string",
+					StringVal: "$(tasks.task-4.results.result1)",
+				}}, {
+				Value: ArrayOrString{
+					Type:      "string",
+					StringVal: "$(tasks.task-4.results.result2)",
+				}},
+			},
+		}, {
+			Name:     "task-10",
+			RunAfter: []string{"task-1", "task-1", "task-1", "task-1"},
 		}},
 		expectedDeps: map[string][]string{
-			"task-2": {"task-1"},
-			"task-3": {"task-1", "task-2"},
-			"task-4": {"task-1", "task-2", "task-3"},
-			"task-5": {"task-1", "task-2", "task-3", "task-4"},
-			"task-6": {"task-1", "task-2", "task-3", "task-4", "task-5"},
+			"task-2":  {"task-1"},
+			"task-3":  {"task-1", "task-2"},
+			"task-4":  {"task-1", "task-2", "task-3"},
+			"task-5":  {"task-1", "task-2", "task-3", "task-4"},
+			"task-6":  {"task-1", "task-2", "task-3", "task-4", "task-5"},
+			"task-7":  {"task-1"},
+			"task-8":  {"task-3"},
+			"task-9":  {"task-4"},
+			"task-10": {"task-1"},
 		},
 	}}
 	for _, tc := range pipelines {
