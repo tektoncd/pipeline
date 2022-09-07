@@ -969,7 +969,7 @@ func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
 }
 
 func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
-	largePipelineState := buildPipelineStateWithLargeDepencyGraph(t)
+	largePipelineState := buildPipelineStateWithLargeDependencyGraph(t)
 	tcs := []struct {
 		name          string
 		state         PipelineRunState
@@ -1037,6 +1037,14 @@ func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 		state:         largePipelineState,
 		expectedNames: []string{},
 	}, {
+		name:          "large deps through params, not started",
+		state:         buildPipelineStateWithMultipleTaskResults(t, false),
+		expectedNames: []string{},
+	}, {
+		name:          "large deps through params and when expressions, not started",
+		state:         buildPipelineStateWithMultipleTaskResults(t, true),
+		expectedNames: []string{},
+	}, {
 		name:          "one-run-started",
 		state:         oneRunStartedState,
 		expectedNames: []string{},
@@ -1069,7 +1077,7 @@ func TestPipelineRunState_CompletedOrSkippedDAGTasks(t *testing.T) {
 	}
 }
 
-func buildPipelineStateWithLargeDepencyGraph(t *testing.T) PipelineRunState {
+func buildPipelineStateWithLargeDependencyGraph(t *testing.T) PipelineRunState {
 	t.Helper()
 	var task = &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1117,6 +1125,74 @@ func buildPipelineStateWithLargeDepencyGraph(t *testing.T) PipelineRunState {
 				Name:    fmt.Sprintf("t%d", i),
 				Params:  params,
 				TaskRef: &v1beta1.TaskRef{Name: "task"},
+			},
+			TaskRun: nil,
+			ResolvedTaskResources: &resources.ResolvedTaskResources{
+				TaskSpec: &task.Spec,
+			},
+		},
+		)
+	}
+	return pipelineRunState
+}
+
+func buildPipelineStateWithMultipleTaskResults(t *testing.T, includeWhen bool) PipelineRunState {
+	t.Helper()
+	var task = &v1beta1.Task{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "task",
+		},
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{{
+				Name: "step1",
+			}},
+		},
+	}
+	var pipelineRunState PipelineRunState
+	pipelineRunState = []*ResolvedPipelineRunTask{{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "t1",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		},
+		TaskRun: nil,
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}}
+	for i := 2; i < 400; i++ {
+		var params []v1beta1.Param
+		whenExpressions := v1beta1.WhenExpressions{}
+		var alpha byte
+		// the task has a reference to multiple task results (a through j) from each parent task - causing a redundant references
+		// the task dependents on all predecessors in a graph through params and/or whenExpressions
+		for j := 1; j < i; j++ {
+			for alpha = 'a'; alpha <= 'j'; alpha++ {
+				// include param with task results
+				params = append(params, v1beta1.Param{
+					Name: fmt.Sprintf("%c", alpha),
+					Value: v1beta1.ArrayOrString{
+						Type:      v1beta1.ParamTypeString,
+						StringVal: fmt.Sprintf("$(tasks.t%d.results.%c)", j, alpha),
+					},
+				})
+			}
+			if includeWhen {
+				for alpha = 'a'; alpha <= 'j'; alpha++ {
+					// include when expressions with task results
+					whenExpressions = append(whenExpressions, v1beta1.WhenExpression{
+						Input:    fmt.Sprintf("$(tasks.t%d.results.%c)", j, alpha),
+						Operator: selection.In,
+						Values:   []string{"true"},
+					})
+				}
+			}
+		}
+		pipelineRunState = append(pipelineRunState, &ResolvedPipelineRunTask{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:            fmt.Sprintf("t%d", i),
+				Params:          params,
+				TaskRef:         &v1beta1.TaskRef{Name: "task"},
+				WhenExpressions: whenExpressions,
 			},
 			TaskRun: nil,
 			ResolvedTaskResources: &resources.ResolvedTaskResources{
