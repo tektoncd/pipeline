@@ -31,7 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/clock"
+	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/test/helpers"
 )
