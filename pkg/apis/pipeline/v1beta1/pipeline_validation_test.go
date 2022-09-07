@@ -25,7 +25,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -660,8 +659,9 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: pipeline declared resources didn't match usage in Tasks: Didn't provide required values: [missing-great-resource missing-wonderful-resource]`,
-			Paths:   []string{"resources"},
+			Message: `Resources field is deprecated in v1 Pipeline: Resources
+invalid value: pipeline declared resources didn't match usage in Tasks: Didn't provide required values: [missing-great-resource missing-wonderful-resource]`,
+			Paths: []string{"resources"},
 		},
 	}, {
 		name: "invalid pipeline spec - from referring to a pipeline task which does not exist",
@@ -3587,39 +3587,49 @@ func enableFeatures(t *testing.T, features []string) func(context.Context) conte
 func TestPipelineDeprecationWarning(t *testing.T) {
 	tests := []struct {
 		name          string
-		taskSpec      *v1beta1.TaskSpec
+		pipelineSpec  *PipelineSpec
 		expectedError *apis.FieldError
 	}{{
 		name: "Resources",
-		taskSpec: &v1beta1.TaskSpec{
-			Steps: validSteps,
-			Resources: TaskResources{
-				Inputs: []v1beta1.TaskResource{validResource},
-			},
+		pipelineSpec: &PipelineSpec{
+			Tasks: []PipelineTask{{
+				Name: "non-final-task", TaskRef: &TaskRef{Name: "foo"},
+			}},
+			Resources: []PipelineDeclaredResource{{
+				Name:     "app-repo",
+				Type:     "git",
+				Optional: false,
+			}, {
+				Name:     "app-image",
+				Type:     "git",
+				Optional: false,
+			}},
 		},
 		expectedError: &apis.FieldError{
-			Message: "Resources field is deprecated in v1 Task",
+			Message: "Resources field is deprecated in v1 Pipeline",
 			Paths:   []string{"Resources"},
 		},
 	}, {
-		name: "StepTemplate",
-		taskSpec: &v1beta1.TaskSpec{
-			Steps: validSteps,
-			StepTemplate: &v1beta1.StepTemplate{
-				Env:  []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
-				Args: []string{"template", "args"},
-			},
+		name: "Bundle",
+		pipelineSpec: &PipelineSpec{
+			Tasks: []PipelineTask{{
+				Name: "non-final-task",
+				TaskRef: &TaskRef{
+					Name:   "foo",
+					Bundle: "test-bundle",
+				},
+			}},
 		},
 		expectedError: &apis.FieldError{
-			Message: "StepTemplate field is deprecated in v1 Task",
-			Paths:   []string{"StepTemplate"},
+			Message: "Bundle field is deprecated in v1 Pipeline",
+			Paths:   []string{"Bundle"},
 		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := tt.taskSpec
+			ts := tt.pipelineSpec
 			ctx := context.Background()
-			err := ts.Validate(ctx)
+			err := ts.Validate(enableTektonOCIBundles(t)(ctx))
 			if err == nil && tt.expectedError.Error() != "" {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}
@@ -3627,5 +3637,19 @@ func TestPipelineDeprecationWarning(t *testing.T) {
 				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+// TODO refactor in #5111
+func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		s := config.NewStore(logtesting.TestLogger(t))
+		s.OnConfigChanged(&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-tekton-oci-bundles": "true",
+			},
+		})
+		return s.ToContext(ctx)
 	}
 }

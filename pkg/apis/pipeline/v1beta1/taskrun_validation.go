@@ -245,11 +245,13 @@ func warnTaskRunFieldsDeprecation(ctx context.Context, trs *TaskRunSpec) (errs *
 			Paths:   []string{"Resources"},
 		})
 	}
-	if trs.TaskRef.Bundle != "" {
-		errs = errs.Also(&apis.FieldError{
-			Message: "Bundle field is deprecated in v1 TaskRun",
-			Paths:   []string{"Bundle"},
-		})
+	if trs.TaskRef != nil {
+		if trs.TaskRef.Bundle != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "Bundle field is deprecated in v1 TaskRun",
+				Paths:   []string{"Bundle"},
+			})
+		}
 	}
 	return errs.At(apis.WarningLevel)
 }

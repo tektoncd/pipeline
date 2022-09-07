@@ -1072,37 +1072,52 @@ func TestPipelineRunWithTimeout_Validate(t *testing.T) {
 
 func TestPipelineRunDeprecationWarning(t *testing.T) {
 	tests := []struct {
-		name          string
-		taskSpec      *v1beta1.PipelineRunSpec
-		expectedError *apis.FieldError
+		name            string
+		pipelineRunSpec *v1beta1.PipelineRunSpec
+		expectedError   *apis.FieldError
 	}{{
 		name: "Resources",
-		taskSpec: &v1beta1.PipelineRunSpec{
+		pipelineRunSpec: &v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			Resources: []v1beta1.PipelineResourceBinding{{
+				ResourceRef: &v1beta1.PipelineResourceRef{
+					Name: "the-git-with-branch",
+				},
+				Name: "gitspace",
+			}},
 		},
 		expectedError: &apis.FieldError{
-			Message: "Resources field is deprecated in v1 Task",
+			Message: "Resources field is deprecated in v1 PipelineRun",
 			Paths:   []string{"Resources"},
 		},
 	}, {
-		name: "StepTemplate",
-		taskSpec: &v1beta1.TaskSpec{
-			Steps: validSteps,
-			StepTemplate: &v1beta1.StepTemplate{
-				Env:  []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
-				Args: []string{"template", "args"},
+		name: "Timeout",
+		pipelineRunSpec: &v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+			Timeout:     &metav1.Duration{Duration: 5 * time.Minute},
+		},
+		expectedError: &apis.FieldError{
+			Message: "Timeout field is deprecated in v1 PipelineRun",
+			Paths:   []string{"Timeout"},
+		},
+	}, {
+		name: "Bundle",
+		pipelineRunSpec: &v1beta1.PipelineRunSpec{
+			PipelineRef: &v1beta1.PipelineRef{
+				Name:   "foo",
+				Bundle: "test-bundle",
 			},
 		},
 		expectedError: &apis.FieldError{
-			Message: "StepTemplate field is deprecated in v1 Task",
-			Paths:   []string{"StepTemplate"},
+			Message: "Bundle field is deprecated in v1 PipelineRun",
+			Paths:   []string{"Bundle"},
 		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ts := tt.taskSpec
+			ts := tt.pipelineRunSpec
 			ctx := context.Background()
-			err := ts.Validate(ctx)
+			err := ts.Validate(enableTektonOCIBundles(t)(ctx))
 			if err == nil && tt.expectedError.Error() != "" {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}

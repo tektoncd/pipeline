@@ -540,15 +540,17 @@ func warnPipelineFieldsDeprecation(ctx context.Context, ps *PipelineSpec) (errs 
 		errs = errs.Also(&apis.FieldError{
 			Message: "Resources field is deprecated in v1 Pipeline",
 			Paths:   []string{"Resources"},
-		})
+		}).At(apis.WarningLevel)
 	}
 	for _, pt := range ps.Tasks {
-		if pt.TaskRef.Bundle != "" {
-			errs = errs.Also(&apis.FieldError{
-				Message: "Bundle field is deprecated in v1 Pipeline",
-				Paths:   []string{"Bundle"},
-			})
-			break
+		if pt.TaskRef != nil {
+			if pt.TaskRef.Bundle != "" {
+				errs = errs.Also(&apis.FieldError{
+					Message: "Bundle field is deprecated in v1 Pipeline",
+					Paths:   []string{"Bundle"},
+				}).At(apis.WarningLevel)
+				break
+			}
 		}
 	}
 	return errs.At(apis.WarningLevel)
