@@ -528,6 +528,32 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 					},
 				}},
 			},
+		}, {
+			Name: "task-7",
+			When: WhenExpressions{{
+				Input:    "$(tasks.task-3.results.result1)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}, {
+				Input:    "$(tasks.task-3.results.result2)",
+				Operator: "in",
+				Values:   []string{"foo"},
+			}},
+		}, {
+			Name: "task-8",
+			Params: []Param{{
+				Value: ParamValue{
+					Type:      "string",
+					StringVal: "$(tasks.task-4.results.result1)",
+				}}, {
+				Value: ParamValue{
+					Type:      "string",
+					StringVal: "$(tasks.task-4.results.result2)",
+				}},
+			},
+		}, {
+			Name:     "task-9",
+			RunAfter: []string{"task-1", "task-1", "task-1", "task-1"},
 		}},
 		expectedDeps: map[string][]string{
 			"task-2": {"task-1"},
@@ -535,6 +561,9 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			"task-4": {"task-1", "task-2", "task-3"},
 			"task-5": {"task-1", "task-2", "task-3", "task-4"},
 			"task-6": {"task-1", "task-2", "task-3", "task-4", "task-5"},
+			"task-7": {"task-3"},
+			"task-8": {"task-4"},
+			"task-9": {"task-1"},
 		},
 	}}
 	for _, tc := range pipelines {
