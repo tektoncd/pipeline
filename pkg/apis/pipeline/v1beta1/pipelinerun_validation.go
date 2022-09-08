@@ -250,7 +250,7 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 	if ps.Timeouts.Tasks != nil {
 		tasksTimeoutErr := false
 		tasksTimeoutStr := ps.Timeouts.Tasks.Duration.String()
-		if ps.Timeouts.Tasks.Duration > timeout {
+		if ps.Timeouts.Tasks.Duration > timeout && timeout != config.NoTimeoutDuration {
 			tasksTimeoutErr = true
 		}
 		if ps.Timeouts.Tasks.Duration == config.NoTimeoutDuration && timeout != config.NoTimeoutDuration {
@@ -265,7 +265,7 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 	if ps.Timeouts.Finally != nil {
 		finallyTimeoutErr := false
 		finallyTimeoutStr := ps.Timeouts.Finally.Duration.String()
-		if ps.Timeouts.Finally.Duration > timeout {
+		if ps.Timeouts.Finally.Duration > timeout && timeout != config.NoTimeoutDuration {
 			finallyTimeoutErr = true
 		}
 		if ps.Timeouts.Finally.Duration == config.NoTimeoutDuration && timeout != config.NoTimeoutDuration {

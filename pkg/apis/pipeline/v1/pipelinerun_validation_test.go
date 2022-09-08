@@ -793,6 +793,38 @@ func TestPipelineRunWithTimeout_Validate(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "timeouts.tasks only",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 0 * time.Hour},
+					Tasks:    &metav1.Duration{Duration: 30 * time.Minute},
+				},
+			},
+		},
+	}, {
+		name: "timeouts.finally only",
+		pr: v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "prname",
+				},
+				Timeouts: &v1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: 0 * time.Hour},
+					Finally:  &metav1.Duration{Duration: 30 * time.Minute},
+				},
+			},
+		},
 	}}
 
 	for _, ts := range tests {

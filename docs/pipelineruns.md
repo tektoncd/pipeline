@@ -866,7 +866,7 @@ timeouts:
 All three sub-fields are optional, and will be automatically processed according to the following constraint:
 * `timeouts.pipeline >= timeouts.tasks + timeouts.finally`
 
-You may combine the timeouts as follow:
+Example timeouts usages are as follows:
 
 Combination 1: Set the timeout for the entire `pipeline` and reserve a portion of it for `tasks`.
 
@@ -885,6 +885,26 @@ kind: PipelineRun
 spec:
   timeouts:
     pipeline: "0h4m0s"
+    finally: "0h3m0s"
+```
+
+Combination 3: Set only a `tasks` timeout, with no timeout for the entire `pipeline`.
+
+```yaml
+kind: PipelineRun
+spec:
+  timeouts:
+    pipeline: "0"  # No timeout
+    tasks: "0h3m0s"
+```
+
+Combination : Set only a `finally` timeout, with no timeout for the entire `pipeline`.
+
+```yaml
+kind: PipelineRun
+spec:
+  timeouts:
+    pipeline: "0"  # No timeout
     finally: "0h3m0s"
 ```
 
