@@ -7,7 +7,7 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.11.0
 	github.com/containerd/containerd v1.6.8
 	github.com/go-git/go-git/v5 v5.4.2
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.5.9
 	github.com/google/go-containerregistry v0.8.1-0.20220216220642-00c59d91847c
 	github.com/google/go-containerregistry/pkg/authn/k8schain v0.0.0-20220328141311-efc62d802606
 	github.com/google/uuid v1.3.0
