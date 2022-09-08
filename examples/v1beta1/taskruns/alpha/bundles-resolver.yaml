@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: bundles-resolver-
+spec:
+  workspaces:
+    - name: output
+      emptyDir: {}
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  taskRef:
+    resolver: bundles
+    params:
+      - name: bundle
+        value: gcr.io/tekton-releases/catalog/upstream/git-clone@sha256:8e2c3fb0f719d6463e950f3e44965aa314e69b800833e29e68ba2616bb82deeb
+      - name: name
+        value: git-clone
+      - name: kind
+        value: task
+  params:
+    - name: url
+      value: https://github.com/kelseyhightower/nocode
+    - name: revision
+      value: master

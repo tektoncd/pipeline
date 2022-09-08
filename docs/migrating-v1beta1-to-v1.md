@@ -64,7 +64,28 @@ spec:
 ```
 
 ## Replacing ClusterTask with Remote Resolution
-`ClusterTask` is deprecated. Please use the `cluster` resolver instead, for example: .... 
-# TODO add example after #5404 is merged
+`ClusterTask` is deprecated. Please use the `cluster` resolver instead.
+
+The [`enable-cluster-resolver`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#customizing-the-pipelines-controller-behavior) feature flag must be enabled to use this feature.
+
+The `cluster` resolver allows `Pipeline`s, `PipelineRun`s, and `TaskRun`s to refer
+to `Pipeline`s and `Task`s defined in other namespaces in the cluster.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: cluster-task-reference
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: example-task
+    - name: namespace
+      value: example-namespace
+```
 
 For more information, see [Remote resolution](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resource-resolution.md).

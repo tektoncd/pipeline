@@ -1,0 +1,18 @@
+# This Pipeline is intended to be referenced in an example PipelineRun under ../examples/v1beta1/pipelineruns.
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: simple-example-pipeline
+spec:
+  tasks:
+    - name: echo-good-morning
+      taskSpec:
+        metadata:
+          labels:
+            app: "example"
+        steps:
+          - name: echo
+            image: ubuntu
+            script: |
+              #!/usr/bin/env bash
+              echo "Good Morning!"

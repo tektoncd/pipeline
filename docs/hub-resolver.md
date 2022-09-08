@@ -61,7 +61,7 @@ spec:
     - name: catalog # optional
       value: Tekton
     - name: kind
-      value: pipeline
+      value: task
     - name: name
       value: git-clone
     - name: version
