@@ -53,7 +53,6 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ValidatePipelineTasks(ctx, ps.Tasks, ps.Finally))
 	// Validate the pipeline task graph
 	errs = errs.Also(validateGraph(ps.Tasks))
-	errs = errs.Also(validateParamResults(ps.Tasks))
 	// The parameter variables should be valid
 	errs = errs.Also(validatePipelineParameterVariables(ctx, ps.Tasks, ps.Params).ViaField("tasks"))
 	errs = errs.Also(validatePipelineParameterVariables(ctx, ps.Finally, ps.Params).ViaField("finally"))
@@ -220,26 +219,6 @@ func validatePipelineContextVariablesInParamValues(paramValues []string, prefix 
 	return errs
 }
 
-// validateParamResults ensures that task result variables are properly configured
-func validateParamResults(tasks []PipelineTask) (errs *apis.FieldError) {
-	for idx, task := range tasks {
-		for _, param := range task.Params {
-			expressions, ok := GetVarSubstitutionExpressionsForParam(param)
-			if ok {
-				if LooksLikeContainsResultRefs(expressions) {
-					expressions = filter(expressions, looksLikeResultRef)
-					resultRefs := NewResultRefs(expressions)
-					if len(expressions) != len(resultRefs) {
-						errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs),
-							"value").ViaFieldKey("params", param.Name).ViaFieldIndex("tasks", idx))
-					}
-				}
-			}
-		}
-	}
-	return errs
-}
-
 func filter(arr []string, cond func(string) bool) []string {
 	result := []string{}
 	for i := range arr {
@@ -377,11 +356,11 @@ func validateWhenExpressions(tasks []PipelineTask, finalTasks []PipelineTask) (e
 
 // validateGraph ensures the Pipeline's dependency Graph (DAG) make sense: that there is no dependency
 // cycle or that they rely on values from Tasks that ran previously.
-func validateGraph(tasks []PipelineTask) *apis.FieldError {
+func validateGraph(tasks []PipelineTask) (errs *apis.FieldError) {
 	if _, err := dag.Build(PipelineTaskList(tasks), PipelineTaskList(tasks).Deps()); err != nil {
-		return apis.ErrInvalidValue(err.Error(), "tasks")
+		errs = errs.Also(apis.ErrInvalidValue(err.Error(), "tasks"))
 	}
-	return nil
+	return errs
 }
 
 func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.FieldError) {

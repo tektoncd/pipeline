@@ -305,19 +305,19 @@ func TestLooksLikeResultRef(t *testing.T) {
 		},
 		want: true,
 	}, {
-		name: "test expression: looks like result ref, but typo in 'task' separator",
+		name: "test expression: invalid result ref, typo in 'task' separator",
 		param: v1.Param{
 			Name:  "param",
 			Value: *v1.NewStructuredValues("$(task.sumTasks.results.sumResult)"),
 		},
-		want: true,
+		want: false,
 	}, {
-		name: "test expression: looks like result ref, but typo in 'results' separator",
+		name: "test expression: invalid result ref, typo in 'results' separator",
 		param: v1.Param{
 			Name:  "param",
 			Value: *v1.NewStructuredValues("$(tasks.sumTasks.result.sumResult)"),
 		},
-		want: true,
+		want: false,
 	}, {
 		name: "test expression: missing 'task' separator",
 		param: v1.Param{
@@ -555,20 +555,6 @@ func TestLooksLikeResultRefWhenExpressionTrue(t *testing.T) {
 			name: "test expression that is a result ref",
 			we: v1.WhenExpression{
 				Input:    "$(tasks.sumTasks.results.sumResult)",
-				Operator: selection.In,
-				Values:   []string{"foo"},
-			},
-		}, {
-			name: "test expression: looks like result ref, but typo in 'task' separator",
-			we: v1.WhenExpression{
-				Input:    "$(task.sumTasks.results.sumResult)",
-				Operator: selection.In,
-				Values:   []string{"foo"},
-			},
-		}, {
-			name: "test expression: looks like result ref, but typo in 'results' separator",
-			we: v1.WhenExpression{
-				Input:    "$(tasks.sumTasks.result.sumResult)",
 				Operator: selection.In,
 				Values:   []string{"foo"},
 			},
