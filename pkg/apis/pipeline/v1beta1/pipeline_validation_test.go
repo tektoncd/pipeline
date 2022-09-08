@@ -494,7 +494,22 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 			Paths:   []string{"tasks[0].when[0]", "finally[0].when[0]"},
 		},
 	}, {
-		name: "invalid pipeline with one pipeline task having when expression with misconfigured result reference",
+		name: "invalid pipeline with a pipelineTask having when expression with invalid result reference - empty referenced task",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Tasks: []PipelineTask{{
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				WhenExpressions: []WhenExpression{{
+					Input:    "$(tasks..results.bResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
+			}},
+		},
+		expectedError: *apis.ErrGeneric(`invalid value: couldn't add link between invalid-pipeline-task and : task invalid-pipeline-task depends on  but  wasn't present in Pipeline`, "tasks"),
+	}, {
+		name: "invalid pipeline with a pipelineTask having when expression with invalid result reference - referenced task does not exist in the pipeline",
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",
 			Tasks: []PipelineTask{{
@@ -504,18 +519,37 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 				Name:    "invalid-pipeline-task",
 				TaskRef: &TaskRef{Name: "foo-task"},
 				WhenExpressions: []WhenExpression{{
-					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Input:    "$(tasks.a-task.results.bResult)",
 					Operator: selection.In,
 					Values:   []string{"bar"},
 				}},
 			}},
 		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: expected all of the expressions [tasks.a-task.resultTypo.bResult] to be result expressions but only [] were`,
-			Paths:   []string{"tasks[1].when[0]"},
-		},
+		expectedError: *apis.ErrGeneric(`invalid value: couldn't add link between invalid-pipeline-task and a-task: task invalid-pipeline-task depends on a-task but a-task wasn't present in Pipeline`, "tasks"),
 	}, {
-		name: "invalid pipeline with final task having when expression with misconfigured result reference",
+		name: "invalid pipeline with a pipelineTask having when expression with invalid result reference - referenced task does not exist in the pipeline",
+		ps: &PipelineSpec{
+			Description: "this is an invalid pipeline with invalid pipeline task",
+			Params:      []ParamSpec{{Name: "prefix", Type: ParamTypeString}},
+			Tasks: []PipelineTask{{
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
+				Name:    "invalid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+				Params: []Param{{
+					Name: "prefix", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"},
+				}},
+				WhenExpressions: []WhenExpression{{
+					Input:    "$(params.prefix):$(tasks.a-task.results.bResult)",
+					Operator: selection.In,
+					Values:   []string{"bar"},
+				}},
+			}},
+		},
+		expectedError: *apis.ErrGeneric(`invalid value: couldn't add link between invalid-pipeline-task and a-task: task invalid-pipeline-task depends on a-task but a-task wasn't present in Pipeline`, "tasks"),
+	}, {
+		name: "invalid pipeline with final task having when expression with invalid result reference - referenced task does not exist in the pipeline",
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",
 			Tasks: []PipelineTask{{
@@ -529,18 +563,18 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 				Name:    "invalid-pipeline-task-finally",
 				TaskRef: &TaskRef{Name: "foo-task"},
 				WhenExpressions: []WhenExpression{{
-					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Input:    "$(tasks.a-task.results.bResult)",
 					Operator: selection.In,
 					Values:   []string{"bar"},
 				}},
 			}},
 		},
 		expectedError: apis.FieldError{
-			Message: `invalid value: expected all of the expressions [tasks.a-task.resultTypo.bResult] to be result expressions but only [] were`,
+			Message: `invalid value: invalid task result reference, final task has task result reference from a task a-task which is not defined in the pipeline`,
 			Paths:   []string{"finally[0].when[0]"},
 		},
 	}, {
-		name: "invalid pipeline with dag task and final task having when expression with misconfigured result reference",
+		name: "invalid pipeline with dag task and final task having when expression with invalid result reference - referenced task does not exist in the pipeline",
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",
 			Tasks: []PipelineTask{{
@@ -550,7 +584,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 				Name:    "invalid-pipeline-task",
 				TaskRef: &TaskRef{Name: "foo-task"},
 				WhenExpressions: []WhenExpression{{
-					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Input:    "$(tasks.a-task.results.bResult)",
 					Operator: selection.In,
 					Values:   []string{"bar"},
 				}},
@@ -559,16 +593,17 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 				Name:    "invalid-pipeline-task-finally",
 				TaskRef: &TaskRef{Name: "foo-task"},
 				WhenExpressions: []WhenExpression{{
-					Input:    "$(tasks.a-task.resultTypo.bResult)",
+					Input:    "$(tasks.a-task.results.bResult)",
 					Operator: selection.In,
 					Values:   []string{"bar"},
 				}},
 			}},
 		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: expected all of the expressions [tasks.a-task.resultTypo.bResult] to be result expressions but only [] were`,
-			Paths:   []string{"tasks[1].when[0]", "finally[0].when[0]"},
-		},
+		expectedError: *apis.ErrGeneric(`invalid value: couldn't add link between invalid-pipeline-task and a-task: task invalid-pipeline-task depends on a-task but a-task wasn't present in Pipeline`, "tasks").Also(
+			&apis.FieldError{
+				Message: `invalid value: invalid task result reference, final task has task result reference from a task a-task which is not defined in the pipeline`,
+				Paths:   []string{"finally[0].when[0]"},
+			}),
 	}, {
 		name: "invalid pipeline with one pipeline task having blank when expression",
 		ps: &PipelineSpec{
@@ -1100,52 +1135,6 @@ func TestValidateGraph_Failure(t *testing.T) {
 		t.Error("Pipeline.validateGraph() did not return error for invalid DAG of pipeline tasks:", desc)
 	} else if d := cmp.Diff(expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 		t.Errorf("Pipeline.validateGraph() errors diff %s", diff.PrintWantGot(d))
-	}
-}
-
-func TestValidateParamResults_Success(t *testing.T) {
-	desc := "valid pipeline task referencing task result along with parameter variable"
-	tasks := []PipelineTask{{
-		TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
-			Results: []TaskResult{{
-				Name: "output",
-			}},
-			Steps: []Step{{
-				Name: "foo", Image: "bar",
-			}},
-		}},
-		Name: "a-task",
-	}, {
-		Name:    "foo",
-		TaskRef: &TaskRef{Name: "foo-task"},
-		Params: []Param{{
-			Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.foo) and $(tasks.a-task.results.output)"},
-		}},
-	}}
-	if err := validateParamResults(tasks); err != nil {
-		t.Errorf("Pipeline.validateParamResults() returned error for valid pipeline: %s: %v", desc, err)
-	}
-}
-
-func TestValidateParamResults_Failure(t *testing.T) {
-	desc := "invalid pipeline task referencing task results with malformed variable substitution expression"
-	tasks := []PipelineTask{{
-		Name: "a-task", TaskRef: &TaskRef{Name: "a-task"},
-	}, {
-		Name: "b-task", TaskRef: &TaskRef{Name: "b-task"},
-		Params: []Param{{
-			Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.a-task.resultTypo.bResult)"}}},
-	}}
-	expectedError := apis.FieldError{
-		Message: `invalid value: expected all of the expressions [tasks.a-task.resultTypo.bResult] to be result expressions but only [] were`,
-		Paths:   []string{"tasks[1].params[a-param].value"},
-	}
-	err := validateParamResults(tasks)
-	if err == nil {
-		t.Errorf("Pipeline.validateParamResults() did not return error for invalid pipeline: %s", desc)
-	}
-	if d := cmp.Diff(expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-		t.Errorf("Pipeline.validateParamResults() errors diff %s", diff.PrintWantGot(d))
 	}
 }
 

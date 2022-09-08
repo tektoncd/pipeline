@@ -32,8 +32,7 @@ var validWhenOperators = []string{
 }
 
 func (wes WhenExpressions) validate() *apis.FieldError {
-	errs := wes.validateWhenExpressionsFields().ViaField("when")
-	return errs.Also(wes.validateTaskResultsVariables().ViaField("when"))
+	return wes.validateWhenExpressionsFields().ViaField("when")
 }
 
 func (wes WhenExpressions) validateWhenExpressionsFields() (errs *apis.FieldError) {
@@ -53,23 +52,6 @@ func (we *WhenExpression) validateWhenExpressionFields() *apis.FieldError {
 	}
 	if len(we.Values) == 0 {
 		return apis.ErrInvalidValue("expecting non-empty values field", apis.CurrentField)
-	}
-	return nil
-}
-
-func (wes WhenExpressions) validateTaskResultsVariables() *apis.FieldError {
-	for idx, we := range wes {
-		expressions, ok := we.GetVarSubstitutionExpressions()
-		if ok {
-			if LooksLikeContainsResultRefs(expressions) {
-				expressions = filter(expressions, looksLikeResultRef)
-				resultRefs := NewResultRefs(expressions)
-				if len(expressions) != len(resultRefs) {
-					message := fmt.Sprintf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs)
-					return apis.ErrInvalidValue(message, apis.CurrentField).ViaIndex(idx)
-				}
-			}
-		}
 	}
 	return nil
 }

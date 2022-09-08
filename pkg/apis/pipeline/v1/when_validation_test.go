@@ -92,13 +92,6 @@ func TestWhenExpressions_Invalid(t *testing.T) {
 			Operator: selection.NotIn,
 		}},
 	}, {
-		name: "invalid variable",
-		wes: []WhenExpression{{
-			Input:    "$(tasks.a-task.resultsTypo.output)",
-			Operator: selection.In,
-			Values:   []string{"bar"},
-		}},
-	}, {
 		name: "missing when expression",
 		wes:  []WhenExpression{{}},
 	}}
