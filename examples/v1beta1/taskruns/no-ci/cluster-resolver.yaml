@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-cluster-reference
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+      - name: kind
+        value: task
+      - name: name
+        value: some-task
+      - name: namespace
+        value: namespace-containing-task
