@@ -140,9 +140,9 @@ func TestBuild_Parallel(t *testing.T) {
 	}
 	expectedDAG := &dag.Graph{
 		Nodes: map[string]*dag.Node{
-			"a": {Task: a},
-			"b": {Task: b},
-			"c": {Task: c},
+			"a": {Key: "a"},
+			"b": {Key: "b"},
+			"c": {Key: "c"},
 		},
 	}
 	g, err := dag.Build(v1beta1.PipelineTaskList(p.Spec.Tasks), v1beta1.PipelineTaskList(p.Spec.Tasks).Deps())
@@ -182,12 +182,12 @@ func TestBuild_JoinMultipleRoots(t *testing.T) {
 	//   |
 	//   z
 
-	nodeA := &dag.Node{Task: a}
-	nodeB := &dag.Node{Task: b}
-	nodeC := &dag.Node{Task: c}
-	nodeX := &dag.Node{Task: xDependsOnA}
-	nodeY := &dag.Node{Task: yDependsOnARunsAfterB}
-	nodeZ := &dag.Node{Task: zDependsOnX}
+	nodeA := &dag.Node{Key: "a"}
+	nodeB := &dag.Node{Key: "b"}
+	nodeC := &dag.Node{Key: "c"}
+	nodeX := &dag.Node{Key: xDependsOnA.Name}
+	nodeY := &dag.Node{Key: yDependsOnARunsAfterB.Name}
+	nodeZ := &dag.Node{Key: zDependsOnX.Name}
 
 	nodeA.Next = []*dag.Node{nodeX, nodeY}
 	nodeB.Next = []*dag.Node{nodeY}
@@ -250,11 +250,11 @@ func TestBuild_FanInFanOut(t *testing.T) {
 	//   f
 	//   |
 	//   g
-	nodeA := &dag.Node{Task: a}
-	nodeD := &dag.Node{Task: dDependsOnA}
-	nodeE := &dag.Node{Task: eRunsAfterA}
-	nodeF := &dag.Node{Task: fDependsOnDAndE}
-	nodeG := &dag.Node{Task: gRunsAfterF}
+	nodeA := &dag.Node{Key: "a"}
+	nodeD := &dag.Node{Key: dDependsOnA.Name}
+	nodeE := &dag.Node{Key: eRunsAfterA.Name}
+	nodeF := &dag.Node{Key: fDependsOnDAndE.Name}
+	nodeG := &dag.Node{Key: gRunsAfterF.Name}
 
 	nodeA.Next = []*dag.Node{nodeD, nodeE}
 	nodeD.Prev = []*dag.Node{nodeA}
@@ -327,16 +327,16 @@ func TestBuild_TaskParamsFromTaskResults(t *testing.T) {
 	//   a  b   c  d   e  f
 	//   |   \ /    \ /   |
 	//   x    y      z    w
-	nodeA := &dag.Node{Task: a}
-	nodeB := &dag.Node{Task: b}
-	nodeC := &dag.Node{Task: c}
-	nodeD := &dag.Node{Task: d}
-	nodeE := &dag.Node{Task: e}
-	nodeF := &dag.Node{Task: f}
-	nodeX := &dag.Node{Task: xDependsOnA}
-	nodeY := &dag.Node{Task: yDependsOnBRunsAfterC}
-	nodeZ := &dag.Node{Task: zDependsOnDAndE}
-	nodeW := &dag.Node{Task: wDependsOnF}
+	nodeA := &dag.Node{Key: "a"}
+	nodeB := &dag.Node{Key: "b"}
+	nodeC := &dag.Node{Key: "c"}
+	nodeD := &dag.Node{Key: "d"}
+	nodeE := &dag.Node{Key: "e"}
+	nodeF := &dag.Node{Key: "f"}
+	nodeX := &dag.Node{Key: xDependsOnA.Name}
+	nodeY := &dag.Node{Key: yDependsOnBRunsAfterC.Name}
+	nodeZ := &dag.Node{Key: zDependsOnDAndE.Name}
+	nodeW := &dag.Node{Key: wDependsOnF.Name}
 
 	nodeA.Next = []*dag.Node{nodeX}
 	nodeB.Next = []*dag.Node{nodeY}
@@ -662,10 +662,10 @@ func testGraph(t *testing.T) *dag.Graph {
 func sameNodes(l, r []*dag.Node) error {
 	lNames, rNames := []string{}, []string{}
 	for _, n := range l {
-		lNames = append(lNames, n.Task.HashKey())
+		lNames = append(lNames, n.Key)
 	}
 	for _, n := range r {
-		rNames = append(rNames, n.Task.HashKey())
+		rNames = append(rNames, n.Key)
 	}
 
 	return list.IsSame(lNames, rNames)

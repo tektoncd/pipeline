@@ -377,7 +377,7 @@ func (t *ResolvedPipelineTask) checkParentsDone(facts *PipelineRunFacts) bool {
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
-		if !stateMap[p.Task.HashKey()].isDone(facts) {
+		if !stateMap[p.Key].isDone(facts) {
 			return false
 		}
 	}
@@ -453,7 +453,7 @@ func (t *ResolvedPipelineTask) skipBecauseParentTaskWasSkipped(facts *PipelineRu
 	stateMap := facts.State.ToMap()
 	node := facts.TasksGraph.Nodes[t.PipelineTask.Name]
 	for _, p := range node.Prev {
-		parentTask := stateMap[p.Task.HashKey()]
+		parentTask := stateMap[p.Key]
 		if parentSkipStatus := parentTask.Skip(facts); parentSkipStatus.IsSkipped {
 			// if the parent task was skipped due to its `when` expressions,
 			// then we should ignore that and continue evaluating if we should skip because of other parent tasks
