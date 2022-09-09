@@ -74,7 +74,7 @@ spec:
 ```
 
 ## Replacing `PipelineResources` with `Tasks`
-You can replace the `PipelineResources` with `Tasks` following the [reference](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md)
+See ["Replacing PipelineResources with Tasks"](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md#replacing-pipelineresources-with-tasks) for information and examples on how to replace PipelineResources when migrating from v1alpha1 to v1beta1.
 
 ## Changes to PipelineResources
 

@@ -42,15 +42,17 @@ Bundle resolver in remote resolution should be used instead of `taskRun.spec.tas
 The [`enable-bundles-resolver`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#customizing-the-pipelines-controller-behavior) feature flag must be enabled to use this feature.
 
 ```yaml
+# Before in v1beta1:
 apiVersion: tekton.dev/v1beta1
-kind: Taskrun
+kind: TaskRun
 spec:
   taskRef:
     name: example-task
     bundle: python:3-alpine
 ---
-apiVersion: tekton.dev/v1beta1
-kind: Taskrun
+# After in v1:
+apiVersion: tekton.dev/v1
+kind: TaskRun
 spec:
   taskRef:
     resolver: bundles
@@ -72,7 +74,18 @@ The `cluster` resolver allows `Pipeline`s, `PipelineRun`s, and `TaskRun`s to ref
 to `Pipeline`s and `Task`s defined in other namespaces in the cluster.
 
 ```yaml
+# Before in v1beta1:
 apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: cluster-task-reference
+spec:
+  taskRef:
+    name: example-task
+    kind: ClusterTask
+---
+# After in v1:
+apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
   name: cluster-task-reference
