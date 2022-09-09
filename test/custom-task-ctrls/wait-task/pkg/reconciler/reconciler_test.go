@@ -19,7 +19,6 @@ package reconciler
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +58,7 @@ func TestReconcile(t *testing.T) {
 		refName                string
 		timeout                string
 		params                 string
+		startTime              *metav1.Time
 		wantRunConditionType   apis.ConditionType
 		wantRunConditionStatus corev1.ConditionStatus
 		wantRunConditionReason string
@@ -70,6 +70,7 @@ func TestReconcile(t *testing.T) {
   - name: duration
     value: 1s
 `,
+		startTime:              &metav1.Time{Time: time.Unix(testClock.Now().Unix()-2, 0)},
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionTrue,
 		wantRunConditionReason: "DurationElapsed",
@@ -136,6 +137,7 @@ func TestReconcile(t *testing.T) {
   - name: duration
     value: 2s
 `,
+		startTime:              &metav1.Time{Time: time.Unix(testClock.Now().Unix()-2, 0)},
 		wantRunConditionType:   apis.ConditionSucceeded,
 		wantRunConditionStatus: corev1.ConditionFalse,
 		wantRunConditionReason: "TimedOut",
@@ -189,8 +191,14 @@ spec:
 			if tc.isCancelled {
 				r.Spec.Status = v1alpha1.RunSpecStatusCancelled
 			}
+			if tc.startTime != nil {
+				r.Status.StartTime = tc.startTime
+			}
 
-			fakeReconcile(t, ctx, rec, r)
+			err := rec.ReconcileKind(ctx, r)
+			if err != nil {
+				t.Fatalf("Failed to reconcile: %v", err)
+			}
 
 			// Compose expected Run
 			wantRunYAML := fmt.Sprintf(`
@@ -233,18 +241,29 @@ status:
 
 func TestReconcile_Retries(t *testing.T) {
 	for _, tc := range []struct {
-		name        string
-		duration    string
-		timeout     string
-		retries     int
-		params      string
-		wantStatus  string
-		isCancelled bool
+		name          string
+		duration      string
+		timeout       string
+		startTime     *metav1.Time
+		retries       int
+		params        string
+		currentStatus string
+		wantStatus    string
+		isCancelled   bool
 	}{{
-		name:     "retry when timeout",
-		duration: "2s",
-		timeout:  "1s",
-		retries:  1,
+		name:      "retry when timeout",
+		duration:  "2s",
+		timeout:   "1s",
+		startTime: &metav1.Time{Time: time.Unix(testClock.Now().Unix()-2, 0)},
+		retries:   1,
+		currentStatus: fmt.Sprintf(`
+status:
+  conditions:
+  - reason: %s
+    status: %q
+    type: %s
+  observedGeneration: 0
+`, "Running", corev1.ConditionUnknown, apis.ConditionSucceeded),
 		wantStatus: fmt.Sprintf(`
 status:
   conditions:
@@ -257,12 +276,21 @@ status:
     - reason: %s
       status: %q
       type: %s
-`, "TimedOut", corev1.ConditionFalse, apis.ConditionSucceeded, "TimedOut", corev1.ConditionFalse, apis.ConditionSucceeded),
+`, "", corev1.ConditionUnknown, apis.ConditionSucceeded, "TimedOut", corev1.ConditionFalse, apis.ConditionSucceeded),
 		isCancelled: false,
 	}, {
-		name:     "don't retry if retries unspecified",
-		duration: "2s",
-		timeout:  "1s",
+		name:      "don't retry if retries unspecified",
+		duration:  "2s",
+		timeout:   "1s",
+		startTime: &metav1.Time{Time: time.Unix(testClock.Now().Unix()-2, 0)},
+		currentStatus: fmt.Sprintf(`
+status:
+  conditions:
+  - reason: %s
+    status: %q
+    type: %s
+  observedGeneration: 0
+`, "TimedOut", corev1.ConditionFalse, apis.ConditionSucceeded),
 		wantStatus: fmt.Sprintf(`
 status:
   conditions:
@@ -305,12 +333,25 @@ spec:
   - name: duration
     value: %s
 `, runName, tc.retries, tc.timeout, apiVersion, kind, tc.duration)
+			if tc.currentStatus != "" {
+				runYAML = runYAML + tc.currentStatus
+			}
 			r := parse.MustParseRun(t, runYAML)
 			if tc.isCancelled {
 				r.Spec.Status = v1alpha1.RunSpecStatusCancelled
 			}
+			if tc.startTime != nil {
+				r.Status.StartTime = tc.startTime
+			}
 
-			fakeReconcile(t, ctx, rec, r)
+			err := rec.ReconcileKind(ctx, r)
+			if err != nil {
+				// Ignoring the requeue error because we are testing a single
+				// round of reconciliation given Run Spec and Status.
+				if !strings.Contains(err.Error(), "requeue") {
+					t.Fatalf("Failed to reconcile: %v", err)
+				}
+			}
 
 			// Compose expected Run
 			wantRunYAML := fmt.Sprintf(`
@@ -341,38 +382,5 @@ spec:
 				t.Errorf("-got +want: %v", d)
 			}
 		})
-	}
-}
-
-// TODO(#5456) Avoid duplicate reconcile logic
-func fakeReconcile(t *testing.T, ctx context.Context, rec *Reconciler, r *v1alpha1.Run) {
-	t.Helper()
-
-	// Start reconciling the Run.
-	// This will not return until the second Reconcile is done.
-	err := rec.ReconcileKind(ctx, r)
-
-	for err != nil {
-		if strings.Contains(err.Error(), "requeue") {
-			// simulate EnqueueAfter
-			var dur time.Duration
-			var dr error
-			for _, p := range r.Spec.Params {
-				if p.Name == "duration" {
-					dur, dr = time.ParseDuration(p.Value.StringVal)
-					if dr != nil {
-						t.Error("failed to parse duration")
-					}
-					break
-				}
-			}
-			to := r.GetTimeout()
-			sleep := int(math.Min(to.Seconds(), dur.Seconds()))
-			testClock.SetTime(testClock.Now().Add(time.Duration(sleep) * time.Second))
-			rec.Clock = testClock
-			err = rec.ReconcileKind(ctx, r)
-		} else {
-			t.Fatalf("ReconcileKind() = %v", err)
-		}
 	}
 }
