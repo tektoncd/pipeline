@@ -39,8 +39,8 @@ type Tasks interface {
 
 // Node represents a Task in a pipeline.
 type Node struct {
-	// Task represent the PipelineTask in Pipeline
-	Task Task
+	// Key represent a unique name of the node in a graph
+	Key string
 	// Prev represent all the Previous task Nodes for the current Task
 	Prev []*Node
 	// Next represent all the Next task Nodes for the current Task
@@ -63,7 +63,7 @@ func (g *Graph) addPipelineTask(t Task) (*Node, error) {
 		return nil, errors.New("duplicate pipeline task")
 	}
 	newNode := &Node{
-		Task: t,
+		Key: t.HashKey(),
 	}
 	g.Nodes[t.HashKey()] = newNode
 	return newNode, nil
@@ -108,8 +108,8 @@ func GetCandidateTasks(g *Graph, doneTasks ...string) (sets.String, error) {
 	visited := sets.NewString()
 	for _, root := range roots {
 		schedulable := findSchedulable(root, visited, tm)
-		for _, task := range schedulable {
-			d.Insert(task.HashKey())
+		for _, taskName := range schedulable {
+			d.Insert(taskName)
 		}
 	}
 
@@ -214,16 +214,16 @@ func getRoots(g *Graph) []*Node {
 	return n
 }
 
-func findSchedulable(n *Node, visited sets.String, doneTasks sets.String) []Task {
-	if visited.Has(n.Task.HashKey()) {
-		return []Task{}
+func findSchedulable(n *Node, visited sets.String, doneTasks sets.String) []string {
+	if visited.Has(n.Key) {
+		return []string{}
 	}
-	visited.Insert(n.Task.HashKey())
-	if doneTasks.Has(n.Task.HashKey()) {
-		schedulable := []Task{}
+	visited.Insert(n.Key)
+	if doneTasks.Has(n.Key) {
+		schedulable := []string{}
 		// This one is done! Take note of it and look at the next candidate
 		for _, next := range n.Next {
-			if _, ok := visited[next.Task.HashKey()]; !ok {
+			if _, ok := visited[next.Key]; !ok {
 				schedulable = append(schedulable, findSchedulable(next, visited, doneTasks)...)
 			}
 		}
@@ -232,10 +232,10 @@ func findSchedulable(n *Node, visited sets.String, doneTasks sets.String) []Task
 	// This one isn't done! Return it if it's schedulable
 	if isSchedulable(doneTasks, n.Prev) {
 		// FIXME(vdemeester)
-		return []Task{n.Task}
+		return []string{n.Key}
 	}
 	// This one isn't done, but it also isn't ready to schedule
-	return []Task{}
+	return []string{}
 }
 
 func isSchedulable(doneTasks sets.String, prevs []*Node) bool {
@@ -244,8 +244,8 @@ func isSchedulable(doneTasks sets.String, prevs []*Node) bool {
 	}
 	collected := []string{}
 	for _, n := range prevs {
-		if doneTasks.Has(n.Task.HashKey()) {
-			collected = append(collected, n.Task.HashKey())
+		if doneTasks.Has(n.Key) {
+			collected = append(collected, n.Key)
 		}
 	}
 	return len(collected) == len(prevs)
