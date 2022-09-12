@@ -175,14 +175,14 @@ func TestTaskrunConversion(t *testing.T) {
 	for _, test := range tests {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
-				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+				ver := *(version.(*v1.TaskRun))
+				if err := test.in.ConvertTo(context.Background(), &ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
 					return
 				}
 				t.Logf("ConvertTo() =%v", ver)
 				got := &v1beta1.TaskRun{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+				if err := got.ConvertFrom(context.Background(), &ver); err != nil {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() =%v", got)
@@ -284,13 +284,13 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 	for _, test := range tests {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
-				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+				ver := *(version.(*v1.TaskRun))
+				if err := test.in.ConvertTo(context.Background(), &ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
 				}
 				t.Logf("ConvertTo() = %#v", ver)
 				got := &v1beta1.TaskRun{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+				if err := got.ConvertFrom(context.Background(), &ver); err != nil {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
