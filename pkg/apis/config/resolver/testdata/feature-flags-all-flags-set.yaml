@@ -21,3 +21,4 @@ data:
   enable-git-resolver: "true"
   enable-hub-resolver: "true"
   enable-bundles-resolver: "true"
+  enable-cluster-resolver: "true"

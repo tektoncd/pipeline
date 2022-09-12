@@ -16,8 +16,19 @@ limitations under the License.
 
 package git
 
-const (
+import "github.com/tektoncd/pipeline/pkg/apis/resolution"
+
+var (
 	// AnnotationKeyRevision is the commit hash that was fetched
 	// from git
-	AnnotationKeyRevision = "revision"
+	AnnotationKeyRevision = resolution.GroupName + "/revision"
+
+	// AnnotationKeyOrg is the org used
+	AnnotationKeyOrg = resolution.GroupName + "/org"
+	// AnnotationKeyRepo is the repo used
+	AnnotationKeyRepo = resolution.GroupName + "/repo"
+	// AnnotationKeyPath is the path used
+	AnnotationKeyPath = resolution.GroupName + "/path"
+	// AnnotationKeyURL is the repo URL used
+	AnnotationKeyURL = resolution.GroupName + "/url"
 )

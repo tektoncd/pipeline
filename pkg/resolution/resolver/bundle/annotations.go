@@ -13,14 +13,32 @@ limitations under the License.
 
 package bundle
 
-// BundleAnnotationKind is the image layer annotation used to indicate
-// the "kind" of resource stored in a given layer.
-const BundleAnnotationKind = "dev.tekton.image.kind"
+import "github.com/tektoncd/pipeline/pkg/apis/resolution"
 
-// BundleAnnotationName is the image layer annotation used to indicate
-// the "name" of resource stored in a given layer.
-const BundleAnnotationName = "dev.tekton.image.name"
+const (
+	// BundleAnnotationKind is the image layer annotation used to indicate
+	// the "kind" of resource stored in a given layer.
+	BundleAnnotationKind = "dev.tekton.image.kind"
 
-// BundleAnnotationAPIVersion is the image layer annotation used to
-// indicate the "apiVersion" of resource stored in a given layer.
-const BundleAnnotationAPIVersion = "dev.tekton.image.apiVersion"
+	// BundleAnnotationName is the image layer annotation used to indicate
+	// the "name" of resource stored in a given layer.
+	BundleAnnotationName = "dev.tekton.image.name"
+
+	// BundleAnnotationAPIVersion is the image layer annotation used to
+	// indicate the "apiVersion" of resource stored in a given layer.
+	BundleAnnotationAPIVersion = "dev.tekton.image.apiVersion"
+)
+
+var (
+	// ResolverAnnotationKind is the resolver annotation used to indicate
+	// the "kind" of resource.
+	ResolverAnnotationKind = resolution.GroupName + "/" + BundleAnnotationKind
+
+	// ResolverAnnotationName is resolver annotation used to indicate
+	// the "name" of resource.
+	ResolverAnnotationName = resolution.GroupName + "/" + BundleAnnotationName
+
+	// ResolverAnnotationAPIVersion is the resolver annotation used to
+	// indicate the "apiVersion" of resource.
+	ResolverAnnotationAPIVersion = resolution.GroupName + "/" + BundleAnnotationAPIVersion
+)

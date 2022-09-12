@@ -17,9 +17,11 @@
 
 package cluster
 
-const (
+import "github.com/tektoncd/pipeline/pkg/apis/resolution"
+
+var (
 	// ResourceNameAnnotation is the annotation key for the fetched resource name
-	ResourceNameAnnotation = "name"
+	ResourceNameAnnotation = resolution.GroupName + "/name"
 	// ResourceNamespaceAnnotation is the annotation key for the fetched resource's namespace
-	ResourceNamespaceAnnotation = "namespace"
+	ResourceNamespaceAnnotation = resolution.GroupName + "/namespace"
 )

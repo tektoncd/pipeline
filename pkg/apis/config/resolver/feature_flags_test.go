@@ -34,17 +34,19 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &resolver.FeatureFlags{
-				EnableGitResolver:    false,
-				EnableHubResolver:    false,
-				EnableBundleResolver: false,
+				EnableGitResolver:     false,
+				EnableHubResolver:     false,
+				EnableBundleResolver:  false,
+				EnableClusterResolver: false,
 			},
 			fileName: "feature-flags-empty",
 		},
 		{
 			expectedConfig: &resolver.FeatureFlags{
-				EnableGitResolver:    true,
-				EnableHubResolver:    true,
-				EnableBundleResolver: true,
+				EnableGitResolver:     true,
+				EnableHubResolver:     true,
+				EnableBundleResolver:  true,
+				EnableClusterResolver: true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},

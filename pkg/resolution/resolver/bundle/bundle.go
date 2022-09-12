@@ -102,9 +102,9 @@ func GetEntry(ctx context.Context, keychain authn.Keychain, opts RequestOptions)
 			return &ResolvedResource{
 				data: obj,
 				annotations: map[string]string{
-					BundleAnnotationKind:       lKind,
-					BundleAnnotationName:       lName,
-					BundleAnnotationAPIVersion: l.Annotations[BundleAnnotationAPIVersion],
+					ResolverAnnotationKind:       lKind,
+					ResolverAnnotationName:       lName,
+					ResolverAnnotationAPIVersion: l.Annotations[BundleAnnotationAPIVersion],
 				},
 			}, nil
 		}

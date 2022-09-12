@@ -18,6 +18,7 @@ package testing
 
 import (
 	"context"
+	"encoding/base64"
 	"strings"
 	"testing"
 	"time"
@@ -49,12 +50,15 @@ var (
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
 )
 
+// ResolverReconcileTestModifier is a function thaat will be invoked after the test assets and controller have been created
+type ResolverReconcileTestModifier = func(resolver framework.Resolver, testAssets test.Assets)
+
 // RunResolverReconcileTest takes data to seed clients and informers, a Resolver, a ResolutionRequest, and the expected
 // ResolutionRequestStatus and error, both of which can be nil. It instantiates a controller for that resolver and
 // reconciles the given request. It then checks for the expected error, if any, and compares the resulting status with
 // the expected status.
 func RunResolverReconcileTest(ctx context.Context, t *testing.T, d test.Data, resolver framework.Resolver, request *v1alpha1.ResolutionRequest,
-	expectedStatus *v1alpha1.ResolutionRequestStatus, expectedErr error, resolverModifiers ...func(resolver framework.Resolver, testAssets test.Assets)) {
+	expectedStatus *v1alpha1.ResolutionRequestStatus, expectedErr error, resolverModifiers ...ResolverReconcileTestModifier) {
 	t.Helper()
 
 	testAssets, cancel := GetResolverFrameworkController(ctx, t, d, resolver, setClockOnReconciler)
@@ -86,6 +90,21 @@ func RunResolverReconcileTest(ctx context.Context, t *testing.T, d test.Data, re
 	if expectedStatus != nil {
 		if d := cmp.Diff(*expectedStatus, reconciledRR.Status, ignoreLastTransitionTime); d != "" {
 			t.Errorf("ResolutionRequest status doesn't match %s", diff.PrintWantGot(d))
+			if expectedStatus.Data != "" && expectedStatus.Data != reconciledRR.Status.Data {
+				decodedExpectedData, err := base64.StdEncoding.Strict().DecodeString(expectedStatus.Data)
+				if err != nil {
+					t.Errorf("couldn't decode expected data: %v", err)
+					return
+				}
+				decodedGotData, err := base64.StdEncoding.Strict().DecodeString(reconciledRR.Status.Data)
+				if err != nil {
+					t.Errorf("couldn't decode reconciled data: %v", err)
+					return
+				}
+				if d := cmp.Diff(decodedExpectedData, decodedGotData); d != "" {
+					t.Errorf("decoded data did not match expected: %s", diff.PrintWantGot(d))
+				}
+			}
 		}
 	}
 }

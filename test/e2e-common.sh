@@ -31,9 +31,8 @@ function install_pipeline_crd() {
 
   if [ "${PIPELINE_FEATURE_GATE}" == "alpha" ]; then
     ko apply -f config/resolvers || fail_test "Resolvers installation failed"
+    verify_resolvers_installation
   fi
-
-  verify_pipeline_installation
 
   export SYSTEM_NAMESPACE=tekton-pipelines
 }
@@ -56,6 +55,14 @@ function verify_pipeline_installation() {
 
   # Wait for pods to be running in the namespaces we are deploying to
   wait_until_pods_running tekton-pipelines || fail_test "Tekton Pipeline did not come up"
+}
+
+function verify_resolvers_installation() {
+  # Make sure that everything is cleaned up in the current namespace.
+  delete_resolvers_resources
+
+  # Wait for pods to be running in the namespaces we are deploying to
+  wait_until_pods_running tekton-pipelines-resolvers || fail_test "Tekton Pipeline Resolvers did not come up"
 }
 
 function uninstall_pipeline_crd() {
@@ -82,8 +89,8 @@ function delete_pipeline_resources() {
   for res in pipelineresources tasks clustertasks pipelines taskruns pipelineruns; do
     kubectl delete --ignore-not-found=true ${res}.tekton.dev --all
   done
+}
 
-  if [ "${PIPELINE_FEATURE_GATE}" == "alpha" ]; then
-    kubectl delete --ignore-not-found=true resolutionrequests.resolution.tekton.dev --all
-  fi
+function delete_resolvers_resources() {
+  kubectl delete --ignore-not-found=true resolutionrequests.resolution.tekton.dev --all
 }
