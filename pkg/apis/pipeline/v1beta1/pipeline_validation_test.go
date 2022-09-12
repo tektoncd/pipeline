@@ -3606,7 +3606,7 @@ func TestPipelineDeprecationWarning(t *testing.T) {
 			}},
 		},
 		expectedError: &apis.FieldError{
-			Message: "Resources field is deprecated in v1 Pipeline",
+			Message: "Resources field is deprecated",
 			Paths:   []string{"Resources"},
 		},
 	}, {
@@ -3621,7 +3621,7 @@ func TestPipelineDeprecationWarning(t *testing.T) {
 			}},
 		},
 		expectedError: &apis.FieldError{
-			Message: "Bundle field is deprecated in v1 Pipeline",
+			Message: "Bundle field is deprecated",
 			Paths:   []string{"Bundle"},
 		},
 	}}

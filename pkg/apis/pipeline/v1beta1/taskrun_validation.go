@@ -101,8 +101,9 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
-	errs = errs.Also(warnTaskRunFieldsDeprecation(ctx, ts))
-
+	// Emit warnings for deprecated fields
+	errs = errs.Also(validateTaskRunResourcesDeprecation(ctx, ts))
+	errs = errs.Also(validateTaskRunBundleDeprecation(ctx, ts))
 	return errs
 }
 
@@ -238,20 +239,21 @@ func validateNoDuplicateNames(names []string, byIndex bool) (errs *apis.FieldErr
 	return errs
 }
 
-func warnTaskRunFieldsDeprecation(ctx context.Context, trs *TaskRunSpec) (errs *apis.FieldError) {
+// Instead of rejecting the deprecated field entirely, validate*Deprecation functions
+// emits a WarningLevel FieldError to notify users that the CRD created contains the
+// field that has been deprecated.
+func validateTaskRunResourcesDeprecation(ctx context.Context, trs *TaskRunSpec) (errs *apis.FieldError) {
 	if trs.Resources != nil {
-		errs = errs.Also(&apis.FieldError{
-			Message: "Resources field is deprecated in v1 TaskRun",
-			Paths:   []string{"Resources"},
-		})
+		return version.DeprecationError(ctx, "Resources")
 	}
+	return nil
+}
+
+func validateTaskRunBundleDeprecation(ctx context.Context, trs *TaskRunSpec) (errs *apis.FieldError) {
 	if trs.TaskRef != nil {
 		if trs.TaskRef.Bundle != "" {
-			errs = errs.Also(&apis.FieldError{
-				Message: "Bundle field is deprecated in v1 TaskRun",
-				Paths:   []string{"Bundle"},
-			})
+			return version.DeprecationError(ctx, "Bundle")
 		}
 	}
-	return errs.At(apis.WarningLevel)
+	return nil
 }

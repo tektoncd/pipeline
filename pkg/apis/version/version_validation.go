@@ -36,3 +36,13 @@ func ValidateEnabledAPIFields(ctx context.Context, featureName, wantVersion stri
 	}
 	return nil
 }
+
+// DeprecationError emits a WarningLevel FieldError to notify users that the CRD
+// created contains a field that is deprecated.
+func DeprecationError(ctx context.Context, fieldName string) *apis.FieldError {
+	return &apis.FieldError{
+		Message: fmt.Sprintf("%v field is deprecated", fieldName),
+		Paths:   []string{fieldName},
+		Level:   apis.WarningLevel,
+	}
+}

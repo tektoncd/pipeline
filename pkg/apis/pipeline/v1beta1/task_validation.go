@@ -94,6 +94,9 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ValidateResourcesVariables(ctx, ts.Steps, ts.Resources))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
+	// Emit warnings for deprecated fields
+	errs = errs.Also(validateTaskResourcesDeprecation(ctx, ts))
+	errs = errs.Also(validateStepTemplateDeprecation(ctx, ts))
 	return errs
 }
 
@@ -643,4 +646,21 @@ func warnTaskFieldsDeprecation(ctx context.Context, ts *TaskSpec) (errs *apis.Fi
 		})
 	}
 	return errs.At(apis.WarningLevel)
+}
+
+// Instead of rejecting the deprecated field entirely, validate*Deprecation functions
+// emits a WarningLevel FieldError to notify users that the CRD created contains the
+// field that has been deprecated.
+func validateTaskResourcesDeprecation(ctx context.Context, ts *TaskSpec) (errs *apis.FieldError) {
+	if ts.Resources != nil {
+		return version.DeprecationError(ctx, "Resources")
+	}
+	return nil
+}
+
+func validateStepTemplateDeprecation(ctx context.Context, ts *TaskSpec) (errs *apis.FieldError) {
+	if ts.StepTemplate != nil {
+		return version.DeprecationError(ctx, "StepTemplate")
+	}
+	return nil
 }

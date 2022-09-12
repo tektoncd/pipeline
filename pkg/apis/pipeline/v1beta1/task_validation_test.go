@@ -1788,7 +1788,7 @@ func TestTaskDeprecationWarning(t *testing.T) {
 			},
 		},
 		expectedError: &apis.FieldError{
-			Message: "Resources field is deprecated in v1 Task",
+			Message: "Resources field is deprecated",
 			Paths:   []string{"Resources"},
 		},
 	}, {
@@ -1801,7 +1801,7 @@ func TestTaskDeprecationWarning(t *testing.T) {
 			},
 		},
 		expectedError: &apis.FieldError{
-			Message: "StepTemplate field is deprecated in v1 Task",
+			Message: "StepTemplate field is deprecated",
 			Paths:   []string{"StepTemplate"},
 		},
 	}}

@@ -1076,42 +1076,43 @@ func TestPipelineRunDeprecationWarning(t *testing.T) {
 		pipelineRunSpec *v1beta1.PipelineRunSpec
 		expectedError   *apis.FieldError
 	}{{
-		name: "Resources",
-		pipelineRunSpec: &v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
-			Resources: []v1beta1.PipelineResourceBinding{{
-				ResourceRef: &v1beta1.PipelineResourceRef{
-					Name: "the-git-with-branch",
-				},
-				Name: "gitspace",
-			}},
-		},
-		expectedError: &apis.FieldError{
-			Message: "Resources field is deprecated in v1 PipelineRun",
-			Paths:   []string{"Resources"},
-		},
-	}, {
+		// 	name: "Resources",
+		// 	pipelineRunSpec: &v1beta1.PipelineRunSpec{
+		// 		PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
+		// 		Resources: []v1beta1.PipelineResourceBinding{{
+		// 			ResourceRef: &v1beta1.PipelineResourceRef{
+		// 				Name: "the-git-with-branch",
+		// 			},
+		// 			Name: "gitspace",
+		// 		}},
+		// 	},
+		// 	expectedError: &apis.FieldError{
+		// 		Message: "Resources field is deprecated",
+		// 		Paths:   []string{"Resources"},
+		// 	},
+		// }, {
 		name: "Timeout",
 		pipelineRunSpec: &v1beta1.PipelineRunSpec{
 			PipelineRef: &v1beta1.PipelineRef{Name: "foo"},
 			Timeout:     &metav1.Duration{Duration: 5 * time.Minute},
 		},
 		expectedError: &apis.FieldError{
-			Message: "Timeout field is deprecated in v1 PipelineRun",
+			Message: "Timeout field is deprecated",
 			Paths:   []string{"Timeout"},
+			Level:   apis.WarningLevel,
 		},
-	}, {
-		name: "Bundle",
-		pipelineRunSpec: &v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{
-				Name:   "foo",
-				Bundle: "test-bundle",
-			},
-		},
-		expectedError: &apis.FieldError{
-			Message: "Bundle field is deprecated in v1 PipelineRun",
-			Paths:   []string{"Bundle"},
-		},
+		// }, {
+		// 	name: "Bundle",
+		// 	pipelineRunSpec: &v1beta1.PipelineRunSpec{
+		// 		PipelineRef: &v1beta1.PipelineRef{
+		// 			Name:   "foo",
+		// 			Bundle: "test-bundle",
+		// 		},
+		// 	},
+		// 	expectedError: &apis.FieldError{
+		// 		Message: "Bundle field is deprecated",
+		// 		Paths:   []string{"Bundle"},
+		// 	},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -910,7 +910,7 @@ func TestTaskRunDeprecationWarning(t *testing.T) {
 				}},
 			}},
 		expectedError: &apis.FieldError{
-			Message: "Resources field is deprecated in v1 TaskRun",
+			Message: "Resources field is deprecated",
 			Paths:   []string{"Resources"},
 		},
 	}, {
@@ -923,7 +923,7 @@ func TestTaskRunDeprecationWarning(t *testing.T) {
 			},
 		},
 		expectedError: &apis.FieldError{
-			Message: "Bundle field is deprecated in v1 TaskRun",
+			Message: "Bundle field is deprecated",
 			Paths:   []string{"Bundle"},
 		},
 	}}

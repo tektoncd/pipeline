@@ -117,9 +117,10 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	for idx, trs := range ps.TaskRunSpecs {
 		errs = errs.Also(validateTaskRunSpec(ctx, trs).ViaIndex(idx).ViaField("taskRunSpecs"))
 	}
-
-	errs = errs.Also(warnPipelineRunFieldsDeprecation(ctx, ps))
-
+	// Emit warnings for deprecated fields
+	errs = errs.Also(validatePipelineRunResourcesDeprecation(ctx, ps))
+	errs = errs.Also(validateTimeoutDeprecation(ctx, ps))
+	errs = errs.Also(validatePipelineRefDeprecation(ctx, ps))
 	return errs
 }
 
@@ -304,29 +305,28 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 	return errs
 }
 
-// Instead of rejecting the deprecated field entirely, warnPipelineRunFieldsDeprecation
-// emits a WarningLevel FieldError to notify users that the CRD created contains one
-// or more fields that are deprecated.
-func warnPipelineRunFieldsDeprecation(ctx context.Context, prs *PipelineRunSpec) (errs *apis.FieldError) {
+// Instead of rejecting the deprecated field entirely, validate*Deprecation functions
+// emits a WarningLevel FieldError to notify users that the CRD created contains the
+// field that has been deprecated.
+func validatePipelineRunResourcesDeprecation(ctx context.Context, prs *PipelineRunSpec) (errs *apis.FieldError) {
 	if prs.Resources != nil {
-		errs = errs.Also(&apis.FieldError{
-			Message: "Resources field is deprecated in v1 PipelineRun",
-			Paths:   []string{"Resources"},
-		})
+		return version.DeprecationError(ctx, "Resources")
 	}
+	return nil
+}
+
+func validateTimeoutDeprecation(ctx context.Context, prs *PipelineRunSpec) (errs *apis.FieldError) {
 	if prs.Timeout != nil {
-		errs = errs.Also(&apis.FieldError{
-			Message: "Timeout field is deprecated in v1 PipelineRun",
-			Paths:   []string{"Timeout"},
-		})
+		return version.DeprecationError(ctx, "Timeout")
 	}
+	return nil
+}
+
+func validatePipelineRefDeprecation(ctx context.Context, prs *PipelineRunSpec) (errs *apis.FieldError) {
 	if prs.PipelineRef != nil {
 		if prs.PipelineRef.Bundle != "" {
-			errs = errs.Also(&apis.FieldError{
-				Message: "Bundle field is deprecated in v1 PipelineRun",
-				Paths:   []string{"Bundle"},
-			})
+			return version.DeprecationError(ctx, "PipelineRef")
 		}
 	}
-	return errs.At(apis.WarningLevel)
+	return nil
 }
