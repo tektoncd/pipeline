@@ -49,8 +49,6 @@ func TestTaskRunConversionBadType(t *testing.T) {
 }
 
 func TestTaskrunConversion(t *testing.T) {
-	versions := []apis.Convertible{&v1.TaskRun{}}
-
 	tests := []struct {
 		name string
 		in   *v1beta1.TaskRun
@@ -173,6 +171,7 @@ func TestTaskrunConversion(t *testing.T) {
 	}}
 
 	for _, test := range tests {
+		versions := []apis.Convertible{&v1.TaskRun{}}
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
@@ -195,7 +194,6 @@ func TestTaskrunConversion(t *testing.T) {
 }
 
 func TestTaskRunConversionFromDeprecated(t *testing.T) {
-	versions := []apis.Convertible{&v1.TaskRun{}}
 	tests := []struct {
 		name string
 		in   *v1beta1.TaskRun
@@ -315,6 +313,7 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 		},
 	}}
 	for _, test := range tests {
+		versions := []apis.Convertible{&v1.TaskRun{}}
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
