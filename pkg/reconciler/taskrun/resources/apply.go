@@ -159,17 +159,20 @@ func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1
 	return ApplyReplacements(spec, replacements, map[string][]string{})
 }
 
-// ApplyContexts applies the substitution from $(context.(taskRun|task).*) with the specified values.
-// Uses "" as a default if a value is not available.
-func ApplyContexts(spec *v1beta1.TaskSpec, taskName string, tr *v1beta1.TaskRun) *v1beta1.TaskSpec {
-	replacements := map[string]string{
+func getContextReplacements(taskName string, tr *v1beta1.TaskRun) map[string]string {
+	return map[string]string{
 		"context.taskRun.name":      tr.Name,
 		"context.task.name":         taskName,
 		"context.taskRun.namespace": tr.Namespace,
 		"context.taskRun.uid":       string(tr.ObjectMeta.UID),
 		"context.task.retry-count":  strconv.Itoa(len(tr.Status.RetriesStatus)),
 	}
-	return ApplyReplacements(spec, replacements, map[string][]string{})
+}
+
+// ApplyContexts applies the substitution from $(context.(taskRun|task).*) with the specified values.
+// Uses "" as a default if a value is not available.
+func ApplyContexts(spec *v1beta1.TaskSpec, taskName string, tr *v1beta1.TaskRun) *v1beta1.TaskSpec {
+	return ApplyReplacements(spec, getContextReplacements(taskName, tr), map[string][]string{})
 }
 
 // ApplyWorkspaces applies the substitution from paths that the workspaces in declarations mounted to, the

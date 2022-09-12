@@ -2,7 +2,9 @@ package test
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
 )
@@ -54,10 +56,14 @@ func (r *Requester) Submit(ctx context.Context, resolverName resolution.Resolver
 		reqParams[k] = v
 	}
 
+	var wrongParams []string
 	for k, v := range r.Params {
 		if reqValue, ok := reqParams[k]; !ok || reqValue != v {
-			return nil, fmt.Errorf("expected %s param to be %s, but was %s", k, v, reqValue)
+			wrongParams = append(wrongParams, fmt.Sprintf("expected %s param to be %s, but was %s", k, v, reqValue))
 		}
+	}
+	if len(wrongParams) > 0 {
+		return nil, errors.New(strings.Join(wrongParams, "; "))
 	}
 
 	return r.ResolvedResource, r.SubmitErr

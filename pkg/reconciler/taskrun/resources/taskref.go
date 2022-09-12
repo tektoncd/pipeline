@@ -108,6 +108,9 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			var replacedParams []v1beta1.Param
 			if ownerAsTR, ok := owner.(*v1beta1.TaskRun); ok {
 				stringReplacements, arrayReplacements := paramsFromTaskRun(ctx, ownerAsTR)
+				for k, v := range getContextReplacements("", ownerAsTR) {
+					stringReplacements[k] = v
+				}
 				for _, p := range tr.Params {
 					p.Value.ApplyReplacements(stringReplacements, arrayReplacements, nil)
 					replacedParams = append(replacedParams, p)
