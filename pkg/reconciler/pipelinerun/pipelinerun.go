@@ -732,6 +732,16 @@ func (c *Reconciler) processRunTimeouts(ctx context.Context, pr *v1beta1.Pipelin
 	return nil
 }
 
+func (c *Reconciler) getRunVersion(rpt *resources.ResolvedPipelineTask) string {
+	fmt.Println("I am in getRunVersion!!!")
+	if rpt.PipelineTask.TaskRef != nil && rpt.PipelineTask.TaskRef.RunVersion == "v1beta1" {
+		fmt.Println("CustomRun 2")
+		return "CustomRun"
+	}
+	return "Run"
+
+}
+
 // runNextSchedulableTask gets the next schedulable Tasks from the dag based on the current
 // pipeline run state, and starts them
 // after all DAG tasks are done, it's responsible for scheduling final tasks and start executing them
@@ -788,16 +798,33 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 
 		switch {
 		case rpt.IsCustomTask() && rpt.IsMatrixed():
-			rpt.Runs, err = c.createRuns(ctx, rpt, pr)
-			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "RunsCreationFailed", "Failed to create Runs %q: %v", rpt.RunNames, err)
-				return fmt.Errorf("error creating Runs called %s for PipelineTask %s from PipelineRun %s: %w", rpt.RunNames, rpt.PipelineTask.Name, pr.Name, err)
+			if c.getRunVersion(rpt) == "Run" {
+				rpt.Runs, err = c.createRuns(ctx, rpt, pr)
+				if err != nil {
+					recorder.Eventf(pr, corev1.EventTypeWarning, "RunsCreationFailed", "Failed to create Runs %q: %v", rpt.RunNames, err)
+					return fmt.Errorf("error creating Runs called %s for PipelineTask %s from PipelineRun %s: %w", rpt.RunNames, rpt.PipelineTask.Name, pr.Name, err)
+				}
+			} else {
+				rpt.CustomRuns, err = c.createCustomRuns(ctx, rpt, pr)
+				if err != nil {
+					recorder.Eventf(pr, corev1.EventTypeWarning, "CustomRunsCreationFailed", "Failed to create CustomRuns %q: %v", rpt.CustomRunNames, err)
+					return fmt.Errorf("error creating CustomRuns called %s for PipelineTask %s from PipelineRun %s: %w", rpt.CustomRunNames, rpt.PipelineTask.Name, pr.Name, err)
+				}
+
 			}
 		case rpt.IsCustomTask():
-			rpt.Run, err = c.createRun(ctx, rpt.RunName, nil, rpt, pr)
-			if err != nil {
-				recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rpt.RunName, err)
-				return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rpt.RunName, rpt.PipelineTask.Name, pr.Name, err)
+			if c.getRunVersion(rpt) == "Run" {
+				rpt.Run, err = c.createRun(ctx, rpt.RunName, nil, rpt, pr)
+				if err != nil {
+					recorder.Eventf(pr, corev1.EventTypeWarning, "RunCreationFailed", "Failed to create Run %q: %v", rpt.RunName, err)
+					return fmt.Errorf("error creating Run called %s for PipelineTask %s from PipelineRun %s: %w", rpt.RunName, rpt.PipelineTask.Name, pr.Name, err)
+				}
+			} else {
+				rpt.CustomRun, err = c.createCustomRun(ctx, rpt.CustomRunName, nil, rpt, pr)
+				if err != nil {
+					recorder.Eventf(pr, corev1.EventTypeWarning, "CustomRunCreationFailed", "Failed to create CustomRun %q: %v", rpt.CustomRunName, err)
+					return fmt.Errorf("error creating CustomRun called %s for PipelineTask %s from PipelineRun %s: %w", rpt.CustomRunName, rpt.PipelineTask.Name, pr.Name, err)
+				}
 			}
 		case rpt.IsMatrixed():
 			rpt.TaskRuns, err = c.createTaskRuns(ctx, rpt, pr, as.StorageBasePath(pr))
@@ -940,6 +967,77 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 	resources.WrapSteps(&tr.Spec, rpt.PipelineTask, rpt.ResolvedTaskResources.Inputs, rpt.ResolvedTaskResources.Outputs, storageBasePath)
 	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", taskRunName, rpt.PipelineTask.Name)
 	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
+}
+
+func (c *Reconciler) createCustomRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun) ([]*v1beta1.CustomRun, error) {
+	var customRuns []*v1beta1.CustomRun
+	matrixCombinations := matrix.FanOut(rpt.PipelineTask.Matrix.Params).ToMap()
+	for i, customRunName := range rpt.CustomRunNames {
+		params := matrixCombinations[strconv.Itoa(i)]
+		customRun, err := c.createCustomRun(ctx, customRunName, params, rpt, pr)
+		if err != nil {
+			return nil, err
+		}
+		customRuns = append(customRuns, customRun)
+	}
+	return customRuns, nil
+}
+
+func (c *Reconciler) createCustomRun(ctx context.Context, customRunName string, params []v1beta1.Param, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun) (*v1beta1.CustomRun, error) {
+	logger := logging.FromContext(ctx)
+	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
+	params = append(params, rpt.PipelineTask.Params...)
+	r := &v1beta1.CustomRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            customRunName,
+			Namespace:       pr.Namespace,
+			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
+			Labels:          getTaskrunLabels(pr, rpt.PipelineTask.Name, true),
+			Annotations:     getTaskrunAnnotations(pr),
+		},
+		Spec: v1beta1.CustomRunSpec{
+			Retries:            rpt.PipelineTask.Retries,
+			CustomRef:          rpt.PipelineTask.TaskRef,
+			Params:             params,
+			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
+		},
+	}
+
+	if rpt.PipelineTask.Timeout != nil {
+		r.Spec.Timeout = rpt.PipelineTask.Timeout
+	}
+
+	if rpt.PipelineTask.TaskSpec != nil {
+		j, err := json.Marshal(rpt.PipelineTask.TaskSpec.Spec)
+		if err != nil {
+			return nil, err
+		}
+		r.Spec.CustomSpec = &v1beta1.EmbeddedCustomRunSpec{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: rpt.PipelineTask.TaskSpec.APIVersion,
+				Kind:       rpt.PipelineTask.TaskSpec.Kind,
+			},
+			Metadata: rpt.PipelineTask.TaskSpec.Metadata,
+			Spec: runtime.RawExtension{
+				Raw: j,
+			},
+		}
+	}
+	var pipelinePVCWorkspaceName string
+	var err error
+	r.Spec.Workspaces, pipelinePVCWorkspaceName, err = getTaskrunWorkspaces(ctx, pr, rpt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the affinity assistant annotation in case the custom task creates TaskRuns or Pods
+	// that can take advantage of it.
+	if !c.isAffinityAssistantDisabled(ctx) && pipelinePVCWorkspaceName != "" {
+		r.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
+	}
+
+	logger.Infof("Creating a new CustomRun object %s", customRunName)
+	return c.PipelineClientSet.TektonV1beta1().CustomRuns(pr.Namespace).Create(ctx, r, metav1.CreateOptions{})
 }
 
 func (c *Reconciler) createRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun) ([]*v1alpha1.Run, error) {

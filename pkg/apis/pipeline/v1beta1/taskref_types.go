@@ -25,6 +25,9 @@ type TaskRef struct {
 	// API version of the referent
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
+	// API version of the Run CRD
+	// +optional
+	RunVersion string `json:"runVersion,omitempty"`
 	// Bundle url reference to a Tekton Bundle.
 	// +optional
 	Bundle string `json:"bundle,omitempty"`

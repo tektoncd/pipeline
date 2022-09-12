@@ -124,6 +124,10 @@ type TaskSpec struct {
 	// Results are values that this Task can output
 	// +listType=atomic
 	Results []TaskResult `json:"results,omitempty"`
+
+	// API version of the Run CRD
+	// +optional
+	RunVersion string `json:"runVersion,omitempty"`
 }
 
 // TaskList contains a list of Task

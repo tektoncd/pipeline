@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
+	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -435,6 +436,10 @@ type PipelineRunStatusFields struct {
 	// +optional
 	Runs map[string]*PipelineRunRunStatus `json:"runs,omitempty"`
 
+	// map of PipelineRunCustomRunStatus with the customrun name as the key
+	// +optional
+	CustomRuns map[string]*PipelineRunCustomRunStatus `json:"customRuns,omitempty"`
+
 	// PipelineResults are the list of results written out by the pipeline task's containers
 	// +optional
 	// +listType=atomic
@@ -527,6 +532,19 @@ type PipelineRunRunStatus struct {
 	// Status is the RunStatus for the corresponding Run
 	// +optional
 	Status *runv1alpha1.RunStatus `json:"status,omitempty"`
+	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
+	// +optional
+	// +listType=atomic
+	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
+}
+
+// PipelineRunCustomRunStatus contains the name of the PipelineTask for this CustomRun and the CustomRun's Status
+type PipelineRunCustomRunStatus struct {
+	// PipelineTaskName is the name of the PipelineTask.
+	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
+	// Status is the RunStatus for the corresponding Run
+	// +optional
+	CustomRunStatus *runv1beta1.CustomRunStatus `json:"customRunStatus,omitempty"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
 	// +listType=atomic

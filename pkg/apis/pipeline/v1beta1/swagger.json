@@ -717,6 +717,10 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "runVersion": {
+          "description": "API version of the Run CRD",
+          "type": "string"
+        },
         "sidecars": {
           "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",
           "type": "array",
@@ -1107,6 +1111,29 @@
         }
       }
     },
+    "v1beta1.PipelineRunCustomRunStatus": {
+      "description": "PipelineRunCustomRunStatus contains the name of the PipelineTask for this CustomRun and the CustomRun's Status",
+      "type": "object",
+      "properties": {
+        "customRunStatus": {
+          "description": "Status is the RunStatus for the corresponding Run",
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1beta1.CustomRunStatus"
+        },
+        "pipelineTaskName": {
+          "description": "PipelineTaskName is the name of the PipelineTask.",
+          "type": "string"
+        },
+        "whenExpressions": {
+          "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
     "v1beta1.PipelineRunList": {
       "description": "PipelineRunList contains a list of PipelineRun",
       "type": "object",
@@ -1277,6 +1304,13 @@
           "x-kubernetes-patch-merge-key": "type",
           "x-kubernetes-patch-strategy": "merge"
         },
+        "customRuns": {
+          "description": "map of PipelineRunCustomRunStatus with the customrun name as the key",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunCustomRunStatus"
+          }
+        },
         "finallyStartTime": {
           "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
           "$ref": "#/definitions/v1.Time"
@@ -1344,6 +1378,13 @@
         "completionTime": {
           "description": "CompletionTime is the time the PipelineRun completed.",
           "$ref": "#/definitions/v1.Time"
+        },
+        "customRuns": {
+          "description": "map of PipelineRunCustomRunStatus with the customrun name as the key",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunCustomRunStatus"
+          }
         },
         "finallyStartTime": {
           "description": "FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.",
@@ -2428,6 +2469,10 @@
         "name": {
           "description": "Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names",
           "type": "string"
+        },
+        "runVersion": {
+          "description": "API version of the Run CRD",
+          "type": "string"
         }
       }
     },
@@ -3026,6 +3071,10 @@
             "$ref": "#/definitions/v1beta1.TaskResult"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "runVersion": {
+          "description": "API version of the Run CRD",
+          "type": "string"
         },
         "sidecars": {
           "description": "Sidecars are run alongside the Task's step containers. They begin before the steps start and end after the steps complete.",

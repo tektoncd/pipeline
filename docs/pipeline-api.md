@@ -6784,6 +6784,18 @@ the steps start and end after the steps complete.</p>
 <p>Results are values that this Task can output</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>runVersion</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>API version of the Run CRD</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -7573,6 +7585,18 @@ the steps start and end after the steps complete.</p>
 </td>
 <td>
 <p>Results are values that this Task can output</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>runVersion</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>API version of the Run CRD</p>
 </td>
 </tr>
 </table>
@@ -8997,6 +9021,63 @@ ParamValue
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.PipelineRunCustomRunStatus">PipelineRunCustomRunStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
+</p>
+<div>
+<p>PipelineRunCustomRunStatus contains the name of the PipelineTask for this CustomRun and the CustomRun&rsquo;s Status</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pipelineTaskName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>PipelineTaskName is the name of the PipelineTask.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>customRunStatus</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunStatus">
+CustomRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Status is the RunStatus for the corresponding Run</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>whenExpressions</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.WhenExpression">
+[]WhenExpression
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>WhenExpressions is the list of checks guarding the execution of the PipelineTask</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.PipelineRunReason">PipelineRunReason
 (<code>string</code> alias)</h3>
 <div>
@@ -9404,6 +9485,20 @@ map[string]*github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRu
 <em>(Optional)</em>
 <p>Deprecated - use ChildReferences instead.
 map of PipelineRunRunStatus with the run name as the key</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>customRuns</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.PipelineRunCustomRunStatus">
+map[string]*github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunCustomRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>map of PipelineRunCustomRunStatus with the customrun name as the key</p>
 </td>
 </tr>
 <tr>
@@ -11950,6 +12045,18 @@ string
 </tr>
 <tr>
 <td>
+<code>runVersion</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>API version of the Run CRD</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>bundle</code><br/>
 <em>
 string
@@ -13050,6 +13157,18 @@ the steps start and end after the steps complete.</p>
 <p>Results are values that this Task can output</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>runVersion</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>API version of the Run CRD</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.TimeoutFields">TimeoutFields
@@ -13112,7 +13231,7 @@ Kubernetes meta/v1.Duration
 <h3 id="tekton.dev/v1beta1.WhenExpression">WhenExpression
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ChildStatusReference">ChildStatusReference</a>, <a href="#tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus</a>, <a href="#tekton.dev/v1beta1.SkippedTask">SkippedTask</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.ChildStatusReference">ChildStatusReference</a>, <a href="#tekton.dev/v1beta1.PipelineRunCustomRunStatus">PipelineRunCustomRunStatus</a>, <a href="#tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus</a>, <a href="#tekton.dev/v1beta1.SkippedTask">SkippedTask</a>)
 </p>
 <div>
 <p>WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run
@@ -13532,7 +13651,7 @@ string
 <h3 id="tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1beta1.PipelineRunCustomRunStatus">PipelineRunCustomRunStatus</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
 </p>
 <div>
 <p>CustomRunStatus defines the observed state of CustomRun</p>

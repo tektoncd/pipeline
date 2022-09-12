@@ -68,6 +68,10 @@ type ResolvedPipelineTask struct {
 	Run                   *v1alpha1.Run
 	RunNames              []string
 	Runs                  []*v1alpha1.Run
+	CustomRunName         string
+	CustomRun             *v1beta1.CustomRun
+	CustomRunNames        []string
+	CustomRuns            []*v1beta1.CustomRun
 	PipelineTask          *v1beta1.PipelineTask
 	ResolvedTaskResources *resources.ResolvedTaskResources
 }

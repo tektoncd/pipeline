@@ -737,6 +737,221 @@ spec:
 	}
 }
 
+func TestReconcile_CustomTaskBeta(t *testing.T) {
+	names.TestingSeed()
+	const pipelineRunName = "test-pipelinerun"
+	const namespace = "namespace"
+
+	simpleCustomTaskPRYAML := `metadata:
+  name: test-pipelinerun
+  namespace: namespace
+spec:
+  pipelineSpec:
+    tasks:
+    - name: custom-task
+      params:
+      - name: param1
+        value: value1
+      retries: 3
+      taskRef:
+        apiVersion: example.dev/v0
+        kind: Example
+        runVersion: v1beta1
+`
+	simpleCustomTaskWantRunYAML := `metadata:
+  annotations: {}
+  labels:
+    tekton.dev/memberOf: tasks
+    tekton.dev/pipeline: test-pipelinerun
+    tekton.dev/pipelineRun: test-pipelinerun
+    tekton.dev/pipelineTask: custom-task
+  namespace: namespace
+  ownerReferences:
+  - apiVersion: tekton.dev/v1beta1
+    blockOwnerDeletion: true
+    controller: true
+    kind: PipelineRun
+    name: test-pipelinerun
+spec:
+  params:
+  - name: param1
+    value: value1
+  customRef:
+    apiVersion: example.dev/v0
+    kind: Example
+    runVersion: v1beta1
+  retries: 3
+  serviceAccountName: default
+`
+
+	tcs := []struct {
+		name           string
+		pr             *v1beta1.PipelineRun
+		wantRun        *v1beta1.CustomRun
+		embeddedStatus string
+	}{{
+		name:    "simple custom task with taskRef",
+		pr:      parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+		wantRun: parse.MustParseCustomRun(t, simpleCustomTaskWantRunYAML),
+	},
+	//	{
+	//		name:           "simple custom task with full embedded status",
+	//		pr:             parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+	//		wantRun:        parse.MustParseCustomRun(t, simpleCustomTaskWantRunYAML),
+	//		embeddedStatus: config.FullEmbeddedStatus,
+	//	}, {
+	//		name:           "simple custom task with minimal embedded status",
+	//		pr:             parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+	//		wantRun:        parse.MustParseCustomRun(t, simpleCustomTaskWantRunYAML),
+	//		embeddedStatus: config.MinimalEmbeddedStatus,
+	//	}, {
+	//		name: "simple custom task with taskSpec",
+	//		pr: parse.MustParsePipelineRun(t, `
+	//
+	// metadata:
+	//
+	//	name: test-pipelinerun
+	//	namespace: namespace
+	//
+	// spec:
+	//
+	//	pipelineSpec:
+	//	  tasks:
+	//	  - name: custom-task
+	//	    params:
+	//	    - name: param1
+	//	      value: value1
+	//	    taskSpec:
+	//	      apiVersion: example.dev/v0
+	//	      kind: Example
+	//	      metadata:
+	//	        labels:
+	//	          test-label: test
+	//	      spec:
+	//	        field1: 123
+	//	        field2: value
+	//
+	// `),
+	//
+	//	wantRun: mustParseCustomRunWithObjectMeta(t,
+	//		taskRunObjectMeta("test-pipelinerun-custom-task", "namespace", "test-pipelinerun", "test-pipelinerun", "custom-task", false),
+	//		`
+	//
+	// spec:
+	//
+	//	params:
+	//	- name: param1
+	//	  value: value1
+	//	serviceAccountName: default
+	//	spec:
+	//	  apiVersion: example.dev/v0
+	//	  kind: Example
+	//	  metadata:
+	//	    labels:
+	//	      test-label: test
+	//	  spec:
+	//	    field1: 123
+	//	    field2: value
+	//
+	// `),
+	//
+	//	}, {
+	//		name: "custom task with workspace",
+	//		pr: parse.MustParsePipelineRun(t, `
+	//
+	// metadata:
+	//
+	//	name: test-pipelinerun
+	//	namespace: namespace
+	//
+	// spec:
+	//
+	//	pipelineSpec:
+	//	  tasks:
+	//	  - name: custom-task
+	//	    taskRef:
+	//	      apiVersion: example.dev/v0
+	//	      kind: Example
+	//	    workspaces:
+	//	    - name: taskws
+	//	      subPath: bar
+	//	      workspace: pipelinews
+	//	  workspaces:
+	//	  - name: pipelinews
+	//	workspaces:
+	//	- name: pipelinews
+	//	  persistentVolumeClaim:
+	//	    claimName: myclaim
+	//	  subPath: foo
+	//
+	// `),
+	//
+	//	wantRun: mustParseCustomRunWithObjectMeta(t,
+	//		taskRunObjectMetaWithAnnotations("test-pipelinerun-custom-task", "namespace", "test-pipelinerun",
+	//			"test-pipelinerun", "custom-task", false, map[string]string{
+	//				"pipeline.tekton.dev/affinity-assistant": getAffinityAssistantName("pipelinews", pipelineRunName),
+	//			}),
+	//		`
+	//
+	// spec:
+	//
+	//	ref:
+	//	  apiVersion: example.dev/v0
+	//	  kind: Example
+	//	serviceAccountName: default
+	//	workspaces:
+	//	- name: taskws
+	//	  persistentVolumeClaim:
+	//	    claimName: myclaim
+	//	  subPath: foo/bar
+	//
+	// `),
+	//
+	//	}
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			embeddedStatus := tc.embeddedStatus
+			if embeddedStatus == "" {
+				embeddedStatus = config.DefaultEmbeddedStatus
+			}
+			cms := []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
+
+			d := test.Data{
+				PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
+				ConfigMaps:   cms,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			wantEvents := []string{
+				"Normal Started",
+				"Normal Running Tasks Completed: 0",
+			}
+			reconciledRun, clients := prt.reconcileRun(namespace, pipelineRunName, wantEvents, false)
+
+			actions := clients.Pipeline.Actions()
+			if len(actions) < 2 {
+				t.Fatalf("Expected client to have at least two action implementation but it has %d", len(actions))
+			}
+
+			// Check that the expected Run was created.
+			actual := actions[0].(ktesting.CreateAction).GetObject()
+			// Ignore the TypeMeta field, because parse.MustParseRun automatically populates it but the "actual" Run won't have it.
+			if d := cmp.Diff(tc.wantRun, actual, cmpopts.IgnoreFields(v1beta1.CustomRun{}, "TypeMeta")); d != "" {
+				t.Errorf("expected to see CustomRun created: %s", diff.PrintWantGot(d))
+			}
+
+			// This PipelineRun is in progress now and the status should reflect that
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+
+			verifyCustomRunStatusesCount(t, embeddedStatus, reconciledRun.Status, 1)
+			verifyCustomRunStatusesNames(t, embeddedStatus, reconciledRun.Status, tc.wantRun.Name)
+		})
+	}
+}
+
 func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	// TestReconcile_PipelineSpecTaskSpec runs "Reconcile" on a PipelineRun that has an embedded PipelineSpec that has an embedded TaskSpec.
 	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.
@@ -7840,6 +8055,16 @@ func verifyRunStatusesCount(t *testing.T, embeddedStatus string, prStatus v1beta
 	}
 }
 
+func verifyCustomRunStatusesCount(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, customRunCount int) {
+	t.Helper()
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) && len(prStatus.CustomRuns) != customRunCount {
+		t.Errorf("Expected PipelineRun status to have exactly %d customruns, but was %d", customRunCount, len(prStatus.CustomRuns))
+	}
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) && len(filterChildRefsForKind(prStatus.ChildReferences, "CustomRun")) != customRunCount {
+		t.Errorf("Expected PipelineRun status ChildReferences to have %d customruns, but was %d", customRunCount, len(filterChildRefsForKind(prStatus.ChildReferences, "CustomRun")))
+	}
+}
+
 func verifyRunStatusesNames(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, runNames ...string) {
 	t.Helper()
 	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
@@ -7858,6 +8083,29 @@ func verifyRunStatusesNames(t *testing.T, embeddedStatus string, prStatus v1beta
 		for _, rn := range runNames {
 			if _, ok := rnMap[rn]; !ok {
 				t.Errorf("Expected PipelineRun status to include Run status for %s but was %v", rn, prStatus.ChildReferences)
+			}
+		}
+	}
+}
+
+func verifyCustomRunStatusesNames(t *testing.T, embeddedStatus string, prStatus v1beta1.PipelineRunStatus, customRunNames ...string) {
+	t.Helper()
+	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
+		for _, rn := range customRunNames {
+			if _, ok := prStatus.CustomRuns[rn]; !ok {
+				t.Errorf("Expected PipelineRun status to include CustomRun status for %s but was %v", rn, prStatus.CustomRuns)
+			}
+		}
+	}
+	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
+		rnMap := make(map[string]struct{})
+		for _, cr := range filterChildRefsForKind(prStatus.ChildReferences, "CustomRun") {
+			rnMap[cr.Name] = struct{}{}
+		}
+
+		for _, rn := range customRunNames {
+			if _, ok := rnMap[rn]; !ok {
+				t.Errorf("Expected PipelineRun status to include CustomRun status for %s but was %v", rn, prStatus.ChildReferences)
 			}
 		}
 	}
@@ -7902,6 +8150,12 @@ func mustParseTaskRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, 
 
 func mustParseRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1alpha1.Run {
 	r := parse.MustParseRun(t, asYAML)
+	r.ObjectMeta = objectMeta
+	return r
+}
+
+func mustParseCustomRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.CustomRun {
+	r := parse.MustParseCustomRun(t, asYAML)
 	r.ObjectMeta = objectMeta
 	return r
 }

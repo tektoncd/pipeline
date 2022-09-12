@@ -56,6 +56,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceResult":           schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResult":                   schema_pkg_apis_pipeline_v1beta1_PipelineResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRun":                      schema_pkg_apis_pipeline_v1beta1_PipelineRun(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunCustomRunStatus":       schema_pkg_apis_pipeline_v1beta1_PipelineRunCustomRunStatus(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunList":                  schema_pkg_apis_pipeline_v1beta1_PipelineRunList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult":                schema_pkg_apis_pipeline_v1beta1_PipelineRunResult(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus":             schema_pkg_apis_pipeline_v1beta1_PipelineRunRunStatus(ref),
@@ -1010,6 +1011,13 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback)
 							},
 						},
 					},
+					"runVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "API version of the Run CRD",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -1629,6 +1637,53 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRun(ref common.ReferenceCallback) 
 	}
 }
 
+func schema_pkg_apis_pipeline_v1beta1_PipelineRunCustomRunStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "PipelineRunCustomRunStatus contains the name of the PipelineTask for this CustomRun and the CustomRun's Status",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"pipelineTaskName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "PipelineTaskName is the name of the PipelineTask.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"customRunStatus": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Status is the RunStatus for the corresponding Run",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/run/v1beta1.CustomRunStatus"),
+						},
+					},
+					"whenExpressions": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1.CustomRunStatus"},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1beta1_PipelineRunList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -1977,6 +2032,20 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref common.ReferenceCall
 							},
 						},
 					},
+					"customRuns": {
+						SchemaProps: spec.SchemaProps{
+							Description: "map of PipelineRunCustomRunStatus with the customrun name as the key",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunCustomRunStatus"),
+									},
+								},
+							},
+						},
+					},
 					"pipelineResults": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -2050,7 +2119,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref common.ReferenceCall
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunCustomRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -2101,6 +2170,20 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref common.Referen
 							},
 						},
 					},
+					"customRuns": {
+						SchemaProps: spec.SchemaProps{
+							Description: "map of PipelineRunCustomRunStatus with the customrun name as the key",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunCustomRunStatus"),
+									},
+								},
+							},
+						},
+					},
 					"pipelineResults": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
@@ -2174,7 +2257,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref common.Referen
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunCustomRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -4093,6 +4176,13 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 							Format:      "",
 						},
 					},
+					"runVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "API version of the Run CRD",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 					"bundle": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Bundle url reference to a Tekton Bundle.",
@@ -5325,6 +5415,13 @@ func schema_pkg_apis_pipeline_v1beta1_TaskSpec(ref common.ReferenceCallback) com
 									},
 								},
 							},
+						},
+					},
+					"runVersion": {
+						SchemaProps: spec.SchemaProps{
+							Description: "API version of the Run CRD",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
