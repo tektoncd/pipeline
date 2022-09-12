@@ -43,8 +43,6 @@ func TestPipelineConversionBadType(t *testing.T) {
 }
 
 func TestPipelineConversion(t *testing.T) {
-	versions := []apis.Convertible{&v1.Pipeline{}}
-
 	tests := []struct {
 		name string
 		in   *v1beta1.Pipeline
@@ -150,6 +148,7 @@ func TestPipelineConversion(t *testing.T) {
 	}}
 
 	for _, test := range tests {
+		versions := []apis.Convertible{&v1.Pipeline{}}
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
@@ -172,7 +171,6 @@ func TestPipelineConversion(t *testing.T) {
 }
 
 func TestPipelineConversionFromDeprecated(t *testing.T) {
-	versions := []apis.Convertible{&v1.Pipeline{}}
 	tests := []struct {
 		name string
 		in   *v1beta1.Pipeline
@@ -219,6 +217,7 @@ func TestPipelineConversionFromDeprecated(t *testing.T) {
 	}}
 
 	for _, test := range tests {
+		versions := []apis.Convertible{&v1.Pipeline{}}
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version

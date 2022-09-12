@@ -46,8 +46,6 @@ func TestPipelineRunConversionBadType(t *testing.T) {
 }
 
 func TestPipelineRunConversion(t *testing.T) {
-	versions := []apis.Convertible{&v1.PipelineRun{}}
-
 	tests := []struct {
 		name string
 		in   *v1beta1.PipelineRun
@@ -148,6 +146,7 @@ func TestPipelineRunConversion(t *testing.T) {
 		},
 	}}
 	for _, test := range tests {
+		versions := []apis.Convertible{&v1.PipelineRun{}}
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
@@ -170,7 +169,6 @@ func TestPipelineRunConversion(t *testing.T) {
 }
 
 func TestPipelineRunConversionFromDeprecated(t *testing.T) {
-	versions := []apis.Convertible{&v1.PipelineRun{}}
 	tests := []struct {
 		name string
 		in   *v1beta1.PipelineRun
@@ -233,9 +231,42 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 				},
 			},
 		},
+	}, {
+		name: "bundle",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name:   "test-bundle-name",
+					Bundle: "test-bundle",
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test-bundle-name",
+					ResolverRef: v1beta1.ResolverRef{
+						Resolver: "bundles",
+						Params: []v1beta1.Param{
+							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle"}},
+							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name"}},
+							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task"}},
+						},
+					},
+				},
+			},
+		},
 	}}
-	// TODO add the cases for bundles #4546
 	for _, test := range tests {
+		versions := []apis.Convertible{&v1.PipelineRun{}}
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
