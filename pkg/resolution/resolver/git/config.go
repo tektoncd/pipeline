@@ -16,14 +16,30 @@ limitations under the License.
 
 package git
 
-// ConfigFieldTimeout is the configuration field name for controlling
-// the maximum duration of a resolution request for a file from git.
-const ConfigFieldTimeout = "fetch-timeout"
+const (
+	// defaultTimeoutKey is the configuration field name for controlling
+	// the maximum duration of a resolution request for a file from git.
+	defaultTimeoutKey = "fetch-timeout"
 
-// ConfigURL is the configuration field name for controlling
-// the git url to fetch the remote resource from.
-const ConfigURL = "default-url"
+	// defaultURLKey is the configuration field name for controlling
+	// the git url to fetch the remote resource from.
+	defaultURLKey = "default-url"
 
-// ConfigRevision is the configuration field name for controlling
-// the revision to fetch the remote resource from.
-const ConfigRevision = "default-revision"
+	// defaultRevisionKey is the configuration field name for controlling
+	// the revision to fetch the remote resource from.
+	defaultRevisionKey = "default-revision"
+
+	// defaultOrgKey is the configuration field name for setting a default organization when using the SCM API.
+	defaultOrgKey = "default-org"
+
+	// ServerURLKey is the config map key for the SCM provider URL
+	ServerURLKey = "server-url"
+	// SCMTypeKey is the config map key for the SCM provider type
+	SCMTypeKey = "scm-type"
+	// APISecretNameKey is the config map key for the token secret's name
+	APISecretNameKey = "api-token-secret-name"
+	// APISecretKeyKey is the config map key for the containing the token within the token secret
+	APISecretKeyKey = "api-token-secret-key"
+	// APISecretNamespaceKey is the config map key for the token secret's namespace
+	APISecretNamespaceKey = "api-token-namespace"
+)

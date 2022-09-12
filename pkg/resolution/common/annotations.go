@@ -16,8 +16,10 @@ limitations under the License.
 
 package common
 
+import "github.com/tektoncd/pipeline/pkg/apis/resolution"
+
 const (
 	// AnnotationKeyContentType is the annotation key passed back
 	// with a resolved resource's content type.
-	AnnotationKeyContentType = "content-type"
+	AnnotationKeyContentType = resolution.GroupName + "/content-type"
 )

@@ -1,0 +1,9 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: example-task
+spec:
+  steps:
+    - command: ['something']
+      image: some-image
+      name: some-step

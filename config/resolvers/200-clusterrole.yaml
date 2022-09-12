@@ -28,3 +28,7 @@ rules:
   - apiGroups: ["tekton.dev"]
     resources: ["tasks", "pipelines"]
     verbs: ["get", "list"]
+  # Read-only access to these.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]

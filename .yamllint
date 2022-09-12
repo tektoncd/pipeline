@@ -1,6 +1,7 @@
 ignore: |
   /vendor
   test/**/*-chart/**
+  rest/scm-resolver/gitea.yaml
 
 rules:
   braces: enable

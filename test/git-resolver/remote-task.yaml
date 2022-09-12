@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: remote-scm-resolver-task
+spec:
+  steps:
+  - name: sleep
+    image: busybox
+    command: ['/bin/sh']
+    args: ['-c', 'sleep 10']

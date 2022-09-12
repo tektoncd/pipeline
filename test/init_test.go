@@ -264,6 +264,10 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		return nil, fmt.Errorf("could not get pods: %w", err)
 	}
 	for _, i := range pods.Items {
+		// Ignore gitea pods for SCM resolver test
+		if strings.HasPrefix(i.Name, "gitea-") {
+			continue
+		}
 		i.SetManagedFields(nil)
 		printOrAdd(i)
 	}

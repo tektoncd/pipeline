@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -53,7 +54,7 @@ func TestGetSelector(t *testing.T) {
 	sel := resolver.GetSelector(resolverContext())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
-	} else if typ != LabelValueGitResolverType {
+	} else if typ != labelValueGitResolverType {
 		t.Fatalf("unexpected type: %q", typ)
 	}
 }
@@ -62,8 +63,9 @@ func TestValidateParams(t *testing.T) {
 	resolver := Resolver{}
 
 	paramsWithRevision := map[string]string{
-		PathParam:     "bar",
-		RevisionParam: "baz",
+		urlParam:      "http://foo",
+		pathParam:     "bar",
+		revisionParam: "baz",
 	}
 
 	if err := resolver.ValidateParams(resolverContext(), paramsWithRevision); err != nil {
@@ -77,8 +79,8 @@ func TestValidateParamsNotEnabled(t *testing.T) {
 	var err error
 
 	someParams := map[string]string{
-		PathParam:     "bar",
-		RevisionParam: "baz",
+		pathParam:     "bar",
+		revisionParam: "baz",
 	}
 	err = resolver.ValidateParams(context.Background(), someParams)
 	if err == nil {
@@ -89,18 +91,58 @@ func TestValidateParamsNotEnabled(t *testing.T) {
 	}
 }
 
-func TestValidateParamsMissing(t *testing.T) {
-	resolver := Resolver{}
+func TestValidateParams_Failure(t *testing.T) {
 
-	var err error
-
-	paramsMissingPath := map[string]string{
-		URLParam:      "foo",
-		RevisionParam: "baz",
+	testCases := []struct {
+		name        string
+		params      map[string]string
+		expectedErr string
+	}{
+		{
+			name: "missing multiple",
+			params: map[string]string{
+				orgParam:  "abcd1234",
+				repoParam: "foo",
+			},
+			expectedErr: fmt.Sprintf("missing required git resolver params: %s, %s", revisionParam, pathParam),
+		}, {
+			name: "no repo or url",
+			params: map[string]string{
+				revisionParam: "abcd1234",
+				pathParam:     "/foo/bar",
+			},
+			expectedErr: "must specify one of 'url' or 'repo'",
+		}, {
+			name: "both repo and url",
+			params: map[string]string{
+				revisionParam: "abcd1234",
+				pathParam:     "/foo/bar",
+				urlParam:      "http://foo",
+				repoParam:     "foo",
+			},
+			expectedErr: "cannot specify both 'url' and 'repo'",
+		}, {
+			name: "no org with repo",
+			params: map[string]string{
+				revisionParam: "abcd1234",
+				pathParam:     "/foo/bar",
+				repoParam:     "foo",
+			},
+			expectedErr: "'org' is required when 'repo' is specified",
+		},
 	}
-	err = resolver.ValidateParams(resolverContext(), paramsMissingPath)
-	if err == nil {
-		t.Fatalf("expected missing pathInRepo err")
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolver := &Resolver{}
+			err := resolver.ValidateParams(resolverContext(), tc.params)
+			if err == nil {
+				t.Fatalf("got no error, but expected: %s", tc.expectedErr)
+			}
+			if d := cmp.Diff(tc.expectedErr, err.Error()); d != "" {
+				t.Errorf("error did not match: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
@@ -118,7 +160,7 @@ func TestGetResolutionTimeoutCustom(t *testing.T) {
 	defaultTimeout := 30 * time.Minute
 	configTimeout := 5 * time.Second
 	config := map[string]string{
-		ConfigFieldTimeout: configTimeout.String(),
+		defaultTimeoutKey: configTimeout.String(),
 	}
 	ctx := framework.InjectResolverConfigToContext(resolverContext(), config)
 	timeout := resolver.GetResolutionTimeout(ctx, defaultTimeout)
@@ -133,8 +175,8 @@ func TestResolveNotEnabled(t *testing.T) {
 	var err error
 
 	someParams := map[string]string{
-		PathParam:     "bar",
-		RevisionParam: "baz",
+		pathParam:     "bar",
+		revisionParam: "baz",
 	}
 	_, err = resolver.Resolve(context.Background(), someParams)
 	if err == nil {
@@ -148,27 +190,49 @@ func TestResolveNotEnabled(t *testing.T) {
 func TestResolve(t *testing.T) {
 	withTemporaryGitConfig(t)
 
+	testOrg := "test-org"
+	testRepo := "test-repo"
+
+	refsDir := filepath.Join("testdata", "test-org", "test-repo", "refs")
+	mainPipelineYAML, err := ioutil.ReadFile(filepath.Join(refsDir, "main", "pipelines", "example-pipeline.yaml"))
+	if err != nil {
+		t.Fatalf("couldn't read main pipeline: %v", err)
+	}
+	otherPipelineYAML, err := ioutil.ReadFile(filepath.Join(refsDir, "other", "pipelines", "example-pipeline.yaml"))
+	if err != nil {
+		t.Fatalf("couldn't read other pipeline: %v", err)
+	}
+
+	mainTaskYAML, err := ioutil.ReadFile(filepath.Join(refsDir, "main", "tasks", "example-task.yaml"))
+	if err != nil {
+		t.Fatalf("couldn't read main task: %v", err)
+	}
+
 	testCases := []struct {
-		name            string
-		commits         []commitForRepo
-		revision        string
-		useNthCommit    int
-		specificCommit  string
-		pathInRepo      string
-		expectedContent []byte
-		expectedErr     error
+		name           string
+		commits        []commitForRepo
+		revision       string
+		org            string
+		repo           string
+		useNthCommit   int
+		specificCommit string
+		pathInRepo     string
+		config         map[string]string
+		apiToken       string
+		expectedStatus *v1alpha1.ResolutionRequestStatus
+		expectedErr    error
 	}{
 		{
-			name: "single commit with default revision",
+			name: "clone: single commit with default revision",
 			commits: []commitForRepo{{
 				Dir:      "foo/bar",
 				Filename: "somefile",
 				Content:  "some content",
 			}},
-			pathInRepo:      "foo/bar/somefile",
-			expectedContent: []byte("some content"),
+			pathInRepo:     "foo/bar/somefile",
+			expectedStatus: createStatus([]byte("some content")),
 		}, {
-			name: "branch revision",
+			name: "clone: branch revision",
 			commits: []commitForRepo{{
 				Dir:      "foo/bar",
 				Filename: "somefile",
@@ -179,11 +243,11 @@ func TestResolve(t *testing.T) {
 				Filename: "somefile",
 				Content:  "wrong content",
 			}},
-			revision:        "other-revision",
-			pathInRepo:      "foo/bar/somefile",
-			expectedContent: []byte("some content"),
+			revision:       "other-revision",
+			pathInRepo:     "foo/bar/somefile",
+			expectedStatus: createStatus([]byte("some content")),
 		}, {
-			name: "commit revision",
+			name: "clone: commit revision",
 			commits: []commitForRepo{{
 				Dir:      "foo/bar",
 				Filename: "somefile",
@@ -193,11 +257,11 @@ func TestResolve(t *testing.T) {
 				Filename: "somefile",
 				Content:  "different content",
 			}},
-			pathInRepo:      "foo/bar/somefile",
-			useNthCommit:    1,
-			expectedContent: []byte("different content"),
+			pathInRepo:     "foo/bar/somefile",
+			useNthCommit:   1,
+			expectedStatus: createStatus([]byte("different content")),
 		}, {
-			name: "tag revision",
+			name: "clone: tag revision",
 			commits: []commitForRepo{{
 				Dir:      "foo/bar",
 				Filename: "somefile",
@@ -208,20 +272,20 @@ func TestResolve(t *testing.T) {
 				Filename: "somefile",
 				Content:  "different content",
 			}},
-			pathInRepo:      "foo/bar/somefile",
-			revision:        "tag1",
-			expectedContent: []byte("some content"),
+			pathInRepo:     "foo/bar/somefile",
+			revision:       "tag1",
+			expectedStatus: createStatus([]byte("some content")),
 		}, {
-			name: "file does not exist",
+			name: "clone: file does not exist",
 			commits: []commitForRepo{{
 				Dir:      "foo/bar",
 				Filename: "somefile",
 				Content:  "some content",
 			}},
 			pathInRepo:  "foo/bar/some other file",
-			expectedErr: errors.New(`error opening file "foo/bar/some other file": file does not exist`),
+			expectedErr: createError(`error opening file "foo/bar/some other file": file does not exist`),
 		}, {
-			name: "revision does not exist",
+			name: "clone: revision does not exist",
 			commits: []commitForRepo{{
 				Dir:      "foo/bar",
 				Filename: "somefile",
@@ -229,222 +293,127 @@ func TestResolve(t *testing.T) {
 			}},
 			revision:    "does-not-exist",
 			pathInRepo:  "foo/bar/some other file",
-			expectedErr: errors.New("revision error: reference not found"),
+			expectedErr: createError("revision error: reference not found"),
 		}, {
-			name: "commit does not exist",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}},
-			specificCommit: "does-not-exist",
-			pathInRepo:     "foo/bar/some other file",
-			expectedErr:    errors.New("revision error: reference not found"),
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			repoPath, commits := createTestRepo(t, tc.commits)
-			resolver := &Resolver{}
-
-			params := map[string]string{
-				URLParam:  repoPath,
-				PathParam: tc.pathInRepo,
-			}
-
-			switch {
-			case tc.useNthCommit > 0:
-				params[RevisionParam] = commits[plumbing.Master.Short()][tc.useNthCommit]
-			case tc.specificCommit != "":
-				params[RevisionParam] = hex.EncodeToString([]byte(tc.specificCommit))
-			default:
-				params[RevisionParam] = tc.revision
-			}
-
-			v := map[string]string{
-				ConfigRevision: plumbing.Master.Short(),
-			}
-			output, err := resolver.Resolve(context.WithValue(resolverContext(), struct{}{}, v), params)
-			if tc.expectedErr != nil {
-				if err == nil {
-					t.Fatalf("expected err '%v' but didn't get one", tc.expectedErr)
-				}
-				if tc.expectedErr.Error() != err.Error() {
-					t.Fatalf("expected err '%v' but got '%v'", tc.expectedErr, err)
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("unexpected error resolving: %v", err)
-				}
-
-				expectedResource := &ResolvedGitResource{
-					Content: tc.expectedContent,
-				}
-				switch {
-				case tc.useNthCommit > 0:
-					expectedResource.Revision = commits[plumbing.Master.Short()][tc.useNthCommit]
-				case tc.revision == "":
-					expectedResource.Revision = plumbing.Master.Short()
-				default:
-					expectedResource.Revision = tc.revision
-				}
-
-				if d := cmp.Diff(expectedResource, output); d != "" {
-					t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
-				}
-			}
-		})
-	}
-}
-
-func TestController(t *testing.T) {
-	withTemporaryGitConfig(t)
-
-	testCases := []struct {
-		name           string
-		commits        []commitForRepo
-		revision       string
-		useNthCommit   int
-		specificCommit string
-		pathInRepo     string
-		expectedStatus *v1alpha1.ResolutionRequestStatus
-		expectedErr    error
-	}{
-		{
-			name: "single commit",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}},
-			pathInRepo: "foo/bar/somefile",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Annotations: map[string]string{
-						"content-type": "application/x-yaml",
-					},
-				},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
-				},
+			name:       "api: successful task",
+			revision:   "main",
+			pathInRepo: "tasks/example-task.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			config: map[string]string{
+				ServerURLKey:          "fake",
+				SCMTypeKey:            "fake",
+				APISecretNameKey:      "token-secret",
+				APISecretKeyKey:       "token",
+				APISecretNamespaceKey: system.Namespace(),
 			},
+			apiToken:       "some-token",
+			expectedStatus: createStatus(mainTaskYAML),
 		}, {
-			name: "with branch",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-				Branch:   "other-revision",
-			}, {
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "wrong content",
-			}},
-			revision:   "other-revision",
-			pathInRepo: "foo/bar/somefile",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Annotations: map[string]string{
-						"content-type": "application/x-yaml",
-					},
-				},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
-				},
+			name:       "api: successful pipeline",
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			config: map[string]string{
+				ServerURLKey:          "fake",
+				SCMTypeKey:            "fake",
+				APISecretNameKey:      "token-secret",
+				APISecretKeyKey:       "token",
+				APISecretNamespaceKey: system.Namespace(),
 			},
+			apiToken:       "some-token",
+			expectedStatus: createStatus(mainPipelineYAML),
 		}, {
-			name: "with tag",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-				Tag:      "tag1",
-			}, {
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "wrong content",
-			}},
-			revision:   "tag1",
-			pathInRepo: "foo/bar/somefile",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Annotations: map[string]string{
-						"content-type": "application/x-yaml",
-					},
-				},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
-				},
+			name:       "api: successful pipeline with default revision",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			config: map[string]string{
+				ServerURLKey:          "fake",
+				SCMTypeKey:            "fake",
+				APISecretNameKey:      "token-secret",
+				APISecretKeyKey:       "token",
+				APISecretNamespaceKey: system.Namespace(),
+				defaultRevisionKey:    "other",
 			},
+			apiToken:       "some-token",
+			expectedStatus: createStatus(otherPipelineYAML),
 		}, {
-			name: "earlier specific commit",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}, {
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "different content",
-			}},
-			pathInRepo:   "foo/bar/somefile",
-			useNthCommit: 1,
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Annotations: map[string]string{
-						"content-type": "application/x-yaml",
-					},
-				},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString([]byte("different content")),
-				},
+			name:       "api: file does not exist",
+			revision:   "main",
+			pathInRepo: "pipelines/other-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			config: map[string]string{
+				ServerURLKey:          "fake",
+				SCMTypeKey:            "fake",
+				APISecretNameKey:      "token-secret",
+				APISecretKeyKey:       "token",
+				APISecretNamespaceKey: system.Namespace(),
 			},
+			apiToken:       "some-token",
+			expectedStatus: createFailureStatus(),
+			expectedErr:    createError("couldn't fetch resource content: file testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml does not exist: stat testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml: no such file or directory"),
 		}, {
-			name: "file does not exist",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}},
-			pathInRepo: "foo/bar/some other file",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-						Reason: resolutioncommon.ReasonResolutionFailed,
-					}},
-				},
+			name:       "api: token not found",
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			config: map[string]string{
+				ServerURLKey:          "fake",
+				SCMTypeKey:            "fake",
+				APISecretNameKey:      "token-secret",
+				APISecretKeyKey:       "token",
+				APISecretNamespaceKey: system.Namespace(),
 			},
-			expectedErr: &resolutioncommon.ErrorGettingResource{
-				ResolverName: GitResolverName,
-				Key:          "foo/rr",
-				Original:     errors.New(`error opening file "foo/bar/some other file": file does not exist`),
-			},
+			expectedStatus: createFailureStatus(),
+			expectedErr:    createError(fmt.Sprintf("cannot get API token, secret token-secret not found in namespace %s", system.Namespace())),
 		}, {
-			name: "revision does not exist",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}},
-			revision:   "does-not-exist",
-			pathInRepo: "foo/bar/some other file",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-						Reason: resolutioncommon.ReasonResolutionFailed,
-					}},
-				},
+			name:       "api: token secret name not specified",
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			config: map[string]string{
+				ServerURLKey:          "fake",
+				SCMTypeKey:            "fake",
+				APISecretKeyKey:       "token",
+				APISecretNamespaceKey: system.Namespace(),
 			},
-			expectedErr: &resolutioncommon.ErrorGettingResource{
-				ResolverName: GitResolverName,
-				Key:          "foo/rr",
-				Original:     errors.New("revision error: reference not found"),
+			apiToken:       "some-token",
+			expectedStatus: createFailureStatus(),
+			expectedErr:    createError("cannot get API token, required when specifying 'repo' param, 'api-token-secret-name' not specified in config"),
+		}, {
+			name:       "api: token secret key not specified",
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			config: map[string]string{
+				ServerURLKey:          "fake",
+				SCMTypeKey:            "fake",
+				APISecretNameKey:      "token-secret",
+				APISecretNamespaceKey: system.Namespace(),
 			},
+			apiToken:       "some-token",
+			expectedStatus: createFailureStatus(),
+			expectedErr:    createError("cannot get API token, required when specifying 'repo' param, 'api-token-secret-key' not specified in config"),
+		}, {
+			name:       "api: SCM type not specified",
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+			config: map[string]string{
+				APISecretNameKey:      "token-secret",
+				APISecretKeyKey:       "token",
+				APISecretNamespaceKey: system.Namespace(),
+			},
+			apiToken:       "some-token",
+			expectedStatus: createFailureStatus(),
+			expectedErr:    createError("missing or empty scm-type value in configmap"),
 		},
 	}
 
@@ -452,37 +421,32 @@ func TestController(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, _ := ttesting.SetupFakeContext(t)
 
-			repoPath, commits := createTestRepo(t, tc.commits)
-
-			request := createRequest(repoPath, tc.pathInRepo, tc.revision, tc.specificCommit, tc.useNthCommit, commits)
 			resolver := &Resolver{}
 
-			var expectedStatus *v1alpha1.ResolutionRequestStatus
-			if tc.expectedStatus != nil {
-				expectedStatus = tc.expectedStatus.DeepCopy()
+			var repoPath string
+			var commits map[string][]string
 
-				if tc.expectedErr == nil {
-					reqParams := request.Spec.Parameters
-					// Add the expected commit to the expected status annotations, but only if we expect success.
-					if cmt, ok := reqParams[RevisionParam]; ok {
-						expectedStatus.Annotations[AnnotationKeyRevision] = cmt
-					} else {
-						expectedStatus.Annotations[AnnotationKeyRevision] = plumbing.Master.Short()
-					}
-				} else {
-					expectedStatus.Status.Conditions[0].Message = tc.expectedErr.Error()
-				}
+			if len(tc.commits) > 0 {
+				repoPath, commits = createTestRepo(t, tc.commits)
 			}
+			cfg := tc.config
+			if cfg == nil {
+				cfg = make(map[string]string)
+			}
+			cfg[defaultTimeoutKey] = "1m"
+			if cfg[defaultRevisionKey] == "" {
+				cfg[defaultRevisionKey] = plumbing.Master.Short()
+			}
+
+			request := createRequest(repoPath, tc.org, tc.repo, tc.pathInRepo, tc.revision, tc.specificCommit, tc.useNthCommit, commits)
+
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resolver.GetConfigName(ctx),
+						Name:      ConfigMapName,
 						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
 					},
-					Data: map[string]string{
-						ConfigFieldTimeout: "1m",
-						ConfigRevision:     plumbing.Master.Short(),
-					},
+					Data: cfg,
 				}, {
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: resolverconfig.ResolversNamespace(system.Namespace()),
@@ -495,7 +459,58 @@ func TestController(t *testing.T) {
 				ResolutionRequests: []*v1alpha1.ResolutionRequest{request},
 			}
 
-			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, tc.expectedErr)
+			var expectedStatus *v1alpha1.ResolutionRequestStatus
+			if tc.expectedStatus != nil {
+				expectedStatus = tc.expectedStatus.DeepCopy()
+
+				if tc.expectedErr == nil {
+					reqParams := request.Spec.Parameters
+					if expectedStatus.Annotations == nil {
+						expectedStatus.Annotations = make(map[string]string)
+					}
+					expectedStatus.Annotations[resolutioncommon.AnnotationKeyContentType] = "application/x-yaml"
+					switch {
+					case tc.useNthCommit > 0:
+						expectedStatus.Annotations[AnnotationKeyRevision] = commits[plumbing.Master.Short()][tc.useNthCommit]
+					case tc.revision == "" && reqParams[urlParam] != "":
+						expectedStatus.Annotations[AnnotationKeyRevision] = plumbing.Master.Short()
+					case tc.revision == "":
+						expectedStatus.Annotations[AnnotationKeyRevision] = tc.config[defaultRevisionKey]
+					default:
+						expectedStatus.Annotations[AnnotationKeyRevision] = tc.revision
+					}
+					expectedStatus.Annotations[AnnotationKeyPath] = reqParams[pathParam]
+
+					if reqParams[urlParam] != "" {
+						expectedStatus.Annotations[AnnotationKeyURL] = reqParams[urlParam]
+					} else {
+						expectedStatus.Annotations[AnnotationKeyOrg] = reqParams[orgParam]
+						expectedStatus.Annotations[AnnotationKeyRepo] = reqParams[repoParam]
+					}
+				} else {
+					expectedStatus.Status.Conditions[0].Message = tc.expectedErr.Error()
+				}
+			}
+
+			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, tc.expectedErr, func(resolver framework.Resolver, testAssets test.Assets) {
+				if tc.config[APISecretNameKey] == "" || tc.config[APISecretNamespaceKey] == "" || tc.config[APISecretKeyKey] == "" || tc.apiToken == "" {
+					return
+				}
+				tokenSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      tc.config[APISecretNameKey],
+						Namespace: tc.config[APISecretNamespaceKey],
+					},
+					Data: map[string][]byte{
+						tc.config[APISecretKeyKey]: []byte(base64.StdEncoding.Strict().EncodeToString([]byte(tc.apiToken))),
+					},
+					Type: corev1.SecretTypeOpaque,
+				}
+
+				if _, err := testAssets.Clients.Kube.CoreV1().Secrets(tc.config[APISecretNamespaceKey]).Create(ctx, tokenSecret, metav1.CreateOptions{}); err != nil {
+					t.Fatalf("failed to create test token secret: %v", err)
+				}
+			})
 		})
 	}
 }
@@ -625,7 +640,7 @@ func withTemporaryGitConfig(t *testing.T) {
 	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
 }
 
-func createRequest(repoURL, pathInRepo, revision, specificCommit string, useNthCommit int, commitsByBranch map[string][]string) *v1alpha1.ResolutionRequest {
+func createRequest(repoURL, apiOrg, apiRepo, pathInRepo, revision, specificCommit string, useNthCommit int, commitsByBranch map[string][]string) *v1alpha1.ResolutionRequest {
 	rr := &v1alpha1.ResolutionRequest{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "resolution.tekton.dev/v1alpha1",
@@ -636,24 +651,30 @@ func createRequest(repoURL, pathInRepo, revision, specificCommit string, useNthC
 			Namespace:         "foo",
 			CreationTimestamp: metav1.Time{Time: time.Now()},
 			Labels: map[string]string{
-				resolutioncommon.LabelKeyResolverType: LabelValueGitResolverType,
+				resolutioncommon.LabelKeyResolverType: labelValueGitResolverType,
 			},
 		},
 		Spec: v1alpha1.ResolutionRequestSpec{
 			Parameters: map[string]string{
-				URLParam:  repoURL,
-				PathParam: pathInRepo,
+				pathParam: pathInRepo,
 			},
 		},
 	}
 
 	switch {
 	case useNthCommit > 0:
-		rr.Spec.Parameters[RevisionParam] = commitsByBranch[plumbing.Master.Short()][useNthCommit]
+		rr.Spec.Parameters[revisionParam] = commitsByBranch[plumbing.Master.Short()][useNthCommit]
 	case specificCommit != "":
-		rr.Spec.Parameters[RevisionParam] = hex.EncodeToString([]byte(specificCommit))
+		rr.Spec.Parameters[revisionParam] = hex.EncodeToString([]byte(specificCommit))
 	case revision != "":
-		rr.Spec.Parameters[RevisionParam] = revision
+		rr.Spec.Parameters[revisionParam] = revision
+	}
+
+	if repoURL != "" {
+		rr.Spec.Parameters[urlParam] = repoURL
+	} else {
+		rr.Spec.Parameters[repoParam] = apiRepo
+		rr.Spec.Parameters[orgParam] = apiOrg
 	}
 
 	return rr
@@ -661,4 +682,33 @@ func createRequest(repoURL, pathInRepo, revision, specificCommit string, useNthC
 
 func resolverContext() context.Context {
 	return frtesting.ContextWithGitResolverEnabled(context.Background())
+}
+
+func createStatus(content []byte) *v1alpha1.ResolutionRequestStatus {
+	return &v1alpha1.ResolutionRequestStatus{
+		Status: duckv1.Status{},
+		ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+			Data: base64.StdEncoding.Strict().EncodeToString(content),
+		},
+	}
+}
+
+func createFailureStatus() *v1alpha1.ResolutionRequestStatus {
+	return &v1alpha1.ResolutionRequestStatus{
+		Status: duckv1.Status{
+			Conditions: duckv1.Conditions{{
+				Type:   apis.ConditionSucceeded,
+				Status: corev1.ConditionFalse,
+				Reason: resolutioncommon.ReasonResolutionFailed,
+			}},
+		},
+	}
+}
+
+func createError(msg string) error {
+	return &resolutioncommon.ErrorGettingResource{
+		ResolverName: gitResolverName,
+		Key:          "foo/rr",
+		Original:     errors.New(msg),
+	}
 }

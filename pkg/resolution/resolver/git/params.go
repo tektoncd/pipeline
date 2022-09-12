@@ -16,11 +16,15 @@ limitations under the License.
 
 package git
 
-// URLParam is the git repo url
-const URLParam string = "url"
-
-// PathParam is the pathInRepo into the git repo where a file is located
-const PathParam string = "pathInRepo"
-
-// RevisionParam is the git revision that a file should be fetched from
-const RevisionParam string = "revision"
+const (
+	// urlParam is the git repo url when using the anonymous/full clone approach
+	urlParam string = "url"
+	// orgParam is the organization to find the repository in when using the SCM API approach
+	orgParam = "org"
+	// repoParam is the repository to use when using the SCM API approach
+	repoParam = "repo"
+	// pathParam is the pathInRepo into the git repo where a file is located. This is used with both approaches.
+	pathParam string = "pathInRepo"
+	// revisionParam is the git revision that a file should be fetched from. This is used with both approaches.
+	revisionParam string = "revision"
+)

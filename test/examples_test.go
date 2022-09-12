@@ -37,7 +37,6 @@ import (
 
 var (
 	defaultKoDockerRepoRE = regexp.MustCompile("gcr.io/christiewilson-catfactory")
-	defaultNamespaceRE    = regexp.MustCompile("namespace: default")
 )
 
 // getCreatedTektonCRD parses output of an external ko invocation provided as
@@ -91,12 +90,6 @@ func substituteEnv(input []byte, namespace string) ([]byte, error) {
 // namespace
 func koCreate(input []byte, namespace string) ([]byte, error) {
 	cmd := exec.Command("ko", "create", "--platform", "linux/"+getTestArch(), "-f", "-", "--", "--namespace", namespace)
-	cmd.Stdin = bytes.NewReader(input)
-	return cmd.CombinedOutput()
-}
-
-func kubectlCreate(input []byte, namespace string) ([]byte, error) {
-	cmd := exec.Command("kubectl", "create", "-n", namespace, "-f", "-")
 	cmd.Stdin = bytes.NewReader(input)
 	return cmd.CombinedOutput()
 }
