@@ -140,16 +140,19 @@ func paramsFromPipelineRun(ctx context.Context, pr *v1beta1.PipelineRun) (map[st
 	return stringReplacements, arrayReplacements, objectReplacements
 }
 
-// ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
-// Currently supports only name substitution. Uses "" as a default if name is not specified.
-func ApplyContexts(ctx context.Context, spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
-	replacements := map[string]string{
+func getContextReplacements(pipelineName string, pr *v1beta1.PipelineRun) map[string]string {
+	return map[string]string{
 		"context.pipelineRun.name":      pr.Name,
 		"context.pipeline.name":         pipelineName,
 		"context.pipelineRun.namespace": pr.Namespace,
 		"context.pipelineRun.uid":       string(pr.ObjectMeta.UID),
 	}
-	return ApplyReplacements(ctx, spec, replacements, map[string][]string{}, map[string]map[string]string{})
+}
+
+// ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
+// Currently supports only name substitution. Uses "" as a default if name is not specified.
+func ApplyContexts(ctx context.Context, spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
+	return ApplyReplacements(ctx, spec, getContextReplacements(pipelineName, pr), map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyPipelineTaskContexts applies the substitution from $(context.pipelineTask.*) with the specified values.

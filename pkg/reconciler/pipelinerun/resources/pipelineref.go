@@ -74,6 +74,9 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 		return func(ctx context.Context, name string) (v1beta1.PipelineObject, error) {
 			params := map[string]string{}
 			stringReplacements, arrayReplacements, objectReplacements := paramsFromPipelineRun(ctx, pipelineRun)
+			for k, v := range getContextReplacements("", pipelineRun) {
+				stringReplacements[k] = v
+			}
 			replacedParams := replaceParamValues(pr.Params, stringReplacements, arrayReplacements, objectReplacements)
 			for _, p := range replacedParams {
 				params[p.Name] = p.Value.StringVal

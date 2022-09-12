@@ -553,7 +553,10 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			Resolver: "git",
 			Params: []v1beta1.Param{{
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("$(params.resolver-param)"),
+				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
+			}, {
+				Name:  "bar",
+				Value: *v1beta1.NewStructuredValues("$(context.taskRun.name)"),
 			}},
 		},
 	}
@@ -565,16 +568,22 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	resolved := test.NewResolvedResource([]byte(taskYAML), nil, nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
-		Params:           map[string]string{"foo": "bar"},
+		Params: map[string]string{
+			"foo": "bar",
+			"bar": "test-task",
+		},
 	}
 	tr := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-task",
+			Namespace: "default",
+		},
 		Spec: v1beta1.TaskRunSpec{
 			TaskRef:            taskRef,
 			ServiceAccountName: "default",
 			Params: []v1beta1.Param{{
 				Name:  "resolver-param",
-				Value: *v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewStructuredValues("bar"),
 			}},
 		},
 	}
@@ -597,19 +606,25 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			Resolver: "git",
 			Params: []v1beta1.Param{{
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("$(params.resolver-param)"),
+				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
+			}, {
+				Name:  "bar",
+				Value: *v1beta1.NewStructuredValues("$(context.taskRun.name)"),
 			}},
 		},
 	}
 
 	trNotMatching := &v1beta1.TaskRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "other-task",
+			Namespace: "default",
+		},
 		Spec: v1beta1.TaskRunSpec{
 			TaskRef:            taskRefNotMatching,
 			ServiceAccountName: "default",
 			Params: []v1beta1.Param{{
 				Name:  "resolver-param",
-				Value: *v1beta1.NewArrayOrString("banana"),
+				Value: *v1beta1.NewStructuredValues("banana"),
 			}},
 		},
 	}

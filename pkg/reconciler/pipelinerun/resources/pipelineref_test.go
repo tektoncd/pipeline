@@ -307,7 +307,10 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			Resolver: "git",
 			Params: []v1beta1.Param{{
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("$(params.resolver-param)"),
+				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
+			}, {
+				Name:  "bar",
+				Value: *v1beta1.NewStructuredValues("$(context.pipelineRun.name)"),
 			}},
 		},
 	}
@@ -319,16 +322,22 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
-		Params:           map[string]string{"foo": "bar"},
+		Params: map[string]string{
+			"foo": "bar",
+			"bar": "test-pipeline",
+		},
 	}
 	fn, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-pipeline",
+			Namespace: "default",
+		},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef:        pipelineRef,
 			ServiceAccountName: "default",
 			Params: []v1beta1.Param{{
 				Name:  "resolver-param",
-				Value: *v1beta1.NewArrayOrString("bar"),
+				Value: *v1beta1.NewStructuredValues("bar"),
 			}},
 		},
 	})
@@ -350,19 +359,25 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			Resolver: "git",
 			Params: []v1beta1.Param{{
 				Name:  "foo",
-				Value: *v1beta1.NewArrayOrString("$(params.resolver-param)"),
+				Value: *v1beta1.NewStructuredValues("$(params.resolver-param)"),
+			}, {
+				Name:  "bar",
+				Value: *v1beta1.NewStructuredValues("$(context.pipelineRun.name)"),
 			}},
 		},
 	}
 
 	fnNotMatching, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "other-pipeline",
+			Namespace: "default",
+		},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef:        pipelineRefNotMatching,
 			ServiceAccountName: "default",
 			Params: []v1beta1.Param{{
 				Name:  "resolver-param",
-				Value: *v1beta1.NewArrayOrString("banana"),
+				Value: *v1beta1.NewStructuredValues("banana"),
 			}},
 		},
 	})
