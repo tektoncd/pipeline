@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -45,7 +44,6 @@ func main() {
 		}
 		hubURL = apiURL + hub.YamlEndpoint
 	}
-	fmt.Println("RUNNING WITH HUB URL PATTERN:", hubURL)
 
 	sharedmain.MainWithContext(ctx, "controller",
 		framework.NewController(ctx, &git.Resolver{}),
