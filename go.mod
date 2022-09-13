@@ -36,7 +36,7 @@ require (
 require github.com/benbjohnson/clock v1.1.0 // indirect
 
 require (
-	code.gitea.io/sdk/gitea v0.14.0
+	code.gitea.io/sdk/gitea v0.15.1
 	github.com/goccy/kpoward v0.1.0
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
 )
