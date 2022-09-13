@@ -489,17 +489,6 @@ PipelineSpec
 </tr>
 <tr>
 <td>
-<code>serviceAccountName</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
 <code>status</code><br/>
 <em>
 <a href="#tekton.dev/v1.PipelineRunSpecStatus">
@@ -531,15 +520,16 @@ with Timeouts.pipeline &gt;= Timeouts.tasks + Timeouts.finally</p>
 </tr>
 <tr>
 <td>
-<code>podTemplate</code><br/>
+<code>taskRunTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/v1.PipelineTaskRunTemplate">
+PipelineTaskRunTemplate
 </a>
 </em>
 </td>
 <td>
-<p>PodTemplate holds pod specific configuration</p>
+<em>(Optional)</em>
+<p>TaskRunTemplate represent template of taskrun</p>
 </td>
 </tr>
 <tr>
@@ -1773,17 +1763,6 @@ PipelineSpec
 </tr>
 <tr>
 <td>
-<code>serviceAccountName</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
 <code>status</code><br/>
 <em>
 <a href="#tekton.dev/v1.PipelineRunSpecStatus">
@@ -1815,15 +1794,16 @@ with Timeouts.pipeline &gt;= Timeouts.tasks + Timeouts.finally</p>
 </tr>
 <tr>
 <td>
-<code>podTemplate</code><br/>
+<code>taskRunTemplate</code><br/>
 <em>
-<a href="#tekton.dev/unversioned.Template">
-Template
+<a href="#tekton.dev/v1.PipelineTaskRunTemplate">
+PipelineTaskRunTemplate
 </a>
 </em>
 </td>
 <td>
-<p>PodTemplate holds pod specific configuration</p>
+<em>(Optional)</em>
+<p>TaskRunTemplate represent template of taskrun</p>
 </td>
 </tr>
 <tr>
@@ -2544,6 +2524,48 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <p>Compute resources to use for this TaskRun</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.PipelineTaskRunTemplate">PipelineTaskRunTemplate
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunSpec">PipelineRunSpec</a>)
+</p>
+<div>
+<p>PipelineTaskRunTemplate is used to specify run specifications for all Task in pipelinerun.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>podTemplate</code><br/>
+<em>
+<a href="#tekton.dev/unversioned.Template">
+Template
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
 </td>
 </tr>
 </tbody>

@@ -41,23 +41,29 @@ func TestPipelineRunSpec_SetDefaults(t *testing.T) {
 			desc: "pod template is nil",
 			prs:  &v1.PipelineRunSpec{},
 			want: &v1.PipelineRunSpec{
-				ServiceAccountName: config.DefaultServiceAccountValue,
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: config.DefaultServiceAccountValue,
+				},
 			},
 		},
 		{
 			desc: "pod template is not nil",
 			prs: &v1.PipelineRunSpec{
-				PodTemplate: &pod.Template{
-					NodeSelector: map[string]string{
-						"label": "value",
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					PodTemplate: &pod.Template{
+						NodeSelector: map[string]string{
+							"label": "value",
+						},
 					},
 				},
 			},
 			want: &v1.PipelineRunSpec{
-				ServiceAccountName: config.DefaultServiceAccountValue,
-				PodTemplate: &pod.Template{
-					NodeSelector: map[string]string{
-						"label": "value",
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: config.DefaultServiceAccountValue,
+					PodTemplate: &pod.Template{
+						NodeSelector: map[string]string{
+							"label": "value",
+						},
 					},
 				},
 			},
@@ -95,7 +101,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		in:   &v1.PipelineRun{},
 		want: &v1.PipelineRun{
 			Spec: v1.PipelineRunSpec{
-				ServiceAccountName: config.DefaultServiceAccountValue,
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: config.DefaultServiceAccountValue,
+				},
 			},
 		},
 	}, {
@@ -117,7 +125,9 @@ func TestPipelineRunDefaulting(t *testing.T) {
 						Type: "string",
 					}},
 				},
-				ServiceAccountName: config.DefaultServiceAccountValue,
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: config.DefaultServiceAccountValue,
+				},
 			},
 		},
 	}, {
@@ -129,8 +139,10 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		},
 		want: &v1.PipelineRun{
 			Spec: v1.PipelineRunSpec{
-				PipelineRef:        &v1.PipelineRef{Name: "foo"},
-				ServiceAccountName: config.DefaultServiceAccountValue,
+				PipelineRef: &v1.PipelineRef{Name: "foo"},
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: config.DefaultServiceAccountValue,
+				},
 			},
 		},
 		wc: func(ctx context.Context) context.Context {
@@ -152,8 +164,10 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		},
 		want: &v1.PipelineRun{
 			Spec: v1.PipelineRunSpec{
-				PipelineRef:        &v1.PipelineRef{Name: "foo"},
-				ServiceAccountName: "tekton",
+				PipelineRef: &v1.PipelineRef{Name: "foo"},
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: "tekton",
+				},
 			},
 		},
 		wc: func(ctx context.Context) context.Context {
@@ -178,11 +192,13 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		},
 		want: &v1.PipelineRun{
 			Spec: v1.PipelineRunSpec{
-				PipelineRef:        &v1.PipelineRef{Name: "foo"},
-				ServiceAccountName: "tekton",
-				PodTemplate: &pod.Template{
-					NodeSelector: map[string]string{
-						"label": "value",
+				PipelineRef: &v1.PipelineRef{Name: "foo"},
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: "tekton",
+					PodTemplate: &pod.Template{
+						NodeSelector: map[string]string{
+							"label": "value",
+						},
 					},
 				},
 			},
@@ -206,20 +222,24 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		in: &v1.PipelineRun{
 			Spec: v1.PipelineRunSpec{
 				PipelineRef: &v1.PipelineRef{Name: "foo"},
-				PodTemplate: &pod.Template{
-					NodeSelector: map[string]string{
-						"label2": "value2",
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					PodTemplate: &pod.Template{
+						NodeSelector: map[string]string{
+							"label2": "value2",
+						},
 					},
 				},
 			},
 		},
 		want: &v1.PipelineRun{
 			Spec: v1.PipelineRunSpec{
-				PipelineRef:        &v1.PipelineRef{Name: "foo"},
-				ServiceAccountName: "tekton",
-				PodTemplate: &pod.Template{
-					NodeSelector: map[string]string{
-						"label2": "value2",
+				PipelineRef: &v1.PipelineRef{Name: "foo"},
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: "tekton",
+					PodTemplate: &pod.Template{
+						NodeSelector: map[string]string{
+							"label2": "value2",
+						},
 					},
 				},
 			},
@@ -243,7 +263,7 @@ func TestPipelineRunDefaulting(t *testing.T) {
 		in: &v1.PipelineRun{
 			Spec: v1.PipelineRunSpec{
 				PipelineRef: &v1.PipelineRef{Name: "foo"},
-				PodTemplate: &pod.Template{
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{PodTemplate: &pod.Template{
 					NodeSelector: map[string]string{
 						"label2": "value2",
 					},
@@ -252,20 +272,23 @@ func TestPipelineRunDefaulting(t *testing.T) {
 					},
 					HostNetwork: false,
 				},
+				},
 			},
 		},
 		want: &v1.PipelineRun{
 			Spec: v1.PipelineRunSpec{
-				PipelineRef:        &v1.PipelineRef{Name: "foo"},
-				ServiceAccountName: "tekton",
-				PodTemplate: &pod.Template{
-					NodeSelector: map[string]string{
-						"label2": "value2",
+				PipelineRef: &v1.PipelineRef{Name: "foo"},
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: "tekton",
+					PodTemplate: &pod.Template{
+						NodeSelector: map[string]string{
+							"label2": "value2",
+						},
+						SecurityContext: &corev1.PodSecurityContext{
+							RunAsNonRoot: &ttrue,
+						},
+						HostNetwork: true,
 					},
-					SecurityContext: &corev1.PodSecurityContext{
-						RunAsNonRoot: &ttrue,
-					},
-					HostNetwork: true,
 				},
 			},
 		},

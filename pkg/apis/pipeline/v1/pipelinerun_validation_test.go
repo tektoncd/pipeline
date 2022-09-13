@@ -44,7 +44,9 @@ func TestPipelineRun_Invalid(t *testing.T) {
 				Name: "pipelinelinename",
 			},
 			Spec: v1.PipelineRunSpec{
-				ServiceAccountName: "foo",
+				TaskRunTemplate: v1.PipelineTaskRunTemplate{
+					ServiceAccountName: "foo",
+				},
 			},
 		},
 		want: apis.ErrMissingOneOf("spec.pipelineRef", "spec.pipelineSpec"),

@@ -11,6 +11,7 @@ weight: 4000
 - [Upgrading `PipelineRun.Timeout` to `PipelineRun.Timeouts`](#upgrading-pipelinerun.timeout-to-pipelinerun.timeouts)
 - [Deprecating Resources from Task, TaskRun, Pipeline and PipelineRun](#deprecating-resources-from-task,-taskrun,-pipeline-and-pipelinerun)
 - [Replacing `taskRef.bundle` and `pipelineRef.bundle` with Bundle Resolver](#replacing-taskRef.bundle-and-pipelineRef.bundle-with-bundle-resolver)
+- [Adding `TaskRunTemplate` in `PipelineRun.Spec`](#adding-taskruntemplate-to-pipelinerun.spec)
 
 
 This document describes the differences between `v1beta1` Tekton entities and their
@@ -32,6 +33,8 @@ In Tekton `v1`, the following fields have been changed:
 | `taskrun.spec.resources` | removed from `TaskRun` |
 | `pipeline.spec.resources` | removed from `Pipeline` |
 | `pipelineRun.spec.resources` | removed from `PipelineRun` |
+| `pipelineRun.spec.serviceAccountName` | [`pipelineRun.spec.taskRunTemplate.serviceAccountName`](#adding-taskruntemplate-to-pipelinerun.spec) |
+| `pipelineRun.spec.podTemplate` | [`pipelineRun.spec.taskRunTemplate.podTemplate`](#adding-taskruntemplate-to-pipelinerun.spec) |
 
 ## Deprecating `resources` from Task, TaskRun, Pipeline and PipelineRun
 `PipelineResources` are deprecated, and the `resources` fields of Task, TaskRun, Pipeline and PipelineRun has been removed. Please use `Tasks` instead. For more information, see [Replacing PipelineResources](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md)
@@ -102,3 +105,37 @@ spec:
 ```
 
 For more information, see [Remote resolution](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resource-resolution.md).
+
+## Adding TaskRunTemplate to PipelineRun.Spec
+`ServiceAccountName` and `PodTemplate` are moved to `TaskRunTemplate` as `TaskRunTemplate.ServiceAccountName` and `TaskRunTemplate.PodTemplate` so that users can specify common configuration in `TaskRunTemplate` which will apply to all the TaskRuns.
+
+```yaml
+# Before in v1beta1:
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: template-pr
+spec:
+  pipelineRef:
+    name: clone-test-build
+  serviceAccountName: build
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+---
+# After in v1:
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: template-pr
+spec:
+  pipelineRef:
+    name: clone-test-build
+  taskRunSpecTemplate:
+    serviceAccountName: build
+    podTemplate:
+      securityContext:
+        fsGroup: 65532
+```
+
+For more information, see [TEP-119](https://github.com/tektoncd/community/blob/main/teps/0119-add-taskrun-template-in-pipelinerun.md).

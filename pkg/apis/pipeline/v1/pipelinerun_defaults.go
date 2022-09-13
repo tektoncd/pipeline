@@ -42,12 +42,12 @@ func (prs *PipelineRunSpec) SetDefaults(ctx context.Context) {
 	}
 
 	defaultSA := cfg.Defaults.DefaultServiceAccount
-	if prs.ServiceAccountName == "" && defaultSA != "" {
-		prs.ServiceAccountName = defaultSA
+	if prs.TaskRunTemplate.ServiceAccountName == "" && defaultSA != "" {
+		prs.TaskRunTemplate.ServiceAccountName = defaultSA
 	}
 
 	defaultPodTemplate := cfg.Defaults.DefaultPodTemplate
-	prs.PodTemplate = pod.MergePodTemplateWithDefault(prs.PodTemplate, defaultPodTemplate)
+	prs.TaskRunTemplate.PodTemplate = pod.MergePodTemplateWithDefault(prs.TaskRunTemplate.PodTemplate, defaultPodTemplate)
 
 	if prs.PipelineSpec != nil {
 		prs.PipelineSpec.SetDefaults(ctx)

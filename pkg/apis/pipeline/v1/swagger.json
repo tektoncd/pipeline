@@ -562,13 +562,6 @@
         "pipelineSpec": {
           "$ref": "#/definitions/v1.PipelineSpec"
         },
-        "podTemplate": {
-          "description": "PodTemplate holds pod specific configuration",
-          "$ref": "#/definitions/pod.Template"
-        },
-        "serviceAccountName": {
-          "type": "string"
-        },
         "status": {
           "description": "Used for cancelling a pipelinerun (and maybe more later on)",
           "type": "string"
@@ -581,6 +574,11 @@
             "$ref": "#/definitions/v1.PipelineTaskRunSpec"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "taskRunTemplate": {
+          "description": "TaskRunTemplate represent template of taskrun",
+          "default": {},
+          "$ref": "#/definitions/v1.PipelineTaskRunTemplate"
         },
         "timeouts": {
           "description": "Time after which the Pipeline times out. Currently three keys are accepted in the map pipeline, tasks and finally with Timeouts.pipeline \u003e= Timeouts.tasks + Timeouts.finally",
@@ -944,6 +942,18 @@
             "$ref": "#/definitions/v1.TaskRunStepOverride"
           },
           "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1.PipelineTaskRunTemplate": {
+      "description": "PipelineTaskRunTemplate is used to specify run specifications for all Task in pipelinerun.",
+      "type": "object",
+      "properties": {
+        "podTemplate": {
+          "$ref": "#/definitions/pod.Template"
+        },
+        "serviceAccountName": {
+          "type": "string"
         }
       }
     },

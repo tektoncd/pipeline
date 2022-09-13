@@ -283,8 +283,10 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 			pr: &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
 				Spec: v1.PipelineRunSpec{
-					PipelineRef:        &v1.PipelineRef{Name: "prs"},
-					ServiceAccountName: "defaultSA",
+					PipelineRef: &v1.PipelineRef{Name: "prs"},
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: "defaultSA",
+					},
 					TaskRunSpecs: []v1.PipelineTaskRunSpec{{
 						PipelineTaskName:   "taskName",
 						ServiceAccountName: "newTaskSA",
@@ -300,8 +302,10 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 			pr: &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
 				Spec: v1.PipelineRunSpec{
-					PipelineRef:        &v1.PipelineRef{Name: "prs"},
-					ServiceAccountName: "defaultSA",
+					PipelineRef: &v1.PipelineRef{Name: "prs"},
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: "defaultSA",
+					},
 					TaskRunSpecs: []v1.PipelineTaskRunSpec{{
 						PipelineTaskName:   "taskNameOne",
 						ServiceAccountName: "TaskSAOne",
@@ -321,8 +325,10 @@ func TestPipelineRunGetPodSpecSABackcompatibility(t *testing.T) {
 			pr: &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
 				Spec: v1.PipelineRunSpec{
-					PipelineRef:        &v1.PipelineRef{Name: "prs"},
-					ServiceAccountName: "defaultSA",
+					PipelineRef: &v1.PipelineRef{Name: "prs"},
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: "defaultSA",
+					},
 					TaskRunSpecs: []v1.PipelineTaskRunSpec{{
 						PipelineTaskName: "taskNameOne",
 					}, {
@@ -360,9 +366,11 @@ func TestPipelineRunGetPodSpec(t *testing.T) {
 			pr: &v1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "pr"},
 				Spec: v1.PipelineRunSpec{
-					PodTemplate:        &pod.Template{SchedulerName: "scheduleTest"},
-					PipelineRef:        &v1.PipelineRef{Name: "prs"},
-					ServiceAccountName: "defaultSA",
+					PipelineRef: &v1.PipelineRef{Name: "prs"},
+					TaskRunTemplate: v1.PipelineTaskRunTemplate{
+						ServiceAccountName: "defaultSA",
+						PodTemplate:        &pod.Template{SchedulerName: "scheduleTest"},
+					},
 					TaskRunSpecs: []v1.PipelineTaskRunSpec{{
 						PipelineTaskName:   "taskNameOne",
 						ServiceAccountName: "TaskSAOne",

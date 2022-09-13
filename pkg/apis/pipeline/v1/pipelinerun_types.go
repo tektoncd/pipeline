@@ -225,8 +225,6 @@ type PipelineRunSpec struct {
 	// Params is a list of parameter names and values.
 	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
-	// +optional
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
@@ -238,8 +236,10 @@ type PipelineRunSpec struct {
 	// +optional
 	Timeouts *TimeoutFields `json:"timeouts,omitempty"`
 
-	// PodTemplate holds pod specific configuration
-	PodTemplate *pod.PodTemplate `json:"podTemplate,omitempty"`
+	// TaskRunTemplate represent template of taskrun
+	// +optional
+	TaskRunTemplate PipelineTaskRunTemplate `json:"taskRunTemplate,omitempty"`
+
 	// Workspaces holds a set of workspace bindings that must match names
 	// with those declared in the pipeline.
 	// +optional
@@ -544,8 +544,8 @@ type PipelineTaskRunSpec struct {
 func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSpec {
 	s := PipelineTaskRunSpec{
 		PipelineTaskName:   pipelineTaskName,
-		ServiceAccountName: pr.Spec.ServiceAccountName,
-		PodTemplate:        pr.Spec.PodTemplate,
+		ServiceAccountName: pr.Spec.TaskRunTemplate.ServiceAccountName,
+		PodTemplate:        pr.Spec.TaskRunTemplate.PodTemplate,
 	}
 	for _, task := range pr.Spec.TaskRunSpecs {
 		if task.PipelineTaskName == pipelineTaskName {
@@ -562,4 +562,12 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 		}
 	}
 	return s
+}
+
+// PipelineTaskRunTemplate is used to specify run specifications for all Task in pipelinerun.
+type PipelineTaskRunTemplate struct {
+	// +optional
+	PodTemplate *pod.PodTemplate `json:"podTemplate,omitempty"`
+	// +optional
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
