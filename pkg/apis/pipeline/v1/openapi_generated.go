@@ -77,11 +77,11 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunInputs":                schema_pkg_apis_pipeline_v1_TaskRunInputs(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunList":                  schema_pkg_apis_pipeline_v1_TaskRunList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult":                schema_pkg_apis_pipeline_v1_TaskRunResult(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarOverride":       schema_pkg_apis_pipeline_v1_TaskRunSidecarOverride(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec":           schema_pkg_apis_pipeline_v1_TaskRunSidecarSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSpec":                  schema_pkg_apis_pipeline_v1_TaskRunSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatus":                schema_pkg_apis_pipeline_v1_TaskRunStatus(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStatusFields":          schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepOverride":          schema_pkg_apis_pipeline_v1_TaskRunStepOverride(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec":              schema_pkg_apis_pipeline_v1_TaskRunStepSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec":                     schema_pkg_apis_pipeline_v1_TaskSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TimeoutFields":                schema_pkg_apis_pipeline_v1_TimeoutFields(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression":               schema_pkg_apis_pipeline_v1_WhenExpression(ref),
@@ -1845,7 +1845,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template"),
 						},
 					},
-					"stepOverrides": {
+					"stepSpecs": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
 								"x-kubernetes-list-type": "atomic",
@@ -1857,13 +1857,13 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepOverride"),
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec"),
 									},
 								},
 							},
 						},
 					},
-					"sidecarOverrides": {
+					"sidecarSpecs": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
 								"x-kubernetes-list-type": "atomic",
@@ -1875,7 +1875,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarOverride"),
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec"),
 									},
 								},
 							},
@@ -1896,7 +1896,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTaskRunSpec(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepOverride", "k8s.io/api/core/v1.ResourceRequirements"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineTaskMetadata", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "k8s.io/api/core/v1.ResourceRequirements"},
 	}
 }
 
@@ -2198,9 +2198,9 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 							},
 						},
 					},
-					"resources": {
+					"computeResources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Compute Resources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+							Description: "ComputeResources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
@@ -2565,9 +2565,9 @@ func schema_pkg_apis_pipeline_v1_Step(ref common.ReferenceCallback) common.OpenA
 							},
 						},
 					},
-					"resources": {
+					"computeResources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Compute Resources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+							Description: "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
@@ -2859,9 +2859,9 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 							},
 						},
 					},
-					"resources": {
+					"computeResources": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Compute Resources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+							Description: "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
 							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/api/core/v1.ResourceRequirements"),
 						},
@@ -3306,11 +3306,11 @@ func schema_pkg_apis_pipeline_v1_TaskRunResult(ref common.ReferenceCallback) com
 	}
 }
 
-func schema_pkg_apis_pipeline_v1_TaskRunSidecarOverride(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_pipeline_v1_TaskRunSidecarSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.",
+				Description: "TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -3321,7 +3321,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSidecarOverride(ref common.ReferenceCall
 							Format:      "",
 						},
 					},
-					"resources": {
+					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The resource requirements to apply to the Sidecar.",
 							Default:     map[string]interface{}{},
@@ -3329,7 +3329,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSidecarOverride(ref common.ReferenceCall
 						},
 					},
 				},
-				Required: []string{"name", "resources"},
+				Required: []string{"name", "computeResources"},
 			},
 		},
 		Dependencies: []string{
@@ -3430,39 +3430,39 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 							},
 						},
 					},
-					"stepOverrides": {
+					"stepSpecs": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
 								"x-kubernetes-list-type": "atomic",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Overrides to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepOverride, the value from the StepOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+							Description: "Specs to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepSpec, the value from the StepSpec will be used. This field is only supported when the alpha feature gate is enabled.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepOverride"),
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec"),
 									},
 								},
 							},
 						},
 					},
-					"sidecarOverrides": {
+					"sidecarSpecs": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
 								"x-kubernetes-list-type": "atomic",
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Overrides to apply to Sidecars in this TaskRun. If a field is specified in both a Sidecar and a SidecarOverride, the value from the SidecarOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+							Description: "Specs to apply to Sidecars in this TaskRun. If a field is specified in both a Sidecar and a SidecarSpec, the value from the SidecarSpec will be used. This field is only supported when the alpha feature gate is enabled.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarOverride"),
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec"),
 									},
 								},
 							},
@@ -3478,7 +3478,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunDebug", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepOverride", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRef", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunDebug", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunSidecarSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunStepSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WorkspaceBinding", "k8s.io/api/core/v1.ResourceRequirements", "k8s.io/apimachinery/pkg/apis/meta/v1.Duration"},
 	}
 }
 
@@ -3761,11 +3761,11 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 	}
 }
 
-func schema_pkg_apis_pipeline_v1_TaskRunStepOverride(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_pipeline_v1_TaskRunStepSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "TaskRunStepOverride is used to override the values of a Step in the corresponding Task.",
+				Description: "TaskRunStepSpec is used to override the values of a Step in the corresponding Task.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -3776,7 +3776,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStepOverride(ref common.ReferenceCallbac
 							Format:      "",
 						},
 					},
-					"resources": {
+					"computeResources": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The resource requirements to apply to the Step.",
 							Default:     map[string]interface{}{},
@@ -3784,7 +3784,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunStepOverride(ref common.ReferenceCallbac
 						},
 					},
 				},
-				Required: []string{"name", "resources"},
+				Required: []string{"name", "computeResources"},
 			},
 		},
 		Dependencies: []string{

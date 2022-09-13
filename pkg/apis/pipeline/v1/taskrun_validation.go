@@ -69,17 +69,17 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
 		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
 	}
-	if ts.StepOverrides != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
-		errs = errs.Also(validateStepOverrides(ts.StepOverrides).ViaField("stepOverrides"))
+	if ts.StepSpecs != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepSpecs", config.AlphaAPIFields).ViaField("stepSpecs"))
+		errs = errs.Also(validateStepSpecs(ts.StepSpecs).ViaField("stepSpecs"))
 	}
-	if ts.SidecarOverrides != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
-		errs = errs.Also(validateSidecarOverrides(ts.SidecarOverrides).ViaField("sidecarOverrides"))
+	if ts.SidecarSpecs != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.AlphaAPIFields).ViaField("sidecarSpecs"))
+		errs = errs.Also(validateSidecarSpecs(ts.SidecarSpecs).ViaField("sidecarSpecs"))
 	}
 	if ts.ComputeResources != nil {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
-		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepOverrides))
+		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepSpecs))
 	}
 
 	if ts.Status != "" {
@@ -228,9 +228,9 @@ func ValidateParameters(ctx context.Context, params []Param) (errs *apis.FieldEr
 	return errs.Also(validateNoDuplicateNames(names, false))
 }
 
-func validateStepOverrides(overrides []TaskRunStepOverride) (errs *apis.FieldError) {
+func validateStepSpecs(specs []TaskRunStepSpec) (errs *apis.FieldError) {
 	var names []string
-	for i, o := range overrides {
+	for i, o := range specs {
 		if o.Name == "" {
 			errs = errs.Also(apis.ErrMissingField("name").ViaIndex(i))
 		} else {
@@ -242,11 +242,11 @@ func validateStepOverrides(overrides []TaskRunStepOverride) (errs *apis.FieldErr
 }
 
 // validateTaskRunComputeResources ensures that compute resources are not configured at both the step level and the task level
-func validateTaskRunComputeResources(computeResources *corev1.ResourceRequirements, overrides []TaskRunStepOverride) (errs *apis.FieldError) {
-	for _, override := range overrides {
-		if override.Resources.Size() != 0 && computeResources != nil {
+func validateTaskRunComputeResources(computeResources *corev1.ResourceRequirements, specs []TaskRunStepSpec) (errs *apis.FieldError) {
+	for _, spec := range specs {
+		if spec.ComputeResources.Size() != 0 && computeResources != nil {
 			return apis.ErrMultipleOneOf(
-				"stepOverrides.resources",
+				"stepSpecs.resources",
 				"computeResources",
 			)
 		}
@@ -254,9 +254,9 @@ func validateTaskRunComputeResources(computeResources *corev1.ResourceRequiremen
 	return nil
 }
 
-func validateSidecarOverrides(overrides []TaskRunSidecarOverride) (errs *apis.FieldError) {
+func validateSidecarSpecs(specs []TaskRunSidecarSpec) (errs *apis.FieldError) {
 	var names []string
-	for i, o := range overrides {
+	for i, o := range specs {
 		if o.Name == "" {
 			errs = errs.Also(apis.ErrMissingField("name").ViaIndex(i))
 		} else {

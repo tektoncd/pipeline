@@ -79,17 +79,17 @@ func (trs *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1.TaskRunSpec) err
 		w.convertTo(ctx, &new)
 		sink.Workspaces = append(sink.Workspaces, new)
 	}
-	sink.StepOverrides = nil
+	sink.StepSpecs = nil
 	for _, so := range trs.StepOverrides {
-		new := v1.TaskRunStepOverride{}
+		new := v1.TaskRunStepSpec{}
 		so.convertTo(ctx, &new)
-		sink.StepOverrides = append(sink.StepOverrides, new)
+		sink.StepSpecs = append(sink.StepSpecs, new)
 	}
-	sink.SidecarOverrides = nil
+	sink.SidecarSpecs = nil
 	for _, so := range trs.SidecarOverrides {
-		new := v1.TaskRunSidecarOverride{}
+		new := v1.TaskRunSidecarSpec{}
 		so.convertTo(ctx, &new)
-		sink.SidecarOverrides = append(sink.SidecarOverrides, new)
+		sink.SidecarSpecs = append(sink.SidecarSpecs, new)
 	}
 	sink.ComputeResources = trs.ComputeResources
 	return nil
@@ -150,13 +150,13 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec)
 		trs.Workspaces = append(trs.Workspaces, new)
 	}
 	trs.StepOverrides = nil
-	for _, so := range source.StepOverrides {
+	for _, so := range source.StepSpecs {
 		new := TaskRunStepOverride{}
 		new.convertFrom(ctx, so)
 		trs.StepOverrides = append(trs.StepOverrides, new)
 	}
 	trs.SidecarOverrides = nil
-	for _, so := range source.SidecarOverrides {
+	for _, so := range source.SidecarSpecs {
 		new := TaskRunSidecarOverride{}
 		new.convertFrom(ctx, so)
 		trs.SidecarOverrides = append(trs.SidecarOverrides, new)
@@ -173,24 +173,24 @@ func (trd *TaskRunDebug) convertFrom(ctx context.Context, source v1.TaskRunDebug
 	trd.Breakpoint = source.Breakpoint
 }
 
-func (trso TaskRunStepOverride) convertTo(ctx context.Context, sink *v1.TaskRunStepOverride) {
+func (trso TaskRunStepOverride) convertTo(ctx context.Context, sink *v1.TaskRunStepSpec) {
 	sink.Name = trso.Name
-	sink.Resources = trso.Resources
+	sink.ComputeResources = trso.Resources
 }
 
-func (trso *TaskRunStepOverride) convertFrom(ctx context.Context, source v1.TaskRunStepOverride) {
+func (trso *TaskRunStepOverride) convertFrom(ctx context.Context, source v1.TaskRunStepSpec) {
 	trso.Name = source.Name
-	trso.Resources = source.Resources
+	trso.Resources = source.ComputeResources
 }
 
-func (trso TaskRunSidecarOverride) convertTo(ctx context.Context, sink *v1.TaskRunSidecarOverride) {
+func (trso TaskRunSidecarOverride) convertTo(ctx context.Context, sink *v1.TaskRunSidecarSpec) {
 	sink.Name = trso.Name
-	sink.Resources = trso.Resources
+	sink.ComputeResources = trso.Resources
 }
 
-func (trso *TaskRunSidecarOverride) convertFrom(ctx context.Context, source v1.TaskRunSidecarOverride) {
+func (trso *TaskRunSidecarOverride) convertFrom(ctx context.Context, source v1.TaskRunSidecarSpec) {
 	trso.Name = source.Name
-	trso.Resources = source.Resources
+	trso.Resources = source.ComputeResources
 }
 
 func serializeTaskRunResources(meta *metav1.ObjectMeta, spec *TaskRunSpec) error {
