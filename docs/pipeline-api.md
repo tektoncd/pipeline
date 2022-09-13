@@ -1163,35 +1163,35 @@ Template
 </tr>
 <tr>
 <td>
-<code>stepOverrides</code><br/>
+<code>stepSpecs</code><br/>
 <em>
-<a href="#tekton.dev/v1.TaskRunStepOverride">
-[]TaskRunStepOverride
+<a href="#tekton.dev/v1.TaskRunStepSpec">
+[]TaskRunStepSpec
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Overrides to apply to Steps in this TaskRun.
-If a field is specified in both a Step and a StepOverride,
-the value from the StepOverride will be used.
+<p>Specs to apply to Steps in this TaskRun.
+If a field is specified in both a Step and a StepSpec,
+the value from the StepSpec will be used.
 This field is only supported when the alpha feature gate is enabled.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>sidecarOverrides</code><br/>
+<code>sidecarSpecs</code><br/>
 <em>
-<a href="#tekton.dev/v1.TaskRunSidecarOverride">
-[]TaskRunSidecarOverride
+<a href="#tekton.dev/v1.TaskRunSidecarSpec">
+[]TaskRunSidecarSpec
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Overrides to apply to Sidecars in this TaskRun.
-If a field is specified in both a Sidecar and a SidecarOverride,
-the value from the SidecarOverride will be used.
+<p>Specs to apply to Sidecars in this TaskRun.
+If a field is specified in both a Sidecar and a SidecarSpec,
+the value from the SidecarSpec will be used.
 This field is only supported when the alpha feature gate is enabled.</p>
 </td>
 </tr>
@@ -2685,10 +2685,10 @@ Template
 </tr>
 <tr>
 <td>
-<code>stepOverrides</code><br/>
+<code>stepSpecs</code><br/>
 <em>
-<a href="#tekton.dev/v1.TaskRunStepOverride">
-[]TaskRunStepOverride
+<a href="#tekton.dev/v1.TaskRunStepSpec">
+[]TaskRunStepSpec
 </a>
 </em>
 </td>
@@ -2697,10 +2697,10 @@ Template
 </tr>
 <tr>
 <td>
-<code>sidecarOverrides</code><br/>
+<code>sidecarSpecs</code><br/>
 <em>
-<a href="#tekton.dev/v1.TaskRunSidecarOverride">
-[]TaskRunSidecarOverride
+<a href="#tekton.dev/v1.TaskRunSidecarSpec">
+[]TaskRunSidecarSpec
 </a>
 </em>
 </td>
@@ -3160,7 +3160,7 @@ Cannot be updated.</p>
 </tr>
 <tr>
 <td>
-<code>resources</code><br/>
+<code>computeResources</code><br/>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
@@ -3169,7 +3169,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this Sidecar.
+<p>ComputeResources required by this Sidecar.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -3721,7 +3721,7 @@ Cannot be updated.</p>
 </tr>
 <tr>
 <td>
-<code>resources</code><br/>
+<code>computeResources</code><br/>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
@@ -3730,7 +3730,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this Step.
+<p>ComputeResources required by this Step.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -4102,7 +4102,7 @@ Cannot be updated.</p>
 </tr>
 <tr>
 <td>
-<code>resources</code><br/>
+<code>computeResources</code><br/>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
@@ -4111,7 +4111,7 @@ Kubernetes core/v1.ResourceRequirements
 </td>
 <td>
 <em>(Optional)</em>
-<p>Compute Resources required by this Step.
+<p>ComputeResources required by this Step.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/">https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/</a></p>
 </td>
@@ -4492,13 +4492,13 @@ ParamValue
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1.TaskRunSidecarOverride">TaskRunSidecarOverride
+<h3 id="tekton.dev/v1.TaskRunSidecarSpec">TaskRunSidecarSpec
 </h3>
 <p>
 (<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
-<p>TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.</p>
+<p>TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.</p>
 </div>
 <table>
 <thead>
@@ -4521,7 +4521,7 @@ string
 </tr>
 <tr>
 <td>
-<code>resources</code><br/>
+<code>computeResources</code><br/>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
@@ -4687,35 +4687,35 @@ Template
 </tr>
 <tr>
 <td>
-<code>stepOverrides</code><br/>
+<code>stepSpecs</code><br/>
 <em>
-<a href="#tekton.dev/v1.TaskRunStepOverride">
-[]TaskRunStepOverride
+<a href="#tekton.dev/v1.TaskRunStepSpec">
+[]TaskRunStepSpec
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Overrides to apply to Steps in this TaskRun.
-If a field is specified in both a Step and a StepOverride,
-the value from the StepOverride will be used.
+<p>Specs to apply to Steps in this TaskRun.
+If a field is specified in both a Step and a StepSpec,
+the value from the StepSpec will be used.
 This field is only supported when the alpha feature gate is enabled.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>sidecarOverrides</code><br/>
+<code>sidecarSpecs</code><br/>
 <em>
-<a href="#tekton.dev/v1.TaskRunSidecarOverride">
-[]TaskRunSidecarOverride
+<a href="#tekton.dev/v1.TaskRunSidecarSpec">
+[]TaskRunSidecarSpec
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Overrides to apply to Sidecars in this TaskRun.
-If a field is specified in both a Sidecar and a SidecarOverride,
-the value from the SidecarOverride will be used.
+<p>Specs to apply to Sidecars in this TaskRun.
+If a field is specified in both a Sidecar and a SidecarSpec,
+the value from the SidecarSpec will be used.
 This field is only supported when the alpha feature gate is enabled.</p>
 </td>
 </tr>
@@ -4941,13 +4941,13 @@ TaskSpec
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1.TaskRunStepOverride">TaskRunStepOverride
+<h3 id="tekton.dev/v1.TaskRunStepSpec">TaskRunStepSpec
 </h3>
 <p>
 (<em>Appears on:</em><a href="#tekton.dev/v1.PipelineTaskRunSpec">PipelineTaskRunSpec</a>, <a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
-<p>TaskRunStepOverride is used to override the values of a Step in the corresponding Task.</p>
+<p>TaskRunStepSpec is used to override the values of a Step in the corresponding Task.</p>
 </div>
 <table>
 <thead>
@@ -4970,7 +4970,7 @@ string
 </tr>
 <tr>
 <td>
-<code>resources</code><br/>
+<code>computeResources</code><br/>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements

@@ -421,20 +421,20 @@ func TestTaskRun_Validate(t *testing.T) {
 		},
 		wc: config.EnableAlphaAPIFields,
 	}, {
-		name: "alpha feature: valid step and sidecar overrides",
+		name: "alpha feature: valid step and sidecar specs",
 		taskRun: &v1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
 			Spec: v1.TaskRunSpec{
 				TaskRef: &v1.TaskRef{Name: "task"},
-				StepOverrides: []v1.TaskRunStepOverride{{
+				StepSpecs: []v1.TaskRunStepSpec{{
 					Name: "foo",
-					Resources: corev1.ResourceRequirements{
+					ComputeResources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 					},
 				}},
-				SidecarOverrides: []v1.TaskRunSidecarOverride{{
+				SidecarSpecs: []v1.TaskRunSidecarSpec{{
 					Name: "bar",
-					Resources: corev1.ResourceRequirements{
+					ComputeResources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 					},
 				}},
@@ -634,100 +634,100 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		wantErr: apis.ErrInvalidValue("breakito is not a valid breakpoint. Available valid breakpoints include [onFailure]", "debug.breakpoint"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "stepOverride disallowed without alpha feature gate",
+		name: "stepSpecs disallowed without alpha feature gate",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
 				Name: "foo",
 			},
-			StepOverrides: []v1.TaskRunStepOverride{{
+			StepSpecs: []v1.TaskRunStepSpec{{
 				Name: "foo",
-				Resources: corev1.ResourceRequirements{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
 		},
-		wantErr: apis.ErrGeneric("stepOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wantErr: apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
-		name: "sidecarOverride disallowed without alpha feature gate",
+		name: "sidecarSpec disallowed without alpha feature gate",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
 				Name: "foo",
 			},
-			SidecarOverrides: []v1.TaskRunSidecarOverride{{
+			SidecarSpecs: []v1.TaskRunSidecarSpec{{
 				Name: "foo",
-				Resources: corev1.ResourceRequirements{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
 		},
-		wantErr: apis.ErrGeneric("sidecarOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wantErr: apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
-		name: "duplicate stepOverride names",
+		name: "duplicate stepSpecs names",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
-			StepOverrides: []v1.TaskRunStepOverride{{
+			StepSpecs: []v1.TaskRunStepSpec{{
 				Name: "foo",
-				Resources: corev1.ResourceRequirements{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}, {
 				Name: "foo",
-				Resources: corev1.ResourceRequirements{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
 		},
-		wantErr: apis.ErrMultipleOneOf("stepOverrides[1].name"),
+		wantErr: apis.ErrMultipleOneOf("stepSpecs[1].name"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "missing stepOverride names",
+		name: "missing stepSpecs names",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
-			StepOverrides: []v1.TaskRunStepOverride{{
-				Resources: corev1.ResourceRequirements{
+			StepSpecs: []v1.TaskRunStepSpec{{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
 		},
-		wantErr: apis.ErrMissingField("stepOverrides[0].name"),
+		wantErr: apis.ErrMissingField("stepSpecs[0].name"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "duplicate sidecarOverride names",
+		name: "duplicate sidecarSpecs names",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
-			SidecarOverrides: []v1.TaskRunSidecarOverride{{
+			SidecarSpecs: []v1.TaskRunSidecarSpec{{
 				Name: "bar",
-				Resources: corev1.ResourceRequirements{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}, {
 				Name: "bar",
-				Resources: corev1.ResourceRequirements{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
 		},
-		wantErr: apis.ErrMultipleOneOf("sidecarOverrides[1].name"),
+		wantErr: apis.ErrMultipleOneOf("sidecarSpecs[1].name"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "missing sidecarOverride names",
+		name: "missing sidecarSpecs names",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
-			SidecarOverrides: []v1.TaskRunSidecarOverride{{
-				Resources: corev1.ResourceRequirements{
+			SidecarSpecs: []v1.TaskRunSidecarSpec{{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 				},
 			}},
 		},
-		wantErr: apis.ErrMissingField("sidecarOverrides[0].name"),
+		wantErr: apis.ErrMissingField("sidecarSpecs[0].name"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "invalid both step-level (stepOverrides.resources) and task-level (spec.computeResources) resource requirements",
+		name: "invalid both step-level (stepSpecs.resources) and task-level (spec.computeResources) resource requirements",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{Name: "task"},
-			StepOverrides: []v1.TaskRunStepOverride{{
-				Name: "stepOverride",
-				Resources: corev1.ResourceRequirements{
+			StepSpecs: []v1.TaskRunStepSpec{{
+				Name: "stepSpec",
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceMemory: corev1resources.MustParse("1Gi"),
 					},
@@ -740,7 +740,7 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf(
-			"stepOverrides.resources",
+			"stepSpecs.resources",
 			"computeResources",
 		),
 		wc: config.EnableAlphaAPIFields,
@@ -845,9 +845,9 @@ func TestTaskRunSpec_Validate(t *testing.T) {
 					corev1.ResourceMemory: corev1resources.MustParse("2Gi"),
 				},
 			},
-			SidecarOverrides: []v1.TaskRunSidecarOverride{{
+			SidecarSpecs: []v1.TaskRunSidecarSpec{{
 				Name: "sidecar",
-				Resources: corev1.ResourceRequirements{
+				ComputeResources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
 						corev1.ResourceMemory: corev1resources.MustParse("4Gi"),
 					},

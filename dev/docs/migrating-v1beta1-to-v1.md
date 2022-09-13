@@ -35,6 +35,13 @@ In Tekton `v1`, the following fields have been changed:
 | `pipelineRun.spec.resources` | removed from `PipelineRun` |
 | `pipelineRun.spec.serviceAccountName` | [`pipelineRun.spec.taskRunTemplate.serviceAccountName`](#adding-taskruntemplate-to-pipelinerun.spec) |
 | `pipelineRun.spec.podTemplate` | [`pipelineRun.spec.taskRunTemplate.podTemplate`](#adding-taskruntemplate-to-pipelinerun.spec) |
+| `task.spec.steps[].resources` | `task.spec.steps[].computeResources` |
+| `task.spec.stepTemplate.resources` | `task.spec.stepTemplate.computeResources` |
+| `task.spec.sidecars[].resources` | `task.spec.sidecars[].computeResources` |
+| `taskRun.spec.sidecarOverrides`| `taskRun.spec.sidecarSpecs` |
+| `taskRun.spec.stepOverrides` | `taskRun.spec.stepSpecs` |
+| `taskRun.spec.sidecarSpecs[].resources` | `taskRun.spec.sidecarSpecs[].computeResources` |
+| `taskRun.spec.stepSpecs[].resources` | `taskRun.spec.stepSpecs[].computeResources` |
 
 ## Deprecating `resources` from Task, TaskRun, Pipeline and PipelineRun
 `PipelineResources` are deprecated, and the `resources` fields of Task, TaskRun, Pipeline and PipelineRun has been removed. Please use `Tasks` instead. For more information, see [Replacing PipelineResources](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md)

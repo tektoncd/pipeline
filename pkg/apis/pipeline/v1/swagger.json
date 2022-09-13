@@ -927,19 +927,19 @@
         "serviceAccountName": {
           "type": "string"
         },
-        "sidecarOverrides": {
+        "sidecarSpecs": {
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunSidecarOverride"
+            "$ref": "#/definitions/v1.TaskRunSidecarSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
-        "stepOverrides": {
+        "stepSpecs": {
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunStepOverride"
+            "$ref": "#/definitions/v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
         }
@@ -1061,6 +1061,11 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "computeResources": {
+          "description": "ComputeResources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "env": {
           "description": "List of environment variables to set in the Sidecar. Cannot be updated.",
           "type": "array",
@@ -1120,11 +1125,6 @@
         "readinessProbe": {
           "description": "Periodic probe of Sidecar service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
           "$ref": "#/definitions/v1.Probe"
-        },
-        "resources": {
-          "description": "Compute Resources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command or Args.",
@@ -1276,6 +1276,11 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "computeResources": {
+          "description": "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "env": {
           "description": "List of environment variables to set in the Step. Cannot be updated.",
           "type": "array",
@@ -1312,11 +1317,6 @@
         "onError": {
           "description": "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ]",
           "type": "string"
-        },
-        "resources": {
-          "description": "Compute Resources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
@@ -1434,6 +1434,11 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "computeResources": {
+          "description": "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "env": {
           "description": "List of environment variables to set in the Step. Cannot be updated.",
           "type": "array",
@@ -1461,11 +1466,6 @@
         "imagePullPolicy": {
           "description": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
           "type": "string"
-        },
-        "resources": {
-          "description": "Compute Resources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "securityContext": {
           "description": "SecurityContext defines the security options the Step should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
@@ -1704,23 +1704,23 @@
         }
       }
     },
-    "v1.TaskRunSidecarOverride": {
-      "description": "TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.",
+    "v1.TaskRunSidecarSpec": {
+      "description": "TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.",
       "type": "object",
       "required": [
         "name",
-        "resources"
+        "computeResources"
       ],
       "properties": {
+        "computeResources": {
+          "description": "The resource requirements to apply to the Sidecar.",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "name": {
           "description": "The name of the Sidecar to override.",
           "type": "string",
           "default": ""
-        },
-        "resources": {
-          "description": "The resource requirements to apply to the Sidecar.",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         }
       }
     },
@@ -1751,12 +1751,12 @@
           "type": "string",
           "default": ""
         },
-        "sidecarOverrides": {
-          "description": "Overrides to apply to Sidecars in this TaskRun. If a field is specified in both a Sidecar and a SidecarOverride, the value from the SidecarOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+        "sidecarSpecs": {
+          "description": "Specs to apply to Sidecars in this TaskRun. If a field is specified in both a Sidecar and a SidecarSpec, the value from the SidecarSpec will be used. This field is only supported when the alpha feature gate is enabled.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunSidecarOverride"
+            "$ref": "#/definitions/v1.TaskRunSidecarSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1768,12 +1768,12 @@
           "description": "Status message for cancellation.",
           "type": "string"
         },
-        "stepOverrides": {
-          "description": "Overrides to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepOverride, the value from the StepOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+        "stepSpecs": {
+          "description": "Specs to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepSpec, the value from the StepSpec will be used. This field is only supported when the alpha feature gate is enabled.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunStepOverride"
+            "$ref": "#/definitions/v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1946,23 +1946,23 @@
         }
       }
     },
-    "v1.TaskRunStepOverride": {
-      "description": "TaskRunStepOverride is used to override the values of a Step in the corresponding Task.",
+    "v1.TaskRunStepSpec": {
+      "description": "TaskRunStepSpec is used to override the values of a Step in the corresponding Task.",
       "type": "object",
       "required": [
         "name",
-        "resources"
+        "computeResources"
       ],
       "properties": {
+        "computeResources": {
+          "description": "The resource requirements to apply to the Step.",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "name": {
           "description": "The name of the Step to override.",
           "type": "string",
           "default": ""
-        },
-        "resources": {
-          "description": "The resource requirements to apply to the Step.",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         }
       }
     },

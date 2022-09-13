@@ -14,7 +14,7 @@ func (s Step) convertTo(ctx context.Context, sink *v1.Step) {
 	sink.WorkingDir = s.WorkingDir
 	sink.EnvFrom = s.EnvFrom
 	sink.Env = s.Env
-	sink.Resources = s.Resources
+	sink.ComputeResources = s.Resources
 	sink.VolumeMounts = s.VolumeMounts
 	sink.VolumeDevices = s.VolumeDevices
 	sink.ImagePullPolicy = s.ImagePullPolicy
@@ -45,7 +45,7 @@ func (s *Step) convertFrom(ctx context.Context, source v1.Step) {
 	s.WorkingDir = source.WorkingDir
 	s.EnvFrom = source.EnvFrom
 	s.Env = source.Env
-	s.Resources = source.Resources
+	s.Resources = source.ComputeResources
 	s.VolumeMounts = source.VolumeMounts
 	s.VolumeDevices = source.VolumeDevices
 	s.ImagePullPolicy = source.ImagePullPolicy
@@ -71,7 +71,7 @@ func (s StepTemplate) convertTo(ctx context.Context, sink *v1.StepTemplate) {
 	sink.WorkingDir = s.WorkingDir
 	sink.EnvFrom = s.EnvFrom
 	sink.Env = s.Env
-	sink.Resources = s.Resources
+	sink.ComputeResources = s.Resources
 	sink.VolumeMounts = s.VolumeMounts
 	sink.VolumeDevices = s.VolumeDevices
 	sink.ImagePullPolicy = s.ImagePullPolicy
@@ -88,7 +88,7 @@ func (s *StepTemplate) convertFrom(ctx context.Context, source *v1.StepTemplate)
 	s.WorkingDir = source.WorkingDir
 	s.EnvFrom = source.EnvFrom
 	s.Env = source.Env
-	s.Resources = source.Resources
+	s.Resources = source.ComputeResources
 	s.VolumeMounts = source.VolumeMounts
 	s.VolumeDevices = source.VolumeDevices
 	s.ImagePullPolicy = source.ImagePullPolicy
@@ -104,7 +104,7 @@ func (s Sidecar) convertTo(ctx context.Context, sink *v1.Sidecar) {
 	sink.Ports = s.Ports
 	sink.EnvFrom = s.EnvFrom
 	sink.Env = s.Env
-	sink.Resources = s.Resources
+	sink.ComputeResources = s.Resources
 	sink.VolumeMounts = s.VolumeMounts
 	sink.VolumeDevices = s.VolumeDevices
 	sink.LivenessProbe = s.LivenessProbe
@@ -136,7 +136,7 @@ func (s *Sidecar) convertFrom(ctx context.Context, source v1.Sidecar) {
 	s.Ports = source.Ports
 	s.EnvFrom = source.EnvFrom
 	s.Env = source.Env
-	s.Resources = source.Resources
+	s.Resources = source.ComputeResources
 	s.VolumeMounts = source.VolumeMounts
 	s.VolumeDevices = source.VolumeDevices
 	s.LivenessProbe = source.LivenessProbe

@@ -165,17 +165,17 @@ func (ptrs PipelineTaskRunSpec) convertTo(ctx context.Context, sink *v1.Pipeline
 	sink.PipelineTaskName = ptrs.PipelineTaskName
 	sink.ServiceAccountName = ptrs.TaskServiceAccountName
 	sink.PodTemplate = ptrs.TaskPodTemplate
-	sink.StepOverrides = nil
+	sink.StepSpecs = nil
 	for _, so := range ptrs.StepOverrides {
-		new := v1.TaskRunStepOverride{}
+		new := v1.TaskRunStepSpec{}
 		so.convertTo(ctx, &new)
-		sink.StepOverrides = append(sink.StepOverrides, new)
+		sink.StepSpecs = append(sink.StepSpecs, new)
 	}
-	sink.SidecarOverrides = nil
+	sink.SidecarSpecs = nil
 	for _, so := range ptrs.SidecarOverrides {
-		new := v1.TaskRunSidecarOverride{}
+		new := v1.TaskRunSidecarSpec{}
 		so.convertTo(ctx, &new)
-		sink.SidecarOverrides = append(sink.SidecarOverrides, new)
+		sink.SidecarSpecs = append(sink.SidecarSpecs, new)
 	}
 	if ptrs.Metadata != nil {
 		sink.Metadata = &v1.PipelineTaskMetadata{}
@@ -189,13 +189,13 @@ func (ptrs *PipelineTaskRunSpec) convertFrom(ctx context.Context, source v1.Pipe
 	ptrs.TaskServiceAccountName = source.ServiceAccountName
 	ptrs.TaskPodTemplate = source.PodTemplate
 	ptrs.StepOverrides = nil
-	for _, so := range source.StepOverrides {
+	for _, so := range source.StepSpecs {
 		new := TaskRunStepOverride{}
 		new.convertFrom(ctx, so)
 		ptrs.StepOverrides = append(ptrs.StepOverrides, new)
 	}
 	ptrs.SidecarOverrides = nil
-	for _, so := range source.SidecarOverrides {
+	for _, so := range source.SidecarSpecs {
 		new := TaskRunSidecarOverride{}
 		new.convertFrom(ctx, so)
 		ptrs.SidecarOverrides = append(ptrs.SidecarOverrides, new)

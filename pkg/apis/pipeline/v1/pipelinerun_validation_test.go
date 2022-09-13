@@ -249,7 +249,7 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 	}, {
-		name: "alpha feature: sidecar and step overrides",
+		name: "alpha feature: sidecar and step specs",
 		pr: v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "pr",
@@ -259,15 +259,15 @@ func TestPipelineRun_Validate(t *testing.T) {
 				TaskRunSpecs: []v1.PipelineTaskRunSpec{
 					{
 						PipelineTaskName: "bar",
-						StepOverrides: []v1.TaskRunStepOverride{{
+						StepSpecs: []v1.TaskRunStepSpec{{
 							Name: "task-1",
-							Resources: corev1.ResourceRequirements{
+							ComputeResources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 							}},
 						},
-						SidecarOverrides: []v1.TaskRunSidecarOverride{{
+						SidecarSpecs: []v1.TaskRunSidecarSpec{{
 							Name: "task-1",
-							Resources: corev1.ResourceRequirements{
+							ComputeResources: corev1.ResourceRequirements{
 								Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 							}},
 						},
@@ -351,113 +351,113 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 	}, {
-		name: "duplicate stepOverride names",
+		name: "duplicate stepSpecs names",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					StepOverrides: []v1.TaskRunStepOverride{
+					StepSpecs: []v1.TaskRunStepSpec{
 						{Name: "baz"}, {Name: "baz"},
 					},
 				},
 			},
 		},
-		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].stepOverrides[1].name"),
+		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].stepSpecs[1].name"),
 		withContext: config.EnableAlphaAPIFields,
 	}, {
-		name: "stepOverride disallowed without alpha feature gate",
+		name: "stepSpecs disallowed without alpha feature gate",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					StepOverrides: []v1.TaskRunStepOverride{{
+					StepSpecs: []v1.TaskRunStepSpec{{
 						Name: "task-1",
-						Resources: corev1.ResourceRequirements{
+						ComputeResources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 						}},
 					},
 				},
 			},
 		},
-		wantErr: apis.ErrGeneric("stepOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr: apis.ErrGeneric("stepSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
-		name: "sidecarOverride disallowed without alpha feature gate",
+		name: "sidecarSpec disallowed without alpha feature gate",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					SidecarOverrides: []v1.TaskRunSidecarOverride{{
+					SidecarSpecs: []v1.TaskRunSidecarSpec{{
 						Name: "task-1",
-						Resources: corev1.ResourceRequirements{
+						ComputeResources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 						}},
 					},
 				},
 			},
 		},
-		wantErr: apis.ErrGeneric("sidecarOverrides requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
+		wantErr: apis.ErrGeneric("sidecarSpecs requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").ViaIndex(0).ViaField("taskRunSpecs"),
 	}, {
-		name: "missing stepOverride name",
+		name: "missing stepSpecs name",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					StepOverrides: []v1.TaskRunStepOverride{{
-						Resources: corev1.ResourceRequirements{
+					StepSpecs: []v1.TaskRunStepSpec{{
+						ComputeResources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 						}},
 					},
 				},
 			},
 		},
-		wantErr:     apis.ErrMissingField("taskRunSpecs[0].stepOverrides[0].name"),
+		wantErr:     apis.ErrMissingField("taskRunSpecs[0].stepSpecs[0].name"),
 		withContext: config.EnableAlphaAPIFields,
 	}, {
-		name: "duplicate sidecarOverride names",
+		name: "duplicate sidecarSpec names",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					SidecarOverrides: []v1.TaskRunSidecarOverride{
+					SidecarSpecs: []v1.TaskRunSidecarSpec{
 						{Name: "baz"}, {Name: "baz"},
 					},
 				},
 			},
 		},
-		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].sidecarOverrides[1].name"),
+		wantErr:     apis.ErrMultipleOneOf("taskRunSpecs[0].sidecarSpecs[1].name"),
 		withContext: config.EnableAlphaAPIFields,
 	}, {
-		name: "missing sidecarOverride name",
+		name: "missing sidecarSpec name",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "foo"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "bar",
-					SidecarOverrides: []v1.TaskRunSidecarOverride{{
-						Resources: corev1.ResourceRequirements{
+					SidecarSpecs: []v1.TaskRunSidecarSpec{{
+						ComputeResources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 						}},
 					},
 				},
 			},
 		},
-		wantErr:     apis.ErrMissingField("taskRunSpecs[0].sidecarOverrides[0].name"),
+		wantErr:     apis.ErrMissingField("taskRunSpecs[0].sidecarSpecs[0].name"),
 		withContext: config.EnableAlphaAPIFields,
 	}, {
-		name: "invalid both step-level (stepOverrides.resources) and task-level (taskRunSpecs.resources) resource requirements configured",
+		name: "invalid both step-level (stepSpecs.resources) and task-level (taskRunSpecs.resources) resource requirements configured",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{Name: "pipeline"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{
 				{
 					PipelineTaskName: "pipelineTask",
-					StepOverrides: []v1.TaskRunStepOverride{{
-						Name: "stepOverride",
-						Resources: corev1.ResourceRequirements{
+					StepSpecs: []v1.TaskRunStepSpec{{
+						Name: "stepSpecs",
+						ComputeResources: corev1.ResourceRequirements{
 							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
 						}},
 					},
@@ -468,7 +468,7 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf(
-			"taskRunSpecs[0].stepOverrides.resources",
+			"taskRunSpecs[0].stepSpecs.resources",
 			"taskRunSpecs[0].computeResources",
 		),
 		withContext: config.EnableAlphaAPIFields,
@@ -525,8 +525,8 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 			PipelineRef: &v1.PipelineRef{Name: "pipeline"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{{
 				PipelineTaskName: "pipelineTask",
-				StepOverrides: []v1.TaskRunStepOverride{{
-					Name: "stepOverride",
+				StepSpecs: []v1.TaskRunStepSpec{{
+					Name: "stepSpecs",
 				}},
 				ComputeResources: &corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
@@ -540,15 +540,15 @@ func TestPipelineRunSpec_Validate(t *testing.T) {
 			PipelineRef: &v1.PipelineRef{Name: "pipeline"},
 			TaskRunSpecs: []v1.PipelineTaskRunSpec{{
 				PipelineTaskName: "pipelineTask",
-				StepOverrides: []v1.TaskRunStepOverride{{
-					Name: "stepOverride",
+				StepSpecs: []v1.TaskRunStepSpec{{
+					Name: "stepSpecs",
 				}},
 				ComputeResources: &corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("2Gi")},
 				},
-				SidecarOverrides: []v1.TaskRunSidecarOverride{{
+				SidecarSpecs: []v1.TaskRunSidecarSpec{{
 					Name: "sidecar",
-					Resources: corev1.ResourceRequirements{
+					ComputeResources: corev1.ResourceRequirements{
 						Requests: corev1.ResourceList{
 							corev1.ResourceMemory: corev1resources.MustParse("4Gi"),
 						},

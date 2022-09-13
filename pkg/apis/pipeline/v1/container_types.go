@@ -74,11 +74,11 @@ type Step struct {
 	// +patchStrategy=merge
 	// +listType=atomic
 	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
-	// Compute Resources required by this Step.
+	// ComputeResources required by this Step.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
-	Resources corev1.ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+	ComputeResources corev1.ResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
 	// Volumes to mount into the Step's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -165,7 +165,7 @@ func (s *Step) ToK8sContainer() *corev1.Container {
 		WorkingDir:      s.WorkingDir,
 		EnvFrom:         s.EnvFrom,
 		Env:             s.Env,
-		Resources:       s.Resources,
+		Resources:       s.ComputeResources,
 		VolumeMounts:    s.VolumeMounts,
 		VolumeDevices:   s.VolumeDevices,
 		ImagePullPolicy: s.ImagePullPolicy,
@@ -182,7 +182,7 @@ func (s *Step) SetContainerFields(c corev1.Container) {
 	s.WorkingDir = c.WorkingDir
 	s.EnvFrom = c.EnvFrom
 	s.Env = c.Env
-	s.Resources = c.Resources
+	s.ComputeResources = c.Resources
 	s.VolumeMounts = c.VolumeMounts
 	s.VolumeDevices = c.VolumeDevices
 	s.ImagePullPolicy = c.ImagePullPolicy
@@ -242,11 +242,11 @@ type StepTemplate struct {
 	// +patchStrategy=merge
 	// +listType=atomic
 	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
-	// Compute Resources required by this Step.
+	// ComputeResources required by this Step.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
-	Resources corev1.ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+	ComputeResources corev1.ResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
 	// Volumes to mount into the Step's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -282,7 +282,7 @@ func (s *StepTemplate) SetContainerFields(c corev1.Container) {
 	s.WorkingDir = c.WorkingDir
 	s.EnvFrom = c.EnvFrom
 	s.Env = c.Env
-	s.Resources = c.Resources
+	s.ComputeResources = c.Resources
 	s.VolumeMounts = c.VolumeMounts
 	s.VolumeDevices = c.VolumeDevices
 	s.ImagePullPolicy = c.ImagePullPolicy
@@ -298,7 +298,7 @@ func (s *StepTemplate) ToK8sContainer() *corev1.Container {
 		WorkingDir:      s.WorkingDir,
 		EnvFrom:         s.EnvFrom,
 		Env:             s.Env,
-		Resources:       s.Resources,
+		Resources:       s.ComputeResources,
 		VolumeMounts:    s.VolumeMounts,
 		VolumeDevices:   s.VolumeDevices,
 		ImagePullPolicy: s.ImagePullPolicy,
@@ -377,11 +377,11 @@ type Sidecar struct {
 	// +patchStrategy=merge
 	// +listType=atomic
 	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
-	// Compute Resources required by this Sidecar.
+	// ComputeResources required by this Sidecar.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
 	// +optional
-	Resources corev1.ResourceRequirements `json:"resources,omitempty" protobuf:"bytes,8,opt,name=resources"`
+	ComputeResources corev1.ResourceRequirements `json:"computeResources,omitempty" protobuf:"bytes,8,opt,name=computeResources"`
 	// Volumes to mount into the Sidecar's filesystem.
 	// Cannot be updated.
 	// +optional
@@ -502,7 +502,7 @@ func (s *Sidecar) ToK8sContainer() *corev1.Container {
 		Ports:                    s.Ports,
 		EnvFrom:                  s.EnvFrom,
 		Env:                      s.Env,
-		Resources:                s.Resources,
+		Resources:                s.ComputeResources,
 		VolumeMounts:             s.VolumeMounts,
 		VolumeDevices:            s.VolumeDevices,
 		LivenessProbe:            s.LivenessProbe,
@@ -529,7 +529,7 @@ func (s *Sidecar) SetContainerFields(c corev1.Container) {
 	s.Ports = c.Ports
 	s.EnvFrom = c.EnvFrom
 	s.Env = c.Env
-	s.Resources = c.Resources
+	s.ComputeResources = c.Resources
 	s.VolumeMounts = c.VolumeMounts
 	s.VolumeDevices = c.VolumeDevices
 	s.LivenessProbe = c.LivenessProbe

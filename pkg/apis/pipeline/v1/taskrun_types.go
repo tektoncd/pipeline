@@ -65,20 +65,20 @@ type TaskRunSpec struct {
 	// +optional
 	// +listType=atomic
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
-	// Overrides to apply to Steps in this TaskRun.
-	// If a field is specified in both a Step and a StepOverride,
-	// the value from the StepOverride will be used.
+	// Specs to apply to Steps in this TaskRun.
+	// If a field is specified in both a Step and a StepSpec,
+	// the value from the StepSpec will be used.
 	// This field is only supported when the alpha feature gate is enabled.
 	// +optional
 	// +listType=atomic
-	StepOverrides []TaskRunStepOverride `json:"stepOverrides,omitempty"`
-	// Overrides to apply to Sidecars in this TaskRun.
-	// If a field is specified in both a Sidecar and a SidecarOverride,
-	// the value from the SidecarOverride will be used.
+	StepSpecs []TaskRunStepSpec `json:"stepSpecs,omitempty"`
+	// Specs to apply to Sidecars in this TaskRun.
+	// If a field is specified in both a Sidecar and a SidecarSpec,
+	// the value from the SidecarSpec will be used.
 	// This field is only supported when the alpha feature gate is enabled.
 	// +optional
 	// +listType=atomic
-	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
+	SidecarSpecs []TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
@@ -231,20 +231,20 @@ type TaskRunStatusFields struct {
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 }
 
-// TaskRunStepOverride is used to override the values of a Step in the corresponding Task.
-type TaskRunStepOverride struct {
+// TaskRunStepSpec is used to override the values of a Step in the corresponding Task.
+type TaskRunStepSpec struct {
 	// The name of the Step to override.
 	Name string `json:"name"`
 	// The resource requirements to apply to the Step.
-	Resources corev1.ResourceRequirements `json:"resources"`
+	ComputeResources corev1.ResourceRequirements `json:"computeResources"`
 }
 
-// TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.
-type TaskRunSidecarOverride struct {
+// TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.
+type TaskRunSidecarSpec struct {
 	// The name of the Sidecar to override.
 	Name string `json:"name"`
 	// The resource requirements to apply to the Sidecar.
-	Resources corev1.ResourceRequirements `json:"resources"`
+	ComputeResources corev1.ResourceRequirements `json:"computeResources"`
 }
 
 // GetGroupVersionKind implements kmeta.OwnerRefable.

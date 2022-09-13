@@ -528,9 +528,9 @@ type PipelineTaskRunSpec struct {
 	ServiceAccountName string           `json:"serviceAccountName,omitempty"`
 	PodTemplate        *pod.PodTemplate `json:"podTemplate,omitempty"`
 	// +listType=atomic
-	StepOverrides []TaskRunStepOverride `json:"stepOverrides,omitempty"`
+	StepSpecs []TaskRunStepSpec `json:"stepSpecs,omitempty"`
 	// +listType=atomic
-	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
+	SidecarSpecs []TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
 
 	// +optional
 	Metadata *PipelineTaskMetadata `json:"metadata,omitempty"`
@@ -555,8 +555,8 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			if task.ServiceAccountName != "" {
 				s.ServiceAccountName = task.ServiceAccountName
 			}
-			s.StepOverrides = task.StepOverrides
-			s.SidecarOverrides = task.SidecarOverrides
+			s.StepSpecs = task.StepSpecs
+			s.SidecarSpecs = task.SidecarSpecs
 			s.Metadata = task.Metadata
 			s.ComputeResources = task.ComputeResources
 		}
