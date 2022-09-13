@@ -64,7 +64,6 @@ func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSp
 		p.convertTo(ctx, &new)
 		sink.Params = append(sink.Params, new)
 	}
-	sink.ServiceAccountName = prs.ServiceAccountName
 	sink.Status = v1.PipelineRunSpecStatus(prs.Status)
 	if prs.Timeouts != nil {
 		sink.Timeouts = &v1.TimeoutFields{}
@@ -74,7 +73,9 @@ func (prs PipelineRunSpec) ConvertTo(ctx context.Context, sink *v1.PipelineRunSp
 		sink.Timeouts = &v1.TimeoutFields{}
 		sink.Timeouts.Pipeline = prs.Timeout
 	}
-	sink.PodTemplate = prs.PodTemplate
+	sink.TaskRunTemplate = v1.PipelineTaskRunTemplate{}
+	sink.TaskRunTemplate.PodTemplate = prs.PodTemplate
+	sink.TaskRunTemplate.ServiceAccountName = prs.ServiceAccountName
 	sink.Workspaces = nil
 	for _, w := range prs.Workspaces {
 		new := v1.WorkspaceBinding{}
@@ -125,14 +126,14 @@ func (prs *PipelineRunSpec) ConvertFrom(ctx context.Context, source *v1.Pipeline
 		new.convertFrom(ctx, p)
 		prs.Params = append(prs.Params, new)
 	}
-	prs.ServiceAccountName = source.ServiceAccountName
+	prs.ServiceAccountName = source.TaskRunTemplate.ServiceAccountName
 	prs.Status = PipelineRunSpecStatus(source.Status)
 	if source.Timeouts != nil {
 		newTimeouts := &TimeoutFields{}
 		newTimeouts.convertFrom(ctx, *source.Timeouts)
 		prs.Timeouts = newTimeouts
 	}
-	prs.PodTemplate = source.PodTemplate
+	prs.PodTemplate = source.TaskRunTemplate.PodTemplate
 	prs.Workspaces = nil
 	for _, w := range source.Workspaces {
 		new := WorkspaceBinding{}
