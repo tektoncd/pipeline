@@ -41,5 +41,5 @@ const (
 	// APISecretKeyKey is the config map key for the containing the token within the token secret
 	APISecretKeyKey = "api-token-secret-key"
 	// APISecretNamespaceKey is the config map key for the token secret's namespace
-	APISecretNamespaceKey = "api-token-namespace"
+	APISecretNamespaceKey = "api-token-secret-namespace"
 )
