@@ -22,8 +22,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logtesting "knative.dev/pkg/logging/testing"
 )
 
 const (
@@ -208,4 +211,18 @@ func EnableAlphaAPIFields(ctx context.Context) context.Context {
 		FeatureFlags: featureFlags,
 	}
 	return ToContext(ctx, cfg)
+}
+
+// EnableTektonOCIBundles enables OCI Bundles feature in an existing context (for use in testing)
+func EnableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		s := NewStore(logtesting.TestLogger(t))
+		s.OnConfigChanged(&corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-tekton-oci-bundles": "true",
+			},
+		})
+		return s.ToContext(ctx)
+	}
 }

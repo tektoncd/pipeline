@@ -100,7 +100,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			Bundle: "docker.io/foo",
 		},
 		wantErr: apis.ErrMissingField("name"),
-		wc:      enableTektonOCIBundles(t),
+		wc:      config.EnableTektonOCIBundles(t),
 	}, {
 		name: "invalid bundle reference",
 		taskRef: &v1beta1.TaskRef{
@@ -108,7 +108,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			Bundle: "invalid reference",
 		},
 		wantErr: apis.ErrInvalidValue("invalid bundle reference", "bundle", "could not parse reference: invalid reference"),
-		wc:      enableTektonOCIBundles(t),
+		wc:      config.EnableTektonOCIBundles(t),
 	}, {
 		name: "taskref resolver disallowed without alpha feature gate",
 		taskRef: &v1beta1.TaskRef{

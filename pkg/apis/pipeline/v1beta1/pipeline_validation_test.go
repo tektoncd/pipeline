@@ -3629,7 +3629,7 @@ func TestPipelineDeprecationWarning(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := tt.pipelineSpec
 			ctx := context.Background()
-			err := ts.Validate(enableTektonOCIBundles(t)(ctx))
+			err := ts.Validate(config.EnableTektonOCIBundles(t)(ctx))
 			if err == nil && tt.expectedError.Error() != "" {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}
@@ -3637,19 +3637,5 @@ func TestPipelineDeprecationWarning(t *testing.T) {
 				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
-	}
-}
-
-// TODO refactor in #5111
-func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		s := config.NewStore(logtesting.TestLogger(t))
-		s.OnConfigChanged(&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-			Data: map[string]string{
-				"enable-tekton-oci-bundles": "true",
-			},
-		})
-		return s.ToContext(ctx)
 	}
 }

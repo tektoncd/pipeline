@@ -305,9 +305,6 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 	return errs
 }
 
-// Instead of rejecting the deprecated field entirely, validate*Deprecation functions
-// emits a WarningLevel FieldError to notify users that the CRD created contains the
-// field that has been deprecated.
 func validatePipelineRunResourcesDeprecation(ctx context.Context, prs *PipelineRunSpec) (errs *apis.FieldError) {
 	if prs.Resources != nil {
 		return version.DeprecationError(ctx, "Resources")
@@ -325,7 +322,7 @@ func validateTimeoutDeprecation(ctx context.Context, prs *PipelineRunSpec) (errs
 func validatePipelineRefDeprecation(ctx context.Context, prs *PipelineRunSpec) (errs *apis.FieldError) {
 	if prs.PipelineRef != nil {
 		if prs.PipelineRef.Bundle != "" {
-			return version.DeprecationError(ctx, "PipelineRef")
+			return version.DeprecationError(ctx, "Bundle")
 		}
 	}
 	return nil

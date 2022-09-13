@@ -931,7 +931,7 @@ func TestTaskRunDeprecationWarning(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := tt.taskRunSpec
 			ctx := context.Background()
-			err := ts.Validate(enableTektonOCIBundles(t)(ctx))
+			err := ts.Validate(config.EnableTektonOCIBundles(t)(ctx))
 			if err == nil && tt.expectedError.Error() != "" {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}

@@ -24,10 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestPipelineRef_Invalid(t *testing.T) {
@@ -49,7 +46,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			Bundle: "docker.io/foo",
 		},
 		wantErr:     apis.ErrMissingField("name"),
-		withContext: enableTektonOCIBundles(t),
+		withContext: config.EnableTektonOCIBundles(t),
 	}, {
 		name: "invalid bundle reference",
 		ref: &v1beta1.PipelineRef{
@@ -57,7 +54,7 @@ func TestPipelineRef_Invalid(t *testing.T) {
 			Bundle: "not a valid reference",
 		},
 		wantErr:     apis.ErrInvalidValue("invalid bundle reference", "bundle", "could not parse reference: not a valid reference"),
-		withContext: enableTektonOCIBundles(t),
+		withContext: config.EnableTektonOCIBundles(t),
 	}, {
 		name:    "pipelineRef without Pipeline Name",
 		ref:     &v1beta1.PipelineRef{},
@@ -230,18 +227,5 @@ func TestPipelineRef_Valid(t *testing.T) {
 				t.Error(err)
 			}
 		})
-	}
-}
-
-func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		s := config.NewStore(logtesting.TestLogger(t))
-		s.OnConfigChanged(&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-			Data: map[string]string{
-				"enable-tekton-oci-bundles": "true",
-			},
-		})
-		return s.ToContext(ctx)
 	}
 }
