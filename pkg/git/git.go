@@ -36,10 +36,8 @@ const (
 	sshMissingKnownHostsSSHCommand = "ssh -o StrictHostKeyChecking=accept-new"
 )
 
-var (
-	// sshURLRegexFormat matches the url of SSH git repository
-	sshURLRegexFormat = regexp.MustCompile(`(ssh://[\w\d\.]+|.+@?.+\..+:)(:[\d]+){0,1}/*(.*)`)
-)
+// sshURLRegexFormat matches the url of SSH git repository
+var sshURLRegexFormat = regexp.MustCompile(`(ssh://[\w\d\.]+|.+@?.+\..+:)(:[\d]+){0,1}/*(.*)`)
 
 func run(logger *zap.SugaredLogger, dir string, args ...string) (string, error) {
 	c := exec.Command("git", args...)
@@ -235,7 +233,7 @@ func ensureHomeEnv(logger *zap.SugaredLogger, homepath string) {
 	}
 }
 
-func ensureHomeEnvSSHLinkedFromPath(logger *zap.SugaredLogger, homeenv string, homepath string) {
+func ensureHomeEnvSSHLinkedFromPath(logger *zap.SugaredLogger, homeenv, homepath string) {
 	if filepath.Clean(homeenv) != filepath.Clean(homepath) {
 		homeEnvSSH := filepath.Join(homeenv, ".ssh")
 		homePathSSH := filepath.Join(homepath, ".ssh")
@@ -276,6 +274,9 @@ func validateGitAuth(logger *zap.SugaredLogger, credsDir, url string) {
 
 // validateGitSSHURLFormat validates the given URL format is SSH or not
 func validateGitSSHURLFormat(url string) bool {
+	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+		return false
+	}
 	return sshURLRegexFormat.MatchString(url)
 }
 
