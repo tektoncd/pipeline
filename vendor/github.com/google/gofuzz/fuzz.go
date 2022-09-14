@@ -21,6 +21,7 @@ import (
 	"math/rand"
 	"reflect"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/google/gofuzz/bytesource"
@@ -40,6 +41,8 @@ type Fuzzer struct {
 	maxElements       int
 	maxDepth          int
 	skipFieldPatterns []*regexp.Regexp
+
+	fuzzLock sync.Mutex
 }
 
 // New returns a new Fuzzer. Customize your Fuzzer further by calling Funcs,
@@ -205,6 +208,9 @@ func (f *Fuzzer) SkipFieldsWithPattern(pattern *regexp.Regexp) *Fuzzer {
 // golang :/ ) Intended for tests, so will panic on bad input or unimplemented
 // fields.
 func (f *Fuzzer) Fuzz(obj interface{}) {
+	f.fuzzLock.Lock()
+	defer f.fuzzLock.Unlock()
+
 	v := reflect.ValueOf(obj)
 	if v.Kind() != reflect.Ptr {
 		panic("needed ptr!")
@@ -221,6 +227,9 @@ func (f *Fuzzer) Fuzz(obj interface{}) {
 // obj must be a pointer. Only exported (public) fields can be set (thanks, golang :/ )
 // Intended for tests, so will panic on bad input or unimplemented fields.
 func (f *Fuzzer) FuzzNoCustom(obj interface{}) {
+	f.fuzzLock.Lock()
+	defer f.fuzzLock.Unlock()
+
 	v := reflect.ValueOf(obj)
 	if v.Kind() != reflect.Ptr {
 		panic("needed ptr!")
@@ -403,9 +412,13 @@ type Continue struct {
 	*rand.Rand
 }
 
-// Fuzz continues fuzzing obj. obj must be a pointer.
+// Fuzz continues fuzzing obj. obj must be a pointer or a reflect.Value of a
+// pointer.
 func (c Continue) Fuzz(obj interface{}) {
-	v := reflect.ValueOf(obj)
+	v, ok := obj.(reflect.Value)
+	if !ok {
+		v = reflect.ValueOf(obj)
+	}
 	if v.Kind() != reflect.Ptr {
 		panic("needed ptr!")
 	}
@@ -418,7 +431,10 @@ func (c Continue) Fuzz(obj interface{}) {
 // conformance.  This applies only to obj and not other instances of obj's
 // type.
 func (c Continue) FuzzNoCustom(obj interface{}) {
-	v := reflect.ValueOf(obj)
+	v, ok := obj.(reflect.Value)
+	if !ok {
+		v = reflect.ValueOf(obj)
+	}
 	if v.Kind() != reflect.Ptr {
 		panic("needed ptr!")
 	}

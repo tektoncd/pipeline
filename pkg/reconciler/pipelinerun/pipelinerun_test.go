@@ -252,6 +252,279 @@ func getPipelineRunUpdates(t *testing.T, actions []ktesting.Action) []*v1beta1.P
 	return nil
 }
 
+func TestReconcileWithConcurrency(t *testing.T) {
+	// TC = PR with concurrency label; there might be other running PRs
+	spec := v1beta1.PipelineRunSpec{
+		Params: []v1beta1.Param{{
+			Name:  "param-1",
+			Value: *v1beta1.NewArrayOrString("value-for-param"),
+		}},
+		PipelineSpec: &v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name: "param-1",
+			}},
+			Tasks: []v1beta1.PipelineTask{{
+				Name: "task1",
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Image: "foo",
+						}},
+					},
+				},
+			}},
+		},
+	}
+	tcs := []struct {
+		name                  string
+		labels                map[string]string
+		otherPR               *v1beta1.PipelineRun
+		concurrencyControls   []*v1alpha1.ConcurrencyControl
+		wantLabels            map[string]string
+		wantOtherPRSpecStatus v1beta1.PipelineRunSpecStatus
+	}{{
+		name:       "no other PRs, no concurrency labels",
+		wantLabels: map[string]string{"tekton.dev/pipeline": "pipeline-run"},
+	}, {
+		name:   "concurrency reference label but no concurrency key, no other PRs",
+		labels: map[string]string{"tekton.dev/concurrency": "concurrency-control"},
+		concurrencyControls: []*v1alpha1.ConcurrencyControl{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "concurrency-control",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.ConcurrencySpec{
+				Params: []v1beta1.ParamSpec{{ // concurrency control params must match params declared on pipelinerun
+					Name: "param-1",
+				}},
+				Key:      "$(params.param-1)-foo",
+				Strategy: "Cancel",
+			},
+		}},
+		wantLabels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+			"tekton.dev/concurrency-key": "value-for-param-foo"},
+	}, {
+		name:   "concurrency reference and concurrency key, no other PRs",
+		labels: map[string]string{"tekton.dev/concurrency": "concurrency-control", "tekton.dev/concurrency-key": "value-for-param-foo"},
+		concurrencyControls: []*v1alpha1.ConcurrencyControl{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "concurrency-control",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.ConcurrencySpec{
+				Params: []v1beta1.ParamSpec{{ // concurrency control params must match params declared on pipelinerun
+					Name: "param-1",
+				}},
+				Key:      "$(params.param-1)-foo",
+				Strategy: "Cancel",
+			},
+		}},
+		wantLabels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+			"tekton.dev/concurrency-key": "value-for-param-foo"},
+	}, {
+		name:   "concurrency reference but no concurrency key, other PR in different namespace with same key",
+		labels: map[string]string{"tekton.dev/concurrency": "concurrency-control"},
+		concurrencyControls: []*v1alpha1.ConcurrencyControl{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "concurrency-control",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.ConcurrencySpec{
+				Params: []v1beta1.ParamSpec{{ // concurrency control params must match params declared on pipelinerun
+					Name: "param-1",
+				}},
+				Key:      "$(params.param-1)-foo",
+				Strategy: "Cancel",
+			},
+		}},
+		otherPR: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "anything",
+				Namespace: "different-ns",
+				Labels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+					"tekton.dev/concurrency-key": "value-for-param-foo"},
+			},
+			Spec: spec,
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+			},
+		},
+		wantLabels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+			"tekton.dev/concurrency-key": "value-for-param-foo"},
+	}, {
+		name:   "concurrency reference but no concurrency key, running PR in same namespace with same key",
+		labels: map[string]string{"tekton.dev/concurrency": "concurrency-control"},
+		concurrencyControls: []*v1alpha1.ConcurrencyControl{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "concurrency-control",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.ConcurrencySpec{
+				Params: []v1beta1.ParamSpec{{ // concurrency control params must match params declared on pipelinerun
+					Name: "param-1",
+				}},
+				Key:      "$(params.param-1)-foo",
+				Strategy: "Cancel",
+			},
+		}},
+		otherPR: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "anything",
+				Namespace: "default",
+				Labels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+					"tekton.dev/concurrency-key": "value-for-param-foo"},
+			},
+			Spec: spec,
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+			},
+		},
+		wantLabels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+			"tekton.dev/concurrency-key": "value-for-param-foo"},
+		wantOtherPRSpecStatus: v1beta1.PipelineRunSpecStatusCancelled,
+	}, {
+		name:   "concurrency reference but no concurrency key, pending PR in same namespace with same key",
+		labels: map[string]string{"tekton.dev/concurrency": "concurrency-control"},
+		concurrencyControls: []*v1alpha1.ConcurrencyControl{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "concurrency-control",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.ConcurrencySpec{
+				Params: []v1beta1.ParamSpec{{ // concurrency control params must match params declared on pipelinerun
+					Name: "param-1",
+				}},
+				Key:      "$(params.param-1)-foo",
+				Strategy: "Cancel",
+			},
+		}},
+		otherPR: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "anything",
+				Namespace: "default",
+				Labels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+					"tekton.dev/concurrency-key": "value-for-param-foo"},
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				Params: []v1beta1.Param{{
+					Name:  "param-1",
+					Value: *v1beta1.NewArrayOrString("value-for-param"),
+				}},
+				Status: v1beta1.PipelineRunSpecStatusPending,
+				PipelineSpec: &v1beta1.PipelineSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "param-1",
+					}},
+					Tasks: []v1beta1.PipelineTask{{
+						Name: "task1",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Steps: []v1beta1.Step{{
+									Image: "foo",
+								}},
+							},
+						},
+					}},
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+					}},
+				},
+			},
+		},
+		wantLabels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+			"tekton.dev/concurrency-key": "value-for-param-foo"},
+		wantOtherPRSpecStatus: v1beta1.PipelineRunSpecStatusCancelled,
+	}, {
+		name:   "concurrency reference but no concurrency key, completed PR in same namespace with same key",
+		labels: map[string]string{"tekton.dev/concurrency": "concurrency-control"},
+		concurrencyControls: []*v1alpha1.ConcurrencyControl{{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "concurrency-control",
+				Namespace: "default",
+			},
+			Spec: v1alpha1.ConcurrencySpec{
+				Params: []v1beta1.ParamSpec{{ // concurrency control params must match params declared on pipelinerun
+					Name: "param-1",
+				}},
+				Key:      "$(params.param-1)-foo",
+				Strategy: "Cancel",
+			},
+		}},
+		otherPR: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "anything",
+				Namespace: "default",
+				Labels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+					"tekton.dev/concurrency-key": "value-for-param-foo"},
+			},
+			Spec: spec,
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+			},
+		},
+		wantLabels: map[string]string{"tekton.dev/pipeline": "pipeline-run", "tekton.dev/concurrency": "concurrency-control",
+			"tekton.dev/concurrency-key": "value-for-param-foo"},
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := spec.DeepCopy()
+			prToTest := v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels:    tc.labels,
+					Name:      "pipeline-run",
+					Namespace: "default",
+				},
+				Spec: *spec,
+			}
+			prs := []*v1beta1.PipelineRun{&prToTest}
+			if tc.otherPR != nil {
+				prs = append(prs, tc.otherPR)
+			}
+			d := test.Data{
+				PipelineRuns:        prs,
+				ConcurrencyControls: tc.concurrencyControls,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+			wantEvents := []string{}
+			reconciledRun, clients := prt.reconcileRun("default", "pipeline-run", wantEvents, false)
+			if d := cmp.Diff(tc.wantLabels, reconciledRun.Labels); d != "" {
+				t.Errorf("wrong labels: %s", d)
+			}
+			if tc.otherPR != nil {
+				otherPR, err := clients.Pipeline.TektonV1beta1().PipelineRuns(tc.otherPR.Namespace).Get(prt.TestAssets.Ctx, tc.otherPR.Name, metav1.GetOptions{})
+				if err != nil {
+					t.Fatalf("%s", err)
+				}
+				if d := cmp.Diff(tc.wantOtherPRSpecStatus, otherPR.Spec.Status); d != "" {
+					t.Errorf("Wrong spec status for other PR: %s", d)
+				}
+			}
+		})
+	}
+}
+
 func TestReconcile(t *testing.T) {
 	testCases := []struct {
 		name              string

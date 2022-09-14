@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -132,14 +133,15 @@ type Reconciler struct {
 	Clock             clock.PassiveClock
 
 	// listers index properties about resources
-	pipelineRunLister   listers.PipelineRunLister
-	taskRunLister       listers.TaskRunLister
-	runLister           listersv1alpha1.RunLister
-	resourceLister      resourcelisters.PipelineResourceLister
-	cloudEventClient    cloudevent.CEClient
-	metrics             *pipelinerunmetrics.Recorder
-	pvcHandler          volumeclaim.PvcHandler
-	resolutionRequester resolution.Requester
+	pipelineRunLister        listers.PipelineRunLister
+	taskRunLister            listers.TaskRunLister
+	runLister                listersv1alpha1.RunLister
+	concurrencyControlLister listersv1alpha1.ConcurrencyControlLister
+	resourceLister           resourcelisters.PipelineResourceLister
+	cloudEventClient         cloudevent.CEClient
+	metrics                  *pipelinerunmetrics.Recorder
+	pvcHandler               volumeclaim.PvcHandler
+	resolutionRequester      resolution.Requester
 }
 
 var (
@@ -358,7 +360,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	cfg := config.FromContextOrDefaults(ctx)
 	pr.SetDefaults(ctx)
 
-	// When pipeline run is pending, return to avoid creating the task
+	c.handleConcurrencyControls(ctx, pr)
+
 	if pr.IsPending() {
 		pr.Status.MarkRunning(ReasonPending, fmt.Sprintf("PipelineRun %q is pending", pr.Name))
 		return nil
@@ -701,6 +704,47 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
+	return nil
+}
+
+func (r *Reconciler) handleConcurrencyControls(ctx context.Context, pr *v1beta1.PipelineRun) error {
+	concurrencyRef, ok := pr.Labels["tekton.dev/concurrency"]
+	if !ok {
+		return nil
+	}
+	_, ok = pr.Labels["tekton.dev/concurrency-key"]
+	if ok {
+		// Assume concurrency key was added in a previous reconcile loop, and other pipelineRuns have already been canceled.
+		return nil
+	}
+	cc, err := r.concurrencyControlLister.ConcurrencyControls(pr.Namespace).Get(concurrencyRef)
+	if err != nil {
+		return fmt.Errorf("error getting concurrency control for PR %s: %s", pr.Name, err)
+	}
+	key := resources.ApplyParametersToConcurrency(ctx, cc, pr)
+	pr.Labels["tekton.dev/concurrency-key"] = key
+	if cc.Spec.Strategy != "Cancel" {
+		return fmt.Errorf("unsupported concurrency strategy %s for control %s", cc.Spec.Strategy, cc.Name)
+	}
+
+	labelSelector := map[string]string{"tekton.dev/concurrency": concurrencyRef, "tekton.dev/concurrency-key": key}
+	prsToCancel, err := r.pipelineRunLister.PipelineRuns(pr.Namespace).List(k8slabels.SelectorFromSet(labelSelector))
+	if err != nil {
+		return fmt.Errorf("error getting other PRs: %s", err)
+	}
+	wg := sync.WaitGroup{}
+
+	for _, otherPR := range prsToCancel {
+		if !otherPR.IsDone() {
+			wg.Add(1)
+			go func(p *v1beta1.PipelineRun) {
+				defer wg.Done()
+				_ = r.cancelOtherPipelineRunViaAPI(ctx, p.Namespace, p.Name)
+			}(otherPR)
+		}
+	}
+	// TODO: For actual implementation this shouldn't block
+	wg.Wait()
 	return nil
 }
 

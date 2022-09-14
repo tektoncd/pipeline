@@ -1,5 +1,6 @@
 # MacOS file viewer garbage.
 .DS_Store
+*.venv
 
 # Compiled Object files
 *.slo

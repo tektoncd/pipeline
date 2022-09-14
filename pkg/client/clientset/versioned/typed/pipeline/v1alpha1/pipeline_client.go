@@ -28,12 +28,17 @@ import (
 
 type TektonV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	ConcurrencyControlsGetter
 	RunsGetter
 }
 
 // TektonV1alpha1Client is used to interact with features provided by the tekton.dev group.
 type TektonV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *TektonV1alpha1Client) ConcurrencyControls(namespace string) ConcurrencyControlInterface {
+	return newConcurrencyControls(c, namespace)
 }
 
 func (c *TektonV1alpha1Client) Runs(namespace string) RunInterface {

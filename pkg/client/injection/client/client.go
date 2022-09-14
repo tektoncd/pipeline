@@ -115,6 +115,137 @@ func (w *wrapTektonV1alpha1) RESTClient() rest.Interface {
 	panic("RESTClient called on dynamic client!")
 }
 
+func (w *wrapTektonV1alpha1) ConcurrencyControls(namespace string) typedtektonv1alpha1.ConcurrencyControlInterface {
+	return &wrapTektonV1alpha1ConcurrencyControlImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "tekton.dev",
+			Version:  "v1alpha1",
+			Resource: "concurrencycontrols",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapTektonV1alpha1ConcurrencyControlImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedtektonv1alpha1.ConcurrencyControlInterface = (*wrapTektonV1alpha1ConcurrencyControlImpl)(nil)
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) Create(ctx context.Context, in *v1alpha1.ConcurrencyControl, opts v1.CreateOptions) (*v1alpha1.ConcurrencyControl, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "ConcurrencyControl",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.ConcurrencyControl{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ConcurrencyControl, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.ConcurrencyControl{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ConcurrencyControlList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.ConcurrencyControlList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ConcurrencyControl, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.ConcurrencyControl{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) Update(ctx context.Context, in *v1alpha1.ConcurrencyControl, opts v1.UpdateOptions) (*v1alpha1.ConcurrencyControl, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "ConcurrencyControl",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.ConcurrencyControl{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) UpdateStatus(ctx context.Context, in *v1alpha1.ConcurrencyControl, opts v1.UpdateOptions) (*v1alpha1.ConcurrencyControl, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "ConcurrencyControl",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.ConcurrencyControl{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1ConcurrencyControlImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
 func (w *wrapTektonV1alpha1) Runs(namespace string) typedtektonv1alpha1.RunInterface {
 	return &wrapTektonV1alpha1RunImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{

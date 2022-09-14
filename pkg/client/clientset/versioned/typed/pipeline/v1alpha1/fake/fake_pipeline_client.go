@@ -28,6 +28,10 @@ type FakeTektonV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeTektonV1alpha1) ConcurrencyControls(namespace string) v1alpha1.ConcurrencyControlInterface {
+	return &FakeConcurrencyControls{c, namespace}
+}
+
 func (c *FakeTektonV1alpha1) Runs(namespace string) v1alpha1.RunInterface {
 	return &FakeRuns{c, namespace}
 }

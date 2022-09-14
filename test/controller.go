@@ -31,6 +31,7 @@ import (
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	informersv1beta1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
+	fakeconcurrencycontrolinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/concurrencycontrol/fake"
 	fakeruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run/fake"
 	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask/fake"
 	fakepipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipeline/fake"
@@ -68,19 +69,20 @@ import (
 // Data represents the desired state of the system (i.e. existing resources) to seed controllers
 // with.
 type Data struct {
-	PipelineRuns       []*v1beta1.PipelineRun
-	Pipelines          []*v1beta1.Pipeline
-	TaskRuns           []*v1beta1.TaskRun
-	Tasks              []*v1beta1.Task
-	ClusterTasks       []*v1beta1.ClusterTask
-	PipelineResources  []*resourcev1alpha1.PipelineResource
-	Runs               []*v1alpha1.Run
-	Pods               []*corev1.Pod
-	Namespaces         []*corev1.Namespace
-	ConfigMaps         []*corev1.ConfigMap
-	ServiceAccounts    []*corev1.ServiceAccount
-	LimitRange         []*corev1.LimitRange
-	ResolutionRequests []*resolutionv1alpha1.ResolutionRequest
+	PipelineRuns        []*v1beta1.PipelineRun
+	Pipelines           []*v1beta1.Pipeline
+	TaskRuns            []*v1beta1.TaskRun
+	Tasks               []*v1beta1.Task
+	ClusterTasks        []*v1beta1.ClusterTask
+	PipelineResources   []*resourcev1alpha1.PipelineResource
+	Runs                []*v1alpha1.Run
+	Pods                []*corev1.Pod
+	Namespaces          []*corev1.Namespace
+	ConfigMaps          []*corev1.ConfigMap
+	ServiceAccounts     []*corev1.ServiceAccount
+	LimitRange          []*corev1.LimitRange
+	ResolutionRequests  []*resolutionv1alpha1.ResolutionRequest
+	ConcurrencyControls []*v1alpha1.ConcurrencyControl
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -94,18 +96,19 @@ type Clients struct {
 
 // Informers holds references to informers which are useful for reconciler tests.
 type Informers struct {
-	PipelineRun       informersv1beta1.PipelineRunInformer
-	Pipeline          informersv1beta1.PipelineInformer
-	TaskRun           informersv1beta1.TaskRunInformer
-	Run               informersv1alpha1.RunInformer
-	Task              informersv1beta1.TaskInformer
-	ClusterTask       informersv1beta1.ClusterTaskInformer
-	PipelineResource  resourceinformersv1alpha1.PipelineResourceInformer
-	Pod               coreinformers.PodInformer
-	ConfigMap         coreinformers.ConfigMapInformer
-	ServiceAccount    coreinformers.ServiceAccountInformer
-	LimitRange        coreinformers.LimitRangeInformer
-	ResolutionRequest resolutioninformersv1alpha1.ResolutionRequestInformer
+	PipelineRun        informersv1beta1.PipelineRunInformer
+	Pipeline           informersv1beta1.PipelineInformer
+	TaskRun            informersv1beta1.TaskRunInformer
+	Run                informersv1alpha1.RunInformer
+	Task               informersv1beta1.TaskInformer
+	ClusterTask        informersv1beta1.ClusterTaskInformer
+	PipelineResource   resourceinformersv1alpha1.PipelineResourceInformer
+	Pod                coreinformers.PodInformer
+	ConfigMap          coreinformers.ConfigMapInformer
+	ServiceAccount     coreinformers.ServiceAccountInformer
+	LimitRange         coreinformers.LimitRangeInformer
+	ResolutionRequest  resolutioninformersv1alpha1.ResolutionRequestInformer
+	ConcurrencyControl informersv1alpha1.ConcurrencyControlInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -177,18 +180,19 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	PrependResourceVersionReactor(&c.Pipeline.Fake)
 
 	i := Informers{
-		PipelineRun:       fakepipelineruninformer.Get(ctx),
-		Pipeline:          fakepipelineinformer.Get(ctx),
-		TaskRun:           faketaskruninformer.Get(ctx),
-		Run:               fakeruninformer.Get(ctx),
-		Task:              faketaskinformer.Get(ctx),
-		ClusterTask:       fakeclustertaskinformer.Get(ctx),
-		PipelineResource:  fakeresourceinformer.Get(ctx),
-		Pod:               fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
-		ConfigMap:         fakeconfigmapinformer.Get(ctx),
-		ServiceAccount:    fakeserviceaccountinformer.Get(ctx),
-		LimitRange:        fakelimitrangeinformer.Get(ctx),
-		ResolutionRequest: fakeresolutionrequestinformer.Get(ctx),
+		PipelineRun:        fakepipelineruninformer.Get(ctx),
+		Pipeline:           fakepipelineinformer.Get(ctx),
+		TaskRun:            faketaskruninformer.Get(ctx),
+		Run:                fakeruninformer.Get(ctx),
+		Task:               faketaskinformer.Get(ctx),
+		ClusterTask:        fakeclustertaskinformer.Get(ctx),
+		PipelineResource:   fakeresourceinformer.Get(ctx),
+		Pod:                fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
+		ConfigMap:          fakeconfigmapinformer.Get(ctx),
+		ServiceAccount:     fakeserviceaccountinformer.Get(ctx),
+		LimitRange:         fakelimitrangeinformer.Get(ctx),
+		ResolutionRequest:  fakeresolutionrequestinformer.Get(ctx),
+		ConcurrencyControl: fakeconcurrencycontrolinformer.Get(ctx),
 	}
 
 	// Attach reactors that add resource mutations to the appropriate
@@ -240,6 +244,13 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, run := range d.Runs {
 		run := run.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Pipeline.TektonV1alpha1().Runs(run.Namespace).Create(ctx, run, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c.Pipeline.PrependReactor("*", "concurrencycontrols", AddToInformer(t, i.ConcurrencyControl.Informer().GetIndexer()))
+	for _, cc := range d.ConcurrencyControls {
+		cc := cc.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Pipeline.TektonV1alpha1().ConcurrencyControls(cc.Namespace).Create(ctx, cc, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -25,6 +25,8 @@ import (
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	runinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run"
 	pipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun"
+
+	concurrencycontrolinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/concurrencycontrol"
 	taskruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/taskrun"
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
@@ -49,6 +51,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		kubeclientset := kubeclient.Get(ctx)
 		pipelineclientset := pipelineclient.Get(ctx)
 		taskRunInformer := taskruninformer.Get(ctx)
+		concurrencyControlInformer := concurrencycontrolinformer.Get(ctx)
 		runInformer := runinformer.Get(ctx)
 		pipelineRunInformer := pipelineruninformer.Get(ctx)
 		resourceInformer := resourceinformer.Get(ctx)
@@ -57,18 +60,19 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 		configStore.WatchConfigs(cmw)
 
 		c := &Reconciler{
-			KubeClientSet:       kubeclientset,
-			PipelineClientSet:   pipelineclientset,
-			Images:              opts.Images,
-			Clock:               clock,
-			pipelineRunLister:   pipelineRunInformer.Lister(),
-			taskRunLister:       taskRunInformer.Lister(),
-			runLister:           runInformer.Lister(),
-			resourceLister:      resourceInformer.Lister(),
-			cloudEventClient:    cloudeventclient.Get(ctx),
-			metrics:             pipelinerunmetrics.Get(ctx),
-			pvcHandler:          volumeclaim.NewPVCHandler(kubeclientset, logger),
-			resolutionRequester: resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
+			KubeClientSet:            kubeclientset,
+			PipelineClientSet:        pipelineclientset,
+			Images:                   opts.Images,
+			Clock:                    clock,
+			pipelineRunLister:        pipelineRunInformer.Lister(),
+			taskRunLister:            taskRunInformer.Lister(),
+			runLister:                runInformer.Lister(),
+			resourceLister:           resourceInformer.Lister(),
+			cloudEventClient:         cloudeventclient.Get(ctx),
+			metrics:                  pipelinerunmetrics.Get(ctx),
+			pvcHandler:               volumeclaim.NewPVCHandler(kubeclientset, logger),
+			resolutionRequester:      resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
+			concurrencyControlLister: concurrencyControlInformer.Lister(),
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{

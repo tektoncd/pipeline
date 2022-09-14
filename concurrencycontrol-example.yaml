@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: ConcurrencyControl
+metadata:
+  name: my-concurrency-control
+  namespace: concurrency
+spec:
+  params:
+  - name: param-1
+  key: $(params.param-1)
+  strategy: Cancel

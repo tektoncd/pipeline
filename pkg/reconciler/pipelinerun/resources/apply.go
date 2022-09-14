@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	pipelinev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 
@@ -101,6 +102,52 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 	}
 
 	return ApplyReplacements(ctx, p, stringReplacements, arrayReplacements, objectReplacements)
+}
+
+// ApplyParameters applies the params from a PipelineRun.Params to a PipelineSpec.
+func ApplyParametersToConcurrency(ctx context.Context, c *pipelinev1alpha1.ConcurrencyControl, pr *v1beta1.PipelineRun) string {
+	// This assumes that the PipelineRun inputs have been validated against what the Pipeline requests.
+
+	// stringReplacements is used for standard single-string stringReplacements,
+	// while arrayReplacements/objectReplacements contains arrays/objects that need to be further processed.
+	stringReplacements := map[string]string{}
+	arrayReplacements := map[string][]string{}
+	objectReplacements := map[string]map[string]string{}
+
+	// Set all the default stringReplacements
+	for _, p := range c.Spec.Params {
+		if p.Default != nil {
+			switch p.Default.Type {
+			case v1beta1.ParamTypeArray:
+				for _, pattern := range paramPatterns {
+					for i := 0; i < len(p.Default.ArrayVal); i++ {
+						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
+					}
+					arrayReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ArrayVal
+				}
+			case v1beta1.ParamTypeObject:
+				for _, pattern := range paramPatterns {
+					objectReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.ObjectVal
+				}
+				for k, v := range p.Default.ObjectVal {
+					stringReplacements[fmt.Sprintf(objectIndividualVariablePattern, p.Name, k)] = v
+				}
+			default:
+				for _, pattern := range paramPatterns {
+					stringReplacements[fmt.Sprintf(pattern, p.Name)] = p.Default.StringVal
+				}
+			}
+		}
+	}
+	// Set and overwrite params with the ones from the PipelineRun
+	prStrings, _, _ := paramsFromPipelineRun(ctx, pr)
+
+	for k, v := range prStrings {
+		stringReplacements[k] = v
+	}
+	key := c.Spec.Key
+
+	return substitution.ApplyReplacements(key, stringReplacements)
 }
 
 func paramsFromPipelineRun(ctx context.Context, pr *v1beta1.PipelineRun) (map[string]string, map[string][]string, map[string]map[string]string) {

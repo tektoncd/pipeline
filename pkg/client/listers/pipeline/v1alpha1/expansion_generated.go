@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1alpha1
 
+// ConcurrencyControlListerExpansion allows custom methods to be added to
+// ConcurrencyControlLister.
+type ConcurrencyControlListerExpansion interface{}
+
+// ConcurrencyControlNamespaceListerExpansion allows custom methods to be added to
+// ConcurrencyControlNamespaceLister.
+type ConcurrencyControlNamespaceListerExpansion interface{}
+
 // RunListerExpansion allows custom methods to be added to
 // RunLister.
 type RunListerExpansion interface{}

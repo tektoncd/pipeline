@@ -38,7 +38,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var cancelTaskRunPatchBytes, cancelRunPatchBytes []byte
+var cancelTaskRunPatchBytes, cancelRunPatchBytes, cancelPipelineRunPatchBytes []byte
 
 func init() {
 	var err error
@@ -70,6 +70,15 @@ func init() {
 	if err != nil {
 		log.Fatalf("failed to marshal Run cancel patch bytes: %v", err)
 	}
+	cancelPipelineRunPatchBytes, err = json.Marshal([]jsonpatch.JsonPatchOperation{
+		{
+			Operation: "add",
+			Path:      "/spec/status",
+			Value:     v1beta1.PipelineRunSpecStatusCancelled,
+		}})
+	if err != nil {
+		log.Fatalf("failed to marshal PipelineRun cancel patch bytes: %v", err)
+	}
 }
 
 func cancelRun(ctx context.Context, runName string, namespace string, clientSet clientset.Interface) error {
@@ -89,6 +98,11 @@ func cancelTaskRun(ctx context.Context, taskRunName string, namespace string, cl
 		// still be able to cancel the PipelineRun
 		return nil
 	}
+	return err
+}
+
+func (r *Reconciler) cancelOtherPipelineRunViaAPI(ctx context.Context, namespace, name string) error {
+	_, err := r.PipelineClientSet.TektonV1beta1().PipelineRuns(namespace).Patch(ctx, name, types.JSONPatchType, cancelPipelineRunPatchBytes, metav1.PatchOptions{})
 	return err
 }
 

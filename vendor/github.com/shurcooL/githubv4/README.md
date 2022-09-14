@@ -3,11 +3,9 @@ githubv4
 
 [![Build Status](https://travis-ci.org/shurcooL/githubv4.svg?branch=master)](https://travis-ci.org/shurcooL/githubv4) [![GoDoc](https://godoc.org/github.com/shurcooL/githubv4?status.svg)](https://godoc.org/github.com/shurcooL/githubv4)
 
-Package `githubv4` is a client library for accessing GitHub GraphQL API v4 (https://developer.github.com/v4/).
+Package `githubv4` is a client library for accessing GitHub GraphQL API v4 (https://docs.github.com/en/graphql).
 
 If you're looking for a client library for GitHub REST API v3, the recommended package is [`github.com/google/go-github/github`](https://godoc.org/github.com/google/go-github/github).
-
-**Status:** In research and development. The API will change when opportunities for improvement are discovered; it is not yet frozen.
 
 Focus
 -----
@@ -30,7 +28,7 @@ Usage
 
 ### Authentication
 
-GitHub GraphQL API v4 [requires authentication](https://developer.github.com/v4/guides/forming-calls/#authenticating-with-graphql). The `githubv4` package does not directly handle authentication. Instead, when creating a new client, you're expected to pass an `http.Client` that performs authentication. The easiest and recommended way to do this is to use the [`golang.org/x/oauth2`](https://golang.org/x/oauth2) package. You'll need an OAuth token from GitHub (for example, a [personal API token](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/)) with the right scopes. Then:
+GitHub GraphQL API v4 [requires authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql#authenticating-with-graphql). The `githubv4` package does not directly handle authentication. Instead, when creating a new client, you're expected to pass an `http.Client` that performs authentication. The easiest and recommended way to do this is to use the [`golang.org/x/oauth2`](https://golang.org/x/oauth2) package. You'll need an OAuth token from GitHub (for example, a [personal API token](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/)) with the right scopes. Then:
 
 ```Go
 import "golang.org/x/oauth2"
@@ -46,9 +44,16 @@ func main() {
 }
 ```
 
+If you are using GitHub Enterprise, use [`githubv4.NewEnterpriseClient`](https://godoc.org/github.com/shurcooL/githubv4#NewEnterpriseClient):
+
+```Go
+client := githubv4.NewEnterpriseClient(os.Getenv("GITHUB_ENDPOINT"), httpClient)
+// Use client...
+```
+
 ### Simple Query
 
-To make a query, you need to define a Go type that corresponds to the GitHub GraphQL schema, and contains the fields you're interested in querying. You can look up the GitHub GraphQL schema at https://developer.github.com/v4/query/.
+To make a query, you need to define a Go type that corresponds to the GitHub GraphQL schema, and contains the fields you're interested in querying. You can look up the GitHub GraphQL schema at https://docs.github.com/en/graphql/reference/queries.
 
 For example, to make the following GraphQL query:
 
@@ -89,7 +94,7 @@ fmt.Println("CreatedAt:", query.Viewer.CreatedAt)
 
 ### Scalar Types
 
-For each scalar in the GitHub GraphQL schema listed at https://developer.github.com/v4/scalar/, there is a corresponding Go type in package `githubv4`.
+For each scalar in the GitHub GraphQL schema listed at https://docs.github.com/en/graphql/reference/scalars, there is a corresponding Go type in package `githubv4`.
 
 You can use these types when writing queries:
 
@@ -127,7 +132,7 @@ var query struct {
 // Call client.Query() and use results in query...
 ```
 
-The [`DateTime`](https://developer.github.com/v4/scalar/datetime/) scalar is described as "an ISO-8601 encoded UTC date string". If you wanted to fetch in that form without parsing it into a `time.Time`, you can use the `string` type. For example, this would work:
+The [`DateTime`](https://docs.github.com/en/graphql/reference/scalars#datetime) scalar is described as "an ISO-8601 encoded UTC date string". If you wanted to fetch in that form without parsing it into a `time.Time`, you can use the `string` type. For example, this would work:
 
 ```Go
 // import "html/template"
@@ -336,7 +341,7 @@ for {
 }
 ```
 
-There is more than one way to perform pagination. Consider additional fields inside [`PageInfo`](https://developer.github.com/v4/object/pageinfo/) object.
+There is more than one way to perform pagination. Consider additional fields inside [`PageInfo`](https://docs.github.com/en/graphql/reference/objects#pageinfo) object.
 
 ### Mutations
 
