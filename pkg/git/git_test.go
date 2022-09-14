@@ -74,6 +74,10 @@ func TestValidateGitSSHURLFormat(t *testing.T) {
 			want: false,
 		},
 		{
+			url:  "https://host.xz:1443/path/to/repo.git/",
+			want: false,
+		},
+		{
 			url:  "ssh://user@host.xz:port/path/to/repo.git/",
 			want: true,
 		},
@@ -260,7 +264,6 @@ func TestEnsureHomeEnv(t *testing.T) {
 			if _, err := os.Stat(filepath.Join(homedir, ".ssh")); os.IsNotExist(err) {
 				t.Errorf("SSH creds not present in homedir %s", homedir)
 			}
-
 		})
 	}
 }
