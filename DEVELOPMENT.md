@@ -24,23 +24,11 @@ First, you may want to [Ramp up](#ramp-up) on Kubernetes and Custom Resource Def
 
 ### Ramp up
 
-Welcome to the project! :clap::clap::clap:  You may find these resources helpful to "ramp up" on some of the technologies this project builds and runs on. This project extends Kubernetes (aka
-`k8s`) with Custom Resource Definitions (CRDs). To find out more, read:
+Welcome to the project! :clap::clap::clap:  You may find these resources helpful to "ramp up" on some of the technologies this project builds and runs on.
+This project extends Kubernetes (aka `k8s`) with Custom Resource Definitions (CRDs).
+To learn about how this works, check out our [developer documentation](docs/developers/controller-logic.md).
 
--   [The Kubernetes docs on Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) -
-    These will orient you on what words like "Resource" and "Controller"
-    concretely mean
--   [Understanding Kubernetes objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/) -
-    This will further solidify k8s nomenclature
--   [API conventions - Types(kinds)](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#types-kinds) -
-    Another useful set of words describing words. "Objects" and "Lists" in k8s
-    land
--   [Extend the Kubernetes API with CustomResourceDefinitions](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/)-
-    A tutorial demonstrating how a Custom Resource Definition can be added to
-    Kubernetes without anything actually "happening" beyond being able to list
-    Objects of that kind
-
-At this point, you may find it useful to return to these `Tekton Pipeline` docs:
+After reading the developer docs, you may find it useful to return to these `Tekton Pipeline` docs:
 
 -   [Tekton Pipeline README](https://github.com/tektoncd/pipeline/blob/main/docs/README.md) -
     Some of the terms here may make more sense!
@@ -48,7 +36,7 @@ At this point, you may find it useful to return to these `Tekton Pipeline` docs:
     [official installation docs](https://github.com/tektoncd/pipeline/blob/main/docs/install.md)
     or continue through [getting started for development](#getting-started)
 -   [Tekton Pipeline "Hello World" tutorial](https://github.com/tektoncd/pipeline/blob/main/docs/tutorial.md) -
-    Define `Tasks`, `Pipelines`, and `PipelineResources` (i.e., Tekton CRDs), and see what happens when they are run
+    Define `Tasks` and `Pipelines` (i.e., Tekton CRDs), and see what happens when they are run
 
 ---
 
