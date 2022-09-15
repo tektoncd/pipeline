@@ -256,9 +256,9 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 					ResolverRef: v1beta1.ResolverRef{
 						Resolver: "bundles",
 						Params: []v1beta1.Param{
-							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle"}},
-							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name"}},
-							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task"}},
+							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle", Type: "string"}},
+							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name", Type: "string"}},
+							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task", Type: "string"}},
 						},
 					},
 				},

@@ -78,6 +78,7 @@ func TestTaskrunConversion(t *testing.T) {
 					Name: "param-task-1",
 					Value: v1beta1.ParamValue{
 						ArrayVal: []string{"value-task-1"},
+						Type:     "string",
 					},
 				}},
 				ServiceAccountName: "test-sa",
@@ -85,6 +86,7 @@ func TestTaskrunConversion(t *testing.T) {
 				TaskSpec: &v1beta1.TaskSpec{
 					Params: []v1beta1.ParamSpec{{
 						Name: "param-name",
+						Type: "string",
 					}},
 				},
 				Status:        "test-task-run-spec-status",
@@ -303,9 +305,9 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 					ResolverRef: v1beta1.ResolverRef{
 						Resolver: "bundles",
 						Params: []v1beta1.Param{
-							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle"}},
-							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name"}},
-							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task"}},
+							{Name: "bundle", Value: v1beta1.ParamValue{StringVal: "test-bundle", Type: "string"}},
+							{Name: "name", Value: v1beta1.ParamValue{StringVal: "test-bundle-name", Type: "string"}},
+							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task", Type: "string"}},
 						},
 					},
 				},
@@ -326,6 +328,151 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
+				if d := cmp.Diff(test.want, got); d != "" {
+					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
+				}
+			})
+		}
+	}
+}
+
+func TestTaskRunConvertTo(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *v1beta1.TaskRun
+		want *v1.TaskRun
+	}{{
+		name: "empty param string",
+		in: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "param-task-0",
+					Value: v1beta1.ParamValue{
+						StringVal: "param-value-string",
+					},
+				}, {
+					Name: "param-task-1",
+					Value: v1beta1.ParamValue{
+						ArrayVal: []string{"param-value-string"},
+						Type:     "array",
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "param-name",
+					}, {
+						Name: "param-array",
+						Type: "array",
+					}},
+				},
+			},
+		},
+		want: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1.TaskRunSpec{
+				Params: []v1.Param{{
+					Name: "param-task-0",
+					Value: v1.ParamValue{
+						StringVal: "param-value-string",
+						Type:      "string",
+					},
+				}, {
+					Name: "param-task-1",
+					Value: v1.ParamValue{
+						ArrayVal: []string{"param-value-string"},
+						Type:     "array",
+					},
+				}},
+				TaskSpec: &v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name: "param-name",
+						Type: "string",
+					}, {
+						Name: "param-array",
+						Type: "array",
+					}},
+				},
+			},
+		}}}
+	for _, test := range tests {
+		versions := []apis.Convertible{&v1.TaskRun{}}
+		for _, version := range versions {
+			t.Run(test.name, func(t *testing.T) {
+				ver := version
+				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+					t.Errorf("ConvertTo() = %v", err)
+				}
+				if d := cmp.Diff(test.want, ver); d != "" {
+					t.Errorf("ConvertTo() = %v", diff.PrintWantGot(d))
+				}
+			})
+		}
+	}
+}
+
+func TestTaskRunConvertFrom(t *testing.T) {
+	tests := []struct {
+		name string
+		in   *v1.TaskRun
+		want *v1beta1.TaskRun
+	}{{
+		name: "empty param string",
+		in: &v1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1.TaskRunSpec{
+				Params: []v1.Param{{
+					Name: "param-task-1",
+					Value: v1.ParamValue{
+						ArrayVal: []string{"value-task-1"},
+					},
+				}},
+				TaskSpec: &v1.TaskSpec{
+					Params: []v1.ParamSpec{{
+						Name: "param-name",
+					}},
+				},
+			},
+		},
+		want: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.TaskRunSpec{
+				Params: []v1beta1.Param{{
+					Name: "param-task-1",
+					Value: v1beta1.ParamValue{
+						ArrayVal: []string{"value-task-1"},
+						Type:     "string",
+					},
+				}},
+				TaskSpec: &v1beta1.TaskSpec{
+					Params: []v1beta1.ParamSpec{{
+						Name: "param-name",
+						Type: "string",
+					}},
+				},
+			},
+		}}}
+	for _, test := range tests {
+		versions := []apis.Convertible{&v1beta1.TaskRun{}}
+		for _, version := range versions {
+			t.Run(test.name, func(t *testing.T) {
+				got := version
+				if err := got.ConvertFrom(context.Background(), test.in); err != nil {
+					t.Errorf("ConvertFrom() = %v", err)
+				}
+				t.Logf("ConvertFrom() =%v", got)
 				if d := cmp.Diff(test.want, got); d != "" {
 					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
 				}
