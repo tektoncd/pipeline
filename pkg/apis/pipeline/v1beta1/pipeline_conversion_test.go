@@ -104,6 +104,7 @@ func TestPipelineConversion(t *testing.T) {
 						Name: "param-task-1",
 						Value: v1beta1.ParamValue{
 							ArrayVal: []string{"value-task-1"},
+							Type:     "string",
 						},
 					}},
 					Matrix: &v1beta1.Matrix{

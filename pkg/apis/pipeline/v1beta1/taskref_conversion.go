@@ -34,13 +34,13 @@ func (tr TaskRef) convertBundleToResolver(sink *v1.TaskRef) {
 			Resolver: "bundles",
 			Params: []v1.Param{{
 				Name:  "bundle",
-				Value: v1.ParamValue{StringVal: tr.Bundle},
+				Value: v1.ParamValue{StringVal: tr.Bundle, Type: v1.ParamTypeString},
 			}, {
 				Name:  "name",
-				Value: v1.ParamValue{StringVal: tr.Name},
+				Value: v1.ParamValue{StringVal: tr.Name, Type: v1.ParamTypeString},
 			}, {
 				Name:  "kind",
-				Value: v1.ParamValue{StringVal: "Task"},
+				Value: v1.ParamValue{StringVal: "Task", Type: v1.ParamTypeString},
 			}},
 		}
 	}

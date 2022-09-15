@@ -8,7 +8,11 @@ import (
 
 func (p ParamSpec) convertTo(ctx context.Context, sink *v1.ParamSpec) {
 	sink.Name = p.Name
-	sink.Type = v1.ParamType(p.Type)
+	if p.Type != "" {
+		sink.Type = v1.ParamType(p.Type)
+	} else {
+		sink.Type = v1.ParamType(ParamTypeString)
+	}
 	sink.Description = p.Description
 	var properties map[string]v1.PropertySpec
 	if p.Properties != nil {
@@ -28,7 +32,11 @@ func (p ParamSpec) convertTo(ctx context.Context, sink *v1.ParamSpec) {
 
 func (p *ParamSpec) convertFrom(ctx context.Context, source v1.ParamSpec) {
 	p.Name = source.Name
-	p.Type = ParamType(source.Type)
+	if source.Type != "" {
+		p.Type = ParamType(source.Type)
+	} else {
+		p.Type = ParamTypeString
+	}
 	p.Description = source.Description
 	var properties map[string]PropertySpec
 	if source.Properties != nil {
@@ -61,14 +69,22 @@ func (p *Param) convertFrom(ctx context.Context, source v1.Param) {
 }
 
 func (v ParamValue) convertTo(ctx context.Context, sink *v1.ParamValue) {
-	sink.Type = v1.ParamType(v.Type)
+	if v.Type != "" {
+		sink.Type = v1.ParamType(v.Type)
+	} else {
+		sink.Type = v1.ParamType(ParamTypeString)
+	}
 	sink.StringVal = v.StringVal
 	sink.ArrayVal = v.ArrayVal
 	sink.ObjectVal = v.ObjectVal
 }
 
 func (v *ParamValue) convertFrom(ctx context.Context, source v1.ParamValue) {
-	v.Type = ParamType(source.Type)
+	if source.Type != "" {
+		v.Type = ParamType(source.Type)
+	} else {
+		v.Type = ParamTypeString
+	}
 	v.StringVal = source.StringVal
 	v.ArrayVal = source.ArrayVal
 	v.ObjectVal = source.ObjectVal
