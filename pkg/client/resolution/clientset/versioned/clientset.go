@@ -23,6 +23,7 @@ import (
 	"net/http"
 
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1alpha1"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -31,6 +32,7 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	ResolutionV1alpha1() resolutionv1alpha1.ResolutionV1alpha1Interface
+	ResolutionV1beta1() resolutionv1beta1.ResolutionV1beta1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -38,11 +40,17 @@ type Interface interface {
 type Clientset struct {
 	*discovery.DiscoveryClient
 	resolutionV1alpha1 *resolutionv1alpha1.ResolutionV1alpha1Client
+	resolutionV1beta1  *resolutionv1beta1.ResolutionV1beta1Client
 }
 
 // ResolutionV1alpha1 retrieves the ResolutionV1alpha1Client
 func (c *Clientset) ResolutionV1alpha1() resolutionv1alpha1.ResolutionV1alpha1Interface {
 	return c.resolutionV1alpha1
+}
+
+// ResolutionV1beta1 retrieves the ResolutionV1beta1Client
+func (c *Clientset) ResolutionV1beta1() resolutionv1beta1.ResolutionV1beta1Interface {
+	return c.resolutionV1beta1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -93,6 +101,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.resolutionV1beta1, err = resolutionv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
@@ -115,6 +127,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.resolutionV1alpha1 = resolutionv1alpha1.New(c)
+	cs.resolutionV1beta1 = resolutionv1beta1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs
