@@ -22,6 +22,8 @@ import (
 	clientset "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1alpha1"
 	fakeresolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1alpha1/fake"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1beta1"
+	fakeresolutionv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -82,4 +84,9 @@ var (
 // ResolutionV1alpha1 retrieves the ResolutionV1alpha1Client
 func (c *Clientset) ResolutionV1alpha1() resolutionv1alpha1.ResolutionV1alpha1Interface {
 	return &fakeresolutionv1alpha1.FakeResolutionV1alpha1{Fake: &c.Fake}
+}
+
+// ResolutionV1beta1 retrieves the ResolutionV1beta1Client
+func (c *Clientset) ResolutionV1beta1() resolutionv1beta1.ResolutionV1beta1Interface {
+	return &fakeresolutionv1beta1.FakeResolutionV1beta1{Fake: &c.Fake}
 }

@@ -25,8 +25,10 @@ import (
 	fmt "fmt"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	versioned "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	typedresolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1alpha1"
+	typedresolutionv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -239,5 +241,151 @@ func (w *wrapResolutionV1alpha1ResolutionRequestImpl) UpdateStatus(ctx context.C
 }
 
 func (w *wrapResolutionV1alpha1ResolutionRequestImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
+// ResolutionV1beta1 retrieves the ResolutionV1beta1Client
+func (w *wrapClient) ResolutionV1beta1() typedresolutionv1beta1.ResolutionV1beta1Interface {
+	return &wrapResolutionV1beta1{
+		dyn: w.dyn,
+	}
+}
+
+type wrapResolutionV1beta1 struct {
+	dyn dynamic.Interface
+}
+
+func (w *wrapResolutionV1beta1) RESTClient() rest.Interface {
+	panic("RESTClient called on dynamic client!")
+}
+
+func (w *wrapResolutionV1beta1) ResolutionRequests(namespace string) typedresolutionv1beta1.ResolutionRequestInterface {
+	return &wrapResolutionV1beta1ResolutionRequestImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "resolution.tekton.dev",
+			Version:  "v1beta1",
+			Resource: "resolutionrequests",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapResolutionV1beta1ResolutionRequestImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedresolutionv1beta1.ResolutionRequestInterface = (*wrapResolutionV1beta1ResolutionRequestImpl)(nil)
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) Create(ctx context.Context, in *v1beta1.ResolutionRequest, opts v1.CreateOptions) (*v1beta1.ResolutionRequest, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "resolution.tekton.dev",
+		Version: "v1beta1",
+		Kind:    "ResolutionRequest",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ResolutionRequest{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1beta1.ResolutionRequest, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ResolutionRequest{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) List(ctx context.Context, opts v1.ListOptions) (*v1beta1.ResolutionRequestList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ResolutionRequestList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.ResolutionRequest, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ResolutionRequest{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) Update(ctx context.Context, in *v1beta1.ResolutionRequest, opts v1.UpdateOptions) (*v1beta1.ResolutionRequest, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "resolution.tekton.dev",
+		Version: "v1beta1",
+		Kind:    "ResolutionRequest",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ResolutionRequest{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) UpdateStatus(ctx context.Context, in *v1beta1.ResolutionRequest, opts v1.UpdateOptions) (*v1beta1.ResolutionRequest, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "resolution.tekton.dev",
+		Version: "v1beta1",
+		Kind:    "ResolutionRequest",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1beta1.ResolutionRequest{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapResolutionV1beta1ResolutionRequestImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return nil, errors.New("NYI: Watch")
 }

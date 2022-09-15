@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -55,6 +56,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=resolution.tekton.dev, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("resolutionrequests"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Resolution().V1alpha1().ResolutionRequests().Informer()}, nil
+
+		// Group=resolution.tekton.dev, Version=v1beta1
+	case v1beta1.SchemeGroupVersion.WithResource("resolutionrequests"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Resolution().V1beta1().ResolutionRequests().Informer()}, nil
 
 	}
 
