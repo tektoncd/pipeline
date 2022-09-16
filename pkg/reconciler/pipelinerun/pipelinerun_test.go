@@ -123,57 +123,6 @@ type PipelineRunTest struct {
 	Cancel     func()
 }
 
-func ensureConfigurationConfigMapsExist(d *test.Data) {
-	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists, metricsExists bool
-	for _, cm := range d.ConfigMaps {
-		if cm.Name == config.GetDefaultsConfigName() {
-			defaultsExists = true
-		}
-		if cm.Name == config.GetFeatureFlagsConfigName() {
-			featureFlagsExists = true
-		}
-		if cm.Name == config.GetArtifactBucketConfigName() {
-			artifactBucketExists = true
-		}
-		if cm.Name == config.GetArtifactPVCConfigName() {
-			artifactPVCExists = true
-		}
-		if cm.Name == config.GetMetricsConfigName() {
-			metricsExists = true
-		}
-	}
-	if !defaultsExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !featureFlagsExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !artifactBucketExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !artifactPVCExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !metricsExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetMetricsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-}
-
 // getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
@@ -185,7 +134,7 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
-	ensureConfigurationConfigMapsExist(&d)
+	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
 	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
@@ -4885,7 +4834,7 @@ spec:
     script: |
       #!/usr/bin/env bash
       echo "Hello from bash!"
-  
+
 `),
 	}
 
@@ -4912,7 +4861,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 status:
-  pipelineSpec: 
+  pipelineSpec:
     results:
     - description: pipeline result
       name: result
@@ -4934,7 +4883,7 @@ status:
       taskRef:
         apiVersion: example.dev/v0
         kind: Example
-        name: b-task  
+        name: b-task
   conditions:
   - status: "True"
     type: Succeeded
@@ -4984,7 +4933,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 status:
-  pipelineSpec: 
+  pipelineSpec:
     results:
     - description: pipeline result
       name: result
@@ -5003,7 +4952,7 @@ status:
         name: a-task
         kind: Task
     - name: b-task
-      taskRef: 
+      taskRef:
         name: b-task
         apiVersion: example.dev/v0
         kind: Example
@@ -5070,7 +5019,7 @@ spec:
     name: test-pipeline
 status:
   runs: {}
-  pipelineSpec: 
+  pipelineSpec:
     results:
     - description: pipeline result
       name: result
@@ -5089,7 +5038,7 @@ status:
         name: a-task
         kind: Task
     - name: b-task
-      taskRef: 
+      taskRef:
         name: b-task
         apiVersion: example.dev/v0
         kind: Example
@@ -5239,7 +5188,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 status:
-  pipelineSpec: 
+  pipelineSpec:
     results:
     - description: pipeline result
       name: result
@@ -5300,7 +5249,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 status:
-  pipelineSpec: 
+  pipelineSpec:
     results:
     - description: pipeline result
       name: result
@@ -5371,7 +5320,7 @@ spec:
     name: test-pipeline
 status:
   runs: {}
-  pipelineSpec: 
+  pipelineSpec:
     results:
     - description: pipeline result
       name: result
@@ -9519,7 +9468,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p
 status:
@@ -9565,7 +9514,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p
 status:
@@ -9701,7 +9650,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p
 status:
@@ -9747,7 +9696,7 @@ metadata:
   labels:
     tekton.dev/pipeline: p
 spec:
-  serviceAccountName: test-sa 
+  serviceAccountName: test-sa
   pipelineRef:
     name: p
 status:
@@ -10573,11 +10522,11 @@ spec:
       steps:
       - name: 1st-step
         image: foo-image
-        command: 
+        command:
         - /foo-cmd
       - name: 2nd-step
         image: foo-image
-        command: 
+        command:
         - /foo-cmd
 `)
 
