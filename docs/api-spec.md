@@ -244,7 +244,8 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 |---------------|------------|-------------|
 | `name`        | string     | REQUIRED    |
 | `description` | string     | REQUIRED    |
-| `type`        | Enum: <br>- `"string"` (default) <br>- `"array"` | REQUIRED |
+| `type`      | Enum:<br>- `"string"` (default)<br>- `"array"` <br>- `"object"` | REQUIRED (The values `string` and `array` for this field are REQUIRED, and the value `object` is RECOMMENDED.) |
+| `properties`  | map<string,PropertySpec> |RECOMMENDED <br><br>note: `PropertySpec` is a type that defines the spec of an individual key. See how to define the `properties` section in the [example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml).|
 | `default`     | `ParamValue` | REQUIRED |
 
 ### `Step`
@@ -279,13 +280,16 @@ List responses have the following fields (based on [`meta.v1/ListMeta`](https://
 |--------------|------------|-------------|
 | `name`        | string    | REQUIRED    |
 | `description` | string    | REQUIRED    |
+| `type`      | Enum:<br>- `"string"` (default)<br>- `"array"` <br>- `"object"` | RECOMMENDED (Each of the values is RECOMMENDED.)|
+| `properties`  | map<string,PropertySpec> | RECOMMENDED <br><br>note: `PropertySpec` is a type that defines the spec of an individual key. See how to define the `properties` section in the [example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml).|
 
 ### `TaskRunResult`
 
 | Field Name | Field Type | Requirement |
 |------------|------------|-------------|
 | `name`     | string     | REQUIRED    |
-| `value`    | string     | REQUIRED    |
+| `type`      | Enum:<br>- `"string"` (default)<br>- `"array"` <br>- `"object"` | RECOMMENDED (Each of the values is RECOMMENDED.) |
+| `value`    | `ParamValue`     | REQUIRED    |
 
 ### `TaskSpec`
 
