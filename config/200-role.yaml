@@ -30,10 +30,6 @@ rules:
     resources: ["configmaps"]
     verbs: ["get"]
     resourceNames: ["config-logging", "config-observability", "config-artifact-bucket", "config-artifact-pvc", "feature-flags", "config-leader-election", "config-registry-cert"]
-  - apiGroups: ["policy"]
-    resources: ["podsecuritypolicies"]
-    resourceNames: ["tekton-pipelines"]
-    verbs: ["use"]
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -63,10 +59,6 @@ rules:
     resources: ["secrets"]
     verbs: ["get", "update"]
     resourceNames: ["webhook-certs"]
-  - apiGroups: ["policy"]
-    resources: ["podsecuritypolicies"]
-    resourceNames: ["tekton-pipelines"]
-    verbs: ["use"]
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
