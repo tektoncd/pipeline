@@ -156,6 +156,10 @@ spec:
         - name: config-registry-cert
           configMap:
             name: config-registry-cert
+      securityContext:
+        seLinuxOptions:
+          role: "RunAsUser"
+        runAsNonRoot: true
 ---
 apiVersion: v1
 kind: Service

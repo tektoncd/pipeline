@@ -140,6 +140,10 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5
+      securityContext:
+        seLinuxOptions:
+          role: "RunAsUser"
+        runAsNonRoot: true
 ---
 apiVersion: v1
 kind: Service
