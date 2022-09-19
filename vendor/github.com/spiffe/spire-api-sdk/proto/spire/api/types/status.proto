@@ -22,6 +22,8 @@ message PermissionDeniedDetails {
         AGENT_NOT_ACTIVE = 3;
         // Agent has been banned.
         AGENT_BANNED = 4;
+	// Agent attempted to renew SVID, but should reattest instead
+	AGENT_MUST_REATTEST=5;
     }
     Reason reason = 1;
 }
