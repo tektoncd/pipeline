@@ -40,8 +40,11 @@ import (
 	"go.opencensus.io/trace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	v1 "knative.dev/pkg/apis/duck/v1"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -449,44 +452,101 @@ func TestWaitCustomTask_Run(t *testing.T) {
 	for _, tc := range []struct {
 		name                string
 		duration            string
+		timeout             *metav1.Duration
+		retries             int
 		conditionAccessorFn func(string) ConditionAccessorFn
-		wantConditionType   apis.ConditionType
-		wantConditionStatus corev1.ConditionStatus
-		wantConditionReason string
+		wantCondition       apis.Condition
+		wantRetriesStatus   []v1alpha1.RunStatus
 	}{{
 		name:                "Wait Task Has Passed",
 		duration:            "1s",
 		conditionAccessorFn: Succeed,
-		wantConditionType:   apis.ConditionSucceeded,
-		wantConditionStatus: corev1.ConditionTrue,
-		wantConditionReason: "DurationElapsed",
+		wantCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+			Reason: "DurationElapsed",
+		},
 	}, {
 		name:                "Wait Task Is Running",
 		duration:            "2s",
 		conditionAccessorFn: Running,
-		wantConditionType:   apis.ConditionSucceeded,
-		wantConditionStatus: corev1.ConditionUnknown,
-		wantConditionReason: "Running",
+		wantCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+			Reason: "Running",
+		},
+	}, {
+		name:                "Wait Task Timed Out",
+		duration:            "2s",
+		timeout:             &metav1.Duration{time.Second},
+		conditionAccessorFn: Failed,
+		wantCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: "TimedOut",
+		},
+	}, {
+		name:                "Wait Task Retries on Timed Out",
+		duration:            "2s",
+		timeout:             &metav1.Duration{time.Second},
+		retries:             2,
+		conditionAccessorFn: Failed,
+		wantCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: "TimedOut",
+		},
+		wantRetriesStatus: []v1alpha1.RunStatus{
+			{
+				Status: v1.Status{
+					Conditions: []apis.Condition{
+						{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+							Reason: "TimedOut",
+						},
+					},
+					ObservedGeneration: 1,
+				},
+			},
+			{
+				Status: v1.Status{
+					Conditions: []apis.Condition{
+						{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+							Reason: "TimedOut",
+						},
+					},
+					ObservedGeneration: 1,
+				},
+			},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			runName := helpers.ObjectNameForTest(t)
-			run := parse.MustParseRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-spec:
-  ref:
-    apiVersion: %s
-    kind: %s
-  params:
-  - name: duration
-    value: %s
-`, runName, apiVersion, kind, tc.duration))
+
+			run := &v1alpha1.Run{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: runName,
+				},
+				Spec: v1alpha1.RunSpec{
+					Timeout: tc.timeout,
+					Retries: tc.retries,
+					Ref: &v1beta1.TaskRef{
+						APIVersion: apiVersion,
+						Kind:       kind,
+					},
+					Params: []v1beta1.Param{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.duration}}},
+				},
+			}
+
 			if _, err := c.RunClient.Create(ctx, run, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun %q: %v", runName, err)
 			}
 
 			// Wait for the Run
-			if err := WaitForRunState(ctx, c, runName, time.Minute, tc.conditionAccessorFn(runName), tc.wantConditionReason); err != nil {
+			if err := WaitForRunState(ctx, c, runName, time.Minute, tc.conditionAccessorFn(runName), tc.wantCondition.Reason); err != nil {
 				t.Fatalf("Waiting for Run to finish running: %v", err)
 			}
 
@@ -502,26 +562,32 @@ spec:
 			}
 
 			// Compose the expected Run
-			runYAML := fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  ref:
-    apiVersion: %s
-    kind: %s
-  params:
-  - name: duration
-    value: %s
-  serviceAccountName: default
-status:
-  conditions:
-  - reason: %s
-    status: %q
-    type: %s
-  observedGeneration: 1
-  `, runName, namespace, apiVersion, kind, tc.duration, tc.wantConditionReason, tc.wantConditionStatus, tc.wantConditionType)
-			wantRun := parse.MustParseRun(t, runYAML)
+			wantRun := &v1alpha1.Run{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      runName,
+					Namespace: namespace,
+				},
+				Spec: v1alpha1.RunSpec{
+					Timeout: tc.timeout,
+					Retries: tc.retries,
+					Ref: &v1beta1.TaskRef{
+						APIVersion: apiVersion,
+						Kind:       kind,
+					},
+					Params:             []v1beta1.Param{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.duration}}},
+					ServiceAccountName: "default",
+				},
+				Status: v1alpha1.RunStatus{
+					Status: v1.Status{
+						Conditions:         []apis.Condition{tc.wantCondition},
+						ObservedGeneration: 1,
+					},
+					RunStatusFields: v1alpha1.RunStatusFields{
+						RetriesStatus: tc.wantRetriesStatus,
+					},
+				},
+			}
+
 			if d := cmp.Diff(wantRun, gotRun,
 				filterTypeMeta,
 				filterObjectMeta,
@@ -550,78 +616,175 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 	embeddedStatusValue := GetEmbeddedStatus(ctx, t, c.KubeClient)
 
 	for _, tc := range []struct {
-		name                      string
-		runDuration               string
-		prTimeout                 string
-		prConditionAccessorFn     func(string) ConditionAccessorFn
-		wantPrConditionType       apis.ConditionType
-		wantPrConditionStatus     corev1.ConditionStatus
-		wantPrConditionReason     string
-		wantRunConditionType      apis.ConditionType
-		wantRunConditionStatus    corev1.ConditionStatus
-		wantRunConditionReason    string
-		wantRunObservedGeneration int
+		name                  string
+		runDuration           string
+		runTimeout            *metav1.Duration
+		runRetries            int
+		prTimeout             *metav1.Duration
+		prConditionAccessorFn func(string) ConditionAccessorFn
+		wantPrCondition       apis.Condition
+		wantRunStatus         v1alpha1.RunStatus
+		wantRetriesStatus     []v1alpha1.RunStatus
 	}{{
-		name:                      "Wait Task Has Succeeded",
-		runDuration:               "1s",
-		prTimeout:                 "60s",
-		prConditionAccessorFn:     Succeed,
-		wantPrConditionType:       apis.ConditionSucceeded,
-		wantPrConditionStatus:     corev1.ConditionTrue,
-		wantPrConditionReason:     "Succeeded",
-		wantRunConditionType:      apis.ConditionSucceeded,
-		wantRunConditionStatus:    corev1.ConditionTrue,
-		wantRunConditionReason:    "DurationElapsed",
-		wantRunObservedGeneration: 1,
+		name:                  "Wait Task Has Succeeded",
+		runDuration:           "1s",
+		prTimeout:             &metav1.Duration{time.Second * 60},
+		prConditionAccessorFn: Succeed,
+		wantPrCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionTrue,
+			Reason: "Succeeded",
+		},
+		wantRunStatus: v1alpha1.RunStatus{
+			Status: v1.Status{
+				Conditions: []apis.Condition{
+					{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+						Reason: "DurationElapsed",
+					},
+				},
+				ObservedGeneration: 1,
+			},
+		},
 	}, {
-		name:                      "Wait Task Is Running",
-		runDuration:               "2s",
-		prTimeout:                 "5s",
-		prConditionAccessorFn:     Running,
-		wantPrConditionType:       apis.ConditionSucceeded,
-		wantPrConditionStatus:     corev1.ConditionUnknown,
-		wantPrConditionReason:     "Running",
-		wantRunConditionType:      apis.ConditionSucceeded,
-		wantRunConditionStatus:    corev1.ConditionUnknown,
-		wantRunConditionReason:    "Running",
-		wantRunObservedGeneration: 1,
+		name:                  "Wait Task Is Running",
+		runDuration:           "2s",
+		prTimeout:             &metav1.Duration{time.Second * 5},
+		prConditionAccessorFn: Running,
+		wantPrCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+			Reason: "Running",
+		},
+		wantRunStatus: v1alpha1.RunStatus{
+			Status: v1.Status{
+				Conditions: []apis.Condition{
+					{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionUnknown,
+						Reason: "Running",
+					},
+				},
+				ObservedGeneration: 1,
+			},
+		},
 	}, {
-		name:                      "Wait Task Failed When PipelineRun Is Timeout",
-		runDuration:               "2s",
-		prTimeout:                 "1s",
-		prConditionAccessorFn:     Failed,
-		wantPrConditionType:       apis.ConditionSucceeded,
-		wantPrConditionStatus:     corev1.ConditionFalse,
-		wantPrConditionReason:     "PipelineRunTimeout",
-		wantRunConditionType:      apis.ConditionSucceeded,
-		wantRunConditionStatus:    corev1.ConditionUnknown,
-		wantRunConditionReason:    "NewObservedGenFailure",
-		wantRunObservedGeneration: 2,
+		name:                  "Wait Task Failed When PipelineRun Is Timeout",
+		runDuration:           "2s",
+		prTimeout:             &metav1.Duration{time.Second},
+		prConditionAccessorFn: Failed,
+		wantPrCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: "PipelineRunTimeout",
+		},
+		wantRunStatus: v1alpha1.RunStatus{
+			Status: v1.Status{
+				Conditions: []apis.Condition{
+					{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+						Reason: "Cancelled",
+					},
+				},
+				ObservedGeneration: 2,
+			},
+		},
+	}, {
+		name:                  "Wait Task Failed on Timeout",
+		runDuration:           "2s",
+		runTimeout:            &metav1.Duration{time.Second},
+		prConditionAccessorFn: Failed,
+		wantPrCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: "Failed",
+		},
+		wantRunStatus: v1alpha1.RunStatus{
+			Status: v1.Status{
+				Conditions: []apis.Condition{
+					{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+						Reason: "TimedOut",
+					},
+				},
+				ObservedGeneration: 1,
+			},
+		},
+	}, {
+		name:                  "Wait Task Retries on Timeout",
+		runDuration:           "2s",
+		runTimeout:            &metav1.Duration{time.Second},
+		runRetries:            1,
+		prConditionAccessorFn: Failed,
+		wantPrCondition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: "Failed",
+		},
+		wantRunStatus: v1alpha1.RunStatus{
+			Status: v1.Status{
+				Conditions: []apis.Condition{
+					{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionFalse,
+						Reason: "TimedOut",
+					},
+				},
+				ObservedGeneration: 1,
+			},
+		},
+		wantRetriesStatus: []v1alpha1.RunStatus{
+			{
+				Status: v1.Status{
+					Conditions: []apis.Condition{
+						{
+							Type:   apis.ConditionSucceeded,
+							Status: corev1.ConditionFalse,
+							Reason: "TimedOut",
+						},
+					},
+					ObservedGeneration: 1,
+				},
+			},
+		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  tasks:
-  - name: wait
-    taskRef:
-      apiVersion: %s
-      kind: %s
-    params:
-    - name: duration
-      value: %s
-`, helpers.ObjectNameForTest(t), namespace, apiVersion, kind, tc.runDuration))
-			pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  pipelineRef:
-    name: %s
-  timeout: %s
-`, helpers.ObjectNameForTest(t), namespace, pipeline.Name, tc.prTimeout))
+			if tc.prTimeout == nil {
+				tc.prTimeout = &metav1.Duration{time.Second * 60}
+			}
+			pipeline := &v1beta1.Pipeline{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      helpers.ObjectNameForTest(t),
+					Namespace: namespace,
+				},
+				Spec: v1beta1.PipelineSpec{
+					Tasks: []v1beta1.PipelineTask{{
+						Name:    "wait",
+						Timeout: tc.runTimeout,
+						Retries: tc.runRetries,
+						TaskRef: &v1beta1.TaskRef{
+							APIVersion: apiVersion,
+							Kind:       kind,
+						},
+						Params: []v1beta1.Param{{Name: "duration", Value: v1beta1.ParamValue{Type: "string", StringVal: tc.runDuration}}},
+					}},
+				},
+			}
+			pipelineRun := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      helpers.ObjectNameForTest(t),
+					Namespace: namespace,
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: pipeline.Name,
+					},
+					Timeout: tc.prTimeout,
+				},
+			}
 			if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Pipeline %q: %v", pipeline.Name, err)
 			}
@@ -630,7 +793,7 @@ spec:
 			}
 
 			// Wait for the PipelineRun to the desired state
-			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, tc.prConditionAccessorFn(pipelineRun.Name), string(tc.wantPrConditionType)); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, tc.prConditionAccessorFn(pipelineRun.Name), string(tc.wantPrCondition.Type)); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %q to be running: %s", pipelineRun.Name, err)
 			}
 
@@ -640,90 +803,93 @@ spec:
 				t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRun.Name, err)
 			}
 
-			// Get the Run name.
-			runName := ""
-			runsStatus := ""
-			childStatusReferences := ""
+			// Start to compose expected PipelineRun
+			wantPipelineRun := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      pipelineRun.Name,
+					Namespace: pipelineRun.Namespace,
+					Labels: map[string]string{
+						"tekton.dev/pipeline": pipeline.Name,
+					},
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					ServiceAccountName: "default",
+					PipelineRef:        &v1beta1.PipelineRef{Name: pipeline.Name},
+					Timeout:            tc.prTimeout,
+				},
+				Status: v1beta1.PipelineRunStatus{
+					Status: duckv1beta1.Status{
+						Conditions: []apis.Condition{
+							tc.wantPrCondition,
+						},
+					},
+					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+						PipelineSpec: &v1beta1.PipelineSpec{
+							Tasks: []v1beta1.PipelineTask{
+								{
+									Name:    "wait",
+									Timeout: tc.runTimeout,
+									Retries: tc.runRetries,
+									TaskRef: &v1beta1.TaskRef{
+										APIVersion: apiVersion,
+										Kind:       kind,
+									},
+									Params: []v1beta1.Param{{
+										Name:  "duration",
+										Value: v1beta1.ParamValue{Type: "string", StringVal: tc.runDuration},
+									}},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			// Compose wantRunStatus and wantChildStatusReferences.
+			// If config.BothEmbeddedStatus is set, both runStatus and childStatusReferences should exist in PipelineRunStatus
+			// If config.MinimalEmbeddedStatus is set, only childStatusReferences should be included.
+			// If config.FullEmbeddedStatus is set, only runStatus should be included.
+			wantRunName := ""
 			if embeddedStatusValue != config.MinimalEmbeddedStatus {
+				wantRunsStatus := &v1beta1.PipelineRunRunStatus{}
 				if len(gotPipelineRun.Status.Runs) != 1 {
 					t.Fatalf("PipelineRun had unexpected .status.runs; got %d, want 1", len(gotPipelineRun.Status.Runs))
 				}
 				for rn := range gotPipelineRun.Status.Runs {
-					runName = rn
-					runsStatus = fmt.Sprintf(`
-  runs:
-    %s:
-      pipelineTaskName: "wait"
-      status:
-        conditions:
-        - reason: %s
-          status: %q
-          type: %s
-        observedGeneration: %v
-`, runName, tc.wantRunConditionReason, tc.wantRunConditionStatus, tc.wantRunConditionType, tc.wantRunObservedGeneration)
+					wantRunName = rn
+					wantRunsStatus.PipelineTaskName = "wait"
+					wantRunsStatus.Status = &tc.wantRunStatus
+					if tc.wantRetriesStatus != nil {
+						wantRunsStatus.Status.RetriesStatus = tc.wantRetriesStatus
+					}
+				}
+				if tc.wantRetriesStatus != nil {
+					wantRunsStatus.Status.RetriesStatus = tc.wantRetriesStatus
+				}
+				wantPipelineRun.Status.PipelineRunStatusFields.Runs = map[string]*v1beta1.PipelineRunRunStatus{
+					wantRunName: wantRunsStatus,
 				}
 			}
 			if embeddedStatusValue != config.FullEmbeddedStatus {
 				if len(gotPipelineRun.Status.ChildReferences) != 1 {
 					t.Fatalf("PipelineRun had unexpected .status.childReferences; got %d, want 1", len(gotPipelineRun.Status.ChildReferences))
 				}
-				runName = gotPipelineRun.Status.ChildReferences[0].Name
-				childStatusReferences = fmt.Sprintf(`
-  childReferences:
-  - apiVersion: "tekton.dev/v1alpha1"
-    kind: "Run"
-    name: %s
-    pipelineTaskName: "wait"
-`, runName)
-			}
-			// Get the Run.
-			_, err = c.RunClient.Get(ctx, runName, metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("Failed to get Run %q: %v", runName, err)
+				wantRunName = gotPipelineRun.Status.ChildReferences[0].Name
+				wantPipelineRun.Status.PipelineRunStatusFields.ChildReferences = []v1beta1.ChildStatusReference{{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "tekton.dev/v1alpha1",
+						Kind:       "Run",
+					},
+					Name:             wantRunName,
+					PipelineTaskName: "wait",
+				}}
 			}
 
-			// Compose expected pipelineRun
-			wantPipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-  labels:
-    "tekton.dev/pipeline": %q
-spec:
-  serviceAccountName: default
-  pipelineRef:
-    name: %s
-  timeout: %s
-status:
-  conditions:
-  - reason: %s
-    status: %q
-    type: %s
-  %s
-  %s
-  pipelineSpec:
-    tasks:
-    - name: wait
-      taskRef:
-        apiVersion: %s
-        kind: %s
-      params:
-      - name: duration
-        value: %s
-`, pipelineRun.Name,
-				namespace,
-				pipeline.Name,
-				pipeline.Name,
-				tc.prTimeout,
-				tc.wantPrConditionReason,
-				tc.wantPrConditionStatus,
-				tc.wantPrConditionType,
-				runsStatus,
-				childStatusReferences,
-				apiVersion,
-				kind,
-				tc.runDuration,
-			))
+			// Get the Run.
+			_, err = c.RunClient.Get(ctx, wantRunName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to get Run %q: %v", wantRunName, err)
+			}
 
 			if d := cmp.Diff(wantPipelineRun, gotPipelineRun,
 				filterTypeMeta,
