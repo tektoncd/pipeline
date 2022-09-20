@@ -36,12 +36,14 @@ Tekton Pipelines are **Typed**:
 - Starting from the v0.27.x release of Tekton: **Kubernetes version 1.19 or later**
 - Starting from the v0.30.x release of Tekton: **Kubernetes version 1.20 or later**
 - Starting from the v0.33.x release of Tekton: **Kubernetes version 1.21 or later**
+- Starting from the v0.39.x release of Tekton: **Kubernetes version 1.22 or later**
 
 ### Read the docs
 
 | Version                                                                      | Docs                                                                                              | Examples                                                                                          |
 |------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
 | [HEAD](DEVELOPMENT.md#install-pipeline)                                      | [Docs @ HEAD](/docs/README.md)                                                                    | [Examples @ HEAD](/examples)                                                                      |
+| [v0.40.0](https://github.com/tektoncd/pipeline/releases/tag/v0.40.0)         | [Docs @ v0.40.0](https://github.com/tektoncd/pipeline/tree/v0.40.0/docs#tekton-pipelines)         | [Examples @ v0.40.0](https://github.com/tektoncd/pipeline/tree/v0.40.0/examples#examples)         |
 | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0)         | [Docs @ v0.39.0](https://github.com/tektoncd/pipeline/tree/v0.39.0/docs#tekton-pipelines)         | [Examples @ v0.39.0](https://github.com/tektoncd/pipeline/tree/v0.39.0/examples#examples)         |
 | [v0.38.3](https://github.com/tektoncd/pipeline/releases/tag/v0.38.3)         | [Docs @ v0.38.3](https://github.com/tektoncd/pipeline/tree/v0.38.3/docs#tekton-pipelines)         | [Examples @ v0.38.3](https://github.com/tektoncd/pipeline/tree/v0.38.3/examples#examples)         |
 | [v0.38.2](https://github.com/tektoncd/pipeline/releases/tag/v0.38.2)         | [Docs @ v0.38.2](https://github.com/tektoncd/pipeline/tree/v0.38.2/docs#tekton-pipelines)         | [Examples @ v0.38.2](https://github.com/tektoncd/pipeline/tree/v0.38.2/examples#examples)         |
