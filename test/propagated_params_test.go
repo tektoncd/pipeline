@@ -81,10 +81,7 @@ func TestPropagatedParams(t *testing.T) {
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			propagatedParamFlags := requireAllGates(map[string]string{
-				"enable-api-fields": "alpha",
-			})
-			c, namespace := setup(ctx, t, propagatedParamFlags)
+			c, namespace := setup(ctx, t)
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)

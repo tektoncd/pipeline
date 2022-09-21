@@ -81,9 +81,6 @@ func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params 
 	if missingParamsNames := missingParamsNames(neededParamsNames, providedParamsNames, paramSpecs); len(missingParamsNames) != 0 {
 		return fmt.Errorf("missing values for these params which have no default values: %s", missingParamsNames)
 	}
-	if extraParamsNames := extraParamsNames(ctx, neededParamsNames, providedParamsNames); len(extraParamsNames) != 0 {
-		return fmt.Errorf("didn't need these params but they were provided anyway: %s", extraParamsNames)
-	}
 	if wrongTypeParamNames := wrongTypeParamsNames(params, matrixParams, neededParamsTypes); len(wrongTypeParamNames) != 0 {
 		return fmt.Errorf("param types don't match the user-specified type: %s", wrongTypeParamNames)
 	}
@@ -124,18 +121,6 @@ func missingParamsNames(neededParams []string, providedParams []string, paramSpe
 		}
 	}
 	return missingParamsNamesWithNoDefaults
-}
-
-func extraParamsNames(ctx context.Context, neededParams []string, providedParams []string) []string {
-	// If alpha features are enabled, disable checking for extra params.
-	// Extra params are needed to support
-	// https://github.com/tektoncd/community/blob/main/teps/0023-implicit-mapping.md
-	// So that parent params can be passed down to subresources (even if they
-	// are not explicitly used).
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != "alpha" {
-		return list.DiffLeft(providedParams, neededParams)
-	}
-	return nil
 }
 
 func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, neededParamsTypes map[string]v1beta1.ParamType) []string {

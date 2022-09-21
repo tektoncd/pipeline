@@ -161,7 +161,7 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 				Workspaces:   tt.fields.Workspaces,
 				Results:      tt.fields.Results,
 			}
-			ctx := config.EnableAlphaAPIFields(context.Background())
+			ctx := context.Background()
 			ts.SetDefaults(ctx)
 			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 			if err := ts.Validate(ctx); err != nil {

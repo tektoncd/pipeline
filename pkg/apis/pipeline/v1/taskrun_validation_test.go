@@ -62,7 +62,7 @@ func TestTaskRun_Invalidate(t *testing.T) {
 			Message: `non-existent variable in "$(params.task-words[*])"`,
 			Paths:   []string{"spec.steps[0].args[0]"},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: config.EnableBetaAPIFields,
 	}, {
 		name: "propagating object params not provided but used by step",
 		taskRun: &v1.TaskRun{
@@ -166,7 +166,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: config.EnableBetaAPIFields,
 	}, {
 		name: "propagating object params from taskrun to steps",
 		taskRun: &v1.TaskRun{
@@ -254,7 +254,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: config.EnableBetaAPIFields,
 	}, {
 		name: "propagating object params with one declared in taskspec and other provided by taskrun",
 		taskRun: &v1.TaskRun{
@@ -323,7 +323,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: config.EnableBetaAPIFields,
 	}, {
 		name: "propagating partial object params with multiple keys",
 		taskRun: &v1.TaskRun{
@@ -385,7 +385,7 @@ func TestTaskRun_Validate(t *testing.T) {
 				},
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: config.EnableBetaAPIFields,
 	}, {
 		name: "object params without propagation",
 		taskRun: &v1.TaskRun{

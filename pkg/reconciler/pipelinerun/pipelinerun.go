@@ -495,8 +495,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 
 	// Apply parameter substitution from the PipelineRun
 	pipelineSpec = resources.ApplyParameters(ctx, pipelineSpec, pr)
-	pipelineSpec = resources.ApplyContexts(ctx, pipelineSpec, pipelineMeta.Name, pr)
-	pipelineSpec = resources.ApplyWorkspaces(ctx, pipelineSpec, pr)
+	pipelineSpec = resources.ApplyContexts(pipelineSpec, pipelineMeta.Name, pr)
+	pipelineSpec = resources.ApplyWorkspaces(pipelineSpec, pr)
 	// Update pipelinespec of pipelinerun's status field
 	pr.Status.PipelineSpec = pipelineSpec
 
