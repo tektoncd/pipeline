@@ -100,7 +100,7 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 		objectReplacements[k] = v
 	}
 
-	return ApplyReplacements(ctx, p, stringReplacements, arrayReplacements, objectReplacements)
+	return ApplyReplacements(p, stringReplacements, arrayReplacements, objectReplacements)
 }
 
 func paramsFromPipelineRun(ctx context.Context, pr *v1beta1.PipelineRun) (map[string]string, map[string][]string, map[string]map[string]string) {
@@ -151,8 +151,8 @@ func getContextReplacements(pipelineName string, pr *v1beta1.PipelineRun) map[st
 
 // ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
 // Currently supports only name substitution. Uses "" as a default if name is not specified.
-func ApplyContexts(ctx context.Context, spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
-	return ApplyReplacements(ctx, spec, getContextReplacements(pipelineName, pr), map[string][]string{}, map[string]map[string]string{})
+func ApplyContexts(spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
+	return ApplyReplacements(spec, getContextReplacements(pipelineName, pr), map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyPipelineTaskContexts applies the substitution from $(context.pipelineTask.*) with the specified values.
@@ -207,7 +207,7 @@ func ApplyPipelineTaskStateContext(state PipelineRunState, replacements map[stri
 
 // ApplyWorkspaces replaces workspace variables in the given pipeline spec with their
 // concrete values.
-func ApplyWorkspaces(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
+func ApplyWorkspaces(p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
 	p = p.DeepCopy()
 	replacements := map[string]string{}
 	for _, declaredWorkspace := range p.Workspaces {
@@ -218,11 +218,11 @@ func ApplyWorkspaces(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 		key := fmt.Sprintf("workspaces.%s.bound", boundWorkspace.Name)
 		replacements[key] = "true"
 	}
-	return ApplyReplacements(ctx, p, replacements, map[string][]string{}, map[string]map[string]string{})
+	return ApplyReplacements(p, replacements, map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyReplacements replaces placeholders for declared parameters with the specified replacements.
-func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) *v1beta1.PipelineSpec {
+func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) *v1beta1.PipelineSpec {
 	p = p.DeepCopy()
 
 	for i := range p.Tasks {
@@ -237,7 +237,7 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 		if p.Tasks[i].TaskRef != nil && p.Tasks[i].TaskRef.Params != nil {
 			p.Tasks[i].TaskRef.Params = replaceParamValues(p.Tasks[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
 		}
-		p.Tasks[i], replacements, arrayReplacements, objectReplacements = propagateParams(ctx, p.Tasks[i], replacements, arrayReplacements, objectReplacements)
+		p.Tasks[i], replacements, arrayReplacements, objectReplacements = propagateParams(p.Tasks[i], replacements, arrayReplacements, objectReplacements)
 	}
 
 	for i := range p.Finally {
@@ -252,14 +252,14 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
 			p.Finally[i].TaskRef.Params = replaceParamValues(p.Finally[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
 		}
-		p.Finally[i], replacements, arrayReplacements, objectReplacements = propagateParams(ctx, p.Finally[i], replacements, arrayReplacements, objectReplacements)
+		p.Finally[i], replacements, arrayReplacements, objectReplacements = propagateParams(p.Finally[i], replacements, arrayReplacements, objectReplacements)
 	}
 
 	return p
 }
 
-func propagateParams(ctx context.Context, t v1beta1.PipelineTask, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) (v1beta1.PipelineTask, map[string]string, map[string][]string, map[string]map[string]string) {
-	if t.TaskSpec != nil && config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" {
+func propagateParams(t v1beta1.PipelineTask, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) (v1beta1.PipelineTask, map[string]string, map[string][]string, map[string]map[string]string) {
+	if t.TaskSpec != nil {
 		// check if there are task parameters defined that match the params at pipeline level
 		if len(t.Params) > 0 {
 			for _, par := range t.Params {

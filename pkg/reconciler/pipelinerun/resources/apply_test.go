@@ -36,7 +36,7 @@ func TestApplyParameters(t *testing.T) {
 		original v1beta1.PipelineSpec
 		params   []v1beta1.Param
 		expected v1beta1.PipelineSpec
-		alpha    bool
+		wc       func(context.Context) context.Context
 	}{{
 		name: "single parameter",
 		original: v1beta1.PipelineSpec{
@@ -95,7 +95,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation string into finally task",
 		original: v1beta1.PipelineSpec{
@@ -125,7 +124,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation array no task or task default winner pipeline",
 		original: v1beta1.PipelineSpec{
@@ -155,7 +153,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation array finally task",
 		original: v1beta1.PipelineSpec{
@@ -185,7 +182,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation object no task or task default winner pipeline",
 		original: v1beta1.PipelineSpec{
@@ -215,7 +211,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "parameter propagation object finally task",
 		original: v1beta1.PipelineSpec{
@@ -245,7 +241,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "parameter propagation with task default but no task winner pipeline",
 		original: v1beta1.PipelineSpec{
@@ -283,7 +279,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation with task scoping Finally task",
 		original: v1beta1.PipelineSpec{
@@ -321,7 +316,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation array with task default but no task winner pipeline",
 		original: v1beta1.PipelineSpec{
@@ -359,7 +353,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation array with task scoping Finally task",
 		original: v1beta1.PipelineSpec{
@@ -397,7 +390,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation array with task default and task winner task",
 		original: v1beta1.PipelineSpec{
@@ -441,7 +433,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "Finally task parameter propagation array with task default and task winner task",
 		original: v1beta1.PipelineSpec{
@@ -485,7 +476,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation with task default and task winner task",
 		original: v1beta1.PipelineSpec{
@@ -529,7 +519,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "Finally task parameter propagation with task default and task winner task",
 		original: v1beta1.PipelineSpec{
@@ -573,7 +562,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "parameter propagation object with task default but no task winner pipeline",
 		original: v1beta1.PipelineSpec{
@@ -628,7 +616,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "Finally task parameter propagation object with task default but no task winner pipeline",
 		original: v1beta1.PipelineSpec{
@@ -683,7 +671,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "parameter propagation object with task default and task winner task",
 		original: v1beta1.PipelineSpec{
@@ -747,7 +735,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "Finally task parameter propagation object with task default and task winner task",
 		original: v1beta1.PipelineSpec{
@@ -811,7 +799,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "single parameter with when expression",
 		original: v1beta1.PipelineSpec{
@@ -1345,7 +1333,6 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
 	}, {
 		name: "object parameter with resolver",
 		original: v1beta1.PipelineSpec{
@@ -1421,7 +1408,7 @@ func TestApplyParameters(t *testing.T) {
 				},
 			}},
 		},
-		alpha: true,
+		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "single parameter in finally workspace subpath",
 		original: v1beta1.PipelineSpec{
@@ -1465,13 +1452,11 @@ func TestApplyParameters(t *testing.T) {
 		},
 	},
 	} {
-		ctx := context.Background()
-		if tt.alpha {
-			cfg := config.FromContextOrDefaults(ctx)
-			cfg.FeatureFlags = &config.FeatureFlags{EnableAPIFields: "alpha"}
-			ctx = config.ToContext(ctx, cfg)
-		}
 		tt := tt // capture range variable
+		ctx := context.Background()
+		if tt.wc != nil {
+			ctx = tt.wc(ctx)
+		}
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			run := &v1beta1.PipelineRun{
@@ -2594,7 +2579,6 @@ func TestApplyTaskResults_EmbeddedExpression(t *testing.T) {
 }
 
 func TestContext(t *testing.T) {
-	ctx := context.Background()
 	for _, tc := range []struct {
 		description string
 		pr          *v1beta1.PipelineRun
@@ -2661,7 +2645,7 @@ func TestContext(t *testing.T) {
 						}}},
 				},
 			}
-			got := ApplyContexts(ctx, &orig.Spec, orig.Name, tc.pr)
+			got := ApplyContexts(&orig.Spec, orig.Name, tc.pr)
 			if d := cmp.Diff(tc.expected, got.Tasks[0].Params[0]); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
@@ -2738,7 +2722,6 @@ func TestApplyPipelineTaskContexts(t *testing.T) {
 }
 
 func TestApplyWorkspaces(t *testing.T) {
-	ctx := context.Background()
 	for _, tc := range []struct {
 		description         string
 		declarations        []v1beta1.PipelineWorkspaceDeclaration
@@ -2780,7 +2763,7 @@ func TestApplyWorkspaces(t *testing.T) {
 					Workspaces: tc.bindings,
 				},
 			}
-			p2 := ApplyWorkspaces(ctx, &p1, pr)
+			p2 := ApplyWorkspaces(&p1, pr)
 			str := p2.Tasks[0].Params[0].Value.StringVal
 			if str != tc.expectedReplacement {
 				t.Errorf("expected %q, received %q", tc.expectedReplacement, str)

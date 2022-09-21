@@ -326,8 +326,6 @@ go through the complexity of checking each `Pipeline` and providing only the req
 
 #### Propagated Parameters
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
-
 When using an inlined spec, parameters from the parent `PipelineRun` will be
 propagated to any inlined specs without needing to be explicitly defined. This
 allows authors to simplify specs by automatically propagating top-level
@@ -667,6 +665,8 @@ status:
 ```
 
 ##### Object Parameters
+
+**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
 
 When using an inlined spec, object parameters from the parent `PipelineRun` will also be
 propagated to any inlined specs without needing to be explicitly defined. This

@@ -202,8 +202,6 @@ spec:
 
 #### Propagated Parameters
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
-
 When using an inlined `taskSpec`, parameters from the parent `TaskRun` will be
 available to the `Task` without needing to be explicitly defined.
 
