@@ -32,6 +32,9 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/google/go-cmp/cmp"
+	"github.com/jenkins-x/go-scm/scm"
+	"github.com/jenkins-x/go-scm/scm/driver/fake"
+	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
@@ -421,7 +424,20 @@ func TestResolve(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, _ := ttesting.SetupFakeContext(t)
 
-			resolver := &Resolver{}
+			fakeClone := fmt.Sprintf("https://fake/%s/%s.git", testOrg, testRepo)
+			resolver := &Resolver{
+				clientFunc: func(driver string, serverURL string, token string, opts ...factory.ClientOptionFunc) (*scm.Client, error) {
+					scmClient, scmData := fake.NewDefault()
+
+					// Currently, we only could care about repositories.
+					scmData.Repositories = []*scm.Repository{{
+						FullName: fmt.Sprintf("%s/%s", testOrg, testRepo),
+						Clone:    fakeClone,
+					}}
+
+					return scmClient, nil
+				},
+			}
 
 			var repoPath string
 			var commits map[string][]string
@@ -486,6 +502,7 @@ func TestResolve(t *testing.T) {
 					} else {
 						expectedStatus.Annotations[AnnotationKeyOrg] = reqParams[orgParam]
 						expectedStatus.Annotations[AnnotationKeyRepo] = reqParams[repoParam]
+						expectedStatus.Annotations[AnnotationKeyURL] = fakeClone
 					}
 				} else {
 					expectedStatus.Status.Conditions[0].Message = tc.expectedErr.Error()

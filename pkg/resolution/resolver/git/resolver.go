@@ -31,6 +31,7 @@ import (
 	gitcfg "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -75,6 +76,9 @@ type Resolver struct {
 	logger     *zap.SugaredLogger
 	cache      *cache.LRUExpireCache
 	ttl        time.Duration
+
+	// Used in testing
+	clientFunc func(string, string, string, ...factory.ClientOptionFunc) (*scm.Client, error)
 }
 
 // Initialize performs any setup required by the gitresolver.
@@ -83,6 +87,9 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 	r.logger = logging.FromContext(ctx)
 	r.cache = cache.NewLRUExpireCache(cacheSize)
 	r.ttl = ttl
+	if r.clientFunc == nil {
+		r.clientFunc = factory.NewClient
+	}
 	return nil
 }
 
@@ -143,10 +150,11 @@ func (r *Resolver) resolveAPIGit(ctx context.Context, params map[string]string) 
 	if err != nil {
 		return nil, err
 	}
-	scmClient, err := factory.NewClient(scmType, serverURL, string(apiToken))
+	scmClient, err := r.clientFunc(scmType, serverURL, string(apiToken))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SCM client: %w", err)
 	}
+
 	content, _, err := scmClient.Contents.Find(ctx, fmt.Sprintf("%s/%s", params[orgParam], params[repoParam]), params[pathParam], params[revisionParam])
 	if err != nil {
 		return nil, fmt.Errorf("couldn't fetch resource content: %w", err)
@@ -154,12 +162,19 @@ func (r *Resolver) resolveAPIGit(ctx context.Context, params map[string]string) 
 	if content == nil || len(content.Data) == 0 {
 		return nil, fmt.Errorf("no content for resource in %s/%s %s", params[orgParam], params[repoParam], params[pathParam])
 	}
+
+	repo, _, err := scmClient.Repositories.Find(ctx, fmt.Sprintf("%s/%s", params[orgParam], params[repoParam]))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't fetch repository: %w", err)
+	}
+
 	return &resolvedGitResource{
 		Content:  content.Data,
 		Revision: content.Sha,
 		Org:      params[orgParam],
 		Repo:     params[repoParam],
 		Path:     content.Path,
+		URL:      repo.Clone,
 	}, nil
 }
 
