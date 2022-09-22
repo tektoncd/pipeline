@@ -98,7 +98,7 @@ spec:
 
       # Combine Distroless with a Windows base image, used for the entrypoint image.
       COMBINED_BASE_IMAGE=$(go run ./vendor/github.com/tektoncd/plumbing/cmd/combine/main.go \
-        distroless.dev/static \
+        cgr.dev/chainguard/static \
         mcr.microsoft.com/windows/nanoserver:ltsc2019 \
         mcr.microsoft.com/windows/nanoserver:ltsc2022 \
         ${CONTAINER_REGISTRY}/$(params.package)/combined-base-image:latest)
@@ -106,7 +106,7 @@ spec:
       # NOTE: Make sure this list of images to use the combined base image is in sync with what's in test/presubmit-tests.sh's 'ko_resolve' function.
       cat <<EOF > ${PROJECT_ROOT}/.ko.yaml
       # This matches the value configured in .ko.yaml
-      defaultBaseImage: distroless.dev/static
+      defaultBaseImage: cgr.dev/chainguard/static
       baseImageOverrides:
         # Use the combined base image for images that should include Windows support.
         $(params.package)/cmd/entrypoint: ${COMBINED_BASE_IMAGE}
@@ -114,7 +114,7 @@ spec:
         $(params.package)/cmd/workingdirinit: ${COMBINED_BASE_IMAGE}
 
         # This matches values configured in .ko.yaml
-        $(params.package)/cmd/git-init: distroless.dev/git
+        $(params.package)/cmd/git-init: cgr.dev/chainguard/git
       EOF
 
       cat ${PROJECT_ROOT}/.ko.yaml

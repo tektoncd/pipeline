@@ -61,7 +61,7 @@ function ko_resolve() {
   header "Running `ko resolve`"
 
   cat <<EOF > .ko.yaml
-    defaultBaseImage: distroless.dev/static
+    defaultBaseImage: cgr.dev/chainguard/static
     baseImageOverrides:
       # Use the combined base image for images that should include Windows support.
       # NOTE: Make sure this list of images to use the combined base image is in sync with what's in tekton/publish.yaml's 'create-ko-yaml' Task.
@@ -69,7 +69,7 @@ function ko_resolve() {
       github.com/tektoncd/pipeline/cmd/nop: gcr.io/tekton-releases/github.com/tektoncd/pipeline/combined-base-image:latest
       github.com/tektoncd/pipeline/cmd/workingdirinit: gcr.io/tekton-releases/github.com/tektoncd/pipeline/combined-base-image:latest
 
-      github.com/tektoncd/pipeline/cmd/git-init: distroless.dev/git
+      github.com/tektoncd/pipeline/cmd/git-init: cgr.dev/chainguard/git
 EOF
 
   KO_DOCKER_REPO=example.com ko resolve -l 'app.kubernetes.io/component!=resolvers' --platform=all --push=false -R -f config 1>/dev/null
