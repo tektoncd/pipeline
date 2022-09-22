@@ -1,3 +1,5 @@
+# Note: ClusterTasks are deprecated. Please use the cluster resolver instead.
+# https://github.com/tektoncd/pipeline/blob/main/docs/cluster-resolver.md
 apiVersion: tekton.dev/v1beta1
 kind: ClusterTask
 metadata:

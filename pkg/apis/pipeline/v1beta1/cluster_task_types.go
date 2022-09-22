@@ -31,7 +31,7 @@ import (
 
 // ClusterTask is a Task with a cluster scope. ClusterTasks are used to
 // represent Tasks that should be publicly addressable from any namespace in the
-// cluster.
+// cluster. Deprecated: Please use the cluster resolver instead.
 type ClusterTask struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
