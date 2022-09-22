@@ -525,7 +525,7 @@ func schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref common.ReferenceCallback) 
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster.",
+				Description: "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster. Deprecated: Please use the cluster resolver instead.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {

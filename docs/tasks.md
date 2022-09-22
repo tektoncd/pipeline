@@ -129,6 +129,8 @@ spec:
 
 ### `Task` vs. `ClusterTask`
 
+**Note: ClusterTasks are deprecated.** Please use the [cluster resolver](./cluster-resolver.md) instead.
+
 A `ClusterTask` is a `Task` scoped to the entire cluster instead of a single namespace.
 A `ClusterTask` behaves identically to a `Task` and therefore everything in this document
 applies to both.
