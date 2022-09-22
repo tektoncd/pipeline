@@ -1,5 +1,5 @@
-defaultBaseImage: distroless.dev/static
+defaultBaseImage: cgr.dev/chainguard/static
 baseImageOverrides:
   # git-init uses a base image that includes Git, and supports running either
   # as root or as user nonroot with UID 65532.
-  github.com/tektoncd/pipeline/cmd/git-init: distroless.dev/git
+  github.com/tektoncd/pipeline/cmd/git-init: cgr.dev/chainguard/git
