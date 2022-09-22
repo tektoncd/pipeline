@@ -161,7 +161,7 @@ EMAIL=$(gcloud iam service-accounts list | grep $ACCOUNT_NAME | awk '{print $2}'
 gcloud projects add-iam-policy-binding $PROJECT_ID --member serviceAccount:$EMAIL --role roles/storage.admin
 
 # create the JSON key
-gcloud iam service-accounts keys create config.json --iam-account $EMAIL
+gcloud iam service-accounts keys create config.json --iam-account=$EMAIL
 
 export GCP_SERVICE_ACCOUNT_KEY_PATH="$PWD/config.json"
 
