@@ -15,7 +15,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demoresolver
-  namespace: tekton-pipelines
+  namespace: tekton-pipelines-resolvers
 spec:
   replicas: 1
   selector:
@@ -35,7 +35,7 @@ spec:
                   app: demoresolver
               topologyKey: kubernetes.io/hostname
             weight: 100
-      serviceAccountName: resolver
+      serviceAccountName: tekton-pipelines-resolvers
       containers:
       - name: controller
         image: ko://github.com/tektoncd/pipeline/docs/resolver-template/cmd/demoresolver

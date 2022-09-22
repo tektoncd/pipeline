@@ -272,8 +272,8 @@ along with some environment variables and other configuration that the
 underlying `knative` framework expects. The deployed application is put
 in the `tekton-pipelines` namespace and uses `ko` to build its
 container image. Finally the `ServiceAccount` our deployment uses is
-`resolver`, which is the default `ServiceAccount` shared by all
-resolvers in the `tekton-pipelines` namespace.
+`tekton-pipelines-resolvers`, which is the default `ServiceAccount` shared by all
+resolvers in the `tekton-pipelines-resolvers` namespace.
 
 The full configuration follows:
 
@@ -282,7 +282,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: demoresolver
-  namespace: tekton-pipelines
+  namespace: tekton-pipelines-resolvers
 spec:
   replicas: 1
   selector:
@@ -302,7 +302,7 @@ spec:
                   app: demoresolver
               topologyKey: kubernetes.io/hostname
             weight: 100
-      serviceAccountName: resolver
+      serviceAccountName: tekton-pipelines-resolvers
       containers:
       - name: controller
         image: ko://example.com/demoresolver/cmd/demoresolver
