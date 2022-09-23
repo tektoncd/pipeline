@@ -25,6 +25,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
 const (
@@ -45,7 +47,10 @@ type RequestOptions struct {
 type ResolvedResource struct {
 	data        []byte
 	annotations map[string]string
+	source      *v1alpha1.ConfigSource
 }
+
+var _ framework.ResolvedResource = &ResolvedResource{}
 
 // Data returns the bytes of the resource fetched from the bundle.
 func (br *ResolvedResource) Data() []byte {
@@ -56,6 +61,12 @@ func (br *ResolvedResource) Data() []byte {
 // to resolution.
 func (br *ResolvedResource) Annotations() map[string]string {
 	return br.annotations
+}
+
+// Source is the source reference of the remote data that records where the remote
+// file came from including the url, digest and the entrypoint.
+func (br *ResolvedResource) Source() *v1alpha1.ConfigSource {
+	return br.source
 }
 
 // GetEntry accepts a keychain and options for the request and returns

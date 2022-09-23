@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 )
 
@@ -49,6 +50,7 @@ var _ Resolver = &FakeResolver{}
 type FakeResolvedResource struct {
 	Content       string
 	AnnotationMap map[string]string
+	ContentSource *v1alpha1.ConfigSource
 	ErrorWith     string
 	WaitFor       time.Duration
 }
@@ -61,6 +63,12 @@ func (f *FakeResolvedResource) Data() []byte {
 // Annotations returns the FakeResolvedResource's AnnotationMap field.
 func (f *FakeResolvedResource) Annotations() map[string]string {
 	return f.AnnotationMap
+}
+
+// Source is the source reference of the remote data that records where the remote
+// file came from including the url, digest and the entrypoint.
+func (f *FakeResolvedResource) Source() *v1alpha1.ConfigSource {
+	return f.ContentSource
 }
 
 // FakeResolver implements a framework.Resolver that can fetch pre-configured strings based on a parameter value, or return

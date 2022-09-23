@@ -19,6 +19,7 @@ package resource
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -58,4 +59,5 @@ type OwnedRequest interface {
 type ResolvedResource interface {
 	Data() ([]byte, error)
 	Annotations() map[string]string
+	Source() *v1alpha1.ConfigSource
 }

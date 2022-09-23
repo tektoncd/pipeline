@@ -191,6 +191,7 @@ import (
 
   "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
   "knative.dev/pkg/injection/sharedmain"
+  "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 )
 ```
 
@@ -258,6 +259,31 @@ func (*myResolvedResource) Data() []byte {
 // Annotations returns any metadata needed alongside the data. None atm.
 func (*myResolvedResource) Annotations() map[string]string {
   return nil
+}
+
+// Source is the source reference of the remote data that records where the remote 
+// file came from including the url, digest and the entrypoint. None atm.
+func (*myResolvedResource) Source() *v1alpha1.ConfigSource {
+	return nil
+}
+```
+
+Best practice: In order to enable Tekton Chains to record the source 
+information of the remote data in the SLSA provenance, the resolver should 
+implement the `Source()` method to return a correct ConfigSource value. See the 
+following example.
+
+```go
+// Source is the source reference of the remote data that records where the remote 
+// file came from including the url, digest and the entrypoint.
+func (*myResolvedResource) Source() *v1alpha1.ConfigSource {
+	return &v1alpha1.ConfigSource{
+		URI: "https://github.com/user/example",
+		Digest: map[string]string{
+			"sha1": "example",
+		},
+		EntryPoint: "foo/bar/task.yaml",
+	}
 }
 ```
 

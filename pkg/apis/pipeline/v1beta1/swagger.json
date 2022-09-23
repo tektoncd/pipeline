@@ -140,6 +140,28 @@
         }
       }
     },
+    "v1alpha1.ConfigSource": {
+      "description": "ConfigSource records where the task/pipeline file came from.",
+      "type": "object",
+      "properties": {
+        "digest": {
+          "description": "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "entryPoint": {
+          "description": "EntryPoint identifying the entry point into the build. This is often a path to a configuration file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
+          "type": "string"
+        },
+        "uri": {
+          "description": "URI indicating the identity of the source of the config. https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI Example: https://github.com/tektoncd/catalog",
+          "type": "string"
+        }
+      }
+    },
     "v1alpha1.PipelineResource": {
       "description": "PipelineResource describes a resource that is an input to or output from a Task.",
       "type": "object",
@@ -308,7 +330,8 @@
       "description": "ResolutionRequestStatus are all the fields in a ResolutionRequest's status subresource.",
       "type": "object",
       "required": [
-        "data"
+        "data",
+        "source"
       ],
       "properties": {
         "annotations": {
@@ -338,6 +361,10 @@
           "description": "ObservedGeneration is the 'Generation' of the Service that was last processed by the controller.",
           "type": "integer",
           "format": "int64"
+        },
+        "source": {
+          "description": "Source is the source reference of the remote data that records where the remote file came from including the url, digest and the entrypoint.",
+          "$ref": "#/definitions/v1alpha1.ConfigSource"
         }
       }
     },
@@ -345,13 +372,18 @@
       "description": "ResolutionRequestStatusFields are the ResolutionRequest-specific fields for the status subresource.",
       "type": "object",
       "required": [
-        "data"
+        "data",
+        "source"
       ],
       "properties": {
         "data": {
           "description": "Data is a string representation of the resolved content of the requested resource in-lined into the ResolutionRequest object.",
           "type": "string",
           "default": ""
+        },
+        "source": {
+          "description": "Source is the source reference of the remote data that records where the remote file came from including the url, digest and the entrypoint.",
+          "$ref": "#/definitions/v1alpha1.ConfigSource"
         }
       }
     },

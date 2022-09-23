@@ -34,6 +34,7 @@ import (
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
@@ -327,6 +328,12 @@ func (r *resolvedGitResource) Annotations() map[string]string {
 	}
 
 	return m
+}
+
+// Source is the source reference of the remote data that records where the remote
+// file came from including the url, digest and the entrypoint.
+func (r *resolvedGitResource) Source() *v1alpha1.ConfigSource {
+	return nil
 }
 
 type secretCacheKey struct {

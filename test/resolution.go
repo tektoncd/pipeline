@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
 )
 
@@ -79,6 +80,8 @@ type ResolvedResource struct {
 	DataErr error
 	// Annotations to return when resolution is complete.
 	ResolvedAnnotations map[string]string
+	// ResolvedSource to return the source reference of the remote data
+	ResolvedSource *v1alpha1.ConfigSource
 }
 
 // Data implements resolution.ResolvedResource and returns the mock
@@ -91,4 +94,10 @@ func (r *ResolvedResource) Data() ([]byte, error) {
 // the mock annotations given to it on initialization.
 func (r *ResolvedResource) Annotations() map[string]string {
 	return r.ResolvedAnnotations
+}
+
+// Source is the source reference of the remote data that records where the remote
+// file came from including the url, digest and the entrypoint.
+func (r *ResolvedResource) Source() *v1alpha1.ConfigSource {
+	return r.ResolvedSource
 }

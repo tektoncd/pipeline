@@ -152,3 +152,7 @@ func (r readOnlyResolutionRequest) Data() ([]byte, error) {
 	}
 	return decodedBytes, nil
 }
+
+func (r readOnlyResolutionRequest) Source() *v1alpha1.ConfigSource {
+	return r.req.Status.Source
+}
