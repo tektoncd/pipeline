@@ -82,7 +82,7 @@ func (m *dynamicPayloadSigningMiddleware) HandleBuild(
 	}
 
 	// if TLS is enabled, use unsigned payload when supported
-	if strings.EqualFold(req.URL.Scheme, "https") {
+	if req.IsHTTPS() {
 		return (&unsignedPayload{}).HandleBuild(ctx, in, next)
 	}
 
