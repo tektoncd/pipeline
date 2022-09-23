@@ -109,6 +109,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceDeclaration":             schema_pkg_apis_pipeline_v1beta1_WorkspaceDeclaration(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspacePipelineTaskBinding":     schema_pkg_apis_pipeline_v1beta1_WorkspacePipelineTaskBinding(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceUsage":                   schema_pkg_apis_pipeline_v1beta1_WorkspaceUsage(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource":                  schema_pkg_apis_resolution_v1alpha1_ConfigSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequest":             schema_pkg_apis_resolution_v1alpha1_ResolutionRequest(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestList":         schema_pkg_apis_resolution_v1alpha1_ResolutionRequestList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestSpec":         schema_pkg_apis_resolution_v1alpha1_ResolutionRequestSpec(ref),
@@ -5607,6 +5608,49 @@ func schema_pkg_apis_pipeline_v1beta1_WorkspaceUsage(ref common.ReferenceCallbac
 	}
 }
 
+func schema_pkg_apis_resolution_v1alpha1_ConfigSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ConfigSource records where the task/pipeline file came from.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"uri": {
+						SchemaProps: spec.SchemaProps{
+							Description: "URI indicating the identity of the source of the config. https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI Example: https://github.com/tektoncd/catalog",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"digest": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"entryPoint": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EntryPoint identifying the entry point into the build. This is often a path to a configuration file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_resolution_v1alpha1_ResolutionRequest(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5792,12 +5836,18 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatus(ref common.Refe
 							Format:      "",
 						},
 					},
+					"source": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Source is the source reference of the remote data that records where the remote file came from including the url, digest and the entrypoint.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource"),
+						},
+					},
 				},
-				Required: []string{"data"},
+				Required: []string{"data", "source"},
 			},
 		},
 		Dependencies: []string{
-			"knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -5816,10 +5866,18 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatusFields(ref commo
 							Format:      "",
 						},
 					},
+					"source": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Source is the source reference of the remote data that records where the remote file came from including the url, digest and the entrypoint.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource"),
+						},
+					},
 				},
-				Required: []string{"data"},
+				Required: []string{"data", "source"},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource"},
 	}
 }
 

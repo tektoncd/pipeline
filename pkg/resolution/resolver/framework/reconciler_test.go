@@ -111,6 +111,13 @@ func TestReconcile(t *testing.T) {
 				"bar": {
 					Content:       "some content",
 					AnnotationMap: map[string]string{"foo": "bar"},
+					ContentSource: &v1alpha1.ConfigSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
 				},
 			},
 			expectedStatus: &v1alpha1.ResolutionRequestStatus{
@@ -121,6 +128,13 @@ func TestReconcile(t *testing.T) {
 				},
 				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
+					Source: &v1alpha1.ConfigSource{
+						URI: "https://abc.com",
+						Digest: map[string]string{
+							"sha1": "xyz",
+						},
+						EntryPoint: "foo/bar",
+					},
 				},
 			},
 		}, {

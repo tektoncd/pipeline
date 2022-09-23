@@ -19,6 +19,8 @@ package framework
 import (
 	"context"
 	"time"
+
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 )
 
 // Resolver is the interface to implement for type-specific resource
@@ -94,4 +96,5 @@ type TimedResolution interface {
 type ResolvedResource interface {
 	Data() []byte
 	Annotations() map[string]string
+	Source() *v1alpha1.ConfigSource
 }
