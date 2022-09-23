@@ -23,41 +23,41 @@ import (
 // The following example demonstrates using the AnonymousCredentials to prevent
 // SDK's external config loading attempt to resolve credentials.
 //
-//     cfg, err := config.LoadDefaultConfig(context.TODO(),
-//          config.WithCredentialsProvider(aws.AnonymousCredentials{}),
-//     )
-//     if err != nil {
-//          log.Fatalf("failed to load config, %v", err)
-//     }
+//	cfg, err := config.LoadDefaultConfig(context.TODO(),
+//	     config.WithCredentialsProvider(aws.AnonymousCredentials{}),
+//	)
+//	if err != nil {
+//	     log.Fatalf("failed to load config, %v", err)
+//	}
 //
-//     client := s3.NewFromConfig(cfg)
+//	client := s3.NewFromConfig(cfg)
 //
 // Alternatively you can leave the API client Option's `Credential` member to
 // nil. If using the `NewFromConfig` constructor you'll need to explicitly set
 // the `Credentials` member to nil, if the external config resolved a
 // credential provider.
 //
-//     client := s3.New(s3.Options{
-//          // Credentials defaults to a nil value.
-//     })
+//	client := s3.New(s3.Options{
+//	     // Credentials defaults to a nil value.
+//	})
 //
 // This can also be configured for specific operations calls too.
 //
-//     cfg, err := config.LoadDefaultConfig(context.TODO())
-//     if err != nil {
-//          log.Fatalf("failed to load config, %v", err)
-//     }
+//	cfg, err := config.LoadDefaultConfig(context.TODO())
+//	if err != nil {
+//	     log.Fatalf("failed to load config, %v", err)
+//	}
 //
-//     client := s3.NewFromConfig(config)
+//	client := s3.NewFromConfig(config)
 //
-//     result, err := client.GetObject(context.TODO(), s3.GetObject{
-//          Bucket: aws.String("example-bucket"),
-//          Key: aws.String("example-key"),
-//     }, func(o *s3.Options) {
-//          o.Credentials = nil
-//          // Or
-//          o.Credentials = aws.AnonymousCredentials{}
-//     })
+//	result, err := client.GetObject(context.TODO(), s3.GetObject{
+//	     Bucket: aws.String("example-bucket"),
+//	     Key: aws.String("example-key"),
+//	}, func(o *s3.Options) {
+//	     o.Credentials = nil
+//	     // Or
+//	     o.Credentials = aws.AnonymousCredentials{}
+//	})
 type AnonymousCredentials struct{}
 
 // Retrieve implements the CredentialsProvider interface, but will always
@@ -83,16 +83,20 @@ type Credentials struct {
 	// Source of the credentials
 	Source string
 
-	// Time the credentials will expire.
+	// States if the credentials can expire or not.
 	CanExpire bool
-	Expires   time.Time
+
+	// The time the credentials will expire at. Should be ignored if CanExpire
+	// is false.
+	Expires time.Time
 }
 
 // Expired returns if the credentials have expired.
 func (v Credentials) Expired() bool {
 	if v.CanExpire {
-		// Calling Round(0) on the current time will truncate the monotonic reading only. Ensures credential expiry
-		// time is always based on reported wall-clock time.
+		// Calling Round(0) on the current time will truncate the monotonic
+		// reading only. Ensures credential expiry time is always based on
+		// reported wall-clock time.
 		return !v.Expires.After(sdk.NowTime().Round(0))
 	}
 

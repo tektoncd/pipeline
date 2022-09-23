@@ -24,7 +24,7 @@ func CheckPushPermission(ref name.Reference, kc authn.Keychain, t http.RoundTrip
 	}
 
 	scopes := []string{ref.Scope(transport.PushScope)}
-	tr, err := transport.New(ref.Context().Registry, auth, t, scopes)
+	tr, err := transport.NewWithContext(context.TODO(), ref.Context().Registry, auth, t, scopes)
 	if err != nil {
 		return fmt.Errorf("creating push check transport for %v failed: %w", ref.Context().Registry, err)
 	}
@@ -39,7 +39,7 @@ func CheckPushPermission(ref name.Reference, kc authn.Keychain, t http.RoundTrip
 		client:  &http.Client{Transport: tr},
 		context: context.Background(),
 	}
-	loc, _, err := w.initiateUpload("", "")
+	loc, _, err := w.initiateUpload("", "", "")
 	if loc != "" {
 		// Since we're only initiating the upload to check whether we
 		// can, we should attempt to cancel it, in case initiating

@@ -52,10 +52,6 @@ func (b *byteBuf) readBig(n int, dst []byte) ([]byte, error) {
 	return r, nil
 }
 
-func (b *byteBuf) remain() []byte {
-	return *b
-}
-
 func (b *byteBuf) readByte() (byte, error) {
 	bb := *b
 	if len(bb) < 1 {
@@ -113,6 +109,9 @@ func (r *readerWrapper) readBig(n int, dst []byte) ([]byte, error) {
 func (r *readerWrapper) readByte() (byte, error) {
 	n2, err := r.r.Read(r.tmp[:1])
 	if err != nil {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
 		return 0, err
 	}
 	if n2 != 1 {
