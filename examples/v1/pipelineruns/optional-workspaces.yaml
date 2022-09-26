@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: example-source-code-configmap
+data:
+  main.js: |
+    console.log("Hello, World!");
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: run-js
+spec:
+  workspaces:
+  - name: prelaunch
+    optional: true
+  - name: launch
+  steps:
+  - image: node:lts-alpine3.11
+    script: |
+      #!/usr/bin/env sh
+      if [ $(workspaces.prelaunch.bound) == "true" ] ; then
+        node "$(workspaces.prelaunch.path)/init.js"
+      else
+        echo "Skipping prelaunch."
+      fi
+      if [ -f "$(workspaces.launch.path)/main.js" ] ; then
+        node "$(workspaces.launch.path)/main.js"
+      else
+        echo "Error: missing main.js file in launch workspace!"
+        exit 1
+      fi
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: echo
+spec:
+  params:
+  - name: values
+    type: array
+  steps:
+  - image: alpine
+    command: ["echo"]
+    args: ["$(params.values[*])"]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: optional-workspaces-
+spec:
+  workspaces:
+  - name: launch
+    configMap:
+      name: example-source-code-configmap
+  pipelineSpec:
+    workspaces:
+    - name: launch
+      description: |
+        The program to run. Must provide a main.js at its root.
+    - name: prelaunch
+      optional: true
+      description: |
+        Prelaunch program to run before the launch program. Use this
+        to set up any environment-specific requirements. Must provide
+        an init.js file at its root.
+    tasks:
+    - name: print-bound-state
+      taskRef:
+        name: echo
+      params:
+      - name: values
+        value:
+        - "Was a prelaunch workspace provided? "
+        - $(workspaces.prelaunch.bound)
+        - "\n"
+        - "Was a launch workspace provided? "
+        - "$(workspaces.launch.bound)"
+        - "\n"
+    - name: run-js
+      runAfter: [print-bound-state]
+      workspaces:
+      - name: prelaunch
+        workspace: prelaunch
+      - name: launch
+        workspace: launch
+      taskRef:
+        name: run-js

@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc-2
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: workspaces-readonly-
+spec:
+  workspaces:
+    - name: write-allowed
+      persistentVolumeClaim:
+        claimName: my-pvc-2
+    - name: write-disallowed
+      persistentVolumeClaim:
+        claimName: my-pvc-2
+  taskSpec:
+    workspaces:
+    - name: write-allowed
+    - name: write-disallowed
+      readOnly: true
+    steps:
+    - name: write-allowed
+      image: ubuntu
+      script: echo "hello" > $(workspaces.write-allowed.path)/foo
+    - name: read-allowed
+      image: ubuntu
+      script: cat $(workspaces.write-allowed.path)/foo | grep "hello"
+    - name: write-disallowed
+      image: ubuntu
+      script:
+        echo "goodbye" > $(workspaces.write-disallowed.path)/foo || touch write-failed.txt
+        test -f write-failed.txt
+    - name: read-again
+      # We should get "hello" when reading again because writing "goodbye" to
+      # the file should have been disallowed.
+      image: ubuntu
+      script:
+        cat $(workspaces.write-disallowed.path)/foo | grep "hello"

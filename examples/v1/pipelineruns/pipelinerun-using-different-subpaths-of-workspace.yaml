@@ -1,0 +1,86 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: writer
+spec:
+  steps:
+    - name: write
+      image: ubuntu
+      script: echo bar > $(workspaces.task-ws.path)/foo
+  workspaces:
+    - name: task-ws
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: read-both
+spec:
+  params:
+    - name: directory1
+      type: string
+    - name: directory2
+      type: string
+  workspaces:
+    - name: local-ws
+  steps:
+    - name: read-1
+      image: ubuntu
+      script: cat $(workspaces.local-ws.path)/$(params.directory1)/foo | grep bar
+    - name: read-2
+      image: ubuntu
+      script: cat $(workspaces.local-ws.path)/$(params.directory2)/foo | grep bar
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipeline-using-different-subpaths
+spec:
+  workspaces:
+    - name: ws
+  tasks:
+    - name: writer-1
+      taskRef:
+        name: writer
+      workspaces:
+        - name: task-ws
+          workspace: ws
+          subPath: dir-1
+    - name: writer-2
+      runAfter:
+        - writer-1
+      taskRef:
+        name: writer
+      workspaces:
+        - name: task-ws
+          workspace: ws
+          subPath: dir-2
+    - name: read-all
+      runAfter:
+        - writer-2
+      params:
+        - name: directory1
+          value: dir-1
+        - name: directory2
+          value: dir-2
+      taskRef:
+        name: read-both
+      workspaces:
+        - name: local-ws
+          workspace: ws
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pr-different-path-
+spec:
+  pipelineRef:
+    name: pipeline-using-different-subpaths
+  workspaces:
+    - name: ws
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

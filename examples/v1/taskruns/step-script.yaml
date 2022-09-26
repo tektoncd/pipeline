@@ -1,0 +1,132 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: step-script-
+spec:
+  taskSpec:
+    params:
+    - name: PARAM
+      default: param-value
+
+    steps:
+    - name: noshebang
+      image: ubuntu
+      script: echo "no shebang"
+    - name: bash
+      image: ubuntu
+      env:
+      - name: FOO
+        value: foooooooo
+      # Test that Pods with containers run as different UIDs
+      # are able to run scripts regardless of any specific
+      # Step's UID.
+      securityContext:
+        runAsUser: 2000
+      script: |
+        #!/usr/bin/env bash
+        set -euxo pipefail
+        echo "Hello from Bash!"
+        echo FOO is ${FOO}
+        echo substring is ${FOO:2:4}
+        for i in {1..10}; do
+          echo line $i
+        done
+
+    - name: place-file
+      image: ubuntu
+      securityContext:
+        runAsUser: 8000
+      script: |
+        #!/usr/bin/env bash
+        echo "echo Hello from script file" > /workspace/hello
+        chmod +x /workspace/hello
+    - name: run-file
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        /workspace/hello
+
+    - name: contains-eof
+      image: ubuntu
+      securityContext:
+        runAsUser: 16000
+      workingDir: /workspace
+      script: |
+        #!/usr/bin/env bash
+        cat > file << EOF
+        this file has some contents
+        EOF
+        cat file
+
+    - name: node
+      image: node
+      script: |
+        #!/usr/bin/env node
+        console.log("Hello from Node!")
+
+    - name: python
+      image: python
+      script: |
+        #!/usr/bin/env python3
+        print("Hello from Python!")
+
+    - name: perl
+      image: perl
+      script: |
+        #!/usr/bin/perl
+        print "Hello from Perl!"
+
+    # Test that param values are replaced.
+    - name: params-applied
+      image: python
+      script: |
+        #!/usr/bin/env python3
+        v = '$(params.PARAM)'
+        if v != 'param-value':
+          print('Param values not applied')
+          print('Got: ', v)
+          exit(1)
+
+    # Test that args are allowed and passed to the script as expected.
+    - name: args-allowed
+      image: ubuntu
+      args: ['hello', 'world']
+      script: |
+        #!/usr/bin/env bash
+        [[ $# == 2 ]]
+        [[ $1 == "hello" ]]
+        [[ $2 == "world" ]]
+
+    # Test that multiple dollar signs next to each other are not replaced by Kubernetes
+    - name: dollar-signs-allowed
+      image: python
+      script: |
+        #!/usr/bin/env python3
+        if '$' != '\u0024':
+          print('single dollar signs ($) are not passed through as expected :(')
+          exit(1)
+        if '$$' != '\u0024\u0024':
+          print('double dollar signs ($$) are not passed through as expected :(')
+          exit(2)
+        if '$$$' != '\u0024\u0024\u0024':
+          print('three dollar signs ($$$) are not passed through as expected :(')
+          exit(3)
+        if '$$$$' != '\u0024\u0024\u0024\u0024':
+          print('four dollar signs ($$$$) are not passed through as expected :(')
+          exit(4)
+        print('dollar signs appear to be handled correctly! :)')
+
+    # Test that bash scripts with variable evaluations work as expected
+    - name: bash-variable-evaluations
+      image: bash:5.1.8
+      script: |
+        #!/usr/bin/env bash
+        set -xe
+        var1=var1_value
+        var2=var1
+        echo $(eval echo \$$var2) > tmpfile
+        eval_result=$(cat tmpfile)
+        if [ "$eval_result" != "var1_value" ] ; then
+          echo "unexpected eval result: $eval_result"
+          exit 1
+        fi

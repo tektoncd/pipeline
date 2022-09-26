@@ -1,0 +1,68 @@
+# This example demonstrates using the workspaces.<name>.bound variable
+# in a when expression to selectively run different portions of a Pipeline
+# based on the presence of an optional workspace.
+#
+# In the PipelineRun below an optional message-of-the-day workspace is accepted
+# by the Pipeline. If that workspace is provided then the print-motd task is
+# executed. If that workspace is not provided then a print-default-motd task
+# is run instead. We supply a ConfigMap for the workspace and so the print-motd
+# task ends up running and printing the contents of each entry in the ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-motd
+data:
+  message_1: "Hello, good morning!"
+  message_2: "Hello, good evening!"
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: optional-workspace-when-
+spec:
+  taskRunTemplate:
+    serviceAccountName: 'default'
+  workspaces:
+  - name: message-of-the-day
+    configMap:
+      name: test-motd
+  pipelineSpec:
+    workspaces:
+    - name: message-of-the-day
+      optional: true
+      description: |
+        If a workspace is provided here then every file at the root of the workspace
+        will be printed.
+    tasks:
+    - name: print-motd
+      when:
+      - input: "$(workspaces.message-of-the-day.bound)"
+        operator: in
+        values: ["true"]
+      workspaces:
+      - name: message-of-the-day
+        workspace: message-of-the-day
+      taskSpec:
+        workspaces:
+        - name: message-of-the-day
+          optional: true
+        steps:
+        - image: alpine
+          script: |
+            #!/usr/bin/env ash
+            for f in "$(workspaces.message-of-the-day.path)"/* ; do
+              echo "Message from $f:"
+              cat "$f"
+              echo "" # add newline
+            done
+    - name: print-default-motd
+      when:
+      - input: "$(workspaces.message-of-the-day.bound)"
+        operator: in
+        values: ["false"]
+      taskSpec:
+        steps:
+        - name: print-default
+          image: alpine
+          script: |
+            echo "No message-of-the-day workspace was provided. This is the default MOTD instead!"

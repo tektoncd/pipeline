@@ -1,0 +1,95 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: print-result
+spec:
+  description: >-
+    Prints a result from another task
+  params:
+    - name: TO_PRINT
+      type: string
+  steps:
+    - name: print-result
+      image: bash:latest
+      env:
+        - name: PARAM_TO_PRINT
+          value: $(params.TO_PRINT)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        echo $PARAM_TO_PRINT
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: generate-result
+spec:
+  description: >-
+    Creates strings of length based on parameters and puts them into results fields
+  params:
+    - name: STRING_LENGTH
+      description: Length of the string to create
+    - name: STRING_CHAR
+      description: Char to use when creating string
+      type: string
+      default: '.'
+  results:
+    - name: RESULT_STRING
+      description: A result string
+  steps:
+    - name: gen-result
+      image: bash:latest
+      env:
+        - name: PARAM_STRING_LENGTH
+          value: $(params.STRING_LENGTH)
+        - name: PARAM_STRING_CHAR
+          value: $(params.STRING_CHAR)
+      script: |
+        #!/usr/bin/env bash
+        set -e
+        len=$PARAM_STRING_LENGTH
+        ch=$PARAM_STRING_CHAR
+        printf '%*s' "$len" | tr ' ' "$ch" >>  $(results.RESULT_STRING.path)
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: result-test
+spec:
+  description: >-
+    Generate a result of a certain length in a task and print the result in another task
+  params:
+  - name: RESULT_STRING_LENGTH
+    description: Length of string to generate for generate-result task
+  - name: RESULT_STRING_CHAR
+    description: Char to repeat in result string
+    default: '.'
+  tasks:
+  - name: generate-result
+    params:
+    - name: STRING_LENGTH
+      value: $(params.RESULT_STRING_LENGTH)
+    - name: STRING_CHAR
+      value: $(params.RESULT_STRING_CHAR)
+    taskRef:
+      kind: Task
+      name: generate-result
+  - name: print-result
+    params:
+    - name: TO_PRINT
+      value: $(tasks.generate-result.results.RESULT_STRING)
+    taskRef:
+      kind: Task
+      name: print-result
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: result-test-run
+spec:
+  pipelineRef:
+    name: result-test
+  params:
+  - name: RESULT_STRING_LENGTH
+    value: "3000"

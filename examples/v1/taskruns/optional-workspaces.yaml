@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: optional-workspaces-
+spec:
+  workspaces:
+  - name: source-code
+    emptyDir: {}
+  taskSpec:
+    workspaces:
+    - name: source-code
+      optional: true
+    - name: extra-config
+      optional: true
+    steps:
+    - name: check-workspaces
+      image: alpine:3.12.0
+      script: |
+        if [ "$(workspaces.source-code.bound)" == "true" ]; then
+          printf "Source code workspace was provided at %s!\n" "$(workspaces.source-code.path)"
+        fi
+        if [ "$(workspaces.extra-config.bound)" == "true" ]; then
+          printf "Unexpected extra configuration mounted at %s\n" "$(workspaces.extra-config.path)"
+          exit 1
+        fi

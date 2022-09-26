@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: entrypoint-resolution
+spec:
+  taskSpec:
+    steps:
+    # Multi-arch image with no command defined. We should look up the command
+    # for each platform-specific image and pass it to the Pod, which selects
+    # the right command at runtime based on the node's runtime platform.
+    - image: gcr.io/tekton-nightly/github.com/tektoncd/pipeline/cmd/nop
+
+    # Multi-arch image with no command defined, but with args. We'll look
+    # up the commands and pass it to the entrypoint binary via env var, then
+    # append the specified args.
+    - image: ubuntu
+      args: ['-c', 'echo', 'hello']
+
+    # Multi-arch image, but since we specify `script` we don't need to look it
+    # up and pass it down.
+    - image: ubuntu
+      script: echo hello
+
+    # Multi-arch image, but since we specify `command` and `args` we don't
+    # need to look it up and pass it down.
+    - image: ubuntu
+      command: ['sh', '-c']
+      args: ['echo hello']
+
+    # Single-platform image with no command defined. We should look up the one
+    # and only command value and pass it to the Pod.
+    - image: amd64/ubuntu
+
+    # Single-platform image with no command defined, but with args. We'll look
+    # up the one command and pass it to the entrypoint binary, then append the
+    # specified args.
+    - image: amd64/ubuntu
+      args: ['-c', 'echo', 'hello']
+
+    # Single-platform image, but since we specify `script` we don't need to
+    # look it up and pass it down.
+    - image: amd64/ubuntu
+      script: echo hello
+
+    # Single-platform image, but since we specify `command` and `args` we
+    # don't need to look it up and pass it down.
+    - image: amd64/ubuntu
+      command: ['sh', '-c']
+      args: ['echo hello']

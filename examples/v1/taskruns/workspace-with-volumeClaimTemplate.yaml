@@ -1,0 +1,24 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: task-with-workspace-run-
+spec:
+  taskSpec:
+    steps:
+      - name: list-files
+        image: ubuntu
+        script: ls $(workspaces.read-allowed.path)
+    workspaces:
+      - name: read-allowed
+  workspaces:
+    - name: read-allowed
+      volumeClaimTemplate:
+        metadata:
+          name: pvc
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+          volumeMode: Filesystem
