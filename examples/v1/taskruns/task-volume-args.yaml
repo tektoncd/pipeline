@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-for-testing-volume-args
+data:
+  test.data: tasks are my jam
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: task-volume-args-
+spec:
+  taskSpec:
+    params:
+    - name: CFGNAME
+      description: Name of config map
+      type: string
+    steps:
+    - name: read
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        cat /configmap/test.data
+      volumeMounts:
+      - name: custom
+        mountPath: /configmap
+    volumes:
+    - name: custom
+      configMap:
+        name: "$(params.CFGNAME)"
+  params:
+  - name: CFGNAME
+    value: config-for-testing-volume-args

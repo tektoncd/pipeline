@@ -1,0 +1,57 @@
+# This example TaskRun demonstrates how to share a Workspace between Steps
+# and a Sidecar. The Sidecar must be explicitly configured to mount the
+# volume backing a Workspace so that it has access to it.
+#
+# The Step writes a file to the Workspace and then waits for the Sidecar
+# to respond. The Sidecar sees the Step's file and writes its response.
+# The Step sees the response and exits.
+kind: TaskRun
+apiVersion: tekton.dev/v1
+metadata:
+  generateName: workspace-in-sidecar-
+spec:
+  timeout: 60s
+  workspaces:
+  - name: signals
+    emptyDir: {}
+  taskSpec:
+    workspaces:
+    - name: signals
+    steps:
+    - image: alpine:3.12.0
+      computeResources:
+        requests:
+          memory: "16Mi"
+          cpu: "100m"
+      script: |
+        #!/usr/bin/env ash
+        echo "Creating FIFO..."
+        mkfifo "$(workspaces.signals.path)/channel"
+        echo "Greeting sidecar..."
+        echo "hello there" > "$(workspaces.signals.path)/channel"
+        echo "Awaiting response..."
+        read response < "$(workspaces.signals.path)/channel"
+        echo "Sidecar responded: ${response}"
+        echo "Step Done."
+    sidecars:
+    - image: alpine:3.12.0
+      computeResources:
+        requests:
+          memory: "16Mi"
+          cpu: "100m"
+      # Note: must explicitly add volumeMount to gain access to Workspace in sidecar
+      volumeMounts:
+      - name: $(workspaces.signals.volume)
+        mountPath: $(workspaces.signals.path)
+      script: |
+        #!/usr/bin/env ash
+        while [[ ! -p "$(workspaces.signals.path)/channel" ]] ; do
+          sleep 4
+          echo "Polling channel..."
+        done
+        echo "Awaiting greeting..."
+        read message < "$(workspaces.signals.path)"/channel
+        echo "Step sent message: ${message}"
+        echo "Responding..."
+        echo "good day" > "$(workspaces.signals.path)"/channel
+        echo "Sidecar Done."

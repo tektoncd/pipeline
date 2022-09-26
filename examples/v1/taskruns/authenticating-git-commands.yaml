@@ -1,0 +1,209 @@
+# This example demonstrates usage of creds-init credentials to issue
+# git commands without a Git PipelineResource or git-clone catalog task.
+#
+# In order to exercise creds-init a sidecar is used to run a
+# git server fronted by SSH. The sidecar does the following things:
+# - Generates a host key pair, providing the public key to Steps for their known_hosts file
+# - Accepts a public key generated from creds-init credentials and uses that for an authorized_keys file
+# - Creates a bare git repo for the test git commands to run against
+# - Starts sshd and tails its log, waiting for the git commands to come in over SSH
+#
+# Two separate Steps then perform authenticated git actions against the sidecar
+# git server using the credentials mounted by Tekton's credential helper
+# (aka "creds-init"):
+
+# The first step makes a git clone of the bare repository and populates it
+# with a file.
+#
+# The second step makes a git clone of the populated repository and checks
+# the contents of the repo match expectations. This step runs as a non-root
+# user in order to exercise creds-init credentials when a securityContext
+# is set.
+#
+# Notice that in each Step there is different code for handling creds-init
+# credentials when the disable-home-env-overwrite flag is "false" and when
+# it's "true".
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/ssh-auth
+metadata:
+  name: ssh-key-for-git
+  annotations:
+    tekton.dev/git-0: localhost
+data:
+  # This key was generated for this test and isn't used for anything else.
+  ssh-privatekey: LS0tLS1CRUdJTiBPUEVOU1NIIFBSSVZBVEUgS0VZLS0tLS0KYjNCbGJuTnphQzFyWlhrdGRqRUFBQUFBQkc1dmJtVUFBQUFFYm05dVpRQUFBQUFBQUFBQkFBQUJsd0FBQUFkemMyZ3RjbgpOaEFBQUFBd0VBQVFBQUFZRUF5T1g3ZG5OWlFBZVk4cHNMOXlaUnp3NXNDVG1yWGh6Zld1YTZuZ2VDQ0VRRTY4YjVUSThTCkNlbEhlNG9oTUtBdXZ0ZTE4YXJMK2EvVldpeFN6a2tBMmFIZVhkdUJ1bStkS2R2TlVVSUhNc1dOUythcENQYmE4R3ZGaHYKdG81Tkx0bWpxT2M0WjJkK1RPS3AvakMrS3pvUDFHQWdRL25QMitMTldabzlvTTc4TzQ3Z1dSem9FNlFKeGJqbFlPMHRMbwp4YXUxdTNrbUtsNSthbUxsNHpGN25wdmV1dGlSWDhmY2hGam5Ka2dqK3BVeFJvTGF4SDdDN0NTcDExWUkyMEhKRVFXeEk3CllaekNTYml5KzZ1a2l0Tk1MZ29qMnpSTGl2ZTVvZm9nenpYbkdWUUpZdUIzOFhQM0ZIQWMvOXhzUXdzd3dQS2hkQ3g4T0QKbjErYXpLOHp5SGhXK0dxckJhS1R4cDlrcVRpKzZSMWk4ZjVxOEt6NXpGVTZmd05qQXZ3STFBZ3IwS2FzU1JxWTVMcGxnTgpZcW1DY01JODZKUnRGWHRWWVQrT05tdWFhYUQ1QUErbnpkNW81R0haZTlFSlNqUThZMHZwbjhmNjNjeEw2RTdzVmxpMnpzCnNhN1RST2JMK3YyVnFuSlpEY2pIZXMzS1M5Mld0V3RJbXdXOG81VkRBQUFGaU04K0NUL1BQZ2svQUFBQUIzTnphQzF5YzIKRUFBQUdCQU1qbCszWnpXVUFIbVBLYkMvY21VYzhPYkFrNXExNGMzMXJtdXA0SGdnaEVCT3ZHK1V5UEVnbnBSM3VLSVRDZwpMcjdYdGZHcXkvbXYxVm9zVXM1SkFObWgzbDNiZ2Jwdm5TbmJ6VkZDQnpMRmpVdm1xUWoyMnZCcnhZYjdhT1RTN1pvNmpuCk9HZG5ma3ppcWY0d3ZpczZEOVJnSUVQNXo5dml6Vm1hUGFETy9EdU80RmtjNkJPa0NjVzQ1V0R0TFM2TVdydGJ0NUppcGUKZm1waTVlTXhlNTZiM3JyWWtWL0gzSVJZNXlaSUkvcVZNVWFDMnNSK3d1d2txZGRXQ050QnlSRUZzU08yR2N3a200c3Z1cgpwSXJUVEM0S0k5czBTNHIzdWFINklNODE1eGxVQ1dMZ2QvRno5eFJ3SFAvY2JFTUxNTUR5b1hRc2ZEZzU5Zm1zeXZNOGg0ClZ2aHFxd1dpazhhZlpLazR2dWtkWXZIK2F2Q3MrY3hWT244RFl3TDhDTlFJSzlDbXJFa2FtT1M2WllEV0twZ25EQ1BPaVUKYlJWN1ZXRS9qalpybW1tZytRQVBwODNlYU9SaDJYdlJDVW8wUEdOTDZaL0grdDNNUytoTzdGWll0czdMR3UwMFRteS9yOQpsYXB5V1EzSXgzck55a3ZkbHJWclNKc0Z2S09WUXdBQUFBTUJBQUVBQUFHQUNQSGtmbU9vWjZkdThlNWhYQUhDeHJ0WHFCCmwvUGROL1JtYmJqRW05U216czR5cWEwd1BUdzhrMU81VHM0V05nY1hMZFVRTlB6YkE4aWFWTGtvL0JqKzhiSFlhMmdmeVMKUE5qaWpXbXBOR09EWlF2Q0h2b095WUdpNjkycHovWnNTZCt0bEFzNm54LzY1ZjcwZHdVREJub0FjZnFLY28wQnVMRlNBKworamY5RnhISGYzQkFEUS9TdDVFQjlZelo1Q2F2cTRQcjZvS2w3R3RpbnRIbTZIbUlwTUlubWVEMnV3cjl2ZGZ1RGJhVDdYClVOSm10elVGck1uOUhlOWd1WkoyTXd3a015S09ScnRhVFA3VjFZK3FOM3ZncStmRkNtU0VkekxBU3BWTHMyL1hQTCtwTnAKTTVZUVRRMFJSZWdKTEdtTHZ0ZmpkK1RRMFQ0bjBucnBJVGRXRTRsL05sTG9taTVhUndzQXFtY2hZSGxhN0g3YlNyS2lKawpyWTg1RTliZm8wSXJqUDNQNzFYNmxjcTB0VDhDTklUQUNleWJQT3kwcDVDc3JwZTdhZEJBOXF4MTZjR2tkZ0NPWk9GMnRpCktoWWJHeTc4ei9YNEh2OEptVmhaSHF3RlFQQzVleWljbE1PTFJXNDJOcUJhNEVFc3RHT3l4MHZwa0lVS3VhRlJuQkFBQUEKd1FESytXYzU1WHVpWjgySXM5NnN2bWIrR0Y5c2pBRWVaWHpHSWpDL1NHVEhIWTZSQmc1TnlQOUdZNmtoWnBjd0cyTU52dQpZUjhuN0psRWlVanU2cjY2Smh0WGtvdTR4WlU1dDkvMlJvdHRmeWpKODJmYm8yTHZmNERUOVNvSURxZnk5VmlMSjhSWUNkCkt6NnpYSHFTZ1RBRU1vaUhjbFpIZzRqTitrOW1ma2tPMDBQbEJJaE1YU0ZMLzUrZUhGdStQTmxaU1g5NUlMRjJvZ0Y1RG0KWTFuaTRUOGJjdzY2dmFzamthcjFZekptM1VidEVnSzQ2VVllNGJac2NXbWt4dngwMEFBQURCQVA4UysyTmtheWkvb3NzVApTQXpJMi9QU2tJMDVEY1lTYnNOQjZ4a3pobzdKaDlHeUNvbW5xZ1IxR2ZBOTBqV3AxVks0TG43TmtYYWJaVmJPc0xoT21DCkdBbVRZTHRjaTB0bkhhYk5HTEZ3ZmdiUitqRzZNQ2p4cEh5anM5MDlKSHhtYmswbElpczdPN1N3VThERGcrSEVxc0EvNUoKQ1VMTWU3em9mNERhUnZXdFhTRks2ZW5LNnpGaHBINjVQY29TN0o0NjJhNzdUMDVGQXhMemNaRkc5VWZ5WUdMa1ZmdHRTTApNVDhudW9LaW5XTGNLSlVQeis1MjJlM3lIcis4c3pVUUFBQU1FQXlhQ28xSnRBcjRpczY0YTBuZTFUV0o0dXcyT3FDdUlDCm9acG1QN2UyRnh3bVRCSWMrbzZkSEVNVHo2c2ZZSkFxU2l4ZzYydXYzWlRTc25STWljaDZ0b1k0SVI4cWFMa1prLzU5cmEKQWFONFlvTkdpQTZxY0Jzc3NLMmZuM2YxRFJhckxPbWZHTnpTMU41S1RvSFVlUkVGWDExdHVNM1pqOGxTelFBOWZSakk1OQpFWmFnOWJaOXRJOEg5dmEvTGRMK3U3dTZZWkVRSEJCS1MxMW1tOVVXd1pDMkdUV3ZnNzRlTnRmemtZeDQxdlhIeTZBbW9ECmxuOHo2N3lvWEZzbEpUQUFBQURuTmpiM1IwUUcxbFkyZ3ViR0Z1QVFJREJBPT0KLS0tLS1FTkQgT1BFTlNTSCBQUklWQVRFIEtFWS0tLS0tCg==
+  # Note: we intentionally omit a known_hosts entry here. You should include
+  # one in your own Secrets as a security measure, otherwise the Git PipelineResource
+  # and git-clone Tasks will blindly accept any public key returned by a repository.
+  #
+  # We're able to omit known_hosts here because the file is generated by the
+  # git server sidecar. The benefit of omitting it here is that it exercises
+  # a codepath in Tekton that used to fail. In prior versions Tekton would
+  # run ssh-keyscan if known_hosts was omitted, which would fail for this example
+  # because the git server sidecar is not up and running at the time the scan
+  # would have happened.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ssh-key-service-account
+secrets:
+- name: ssh-key-for-git
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: authenticating-git-commands
+spec:
+  serviceAccountName: ssh-key-service-account
+  taskSpec:
+    volumes:
+    - name: messages
+      emptyDir: {}
+    sidecars:
+    - name: server
+      image: alpine/git:v2.26.2
+      securityContext:
+        runAsUser: 0
+      volumeMounts:
+      - name: messages
+        mountPath: /messages
+      script: |
+        #!/usr/bin/env ash
+
+        # Generate a private host key and give the Steps access to its public
+        # key for their known_hosts file.
+        ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key
+        chmod 0600 /etc/ssh/ssh_host_rsa_key*
+        HOST_PUBLIC_KEY=$(cat /etc/ssh/ssh_host_rsa_key.pub | awk '{ print $2 }')
+        echo "localhost ssh-rsa $HOST_PUBLIC_KEY" > /messages/known_hosts
+
+        # Wait for a Step to supply the server a public key generated from creds-init
+        # credentials.
+        while [ ! -f /messages/authorized_keys ] ; do
+          sleep 1
+        done
+
+        # Allow Steps to SSH login as root to this server.
+        mkdir /root/.ssh
+        cp /messages/authorized_keys /root/.ssh/
+
+        # "Unlock" the root account, allowing SSH login to succeed.
+        sed -i s/root:!/"root:*"/g /etc/shadow
+
+        # Create the git repo we're going to test against.
+        cd /root/
+        mkdir repo
+        cd repo
+        git init . --bare
+
+        # Start the sshd server.
+        /usr/sbin/sshd -E /var/log/sshd
+        touch /messages/sshd-ready
+        tail -f /var/log/sshd
+    steps:
+    - name: setup
+      # This Step is only necessary as part of the test, it's not something you'll
+      # ever need in a real-world scenario involving an external git repo.
+      image: alpine/git:v2.26.2
+      securityContext:
+        runAsUser: 0
+      volumeMounts:
+      - name: messages
+        mountPath: /messages
+      script: |
+        #!/usr/bin/env ash
+
+        # Generate authorized_keys file from the creds-init private key and give
+        # it to the sidecar server so that Steps can successfully SSH login
+        # using creds-init credentials.
+        ssh-keygen -y -f $(credentials.path)/.ssh/id_ssh-key-for-git > /messages/authorized_keys
+
+        # Wait for sshd to start on the git server.
+        while [ ! -f /messages/sshd-ready ] ; do
+          sleep 1
+        done
+    - name: git-clone-and-push
+      image: alpine/git:v2.26.2
+      securityContext:
+        runAsUser: 0
+      workingDir: /root
+      volumeMounts:
+      - name: messages
+        mountPath: /messages
+      script: |
+        #!/usr/bin/env ash
+        set -xe
+
+        if [ -d /tekton/home/.ssh ] ; then
+          # When disable-home-env-overwrite is "false", creds-init credentials
+          # will be copied to /tekton/home/.ssh by the entrypoint. But we need
+          # them in /root/.ssh.
+
+          # Overwrite the creds-init known_hosts file with that of our test
+          # git server. You wouldn't need to do this in any kind of real-world
+          # scenario involving an external git repo.
+          cp /messages/known_hosts $(credentials.path)/.ssh/
+
+          # Symlink /tekton/creds/.ssh to /root/.ssh because this script issues
+          # vanilla git commands of its own. Git PipelineResources and the git-clone
+          # catalog task handle this for you.
+          ln -s $(credentials.path)/.ssh /root/.ssh
+        else
+          # When disable-home-env-overwrite is "true", creds-init credentials
+          # will be copied to /root/.ssh by the entrypoint. We just need to
+          # overwrite the known_hosts file with that of our test git server.
+          cp /messages/known_hosts /root/.ssh/known_hosts
+        fi
+
+        git clone root@localhost:/root/repo ./repo
+        cd repo
+        git config user.email "example@example.com"
+        git config user.name "Example"
+        echo "Hello, world!" > README
+        git add README
+        git commit -m "Test commit!"
+        git push origin master
+    - name: git-clone-and-check
+      image: gcr.io/tekton-releases/dogfooding/alpine-git-nonroot:latest
+      # Because this Step runs with a non-root security context, the creds-init
+      # credentials will fail to copy into /tekton/home. This happens because
+      # our previous step _already_ wrote to /tekton/home and ran as a root
+      # user. So there will be warning messages reporting "unsuccessful cred
+      # copy". These can be safely ignored and instead this Step will copy
+      # the credentials out of /tekton/creds to nonroot's HOME directory.
+      securityContext:
+        runAsUser: 1000
+      workingDir: /home/nonroot
+      volumeMounts:
+      - name: messages
+        mountPath: /messages
+      script: |
+        #!/usr/bin/env ash
+        set -xe
+
+        if [ -d /tekton/home/.ssh ] ; then
+          # When disable-home-env-overwrite is "false", creds-init credentials
+          # will be copied to /tekton/home/.ssh by the entrypoint. But we need
+          # them in /home/nonroot/.ssh.
+
+          # Overwrite the creds-init known_hosts file with that of our test
+          # git server. You wouldn't need to do this in any kind of real-world
+          # scenario involving an external git repo.
+          cp /messages/known_hosts $(credentials.path)/.ssh/
+
+          # Symlink /tekton/creds/.ssh to /home/nonroot/.ssh because this script issues
+          # vanilla git commands of its own and we're running as a non-root user.
+          # Git PipelineResources and the git-clone catalog task handle this for you.
+          ln -s $(credentials.path)/.ssh /home/nonroot/.ssh
+        else
+          # When disable-home-env-overwrite is "true", creds-init credentials
+          # will be copied to /home/nonroot/.ssh by the entrypoint. We just need to
+          # overwrite the known_hosts file with that of our test git server.
+          cp /messages/known_hosts /home/nonroot/.ssh/known_hosts
+        fi
+
+        git clone root@localhost:/root/repo ./repo
+        cd repo
+        cat README | grep "Hello, world!"

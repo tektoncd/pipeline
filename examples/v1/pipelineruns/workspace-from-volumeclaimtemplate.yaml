@@ -1,0 +1,49 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: volume-from-template
+spec:
+  tasks:
+    - name: writer
+      taskSpec:
+        steps:
+          - name: write
+            image: ubuntu
+            script: echo bar > $(workspaces.task-ws.path)/foo
+        workspaces:
+          - name: task-ws
+      workspaces:
+        - name: task-ws
+          workspace: ws
+    - name: reader
+      runAfter:
+        - writer
+      taskSpec:
+        steps:
+          - name: read
+            image: ubuntu
+            script: cat $(workspaces.myws.path)/foo | grep bar
+        workspaces:
+          - name: myws
+      workspaces:
+        - name: myws
+          workspace: ws
+  workspaces:
+    - name: ws
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: run-with-template-
+spec:
+  pipelineRef:
+    name: volume-from-template
+  workspaces:
+    - name: ws
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi

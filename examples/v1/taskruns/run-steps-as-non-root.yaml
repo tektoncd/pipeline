@@ -1,0 +1,36 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: show-non-root-steps
+spec:
+  steps:
+    # no securityContext specified so will use
+    # securityContext from TaskRun podTemplate
+    - name: show-user-1001
+      image: ubuntu
+      command:
+        - ps
+      args:
+        - "aux"
+    # securityContext specified so will run as
+    # user 2000 instead of 1001
+    - name: show-user-2000
+      image: ubuntu
+      command:
+        - ps
+      args:
+        - "aux"
+      securityContext:
+        runAsUser: 2000
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: show-non-root-steps-run-
+spec:
+  taskRef:
+    name: show-non-root-steps
+  podTemplate:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001

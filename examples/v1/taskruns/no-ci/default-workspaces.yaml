@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: test-task
+spec:
+  workspaces:
+  - name: source
+  steps:
+  - name: write-file
+    image: ubuntu
+    script: |
+      echo "Hello, world!" > /workspace/source/hello.txt || exit 0
+  - name: read-file
+    image: ubuntu
+    script: |
+      grep "Hello, world" /workspace/source/hello.txt
+---
+# Uses default workspace specified in config-defaults
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: test-taskrun
+spec:
+  taskRef:
+    name: test-task
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-configmap
+data:
+  hello.txt: "Hello, world!"
+---
+# Uses provided workspace (not default)
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  name: test-taskrun-configmap
+spec:
+  workspaces:
+  - name: source
+    configMap:
+      name: my-configmap
+  taskRef:
+    name: test-task

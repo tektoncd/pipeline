@@ -1,0 +1,82 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-with-taskspec-to-echo-good-morning
+spec:
+  pipelineSpec:
+    tasks:
+      - name: echo-good-morning
+        taskSpec:
+          metadata:
+            labels:
+              app: "example"
+          steps:
+            - name: echo
+              image: ubuntu
+              script: |
+                #!/usr/bin/env bash
+                echo "Good Morning!"
+---
+
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-with-taskspec-to-echo-message
+spec:
+  pipelineSpec:
+    params:
+      - name: MESSAGE
+        description: "Message, default is Hello World!"
+        type: string
+        default: "Hello World!"
+    tasks:
+      - name: echo-message
+        taskSpec:
+          params:
+          - name: MESSAGE
+            type: string
+            default: "Hello World!"
+          steps:
+            - name: echo
+              image: ubuntu
+              script: |
+                #!/usr/bin/env bash
+                echo "$(params.MESSAGE)"
+        params:
+          - name: MESSAGE
+            value: $(params.MESSAGE)
+  params:
+    - name: MESSAGE
+      value: "Good Morning!"
+---
+
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-with-taskspec-to-echo-greetings
+spec:
+  pipelineSpec:
+    params:
+      - name: GREETINGS
+        description: "Greetings, default is Hello World!"
+        type: string
+        default: "Hello World!"
+    tasks:
+      - name: echo-greetings
+        taskSpec:
+          params:
+          - name: MESSAGE
+            type: string
+            default: "Hello World!"
+          steps:
+            - name: echo
+              image: ubuntu
+              script: |
+                #!/usr/bin/env bash
+                echo "$(params.MESSAGE)"
+        params:
+          - name: MESSAGE
+            value: $(params.GREETINGS)
+  params:
+    - name: GREETINGS
+      value: "Good Morning!"

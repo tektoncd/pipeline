@@ -1,0 +1,38 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: retry-example-
+spec:
+  taskRunTemplate:
+    serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+    - name: retry-me
+      retries: 5
+      params:
+      - name: pipelineTask-retries
+        value: "$(context.pipelineTask.retries)"
+      - name: pipelineTask-retry-count
+        value: "$(context.task.retry-count)"
+      taskSpec:
+        params:
+        - name: pipelineTask-retries
+        - name: pipelineTask-retry-count
+        steps:
+        - image: alpine:3.12.0
+          script: |
+            #!/usr/bin/env sh
+            if [ "$(params.pipelineTask-retry-count)" == "$(params.pipelineTask-retries)" ]; then
+              echo "This is the last retry."
+              exit 0;
+            fi
+            echo "The PipelineTask has retried $(context.task.retry-count) times."
+            exit 1
+    - name: hello-world
+      runAfter:
+      - retry-me
+      taskSpec:
+        steps:
+        - image: busybox
+          script: |
+            echo "hello world"
