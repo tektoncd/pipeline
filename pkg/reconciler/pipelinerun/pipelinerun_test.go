@@ -5536,15 +5536,14 @@ status:
 }
 
 func Test_storePipelineSpec(t *testing.T) {
-	labels := map[string]string{"lbl": "value"}
-	annotations := map[string]string{"io.annotation": "value"}
-	pr := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "foo",
-			Labels:      labels,
-			Annotations: annotations,
-		},
-	}
+	pr := parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipeline-run-success
+  labels:
+    lbl: value
+  annotations:
+    io.annotation: value
+`)
 
 	ps := v1beta1.PipelineSpec{Description: "foo-pipeline"}
 	ps1 := v1beta1.PipelineSpec{Description: "bar-pipeline"}
