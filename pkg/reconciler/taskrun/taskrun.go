@@ -448,16 +448,6 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	recorder := controller.GetEventRecorder(ctx)
 	var err error
 
-	// Get the randomized volume names assigned to workspace bindings
-	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
-
-	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, tr, rtr, workspaceVolumes)
-	if err != nil {
-		logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
-		return err
-	}
-	tr.Status.TaskSpec = ts
-
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
 	var pod *corev1.Pod
 
@@ -505,6 +495,17 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 			// This is used by createPod below. Changes to the Spec are not updated.
 			tr.Spec.Workspaces = taskRunWorkspaces
 		}
+
+		// Get the randomized volume names assigned to workspace bindings
+		workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
+
+		ts, err := applyParamsContextsResultsAndWorkspaces(ctx, tr, rtr, workspaceVolumes)
+		if err != nil {
+			logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
+			return err
+		}
+		tr.Status.TaskSpec = ts
+
 		pod, err = c.createPod(ctx, ts, tr, rtr, workspaceVolumes)
 		if err != nil {
 			newErr := c.handlePodCreationError(tr, err)
