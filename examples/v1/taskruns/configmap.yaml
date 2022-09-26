@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-for-testing-configmaps
+data:
+  test.data: tasks are my jam
+---
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: configmap-
+spec:
+  taskSpec:
+    steps:
+    - name: secret
+      image: ubuntu
+      script: |
+        #!/usr/bin/env bash
+        [[ $(cat /config/test.data) == $TEST_DATA ]]
+      env:
+      - name: TEST_DATA
+        valueFrom:
+          configMapKeyRef:
+            name: config-for-testing-configmaps
+            key: test.data
+      volumeMounts:
+      - name: config-volume
+        mountPath: /config
+    volumes:
+    - name: config-volume
+      configMap:
+        name: config-for-testing-configmaps

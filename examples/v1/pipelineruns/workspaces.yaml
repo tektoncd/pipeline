@@ -1,0 +1,135 @@
+# In this contrived example 3 different kinds of workspace volume are used to thread
+# data through a pipeline's tasks.
+# 1. A ConfigMap is used as source of recipe data.
+# 2. A Secret is used to store a password.
+# 3. A PVC is used to share data from one task to the next.
+#
+# The end result is a pipeline that first checks if the password is correct and, if so,
+# copies data out of a recipe store onto a shared volume. The recipe data is then read
+# by a subsequent task and printed to screen.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sensitive-recipe-storage
+data:
+  brownies: |
+    1. Heat oven to 325 degrees F
+    2. Melt 1/2 cup butter w/ 1/2 cup cocoa, stirring smooth.
+    3. Remove from heat, allow to cool for a few minutes.
+    4. Transfer to bowl.
+    5. Whisk in 2 eggs, one at a time.
+    6. Stir in vanilla.
+    7. Separately combine 1 cup sugar, 1/4 cup flour, 1 cup chopped
+       walnuts and pinch of salt
+    8. Combine mixtures.
+    9. Bake in greased pan for 30 minutes. Watch carefully for
+       appropriate level of gooeyness.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-password
+type: Opaque
+data:
+  password: aHVudGVyMg==
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-task-storage
+spec:
+  resources:
+    requests:
+      storage: 16Mi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: fetch-secure-data
+spec:
+  workspaces:
+  - name: super-secret-password
+  - name: secure-store
+  - name: filedrop
+  steps:
+  - name: fetch-and-write
+    image: ubuntu
+    script: |
+      if [ "hunter2" = "$(cat $(workspaces.super-secret-password.path)/password)" ]; then
+        cp $(workspaces.secure-store.path)/recipe.txt $(workspaces.filedrop.path)
+      else
+        echo "wrong password!"
+        exit 1
+      fi
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: print-data
+spec:
+  workspaces:
+  - name: storage
+    readOnly: true
+  params:
+  - name: filename
+  steps:
+  - name: print-secrets
+    image: ubuntu
+    script: cat $(workspaces.storage.path)/$(params.filename)
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: fetch-and-print-recipe
+spec:
+  workspaces:
+  - name: password-vault
+  - name: recipe-store
+  - name: shared-data
+  tasks:
+  - name: fetch-the-recipe
+    taskRef:
+      name: fetch-secure-data
+    workspaces:
+    - name: super-secret-password
+      workspace: password-vault
+    - name: secure-store
+      workspace: recipe-store
+    - name: filedrop
+      workspace: shared-data
+  - name: print-the-recipe
+    taskRef:
+      name: print-data
+    # Note: this is currently required to ensure order of write / read on PVC is correct.
+    runAfter:
+      - fetch-the-recipe
+    params:
+    - name: filename
+      value: recipe.txt
+    workspaces:
+    - name: storage
+      workspace: shared-data
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: recipe-time-
+spec:
+  pipelineRef:
+    name: fetch-and-print-recipe
+  workspaces:
+  - name: password-vault
+    secret:
+      secretName: secret-password
+  - name: recipe-store
+    configMap:
+      name: sensitive-recipe-storage
+      items:
+      - key: brownies
+        path: recipe.txt
+  - name: shared-data
+    persistentVolumeClaim:
+      claimName: shared-task-storage

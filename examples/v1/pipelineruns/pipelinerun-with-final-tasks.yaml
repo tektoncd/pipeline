@@ -1,0 +1,203 @@
+# Copied from https://github.com/tektoncd/catalog/blob/v1/git/git-clone.yaml :(
+# This can be deleted after we add support to refer to the remote Task in a registry (Issue #1839) or
+# add support for referencing task in git directly (issue #2298)
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone-from-catalog
+spec:
+  workspaces:
+    - name: output
+      description: The git repo will be cloned onto the volume backing this workspace
+  params:
+    - name: url
+      description: git url to clone
+      type: string
+    - name: revision
+      description: git revision to checkout (branch, tag, sha, ref…)
+      type: string
+      default: main
+    - name: refspec
+      description: (optional) git refspec to fetch before checking out revision
+      default: ""
+    - name: submodules
+      description: defines if the resource should initialize and fetch the submodules
+      type: string
+      default: "true"
+    - name: depth
+      description: performs a shallow clone where only the most recent commit(s) will be fetched
+      type: string
+      default: "1"
+    - name: sslVerify
+      description: defines if http.sslVerify should be set to true or false in the global git config
+      type: string
+      default: "true"
+    - name: subdirectory
+      description: subdirectory inside the "output" workspace to clone the git repo into
+      type: string
+      default: ""
+    - name: deleteExisting
+      description: clean out the contents of the repo's destination directory (if it already exists) before trying to clone the repo there
+      type: string
+      default: "false"
+    - name: httpProxy
+      description: git HTTP proxy server for non-SSL requests
+      type: string
+      default: ""
+    - name: httpsProxy
+      description: git HTTPS proxy server for SSL requests
+      type: string
+      default: ""
+    - name: noProxy
+      description: git no proxy - opt out of proxying HTTP/HTTPS requests
+      type: string
+      default: ""
+  results:
+    - name: commit
+      description: The precise commit SHA that was fetched by this Task
+  steps:
+    - name: clone
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+      securityContext:
+        runAsUser: 0 # This needs root, and git-init is nonroot by default
+      script: |
+        CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
+
+        cleandir() {
+          # Delete any existing contents of the repo directory if it exists.
+          #
+          # We don't just "rm -rf $CHECKOUT_DIR" because $CHECKOUT_DIR might be "/"
+          # or the root of a mounted volume.
+          if [[ -d "$CHECKOUT_DIR" ]] ; then
+            # Delete non-hidden files and directories
+            rm -rf "$CHECKOUT_DIR"/*
+            # Delete files and directories starting with . but excluding ..
+            rm -rf "$CHECKOUT_DIR"/.[!.]*
+            # Delete files and directories starting with .. plus any other character
+            rm -rf "$CHECKOUT_DIR"/..?*
+          fi
+        }
+
+        if [[ "$(params.deleteExisting)" == "true" ]] ; then
+          cleandir
+        fi
+
+        test -z "$(params.httpProxy)" || export HTTP_PROXY=$(params.httpProxy)
+        test -z "$(params.httpsProxy)" || export HTTPS_PROXY=$(params.httpsProxy)
+        test -z "$(params.noProxy)" || export NO_PROXY=$(params.noProxy)
+
+        /ko-app/git-init \
+          -url "$(params.url)" \
+          -revision "$(params.revision)" \
+          -refspec "$(params.refspec)" \
+          -path "$CHECKOUT_DIR" \
+          -sslVerify="$(params.sslVerify)" \
+          -submodules="$(params.submodules)" \
+          -depth "$(params.depth)"
+        cd "$CHECKOUT_DIR"
+        RESULT_SHA="$(git rev-parse HEAD | tr -d '\n')"
+        EXIT_CODE="$?"
+        if [ "$EXIT_CODE" != 0 ]
+        then
+          exit $EXIT_CODE
+        fi
+        # Make sure we don't add a trailing newline to the result!
+        echo -n "$RESULT_SHA" > $(results.commit.path)
+
+---
+# Task to cleanup shared workspace
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: cleanup-workspace
+spec:
+  workspaces:
+    # Shared workspace where git repo is cloned
+    - name: source
+  steps:
+    - name: check-application-dir-has-source
+      image: ubuntu
+      script: |
+        if [ ! -d "$(workspaces.source.path)/application/" ]; then
+          echo "Something went wrong and could not find application source under $(workspaces.source.path)/application/"
+          exit 1
+        fi
+    - name: cleanup-workspace
+      image: ubuntu
+      script: |
+        rm -rf $(workspaces.source.path)/application/
+    - name: verify-application-dir-has-gone
+      image: ubuntu
+      script: |
+        if [ -d "$(workspaces.source.path)/application/" ]; then
+          echo "Something went wrong cleaning up and the application source still exists under $(workspaces.source.path)/application/"
+          exit 1
+        fi
+---
+
+# Pipeline to clone repo into shared workspace and cleanup the workspace after done
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: clone-cleanup-workspace
+spec:
+  workspaces:
+    # common workspace where git repo is cloned and needs to be cleanup after done
+    - name: git-source
+  tasks:
+    # Clone app repo to workspace
+    - name: clone-app-repo
+      taskRef:
+        name: git-clone-from-catalog
+      params:
+        - name: url
+          value: https://github.com/tektoncd/community.git
+        - name: subdirectory
+          value: application
+      workspaces:
+        - name: output
+          workspace: git-source
+  finally:
+    # Cleanup workspace
+    - name: cleanup
+      taskRef:
+        name: cleanup-workspace
+      workspaces:
+        - name: source
+          workspace: git-source
+    - name: check-git-commit
+      params:
+        - name: commit
+          value: $(tasks.clone-app-repo.results.commit)
+      taskSpec:
+        params:
+          - name: commit
+        steps:
+          - name: check-commit-initialized
+            image: alpine
+            script: |
+              if [[ ! $(params.commit) ]]; then
+                exit 1
+              fi
+---
+
+# PipelineRun to execute pipeline - clone-into-workspace-and-cleanup-workspace
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: write-and-cleanup-workspace
+spec:
+  pipelineRef:
+    name: clone-cleanup-workspace
+  taskRunTemplate:
+    serviceAccountName: 'default'
+  workspaces:
+    - name: git-source
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+---

@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: test-case-
+spec:
+  params:
+  - name: prefix
+    value: prefix
+  pipelineSpec:
+    params:
+    - name: prefix
+    tasks:
+    - name: generate-suffix
+      taskSpec:
+        results:
+        - name: suffix
+        steps:
+        - name: generate-suffix
+          image: alpine
+          script: |
+            echo -n "suffix" > $(results.suffix.path)
+    - name: do-something
+      taskSpec:
+        params:
+        - name: arg
+        steps:
+        - name: do-something
+          image: alpine
+          script: |
+            echo "$(params.arg)" | grep "prefix:suffix"
+      params:
+      - name: arg
+        value: "$(params.prefix):$(tasks.generate-suffix.results.suffix)"

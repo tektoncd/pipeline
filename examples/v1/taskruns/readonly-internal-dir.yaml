@@ -1,0 +1,31 @@
+# This file is primarily used for test validation of internal Tekton
+# directories. This is not a useful example of typical user config.
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: readonly-internal-dir-
+spec:
+  taskSpec:
+    steps:
+    - image: ubuntu
+      script: exit 0
+    - image: ubuntu
+      script: |
+        set +e # dont fail the script on error
+
+        # Steps should not be able to write to other step's run directories.
+        echo "hello world" > /tekton/run/0/out
+        if [ $? -eq 0 ] ; then
+          echo "able to write to run directory of non-current step"
+          exit 1
+        fi
+    - image: ubuntu
+      script: |
+        set +e # dont fail the script on error
+
+        # Steps should not be able to write to other step's step directories.
+        echo "hello world" > /tekton/steps/0/exitCode
+        if [ $? -eq 0 ] ; then
+          echo "able to write to run directory of non-current step"
+          exit 1
+        fi

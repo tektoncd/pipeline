@@ -1,0 +1,48 @@
+kind: PipelineRun
+apiVersion: tekton.dev/v1
+metadata:
+  generateName: test-pipelinerun-
+spec:
+  taskRunTemplate:
+    serviceAccountName: 'default'
+  pipelineSpec:
+    tasks:
+    - name: task1
+      retries: 7
+      params:
+      - name: pipeline-uid
+        value: "$(context.pipelineRun.uid)"
+      - name: pipeline-name
+        value: "$(context.pipeline.name)"
+      - name: pipelineRun-name
+        value: "$(context.pipelineRun.name)"
+      - name: pipelineRun-namespace
+        value: "$(context.pipelineRun.namespace)"
+      - name: pipelineTask-retries
+        value: "$(context.pipelineTask.retries)"
+      taskSpec:
+        params:
+        - name: pipeline-uid
+        - name: pipeline-name
+        - name: pipelineRun-name
+        - name: pipelineRun-namespace
+        - name: pipelineTask-retries
+        steps:
+        - image: ubuntu
+          name: print-uid
+          script: |
+            echo "TaskRun UID: $(context.taskRun.uid)"
+            echo "PipelineRun UID from params: $(params.pipeline-uid)"
+        - image: ubuntu
+          name: print-names
+          script: |
+            echo "Task name: $(context.task.name)"
+            echo "TaskRun name: $(context.taskRun.name)"
+            echo "Pipeline name from params: $(params.pipeline-name)"
+            echo "PipelineRun name from params: $(params.pipelineRun-name)"
+            echo "PipelineRun namespace from params: $(params.pipelineRun-namespace)"
+        - image: ubuntu
+          name: print-retries
+          script: |
+            echo "PipelineTask retries from params: $(params.pipelineTask-retries)"
+            echo "PipelineTask current retry count: $(context.task.retry-count)"

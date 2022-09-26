@@ -42,7 +42,7 @@ spec:
         # See issue: https://github.com/knative/serving/issues/912
         x-kubernetes-preserve-unknown-fields: true
   - name: v1
-    served: false
+    served: true
     storage: false
     schema:
       openAPIV3Schema:

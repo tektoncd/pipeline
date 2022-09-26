@@ -1,0 +1,334 @@
+# This demo modifies the cluster (deploys to it) you must use a service
+# account with permission to admin the cluster (or make your default user an admin
+# of the `default` namespace with default-cluster-admin.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  generateName: default-cluster-admin-
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: "unit.tests"
+spec:
+  workspaces:
+  - name: source
+    mountPath: /workspace/source/go/src/github.com/GoogleContainerTools/skaffold
+  steps:
+  - name: run-tests
+    image: golang
+    env:
+    - name: GOPATH
+      value: /workspace/go
+    workingDir: $(workspaces.source.path)
+    script: |
+      # The intention behind this example Task is to run unit test, however we
+      # currently do nothing to ensure that a unit test issue doesn't cause this example
+      # to fail unnecessarily. In the future we could re-introduce the unit tests (since
+      # we are now pinning the version of Skaffold we pull) or use Tekton Pipelines unit tests.
+      echo "pass"
+---
+# Copied from https://github.com/tektoncd/catalog/blob/v1/git/git-clone.yaml
+# With a few fixes being ported over in https://github.com/tektoncd/catalog/pull/290
+# Post #1839 we can refer to the remote Task in a registry or post #2298 in git directly
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone
+spec:
+  workspaces:
+  - name: output
+    description: The git repo will be cloned onto the volume backing this workspace
+  params:
+  - name: url
+    description: git url to clone
+    type: string
+  - name: revision
+    description: git revision to checkout (branch, tag, sha, ref…)
+    type: string
+    default: master
+  - name: submodules
+    description: defines if the resource should initialize and fetch the submodules
+    type: string
+    default: "true"
+  - name: depth
+    description: performs a shallow clone where only the most recent commit(s) will be fetched
+    type: string
+    default: "1"
+  - name: sslVerify
+    description: defines if http.sslVerify should be set to true or false in the global git config
+    type: string
+    default: "true"
+  - name: subdirectory
+    description: subdirectory inside the "output" workspace to clone the git repo into
+    type: string
+    default: ""
+  - name: deleteExisting
+    description: clean out the contents of the repo's destination directory (if it already exists) before trying to clone the repo there
+    type: string
+    default: "false"
+  results:
+  - name: commit
+    description: The precise commit SHA that was fetched by this Task
+  steps:
+  - name: clone
+    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
+    securityContext:
+      runAsUser: 0 # This needs root, and git-init is nonroot by default
+    script: |
+      CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
+      cleandir() {
+        # Delete any existing contents of the repo directory if it exists.
+        #
+        # We don't just "rm -rf $CHECKOUT_DIR" because $CHECKOUT_DIR might be "/"
+        # or the root of a mounted volume.
+        if [[ -d "$CHECKOUT_DIR" ]] ; then
+          # Delete non-hidden files and directories
+          rm -rf "$CHECKOUT_DIR"/*
+          # Delete files and directories starting with . but excluding ..
+          rm -rf "$CHECKOUT_DIR"/.[!.]*
+          # Delete files and directories starting with .. plus any other character
+          rm -rf "$CHECKOUT_DIR"/..?*
+        fi
+      }
+      if [[ "$(params.deleteExisting)" == "true" ]] ; then
+        cleandir
+      fi
+      /ko-app/git-init \
+        -url "$(params.url)" \
+        -revision "$(params.revision)" \
+        -path "$CHECKOUT_DIR" \
+        -sslVerify="$(params.sslVerify)" \
+        -submodules="$(params.submodules)" \
+        -depth="$(params.depth)"
+      cd "$CHECKOUT_DIR"
+      RESULT_SHA="$(git rev-parse HEAD | tr -d '\n')"
+      EXIT_CODE="$?"
+      if [ "$EXIT_CODE" != 0 ]
+      then
+        exit $EXIT_CODE
+      fi
+      # Make sure we don't add a trailing newline to the result!
+      echo -n "$RESULT_SHA" > $(results.commit.path)
+---
+# Copied from https://github.com/tektoncd/catalog/blob/v1/kaniko/kaniko.yaml
+# with a few fixes that will be port over in https://github.com/tektoncd/catalog/pull/291
+# Post #1839 we can refer to the remote Task in a registry or post #2298 in git directly
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kaniko
+spec:
+  workspaces:
+  - name: source
+  params:
+  - name: IMAGE
+    description: Name (reference) of the image to build.
+  - name: DOCKERFILE
+    description: Path to the Dockerfile to build.
+    default: ./Dockerfile
+  - name: CONTEXT
+    description: The build context used by Kaniko.
+    default: ./
+  - name: EXTRA_ARGS
+    default: ""
+  - name: BUILDER_IMAGE
+    description: The image on which builds will run
+    default: gcr.io/kaniko-project/executor:v1.8.1
+  - name: baseImage
+    description: Base image for GoogleContainerTools/skaffold microservice apps
+    default: BASE=alpine:3.9
+  results:
+  - name: IMAGE_DIGEST
+    description: Digest of the image just built.
+  steps:
+  - name: build-and-push
+    workingDir: $(workspaces.source.path)
+    image: $(params.BUILDER_IMAGE)
+    # specifying DOCKER_CONFIG is required to allow kaniko to detect docker credential
+    # https://github.com/tektoncd/pipeline/pull/706
+    env:
+    - name: DOCKER_CONFIG
+      value: /tekton/home/.docker
+    command:
+    - /kaniko/executor
+    - $(params.EXTRA_ARGS)
+    - --dockerfile=$(params.DOCKERFILE)
+    - --context=$(workspaces.source.path)/$(params.CONTEXT)  # The user does not need to care the workspace and the source.
+    - --destination=$(params.IMAGE)
+    - --oci-layout-path=$(workspaces.source.path)/$(params.CONTEXT)/image-digest
+    - --build-arg=$(inputs.params.baseImage)
+    - --ignore-path=/product_uuid # TODO(abayer): Work around Kaniko multi-stage build issues on Kind: https://github.com/GoogleContainerTools/kaniko/issues/2164
+    # kaniko assumes it is running as root, which means this example fails on platforms
+    # that default to run containers as random uid (like OpenShift). Adding this securityContext
+    # makes it explicit that it needs to run as root.
+    securityContext:
+      runAsUser: 0
+  - name: write-digest
+    workingDir: $(workspaces.source.path)
+    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/imagedigestexporter:latest
+    # output of imagedigestexport [{"name":"image","digest":"sha256:eed29..660"}]
+    command: ["/ko-app/imagedigestexporter"]
+    securityContext:
+      runAsUser: 0
+    args:
+    - -images=[{"name":"$(params.IMAGE)","type":"image","url":"$(params.IMAGE)","digest":"","OutputImageDir":"$(workspaces.source.path)/$(params.CONTEXT)/image-digest"}]
+    - -terminationMessagePath=$(params.CONTEXT)/image-digested
+  - name: digest-to-results
+    workingDir: $(workspaces.source.path)
+    image: stedolan/jq
+    script: |
+      cat $(params.CONTEXT)/image-digested | jq '.[0].value' -rj | tee /tekton/results/IMAGE_DIGEST
+---
+# This task deploys with kubectl apply -f <filename>
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: demo-deploy-kubectl
+spec:
+  params:
+  - name: path
+    description: Path to the manifest to apply
+  - name: yqArg
+    description: Okay this is a hack, but I didn't feel right hard-coding `-d1` down below
+  - name: yamlPathToImage
+    description: The path to the image to replace in the yaml manifest (arg to yq)
+  - name: imageURL
+    description: The URL of the image to deploy
+  workspaces:
+  - name: source
+  steps:
+  - name: replace-image
+    image: mikefarah/yq:3
+    command: ['yq']
+    args:
+    - "w"
+    - "-i"
+    - "$(params.yqArg)"
+    - "$(params.path)"
+    - "$(params.yamlPathToImage)"
+    - "$(params.imageURL)"
+  - name: run-kubectl
+    image: lachlanevenson/k8s-kubectl
+    command: ['kubectl']
+    args:
+    - 'apply'
+    - '-f'
+    - '$(params.path)'
+---
+# This Pipeline Builds two microservice images(https://github.com/GoogleContainerTools/skaffold/tree/master/examples/microservices)
+# from the Skaffold repo (https://github.com/GoogleContainerTools/skaffold) and deploys them to the repo currently running Tekton Pipelines.
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: "demo.pipeline"
+spec:
+  params:
+  - name: image-registry
+    default: gcr.io/christiewilson-catfactory
+  workspaces:
+  - name: git-source
+  tasks:
+  - name: fetch-from-git
+    taskRef:
+      name: git-clone
+    params:
+    - name: url
+      value: https://github.com/GoogleContainerTools/skaffold
+    - name: revision
+      value: v1.32.0
+    workspaces:
+    - name: output
+      workspace: git-source
+  - name: skaffold-unit-tests
+    runAfter: [fetch-from-git]
+    taskRef:
+      name: "unit.tests"
+    workspaces:
+    - name: source
+      workspace: git-source
+  - name: build-skaffold-web
+    runAfter: [skaffold-unit-tests]
+    taskRef:
+      name: kaniko
+    params:
+    - name: IMAGE
+      value: $(params.image-registry)/leeroy-web
+    - name: CONTEXT
+      value: examples/microservices/leeroy-web
+    - name: DOCKERFILE
+      value: $(workspaces.source.path)/examples/microservices/leeroy-web/Dockerfile
+    workspaces:
+    - name: source
+      workspace: git-source
+  - name: build-skaffold-app
+    runAfter: [skaffold-unit-tests]
+    taskRef:
+      name: kaniko
+    params:
+    - name: IMAGE
+      value: $(params.image-registry)/leeroy-app
+    - name: CONTEXT
+      value: examples/microservices/leeroy-app
+    - name: DOCKERFILE
+      value: $(workspaces.source.path)/examples/microservices/leeroy-app/Dockerfile
+    workspaces:
+    - name: source
+      workspace: git-source
+  - name: deploy-app
+    taskRef:
+      name: demo-deploy-kubectl
+    params:
+    - name: imageURL
+      value: $(params.image-registry)/leeroy-app@$(tasks.build-skaffold-app.results.IMAGE_DIGEST)
+    - name: path
+      value: $(workspaces.source.path)/examples/microservices/leeroy-app/kubernetes/deployment.yaml
+    - name: yqArg
+      value: "-d1"
+    - name: yamlPathToImage
+      value: "spec.template.spec.containers[0].image"
+    workspaces:
+    - name: source
+      workspace: git-source
+  - name: deploy-web
+    taskRef:
+      name: demo-deploy-kubectl
+    params:
+    - name: imageURL
+      value: $(params.image-registry)/leeroy-web@$(tasks.build-skaffold-web.results.IMAGE_DIGEST)
+    - name: path
+      value: $(workspaces.source.path)/examples/microservices/leeroy-web/kubernetes/deployment.yaml
+    - name: yqArg
+      value: "-d0"
+    - name: yamlPathToImage
+      value: "spec.template.spec.containers[0].image"
+    workspaces:
+    - name: source
+      workspace: git-source
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: demo-pipeline-run-1
+spec:
+  pipelineRef:
+    name: "demo.pipeline"
+  taskRunTemplate:
+    serviceAccountName: 'default'
+  workspaces:
+  - name: git-source
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

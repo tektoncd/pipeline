@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: git-resolver-
+spec:
+  workspaces:
+    - name: output
+      emptyDir: {}
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  params:
+    - name: url
+      value: https://github.com/kelseyhightower/nocode
+    - name: revision
+      value: master
+  taskRef:
+    resolver: git
+    params:
+      - name: url
+        value: https://github.com/tektoncd/catalog.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: task/git-clone/0.8/git-clone.yaml

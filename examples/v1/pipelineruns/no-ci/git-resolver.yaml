@@ -1,0 +1,48 @@
+# NOTE: The referenced Pipeline requires that the git-clone, buildpacks, and buildpacks-phase tasks from the Hub
+# are available in the namespace.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: git-resovler-buildpacks-ws-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: git-resolver-
+spec:
+  pipelineRef:
+    resolver: bundles
+    params:
+      - name: url
+        value: https://github.com/tektoncd/catalog.git
+      - name: revision
+        value: main
+      - name: pathInRepo
+        value: pipeline/buildpacks/0.2/buildpacks.yaml
+  params:
+    - name: BUILDER_IMAGE
+      value: docker.io/cnbs/sample-builder:bionic@sha256:6c03dd604503b59820fd15adbc65c0a077a47e31d404a3dcad190f3179e920b5
+    - name: TRUST_BUILDER
+      value: "false"
+    - name: APP_IMAGE
+      value: localhost:5000/buildpacks-app
+    - name: SOURCE_URL
+      value: https://github.com/buildpacks/samples
+    - name: SOURCE_SUBPATH
+      value: apps/ruby-bundler
+  workspaces:
+    - name: source-ws
+      subPath: source
+      persistentVolumeClaim:
+        claimName: git-resolver-buildpacks-ws-pvc
+    - name: cache-ws
+      subPath: cache
+      persistentVolumeClaim:
+        claimName: git-resolver-buildpacks-ws-pvc

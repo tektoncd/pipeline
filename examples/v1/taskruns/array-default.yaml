@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: array-with-default-
+spec:
+  params:
+    - name: array-to-echo
+      value:
+        - "foo"
+        - "bar"
+  taskSpec:
+    params:
+      - name: array-to-echo
+        type: array
+      - name: another-array-to-echo
+        type: array
+        default:
+        - "foo-default"
+        - "bar-default"
+      - name: string-to-echo
+        type: string
+        default: "baz"
+    steps:
+      # this step should echo "foo bar foo-default bar-default baz"
+      - name: echo-params
+        image: bash:3.2
+        args: [
+          "echo",
+          "$(params.array-to-echo[*])",
+          "$(params.another-array-to-echo[*])",
+          "$(params.string-to-echo)",
+        ]

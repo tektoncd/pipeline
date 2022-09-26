@@ -1,0 +1,57 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: pipeline-with-extra-params
+spec:
+  params:
+  - name: pl-param-x
+    type: string
+  - name: pl-param-y
+    type: string
+  tasks:
+  - name: add-params
+    taskRef:
+      name: add-params
+    params:
+    - name: a
+      value: "$(params.pl-param-x)"
+    - name: b
+      value: "$(params.pl-param-y)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: add-params
+  annotations:
+    description: |
+      A simple task that sums the two provided integers
+spec:
+  params:
+  - name: a
+    type: string
+    description: The first integer
+  - name: b
+    type: string
+    description: The second integer
+  steps:
+  - name: sum
+    image: bash:latest
+    script: |
+      #!/usr/bin/env bash
+      echo -n $(( "$(inputs.params.a)" + "$(inputs.params.b)" ))
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-with-extra-params
+spec:
+  params:
+  - name: pl-param-x
+    value: "100"
+  - name: pl-param-y
+    value: "200"
+    # the extra parameter
+  - name: pl-param-z
+    value: "300"
+  pipelineRef:
+    name: pipeline-with-extra-params
