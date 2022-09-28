@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"time"
 
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrv1beta1 "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
@@ -192,9 +193,9 @@ func (r *Reconciler) MarkFailed(ctx context.Context, rr *v1beta1.ResolutionReque
 // a ResolutionRequest with its data and annotations once successfully
 // resolved.
 type statusDataPatch struct {
-	Annotations map[string]string     `json:"annotations"`
-	Data        string                `json:"data"`
-	Source      *v1beta1.ConfigSource `json:"source"`
+	Annotations map[string]string             `json:"annotations"`
+	Data        string                        `json:"data"`
+	Source      *pipelinev1beta1.ConfigSource `json:"source"`
 }
 
 func (r *Reconciler) writeResolvedData(ctx context.Context, rr *v1beta1.ResolutionRequest, resource ResolvedResource) error {

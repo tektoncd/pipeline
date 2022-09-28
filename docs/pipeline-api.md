@@ -29,63 +29,6 @@ weight: 1000
 </div>
 Resource Types:
 <ul></ul>
-<h3 id="resolution.tekton.dev/v1alpha1.ConfigSource">ConfigSource
-</h3>
-<p>
-(<em>Appears on:</em><a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>)
-</p>
-<div>
-<p>ConfigSource records where the task/pipeline file came from.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>uri</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>URI indicating the identity of the source of the config.
-<a href="https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI">https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI</a>
-Example: <a href="https://github.com/tektoncd/catalog">https://github.com/tektoncd/catalog</a></p>
-</td>
-</tr>
-<tr>
-<td>
-<code>digest</code><br/>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<p>Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
-<a href="https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet">https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet</a>
-Example: {&ldquo;sha1&rdquo;: &ldquo;f99d13e554ffcb696dee719fa85b695cb5b0f428&rdquo;}</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>entryPoint</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>EntryPoint identifying the entry point into the build. This is often a path to a
-configuration file and/or a target label within that file.
-Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequest">ResolutionRequest
 </h3>
 <div>
@@ -282,7 +225,7 @@ object.</p>
 <td>
 <code>source</code><br/>
 <em>
-<a href="#resolution.tekton.dev/v1alpha1.ConfigSource">
+<a href="#tekton.dev/v1beta1.ConfigSource">
 ConfigSource
 </a>
 </em>
@@ -300,63 +243,6 @@ file came from including the url, digest and the entrypoint.</p>
 </div>
 Resource Types:
 <ul></ul>
-<h3 id="resolution.tekton.dev/v1beta1.ConfigSource">ConfigSource
-</h3>
-<p>
-(<em>Appears on:</em><a href="#resolution.tekton.dev/v1beta1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>)
-</p>
-<div>
-<p>ConfigSource records where the task/pipeline file came from.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>uri</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>URI indicating the identity of the source of the config.
-<a href="https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI">https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI</a>
-Example: <a href="https://github.com/tektoncd/catalog">https://github.com/tektoncd/catalog</a></p>
-</td>
-</tr>
-<tr>
-<td>
-<code>digest</code><br/>
-<em>
-map[string]string
-</em>
-</td>
-<td>
-<p>Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
-<a href="https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet">https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet</a>
-Example: {&ldquo;sha1&rdquo;: &ldquo;f99d13e554ffcb696dee719fa85b695cb5b0f428&rdquo;}</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>entryPoint</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>EntryPoint identifying the entry point into the build. This is often a path to a
-configuration file and/or a target label within that file.
-Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="resolution.tekton.dev/v1beta1.ResolutionRequest">ResolutionRequest
 </h3>
 <div>
@@ -557,7 +443,7 @@ object.</p>
 <td>
 <code>source</code><br/>
 <em>
-<a href="#resolution.tekton.dev/v1beta1.ConfigSource">
+<a href="#tekton.dev/v1beta1.ConfigSource">
 ConfigSource
 </a>
 </em>
@@ -1418,6 +1304,66 @@ string
 <td>
 <em>(Optional)</em>
 <p>WhenExpressions is the list of checks guarding the execution of the PipelineTask</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.ConfigSource">ConfigSource
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.Provenance">Provenance</a>)
+</p>
+<div>
+<p>ConfigSource identifies the source where a resource came from.
+This can include Git repositories, Task Bundles, file checksums, or other information
+that allows users to identify where the resource came from and what version was used.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>uri</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>URI indicates the identity of the source of the config.
+Definition: <a href="https://slsa.dev/provenance/v0.2#invocation.configSource.uri">https://slsa.dev/provenance/v0.2#invocation.configSource.uri</a>
+Example: &ldquo;<a href="https://github.com/tektoncd/catalog&quot;">https://github.com/tektoncd/catalog&rdquo;</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>digest</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
+Definition: <a href="https://slsa.dev/provenance/v0.2#invocation.configSource.digest">https://slsa.dev/provenance/v0.2#invocation.configSource.digest</a>
+Example: {&ldquo;sha1&rdquo;: &ldquo;f99d13e554ffcb696dee719fa85b695cb5b0f428&rdquo;}</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>entryPoint</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>EntryPoint identifies the entry point into the build. This is often a path to a
+configuration file and/or a target label within that file.
+Definition: <a href="https://slsa.dev/provenance/v0.2#invocation.configSource.entryPoint">https://slsa.dev/provenance/v0.2#invocation.configSource.entryPoint</a>
+Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
 </td>
 </tr>
 </tbody>
@@ -2358,6 +2304,19 @@ Kubernetes meta/v1.Time
 <p>FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>provenance</code><br/>
+<em>
+<a href="#tekton.dev/v1.Provenance">
+Provenance
+</a>
+</em>
+</td>
+<td>
+<p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus
@@ -3002,6 +2961,42 @@ ParamType
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1.Provenance">Provenance
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+<p>Provenance contains some key authenticated metadata about how a software artifact was
+built (what sources, what inputs/outputs, etc.). For now, it only contains the subfield
+<code>ConfigSource</code> that identifies the source where a build config file came from.
+In future, it can be expanded as needed to include more metadata about the build.
+This field aims to be used to carry minimum amount of the authenticated metadata in *Run status
+so that Tekton Chains can pick it up and record in the provenance it generates.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>configSource</code><br/>
+<em>
+<a href="#tekton.dev/v1.ConfigSource">
+ConfigSource
+</a>
+</em>
+</td>
+<td>
+<p>ConfigSource identifies the source where a resource came from.</p>
 </td>
 </tr>
 </tbody>
@@ -5082,6 +5077,19 @@ TaskSpec
 </td>
 <td>
 <p>TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provenance</code><br/>
+<em>
+<a href="#tekton.dev/v1.Provenance">
+Provenance
+</a>
+</em>
+</td>
+<td>
+<p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
 </td>
 </tr>
 </tbody>
@@ -8170,6 +8178,66 @@ int32
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.ConfigSource">ConfigSource
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Provenance">Provenance</a>, <a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>)
+</p>
+<div>
+<p>ConfigSource identifies the source where a resource came from.
+This can include Git repositories, Task Bundles, file checksums, or other information
+that allows users to identify where the resource came from and what version was used.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>uri</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>URI indicates the identity of the source of the config.
+Definition: <a href="https://slsa.dev/provenance/v0.2#invocation.configSource.uri">https://slsa.dev/provenance/v0.2#invocation.configSource.uri</a>
+Example: &ldquo;<a href="https://github.com/tektoncd/catalog&quot;">https://github.com/tektoncd/catalog&rdquo;</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>digest</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
+Definition: <a href="https://slsa.dev/provenance/v0.2#invocation.configSource.digest">https://slsa.dev/provenance/v0.2#invocation.configSource.digest</a>
+Example: {&ldquo;sha1&rdquo;: &ldquo;f99d13e554ffcb696dee719fa85b695cb5b0f428&rdquo;}</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>entryPoint</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>EntryPoint identifies the entry point into the build. This is often a path to a
+configuration file and/or a target label within that file.
+Definition: <a href="https://slsa.dev/provenance/v0.2#invocation.configSource.entryPoint">https://slsa.dev/provenance/v0.2#invocation.configSource.entryPoint</a>
+Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec
 </h3>
 <p>
@@ -9620,6 +9688,19 @@ Kubernetes meta/v1.Time
 <p>FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>provenance</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Provenance">
+Provenance
+</a>
+</em>
+</td>
+<td>
+<p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="tekton.dev/v1beta1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus
@@ -10398,6 +10479,42 @@ ParamType
 </em>
 </td>
 <td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1beta1.Provenance">Provenance
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>, <a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
+</p>
+<div>
+<p>Provenance contains some key authenticated metadata about how a software artifact was
+built (what sources, what inputs/outputs, etc.). For now, it only contains the subfield
+<code>ConfigSource</code> that identifies the source where a build config file came from.
+In future, it can be expanded as needed to include more metadata about the build.
+This field aims to be used to carry minimum amount of the authenticated metadata in *Run status
+so that Tekton Chains can pick it up and record in the provenance it generates.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>configSource</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ConfigSource">
+ConfigSource
+</a>
+</em>
+</td>
+<td>
+<p>ConfigSource identifies the source where a resource came from.</p>
 </td>
 </tr>
 </tbody>
@@ -13005,6 +13122,19 @@ TaskSpec
 </td>
 <td>
 <p>TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provenance</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.Provenance">
+Provenance
+</a>
+</em>
+</td>
+<td>
+<p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
 </td>
 </tr>
 </tbody>

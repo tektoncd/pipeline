@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -80,28 +81,10 @@ type ResolutionRequestStatusFields struct {
 	Data string `json:"data"`
 	// Source is the source reference of the remote data that records where the remote
 	// file came from including the url, digest and the entrypoint.
-	Source *ConfigSource `json:"source"`
+	Source *pipelinev1beta1.ConfigSource `json:"source"`
 }
 
 // GetStatus implements KRShaped.
 func (rr *ResolutionRequest) GetStatus() *duckv1.Status {
 	return &rr.Status.Status
-}
-
-// ConfigSource records where the task/pipeline file came from.
-type ConfigSource struct {
-	// URI indicating the identity of the source of the config.
-	// https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI
-	// Example: https://github.com/tektoncd/catalog
-	URI string `json:"uri,omitempty"`
-
-	// Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
-	// https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet
-	// Example: {"sha1": "f99d13e554ffcb696dee719fa85b695cb5b0f428"}
-	Digest map[string]string `json:"digest,omitempty"`
-
-	// EntryPoint identifying the entry point into the build. This is often a path to a
-	// configuration file and/or a target label within that file.
-	// Example: "task/git-clone/0.8/git-clone.yaml"
-	EntryPoint string `json:"entryPoint,omitempty"`
 }
