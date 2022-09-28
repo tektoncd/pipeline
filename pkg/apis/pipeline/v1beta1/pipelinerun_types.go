@@ -456,6 +456,9 @@ type PipelineRunStatusFields struct {
 	// FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.
 	// +optional
 	FinallyStartTime *metav1.Time `json:"finallyStartTime,omitempty"`
+
+	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
+	Provenance *Provenance `json:"provenance,omitempty"`
 }
 
 // SkippedTask is used to describe the Tasks that were skipped due to their When Expressions

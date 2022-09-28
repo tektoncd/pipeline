@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -86,7 +85,7 @@ type ResolvedResource struct {
 	// Annotations to return when resolution is complete.
 	ResolvedAnnotations map[string]string
 	// ResolvedSource to return the source reference of the remote data
-	ResolvedSource *v1beta1.ConfigSource
+	ResolvedSource *pipelinev1beta1.ConfigSource
 }
 
 // Data implements resolution.ResolvedResource and returns the mock
@@ -103,6 +102,6 @@ func (r *ResolvedResource) Annotations() map[string]string {
 
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r *ResolvedResource) Source() *v1beta1.ConfigSource {
+func (r *ResolvedResource) Source() *pipelinev1beta1.ConfigSource {
 	return r.ResolvedSource
 }

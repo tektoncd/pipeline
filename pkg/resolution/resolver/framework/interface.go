@@ -21,7 +21,6 @@ import (
 	"time"
 
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 )
 
 // Resolver is the interface to implement for type-specific resource
@@ -97,5 +96,5 @@ type TimedResolution interface {
 type ResolvedResource interface {
 	Data() []byte
 	Annotations() map[string]string
-	Source() *v1beta1.ConfigSource
+	Source() *pipelinev1beta1.ConfigSource
 }

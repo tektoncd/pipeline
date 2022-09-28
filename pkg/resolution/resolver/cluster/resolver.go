@@ -24,7 +24,6 @@ import (
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -183,7 +182,7 @@ func (r *ResolvedClusterResource) Annotations() map[string]string {
 
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r ResolvedClusterResource) Source() *v1beta1.ConfigSource {
+func (r ResolvedClusterResource) Source() *pipelinev1beta1.ConfigSource {
 	return nil
 }
 

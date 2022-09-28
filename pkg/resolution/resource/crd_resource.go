@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	rrlisters "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
@@ -153,6 +154,6 @@ func (r readOnlyResolutionRequest) Data() ([]byte, error) {
 	return decodedBytes, nil
 }
 
-func (r readOnlyResolutionRequest) Source() *v1beta1.ConfigSource {
+func (r readOnlyResolutionRequest) Source() *pipelinev1beta1.ConfigSource {
 	return r.req.Status.Source
 }

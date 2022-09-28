@@ -37,6 +37,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDeliveryState":         schema_pkg_apis_pipeline_v1beta1_CloudEventDeliveryState(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask":                     schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTaskList":                 schema_pkg_apis_pipeline_v1beta1_ClusterTaskList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource":                    schema_pkg_apis_pipeline_v1beta1_ConfigSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRun":                       schema_pkg_apis_pipeline_v1beta1_CustomRun(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRunList":                   schema_pkg_apis_pipeline_v1beta1_CustomRunList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRunSpec":                   schema_pkg_apis_pipeline_v1beta1_CustomRunSpec(ref),
@@ -74,6 +75,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec":             schema_pkg_apis_pipeline_v1beta1_PipelineTaskRunSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration":    schema_pkg_apis_pipeline_v1beta1_PipelineWorkspaceDeclaration(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec":                    schema_pkg_apis_pipeline_v1beta1_PropertySpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance":                      schema_pkg_apis_pipeline_v1beta1_Provenance(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResolverRef":                     schema_pkg_apis_pipeline_v1beta1_ResolverRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResultRef":                       schema_pkg_apis_pipeline_v1beta1_ResultRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar":                         schema_pkg_apis_pipeline_v1beta1_Sidecar(ref),
@@ -109,7 +111,6 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceDeclaration":            schema_pkg_apis_pipeline_v1beta1_WorkspaceDeclaration(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspacePipelineTaskBinding":    schema_pkg_apis_pipeline_v1beta1_WorkspacePipelineTaskBinding(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceUsage":                  schema_pkg_apis_pipeline_v1beta1_WorkspaceUsage(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource":                  schema_pkg_apis_resolution_v1beta1_ConfigSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequest":             schema_pkg_apis_resolution_v1beta1_ResolutionRequest(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestList":         schema_pkg_apis_resolution_v1beta1_ResolutionRequestList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestSpec":         schema_pkg_apis_resolution_v1beta1_ResolutionRequestSpec(ref),
@@ -610,6 +611,49 @@ func schema_pkg_apis_pipeline_v1beta1_ClusterTaskList(ref common.ReferenceCallba
 		},
 		Dependencies: []string{
 			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1beta1_ConfigSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ConfigSource identifies the source where a resource came from. This can include Git repositories, Task Bundles, file checksums, or other information that allows users to identify where the resource came from and what version was used.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"uri": {
+						SchemaProps: spec.SchemaProps{
+							Description: "URI indicates the identity of the source of the config. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.uri Example: \"https://github.com/tektoncd/catalog\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"digest": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.digest Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"entryPoint": {
+						SchemaProps: spec.SchemaProps{
+							Description: "EntryPoint identifies the entry point into the build. This is often a path to a configuration file and/or a target label within that file. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.entryPoint Example: \"task/git-clone/0.8/git-clone.yaml\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -2047,11 +2091,17 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref common.ReferenceCall
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
+					"provenance": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -2171,11 +2221,17 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref common.Referen
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Time"),
 						},
 					},
+					"provenance": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -2847,6 +2903,27 @@ func schema_pkg_apis_pipeline_v1beta1_PropertySpec(ref common.ReferenceCallback)
 				},
 			},
 		},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1beta1_Provenance(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). For now, it only contains the subfield `ConfigSource` that identifies the source where a build config file came from. In future, it can be expanded as needed to include more metadata about the build. This field aims to be used to carry minimum amount of the authenticated metadata in *Run status so that Tekton Chains can pick it up and record in the provenance it generates.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"configSource": {
+						SchemaProps: spec.SchemaProps{
+							Description: "ConfigSource identifies the source where a resource came from.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"},
 	}
 }
 
@@ -4992,12 +5069,18 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref common.ReferenceCallback
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec"),
 						},
 					},
+					"provenance": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance"),
+						},
+					},
 				},
 				Required: []string{"podName"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDelivery", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SidecarState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDelivery", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SidecarState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -5148,12 +5231,18 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref common.ReferenceCa
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec"),
 						},
 					},
+					"provenance": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance"),
+						},
+					},
 				},
 				Required: []string{"podName"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDelivery", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SidecarState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDelivery", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Provenance", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SidecarState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepState", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatus", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec", "k8s.io/apimachinery/pkg/apis/meta/v1.Time"},
 	}
 }
 
@@ -5608,49 +5697,6 @@ func schema_pkg_apis_pipeline_v1beta1_WorkspaceUsage(ref common.ReferenceCallbac
 	}
 }
 
-func schema_pkg_apis_resolution_v1beta1_ConfigSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ConfigSource records where the task/pipeline file came from.",
-				Type:        []string{"object"},
-				Properties: map[string]spec.Schema{
-					"uri": {
-						SchemaProps: spec.SchemaProps{
-							Description: "URI indicating the identity of the source of the config. https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI Example: https://github.com/tektoncd/catalog",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-					"digest": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
-						},
-					},
-					"entryPoint": {
-						SchemaProps: spec.SchemaProps{
-							Description: "EntryPoint identifying the entry point into the build. This is often a path to a configuration file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
-				},
-			},
-		},
-	}
-}
-
 func schema_pkg_apis_resolution_v1beta1_ResolutionRequest(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -5844,7 +5890,7 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatus(ref common.Refer
 					"source": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Source is the source reference of the remote data that records the url, digest and the entrypoint.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
 						},
 					},
 				},
@@ -5852,7 +5898,7 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatus(ref common.Refer
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
@@ -5874,7 +5920,7 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref common
 					"source": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Source is the source reference of the remote data that records the url, digest and the entrypoint.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"),
 						},
 					},
 				},
@@ -5882,7 +5928,7 @@ func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref common
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ConfigSource"},
 	}
 }
 

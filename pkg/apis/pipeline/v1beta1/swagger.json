@@ -431,11 +431,11 @@
       }
     },
     "v1beta1.ConfigSource": {
-      "description": "ConfigSource records where the task/pipeline file came from.",
+      "description": "ConfigSource identifies the source where a resource came from. This can include Git repositories, Task Bundles, file checksums, or other information that allows users to identify where the resource came from and what version was used.",
       "type": "object",
       "properties": {
         "digest": {
-          "description": "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
+          "description": "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.digest Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
           "type": "object",
           "additionalProperties": {
             "type": "string",
@@ -443,11 +443,11 @@
           }
         },
         "entryPoint": {
-          "description": "EntryPoint identifying the entry point into the build. This is often a path to a configuration file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
+          "description": "EntryPoint identifies the entry point into the build. This is often a path to a configuration file and/or a target label within that file. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.entryPoint Example: \"task/git-clone/0.8/git-clone.yaml\"",
           "type": "string"
         },
         "uri": {
-          "description": "URI indicating the identity of the source of the config. https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI Example: https://github.com/tektoncd/catalog",
+          "description": "URI indicates the identity of the source of the config. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.uri Example: \"https://github.com/tektoncd/catalog\"",
           "type": "string"
         }
       }
@@ -1200,6 +1200,10 @@
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "$ref": "#/definitions/v1beta1.Provenance"
+        },
         "runs": {
           "description": "Deprecated - use ChildReferences instead. map of PipelineRunRunStatus with the run name as the key",
           "type": "object",
@@ -1262,6 +1266,10 @@
         "pipelineSpec": {
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
+        },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "$ref": "#/definitions/v1beta1.Provenance"
         },
         "runs": {
           "description": "Deprecated - use ChildReferences instead. map of PipelineRunRunStatus with the run name as the key",
@@ -1635,6 +1643,16 @@
       "properties": {
         "type": {
           "type": "string"
+        }
+      }
+    },
+    "v1beta1.Provenance": {
+      "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). For now, it only contains the subfield `ConfigSource` that identifies the source where a build config file came from. In future, it can be expanded as needed to include more metadata about the build. This field aims to be used to carry minimum amount of the authenticated metadata in *Run status so that Tekton Chains can pick it up and record in the provenance it generates.",
+      "type": "object",
+      "properties": {
+        "configSource": {
+          "description": "ConfigSource identifies the source where a resource came from.",
+          "$ref": "#/definitions/v1beta1.ConfigSource"
         }
       }
     },
@@ -2875,6 +2893,10 @@
           "type": "string",
           "default": ""
         },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "$ref": "#/definitions/v1beta1.Provenance"
+        },
         "resourcesResult": {
           "description": "Results from Resources built during the taskRun. currently includes the digest of build container images",
           "type": "array",
@@ -2954,6 +2976,10 @@
           "description": "PodName is the name of the pod responsible for executing this task's steps.",
           "type": "string",
           "default": ""
+        },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "$ref": "#/definitions/v1beta1.Provenance"
         },
         "resourcesResult": {
           "description": "Results from Resources built during the taskRun. currently includes the digest of build container images",

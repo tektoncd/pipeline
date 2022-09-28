@@ -24,7 +24,6 @@ import (
 	"time"
 
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 )
 
@@ -51,7 +50,7 @@ var _ Resolver = &FakeResolver{}
 type FakeResolvedResource struct {
 	Content       string
 	AnnotationMap map[string]string
-	ContentSource *v1beta1.ConfigSource
+	ContentSource *pipelinev1beta1.ConfigSource
 	ErrorWith     string
 	WaitFor       time.Duration
 }
@@ -68,7 +67,7 @@ func (f *FakeResolvedResource) Annotations() map[string]string {
 
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (f *FakeResolvedResource) Source() *v1beta1.ConfigSource {
+func (f *FakeResolvedResource) Source() *pipelinev1beta1.ConfigSource {
 	return f.ContentSource
 }
 
