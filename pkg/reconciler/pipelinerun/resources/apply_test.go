@@ -1049,6 +1049,47 @@ func TestApplyParameters(t *testing.T) {
 			}},
 		},
 		alpha: true,
+	}, {
+		name: "single parameter in finally workspace subpath",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
+				{Name: "second-param", Type: v1beta1.ParamTypeString},
+			},
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param)")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
+				},
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "$(params.second-param)",
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value")}},
+		expected: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeString, Default: v1beta1.NewStructuredValues("default-value")},
+				{Name: "second-param", Type: v1beta1.ParamTypeString},
+			},
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("default-value")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
+				},
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "second-value",
+					},
+				},
+			}},
+		},
 	},
 	} {
 		ctx := context.Background()
