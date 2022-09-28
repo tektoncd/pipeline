@@ -9,19 +9,22 @@ import "context"
 type (
 	// Content stores the contents of a repository file.
 	Content struct {
-		Path string
-		Data []byte
-		Sha  string
+		Path   string
+		Data   []byte
+		Sha    string
+		BlobID string
 	}
 
 	// ContentParams provide parameters for creating and
 	// updating repository content.
 	ContentParams struct {
-		Ref     string
-		Branch  string
-		Message string
-		Data    []byte
-		Sha     string
+		Ref       string
+		Branch    string
+		Message   string
+		Data      []byte
+		Sha       string
+		BlobID    string
+		Signature Signature
 	}
 
 	// FileEntry returns the details of a file
@@ -34,12 +37,12 @@ type (
 		Link string
 	}
 
-	// ContentService provides access to repositroy content.
+	// ContentService provides access to repository content.
 	ContentService interface {
 		// Find returns the repository file content by path.
 		Find(ctx context.Context, repo, path, ref string) (*Content, *Response, error)
 
-		// Lists the files or directories at the given path
+		// List the files or directories at the given path
 		List(ctx context.Context, repo, path, ref string) ([]*FileEntry, *Response, error)
 
 		// Create creates a new repository file.
@@ -48,7 +51,7 @@ type (
 		// Update updates a repository file.
 		Update(ctx context.Context, repo, path string, params *ContentParams) (*Response, error)
 
-		// Delete deletes a reository file.
-		Delete(ctx context.Context, repo, path, ref string) (*Response, error)
+		// Delete deletes a repository file.
+		Delete(ctx context.Context, repo, path string, params *ContentParams) (*Response, error)
 	}
 )

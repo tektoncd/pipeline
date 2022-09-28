@@ -122,6 +122,16 @@ type (
 		Link   string
 	}
 
+	// DeployStatus represents a deployment status.
+	DeployStatus struct {
+		Number         int64
+		State          State
+		Desc           string
+		Target         string
+		Environment    string
+		EnvironmentURL string
+	}
+
 	// RepositoryService provides access to repository resources.
 	RepositoryService interface {
 		// Find returns a repository by name.
@@ -136,10 +146,10 @@ type (
 		// List returns a list of repositories.
 		List(context.Context, *ListOptions) ([]*Repository, *Response, error)
 
-		// List returns a list of repositories for a given organisation
+		// ListOrganisation returns a list of repositories for a given organisation
 		ListOrganisation(context.Context, string, *ListOptions) ([]*Repository, *Response, error)
 
-		// List returns a list of repositories for a given user.
+		// ListUser returns a list of repositories for a given user.
 		ListUser(context.Context, string, *ListOptions) ([]*Repository, *Response, error)
 
 		// ListLabels returns the labels on a repo
@@ -157,7 +167,7 @@ type (
 		// Create creates a new repository .
 		Create(context.Context, *RepositoryInput) (*Repository, *Response, error)
 
-		// Fork creatings a new repository as a fork of an existing one.
+		// Fork creates a new repository as a fork of an existing one.
 		Fork(context.Context, *RepositoryInput, string) (*Repository, *Response, error)
 
 		// CreateHook creates a new repository webhook.

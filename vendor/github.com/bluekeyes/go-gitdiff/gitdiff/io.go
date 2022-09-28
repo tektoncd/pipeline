@@ -5,21 +5,23 @@ import (
 	"io"
 )
 
+const (
+	byteBufferSize  = 32 * 1024 // from io.Copy
+	lineBufferSize  = 32
+	indexBufferSize = 1024
+)
+
 // LineReaderAt is the interface that wraps the ReadLinesAt method.
 //
-// ReadLinesAt reads len(lines) into lines starting at line offset in the
-// input source. It returns number of full lines read (0 <= n <= len(lines))
-// and any error encountered. Line numbers are zero-indexed.
+// ReadLinesAt reads len(lines) into lines starting at line offset. It returns
+// the number of lines read (0 <= n <= len(lines)) and any error encountered.
+// Line numbers are zero-indexed.
 //
 // If n < len(lines), ReadLinesAt returns a non-nil error explaining why more
 // lines were not returned.
 //
-// Each full line includes the line ending character(s). If the last line of
-// the input does not have a line ending character, ReadLinesAt returns the
-// content of the line and io.EOF.
-//
-// If the content of the input source changes after the first call to
-// ReadLinesAt, the behavior of future calls is undefined.
+// Lines read by ReadLinesAt include the newline character. The last line does
+// not have a final newline character if the input ends without one.
 type LineReaderAt interface {
 	ReadLinesAt(lines [][]byte, offset int64) (n int, err error)
 }
@@ -65,7 +67,7 @@ func (r *lineReaderAt) ReadLinesAt(lines [][]byte, offset int64) (n int, err err
 		lines[n] = buf[start:end]
 	}
 
-	if n < count || buf[len(buf)-1] != '\n' {
+	if n < count {
 		return n, io.EOF
 	}
 	return n, nil
@@ -75,13 +77,9 @@ func (r *lineReaderAt) ReadLinesAt(lines [][]byte, offset int64) (n int, err err
 // for line or a read returns io.EOF. It returns an error if and only if there
 // is an error reading data.
 func (r *lineReaderAt) indexTo(line int64) error {
-	var buf [1024]byte
+	var buf [indexBufferSize]byte
 
-	var offset int64
-	if len(r.index) > 0 {
-		offset = r.index[len(r.index)-1]
-	}
-
+	offset := r.lastOffset()
 	for int64(len(r.index)) < line {
 		n, err := r.r.ReadAt(buf[:], offset)
 		if err != nil && err != io.EOF {
@@ -94,7 +92,7 @@ func (r *lineReaderAt) indexTo(line int64) error {
 			}
 		}
 		if err == io.EOF {
-			if n > 0 && buf[n-1] != '\n' {
+			if offset > r.lastOffset() {
 				r.index = append(r.index, offset)
 			}
 			r.eof = true
@@ -102,6 +100,13 @@ func (r *lineReaderAt) indexTo(line int64) error {
 		}
 	}
 	return nil
+}
+
+func (r *lineReaderAt) lastOffset() int64 {
+	if n := len(r.index); n > 0 {
+		return r.index[n-1]
+	}
+	return 0
 }
 
 // readBytes reads the bytes of the n lines starting at line and returns the
@@ -146,11 +151,6 @@ func isLen(r io.ReaderAt, n int64) (bool, error) {
 	}
 	return false, err
 }
-
-const (
-	byteBufferSize = 32 * 1024 // from io.Copy
-	lineBufferSize = 32
-)
 
 // copyFrom writes bytes starting from offset off in src to dst stopping at the
 // end of src or at the first error. copyFrom returns the number of bytes

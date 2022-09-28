@@ -231,10 +231,7 @@ func (a *Applier) ApplyTextFragment(dst io.Writer, f *TextFragment) error {
 
 	preimage := make([][]byte, fragEnd-start)
 	n, err := a.lineSrc.ReadLinesAt(preimage, start)
-	switch {
-	case err == nil:
-	case err == io.EOF && n == len(preimage): // last line of frag has no newline character
-	default:
+	if err != nil {
 		return applyError(err, lineNum(start+int64(n)))
 	}
 

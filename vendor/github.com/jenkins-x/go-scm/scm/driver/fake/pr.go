@@ -138,6 +138,10 @@ func (s *pullService) ListChanges(ctx context.Context, repo string, number int, 
 	return f.PullRequestChanges[number][returnStart:returnEnd], nil, nil
 }
 
+func (s *pullService) ListCommits(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Commit, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
 func (s *pullService) ListComments(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Comment, *scm.Response, error) {
 	f := s.data
 	return append([]*scm.Comment{}, f.PullRequestComments[number]...), nil, nil

@@ -76,6 +76,10 @@ func (s *pullService) ListChanges(ctx context.Context, repo string, number int, 
 	return changes, res, nil
 }
 
+func (s *pullService) ListCommits(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Commit, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
 func (s *pullService) Merge(ctx context.Context, repo string, index int, options *scm.PullRequestMergeOptions) (*scm.Response, error) {
 	namespace, name := scm.Split(repo)
 	in := gitea.MergePullRequestOption{}

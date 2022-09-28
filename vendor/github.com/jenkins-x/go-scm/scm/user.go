@@ -23,6 +23,13 @@ type (
 		Updated time.Time
 	}
 
+	// Email represents a user email.
+	Email struct {
+		Value    string
+		Primary  bool
+		Verified bool
+	}
+
 	// UserToken represents a user token.
 	UserToken struct {
 		ID    int64

@@ -102,8 +102,8 @@ func (c contentService) Update(_ context.Context, repo, path string, params *scm
 	return nil, nil
 }
 
-func (c contentService) Delete(_ context.Context, repo, path, ref string) (*scm.Response, error) {
-	f, err := c.path(repo, path, ref)
+func (c contentService) Delete(_ context.Context, repo, path string, params *scm.ContentParams) (*scm.Response, error) {
+	f, err := c.path(repo, path, params.Ref)
 	if err != nil {
 		return nil, err
 	}

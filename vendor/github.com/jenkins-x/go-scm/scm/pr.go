@@ -136,6 +136,9 @@ type (
 		// ListChanges returns the pull request changeset.
 		ListChanges(context.Context, string, int, *ListOptions) ([]*Change, *Response, error)
 
+		// ListCommits returns the pull request commits.
+		ListCommits(context.Context, string, int, *ListOptions) ([]*Commit, *Response, error)
+
 		// ListComments returns the pull request comment list.
 		ListComments(context.Context, string, int, *ListOptions) ([]*Comment, *Response, error)
 
