@@ -1340,6 +1340,7 @@ func TestStepAndSidecarWorkspaces(t *testing.T) {
 			}
 			ctx := config.EnableAlphaAPIFields(context.Background())
 			ts.SetDefaults(ctx)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 			if err := ts.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
 			}
@@ -1413,48 +1414,76 @@ func TestStepAndSidecarWorkspacesErrors(t *testing.T) {
 func TestStepOnError(t *testing.T) {
 	tests := []struct {
 		name          string
+		params        []v1.ParamSpec
 		steps         []v1.Step
 		expectedError *apis.FieldError
 	}{{
-		name: "valid step - valid onError usage - set to continue - alpha API",
+		name: "valid step - valid onError usage - set to continue",
 		steps: []v1.Step{{
 			OnError: v1.Continue,
 			Image:   "image",
 			Args:    []string{"arg"},
 		}},
 	}, {
-		name: "valid step - valid onError usage - set to stopAndFail - alpha API",
+		name: "valid step - valid onError usage - set to stopAndFail",
 		steps: []v1.Step{{
 			OnError: v1.StopAndFail,
 			Image:   "image",
 			Args:    []string{"arg"},
 		}},
 	}, {
-		name: "invalid step - onError set to invalid value - alpha API",
+		name: "valid step - valid onError usage - set to a task parameter",
+		params: []v1.ParamSpec{{
+			Name:    "CONTINUE",
+			Default: &v1.ParamValue{Type: v1.ParamTypeString, StringVal: string(v1.Continue)},
+		}},
+		steps: []v1.Step{{
+			OnError: "$(params.CONTINUE)",
+			Image:   "image",
+			Args:    []string{"arg"},
+		}},
+	}, {
+		name: "invalid step - onError set to invalid value",
 		steps: []v1.Step{{
 			OnError: "onError",
 			Image:   "image",
 			Args:    []string{"arg"},
 		}},
 		expectedError: &apis.FieldError{
-			Message: "invalid value: onError",
-			Paths:   []string{"onError"},
-			Details: "Task step onError must be either continue or stopAndFail",
+			Message: fmt.Sprintf("invalid value: \"onError\""),
+			Paths:   []string{"steps[0].onError"},
+			Details: "Task step onError must be either \"continue\" or \"stopAndFail\"",
+		},
+	}, {
+		name: "invalid step - invalid onError usage - set to a parameter which does not exist in the task",
+		steps: []v1.Step{{
+			OnError: "$(params.CONTINUE)",
+			Image:   "image",
+			Args:    []string{"arg"},
+		}},
+		expectedError: &apis.FieldError{
+			Message: "non-existent variable in \"$(params.CONTINUE)\"",
+			Paths:   []string{"steps[0].onError"},
 		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1.TaskSpec{
-				Steps: tt.steps,
+				Params: tt.params,
+				Steps:  tt.steps,
 			}
 			ctx := context.Background()
 			ts.SetDefaults(ctx)
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
+			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 			err := ts.Validate(ctx)
 			if tt.expectedError == nil && err != nil {
-				t.Errorf("TaskSpec.Validate() = %v", err)
-			} else if tt.expectedError != nil && err == nil {
-				t.Errorf("TaskSpec.Validate() = %v", err)
+				t.Errorf("No error expected from TaskSpec.Validate() but got = %v", err)
+			} else if tt.expectedError != nil {
+				if err == nil {
+					t.Errorf("Expected error from TaskSpec.Validate() = %v, but got none", tt.expectedError)
+				} else if d := cmp.Diff(tt.expectedError.Error(), err.Error()); d != "" {
+					t.Errorf("returned error from TaskSpec.Validate() does not match with the expected error: %s", diff.PrintWantGot(d))
+				}
 			}
 		})
 	}

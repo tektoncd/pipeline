@@ -18,6 +18,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -51,6 +52,24 @@ func TestPipeline_Validate_Success(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: PipelineSpec{
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
+			},
+		},
+		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
+	}, {
+		name: "pipelinetask custom task spec",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Tasks: []PipelineTask{{Name: "foo",
+					TaskSpec: &EmbeddedTask{
+						TypeMeta: runtime.TypeMeta{
+							APIVersion: "example.dev/v0",
+							Kind:       "Example",
+						},
+						Spec: runtime.RawExtension{
+							Raw: []byte(`{"field1":123,"field2":"value"}`),
+						}},
+				}},
 			},
 		},
 		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
@@ -434,7 +453,9 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		ps: &PipelineSpec{
 			Description: "this is an invalid pipeline with invalid pipeline task",
 			Tasks: []PipelineTask{{
-
+				Name:    "valid-pipeline-task",
+				TaskRef: &TaskRef{Name: "foo-task"},
+			}, {
 				Name:    "invalid-pipeline-task",
 				TaskRef: &TaskRef{Name: "foo-task"},
 				When: []WhenExpression{{
@@ -737,7 +758,7 @@ func TestValidatePipelineResults_Success(t *testing.T) {
 		Description: "this is my pipeline result",
 		Value:       *NewStructuredValues("$(tasks.a-task.results.gitrepo.commit)"),
 	}}
-	if err := validatePipelineResults(results, []PipelineTask{{Name: "a-task"}}); err != nil {
+	if err := validatePipelineResults(results, []PipelineTask{{Name: "a-task"}}, []PipelineTask{}); err != nil {
 		t.Errorf("Pipeline.validatePipelineResults() returned error for valid pipeline: %s: %v", desc, err)
 	}
 }
@@ -748,13 +769,22 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 		results       []PipelineResult
 		expectedError apis.FieldError
 	}{{
-		desc: "invalid pipeline result reference",
+		desc: "invalid pipeline task result reference",
 		results: []PipelineResult{{
 			Name:        "my-pipeline-result",
 			Description: "this is my pipeline result",
 			Value:       *NewStructuredValues("$(tasks.a-task.results.output.key1.extra)"),
 		}},
 		expectedError: *apis.ErrInvalidValue(`expected all of the expressions [tasks.a-task.results.output.key1.extra] to be result expressions but only [] were`, "results[0].value").Also(
+			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
+	}, {
+		desc: "invalid pipeline finally result reference variable",
+		results: []PipelineResult{{
+			Name:        "my-pipeline-result",
+			Description: "this is my pipeline result",
+			Value:       *NewStructuredValues("$(finally.a-task.results.output.key1.extra)"),
+		}},
+		expectedError: *apis.ErrInvalidValue(`expected all of the expressions [finally.a-task.results.output.key1.extra] to be result expressions but only [] were`, "results[0].value").Also(
 			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
 	}, {
 		desc: "invalid pipeline result value with static string",
@@ -777,7 +807,7 @@ func TestValidatePipelineResults_Failure(t *testing.T) {
 			apis.ErrInvalidValue("referencing a nonexistent task", "results[0].value")),
 	}}
 	for _, tt := range tests {
-		err := validatePipelineResults(tt.results, []PipelineTask{{Name: "a-task"}})
+		err := validatePipelineResults(tt.results, []PipelineTask{{Name: "a-task"}}, []PipelineTask{})
 		if err == nil {
 			t.Errorf("Pipeline.validatePipelineResults() did not return for invalid pipeline: %s", tt.desc)
 		}
@@ -814,7 +844,42 @@ func TestFinallyTaskResultsToPipelineResults_Success(t *testing.T) {
 					}},
 				}},
 			},
-		}},
+		}}, {
+		name: "referencing existent finally task result",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Results: []PipelineResult{{
+					Name:  "initialized",
+					Value: *NewStructuredValues("$(finally.check-git-commit.results.init)"),
+				}},
+				Tasks: []PipelineTask{{
+					Name: "clone-app-repo",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "current-date-unix-timestamp",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo", Image: "bar",
+						}},
+					}},
+				}},
+				Finally: []PipelineTask{{
+					Name: "check-git-commit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "init",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo2", Image: "bar",
+						}},
+					}},
+				}},
+			},
+		},
+	},
 	}
 
 	for _, tt := range tests {
@@ -845,6 +910,45 @@ func TestFinallyTaskResultsToPipelineResults_Failure(t *testing.T) {
 				Results: []PipelineResult{{
 					Name:  "initialized",
 					Value: *NewStructuredValues("$(tasks.check-git-commit.results.init)"),
+				}},
+				Tasks: []PipelineTask{{
+					Name: "clone-app-repo",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "current-date-unix-timestamp",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo", Image: "bar",
+						}},
+					}},
+				}},
+				Finally: []PipelineTask{{
+					Name: "check-git-commit",
+					TaskSpec: &EmbeddedTask{TaskSpec: TaskSpec{
+						Results: []TaskResult{{
+							Name: "init",
+							Type: "string",
+						}},
+						Steps: []Step{{
+							Name: "foo2", Image: "bar",
+						}},
+					}},
+				}},
+			},
+		},
+		expectedError: apis.FieldError{
+			Message: `invalid value: referencing a nonexistent task`,
+			Paths:   []string{"spec.results[0].value"},
+		},
+	}, {
+		desc: "referencing nonexistent finally task result",
+		p: &Pipeline{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
+			Spec: PipelineSpec{
+				Results: []PipelineResult{{
+					Name:  "initialized",
+					Value: *NewStructuredValues("$(finally.nonexistent-task.results.init)"),
 				}},
 				Tasks: []PipelineTask{{
 					Name: "clone-app-repo",
@@ -991,6 +1095,36 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 			}},
 		}},
 	}, {
+		name: "valid array parameter variables in matrix",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
+		}, {
+			Name: "foo-is-baz", Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz)", "and", "$(params.foo-is-baz)"}},
+				}}},
+		}},
+	}, {
+		name: "valid star array parameter variables in matrix",
+		params: []ParamSpec{{
+			Name: "baz", Type: ParamTypeArray, Default: &ParamValue{Type: ParamTypeArray, ArrayVal: []string{"some", "default"}},
+		}, {
+			Name: "foo-is-baz", Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.baz[*])", "and", "$(params.foo-is-baz[*])"}},
+				}}},
+		}},
+	}, {
 		name: "array param - using the whole variable as a param's value that is intended to be array type",
 		params: []ParamSpec{{
 			Name: "myArray",
@@ -1076,6 +1210,24 @@ func TestValidatePipelineParameterVariables_Success(t *testing.T) {
 					"commit": "$(params.myString)",
 				}},
 			}},
+		}},
+	}, {
+		name: "object param - using individual variables in matrix",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)", "and", "$(params.myObject.key2)"}},
+				}}},
 		}},
 	}, {
 		name: "object param - using the whole variable as a param's value that is intended to be object type",
@@ -1397,6 +1549,56 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Paths:   []string{"params[baz]"},
 		},
 	}, {
+		name: "invalid pipeline task with a matrix parameter which is missing from the param declarations",
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
+				}}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.does-not-exist)"`,
+			Paths:   []string{"[0].matrix[a-param].value[0]"},
+		},
+	}, {
+		name: "invalid pipeline task with a matrix parameter combined with missing param from the param declarations",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeString,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)", "and", "$(params.does-not-exist)"}},
+				}}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.does-not-exist)"`,
+			Paths:   []string{"[0].matrix[a-param].value[2]"},
+		},
+	}, {
+		name: "invalid pipeline task with two matrix parameters and one of them missing from the param declarations",
+		params: []ParamSpec{{
+			Name: "foo", Type: ParamTypeArray,
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.foo)"}},
+				}, {
+					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.does-not-exist)"}},
+				}}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.does-not-exist)"`,
+			Paths:   []string{"[0].matrix[b-param].value[0]"},
+		},
+	}, {
 		name: "invalid object key in the input of the when expression",
 		params: []ParamSpec{{
 			Name: "myObject",
@@ -1516,6 +1718,31 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Paths:   []string{"[0].params[an-object-param].properties[url]"},
 		},
 		api: "alpha",
+	}, {
+		name: "invalid object key is used to provide values for matrix params",
+		params: []ParamSpec{{
+			Name: "myObject",
+			Type: ParamTypeObject,
+			Properties: map[string]PropertySpec{
+				"key1": {Type: "string"},
+				"key2": {Type: "string"},
+			},
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.key1)"}},
+				}, {
+					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(params.myObject.non-exist-key)"}},
+				}}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "$(params.myObject.non-exist-key)"`,
+			Paths:   []string{"[0].matrix[b-param].value[0]"},
+		},
+		api: "alpha",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1552,9 +1779,10 @@ func TestValidatePipelineWorkspacesDeclarations_Success(t *testing.T) {
 
 func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
 	tests := []struct {
-		name       string
-		workspaces []PipelineWorkspaceDeclaration
-		tasks      []PipelineTask
+		name           string
+		workspaces     []PipelineWorkspaceDeclaration
+		tasks          []PipelineTask
+		skipValidation bool
 	}{{
 		name: "unused pipeline spec workspaces do not cause an error",
 		workspaces: []PipelineWorkspaceDeclaration{{
@@ -1565,6 +1793,7 @@ func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
 		tasks: []PipelineTask{{
 			Name: "foo", TaskRef: &TaskRef{Name: "foo"},
 		}},
+		skipValidation: false,
 	}, {
 		name: "valid mapping pipeline-task workspace name with pipeline workspace name",
 		workspaces: []PipelineWorkspaceDeclaration{{
@@ -1577,10 +1806,21 @@ func TestValidatePipelineWorkspacesUsage_Success(t *testing.T) {
 				Workspace: "",
 			}},
 		}},
+		skipValidation: false,
+	}, {
+		name: "skip validating workspace usage",
+		workspaces: []PipelineWorkspaceDeclaration{{
+			Name: "pipelineWorkspaceName",
+		}},
+		tasks: []PipelineTask{{
+			Name: "foo", TaskRef: &TaskRef{Name: "foo"},
+		}},
+		skipValidation: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errs := validatePipelineWorkspacesUsage(context.Background(), tt.workspaces, tt.tasks).ViaField("tasks")
+			ctx := config.SkipValidationDueToPropagatedParametersAndWorkspaces(context.Background(), tt.skipValidation)
+			errs := validatePipelineWorkspacesUsage(ctx, tt.workspaces, tt.tasks).ViaField("tasks")
 			if errs != nil {
 				t.Errorf("Pipeline.validatePipelineWorkspacesUsage() returned error for valid pipeline workspaces: %v", errs)
 			}
@@ -2140,6 +2380,209 @@ func TestValidateFinalTasks_Failure(t *testing.T) {
 	}
 }
 
+func TestContextValid(t *testing.T) {
+	tests := []struct {
+		name  string
+		tasks []PipelineTask
+	}{{
+		name: "valid string context variable for Pipeline name",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipeline.name)"},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineRun name",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.name)"},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.name)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineRun namespace",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.namespace)"},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.namespace)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineRun uid",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.uid)"},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.uid)"}},
+				}}},
+		}},
+	}, {
+		name: "valid array context variables for Pipeline and PipelineRun names",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.name)", "and", "$(context.pipelineRun.name)"}},
+				}}},
+		}},
+	}, {
+		name: "valid string context variable for PipelineTask retries",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineTask.retries)"},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineTask.retries)"},
+				}}},
+		}},
+	}, {
+		name: "valid array context variable for PipelineTask retries",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-mat", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.retries)"}},
+				}}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validatePipelineContextVariables(tt.tasks); err != nil {
+				t.Errorf("Pipeline.validatePipelineContextVariables() returned error for valid pipeline context variables: %v", err)
+			}
+		})
+	}
+}
+
+func TestContextInvalid(t *testing.T) {
+	tests := []struct {
+		name          string
+		tasks         []PipelineTask
+		expectedError apis.FieldError
+	}{{
+		name: "invalid string context variable for pipeline",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipeline.missing)"},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing-foo)"}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipeline.missing)"`,
+			Paths:   []string{"value"},
+		}).Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipeline.missing-foo)"`,
+			Paths:   []string{"value"},
+		}),
+	}, {
+		name: "invalid string context variable for pipelineRun",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineRun.missing)"},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipelineRun.missing-foo)"}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineRun.missing)"`,
+			Paths:   []string{"value"},
+		}).Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineRun.missing-foo)"`,
+			Paths:   []string{"value"},
+		}),
+	}, {
+		name: "invalid string context variable for pipelineTask",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{StringVal: "$(context.pipelineTask.missing)"},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param-foo", Value: ParamValue{ArrayVal: []string{"$(context.pipelineTask.missing-foo)"}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineTask.missing)"`,
+			Paths:   []string{"value"},
+		}).Also(&apis.FieldError{
+			Message: `non-existent variable in "$(context.pipelineTask.missing-foo)"`,
+			Paths:   []string{"value"},
+		}),
+	}, {
+		name: "invalid array context variables for pipeline, pipelineTask and pipelineRun",
+		tasks: []PipelineTask{{
+			Name:    "bar",
+			TaskRef: &TaskRef{Name: "bar-task"},
+			Params: []Param{{
+				Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing)", "$(context.pipelineTask.missing)", "$(context.pipelineRun.missing)"}},
+			}},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{ArrayVal: []string{"$(context.pipeline.missing-foo)", "$(context.pipelineTask.missing-foo)", "$(context.pipelineRun.missing-foo)"}},
+				}}},
+		}},
+		expectedError: *apis.ErrGeneric(`non-existent variable in "$(context.pipeline.missing)"`, "value").
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineRun.missing)"`, "value")).
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineTask.missing)"`, "value")).
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipeline.missing-foo)"`, "value")).
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineRun.missing-foo)"`, "value")).
+			Also(apis.ErrGeneric(`non-existent variable in "$(context.pipelineTask.missing-foo)"`, "value")),
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validatePipelineContextVariables(tt.tasks)
+			if err == nil {
+				t.Errorf("Pipeline.validatePipelineContextVariables() did not return error for invalid pipeline parameters: %s", tt.tasks[0].Params)
+			}
+			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
+				t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestPipelineTasksExecutionStatus(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -2367,6 +2810,347 @@ func TestPipelineTasksExecutionStatus(t *testing.T) {
 				if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 					t.Errorf("PipelineSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 				}
+			}
+		})
+	}
+}
+
+// TestMatrixIncompatibleAPIVersions exercises validation of matrix
+// that requires alpha feature gate version in order to work.
+func TestMatrixIncompatibleAPIVersions(t *testing.T) {
+	tests := []struct {
+		name            string
+		requiredVersion string
+		spec            PipelineSpec
+	}{{
+		name:            "matrix requires alpha - check tasks",
+		requiredVersion: "alpha",
+		spec: PipelineSpec{
+			Tasks: PipelineTaskList{{
+				Name:    "a-task",
+				TaskRef: &TaskRef{Name: "a-task"},
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}}},
+			}},
+		},
+	}, {
+		name:            "matrix requires alpha - check finally tasks",
+		requiredVersion: "alpha",
+		spec: PipelineSpec{
+			Tasks: PipelineTaskList{{
+				Name:    "a-task",
+				TaskRef: &TaskRef{Name: "a-task"},
+			}},
+			Finally: PipelineTaskList{{
+				Name:    "b-task",
+				TaskRef: &TaskRef{Name: "b-task"},
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}}},
+			}},
+		},
+	}}
+	versions := []string{"alpha", "stable"}
+	for _, tt := range tests {
+		for _, version := range versions {
+			testName := fmt.Sprintf("(using %s) %s", version, tt.name)
+			t.Run(testName, func(t *testing.T) {
+				ps := tt.spec
+				featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+					"enable-api-fields": version,
+					"embedded-status":   "minimal",
+				})
+				defaults := &config.Defaults{
+					DefaultMaxMatrixCombinationsCount: 4,
+				}
+				cfg := &config.Config{
+					FeatureFlags: featureFlags,
+					Defaults:     defaults,
+				}
+
+				ctx := config.ToContext(context.Background(), cfg)
+
+				ps.SetDefaults(ctx)
+				ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
+				err := ps.Validate(ctx)
+
+				if tt.requiredVersion != version && err == nil {
+					t.Fatalf("no error received even though version required is %q while feature gate is %q", tt.requiredVersion, version)
+				}
+
+				if tt.requiredVersion == version && err != nil {
+					t.Fatalf("error received despite required version and feature gate matching %q: %v", version, err)
+				}
+			})
+		}
+	}
+}
+
+func Test_validateMatrix(t *testing.T) {
+	tests := []struct {
+		name     string
+		tasks    []PipelineTask
+		wantErrs *apis.FieldError
+	}{{
+		name: "parameter in both matrix and params",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+			Params: []Param{{
+				Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+			}},
+		}},
+		wantErrs: apis.ErrMultipleOneOf("[0].matrix[foobar]", "[0].params[foobar]"),
+	}, {
+		name: "parameters unique in matrix and params",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+			Params: []Param{{
+				Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+			}},
+		}},
+	}, {
+		name: "parameters in matrix are strings",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foo", Value: ParamValue{Type: ParamTypeString, StringVal: "foo"},
+				}, {
+					Name: "bar", Value: ParamValue{Type: ParamTypeString, StringVal: "bar"},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "baz", Value: ParamValue{Type: ParamTypeString, StringVal: "baz"},
+				}}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type array only are allowed in matrix",
+			Paths:   []string{"[0].matrix[foo]", "[0].matrix[bar]", "[1].matrix[baz]"},
+		},
+	}, {
+		name: "parameters in matrix are arrays",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}, {
+					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
+				}}},
+		}},
+	}, {
+		name: "parameters in matrix contain results references",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.foo-task.results.a-result)"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
+				}}},
+		}},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+				"enable-api-fields": "alpha",
+				"embedded-status":   "minimal",
+			})
+			defaults := &config.Defaults{
+				DefaultMaxMatrixCombinationsCount: 4,
+			}
+			cfg := &config.Config{
+				FeatureFlags: featureFlags,
+				Defaults:     defaults,
+			}
+
+			ctx := config.ToContext(context.Background(), cfg)
+			if d := cmp.Diff(tt.wantErrs.Error(), validateMatrix(ctx, tt.tasks).Error()); d != "" {
+				t.Errorf("validateMatrix() errors diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func Test_validateResultsFromMatrixedPipelineTasksNotConsumed(t *testing.T) {
+	tests := []struct {
+		name     string
+		tasks    []PipelineTask
+		finally  []PipelineTask
+		wantErrs *apis.FieldError
+	}{{
+		name: "results from matrixed task consumed in tasks through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: []Param{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"tasks[1]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in finally through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: []Param{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"finally[0]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in tasks and finally through parameters",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			Params: []Param{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+			}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			Params: []Param{{
+				Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.a-task.results.a-result)"}},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"tasks[1]", "finally[0]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in tasks through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			When: WhenExpressions{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.a-task.results.a-result)"},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"tasks[1]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in finally through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			When: WhenExpressions{{
+				Input:    "$(tasks.a-task.results.a-result)",
+				Operator: selection.In,
+				Values:   []string{"foo", "bar"},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"finally[0]"},
+		},
+	}, {
+		name: "results from matrixed task consumed in tasks and finally through when expressions",
+		tasks: PipelineTaskList{{
+			Name:    "a-task",
+			TaskRef: &TaskRef{Name: "a-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "a-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+				}}},
+		}, {
+			Name:    "b-task",
+			TaskRef: &TaskRef{Name: "b-task"},
+			When: WhenExpressions{{
+				Input:    "$(tasks.a-task.results.a-result)",
+				Operator: selection.In,
+				Values:   []string{"foo", "bar"},
+			}},
+		}},
+		finally: PipelineTaskList{{
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			When: WhenExpressions{{
+				Input:    "foo",
+				Operator: selection.In,
+				Values:   []string{"$(tasks.a-task.results.a-result)"},
+			}},
+		}},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: consuming results from matrixed task a-task is not allowed",
+			Paths:   []string{"tasks[1]", "finally[0]"},
+		},
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if d := cmp.Diff(tt.wantErrs.Error(), validateResultsFromMatrixedPipelineTasksNotConsumed(tt.tasks, tt.finally).Error()); d != "" {
+				t.Errorf("validateResultsFromMatrixedPipelineTasksNotConsumed() errors diff %s", diff.PrintWantGot(d))
 			}
 		})
 	}
