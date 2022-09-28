@@ -104,7 +104,7 @@ spec:
         ${CONTAINER_REGISTRY}/$(params.package)/combined-base-image:latest)
 
       # NOTE: Make sure this list of images to use the combined base image is in sync with what's in test/presubmit-tests.sh's 'ko_resolve' function.
-      cat <<EOF > ${PROJECT_ROOT}/.ko.yaml
+      cat <<EOF > /workspace/.ko.yaml
       # This matches the value configured in .ko.yaml
       defaultBaseImage: cgr.dev/chainguard/static
       baseImageOverrides:
@@ -117,7 +117,7 @@ spec:
         $(params.package)/cmd/git-init: cgr.dev/chainguard/git
       EOF
 
-      cat ${PROJECT_ROOT}/.ko.yaml
+      cat /workspace/.ko.yaml
 
   - name: run-ko
     image: gcr.io/tekton-releases/dogfooding/ko@sha256:0e9f6349df349cbeb859b3c7899c78c024202fa95f174b910fb181361fdf737a
@@ -129,6 +129,9 @@ spec:
     script: |
       #!/usr/bin/env sh
       set -ex
+
+      # Use the generated `.ko.yaml`
+      KO_CONFIG_PATH=/workspace/.ko.yaml
 
       # Setup docker-auth
       DOCKER_CONFIG=~/.docker
@@ -153,12 +156,13 @@ spec:
         fi
       done
 
-      # Rewrite "devel" to params.versionTag
-      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/*.yaml
-      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/resolvers/*.yaml
-
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
+
+      if [[ -n $(git status -s) ]]; then
+        echo "The git repository is dirty, bailing out of the release"
+        exit 1
+      fi
 
       ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -l 'app.kubernetes.io/component!=resolvers' -R -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.yaml
       ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f ${PROJECT_ROOT}/config/resolvers > $OUTPUT_RELEASE_DIR/resolvers.yaml
@@ -168,6 +172,11 @@ spec:
       ko resolve --platform=$(params.platforms) --preserve-import-paths -l 'app.kubernetes.io/component!=resolvers' -R -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.notags.yaml
       ko resolve --platform=$(params.platforms) --preserve-import-paths -f ${PROJECT_ROOT}/config/resolvers > $OUTPUT_RELEASE_DIR/resolvers.notags.yaml
 
+      # Rewrite "devel" to params.versionTag
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.yaml
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/release.notags.yaml
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/resolvers.yaml
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/resolvers.notags.yaml
   - name: koparse
     image: gcr.io/tekton-releases/dogfooding/koparse:latest
     script: |
