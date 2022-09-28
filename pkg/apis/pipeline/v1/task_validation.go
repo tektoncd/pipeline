@@ -204,7 +204,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	if s.Script != "" {
 		if len(s.Command) > 0 {
 			errs = errs.Also(&apis.FieldError{
-				Message: "script cannot be used with command",
+				Message: fmt.Sprintf("script cannot be used with command"),
 				Paths:   []string{"script"},
 			})
 		}
@@ -241,11 +241,11 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	if s.OnError != "" {
-		if s.OnError != Continue && s.OnError != StopAndFail {
+		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail {
 			errs = errs.Also(&apis.FieldError{
-				Message: fmt.Sprintf("invalid value: %v", s.OnError),
+				Message: fmt.Sprintf("invalid value: \"%v\"", s.OnError),
 				Paths:   []string{"onError"},
-				Details: "Task step onError must be either continue or stopAndFail",
+				Details: "Task step onError must be either \"continue\" or \"stopAndFail\"",
 			})
 		}
 	}
@@ -256,6 +256,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "windows script support", config.AlphaAPIFields).ViaField("script"))
 		}
 	}
+
 	// StdoutConfig is an alpha feature and will fail validation if it's used in a task spec
 	// when the enable-api-fields feature gate is not "alpha".
 	if s.StdoutConfig != nil {
@@ -322,6 +323,7 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 			return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
 		}
 	}
+
 	invalidKeys := []string{}
 	for key, propertySpec := range p.Properties {
 		if propertySpec.Type != ParamTypeString {
@@ -362,7 +364,6 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 			stringParameterNames.Insert(p.Name)
 		}
 	}
-
 	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParamSpecs))
 	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
 		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
@@ -543,6 +544,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 		errs = errs.Also(validateTaskVariable(v.MountPath, prefix, vars).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
 		errs = errs.Also(validateTaskVariable(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
+	errs = errs.Also(validateTaskVariable(string(step.OnError), prefix, vars).ViaField("onError"))
 	return errs
 }
 
@@ -560,4 +562,10 @@ func validateTaskNoArrayReferenced(value, prefix string, arrayNames sets.String)
 
 func validateTaskArraysIsolated(value, prefix string, arrayNames sets.String) *apis.FieldError {
 	return substitution.ValidateVariableIsolatedP(value, prefix, arrayNames)
+}
+
+// isParamRefs attempts to check if a specified string looks like it contains any parameter reference
+// This is useful to make sure the specified value looks like a Parameter Reference before performing any strict validation
+func isParamRefs(s string) bool {
+	return strings.HasPrefix(s, "$("+ParamsPrefix)
 }

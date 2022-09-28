@@ -46,6 +46,23 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		},
 		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
+		name: "pipelineref params disallowed without alpha feature gate",
+		ref: &v1.PipelineRef{
+			ResolverRef: v1.ResolverRef{
+				Params: []v1.Param{},
+			},
+		},
+		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+	}, {
+		name: "pipelineref params disallowed without resolver",
+		ref: &v1.PipelineRef{
+			ResolverRef: v1.ResolverRef{
+				Params: []v1.Param{},
+			},
+		},
+		wantErr:     apis.ErrMissingField("resolver"),
+		withContext: config.EnableAlphaAPIFields,
+	}, {
 		name: "pipelineref resolver disallowed in conjunction with pipelineref name",
 		ref: &v1.PipelineRef{
 			Name: "foo",
@@ -55,6 +72,57 @@ func TestPipelineRef_Invalid(t *testing.T) {
 		},
 		wantErr:     apis.ErrMultipleOneOf("name", "resolver"),
 		withContext: config.EnableAlphaAPIFields,
+	}, {
+		name: "pipelineref params disallowed in conjunction with pipelineref name",
+		ref: &v1.PipelineRef{
+			Name: "bar",
+			ResolverRef: v1.ResolverRef{
+				Params: []v1.Param{{
+					Name: "foo",
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "bar",
+					},
+				}},
+			},
+		},
+		wantErr:     apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
+		withContext: config.EnableAlphaAPIFields,
+	}, {
+		name: "pipelineref param array not allowed",
+		ref: &v1.PipelineRef{
+			ResolverRef: v1.ResolverRef{
+				Resolver: "some-resolver",
+				Params: []v1.Param{{
+					Name: "foo",
+					Value: v1.ParamValue{
+						Type:     v1.ParamTypeArray,
+						ArrayVal: []string{"bar", "baz"},
+					},
+				}},
+			},
+		},
+		wantErr: apis.ErrGeneric("remote resolution parameter type must be string, not array").
+			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
+			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+	}, {
+		name: "pipelineref param object not allowed",
+		ref: &v1.PipelineRef{
+			ResolverRef: v1.ResolverRef{
+				Resolver: "some-resolver",
+				Params: []v1.Param{{
+					Name: "foo",
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeObject,
+						ObjectVal: map[string]string{"bar": "baz"},
+					},
+				}},
+			},
+		},
+		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").
+			Also(apis.ErrGeneric("remote resolution parameter type must be string, not object")).
+			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
+			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
 	}}
 
 	for _, tc := range tests {
@@ -83,6 +151,22 @@ func TestPipelineRef_Valid(t *testing.T) {
 		name: "alpha feature: valid resolver",
 		ref:  &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git"}},
 		wc:   config.EnableAlphaAPIFields,
+	}, {
+		name: "alpha feature: valid resolver with params",
+		ref: &v1.PipelineRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: []v1.Param{{
+			Name: "repo",
+			Value: v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "https://github.com/tektoncd/pipeline.git",
+			},
+		}, {
+			Name: "branch",
+			Value: v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "baz",
+			},
+		}}}},
+		wc: config.EnableAlphaAPIFields,
 	}}
 
 	for _, ts := range tests {

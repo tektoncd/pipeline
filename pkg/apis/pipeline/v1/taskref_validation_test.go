@@ -42,13 +42,19 @@ func TestTaskRef_Valid(t *testing.T) {
 		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git"}},
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "alpha feature: valid resolver with resource parameters",
+		name: "alpha feature: valid resolver with params",
 		taskRef: &v1.TaskRef{ResolverRef: v1.ResolverRef{Resolver: "git", Params: []v1.Param{{
-			Name:  "repo",
-			Value: *v1.NewStructuredValues("https://github.com/tektoncd/pipeline.git"),
+			Name: "repo",
+			Value: v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "https://github.com/tektoncd/pipeline.git",
+			},
 		}, {
-			Name:  "branch",
-			Value: *v1.NewStructuredValues("baz"),
+			Name: "branch",
+			Value: v1.ParamValue{
+				Type:      v1.ParamTypeString,
+				StringVal: "baz",
+			},
 		}}}},
 		wc: config.EnableAlphaAPIFields,
 	}}
@@ -84,7 +90,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		},
 		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
-		name: "taskref resource disallowed without alpha feature gate",
+		name: "taskref params disallowed without alpha feature gate",
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{
 				Params: []v1.Param{},
@@ -92,7 +98,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		},
 		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
 	}, {
-		name: "taskref resolver params disallowed without resolver",
+		name: "taskref params disallowed without resolver",
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{
 				Params: []v1.Param{},
@@ -111,13 +117,16 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "taskref resolver params disallowed in conjunction with taskref name",
+		name: "taskref params disallowed in conjunction with taskref name",
 		taskRef: &v1.TaskRef{
 			Name: "bar",
 			ResolverRef: v1.ResolverRef{
 				Params: []v1.Param{{
-					Name:  "foo",
-					Value: *v1.NewStructuredValues("bar"),
+					Name: "foo",
+					Value: v1.ParamValue{
+						Type:      v1.ParamTypeString,
+						StringVal: "bar",
+					},
 				}},
 			},
 		},

@@ -18,7 +18,6 @@ package v1
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
@@ -54,15 +53,4 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrMissingField("name"))
 	}
 	return
-}
-
-func validateResolutionParamTypes(params []Param) (errs *apis.FieldError) {
-	for i, p := range params {
-		if p.Value.Type == ParamTypeArray || p.Value.Type == ParamTypeObject {
-			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("remote resolution parameter type must be %s, not %s",
-				string(ParamTypeString), string(p.Value.Type))).ViaIndex(i))
-		}
-	}
-
-	return errs
 }

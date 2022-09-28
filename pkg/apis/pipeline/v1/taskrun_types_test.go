@@ -123,7 +123,7 @@ func TestTaskRunIsDone(t *testing.T) {
 		},
 	}
 	if !tr.IsDone() {
-		t.Fatal("Expected pipelinerun status to be done")
+		t.Fatal("Expected taskrun status to be done")
 	}
 }
 
@@ -134,11 +134,7 @@ func TestTaskRunIsCancelled(t *testing.T) {
 		},
 	}
 	if !tr.IsCancelled() {
-		t.Fatal("Expected pipelinerun status to be cancelled")
-	}
-	expected := ""
-	if string(tr.Spec.StatusMessage) != expected {
-		t.Fatalf("Expected StatusMessage is %s but got %s", expected, tr.Spec.StatusMessage)
+		t.Fatal("Expected taskrun status to be cancelled")
 	}
 }
 
