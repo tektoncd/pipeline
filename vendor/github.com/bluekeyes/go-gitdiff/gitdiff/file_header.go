@@ -172,24 +172,88 @@ func (p *parser) ParseTraditionalFileHeader() (*File, error) {
 // If the names in the header do not match because the patch is a rename,
 // return an empty default name.
 func parseGitHeaderName(header string) (string, error) {
-	firstName, n, err := parseName(header, -1, 1)
-	if err != nil {
-		return "", err
-	}
-
-	if n < len(header) && (header[n] == ' ' || header[n] == '\t') {
-		n++
-	}
-
-	secondName, _, err := parseName(header[n:], -1, 1)
-	if err != nil {
-		return "", err
-	}
-
-	if firstName != secondName {
+	header = strings.TrimSuffix(header, "\n")
+	if len(header) == 0 {
 		return "", nil
 	}
-	return firstName, nil
+
+	var err error
+	var first, second string
+
+	// there are 4 cases to account for:
+	//
+	//   1) unquoted unquoted
+	//   2) unquoted "quoted"
+	//   3) "quoted" unquoted
+	//   4) "quoted" "quoted"
+	//
+	quote := strings.IndexByte(header, '"')
+	switch {
+	case quote < 0:
+		// case 1
+		first = header
+
+	case quote > 0:
+		// case 2
+		first = header[:quote-1]
+		if !isSpace(header[quote-1]) {
+			return "", fmt.Errorf("missing separator")
+		}
+
+		second, _, err = parseQuotedName(header[quote:])
+		if err != nil {
+			return "", err
+		}
+
+	case quote == 0:
+		// case 3 or case 4
+		var n int
+		first, n, err = parseQuotedName(header)
+		if err != nil {
+			return "", err
+		}
+
+		// git accepts multiple spaces after a quoted name, but not after an
+		// unquoted name, since the name might end with one or more spaces
+		for n < len(header) && isSpace(header[n]) {
+			n++
+		}
+		if n == len(header) {
+			return "", nil
+		}
+
+		if header[n] == '"' {
+			second, _, err = parseQuotedName(header[n:])
+			if err != nil {
+				return "", err
+			}
+		} else {
+			second = header[n:]
+		}
+	}
+
+	first = trimTreePrefix(first, 1)
+	if second != "" {
+		if first == trimTreePrefix(second, 1) {
+			return first, nil
+		}
+		return "", nil
+	}
+
+	// at this point, both names are unquoted (case 1)
+	// since names may contain spaces, we can't use a known separator
+	// instead, look for a split that produces two equal names
+
+	for i := 0; i < len(first)-1; i++ {
+		if !isSpace(first[i]) {
+			continue
+		}
+		second = trimTreePrefix(first[i+1:], 1)
+		if name := first[:i]; name == second {
+			return name, nil
+		}
+	}
+	return "", nil
 }
 
 // parseGitHeaderData parses a single line of metadata from a Git file header.
@@ -283,25 +347,25 @@ func parseGitHeaderCreatedMode(f *File, line, defaultName string) error {
 
 func parseGitHeaderCopyFrom(f *File, line, defaultName string) (err error) {
 	f.IsCopy = true
-	f.OldName, _, err = parseName(line, -1, 0)
+	f.OldName, _, err = parseName(line, 0, 0)
 	return
 }
 
 func parseGitHeaderCopyTo(f *File, line, defaultName string) (err error) {
 	f.IsCopy = true
-	f.NewName, _, err = parseName(line, -1, 0)
+	f.NewName, _, err = parseName(line, 0, 0)
 	return
 }
 
 func parseGitHeaderRenameFrom(f *File, line, defaultName string) (err error) {
 	f.IsRename = true
-	f.OldName, _, err = parseName(line, -1, 0)
+	f.OldName, _, err = parseName(line, 0, 0)
 	return
 }
 
 func parseGitHeaderRenameTo(f *File, line, defaultName string) (err error) {
 	f.IsRename = true
-	f.NewName, _, err = parseName(line, -1, 0)
+	f.NewName, _, err = parseName(line, 0, 0)
 	return
 }
 
@@ -349,14 +413,14 @@ func parseMode(s string) (os.FileMode, error) {
 
 // parseName extracts a file name from the start of a string and returns the
 // name and the index of the first character after the name. If the name is
-// unquoted and term is non-negative, parsing stops at the first occurrence of
-// term. Otherwise parsing of unquoted names stops at the first space or tab.
+// unquoted and term is non-zero, parsing stops at the first occurrence of
+// term.
 //
 // If the name is exactly "/dev/null", no further processing occurs. Otherwise,
 // if dropPrefix is greater than zero, that number of prefix components
 // separated by forward slashes are dropped from the name and any duplicate
 // slashes are collapsed.
-func parseName(s string, term rune, dropPrefix int) (name string, n int, err error) {
+func parseName(s string, term byte, dropPrefix int) (name string, n int, err error) {
 	if len(s) > 0 && s[0] == '"' {
 		name, n, err = parseQuotedName(s)
 	} else {
@@ -387,15 +451,12 @@ func parseQuotedName(s string) (name string, n int, err error) {
 	return name, n, err
 }
 
-func parseUnquotedName(s string, term rune) (name string, n int, err error) {
+func parseUnquotedName(s string, term byte) (name string, n int, err error) {
 	for n = 0; n < len(s); n++ {
 		if s[n] == '\n' {
 			break
 		}
-		if term >= 0 && rune(s[n]) == term {
-			break
-		}
-		if term < 0 && (s[n] == ' ' || s[n] == '\t') {
+		if term > 0 && s[n] == term {
 			break
 		}
 	}
@@ -440,6 +501,17 @@ func cleanName(name string, drop int) string {
 	return b.String()
 }
 
+// trimTreePrefix removes up to n leading directory components from name.
+func trimTreePrefix(name string, n int) string {
+	i := 0
+	for ; i < len(name) && n > 0; i++ {
+		if name[i] == '/' {
+			n--
+		}
+	}
+	return name[i:]
+}
+
 // hasEpochTimestamp returns true if the string ends with a POSIX-formatted
 // timestamp for the UNIX epoch after a tab character. According to git, this
 // is used by GNU diff to mark creations and deletions.
@@ -455,7 +527,7 @@ func hasEpochTimestamp(s string) bool {
 
 	// a valid timestamp can have optional ':' in zone specifier
 	// remove that if it exists so we have a single format
-	if ts[len(ts)-3] == ':' {
+	if len(ts) >= 3 && ts[len(ts)-3] == ':' {
 		ts = ts[:len(ts)-3] + ts[len(ts)-2:]
 	}
 
@@ -467,4 +539,8 @@ func hasEpochTimestamp(s string) bool {
 		return false
 	}
 	return true
+}
+
+func isSpace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n'
 }

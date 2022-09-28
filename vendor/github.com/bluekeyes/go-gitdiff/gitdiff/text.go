@@ -79,14 +79,8 @@ func (p *parser) ParseTextChunk(frag *TextFragment) error {
 		return p.Errorf(0, "no content following fragment header")
 	}
 
-	isNoNewlineLine := func(s string) bool {
-		// test for "\ No newline at end of file" by prefix because the text
-		// changes by locale (git claims all versions are at least 12 chars)
-		return len(s) >= 12 && s[:2] == "\\ "
-	}
-
 	oldLines, newLines := frag.OldLines, frag.NewLines
-	for {
+	for oldLines > 0 || newLines > 0 {
 		line := p.Line(0)
 		op, data := line[0], line[1:]
 
@@ -113,24 +107,20 @@ func (p *parser) ParseTextChunk(frag *TextFragment) error {
 			frag.LinesAdded++
 			frag.TrailingContext = 0
 			frag.Lines = append(frag.Lines, Line{OpAdd, data})
-		default:
+		case '\\':
 			// this may appear in middle of fragment if it's for a deleted line
-			if isNoNewlineLine(line) {
-				last := &frag.Lines[len(frag.Lines)-1]
-				last.Line = strings.TrimSuffix(last.Line, "\n")
+			if isNoNewlineMarker(line) {
+				removeLastNewline(frag)
 				break
 			}
+			fallthrough
+		default:
 			// TODO(bkeyes): if this is because we hit the next header, it
 			// would be helpful to return the miscounts line error. We could
 			// either test for the common headers ("@@ -", "diff --git") or
 			// assume any invalid op ends the fragment; git returns the same
 			// generic error in all cases so either is compatible
 			return p.Errorf(0, "invalid line operation: %q", op)
-		}
-
-		next := p.Line(1)
-		if oldLines <= 0 && newLines <= 0 && !isNoNewlineLine(next) {
-			break
 		}
 
 		if err := p.Next(); err != nil {
@@ -145,11 +135,33 @@ func (p *parser) ParseTextChunk(frag *TextFragment) error {
 		hdr := max(frag.OldLines-oldLines, frag.NewLines-newLines) + 1
 		return p.Errorf(-hdr, "fragment header miscounts lines: %+d old, %+d new", -oldLines, -newLines)
 	}
-
-	if err := p.Next(); err != nil && err != io.EOF {
-		return err
+	if frag.LinesAdded == 0 && frag.LinesDeleted == 0 {
+		return p.Errorf(0, "fragment contains no changes")
 	}
+
+	// check for a final "no newline" marker since it is not included in the
+	// counters used to stop the loop above
+	if isNoNewlineMarker(p.Line(0)) {
+		removeLastNewline(frag)
+		if err := p.Next(); err != nil && err != io.EOF {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func isNoNewlineMarker(s string) bool {
+	// test for "\ No newline at end of file" by prefix because the text
+	// changes by locale (git claims all versions are at least 12 chars)
+	return len(s) >= 12 && s[:2] == "\\ "
+}
+
+func removeLastNewline(frag *TextFragment) {
+	if len(frag.Lines) > 0 {
+		last := &frag.Lines[len(frag.Lines)-1]
+		last.Line = strings.TrimSuffix(last.Line, "\n")
+	}
 }
 
 func parseRange(s string) (start int64, end int64, err error) {

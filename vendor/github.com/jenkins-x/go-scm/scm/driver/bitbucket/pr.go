@@ -202,6 +202,10 @@ func (s *pullService) ListEvents(context.Context, string, int, *scm.ListOptions)
 	return nil, nil, scm.ErrNotSupported
 }
 
+func (s *pullService) ListCommits(ctx context.Context, repo string, number int, opts *scm.ListOptions) ([]*scm.Commit, *scm.Response, error) {
+	return nil, nil, scm.ErrNotSupported
+}
+
 type prMerge struct {
 	Message           string `json:"message"`
 	CloseSourceBranch bool   `json:"close_source_branch"`

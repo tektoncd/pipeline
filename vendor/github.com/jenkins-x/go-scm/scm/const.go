@@ -105,12 +105,10 @@ const (
 	ActionReviewRequestRemoved
 	ActionReadyForReview
 	ActionConvertedToDraft
-
 	// reviews
 	ActionEdited
 	ActionSubmitted
 	ActionDismissed
-
 	// check run / check suite
 	ActionCompleted
 )
@@ -225,6 +223,7 @@ const (
 	DriverStash
 	DriverCoding
 	DriverFake
+	DriverAzure
 )
 
 // String returns the string representation of Driver.
@@ -246,6 +245,8 @@ func (d Driver) String() (s string) {
 		return "coding"
 	case DriverFake:
 		return "fake"
+	case DriverAzure:
+		return "azure"
 	default:
 		return "unknown"
 	}

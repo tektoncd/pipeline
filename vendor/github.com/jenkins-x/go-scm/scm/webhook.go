@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+var (
+	// ErrSignatureInvalid is returned when the webhook
+	// signature is invalid or cannot be calculated.
+	// ErrSignatureInvalid = errors.New("Invalid webhook signature")
+
+	// ErrUnknownEvent is returned when the webhook event
+	// is not recognized by the system.
+	ErrUnknownEvent = errors.New("unknown webhook event")
+)
+
 // WebhookKind is the kind of webhook event represented
 type WebhookKind string
 

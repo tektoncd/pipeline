@@ -24,7 +24,7 @@ type (
 		Author      User
 		Assignees   []User
 		ClosedBy    *User
-		PullRequest bool
+		PullRequest *PullRequest
 		Created     time.Time
 		Updated     time.Time
 	}
