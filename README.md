@@ -1,6 +1,7 @@
 # ![pipe](./pipe.png) Tekton Pipelines
 
 [![Go Report Card](https://goreportcard.com/badge/tektoncd/pipeline)](https://goreportcard.com/report/tektoncd/pipeline)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/4020/badge)](https://bestpractices.coreinfrastructure.org/projects/4020)
 
 The Tekton Pipelines project provides k8s-style resources for declaring
 CI/CD-style pipelines.
