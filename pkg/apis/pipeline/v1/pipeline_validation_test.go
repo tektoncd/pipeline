@@ -1743,6 +1743,23 @@ func TestValidatePipelineParameterVariables_Failure(t *testing.T) {
 			Paths:   []string{"[0].matrix[b-param].value[0]"},
 		},
 		api: "alpha",
+	}, {
+		name: "invalid task use duplicate parameters",
+		tasks: []PipelineTask{{
+			Name:    "foo-task",
+			TaskRef: &TaskRef{Name: "foo-task"},
+			Params: []Param{{
+				Name: "duplicate-param", Value: ParamValue{Type: ParamTypeString, StringVal: "val1"},
+			}, {
+				Name: "duplicate-param", Value: ParamValue{Type: ParamTypeString, StringVal: "val2"},
+			}, {
+				Name: "duplicate-param", Value: ParamValue{Type: ParamTypeString, StringVal: "val3"},
+			}},
+		}},
+		expectedError: apis.FieldError{
+			Message: `params names must be unique, the same param: duplicate-param is defined multiple times at`,
+			Paths:   []string{"[0].params[1].name", "[0].params[2].name"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
