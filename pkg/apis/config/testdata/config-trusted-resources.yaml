@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2022 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,17 +15,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: feature-flags
+  name: config-trusted-resources
   namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
 data:
-  disable-affinity-assistant: "true"
-  running-in-environment-with-injected-sidecars: "false"
-  await-sidecar-readiness: "false"
-  require-git-ssh-secret-known-hosts: "true"
-  enable-tekton-oci-bundles: "true"
-  enable-custom-tasks: "true"
-  enable-api-fields: "alpha"
-  send-cloudevents-for-runs: "true"
-  embedded-status: "both"
-  enable-spire: "true"
-  resource-verification-mode: "enforce"
+  publickeys: "/etc/verification-secrets/cosign.pub, /etc/verification-secrets/cosign2.pub"

@@ -14,11 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package trustedresources
+package test
 
 import (
-	"context"
+	"bytes"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"io"
 	"testing"
 
@@ -28,7 +30,6 @@ import (
 )
 
 func TestSignInterface(t *testing.T) {
-	ctx := context.Background()
 	sv, _, err := signature.NewDefaultECDSASignerVerifier()
 	if err != nil {
 		t.Fatalf("failed to get signerverifier %v", err)
@@ -45,7 +46,7 @@ func TestSignInterface(t *testing.T) {
 	}{{
 		name:    "Sign Task",
 		signer:  sv,
-		target:  getUnsignedTask("unsigned"),
+		target:  GetUnsignedTask("unsigned"),
 		wantErr: false,
 	}, {
 		name:    "Sign String with cosign signer",
@@ -60,7 +61,7 @@ func TestSignInterface(t *testing.T) {
 	}, {
 		name:    "Empty Signer",
 		signer:  nil,
-		target:  getUnsignedTask("unsigned"),
+		target:  GetUnsignedTask("unsigned"),
 		wantErr: true,
 	}, {
 		name:     "Sign String with mock signer",
@@ -89,10 +90,18 @@ func TestSignInterface(t *testing.T) {
 			if tc.wantErr {
 				return
 			}
-			if err := verifyInterface(ctx, tc.target, tc.signer, sig); err != nil {
-				t.Fatalf("SignInterface() generate wrong signature: %v", err)
+
+			ts, err := json.Marshal(tc.target)
+			if err != nil {
+				t.Fatal(err)
 			}
 
+			h := sha256.New()
+			h.Write(ts)
+
+			if err := tc.signer.VerifySignature(bytes.NewReader(sig), bytes.NewReader(h.Sum(nil))); err != nil {
+				t.Fatalf("SignInterface() generate wrong signature: %v", err)
+			}
 		})
 	}
 }

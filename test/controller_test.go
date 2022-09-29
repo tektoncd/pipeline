@@ -20,14 +20,18 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	fakepipelineruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipelinerun/fake"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgotesting "k8s.io/client-go/testing"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
+	"knative.dev/pkg/system"
+	_ "knative.dev/pkg/system/testing"
 )
 
 var deploymentsResource = schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}
@@ -124,5 +128,39 @@ func TestResourceVersionReactor(t *testing.T) {
 				t.Error("Reactor chain should have aborted!")
 			}
 		})
+	}
+}
+
+func TestEnsureConfigurationConfigMapsExist(t *testing.T) {
+	d := Data{ConfigMaps: []*corev1.ConfigMap{}}
+	expected := Data{ConfigMaps: []*corev1.ConfigMap{}}
+	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetMetricsConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: config.GetTrustedResourcesConfigName(), Namespace: system.Namespace()},
+		Data:       map[string]string{},
+	})
+
+	EnsureConfigurationConfigMapsExist(&d)
+	if d := cmp.Diff(expected, d); d != "" {
+		t.Errorf("ConfigMaps: diff(-want,+got):\n%s", d)
 	}
 }

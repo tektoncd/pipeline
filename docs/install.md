@@ -420,6 +420,8 @@ features](#alpha-features) to be used.
   name, kind, and API version information for each `TaskRun` and `Run` in the `PipelineRun` instead. Set it to "both" to
   do both. For more information, see [Configuring usage of `TaskRun` and `Run` embedded statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses).
 
+- `resource-verification-mode`: Setting this flag to "enforce" will enforce verification of tasks/pipeline. Failing to verify will fail the taskrun/pipelinerun. "warn" will only log the err message and "skip" will skip the whole verification.
+
 For example:
 
 ```yaml
@@ -457,6 +459,7 @@ Features currently in "alpha" are:
 | [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration)   | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)                   | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0)  |                             |
 | [Object Params and Results](pipelineruns.md#specifying-parameters)                                    | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 | [Array Results](pipelineruns.md#specifying-parameters)                                                | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)                                | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
+| [Trusted Resources](./trusted-resources.md)                                                | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                | N/A |     resource-verification-mode                        |
 
 ### Beta Features
 

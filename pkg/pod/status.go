@@ -68,6 +68,10 @@ const (
 	// ReasonExceededNodeResources or isPodHitConfigError
 	ReasonPending = "Pending"
 
+	// ReasonResourceVerificationFailed indicates that the task fails the trusted resource verification,
+	// it could be the content has changed, signature is invalid or public key is invalid
+	ReasonResourceVerificationFailed = "ResourceVerificationFailed"
+
 	// timeFormat is RFC3339 with millisecond
 	timeFormat = "2006-01-02T15:04:05.000Z07:00"
 )

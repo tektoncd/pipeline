@@ -10732,3 +10732,215 @@ spec:
 		})
 	}
 }
+
+func TestReconcile_verifyResolvedPipeline_Success(t *testing.T) {
+	names.TestingSeed()
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	prs := parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipelinerun
+  namespace: foo
+  selfLink: /pipeline/1234
+spec:
+  pipelineRef:
+    name: test-pipeline
+`)
+	ps := parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: test-1
+      taskRef:
+        name: test-task
+`)
+	ts := parse.MustParseTask(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  steps:
+    - name: simple-step
+      image: foo
+      command: ["/mycmd"]
+      env:
+       - name: foo
+         value: bar
+`)
+
+	signer, secretpath, err := test.GetSignerFromFile(ctx, t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	if err != nil {
+		t.Fatal("fail to sign task", err)
+	}
+	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	if err != nil {
+		t.Fatal("fail to sign pipeline", err)
+	}
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"resource-verification-mode": "enforce",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetTrustedResourcesConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				config.PublicKeys: secretpath,
+			},
+		},
+	}
+	t.Logf("config maps: %s", cms)
+
+	d := test.Data{
+		PipelineRuns: []*v1beta1.PipelineRun{prs},
+		Pipelines:    []*v1beta1.Pipeline{signedPipeline},
+		Tasks:        []*v1beta1.Task{signedTask},
+		ConfigMaps:   cms,
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
+	reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
+
+	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
+
+}
+
+func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {
+	names.TestingSeed()
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	prs := parse.MustParsePipelineRun(t, `
+metadata:
+  name: test-pipelinerun
+  namespace: foo
+  selfLink: /pipeline/1234
+spec:
+  pipelineRef:
+    name: test-pipeline
+`)
+	ps := parse.MustParsePipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+    - name: test-1
+      taskRef:
+        name: test-task
+`)
+	ts := parse.MustParseTask(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  steps:
+    - name: simple-step
+      image: foo
+      command: ["/mycmd"]
+      env:
+       - name: foo
+         value: bar
+`)
+
+	signer, secretpath, err := test.GetSignerFromFile(ctx, t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	if err != nil {
+		t.Fatal("fail to sign task", err)
+	}
+	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	if err != nil {
+		t.Fatal("fail to sign pipeline", err)
+	}
+
+	tamperedTask := signedTask.DeepCopy()
+	if tamperedTask.Annotations == nil {
+		tamperedTask.Annotations = make(map[string]string)
+	}
+	tamperedTask.Annotations["random"] = "attack"
+
+	tamperedPipeline := signedPipeline.DeepCopy()
+	if tamperedPipeline.Annotations == nil {
+		tamperedPipeline.Annotations = make(map[string]string)
+	}
+	tamperedPipeline.Annotations["random"] = "attack"
+
+	cms := []*corev1.ConfigMap{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"resource-verification-mode": "enforce",
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetTrustedResourcesConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				config.PublicKeys: secretpath,
+			},
+		},
+	}
+	t.Logf("config maps: %s", cms)
+
+	testCases := []struct {
+		name        string
+		pipelinerun []*v1beta1.PipelineRun
+		pipeline    []*v1beta1.Pipeline
+		task        []*v1beta1.Task
+	}{
+		{
+			name:        "unsigned pipeline fails verification",
+			pipelinerun: []*v1beta1.PipelineRun{prs},
+			pipeline:    []*v1beta1.Pipeline{ps},
+		},
+		{
+			name:        "signed pipeline with unsigned task fails verification",
+			pipelinerun: []*v1beta1.PipelineRun{prs},
+			pipeline:    []*v1beta1.Pipeline{signedPipeline},
+			task:        []*v1beta1.Task{ts},
+		},
+		{
+			name:        "signed pipeline with modified task fails verification",
+			pipelinerun: []*v1beta1.PipelineRun{prs},
+			pipeline:    []*v1beta1.Pipeline{signedPipeline},
+			task:        []*v1beta1.Task{tamperedTask},
+		},
+		{
+			name:        "modified pipeline with signed task fails verification",
+			pipelinerun: []*v1beta1.PipelineRun{prs},
+			pipeline:    []*v1beta1.Pipeline{tamperedPipeline},
+			task:        []*v1beta1.Task{signedTask},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				PipelineRuns: tc.pipelinerun,
+				Pipelines:    tc.pipeline,
+				Tasks:        tc.task,
+				ConfigMaps:   cms,
+			}
+			prt := newPipelineRunTest(d, t)
+			defer prt.Cancel()
+
+			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, true)
+
+			checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionFalse, ReasonResourceVerificationFailed)
+		})
+	}
+}
