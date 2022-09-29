@@ -481,31 +481,37 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 	}
 
+	// Please note that this block is required to run before `applyParamsContextsResultsAndWorkspaces` is called the first time,
+	// and that `applyParamsContextsResultsAndWorkspaces` _must_ be called on every reconcile.
+	if pod == nil && tr.HasVolumeClaimTemplate() {
+		if err := c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
+			logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
+			tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
+				fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %s",
+					fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err))
+			return controller.NewPermanentError(err)
+		}
+
+		taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, *kmeta.NewControllerRef(tr))
+		// This is used by createPod below. Changes to the Spec are not updated.
+		tr.Spec.Workspaces = taskRunWorkspaces
+	}
+
+	// Get the randomized volume names assigned to workspace bindings
+	workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
+
+	ts, err := applyParamsContextsResultsAndWorkspaces(ctx, tr, rtr, workspaceVolumes)
+	if err != nil {
+		logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
+		return err
+	}
+	tr.Status.TaskSpec = ts
+
+	if len(tr.Status.TaskSpec.Steps) > 0 {
+		logger.Infof("set taskspec for %s/%s - script: %s", tr.Namespace, tr.Name, tr.Status.TaskSpec.Steps[0].Script)
+	}
+
 	if pod == nil {
-		if tr.HasVolumeClaimTemplate() {
-			if err := c.pvcHandler.CreatePersistentVolumeClaimsForWorkspaces(ctx, tr.Spec.Workspaces, *kmeta.NewControllerRef(tr), tr.Namespace); err != nil {
-				logger.Errorf("Failed to create PVC for TaskRun %s: %v", tr.Name, err)
-				tr.Status.MarkResourceFailed(volumeclaim.ReasonCouldntCreateWorkspacePVC,
-					fmt.Errorf("Failed to create PVC for TaskRun %s workspaces correctly: %s",
-						fmt.Sprintf("%s/%s", tr.Namespace, tr.Name), err))
-				return controller.NewPermanentError(err)
-			}
-
-			taskRunWorkspaces := applyVolumeClaimTemplates(tr.Spec.Workspaces, *kmeta.NewControllerRef(tr))
-			// This is used by createPod below. Changes to the Spec are not updated.
-			tr.Spec.Workspaces = taskRunWorkspaces
-		}
-
-		// Get the randomized volume names assigned to workspace bindings
-		workspaceVolumes := workspace.CreateVolumes(tr.Spec.Workspaces)
-
-		ts, err := applyParamsContextsResultsAndWorkspaces(ctx, tr, rtr, workspaceVolumes)
-		if err != nil {
-			logger.Errorf("Error updating task spec parameters, contexts, results and workspaces: %s", err)
-			return err
-		}
-		tr.Status.TaskSpec = ts
-
 		pod, err = c.createPod(ctx, ts, tr, rtr, workspaceVolumes)
 		if err != nil {
 			newErr := c.handlePodCreationError(tr, err)
