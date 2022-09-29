@@ -4925,3 +4925,74 @@ status:
 		})
 	}
 }
+
+func TestReconcile_ReplacementsInStatusTaskSpec(t *testing.T) {
+	task := parse.MustParseTask(t, `
+metadata:
+  name: test-task-with-replacements
+  namespace: foo
+spec:
+  params:
+  - default: mydefault
+    name: myarg
+    type: string
+  steps:
+  - script: echo $(inputs.params.myarg)
+    image: myimage
+    name: mycontainer
+`)
+	tr := parse.MustParseTaskRun(t, `
+metadata:
+  name: test-taskrun-with-replacements
+  namespace: foo
+spec:
+  params:
+  - name: myarg
+    value: foo
+  taskRef:
+    name: test-task-with-replacements
+status:
+  podName: the-pod
+`)
+
+	expectedStatusSpec := &v1beta1.TaskSpec{
+		Params: []v1beta1.ParamSpec{{
+			Name:    "myarg",
+			Default: v1beta1.NewStructuredValues("mydefault"),
+			Type:    v1beta1.ParamTypeString,
+		}},
+		Steps: []v1beta1.Step{{
+			Script: "echo foo",
+			Image:  "myimage",
+			Name:   "mycontainer",
+		}},
+	}
+
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{tr},
+		Tasks:    []*v1beta1.Task{task},
+		Pods: []*corev1.Pod{{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "foo",
+				Name:      "the-pod",
+			},
+		}},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+
+	if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err == nil {
+		t.Error("Wanted a wrapped requeue error, but got nil.")
+	} else if ok, _ := controller.IsRequeueKey(err); !ok {
+		t.Errorf("expected no error. Got error %v", err)
+	}
+
+	updatedTR, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting updated taskrun: %v", err)
+	}
+
+	if d := cmp.Diff(expectedStatusSpec, updatedTR.Status.TaskSpec); d != "" {
+		t.Errorf("expected Status.TaskSpec to match, but differed: %s", diff.PrintWantGot(d))
+	}
+}
