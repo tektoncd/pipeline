@@ -286,7 +286,11 @@ func ArrayReference(a string) string {
 // validatePipelineParametersVariablesInTaskParameters validates param value that
 // may contain the reference(s) to other params to make sure those references are used appropriately.
 func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	for _, param := range params {
+	taskParamNames := sets.NewString()
+	for i, param := range params {
+		if taskParamNames.Has(param.Name) {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("params names must be unique, the same param: %s is defined multiple times at", param.Name), fmt.Sprintf("params[%d].name", i)))
+		}
 		switch param.Value.Type {
 		case ParamTypeArray:
 			for idx, arrayElement := range param.Value.ArrayVal {
@@ -299,6 +303,7 @@ func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix 
 		default:
 			errs = errs.Also(validateParamStringValue(param, prefix, paramNames, arrayParamNames, objectParamNameKeys))
 		}
+		taskParamNames.Insert(param.Name)
 	}
 	return errs
 }
