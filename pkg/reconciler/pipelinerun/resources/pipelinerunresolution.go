@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/remote"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/kmeta"
@@ -780,6 +781,8 @@ func resolveTask(
 			t, err = getTask(ctx, pipelineTask.TaskRef.Name)
 			switch {
 			case errors.Is(err, remote.ErrorRequestInProgress):
+				return v1beta1.TaskSpec{}, "", "", err
+			case errors.Is(err, trustedresources.ErrorResourceVerificationFailed):
 				return v1beta1.TaskSpec{}, "", "", err
 			case err != nil:
 				return v1beta1.TaskSpec{}, "", "", &TaskNotFoundError{

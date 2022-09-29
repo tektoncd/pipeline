@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
@@ -33,19 +34,22 @@ func TestStoreLoadWithContext(t *testing.T) {
 	artifactBucketConfig := test.ConfigMapFromTestFile(t, "config-artifact-bucket")
 	artifactPVCConfig := test.ConfigMapFromTestFile(t, "config-artifact-pvc")
 	metricsConfig := test.ConfigMapFromTestFile(t, "config-observability")
+	trustedresourcesConfig := test.ConfigMapFromTestFile(t, "config-trusted-resources")
 
 	expectedDefaults, _ := config.NewDefaultsFromConfigMap(defaultConfig)
 	expectedFeatures, _ := config.NewFeatureFlagsFromConfigMap(featuresConfig)
 	expectedArtifactBucket, _ := config.NewArtifactBucketFromConfigMap(artifactBucketConfig)
 	expectedArtifactPVC, _ := config.NewArtifactPVCFromConfigMap(artifactPVCConfig)
 	metrics, _ := config.NewMetricsFromConfigMap(metricsConfig)
+	expectedTrustedResources, _ := config.NewTrustedResourcesConfigFromConfigMap(trustedresourcesConfig)
 
 	expected := &config.Config{
-		Defaults:       expectedDefaults,
-		FeatureFlags:   expectedFeatures,
-		ArtifactBucket: expectedArtifactBucket,
-		ArtifactPVC:    expectedArtifactPVC,
-		Metrics:        metrics,
+		Defaults:         expectedDefaults,
+		FeatureFlags:     expectedFeatures,
+		ArtifactBucket:   expectedArtifactBucket,
+		ArtifactPVC:      expectedArtifactPVC,
+		Metrics:          metrics,
+		TrustedResources: expectedTrustedResources,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
@@ -54,6 +58,33 @@ func TestStoreLoadWithContext(t *testing.T) {
 	store.OnConfigChanged(artifactBucketConfig)
 	store.OnConfigChanged(artifactPVCConfig)
 	store.OnConfigChanged(metricsConfig)
+	store.OnConfigChanged(trustedresourcesConfig)
+
+	cfg := config.FromContext(store.ToContext(context.Background()))
+
+	if d := cmp.Diff(cfg, expected); d != "" {
+		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestStoreLoadWithContext_Empty(t *testing.T) {
+	defaults, _ := config.NewDefaultsFromMap(map[string]string{})
+	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{})
+	artifactBucket, _ := config.NewArtifactBucketFromMap(map[string]string{})
+	artifactPVC, _ := config.NewArtifactPVCFromMap(map[string]string{})
+	metrics, _ := config.NewMetricsFromConfigMap(&corev1.ConfigMap{Data: map[string]string{}})
+	trustedresources, _ := config.NewTrustedResourcesConfigFromMap(map[string]string{})
+
+	expected := &config.Config{
+		Defaults:         defaults,
+		FeatureFlags:     featureFlags,
+		ArtifactBucket:   artifactBucket,
+		ArtifactPVC:      artifactPVC,
+		Metrics:          metrics,
+		TrustedResources: trustedresources,
+	}
+
+	store := config.NewStore(logtesting.TestLogger(t))
 
 	cfg := config.FromContext(store.ToContext(context.Background()))
 

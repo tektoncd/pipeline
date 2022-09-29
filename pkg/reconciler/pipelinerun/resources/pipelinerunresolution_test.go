@@ -32,6 +32,7 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
@@ -2180,6 +2181,44 @@ func TestResolvePipelineRun_TaskDoesntExist(t *testing.T) {
 			// expected error
 		default:
 			t.Fatalf("Expected specific error type returned by func for non-existent Task for Pipeline %s but got %s", p.Name, err)
+		}
+	}
+}
+
+func TestResolvePipelineRun_VerificationFailed(t *testing.T) {
+	pts := []v1beta1.PipelineTask{{
+		Name:    "mytask1",
+		TaskRef: &v1beta1.TaskRef{Name: "task"},
+	}, {
+		Name:    "mytask2",
+		TaskRef: &v1beta1.TaskRef{Name: "task"},
+		Matrix: &v1beta1.Matrix{
+			Params: []v1beta1.Param{{
+				Name:  "foo",
+				Value: *v1beta1.NewStructuredValues("f", "o", "o"),
+			}, {
+				Name:  "bar",
+				Value: *v1beta1.NewStructuredValues("b", "a", "r"),
+			}},
+		}}}
+	providedResources := map[string]*resourcev1alpha1.PipelineResource{}
+
+	getTask := func(ctx context.Context, name string) (v1beta1.TaskObject, error) {
+		return nil, trustedresources.ErrorResourceVerificationFailed
+	}
+	getTaskRun := func(name string) (*v1beta1.TaskRun, error) { return nil, nil }
+	pr := v1beta1.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pipelinerun",
+		},
+	}
+	for _, pt := range pts {
+		_, err := ResolvePipelineTask(context.Background(), pr, getTask, getTaskRun, nopGetRun, pt, providedResources)
+		if err == nil {
+			t.Errorf("expected to get err but got nil")
+		}
+		if err != trustedresources.ErrorResourceVerificationFailed {
+			t.Errorf("expected to get %v but got %v", trustedresources.ErrorResourceVerificationFailed, err)
 		}
 	}
 }

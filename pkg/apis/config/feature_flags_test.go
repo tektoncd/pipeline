@@ -38,13 +38,14 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RunningInEnvWithInjectedSidecars: true,
 				RequireGitSSHSecretKnownHosts:    false,
 
-				DisableCredsInit:       config.DefaultDisableCredsInit,
-				AwaitSidecarReadiness:  config.DefaultAwaitSidecarReadiness,
-				EnableTektonOCIBundles: config.DefaultEnableTektonOciBundles,
-				EnableCustomTasks:      config.DefaultEnableCustomTasks,
-				EnableAPIFields:        config.DefaultEnableAPIFields,
-				SendCloudEventsForRuns: config.DefaultSendCloudEventsForRuns,
-				EmbeddedStatus:         config.DefaultEmbeddedStatus,
+				DisableCredsInit:         config.DefaultDisableCredsInit,
+				AwaitSidecarReadiness:    config.DefaultAwaitSidecarReadiness,
+				EnableTektonOCIBundles:   config.DefaultEnableTektonOciBundles,
+				EnableCustomTasks:        config.DefaultEnableCustomTasks,
+				EnableAPIFields:          config.DefaultEnableAPIFields,
+				SendCloudEventsForRuns:   config.DefaultSendCloudEventsForRuns,
+				EmbeddedStatus:           config.DefaultEmbeddedStatus,
+				ResourceVerificationMode: config.DefaultResourceVerificationMode,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -60,6 +61,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SendCloudEventsForRuns:           true,
 				EmbeddedStatus:                   "both",
 				EnableSpire:                      true,
+				ResourceVerificationMode:         "enforce",
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -79,6 +81,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
+				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
 		},
@@ -95,6 +98,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
+				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
@@ -111,15 +115,16 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
+				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 			},
 			fileName: "feature-flags-beta-api-fields",
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				EnableAPIFields: "stable",
-				EmbeddedStatus:  "full",
-				EnableSpire:     true,
-
+				EnableAPIFields:                  "stable",
+				EmbeddedStatus:                   "full",
+				EnableSpire:                      true,
+				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 			},
@@ -150,6 +155,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 		EnableSpire:                      config.DefaultEnableSpire,
+		ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -190,6 +196,8 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-invalid-enable-api-fields",
 	}, {
 		fileName: "feature-flags-invalid-embedded-status",
+	}, {
+		fileName: "feature-flags-invalid-resource-verification-mode",
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)

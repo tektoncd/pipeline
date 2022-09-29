@@ -53,6 +53,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -123,6 +124,9 @@ const (
 	// ReasonResolvingPipelineRef indicates that the PipelineRun is waiting for
 	// its pipelineRef to be asynchronously resolved.
 	ReasonResolvingPipelineRef = "ResolvingPipelineRef"
+	// ReasonResourceVerificationFailed indicates that the pipeline fails the trusted resource verification,
+	// it could be the content has changed, signature is invalid or public key is invalid
+	ReasonResourceVerificationFailed = "ResourceVerificationFailed"
 )
 
 // Reconciler implements controller.Reconciler for Configuration resources.
@@ -336,6 +340,11 @@ func (c *Reconciler) resolvePipelineState(
 			if errors.Is(err, remote.ErrorRequestInProgress) {
 				return nil, err
 			}
+			if errors.Is(err, trustedresources.ErrorResourceVerificationFailed) {
+				message := fmt.Sprintf("PipelineRun %s/%s referred task %s failed signature verification", pr.Namespace, pr.Name, task.Name)
+				pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
+				return nil, controller.NewPermanentError(err)
+			}
 			switch err := err.(type) {
 			case *resources.TaskNotFoundError:
 				pr.Status.MarkFailed(ReasonCouldntGetTask,
@@ -371,6 +380,10 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
 		pr.Status.MarkRunning(ReasonResolvingPipelineRef, message)
 		return nil
+	case errors.Is(err, trustedresources.ErrorResourceVerificationFailed):
+		message := fmt.Sprintf("PipelineRun %s/%s referred pipeline failed signature verification", pr.Namespace, pr.Name)
+		pr.Status.MarkFailed(ReasonResourceVerificationFailed, message)
+		return controller.NewPermanentError(err)
 	case err != nil:
 		logger.Errorf("Failed to determine Pipeline spec to use for pipelinerun %s: %v", pr.Name, err)
 		pr.Status.MarkFailed(ReasonCouldntGetPipeline,
