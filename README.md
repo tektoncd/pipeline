@@ -30,6 +30,7 @@ Tekton Pipelines are **Typed**:
 - [Installing Tekton Pipelines](docs/install.md)
 - Jump in with [the "Getting started" tutorial!](https://tekton.dev/docs/getting-started/tasks/)
 - Take a look at our [roadmap](roadmap.md)
+- Discover our [releases](releases.md)
 
 ### Required Kubernetes Version
 
