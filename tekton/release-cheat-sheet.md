@@ -144,7 +144,9 @@ the pipelines repo, a terminal window and a text editor.
    (This can be done on the Github UI.)
    Make sure to fetch the commit specified in `TEKTON_RELEASE_GIT_SHA` to create the released branch.
 
-1. Edit `README.md` on `main` branch, add entry to docs table with latest release links.
+1. Edit `README.md` on `main` branch, add entry to docs table with latest release links. 
+
+1. Edit `releases.md` on the `main` branch, add an entry for the release.
 
 1. Push & make PR for updated `README.md`
 
