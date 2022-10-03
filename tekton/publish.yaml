@@ -159,10 +159,9 @@ spec:
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
 
-      if [[ -n $(git status -s) ]]; then
-        echo "The git repository is dirty, bailing out of the release"
-        exit 1
-      fi
+      # Make a local git tag to make git status happy :)
+      # The real "tagging" will happen with the "create-release" pipeline.
+      git tag $(params.versionTag)
 
       ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -l 'app.kubernetes.io/component!=resolvers' -R -f ${PROJECT_ROOT}/config/ > $OUTPUT_RELEASE_DIR/release.yaml
       ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f ${PROJECT_ROOT}/config/resolvers > $OUTPUT_RELEASE_DIR/resolvers.yaml
