@@ -97,6 +97,36 @@ func TestApplyParameters(t *testing.T) {
 		},
 		alpha: true,
 	}, {
+		name: "parameter propagation string into finally task",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello param!")}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "hello param!"`,
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
 		name: "parameter propagation array no task or task default winner pipeline",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
@@ -127,6 +157,36 @@ func TestApplyParameters(t *testing.T) {
 		},
 		alpha: true,
 	}, {
+		name: "parameter propagation array finally task",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO[*])"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("hello", "param", "!!!")}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello", "param", "!!!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
 		name: "parameter propagation object no task or task default winner pipeline",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
@@ -144,6 +204,36 @@ func TestApplyParameters(t *testing.T) {
 		params: []v1beta1.Param{{Name: "myObject", Value: *v1beta1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "hello world!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "parameter propagation object finally task",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myObject.key1) $(params.myObject.key2)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myObject", Value: *v1beta1.NewObject(map[string]string{"key1": "hello", "key2": "world!"})}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
 					TaskSpec: v1beta1.TaskSpec{
 						Steps: []v1beta1.Step{{
@@ -195,6 +285,44 @@ func TestApplyParameters(t *testing.T) {
 		},
 		alpha: true,
 	}, {
+		name: "parameter propagation with task scoping Finally task",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewStructuredValues("default param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewStructuredValues("default param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "pipeline param!"`,
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
 		name: "parameter propagation array with task default but no task winner pipeline",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
@@ -216,6 +344,44 @@ func TestApplyParameters(t *testing.T) {
 		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewStructuredValues("default", "param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline", "param!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "parameter propagation array with task scoping Finally task",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewStructuredValues("default", "param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
 				TaskSpec: &v1beta1.EmbeddedTask{
 					TaskSpec: v1beta1.TaskSpec{
 						Params: []v1beta1.ParamSpec{{
@@ -277,6 +443,50 @@ func TestApplyParameters(t *testing.T) {
 		},
 		alpha: true,
 	}, {
+		name: "Finally task parameter propagation array with task default and task winner task",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task", "param!")},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewStructuredValues("default", "param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.HELLO)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline", "param!")}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task", "param!")},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewStructuredValues("default", "param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "task", "param!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
 		name: "parameter propagation with task default and task winner task",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
@@ -301,6 +511,50 @@ func TestApplyParameters(t *testing.T) {
 		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task param!")},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewStructuredValues("default param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "task param!"`,
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "Finally task parameter propagation with task default and task winner task",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task param!")},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name:    "HELLO",
+							Default: v1beta1.NewStructuredValues("default param!"),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:   "step1",
+							Image:  "ubuntu",
+							Script: `#!/usr/bin/env bash\necho "$(params.HELLO)"`,
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "HELLO", Value: *v1beta1.NewStructuredValues("pipeline param!")}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
 				Params: []v1beta1.Param{
 					{Name: "HELLO", Value: *v1beta1.NewStructuredValues("task param!")},
 				},
@@ -376,6 +630,61 @@ func TestApplyParameters(t *testing.T) {
 		},
 		alpha: true,
 	}, {
+		name: "Finally task parameter propagation object with task default but no task winner pipeline",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "myobject",
+							Properties: map[string]v1beta1.PropertySpec{
+								"key1": {Type: "string"},
+								"key2": {Type: "string"},
+							},
+							Default: v1beta1.NewObject(map[string]string{
+								"key1": "default",
+								"key2": "param!",
+							}),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+			"key1": "pipeline",
+			"key2": "param!!",
+		})}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "myobject",
+							Properties: map[string]v1beta1.PropertySpec{
+								"key1": {Type: "string"},
+								"key2": {Type: "string"},
+							},
+							Default: v1beta1.NewObject(map[string]string{
+								"key1": "default",
+								"key2": "param!",
+							}),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "pipeline param!!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
 		name: "parameter propagation object with task default and task winner task",
 		original: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
@@ -410,6 +719,70 @@ func TestApplyParameters(t *testing.T) {
 		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
 		expected: v1beta1.PipelineSpec{
 			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+						"key1": "task",
+						"key2": "param!",
+					})},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "myobject",
+							Properties: map[string]v1beta1.PropertySpec{
+								"key1": {Type: "string"},
+								"key2": {Type: "string"},
+							},
+							Default: v1beta1.NewObject(map[string]string{
+								"key1": "default",
+								"key2": "param!!",
+							}),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "task param!"},
+						}},
+					},
+				},
+			}},
+		},
+		alpha: true,
+	}, {
+		name: "Finally task parameter propagation object with task default and task winner task",
+		original: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
+						"key1": "task",
+						"key2": "param!",
+					})},
+				},
+				TaskSpec: &v1beta1.EmbeddedTask{
+					TaskSpec: v1beta1.TaskSpec{
+						Params: []v1beta1.ParamSpec{{
+							Name: "myobject",
+							Properties: map[string]v1beta1.PropertySpec{
+								"key1": {Type: "string"},
+								"key2": {Type: "string"},
+							},
+							Default: v1beta1.NewObject(map[string]string{
+								"key1": "default",
+								"key2": "param!!",
+							}),
+						}},
+						Steps: []v1beta1.Step{{
+							Name:  "step1",
+							Image: "ubuntu",
+							Args:  []string{"#!/usr/bin/env bash\n", "echo", "$(params.myobject.key1) $(params.myobject.key2)"},
+						}},
+					},
+				},
+			}},
+		},
+		params: []v1beta1.Param{{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{"key1": "pipeline", "key2": "param!!!"})}},
+		expected: v1beta1.PipelineSpec{
+			Finally: []v1beta1.PipelineTask{{
 				Params: []v1beta1.Param{
 					{Name: "myobject", Value: *v1beta1.NewObject(map[string]string{
 						"key1": "task",

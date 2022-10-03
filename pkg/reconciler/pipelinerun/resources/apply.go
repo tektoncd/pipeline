@@ -249,6 +249,7 @@ func ApplyReplacements(ctx context.Context, p *v1beta1.PipelineSpec, replacement
 		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
 			p.Finally[i].TaskRef.Params = replaceParamValues(p.Finally[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
 		}
+		p.Finally[i], replacements, arrayReplacements, objectReplacements = propagateParams(ctx, p.Finally[i], replacements, arrayReplacements, objectReplacements)
 	}
 
 	return p
