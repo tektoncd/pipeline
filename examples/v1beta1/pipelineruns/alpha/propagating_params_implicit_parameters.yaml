@@ -16,3 +16,12 @@ spec:
               script: |
                 #!/usr/bin/env bash
                 echo "$(params.HELLO)"
+    finally:
+      - name: echo-hello-finally
+        taskSpec:
+          steps:
+            - name: echo
+              image: ubuntu
+              script: |
+                #!/usr/bin/env bash
+                echo "And Finally ... $(params.HELLO)"
