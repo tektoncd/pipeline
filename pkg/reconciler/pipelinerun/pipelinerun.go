@@ -1244,11 +1244,25 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, pr *v1beta1
 		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
 		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
 		newPr = newPr.DeepCopy()
-		newPr.Labels = pr.Labels
-		newPr.Annotations = pr.Annotations
+		// Properly merge labels and annotations, as the labels *might* have changed during the reconciliation
+		newPr.Labels = merge(newPr.Labels, pr.Labels)
+		newPr.Annotations = merge(newPr.Annotations, pr.Annotations)
 		return c.PipelineClientSet.TektonV1beta1().PipelineRuns(pr.Namespace).Update(ctx, newPr, metav1.UpdateOptions{})
 	}
 	return newPr, nil
+}
+
+func merge(new, old map[string]string) map[string]string {
+	if new == nil {
+		new = map[string]string{}
+	}
+	if old == nil {
+		return new
+	}
+	for k, v := range old {
+		new[k] = v
+	}
+	return new
 }
 
 func storePipelineSpecAndMergeMeta(pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec, meta *metav1.ObjectMeta) error {

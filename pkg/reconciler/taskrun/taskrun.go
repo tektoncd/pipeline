@@ -599,11 +599,24 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1
 		// If we want to switch this to Patch, then we will need to teach the utilities in test/controller.go
 		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
 		newTr = newTr.DeepCopy()
-		newTr.Labels = tr.Labels
-		newTr.Annotations = tr.Annotations
+		newTr.Labels = merge(newTr.Labels, tr.Labels)
+		newTr.Annotations = merge(newTr.Annotations, tr.Annotations)
 		return c.PipelineClientSet.TektonV1beta1().TaskRuns(tr.Namespace).Update(ctx, newTr, metav1.UpdateOptions{})
 	}
 	return newTr, nil
+}
+
+func merge(new, old map[string]string) map[string]string {
+	if new == nil {
+		new = map[string]string{}
+	}
+	if old == nil {
+		return new
+	}
+	for k, v := range old {
+		new[k] = v
+	}
+	return new
 }
 
 func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) error {
