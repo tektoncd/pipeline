@@ -37,7 +37,7 @@ for the name, namespace and defaults that the resolver ships with.
 By default this resolver will hit the public hub api at https://hub.tekton.dev/
 but you can configure your own (for example to use a private hub
 instance) by setting the `HUB_API` environment variable in
-`../config/resolvers/hubresolver-deployment.yaml`. Example:
+[`../config/resolvers/resolvers-deployment.yaml`](../config/resolvers/resolvers-deployment.yaml). Example:
 
 ```yaml
 env
