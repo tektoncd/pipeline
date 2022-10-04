@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2020-2022 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ rules:
     # Controller needs cluster access to all of the CRDs that it is responsible for
     # managing.
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources", "conditions", "runs"]
+    resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources", "runs"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
     resources: ["taskruns/finalizers", "pipelineruns/finalizers", "runs/finalizers"]
@@ -90,7 +90,6 @@ rules:
       - clustertasks.tekton.dev
       - taskruns.tekton.dev
       - pipelineresources.tekton.dev
-      - conditions.tekton.dev
       - resolutionrequests.resolution.tekton.dev
   # knative.dev/pkg needs list/watch permissions to set up informers for the webhook.
   - apiGroups: ["apiextensions.k8s.io"]
