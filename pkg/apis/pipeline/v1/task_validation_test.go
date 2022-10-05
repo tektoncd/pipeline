@@ -45,12 +45,6 @@ func TestTaskValidate(t *testing.T) {
 		t    *v1.Task
 		wc   func(context.Context) context.Context
 	}{{
-		name: "do not validate spec on delete",
-		t: &v1.Task{
-			ObjectMeta: metav1.ObjectMeta{Name: "task"},
-		},
-		wc: apis.WithinDelete,
-	}, {
 		name: "valid task",
 		t: &v1.Task{
 			ObjectMeta: metav1.ObjectMeta{Name: "task"},

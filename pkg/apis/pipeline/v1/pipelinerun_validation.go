@@ -24,18 +24,22 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
 var _ apis.Validatable = (*PipelineRun)(nil)
+var _ resourcesemantics.VerbLimited = (*PipelineRun)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (pr *PipelineRun) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
 
 // Validate pipelinerun
 func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
-	if apis.IsInDelete(ctx) {
-		return nil
-	}
-
 	errs := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata")
 
 	if pr.IsPending() && pr.HasStarted() {

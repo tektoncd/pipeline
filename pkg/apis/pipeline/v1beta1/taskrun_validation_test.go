@@ -139,12 +139,6 @@ func TestTaskRun_Validate(t *testing.T) {
 		taskRun *v1beta1.TaskRun
 		wc      func(context.Context) context.Context
 	}{{
-		name: "do not validate spec on delete",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "taskrname"},
-		},
-		wc: apis.WithinDelete,
-	}, {
 		name: "propagating params with taskrun",
 		taskRun: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "tr"},

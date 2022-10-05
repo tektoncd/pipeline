@@ -26,19 +26,24 @@ import (
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
 var _ apis.Validatable = (*Pipeline)(nil)
+var _ resourcesemantics.VerbLimited = (*Pipeline)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (p *Pipeline) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
 
 // Validate checks that the Pipeline structure is valid but does not validate
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
-	if apis.IsInDelete(ctx) {
-		return nil
-	}
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
 	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 	return errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
