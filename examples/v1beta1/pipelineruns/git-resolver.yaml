@@ -1,0 +1,35 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: git-resolver-
+spec:
+  workspaces:
+    - name: output # this workspace name must be declared in the Pipeline
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce # access mode may affect how you can use this volume in parallel tasks
+          resources:
+            requests:
+              storage: 1Gi
+  pipelineSpec:
+    workspaces:
+      - name: output
+    tasks:
+      - name: task1
+        workspaces:
+          - name: output
+        taskRef:
+          resolver: git
+          params:
+            - name: url
+              value: https://github.com/tektoncd/catalog.git
+            - name: pathInRepo
+              value: /task/git-clone/0.7/git-clone.yaml
+            - name: revision
+              value: main
+        params:
+          - name: url
+            value: https://github.com/tektoncd/catalog
+          - name: deleteExisting
+            value: "true"
