@@ -33,7 +33,7 @@ spec:
         else
           echo "Git repo was not cloned at $(resources.inputs.git-repo.path)"
         fi
-        if [ "$(outputs.resources.optionalimage.url)" == "" ]; then
+        if [ "$(outputs.resources.optionalimage.url)" != "" ]; then
           echo "Image URL: $(outputs.resources.optionalimage.url)"
         else
           echo "No image URL specified."
