@@ -33,21 +33,26 @@ import (
 
 func main() {
 	ctx := filteredinformerfactory.WithSelectors(signals.NewContext(), v1alpha1.ManagedByLabelKey)
-
-	apiURL := os.Getenv("HUB_API")
-	hubURL := hub.DefaultHubURL
-	if apiURL == "" {
-		hubURL = hub.DefaultHubURL
-	} else {
-		if !strings.HasSuffix(apiURL, "/") {
-			apiURL += "/"
-		}
-		hubURL = apiURL + hub.YamlEndpoint
-	}
+	tektonHubURL := buildHubURL(os.Getenv("TEKTON_HUB_API"), "", hub.TektonHubYamlEndpoint)
+	artifactHubURL := buildHubURL(os.Getenv("ARTIFACT_HUB_API"), hub.DefaultArtifactHubURL, hub.ArtifactHubYamlEndpoint)
 
 	sharedmain.MainWithContext(ctx, "controller",
 		framework.NewController(ctx, &git.Resolver{}),
-		framework.NewController(ctx, &hub.Resolver{HubURL: hubURL}),
+		framework.NewController(ctx, &hub.Resolver{TektonHubURL: tektonHubURL, ArtifactHubURL: artifactHubURL}),
 		framework.NewController(ctx, &bundle.Resolver{}),
 		framework.NewController(ctx, &cluster.Resolver{}))
+}
+
+func buildHubURL(configAPI, defaultURL, yamlEndpoint string) string {
+	var hubURL string
+	if configAPI == "" {
+		hubURL = defaultURL
+	} else {
+		if !strings.HasSuffix(configAPI, "/") {
+			configAPI += "/"
+		}
+		hubURL = configAPI + yamlEndpoint
+	}
+
+	return hubURL
 }

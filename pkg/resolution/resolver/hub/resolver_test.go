@@ -26,6 +26,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/test/diff"
 )
@@ -41,26 +42,51 @@ func TestGetSelector(t *testing.T) {
 }
 
 func TestValidateParams(t *testing.T) {
-	resolver := Resolver{}
+	testCases := []struct {
+		testName     string
+		kind         string
+		version      string
+		catalog      string
+		resourceName string
+		hubType      string
+		expectedErr  error
+	}{
+		{
+			testName:     "artifact type validation",
+			kind:         "task",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      ArtifactHubType,
+		}, {
+			testName:     "tekton type validation",
+			kind:         "task",
+			resourceName: "foo",
+			version:      "bar",
+			catalog:      "baz",
+			hubType:      TektonHubType,
+			expectedErr:  fmt.Errorf("failed to validate params: pleaes configure TEKTON_HUB_API env variable to use tekton type"),
+		},
+	}
 
-	paramsWithTask := map[string]string{
-		ParamKind:    "task",
-		ParamName:    "foo",
-		ParamVersion: "bar",
-		ParamCatalog: "baz",
-	}
-	if err := resolver.ValidateParams(resolverContext(), toParams(paramsWithTask)); err != nil {
-		t.Fatalf("unexpected error validating params: %v", err)
-	}
+	for _, tc := range testCases {
+		t.Run(tc.testName, func(t *testing.T) {
+			resolver := Resolver{}
+			params := map[string]string{
+				ParamKind:    tc.kind,
+				ParamName:    tc.resourceName,
+				ParamVersion: tc.version,
+				ParamCatalog: tc.catalog,
+				ParamType:    tc.hubType,
+			}
 
-	paramsWithPipeline := map[string]string{
-		ParamKind:    "pipeline",
-		ParamName:    "foo",
-		ParamVersion: "bar",
-		ParamCatalog: "baz",
-	}
-	if err := resolver.ValidateParams(resolverContext(), toParams(paramsWithPipeline)); err != nil {
-		t.Fatalf("unexpected error validating params: %v", err)
+			err := resolver.ValidateParams(contextWithConfig(), toParams(params))
+			if tc.expectedErr != nil {
+				checkExpectedErr(tc.expectedErr, err, t)
+			} else if err != nil {
+				t.Fatalf("unexpected error validating params: %v", err)
+			}
+		})
 	}
 }
 
@@ -94,7 +120,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		ParamKind:    "foo",
 		ParamVersion: "bar",
 	}
-	err = resolver.ValidateParams(resolverContext(), toParams(paramsMissingName))
+	err = resolver.ValidateParams(contextWithConfig(), toParams(paramsMissingName))
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
@@ -103,23 +129,162 @@ func TestValidateParamsMissing(t *testing.T) {
 		ParamKind: "foo",
 		ParamName: "bar",
 	}
-	err = resolver.ValidateParams(resolverContext(), toParams(paramsMissingVersion))
+	err = resolver.ValidateParams(contextWithConfig(), toParams(paramsMissingVersion))
 	if err == nil {
 		t.Fatalf("expected missing version err")
 	}
 }
 
 func TestValidateParamsConflictingKindName(t *testing.T) {
-	resolver := Resolver{}
-	params := map[string]string{
-		ParamKind:    "not-taskpipeline",
-		ParamName:    "foo",
-		ParamVersion: "bar",
-		ParamCatalog: "baz",
+	testCases := []struct {
+		kind    string
+		name    string
+		version string
+		catalog string
+		hubType string
+	}{
+		{
+			kind:    "not-taskpipeline",
+			name:    "foo",
+			version: "bar",
+			catalog: "baz",
+			hubType: TektonHubType,
+		},
+		{
+			kind:    "task",
+			name:    "foo",
+			version: "bar",
+			catalog: "baz",
+			hubType: "not-tekton-artifact",
+		},
 	}
-	err := resolver.ValidateParams(resolverContext(), toParams(params))
-	if err == nil {
-		t.Fatalf("expected err due to conflicting kind param")
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolver := Resolver{}
+			params := map[string]string{
+				ParamKind:    tc.kind,
+				ParamName:    tc.name,
+				ParamVersion: tc.version,
+				ParamCatalog: tc.catalog,
+				ParamType:    tc.hubType,
+			}
+			err := resolver.ValidateParams(contextWithConfig(), toParams(params))
+			if err == nil {
+				t.Fatalf("expected err due to conflicting param")
+			}
+		})
+	}
+}
+
+func TestResolveVersion(t *testing.T) {
+	testCases := []struct {
+		name        string
+		version     string
+		hubType     string
+		expectedVer string
+		expectedErr error
+	}{
+		{
+			name:        "semver to Tekton Hub",
+			version:     "0.6.0",
+			hubType:     TektonHubType,
+			expectedVer: "0.6",
+		},
+		{
+			name:        "simplified semver to Tekton Hub",
+			version:     "0.6",
+			hubType:     TektonHubType,
+			expectedVer: "0.6",
+		},
+		{
+			name:        "semver to Artifact Hub",
+			version:     "0.6.0",
+			hubType:     ArtifactHubType,
+			expectedVer: "0.6.0",
+		},
+		{
+			name:        "simplified semver to Artifact Hub",
+			version:     "0.6",
+			hubType:     ArtifactHubType,
+			expectedVer: "0.6.0",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resVer, err := resolveVersion(tc.version, tc.hubType)
+			if tc.expectedErr != nil {
+				checkExpectedErr(tc.expectedErr, err, t)
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error resolving, %v", err)
+				} else {
+					if d := cmp.Diff(tc.expectedVer, resVer); d != "" {
+						t.Fatalf("expected version '%v' but got '%v'", tc.expectedVer, resVer)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestResolveCatalogName(t *testing.T) {
+	testCases := []struct {
+		name        string
+		inputCat    string
+		kind        string
+		hubType     string
+		expectedCat string
+	}{
+		{
+			name:        "tekton type default catalog",
+			kind:        "task",
+			hubType:     "tekton",
+			expectedCat: "Tekton",
+		},
+		{
+			name:        "artifact type default task catalog",
+			kind:        "task",
+			hubType:     "artifact",
+			expectedCat: "tekton-catalog-tasks",
+		},
+		{
+			name:        "artifact type default pipeline catalog",
+			kind:        "pipeline",
+			hubType:     "artifact",
+			expectedCat: "tekton-catalog-pipelines",
+		},
+		{
+			name:        "custom catalog",
+			inputCat:    "custom-catalog",
+			kind:        "task",
+			hubType:     "artifact",
+			expectedCat: "custom-catalog",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			params := map[string]string{
+				ParamKind: tc.kind,
+				ParamType: tc.hubType,
+			}
+			if tc.inputCat != "" {
+				params[ParamCatalog] = tc.inputCat
+			}
+
+			conf := framework.GetResolverConfigFromContext(contextWithConfig())
+
+			resCatalog, err := resolveCatalogName(params, conf)
+			if err != nil {
+				t.Fatalf("unexpected error resolving, %v", err)
+			} else {
+				if d := cmp.Diff(tc.expectedCat, resCatalog); d != "" {
+					t.Fatalf("expected catalog name '%v' but got '%v'", tc.expectedCat, resCatalog)
+				}
+			}
+		})
 	}
 }
 
@@ -151,17 +316,29 @@ func TestResolve(t *testing.T) {
 		imageName   string
 		version     string
 		catalog     string
+		hubType     string
 		input       string
 		expectedRes []byte
 		expectedErr error
 	}{
 		{
-			name:        "valid response from hub",
+			name:        "valid response from Tekton Hub",
 			kind:        "task",
 			imageName:   "foo",
 			version:     "baz",
-			catalog:     "tekton",
+			catalog:     "Tekton",
+			hubType:     TektonHubType,
 			input:       `{"data":{"yaml":"some content"}}`,
+			expectedRes: []byte("some content"),
+		},
+		{
+			name:        "valid response from Artifact Hub",
+			kind:        "task",
+			imageName:   "foo",
+			version:     "baz",
+			catalog:     "Tekton",
+			hubType:     ArtifactHubType,
+			input:       `{"data":{"manifestRaw":"some content"}}`,
 			expectedRes: []byte("some content"),
 		},
 		{
@@ -169,7 +346,8 @@ func TestResolve(t *testing.T) {
 			kind:        "task",
 			imageName:   "foo",
 			version:     "baz",
-			catalog:     "tekton",
+			catalog:     "Tekton",
+			hubType:     TektonHubType,
 			input:       `{"name":"not-found","id":"aaaaaaaa","message":"resource not found","temporary":false,"timeout":false,"fault":false}`,
 			expectedRes: []byte(""),
 		},
@@ -178,17 +356,28 @@ func TestResolve(t *testing.T) {
 			kind:        "task",
 			imageName:   "foo",
 			version:     "baz",
-			catalog:     "tekton",
+			catalog:     "Tekton",
+			hubType:     TektonHubType,
 			input:       `value`,
-			expectedErr: fmt.Errorf("error unmarshalling json response: invalid character 'v' looking for beginning of value"),
+			expectedErr: fmt.Errorf("fail to fetch Tekton Hub resource: error unmarshalling json response: invalid character 'v' looking for beginning of value"),
 		},
 		{
-			name:        "response with empty body error",
+			name:        "response with empty body error from Tekton Hub",
 			kind:        "task",
 			imageName:   "foo",
 			version:     "baz",
-			catalog:     "tekton",
-			expectedErr: fmt.Errorf("error unmarshalling json response: unexpected end of JSON input"),
+			catalog:     "Tekton",
+			hubType:     TektonHubType,
+			expectedErr: fmt.Errorf("fail to fetch Tekton Hub resource: error unmarshalling json response: unexpected end of JSON input"),
+		},
+		{
+			name:        "response with empty body error from Artifact Hub",
+			kind:        "task",
+			imageName:   "foo",
+			version:     "baz",
+			catalog:     "Tekton",
+			hubType:     ArtifactHubType,
+			expectedErr: fmt.Errorf("fail to fetch Artifact Hub resource: error unmarshalling json response: unexpected end of JSON input"),
 		},
 	}
 
@@ -198,33 +387,27 @@ func TestResolve(t *testing.T) {
 				fmt.Fprintf(w, tc.input)
 			}))
 
-			resolver := &Resolver{HubURL: svr.URL + "/" + YamlEndpoint}
+			resolver := &Resolver{
+				TektonHubURL:   svr.URL + "/" + TektonHubYamlEndpoint,
+				ArtifactHubURL: svr.URL + "/" + ArtifactHubYamlEndpoint,
+			}
 
 			params := map[string]string{
 				ParamKind:    tc.kind,
 				ParamName:    tc.imageName,
 				ParamVersion: tc.version,
 				ParamCatalog: tc.catalog,
+				ParamType:    tc.hubType,
 			}
 
-			output, err := resolver.Resolve(resolverContext(), toParams(params))
+			output, err := resolver.Resolve(contextWithConfig(), toParams(params))
 			if tc.expectedErr != nil {
-				if err == nil {
-					t.Fatalf("expected err '%v' but didn't get one", tc.expectedErr)
-				}
-				if d := cmp.Diff(tc.expectedErr.Error(), err.Error()); d != "" {
-					t.Fatalf("expected err '%v' but got '%v'", tc.expectedErr, err)
-				}
+				checkExpectedErr(tc.expectedErr, err, t)
 			} else {
 				if err != nil {
 					t.Fatalf("unexpected error resolving: %v", err)
 				}
-
-				expectedResource := &ResolvedHubResource{
-					Content: tc.expectedRes,
-				}
-
-				if d := cmp.Diff(expectedResource, output); d != "" {
+				if d := cmp.Diff(tc.expectedRes, output.Data()); d != "" {
 					t.Errorf("unexpected resource from Resolve: %s", diff.PrintWantGot(d))
 				}
 			}
@@ -247,4 +430,24 @@ func toParams(m map[string]string) []pipelinev1beta1.Param {
 	}
 
 	return params
+}
+
+func contextWithConfig() context.Context {
+	config := map[string]string{
+		"default-tekton-hub-catalog":            "Tekton",
+		"default-artifact-hub-task-catalog":     "tekton-catalog-tasks",
+		"default-artifact-hub-pipeline-catalog": "tekton-catalog-pipelines",
+		"default-type":                          "artifact",
+	}
+
+	return framework.InjectResolverConfigToContext(resolverContext(), config)
+}
+
+func checkExpectedErr(expectedErr, actualErr error, t *testing.T) {
+	if actualErr == nil {
+		t.Fatalf("expected err '%v' but didn't get one", expectedErr)
+	}
+	if d := cmp.Diff(expectedErr.Error(), actualErr.Error()); d != "" {
+		t.Fatalf("expected err '%v' but got '%v'", expectedErr, actualErr)
+	}
 }

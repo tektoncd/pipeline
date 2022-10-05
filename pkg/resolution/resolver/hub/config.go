@@ -16,10 +16,22 @@ limitations under the License.
 
 package hub
 
-// ConfigCatalog is the configuration field name for controlling
-// the catalog to fetch the remote resource from.
-const ConfigCatalog = "default-catalog"
+// ConfigTektonHubCatalog is the configuration field name for controlling
+// the Tekton Hub catalog to fetch the remote resource from.
+const ConfigTektonHubCatalog = "default-tekton-hub-catalog"
+
+// ConfigArtifactHubTaskCatalog is the configuration field name for controlling
+// the Artifact Hub Task catalog to fetch the remote resource from.
+const ConfigArtifactHubTaskCatalog = "default-artifact-hub-task-catalog"
+
+// ConfigArtifactHubPipelineCatalog is the configuration field name for controlling
+// the Artifact Hub Pipeline catalog to fetch the remote resource from.
+const ConfigArtifactHubPipelineCatalog = "default-artifact-hub-pipeline-catalog"
 
 // ConfigKind is the configuration field name for controlling
 // what the layer name in the hub image is.
 const ConfigKind = "default-kind"
+
+// ConfigType is the configuration field name for controlling
+// the hub type to pull the resource from.
+const ConfigType = "default-type"

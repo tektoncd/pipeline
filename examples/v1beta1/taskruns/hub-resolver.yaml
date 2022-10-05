@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
-  generateName: hub-resolver
+  generateName: hub-resolver-simple-semver-
 spec:
   workspaces:
     - name: output
@@ -17,11 +17,35 @@ spec:
   taskRef:
     resolver: hub
     params:
-      - name: catalog # optional
-        value: Tekton
-      - name: kind
+      - name: type  #optional
+        value: artifact
+      - name: kind  #optional
         value: task
       - name: name
         value: git-clone
       - name: version
         value: "0.6"
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: hub-resolver-semver-required-fields-only-
+spec:
+  workspaces:
+    - name: output
+      emptyDir: {}
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  params:
+    - name: url
+      value: https://github.com/tektoncd/pipeline.git
+    - name: revision
+      value: main
+  taskRef:
+    resolver: hub
+    params:
+      - name: name
+        value: git-clone
+      - name: version
+        value: "0.6.0"
