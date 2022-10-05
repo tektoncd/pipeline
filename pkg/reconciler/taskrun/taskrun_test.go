@@ -63,13 +63,11 @@ import (
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-	"knative.dev/pkg/changeset"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
-
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 
@@ -4601,7 +4599,7 @@ func TestReconcileOnCancelledTaskRunWithFeatureFlag(t *testing.T) {
 		Type:    apis.ConditionSucceeded,
 		Status:  corev1.ConditionFalse,
 		Reason:  "TaskRunCancelled",
-		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled`,
+		Message: `TaskRun "test-taskrun-run-cancelled" was cancelled. `,
 	}
 
 	testCases := []struct {
@@ -4655,7 +4653,7 @@ func TestReconcileOnCancelledTaskRunWithFeatureFlag(t *testing.T) {
 
 			wantEvents := []string{
 				"Normal Started",
-				"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled",
+				"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled. ",
 			}
 			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-cancelled-taskrun", wantEvents)
 			if !(err == nil) {
@@ -4794,12 +4792,12 @@ func TestCancelTaskRun(t *testing.T) {
 			},
 		}},
 		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel was cancelled",
+		message: "TaskRun test-taskrun-run-cancel was cancelled. ",
 		expectedStatus: apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel was cancelled",
+			Message: "TaskRun test-taskrun-run-cancel was cancelled. ",
 		},
 		expectedStepStates: []v1beta1.StepState{
 			{
@@ -4859,12 +4857,12 @@ func TestCancelTaskRun(t *testing.T) {
 			},
 		}},
 		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
+		message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled. ",
 		expectedStatus: apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
+			Message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled. ",
 		},
 		expectedStepStates: []v1beta1.StepState{
 			{
@@ -4940,12 +4938,12 @@ func TestCancelTaskRun(t *testing.T) {
 			},
 		}},
 		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel-multiple-steps-waiting was cancelled",
+		message: "TaskRun test-taskrun-run-cancel-multiple-steps-waiting was cancelled. ",
 		expectedStatus: apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel-multiple-steps-waiting was cancelled",
+			Message: "TaskRun test-taskrun-run-cancel-multiple-steps-waiting was cancelled. ",
 		},
 		expectedStepStates: []v1beta1.StepState{
 			{
@@ -5016,12 +5014,12 @@ func TestCancelTaskRun(t *testing.T) {
 			},
 		}},
 		reason:  v1beta1.TaskRunReasonCancelled,
-		message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
+		message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled. ",
 		expectedStatus: apis.Condition{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionFalse,
 			Reason:  v1beta1.TaskRunReasonCancelled.String(),
-			Message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled",
+			Message: "TaskRun test-taskrun-run-cancel-multiple-steps was cancelled. ",
 		},
 		expectedStepStates: []v1beta1.StepState{
 			{
@@ -5149,6 +5147,8 @@ func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []
 		"/tekton/termination",
 		"-step_metadata_dir",
 		fmt.Sprintf("/tekton/run/%d/status", idx),
+		"-cancel_file",
+		"/tekton/downward/cancel",
 	)
 	if stdoutPath != "" {
 		args = append(args, "-stdout_path", stdoutPath)
@@ -5157,8 +5157,6 @@ func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []
 		args = append(args, "-stderr_path", stderrPath)
 	}
 	args = append(args,
-		"-cancel_file",
-		"/tekton/downward/cancel",
 		"-entrypoint",
 		cmd,
 		"--",

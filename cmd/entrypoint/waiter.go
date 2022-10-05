@@ -39,7 +39,10 @@ func (rw *realWaiter) Wait(ctx context.Context, file string, expectContent bool,
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			if ctx.Err() == context.DeadlineExceeded {
+				return ctx.Err()
+			}
+			return nil
 		case <-time.After(rw.waitPollingInterval):
 		}
 

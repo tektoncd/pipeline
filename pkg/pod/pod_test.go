@@ -1836,6 +1836,7 @@ _EOF_
 						"/tekton/termination",
 						"-step_metadata_dir",
 						"/tekton/run/0/status",
+						"-cancel_file", "/tekton/downward/cancel",
 						"-entrypoint",
 						"cmd",
 						"--",

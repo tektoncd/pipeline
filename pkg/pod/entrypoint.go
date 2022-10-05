@@ -127,26 +127,13 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 	for i, s := range steps {
 		var argsForEntrypoint = []string{}
 		idx := strconv.Itoa(i)
-		switch i {
-		case 0:
-			argsForEntrypoint = []string{
-				// First step waits for the Downward volume file.
-				"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
-				"-wait_file_content", // Wait for file contents, not just an empty file.
-				// Start next step.
-				"-post_file", filepath.Join(runDir, idx, "out"),
-				"-termination_path", terminationPath,
-				"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
-				"-cancel_file", filepath.Join(downwardMountPoint, downwardMountCancelFile),
-			}
-		default:
-			// All other steps wait for previous file, write next file.
-			argsForEntrypoint = []string{
-				"-wait_file", filepath.Join(runDir, strconv.Itoa(i-1), "out"),
-				"-post_file", filepath.Join(runDir, idx, "out"),
-				"-termination_path", terminationPath,
-				"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
-				"-cancel_file", filepath.Join(downwardMountPoint, downwardMountCancelFile),
+		if i == 0 {
+			if waitForReadyAnnotation {
+				argsForEntrypoint = append(argsForEntrypoint,
+					// First step waits for the Downward volume file.
+					"-wait_file", filepath.Join(downwardMountPoint, downwardMountReadyFile),
+					"-wait_file_content", // Wait for file contents, not just an empty file.
+				)
 			}
 		} else { // Not the first step - wait for previous
 			argsForEntrypoint = append(argsForEntrypoint, "-wait_file", filepath.Join(runDir, strconv.Itoa(i-1), "out"))
@@ -156,6 +143,7 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 			"-post_file", filepath.Join(runDir, idx, "out"),
 			"-termination_path", terminationPath,
 			"-step_metadata_dir", filepath.Join(runDir, idx, "status"),
+			"-cancel_file", filepath.Join(downwardMountPoint, downwardMountCancelFile),
 		)
 		argsForEntrypoint = append(argsForEntrypoint, commonExtraEntrypointArgs...)
 		if taskSpec != nil {
