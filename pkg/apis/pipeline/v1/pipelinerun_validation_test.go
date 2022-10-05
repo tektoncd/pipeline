@@ -197,19 +197,6 @@ func TestPipelineRun_Validate(t *testing.T) {
 			},
 		},
 	}, {
-		name: "do not validate spec on delete",
-		pr: v1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "pipelinelinename",
-			},
-			Spec: v1.PipelineRunSpec{
-				PipelineRef: &v1.PipelineRef{
-					Name: "prname",
-				},
-			},
-		},
-		wc: apis.WithinDelete,
-	}, {
 		name: "pipelinerun cancelled",
 		pr: v1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
