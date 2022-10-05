@@ -23,18 +23,10 @@ metadata:
     app.kubernetes.io/part-of: tekton-pipelines
 data:
   # Setting this flag to "true" enables remote resolution of Tekton OCI bundles.
-  # This is an experimental feature and thus should still be considered
-  # an alpha feature.
-  enable-bundles-resolver: "false"
+  enable-bundles-resolver: "true"
   # Setting this flag to "true" enables remote resolution of tasks and pipelines via the Tekton Hub.
-  # This is an experimental feature and thus should still be considered
-  # an alpha feature.
-  enable-hub-resolver: "false"
+  enable-hub-resolver: "true"
   # Setting this flag to "true" enables remote resolution of tasks and pipelines from Git repositories.
-  # This is an experimental feature and thus should still be considered
-  # an alpha feature.
-  enable-git-resolver: "false"
+  enable-git-resolver: "true"
   # Setting this flag to "true" enables remote resolution of tasks and pipelines from other namespaces within the cluster.
-  # This is an experimental feature and thus should still be considered
-  # an alpha feature.
-  enable-cluster-resolver: "false"
+  enable-cluster-resolver: "true"

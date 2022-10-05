@@ -16,18 +16,20 @@ limitations under the License.
 
 package resource
 
+import "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
 var _ Request = &BasicRequest{}
 
 // BasicRequest holds the fields needed to submit a new resource request.
 type BasicRequest struct {
 	name      string
 	namespace string
-	params    map[string]string
+	params    []v1beta1.Param
 }
 
 // NewRequest returns an instance of a BasicRequest with the given name,
 // namespace and params.
-func NewRequest(name, namespace string, params map[string]string) Request {
+func NewRequest(name, namespace string, params []v1beta1.Param) Request {
 	return &BasicRequest{name, namespace, params}
 }
 
@@ -44,6 +46,6 @@ func (req *BasicRequest) Namespace() string {
 }
 
 // Params are the map of parameters associated with this request
-func (req *BasicRequest) Params() map[string]string {
+func (req *BasicRequest) Params() []v1beta1.Param {
 	return req.params
 }

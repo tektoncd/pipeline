@@ -36,7 +36,8 @@ import (
 	"github.com/jenkins-x/go-scm/scm/driver/fake"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -71,7 +72,7 @@ func TestValidateParams(t *testing.T) {
 		revisionParam: "baz",
 	}
 
-	if err := resolver.ValidateParams(resolverContext(), paramsWithRevision); err != nil {
+	if err := resolver.ValidateParams(resolverContext(), toParams(paramsWithRevision)); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 }
@@ -85,7 +86,7 @@ func TestValidateParamsNotEnabled(t *testing.T) {
 		pathParam:     "bar",
 		revisionParam: "baz",
 	}
-	err = resolver.ValidateParams(context.Background(), someParams)
+	err = resolver.ValidateParams(context.Background(), toParams(someParams))
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}
@@ -138,7 +139,7 @@ func TestValidateParams_Failure(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := &Resolver{}
-			err := resolver.ValidateParams(resolverContext(), tc.params)
+			err := resolver.ValidateParams(resolverContext(), toParams(tc.params))
 			if err == nil {
 				t.Fatalf("got no error, but expected: %s", tc.expectedErr)
 			}
@@ -181,7 +182,7 @@ func TestResolveNotEnabled(t *testing.T) {
 		pathParam:     "bar",
 		revisionParam: "baz",
 	}
-	_, err = resolver.Resolve(context.Background(), someParams)
+	_, err = resolver.Resolve(context.Background(), toParams(someParams))
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}
@@ -222,7 +223,7 @@ func TestResolve(t *testing.T) {
 		pathInRepo     string
 		config         map[string]string
 		apiToken       string
-		expectedStatus *v1alpha1.ResolutionRequestStatus
+		expectedStatus *v1beta1.ResolutionRequestStatus
 		expectedErr    error
 	}{
 		{
@@ -472,15 +473,18 @@ func TestResolve(t *testing.T) {
 						"enable-git-resolver": "true",
 					},
 				}},
-				ResolutionRequests: []*v1alpha1.ResolutionRequest{request},
+				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
 			}
 
-			var expectedStatus *v1alpha1.ResolutionRequestStatus
+			var expectedStatus *v1beta1.ResolutionRequestStatus
 			if tc.expectedStatus != nil {
 				expectedStatus = tc.expectedStatus.DeepCopy()
 
 				if tc.expectedErr == nil {
-					reqParams := request.Spec.Parameters
+					reqParams := make(map[string]string)
+					for _, p := range request.Spec.Params {
+						reqParams[p.Name] = p.Value.StringVal
+					}
 					if expectedStatus.Annotations == nil {
 						expectedStatus.Annotations = make(map[string]string)
 					}
@@ -657,10 +661,10 @@ func withTemporaryGitConfig(t *testing.T) {
 	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
 }
 
-func createRequest(repoURL, apiOrg, apiRepo, pathInRepo, revision, specificCommit string, useNthCommit int, commitsByBranch map[string][]string) *v1alpha1.ResolutionRequest {
-	rr := &v1alpha1.ResolutionRequest{
+func createRequest(repoURL, apiOrg, apiRepo, pathInRepo, revision, specificCommit string, useNthCommit int, commitsByBranch map[string][]string) *v1beta1.ResolutionRequest {
+	rr := &v1beta1.ResolutionRequest{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "resolution.tekton.dev/v1alpha1",
+			APIVersion: "resolution.tekton.dev/v1beta1",
 			Kind:       "ResolutionRequest",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -671,27 +675,46 @@ func createRequest(repoURL, apiOrg, apiRepo, pathInRepo, revision, specificCommi
 				resolutioncommon.LabelKeyResolverType: labelValueGitResolverType,
 			},
 		},
-		Spec: v1alpha1.ResolutionRequestSpec{
-			Parameters: map[string]string{
-				pathParam: pathInRepo,
-			},
+		Spec: v1beta1.ResolutionRequestSpec{
+			Params: []pipelinev1beta1.Param{{
+				Name:  pathParam,
+				Value: *pipelinev1beta1.NewStructuredValues(pathInRepo),
+			}},
 		},
 	}
 
 	switch {
 	case useNthCommit > 0:
-		rr.Spec.Parameters[revisionParam] = commitsByBranch[plumbing.Master.Short()][useNthCommit]
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+			Name:  revisionParam,
+			Value: *pipelinev1beta1.NewStructuredValues(commitsByBranch[plumbing.Master.Short()][useNthCommit]),
+		})
 	case specificCommit != "":
-		rr.Spec.Parameters[revisionParam] = hex.EncodeToString([]byte(specificCommit))
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+			Name:  revisionParam,
+			Value: *pipelinev1beta1.NewStructuredValues(hex.EncodeToString([]byte(specificCommit))),
+		})
 	case revision != "":
-		rr.Spec.Parameters[revisionParam] = revision
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+			Name:  revisionParam,
+			Value: *pipelinev1beta1.NewStructuredValues(revision),
+		})
 	}
 
 	if repoURL != "" {
-		rr.Spec.Parameters[urlParam] = repoURL
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+			Name:  urlParam,
+			Value: *pipelinev1beta1.NewStructuredValues(repoURL),
+		})
 	} else {
-		rr.Spec.Parameters[repoParam] = apiRepo
-		rr.Spec.Parameters[orgParam] = apiOrg
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+			Name:  repoParam,
+			Value: *pipelinev1beta1.NewStructuredValues(apiRepo),
+		})
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+			Name:  orgParam,
+			Value: *pipelinev1beta1.NewStructuredValues(apiOrg),
+		})
 	}
 
 	return rr
@@ -701,17 +724,17 @@ func resolverContext() context.Context {
 	return frtesting.ContextWithGitResolverEnabled(context.Background())
 }
 
-func createStatus(content []byte) *v1alpha1.ResolutionRequestStatus {
-	return &v1alpha1.ResolutionRequestStatus{
+func createStatus(content []byte) *v1beta1.ResolutionRequestStatus {
+	return &v1beta1.ResolutionRequestStatus{
 		Status: duckv1.Status{},
-		ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+		ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 			Data: base64.StdEncoding.Strict().EncodeToString(content),
 		},
 	}
 }
 
-func createFailureStatus() *v1alpha1.ResolutionRequestStatus {
-	return &v1alpha1.ResolutionRequestStatus{
+func createFailureStatus() *v1beta1.ResolutionRequestStatus {
+	return &v1beta1.ResolutionRequestStatus{
 		Status: duckv1.Status{
 			Conditions: duckv1.Conditions{{
 				Type:   apis.ConditionSucceeded,
@@ -728,4 +751,17 @@ func createError(msg string) error {
 		Key:          "foo/rr",
 		Original:     errors.New(msg),
 	}
+}
+
+func toParams(m map[string]string) []pipelinev1beta1.Param {
+	var params []pipelinev1beta1.Param
+
+	for k, v := range m {
+		params = append(params, pipelinev1beta1.Param{
+			Name:  k,
+			Value: *pipelinev1beta1.NewStructuredValues(v),
+		})
+	}
+
+	return params
 }

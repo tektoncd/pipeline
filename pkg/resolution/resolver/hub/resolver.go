@@ -22,7 +22,8 @@ import (
 	"net/http"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
@@ -64,18 +65,22 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 }
 
 // ValidateParams ensures parameters from a request are as expected.
-func (r *Resolver) ValidateParams(ctx context.Context, params map[string]string) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.Param) error {
 	if r.isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
-	if _, ok := params[ParamName]; !ok {
+	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value
+	}
+	if _, ok := paramsMap[ParamName]; !ok {
 		return errors.New("must include name param")
 	}
-	if _, ok := params[ParamVersion]; !ok {
+	if _, ok := paramsMap[ParamVersion]; !ok {
 		return errors.New("must include version param")
 	}
-	if kind, ok := params[ParamKind]; ok {
-		if kind != "task" && kind != "pipeline" {
+	if kind, ok := paramsMap[ParamKind]; ok {
+		if kind.StringVal != "task" && kind.StringVal != "pipeline" {
 			return errors.New("kind param must be task or pipeline")
 		}
 	}
@@ -91,21 +96,27 @@ type hubResponse struct {
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
-func (r *Resolver) Resolve(ctx context.Context, params map[string]string) (framework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) (framework.ResolvedResource, error) {
 	if r.isDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
 
 	conf := framework.GetResolverConfigFromContext(ctx)
-	if _, ok := params[ParamCatalog]; !ok {
+
+	paramsMap := make(map[string]string)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value.StringVal
+	}
+
+	if _, ok := paramsMap[ParamCatalog]; !ok {
 		if catalogString, ok := conf[ConfigCatalog]; ok {
-			params[ParamCatalog] = catalogString
+			paramsMap[ParamCatalog] = catalogString
 		} else {
 			return nil, fmt.Errorf("default catalog was not set during installation of the hub resolver")
 		}
 	}
 
-	kind, ok := params[ParamKind]
+	kind, ok := paramsMap[ParamKind]
 	if !ok {
 		if kindString, ok := conf[ConfigKind]; ok {
 			kind = kindString
@@ -117,8 +128,8 @@ func (r *Resolver) Resolve(ctx context.Context, params map[string]string) (frame
 		return nil, fmt.Errorf("kind param must be task or pipeline")
 	}
 
-	params[ParamKind] = kind
-	url := fmt.Sprintf(r.HubURL, params[ParamCatalog], params[ParamKind], params[ParamName], params[ParamVersion])
+	paramsMap[ParamKind] = kind
+	url := fmt.Sprintf(r.HubURL, paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
 	// #nosec G107 -- URL cannot be constant in this case.
 	resp, err := http.Get(url)
 	if err != nil {
@@ -163,7 +174,7 @@ func (*ResolvedHubResource) Annotations() map[string]string {
 
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (rr *ResolvedHubResource) Source() *v1alpha1.ConfigSource {
+func (rr *ResolvedHubResource) Source() *v1beta1.ConfigSource {
 	return nil
 }
 

@@ -16,7 +16,17 @@ limitations under the License.
 
 package resolution
 
+import "k8s.io/apimachinery/pkg/runtime/schema"
+
 const (
 	// GroupName is the name of the API group.
 	GroupName = "resolution.tekton.dev"
+)
+
+var (
+	// ResolutionRequestResource represents a Tekton ResolutionRequest
+	ResolutionRequestResource = schema.GroupResource{
+		Group:    GroupName,
+		Resource: "resolutionrequests",
+	}
 )

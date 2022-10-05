@@ -62,6 +62,7 @@ type ResolutionRequestSpec struct {
 	// resource being requested. For example: repo URL, commit SHA,
 	// path to file, the kind of authentication to leverage, etc.
 	// +optional
+	// +listType=atomic
 	Params []pipelinev1beta1.Param `json:"params,omitempty"`
 }
 

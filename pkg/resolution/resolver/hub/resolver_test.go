@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -48,7 +49,7 @@ func TestValidateParams(t *testing.T) {
 		ParamVersion: "bar",
 		ParamCatalog: "baz",
 	}
-	if err := resolver.ValidateParams(resolverContext(), paramsWithTask); err != nil {
+	if err := resolver.ValidateParams(resolverContext(), toParams(paramsWithTask)); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 
@@ -58,7 +59,7 @@ func TestValidateParams(t *testing.T) {
 		ParamVersion: "bar",
 		ParamCatalog: "baz",
 	}
-	if err := resolver.ValidateParams(resolverContext(), paramsWithPipeline); err != nil {
+	if err := resolver.ValidateParams(resolverContext(), toParams(paramsWithPipeline)); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 }
@@ -74,7 +75,7 @@ func TestValidateParamsDisabled(t *testing.T) {
 		ParamVersion: "bar",
 		ParamCatalog: "baz",
 	}
-	err = resolver.ValidateParams(context.Background(), params)
+	err = resolver.ValidateParams(context.Background(), toParams(params))
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
@@ -93,7 +94,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		ParamKind:    "foo",
 		ParamVersion: "bar",
 	}
-	err = resolver.ValidateParams(resolverContext(), paramsMissingName)
+	err = resolver.ValidateParams(resolverContext(), toParams(paramsMissingName))
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
@@ -102,7 +103,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		ParamKind: "foo",
 		ParamName: "bar",
 	}
-	err = resolver.ValidateParams(resolverContext(), paramsMissingVersion)
+	err = resolver.ValidateParams(resolverContext(), toParams(paramsMissingVersion))
 	if err == nil {
 		t.Fatalf("expected missing version err")
 	}
@@ -116,7 +117,7 @@ func TestValidateParamsConflictingKindName(t *testing.T) {
 		ParamVersion: "bar",
 		ParamCatalog: "baz",
 	}
-	err := resolver.ValidateParams(resolverContext(), params)
+	err := resolver.ValidateParams(resolverContext(), toParams(params))
 	if err == nil {
 		t.Fatalf("expected err due to conflicting kind param")
 	}
@@ -133,7 +134,7 @@ func TestResolveDisabled(t *testing.T) {
 		ParamVersion: "bar",
 		ParamCatalog: "baz",
 	}
-	_, err = resolver.Resolve(context.Background(), params)
+	_, err = resolver.Resolve(context.Background(), toParams(params))
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
@@ -206,7 +207,7 @@ func TestResolve(t *testing.T) {
 				ParamCatalog: tc.catalog,
 			}
 
-			output, err := resolver.Resolve(resolverContext(), params)
+			output, err := resolver.Resolve(resolverContext(), toParams(params))
 			if tc.expectedErr != nil {
 				if err == nil {
 					t.Fatalf("expected err '%v' but didn't get one", tc.expectedErr)
@@ -233,4 +234,17 @@ func TestResolve(t *testing.T) {
 
 func resolverContext() context.Context {
 	return frtesting.ContextWithHubResolverEnabled(context.Background())
+}
+
+func toParams(m map[string]string) []pipelinev1beta1.Param {
+	var params []pipelinev1beta1.Param
+
+	for k, v := range m {
+		params = append(params, pipelinev1beta1.Param{
+			Name:  k,
+			Value: *pipelinev1beta1.NewStructuredValues(v),
+		})
+	}
+
+	return params
 }

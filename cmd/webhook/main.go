@@ -27,7 +27,9 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
@@ -66,6 +68,8 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// resolution
 	// v1alpha1
 	resolutionv1alpha1.SchemeGroupVersion.WithKind("ResolutionRequest"): &resolutionv1alpha1.ResolutionRequest{},
+	// v1beta1
+	resolutionv1beta1.SchemeGroupVersion.WithKind("ResolutionRequest"): &resolutionv1beta1.ResolutionRequest{},
 }
 
 func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -140,8 +144,10 @@ func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	// nolint: revive
 	var (
-		v1beta1GroupVersion = v1beta1.SchemeGroupVersion.Version
-		v1GroupVersion      = v1.SchemeGroupVersion.Version
+		v1beta1GroupVersion            = v1beta1.SchemeGroupVersion.Version
+		v1GroupVersion                 = v1.SchemeGroupVersion.Version
+		resolutionv1alpha1GroupVersion = resolutionv1alpha1.SchemeGroupVersion.Version
+		resolutionv1beta1GroupVersion  = resolutionv1beta1.SchemeGroupVersion.Version
 	)
 	return conversion.NewConversionController(ctx,
 		// The path on which to serve the webhook
@@ -180,6 +186,14 @@ func newConversionController(ctx context.Context, cmw configmap.Watcher) *contro
 				Zygotes: map[string]conversion.ConvertibleObject{
 					v1beta1GroupVersion: &v1beta1.PipelineRun{},
 					v1GroupVersion:      &v1.PipelineRun{},
+				},
+			},
+			resolutionv1beta1.Kind("ResolutionRequest"): {
+				DefinitionName: resolution.ResolutionRequestResource.String(),
+				HubVersion:     resolutionv1beta1GroupVersion,
+				Zygotes: map[string]conversion.ConvertibleObject{
+					resolutionv1alpha1GroupVersion: &resolutionv1alpha1.ResolutionRequest{},
+					resolutionv1beta1GroupVersion:  &resolutionv1beta1.ResolutionRequest{},
 				},
 			},
 		},

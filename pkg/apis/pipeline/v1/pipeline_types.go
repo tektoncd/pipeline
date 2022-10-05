@@ -260,7 +260,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 		} else if pt.TaskRef.Resolver == "" {
 			errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
 		}
-		if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
+		if cfg.FeatureFlags.EnableAPIFields != config.BetaAPIFields && cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
 			// fail if resolver or resource are present when enable-api-fields is false.
 			if pt.TaskRef.Resolver != "" {
 				errs = errs.Also(apis.ErrDisallowedFields("taskref.resolver"))

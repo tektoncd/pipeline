@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
@@ -35,9 +35,9 @@ func TestResolver(t *testing.T) {
 
 	r := &resolver{}
 
-	request := &v1alpha1.ResolutionRequest{
+	request := &v1beta1.ResolutionRequest{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "resolution.tekton.dev/v1alpha1",
+			APIVersion: "resolution.tekton.dev/v1beta1",
 			Kind:       "ResolutionRequest",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -48,14 +48,14 @@ func TestResolver(t *testing.T) {
 				resolutioncommon.LabelKeyResolverType: "demo",
 			},
 		},
-		Spec: v1alpha1.ResolutionRequestSpec{},
+		Spec: v1beta1.ResolutionRequestSpec{},
 	}
 	d := test.Data{
-		ResolutionRequests: []*v1alpha1.ResolutionRequest{request},
+		ResolutionRequests: []*v1beta1.ResolutionRequest{request},
 	}
 
-	expectedStatus := &v1alpha1.ResolutionRequestStatus{
-		ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+	expectedStatus := &v1beta1.ResolutionRequestStatus{
+		ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 			Data: base64.StdEncoding.Strict().EncodeToString([]byte(pipeline)),
 		},
 	}

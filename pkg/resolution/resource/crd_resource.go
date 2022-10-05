@@ -22,9 +22,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
-	rrlisters "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1alpha1"
+	rrlisters "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -78,9 +78,9 @@ func (r *CRDRequester) Submit(ctx context.Context, resolver ResolverName, req Re
 }
 
 func (r *CRDRequester) createResolutionRequest(ctx context.Context, resolver ResolverName, req Request) error {
-	rr := &v1alpha1.ResolutionRequest{
+	rr := &v1beta1.ResolutionRequest{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "resolution.tekton.dev/v1alpha1",
+			APIVersion: "resolution.tekton.dev/v1beta1",
 			Kind:       "ResolutionRequest",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -90,16 +90,16 @@ func (r *CRDRequester) createResolutionRequest(ctx context.Context, resolver Res
 				resolutioncommon.LabelKeyResolverType: string(resolver),
 			},
 		},
-		Spec: v1alpha1.ResolutionRequestSpec{
-			Parameters: req.Params(),
+		Spec: v1beta1.ResolutionRequestSpec{
+			Params: req.Params(),
 		},
 	}
 	appendOwnerReference(rr, req)
-	_, err := r.clientset.ResolutionV1alpha1().ResolutionRequests(rr.Namespace).Create(ctx, rr, metav1.CreateOptions{})
+	_, err := r.clientset.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Create(ctx, rr, metav1.CreateOptions{})
 	return err
 }
 
-func appendOwnerReference(rr *v1alpha1.ResolutionRequest, req Request) {
+func appendOwnerReference(rr *v1beta1.ResolutionRequest, req Request) {
 	if ownedReq, ok := req.(OwnedRequest); ok {
 		newOwnerRef := ownedReq.OwnerRef()
 		isOwner := false
@@ -123,12 +123,12 @@ func ownerRefsAreEqual(a, b metav1.OwnerReference) bool {
 // Resource interface without exposing the underlying API
 // object.
 type readOnlyResolutionRequest struct {
-	req *v1alpha1.ResolutionRequest
+	req *v1beta1.ResolutionRequest
 }
 
 var _ ResolvedResource = readOnlyResolutionRequest{}
 
-func crdIntoResource(rr *v1alpha1.ResolutionRequest) readOnlyResolutionRequest {
+func crdIntoResource(rr *v1beta1.ResolutionRequest) readOnlyResolutionRequest {
 	return readOnlyResolutionRequest{req: rr}
 }
 
@@ -153,6 +153,6 @@ func (r readOnlyResolutionRequest) Data() ([]byte, error) {
 	return decodedBytes, nil
 }
 
-func (r readOnlyResolutionRequest) Source() *v1alpha1.ConfigSource {
+func (r readOnlyResolutionRequest) Source() *v1beta1.ConfigSource {
 	return r.req.Status.Source
 }

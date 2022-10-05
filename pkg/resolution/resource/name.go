@@ -21,6 +21,8 @@ import (
 	"hash"
 	"hash/fnv"
 	"sort"
+
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 )
 
 // nameHasher returns the hash.Hash to use when generating names.
@@ -33,22 +35,33 @@ func nameHasher() hash.Hash {
 // will have the format {prefix}-{hash} where {prefix} is
 // given and {hash} is nameHasher(base) + nameHasher(param1) +
 // nameHasher(param2) + ...
-func GenerateDeterministicName(prefix, base string, params map[string]string) (string, error) {
-	paramKeys := []string{}
-	for key := range params {
-		paramKeys = append(paramKeys, key)
-	}
+func GenerateDeterministicName(prefix, base string, params []v1beta1.Param) (string, error) {
 	hasher := nameHasher()
 	if _, err := hasher.Write([]byte(base)); err != nil {
 		return "", err
 	}
-	sort.Strings(paramKeys)
-	for _, key := range paramKeys {
-		if _, err := hasher.Write([]byte(key)); err != nil {
+
+	sortedParams := make([]v1beta1.Param, len(params))
+	sort.SliceStable(sortedParams, func(i, j int) bool {
+		return sortedParams[i].Name < sortedParams[j].Name
+	})
+	for _, p := range sortedParams {
+		if _, err := hasher.Write([]byte(p.Name)); err != nil {
 			return "", err
 		}
-		if _, err := hasher.Write([]byte(params[key])); err != nil {
-			return "", err
+		switch p.Value.Type {
+		case v1beta1.ParamTypeString:
+			if _, err := hasher.Write([]byte(p.Value.StringVal)); err != nil {
+				return "", err
+			}
+		case v1beta1.ParamTypeArray, v1beta1.ParamTypeObject:
+			asJSON, err := p.Value.MarshalJSON()
+			if err != nil {
+				return "", err
+			}
+			if _, err := hasher.Write(asJSON); err != nil {
+				return "", err
+			}
 		}
 	}
 	return fmt.Sprintf("%s-%x", prefix, hasher.Sum(nil)), nil

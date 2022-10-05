@@ -30,98 +30,98 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.AffinityAssistantTemplate":            schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                             schema_pkg_apis_pipeline_pod_Template(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference":             schema_pkg_apis_pipeline_v1beta1_ChildStatusReference(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDelivery":               schema_pkg_apis_pipeline_v1beta1_CloudEventDelivery(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDeliveryState":          schema_pkg_apis_pipeline_v1beta1_CloudEventDeliveryState(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask":                      schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTaskList":                  schema_pkg_apis_pipeline_v1beta1_ClusterTaskList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRun":                        schema_pkg_apis_pipeline_v1beta1_CustomRun(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRunList":                    schema_pkg_apis_pipeline_v1beta1_CustomRunList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRunSpec":                    schema_pkg_apis_pipeline_v1beta1_CustomRunSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedCustomRunSpec":            schema_pkg_apis_pipeline_v1beta1_EmbeddedCustomRunSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedTask":                     schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.InternalTaskModifier":             schema_pkg_apis_pipeline_v1beta1_InternalTaskModifier(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Matrix":                           schema_pkg_apis_pipeline_v1beta1_Matrix(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param":                            schema_pkg_apis_pipeline_v1beta1_Param(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec":                        schema_pkg_apis_pipeline_v1beta1_ParamSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue":                       schema_pkg_apis_pipeline_v1beta1_ParamValue(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Pipeline":                         schema_pkg_apis_pipeline_v1beta1_Pipeline(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineDeclaredResource":         schema_pkg_apis_pipeline_v1beta1_PipelineDeclaredResource(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineList":                     schema_pkg_apis_pipeline_v1beta1_PipelineList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRef":                      schema_pkg_apis_pipeline_v1beta1_PipelineRef(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceBinding":          schema_pkg_apis_pipeline_v1beta1_PipelineResourceBinding(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef":              schema_pkg_apis_pipeline_v1beta1_PipelineResourceRef(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceResult":           schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResult":                   schema_pkg_apis_pipeline_v1beta1_PipelineResult(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRun":                      schema_pkg_apis_pipeline_v1beta1_PipelineRun(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunList":                  schema_pkg_apis_pipeline_v1beta1_PipelineRunList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult":                schema_pkg_apis_pipeline_v1beta1_PipelineRunResult(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus":             schema_pkg_apis_pipeline_v1beta1_PipelineRunRunStatus(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunSpec":                  schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunStatus":                schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunStatusFields":          schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus":         schema_pkg_apis_pipeline_v1beta1_PipelineRunTaskRunStatus(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec":                     schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTask":                     schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskInputResource":        schema_pkg_apis_pipeline_v1beta1_PipelineTaskInputResource(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata":             schema_pkg_apis_pipeline_v1beta1_PipelineTaskMetadata(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskOutputResource":       schema_pkg_apis_pipeline_v1beta1_PipelineTaskOutputResource(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskParam":                schema_pkg_apis_pipeline_v1beta1_PipelineTaskParam(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskResources":            schema_pkg_apis_pipeline_v1beta1_PipelineTaskResources(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRun":                  schema_pkg_apis_pipeline_v1beta1_PipelineTaskRun(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec":              schema_pkg_apis_pipeline_v1beta1_PipelineTaskRunSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration":     schema_pkg_apis_pipeline_v1beta1_PipelineWorkspaceDeclaration(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec":                     schema_pkg_apis_pipeline_v1beta1_PropertySpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResolverRef":                      schema_pkg_apis_pipeline_v1beta1_ResolverRef(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResultRef":                        schema_pkg_apis_pipeline_v1beta1_ResultRef(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar":                          schema_pkg_apis_pipeline_v1beta1_Sidecar(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SidecarState":                     schema_pkg_apis_pipeline_v1beta1_SidecarState(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask":                      schema_pkg_apis_pipeline_v1beta1_SkippedTask(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step":                             schema_pkg_apis_pipeline_v1beta1_Step(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepOutputConfig":                 schema_pkg_apis_pipeline_v1beta1_StepOutputConfig(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepState":                        schema_pkg_apis_pipeline_v1beta1_StepState(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepTemplate":                     schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Task":                             schema_pkg_apis_pipeline_v1beta1_Task(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskList":                         schema_pkg_apis_pipeline_v1beta1_TaskList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef":                          schema_pkg_apis_pipeline_v1beta1_TaskRef(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResource":                     schema_pkg_apis_pipeline_v1beta1_TaskResource(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding":              schema_pkg_apis_pipeline_v1beta1_TaskResourceBinding(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResources":                    schema_pkg_apis_pipeline_v1beta1_TaskResources(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResult":                       schema_pkg_apis_pipeline_v1beta1_TaskResult(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRun":                          schema_pkg_apis_pipeline_v1beta1_TaskRun(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunDebug":                     schema_pkg_apis_pipeline_v1beta1_TaskRunDebug(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunInputs":                    schema_pkg_apis_pipeline_v1beta1_TaskRunInputs(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunList":                      schema_pkg_apis_pipeline_v1beta1_TaskRunList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunOutputs":                   schema_pkg_apis_pipeline_v1beta1_TaskRunOutputs(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResources":                 schema_pkg_apis_pipeline_v1beta1_TaskRunResources(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult":                    schema_pkg_apis_pipeline_v1beta1_TaskRunResult(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride":           schema_pkg_apis_pipeline_v1beta1_TaskRunSidecarOverride(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSpec":                      schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatus":                    schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatusFields":              schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStepOverride":              schema_pkg_apis_pipeline_v1beta1_TaskRunStepOverride(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec":                         schema_pkg_apis_pipeline_v1beta1_TaskSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TimeoutFields":                    schema_pkg_apis_pipeline_v1beta1_TimeoutFields(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression":                   schema_pkg_apis_pipeline_v1beta1_WhenExpression(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding":                 schema_pkg_apis_pipeline_v1beta1_WorkspaceBinding(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceDeclaration":             schema_pkg_apis_pipeline_v1beta1_WorkspaceDeclaration(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspacePipelineTaskBinding":     schema_pkg_apis_pipeline_v1beta1_WorkspacePipelineTaskBinding(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceUsage":                   schema_pkg_apis_pipeline_v1beta1_WorkspaceUsage(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource":                  schema_pkg_apis_resolution_v1alpha1_ConfigSource(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequest":             schema_pkg_apis_resolution_v1alpha1_ResolutionRequest(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestList":         schema_pkg_apis_resolution_v1alpha1_ResolutionRequestList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestSpec":         schema_pkg_apis_resolution_v1alpha1_ResolutionRequestSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestStatus":       schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatus(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestStatusFields": schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatusFields(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResource":                schema_pkg_apis_resource_v1alpha1_PipelineResource(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceList":            schema_pkg_apis_resource_v1alpha1_PipelineResourceList(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec":            schema_pkg_apis_resource_v1alpha1_PipelineResourceSpec(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceStatus":          schema_pkg_apis_resource_v1alpha1_PipelineResourceStatus(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.ResourceDeclaration":             schema_pkg_apis_resource_v1alpha1_ResourceDeclaration(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.ResourceParam":                   schema_pkg_apis_resource_v1alpha1_ResourceParam(ref),
-		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.SecretParam":                     schema_pkg_apis_resource_v1alpha1_SecretParam(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.AffinityAssistantTemplate":           schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                            schema_pkg_apis_pipeline_pod_Template(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ChildStatusReference":            schema_pkg_apis_pipeline_v1beta1_ChildStatusReference(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDelivery":              schema_pkg_apis_pipeline_v1beta1_CloudEventDelivery(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CloudEventDeliveryState":         schema_pkg_apis_pipeline_v1beta1_CloudEventDeliveryState(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTask":                     schema_pkg_apis_pipeline_v1beta1_ClusterTask(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ClusterTaskList":                 schema_pkg_apis_pipeline_v1beta1_ClusterTaskList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRun":                       schema_pkg_apis_pipeline_v1beta1_CustomRun(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRunList":                   schema_pkg_apis_pipeline_v1beta1_CustomRunList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.CustomRunSpec":                   schema_pkg_apis_pipeline_v1beta1_CustomRunSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedCustomRunSpec":           schema_pkg_apis_pipeline_v1beta1_EmbeddedCustomRunSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.EmbeddedTask":                    schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.InternalTaskModifier":            schema_pkg_apis_pipeline_v1beta1_InternalTaskModifier(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Matrix":                          schema_pkg_apis_pipeline_v1beta1_Matrix(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param":                           schema_pkg_apis_pipeline_v1beta1_Param(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamSpec":                       schema_pkg_apis_pipeline_v1beta1_ParamSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue":                      schema_pkg_apis_pipeline_v1beta1_ParamValue(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Pipeline":                        schema_pkg_apis_pipeline_v1beta1_Pipeline(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineDeclaredResource":        schema_pkg_apis_pipeline_v1beta1_PipelineDeclaredResource(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineList":                    schema_pkg_apis_pipeline_v1beta1_PipelineList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRef":                     schema_pkg_apis_pipeline_v1beta1_PipelineRef(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceBinding":         schema_pkg_apis_pipeline_v1beta1_PipelineResourceBinding(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceRef":             schema_pkg_apis_pipeline_v1beta1_PipelineResourceRef(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResourceResult":          schema_pkg_apis_pipeline_v1beta1_PipelineResourceResult(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineResult":                  schema_pkg_apis_pipeline_v1beta1_PipelineResult(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRun":                     schema_pkg_apis_pipeline_v1beta1_PipelineRun(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunList":                 schema_pkg_apis_pipeline_v1beta1_PipelineRunList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunResult":               schema_pkg_apis_pipeline_v1beta1_PipelineRunResult(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus":            schema_pkg_apis_pipeline_v1beta1_PipelineRunRunStatus(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunSpec":                 schema_pkg_apis_pipeline_v1beta1_PipelineRunSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunStatus":               schema_pkg_apis_pipeline_v1beta1_PipelineRunStatus(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunStatusFields":         schema_pkg_apis_pipeline_v1beta1_PipelineRunStatusFields(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus":        schema_pkg_apis_pipeline_v1beta1_PipelineRunTaskRunStatus(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineSpec":                    schema_pkg_apis_pipeline_v1beta1_PipelineSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTask":                    schema_pkg_apis_pipeline_v1beta1_PipelineTask(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskInputResource":       schema_pkg_apis_pipeline_v1beta1_PipelineTaskInputResource(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskMetadata":            schema_pkg_apis_pipeline_v1beta1_PipelineTaskMetadata(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskOutputResource":      schema_pkg_apis_pipeline_v1beta1_PipelineTaskOutputResource(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskParam":               schema_pkg_apis_pipeline_v1beta1_PipelineTaskParam(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskResources":           schema_pkg_apis_pipeline_v1beta1_PipelineTaskResources(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRun":                 schema_pkg_apis_pipeline_v1beta1_PipelineTaskRun(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineTaskRunSpec":             schema_pkg_apis_pipeline_v1beta1_PipelineTaskRunSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineWorkspaceDeclaration":    schema_pkg_apis_pipeline_v1beta1_PipelineWorkspaceDeclaration(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PropertySpec":                    schema_pkg_apis_pipeline_v1beta1_PropertySpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResolverRef":                     schema_pkg_apis_pipeline_v1beta1_ResolverRef(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ResultRef":                       schema_pkg_apis_pipeline_v1beta1_ResultRef(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Sidecar":                         schema_pkg_apis_pipeline_v1beta1_Sidecar(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SidecarState":                    schema_pkg_apis_pipeline_v1beta1_SidecarState(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.SkippedTask":                     schema_pkg_apis_pipeline_v1beta1_SkippedTask(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Step":                            schema_pkg_apis_pipeline_v1beta1_Step(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepOutputConfig":                schema_pkg_apis_pipeline_v1beta1_StepOutputConfig(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepState":                       schema_pkg_apis_pipeline_v1beta1_StepState(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.StepTemplate":                    schema_pkg_apis_pipeline_v1beta1_StepTemplate(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Task":                            schema_pkg_apis_pipeline_v1beta1_Task(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskList":                        schema_pkg_apis_pipeline_v1beta1_TaskList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRef":                         schema_pkg_apis_pipeline_v1beta1_TaskRef(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResource":                    schema_pkg_apis_pipeline_v1beta1_TaskResource(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResourceBinding":             schema_pkg_apis_pipeline_v1beta1_TaskResourceBinding(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResources":                   schema_pkg_apis_pipeline_v1beta1_TaskResources(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskResult":                      schema_pkg_apis_pipeline_v1beta1_TaskResult(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRun":                         schema_pkg_apis_pipeline_v1beta1_TaskRun(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunDebug":                    schema_pkg_apis_pipeline_v1beta1_TaskRunDebug(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunInputs":                   schema_pkg_apis_pipeline_v1beta1_TaskRunInputs(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunList":                     schema_pkg_apis_pipeline_v1beta1_TaskRunList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunOutputs":                  schema_pkg_apis_pipeline_v1beta1_TaskRunOutputs(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResources":                schema_pkg_apis_pipeline_v1beta1_TaskRunResources(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunResult":                   schema_pkg_apis_pipeline_v1beta1_TaskRunResult(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSidecarOverride":          schema_pkg_apis_pipeline_v1beta1_TaskRunSidecarOverride(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunSpec":                     schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatus":                   schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStatusFields":             schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskRunStepOverride":             schema_pkg_apis_pipeline_v1beta1_TaskRunStepOverride(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TaskSpec":                        schema_pkg_apis_pipeline_v1beta1_TaskSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.TimeoutFields":                   schema_pkg_apis_pipeline_v1beta1_TimeoutFields(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression":                  schema_pkg_apis_pipeline_v1beta1_WhenExpression(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceBinding":                schema_pkg_apis_pipeline_v1beta1_WorkspaceBinding(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceDeclaration":            schema_pkg_apis_pipeline_v1beta1_WorkspaceDeclaration(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspacePipelineTaskBinding":    schema_pkg_apis_pipeline_v1beta1_WorkspacePipelineTaskBinding(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WorkspaceUsage":                  schema_pkg_apis_pipeline_v1beta1_WorkspaceUsage(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource":                  schema_pkg_apis_resolution_v1beta1_ConfigSource(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequest":             schema_pkg_apis_resolution_v1beta1_ResolutionRequest(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestList":         schema_pkg_apis_resolution_v1beta1_ResolutionRequestList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestSpec":         schema_pkg_apis_resolution_v1beta1_ResolutionRequestSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestStatus":       schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatus(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestStatusFields": schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResource":               schema_pkg_apis_resource_v1alpha1_PipelineResource(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceList":           schema_pkg_apis_resource_v1alpha1_PipelineResourceList(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceSpec":           schema_pkg_apis_resource_v1alpha1_PipelineResourceSpec(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.PipelineResourceStatus":         schema_pkg_apis_resource_v1alpha1_PipelineResourceStatus(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.ResourceDeclaration":            schema_pkg_apis_resource_v1alpha1_ResourceDeclaration(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.ResourceParam":                  schema_pkg_apis_resource_v1alpha1_ResourceParam(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1.SecretParam":                    schema_pkg_apis_resource_v1alpha1_SecretParam(ref),
 	}
 }
 
@@ -2854,7 +2854,7 @@ func schema_pkg_apis_pipeline_v1beta1_ResolverRef(ref common.ReferenceCallback) 
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
+				Description: "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"resolver": {
@@ -5608,7 +5608,7 @@ func schema_pkg_apis_pipeline_v1beta1_WorkspaceUsage(ref common.ReferenceCallbac
 	}
 }
 
-func schema_pkg_apis_resolution_v1alpha1_ConfigSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_resolution_v1beta1_ConfigSource(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -5651,7 +5651,7 @@ func schema_pkg_apis_resolution_v1alpha1_ConfigSource(ref common.ReferenceCallba
 	}
 }
 
-func schema_pkg_apis_resolution_v1alpha1_ResolutionRequest(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_resolution_v1beta1_ResolutionRequest(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -5682,25 +5682,25 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequest(ref common.ReferenceC
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec holds the information for the request part of the resource request.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestSpec"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Status communicates the state of the request and, ultimately, the content of the resolved resource.",
 							Default:     map[string]interface{}{},
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestStatus"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestSpec", "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequestStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestSpec", "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequestStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
-func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestList(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_resolution_v1beta1_ResolutionRequestList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -5734,7 +5734,7 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestList(ref common.Refere
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
 										Default: map[string]interface{}{},
-										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequest"),
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequest"),
 									},
 								},
 							},
@@ -5745,11 +5745,11 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestList(ref common.Refere
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ResolutionRequest", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
+			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ResolutionRequest", "k8s.io/apimachinery/pkg/apis/meta/v1.ListMeta"},
 	}
 }
 
-func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_resolution_v1beta1_ResolutionRequestSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -5757,16 +5757,19 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestSpec(ref common.Refere
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"params": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Parameters are the runtime attributes passed to the resolver to help it figure out how to resolve the resource being requested. For example: repo URL, commit SHA, path to file, the kind of authentication to leverage, etc.",
-							Type:        []string{"object"},
-							AdditionalProperties: &spec.SchemaOrBool{
-								Allows: true,
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"),
 									},
 								},
 							},
@@ -5775,10 +5778,12 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestSpec(ref common.Refere
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.Param"},
 	}
 }
 
-func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -5838,8 +5843,8 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatus(ref common.Refe
 					},
 					"source": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Source is the source reference of the remote data that records where the remote file came from including the url, digest and the entrypoint.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource"),
+							Description: "Source is the source reference of the remote data that records the url, digest and the entrypoint.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource"),
 						},
 					},
 				},
@@ -5847,11 +5852,11 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatus(ref common.Refe
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource", "knative.dev/pkg/apis.Condition"},
+			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource", "knative.dev/pkg/apis.Condition"},
 	}
 }
 
-func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatusFields(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_resolution_v1beta1_ResolutionRequestStatusFields(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
@@ -5868,8 +5873,8 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatusFields(ref commo
 					},
 					"source": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Source is the source reference of the remote data that records where the remote file came from including the url, digest and the entrypoint.",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource"),
+							Description: "Source is the source reference of the remote data that records the url, digest and the entrypoint.",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource"),
 						},
 					},
 				},
@@ -5877,7 +5882,7 @@ func schema_pkg_apis_resolution_v1alpha1_ResolutionRequestStatusFields(ref commo
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1.ConfigSource"},
+			"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1.ConfigSource"},
 	}
 }
 

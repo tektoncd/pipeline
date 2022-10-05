@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -41,7 +40,6 @@ type GetClusterTask func(name string) (v1beta1.TaskObject, error)
 func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask) (*metav1.ObjectMeta, *v1beta1.TaskSpec, error) {
 	taskMeta := metav1.ObjectMeta{}
 	taskSpec := v1beta1.TaskSpec{}
-	cfg := config.FromContextOrDefaults(ctx)
 	switch {
 	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "":
 		// Get related task for taskrun
@@ -55,7 +53,7 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec
-	case cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields && taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Resolver != "":
+	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Resolver != "":
 		task, err := getTask(ctx, taskRun.Name)
 		switch {
 		case err != nil:

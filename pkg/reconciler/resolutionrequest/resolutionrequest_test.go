@@ -24,7 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test"
@@ -87,21 +87,21 @@ func initializeResolutionRequestControllerAssets(t *testing.T, d test.Data) (tes
 func TestReconcile(t *testing.T) {
 	testCases := []struct {
 		name           string
-		input          *v1alpha1.ResolutionRequest
-		expectedStatus *v1alpha1.ResolutionRequestStatus
+		input          *v1beta1.ResolutionRequest
+		expectedStatus *v1beta1.ResolutionRequestStatus
 	}{
 		{
 			name: "new request",
-			input: &v1alpha1.ResolutionRequest{
+			input: &v1beta1.ResolutionRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "rr",
 					Namespace:         "foo",
 					CreationTimestamp: metav1.Time{Time: time.Now()},
 				},
-				Spec:   v1alpha1.ResolutionRequestSpec{},
-				Status: v1alpha1.ResolutionRequestStatus{},
+				Spec:   v1beta1.ResolutionRequestSpec{},
+				Status: v1beta1.ResolutionRequestStatus{},
 			},
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:    apis.ConditionSucceeded,
@@ -110,20 +110,20 @@ func TestReconcile(t *testing.T) {
 						Message: resolutioncommon.MessageWaitingForResolver,
 					}},
 				},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{},
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{},
 			},
 		}, {
 			name: "timed out request",
-			input: &v1alpha1.ResolutionRequest{
+			input: &v1beta1.ResolutionRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "rr",
 					Namespace:         "foo",
 					CreationTimestamp: metav1.Time{Time: time.Now().Add(-2 * time.Minute)},
 				},
-				Spec:   v1alpha1.ResolutionRequestSpec{},
-				Status: v1alpha1.ResolutionRequestStatus{},
+				Spec:   v1beta1.ResolutionRequestSpec{},
+				Status: v1beta1.ResolutionRequestStatus{},
 			},
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:    apis.ConditionSucceeded,
@@ -132,31 +132,31 @@ func TestReconcile(t *testing.T) {
 						Message: timeoutMessage(),
 					}},
 				},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{},
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{},
 			},
 		}, {
 			name: "populated request",
-			input: &v1alpha1.ResolutionRequest{
+			input: &v1beta1.ResolutionRequest{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "rr",
 					Namespace:         "foo",
 					CreationTimestamp: metav1.Time{Time: time.Now()},
 				},
-				Spec: v1alpha1.ResolutionRequestSpec{},
-				Status: v1alpha1.ResolutionRequestStatus{
-					ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+				Spec: v1beta1.ResolutionRequestSpec{},
+				Status: v1beta1.ResolutionRequestStatus{
+					ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 						Data: "some data",
 					},
 				},
 			},
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
 				},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: "some data",
 				},
 			},
@@ -166,7 +166,7 @@ func TestReconcile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
-				ResolutionRequests: []*v1alpha1.ResolutionRequest{tc.input},
+				ResolutionRequests: []*v1beta1.ResolutionRequest{tc.input},
 			}
 
 			testAssets, cancel := getResolutionRequestController(t, d)
@@ -178,7 +178,7 @@ func TestReconcile(t *testing.T) {
 					t.Fatalf("did not expect an error, but got %v", err)
 				}
 			}
-			reconciledRR, err := testAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests(tc.input.Namespace).Get(testAssets.Ctx, tc.input.Name, metav1.GetOptions{})
+			reconciledRR, err := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(tc.input.Namespace).Get(testAssets.Ctx, tc.input.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated ResolutionRequest: %v", err)
 			}
@@ -190,6 +190,6 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func getRequestName(rr *v1alpha1.ResolutionRequest) string {
+func getRequestName(rr *v1beta1.ResolutionRequest) string {
 	return strings.Join([]string{rr.Namespace, rr.Name}, "/")
 }

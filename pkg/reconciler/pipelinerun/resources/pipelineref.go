@@ -70,18 +70,14 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			resolver := oci.NewResolver(pr.Bundle, kc)
 			return resolvePipeline(ctx, resolver, name)
 		}, nil
-	case cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields && pr != nil && pr.Resolver != "" && requester != nil:
+	case pr != nil && pr.Resolver != "" && requester != nil:
 		return func(ctx context.Context, name string) (v1beta1.PipelineObject, error) {
-			params := map[string]string{}
 			stringReplacements, arrayReplacements, objectReplacements := paramsFromPipelineRun(ctx, pipelineRun)
 			for k, v := range getContextReplacements("", pipelineRun) {
 				stringReplacements[k] = v
 			}
 			replacedParams := replaceParamValues(pr.Params, stringReplacements, arrayReplacements, objectReplacements)
-			for _, p := range replacedParams {
-				params[p.Name] = p.Value.StringVal
-			}
-			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", params)
+			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", replacedParams)
 			return resolvePipeline(ctx, resolver, name)
 		}, nil
 	default:

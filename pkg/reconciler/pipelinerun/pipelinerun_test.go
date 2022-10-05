@@ -7399,10 +7399,7 @@ spec:
   serviceAccountName: default
 `)
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-
 	d := test.Data{
-		ConfigMaps:   cms,
 		PipelineRuns: []*v1beta1.PipelineRun{pr},
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
@@ -7416,7 +7413,7 @@ spec:
 	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
 	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, ReasonResolvingPipelineRef)
 
-	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error listing resource requests: %v", err)
@@ -7477,10 +7474,7 @@ spec:
   serviceAccountName: default
 `)
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-
 	d := test.Data{
-		ConfigMaps:   cms,
 		PipelineRuns: []*v1beta1.PipelineRun{pr},
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
@@ -7494,7 +7488,7 @@ spec:
 	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
 	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, ReasonResolvingPipelineRef)
 
-	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error listing resource requests: %v", err)
@@ -7539,10 +7533,7 @@ spec:
   serviceAccountName: default
 `)
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-
 	d := test.Data{
-		ConfigMaps:   cms,
 		PipelineRuns: []*v1beta1.PipelineRun{pr},
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
@@ -7556,7 +7547,7 @@ spec:
 	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
 	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, v1beta1.TaskRunReasonResolvingTaskRef)
 
-	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error listing resource requests: %v", err)
@@ -7604,10 +7595,7 @@ spec:
   serviceAccountName: default
 `)
 
-	cms := []*corev1.ConfigMap{withEnabledAlphaAPIFields(newFeatureFlagsConfigMap())}
-
 	d := test.Data{
-		ConfigMaps:   cms,
 		PipelineRuns: []*v1beta1.PipelineRun{pr},
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: pr.Spec.ServiceAccountName, Namespace: "foo"},
@@ -7621,7 +7609,7 @@ spec:
 	pipelinerun, _ := prt.reconcileRun(pr.Namespace, pr.Name, wantEvents, false)
 	checkPipelineRunConditionStatusAndReason(t, pipelinerun, corev1.ConditionUnknown, v1beta1.TaskRunReasonResolvingTaskRef)
 
-	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	client := prt.TestAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error listing resource requests: %v", err)
@@ -7636,9 +7624,14 @@ spec:
 	if resolutionRequestType != resolverName {
 		t.Fatalf("expected resource request type %q but saw %q", resolutionRequestType, resolverName)
 	}
-	reqParams := resreq.Spec.Parameters
-	if reqParams["foo"] != "bar" {
-		t.Fatalf("expected resource request parameter 'bar', but got '%s'", reqParams["foo"])
+	fooVal := ""
+	for _, p := range resreq.Spec.Params {
+		if p.Name == "foo" {
+			fooVal = p.Value.StringVal
+		}
+	}
+	if fooVal != "bar" {
+		t.Fatalf("expected resource request parameter 'bar', but got '%s'", fooVal)
 	}
 
 	taskBytes := []byte(`

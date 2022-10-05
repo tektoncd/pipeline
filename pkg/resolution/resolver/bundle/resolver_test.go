@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -39,22 +40,37 @@ func TestGetSelector(t *testing.T) {
 func TestValidateParams(t *testing.T) {
 	resolver := Resolver{}
 
-	paramsWithTask := map[string]string{
-		ParamKind:           "task",
-		ParamName:           "foo",
-		ParamBundle:         "bar",
-		ParamServiceAccount: "baz",
-	}
+	paramsWithTask := []pipelinev1beta1.Param{{
+		Name:  ParamKind,
+		Value: *pipelinev1beta1.NewStructuredValues("task"),
+	}, {
+		Name:  ParamName,
+		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+	}, {
+		Name:  ParamBundle,
+		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+	}, {
+		Name:  ParamServiceAccount,
+		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+	}}
+
 	if err := resolver.ValidateParams(resolverContext(), paramsWithTask); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 
-	paramsWithPipeline := map[string]string{
-		ParamKind:           "pipeline",
-		ParamName:           "foo",
-		ParamBundle:         "bar",
-		ParamServiceAccount: "baz",
-	}
+	paramsWithPipeline := []pipelinev1beta1.Param{{
+		Name:  ParamKind,
+		Value: *pipelinev1beta1.NewStructuredValues("pipeline"),
+	}, {
+		Name:  ParamName,
+		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+	}, {
+		Name:  ParamBundle,
+		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+	}, {
+		Name:  ParamServiceAccount,
+		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+	}}
 	if err := resolver.ValidateParams(resolverContext(), paramsWithPipeline); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
@@ -65,12 +81,19 @@ func TestValidateParamsDisabled(t *testing.T) {
 
 	var err error
 
-	params := map[string]string{
-		ParamKind:           "task",
-		ParamName:           "foo",
-		ParamBundle:         "bar",
-		ParamServiceAccount: "baz",
-	}
+	params := []pipelinev1beta1.Param{{
+		Name:  ParamKind,
+		Value: *pipelinev1beta1.NewStructuredValues("task"),
+	}, {
+		Name:  ParamName,
+		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+	}, {
+		Name:  ParamBundle,
+		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+	}, {
+		Name:  ParamServiceAccount,
+		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+	}}
 	err = resolver.ValidateParams(context.Background(), params)
 	if err == nil {
 		t.Fatalf("expected disabled err")
@@ -86,21 +109,31 @@ func TestValidateParamsMissing(t *testing.T) {
 
 	var err error
 
-	paramsMissingBundle := map[string]string{
-		ParamKind:           "pipeline",
-		ParamName:           "foo",
-		ParamServiceAccount: "baz",
-	}
+	paramsMissingBundle := []pipelinev1beta1.Param{{
+		Name:  ParamKind,
+		Value: *pipelinev1beta1.NewStructuredValues("task"),
+	}, {
+		Name:  ParamName,
+		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+	}, {
+		Name:  ParamServiceAccount,
+		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+	}}
 	err = resolver.ValidateParams(resolverContext(), paramsMissingBundle)
 	if err == nil {
 		t.Fatalf("expected missing kind err")
 	}
 
-	paramsMissingName := map[string]string{
-		ParamKind:           "pipeline",
-		ParamBundle:         "bar",
-		ParamServiceAccount: "baz",
-	}
+	paramsMissingName := []pipelinev1beta1.Param{{
+		Name:  ParamKind,
+		Value: *pipelinev1beta1.NewStructuredValues("task"),
+	}, {
+		Name:  ParamBundle,
+		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+	}, {
+		Name:  ParamServiceAccount,
+		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+	}}
 	err = resolver.ValidateParams(resolverContext(), paramsMissingName)
 	if err == nil {
 		t.Fatalf("expected missing name err")
@@ -113,12 +146,19 @@ func TestResolveDisabled(t *testing.T) {
 
 	var err error
 
-	params := map[string]string{
-		ParamKind:           "task",
-		ParamName:           "foo",
-		ParamBundle:         "bar",
-		ParamServiceAccount: "baz",
-	}
+	params := []pipelinev1beta1.Param{{
+		Name:  ParamKind,
+		Value: *pipelinev1beta1.NewStructuredValues("task"),
+	}, {
+		Name:  ParamName,
+		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+	}, {
+		Name:  ParamBundle,
+		Value: *pipelinev1beta1.NewStructuredValues("bar"),
+	}, {
+		Name:  ParamServiceAccount,
+		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+	}}
 	_, err = resolver.Resolve(context.Background(), params)
 	if err == nil {
 		t.Fatalf("expected disabled err")

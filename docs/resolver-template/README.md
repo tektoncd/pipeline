@@ -58,7 +58,7 @@ Try creating a `ResolutionRequest` targeting `"demo"` with no parameters:
 
 ```bash
 $ cat <<EOF > rrtest.yaml
-apiVersion: resolution.tekton.dev/v1alpha1
+apiVersion: resolution.tekton.dev/v1beta1
 kind: ResolutionRequest
 metadata:
   name: test-resolver-template

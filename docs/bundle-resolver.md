@@ -15,7 +15,7 @@ This Resolver responds to type `bundles`.
 
 ## Requirements
 
-- A cluster running Tekton Pipeline v0.40.0 or later, with the `alpha` feature gate enabled.
+- A cluster running Tekton Pipeline v0.41.0 or later.
 - The [built-in remote resolvers installed](./install.md#installing-and-configuring-remote-task-and-pipeline-resolution).
 - The `enable-bundles-resolver` feature flag in the `resolvers-feature-flags` ConfigMap 
   in the `tekton-pipelines-resolvers` namespace set to `true`.

@@ -26,8 +26,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -57,11 +57,16 @@ func TestGetSelector(t *testing.T) {
 func TestValidateParams(t *testing.T) {
 	resolver := Resolver{}
 
-	params := map[string]string{
-		KindParam:      "task",
-		NamespaceParam: "foo",
-		NameParam:      "baz",
-	}
+	params := []pipelinev1beta1.Param{{
+		Name:  KindParam,
+		Value: *pipelinev1beta1.NewStructuredValues("task"),
+	}, {
+		Name:  NamespaceParam,
+		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+	}, {
+		Name:  NameParam,
+		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+	}}
 
 	ctx := framework.InjectResolverConfigToContext(resolverContext(), map[string]string{
 		AllowedNamespacesKey: "foo,bar",
@@ -78,11 +83,16 @@ func TestValidateParamsNotEnabled(t *testing.T) {
 
 	var err error
 
-	params := map[string]string{
-		KindParam:      "task",
-		NamespaceParam: "foo",
-		NameParam:      "baz",
-	}
+	params := []pipelinev1beta1.Param{{
+		Name:  KindParam,
+		Value: *pipelinev1beta1.NewStructuredValues("task"),
+	}, {
+		Name:  NamespaceParam,
+		Value: *pipelinev1beta1.NewStructuredValues("foo"),
+	}, {
+		Name:  NameParam,
+		Value: *pipelinev1beta1.NewStructuredValues("baz"),
+	}}
 	err = resolver.ValidateParams(context.Background(), params)
 	if err == nil {
 		t.Fatalf("expected disabled err")
@@ -153,7 +163,15 @@ func TestValidateParamsFailure(t *testing.T) {
 			if len(tc.conf) > 0 {
 				ctx = framework.InjectResolverConfigToContext(ctx, tc.conf)
 			}
-			err := resolver.ValidateParams(ctx, tc.params)
+
+			var asParams []pipelinev1beta1.Param
+			for k, v := range tc.params {
+				asParams = append(asParams, pipelinev1beta1.Param{
+					Name:  k,
+					Value: *pipelinev1beta1.NewStructuredValues(v),
+				})
+			}
+			err := resolver.ValidateParams(ctx, asParams)
 			if err == nil {
 				t.Fatalf("got no error, but expected: %s", tc.expectedErr)
 			}
@@ -167,18 +185,18 @@ func TestValidateParamsFailure(t *testing.T) {
 func TestResolve(t *testing.T) {
 	defaultNS := "pipeline-ns"
 
-	exampleTask := &v1beta1.Task{
+	exampleTask := &pipelinev1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "example-task",
 			Namespace:       "task-ns",
 			ResourceVersion: "00002",
 		},
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(v1beta1.NamespacedTaskKind),
+			Kind:       string(pipelinev1beta1.NamespacedTaskKind),
 			APIVersion: "tekton.dev/v1beta1",
 		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
+		Spec: pipelinev1beta1.TaskSpec{
+			Steps: []pipelinev1beta1.Step{{
 				Name:    "some-step",
 				Image:   "some-image",
 				Command: []string{"something"},
@@ -190,7 +208,7 @@ func TestResolve(t *testing.T) {
 		t.Fatalf("couldn't marshal task: %v", err)
 	}
 
-	examplePipeline := &v1beta1.Pipeline{
+	examplePipeline := &pipelinev1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "example-pipeline",
 			Namespace:       defaultNS,
@@ -200,12 +218,12 @@ func TestResolve(t *testing.T) {
 			Kind:       "Pipeline",
 			APIVersion: "tekton.dev/v1beta1",
 		},
-		Spec: v1beta1.PipelineSpec{
-			Tasks: []v1beta1.PipelineTask{{
+		Spec: pipelinev1beta1.PipelineSpec{
+			Tasks: []pipelinev1beta1.PipelineTask{{
 				Name: "some-pipeline-task",
-				TaskRef: &v1beta1.TaskRef{
+				TaskRef: &pipelinev1beta1.TaskRef{
 					Name: "some-task",
-					Kind: v1beta1.NamespacedTaskKind,
+					Kind: pipelinev1beta1.NamespacedTaskKind,
 				},
 			}},
 		},
@@ -222,7 +240,7 @@ func TestResolve(t *testing.T) {
 		namespace         string
 		allowedNamespaces string
 		blockedNamespaces string
-		expectedStatus    *v1alpha1.ResolutionRequestStatus
+		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
 	}{
 		{
@@ -230,9 +248,9 @@ func TestResolve(t *testing.T) {
 			kind:         "task",
 			resourceName: exampleTask.Name,
 			namespace:    exampleTask.Namespace,
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString(taskAsYAML),
 				},
 			},
@@ -241,9 +259,9 @@ func TestResolve(t *testing.T) {
 			kind:         "pipeline",
 			resourceName: examplePipeline.Name,
 			namespace:    examplePipeline.Namespace,
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString(pipelineAsYAML),
 				},
 			},
@@ -251,9 +269,9 @@ func TestResolve(t *testing.T) {
 			name:         "default namespace",
 			kind:         "pipeline",
 			resourceName: examplePipeline.Name,
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString(pipelineAsYAML),
 				},
 			},
@@ -261,9 +279,9 @@ func TestResolve(t *testing.T) {
 			name:         "default kind",
 			resourceName: exampleTask.Name,
 			namespace:    exampleTask.Namespace,
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString(taskAsYAML),
 				},
 			},
@@ -272,7 +290,7 @@ func TestResolve(t *testing.T) {
 			kind:         "task",
 			resourceName: exampleTask.Name,
 			namespace:    "other-ns",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
@@ -292,7 +310,7 @@ func TestResolve(t *testing.T) {
 			resourceName:      exampleTask.Name,
 			namespace:         "other-ns",
 			allowedNamespaces: "foo,bar",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
@@ -311,7 +329,7 @@ func TestResolve(t *testing.T) {
 			resourceName:      exampleTask.Name,
 			namespace:         "other-ns",
 			blockedNamespaces: "foo,other-ns,bar",
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
@@ -360,25 +378,28 @@ func TestResolve(t *testing.T) {
 						"enable-cluster-resolver": "true",
 					},
 				}},
-				Pipelines:          []*v1beta1.Pipeline{examplePipeline},
-				ResolutionRequests: []*v1alpha1.ResolutionRequest{request},
-				Tasks:              []*v1beta1.Task{exampleTask},
+				Pipelines:          []*pipelinev1beta1.Pipeline{examplePipeline},
+				ResolutionRequests: []*v1beta1.ResolutionRequest{request},
+				Tasks:              []*pipelinev1beta1.Task{exampleTask},
 			}
 
 			resolver := &Resolver{}
 
-			var expectedStatus *v1alpha1.ResolutionRequestStatus
+			var expectedStatus *v1beta1.ResolutionRequestStatus
 			if tc.expectedStatus != nil {
 				expectedStatus = tc.expectedStatus.DeepCopy()
 
 				if tc.expectedErr == nil {
-					reqParams := request.Spec.Parameters
+					reqParams := make(map[string]pipelinev1beta1.ParamValue)
+					for _, p := range request.Spec.Params {
+						reqParams[p.Name] = p.Value
+					}
 					if expectedStatus.Annotations == nil {
 						expectedStatus.Annotations = make(map[string]string)
 					}
-					expectedStatus.Annotations[ResourceNameAnnotation] = reqParams[NameParam]
-					if reqParams[NamespaceParam] != "" {
-						expectedStatus.Annotations[ResourceNamespaceAnnotation] = reqParams[NamespaceParam]
+					expectedStatus.Annotations[ResourceNameAnnotation] = reqParams[NameParam].StringVal
+					if reqParams[NamespaceParam].StringVal != "" {
+						expectedStatus.Annotations[ResourceNamespaceAnnotation] = reqParams[NamespaceParam].StringVal
 					} else {
 						expectedStatus.Annotations[ResourceNamespaceAnnotation] = defaultNS
 					}
@@ -392,10 +413,10 @@ func TestResolve(t *testing.T) {
 	}
 }
 
-func createRequest(kind, name, namespace string) *v1alpha1.ResolutionRequest {
-	rr := &v1alpha1.ResolutionRequest{
+func createRequest(kind, name, namespace string) *v1beta1.ResolutionRequest {
+	rr := &v1beta1.ResolutionRequest{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "resolution.tekton.dev/v1alpha1",
+			APIVersion: "resolution.tekton.dev/v1beta1",
 			Kind:       "ResolutionRequest",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -406,17 +427,24 @@ func createRequest(kind, name, namespace string) *v1alpha1.ResolutionRequest {
 				resolutioncommon.LabelKeyResolverType: LabelValueClusterResolverType,
 			},
 		},
-		Spec: v1alpha1.ResolutionRequestSpec{
-			Parameters: map[string]string{
-				NameParam: name,
-			},
+		Spec: v1beta1.ResolutionRequestSpec{
+			Params: []pipelinev1beta1.Param{{
+				Name:  NameParam,
+				Value: *pipelinev1beta1.NewStructuredValues(name),
+			}},
 		},
 	}
 	if kind != "" {
-		rr.Spec.Parameters[KindParam] = kind
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+			Name:  KindParam,
+			Value: *pipelinev1beta1.NewStructuredValues(kind),
+		})
 	}
 	if namespace != "" {
-		rr.Spec.Parameters[NamespaceParam] = namespace
+		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
+			Name:  NamespaceParam,
+			Value: *pipelinev1beta1.NewStructuredValues(namespace),
+		})
 	}
 
 	return rr

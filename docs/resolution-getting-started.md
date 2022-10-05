@@ -24,19 +24,12 @@ with a Pipeline stored in a git repo.
 See [the installation instructions for Tekton Pipeline](./install.md#installing-tekton-pipelines-on-kubernetes), and
 [the installation instructions for the built-in resolvers](./install.md#installing-and-configuring-remote-task-and-pipeline-resolution).
 
-## Step 2: Configure Pipelines to enable alpha features and resolvers
+## Step 2: Ensure Pipelines is configured to enable resolvers
 
-Tekton Pipelines currently has its integration with remote resolution behind
-the alpha feature gate, and enabling specific resolvers is controlled by feature 
-flags as well:
-
-```sh
-# update the feature-flags configmap in the tekton-pipelines namespace
-kubectl patch -n tekton-pipelines configmap feature-flags -p '{"data":{"enable-api-fields":"alpha","enable-git-resolver":"true"}}'
-
-# update the resolvers-feature-flags configmap in the tekton-pipelines-resolvers namespace
-kubectl patch -n tekton-pipelines-resolvers configmap resolvers-feature-flags -p '{"data":{"enable-git-resolver":"true"}}'
-```
+Starting with v0.41.0, remote resolvers for Tekton Pipelines are enabled by default, 
+but can be disabled via feature flags in the `resolvers-feature-flags` configmap in 
+the `tekton-pipelines-resolvers` namespace. Check that configmap to verify that the
+resolvers you wish to have enabled are set to `"true"`.
 
 The feature flags for the built-in resolvers are:
 

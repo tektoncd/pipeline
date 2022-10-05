@@ -1985,7 +1985,7 @@ func schema_pkg_apis_pipeline_v1_ResolverRef(ref common.ReferenceCallback) commo
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
+				Description: "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in beta and these fields are only available when the beta feature gate is enabled.",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"resolver": {

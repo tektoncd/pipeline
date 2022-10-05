@@ -26,7 +26,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -57,8 +57,8 @@ type ResolverReconcileTestModifier = func(resolver framework.Resolver, testAsset
 // ResolutionRequestStatus and error, both of which can be nil. It instantiates a controller for that resolver and
 // reconciles the given request. It then checks for the expected error, if any, and compares the resulting status with
 // the expected status.
-func RunResolverReconcileTest(ctx context.Context, t *testing.T, d test.Data, resolver framework.Resolver, request *v1alpha1.ResolutionRequest,
-	expectedStatus *v1alpha1.ResolutionRequestStatus, expectedErr error, resolverModifiers ...ResolverReconcileTestModifier) {
+func RunResolverReconcileTest(ctx context.Context, t *testing.T, d test.Data, resolver framework.Resolver, request *v1beta1.ResolutionRequest,
+	expectedStatus *v1beta1.ResolutionRequestStatus, expectedErr error, resolverModifiers ...ResolverReconcileTestModifier) {
 	t.Helper()
 
 	testAssets, cancel := GetResolverFrameworkController(ctx, t, d, resolver, setClockOnReconciler)
@@ -82,7 +82,7 @@ func RunResolverReconcileTest(ctx context.Context, t *testing.T, d test.Data, re
 		}
 	}
 
-	c := testAssets.Clients.ResolutionRequests.ResolutionV1alpha1()
+	c := testAssets.Clients.ResolutionRequests.ResolutionV1beta1()
 	reconciledRR, err := c.ResolutionRequests(request.Namespace).Get(testAssets.Ctx, request.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("getting updated ResolutionRequest: %v", err)
@@ -142,7 +142,7 @@ func initializeResolverFrameworkControllerAssets(ctx context.Context, t *testing
 	}, cancel
 }
 
-func getRequestName(rr *v1alpha1.ResolutionRequest) string {
+func getRequestName(rr *v1beta1.ResolutionRequest) string {
 	return strings.Join([]string{rr.Namespace, rr.Name}, "/")
 }
 
