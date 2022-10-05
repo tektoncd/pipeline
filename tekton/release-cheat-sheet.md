@@ -144,11 +144,20 @@ the pipelines repo, a terminal window and a text editor.
    (This can be done on the Github UI.)
    Make sure to fetch the commit specified in `TEKTON_RELEASE_GIT_SHA` to create the released branch.
 
-1. Edit `README.md` on `main` branch, add entry to docs table with latest release links. 
+1. If the release introduces a new minimum version of Kubernetes required,
+   edit `README.md` on `main` branch and add the new requirement with in the
+   "Required Kubernetes Version" section
 
 1. Edit `releases.md` on the `main` branch, add an entry for the release.
+   - In case of a patch release, replace the latest release with the new one,
+     including links to docs and examples. Append the new release to the list
+     of patch releases as well.
+   - In case of a minor or major release, add a new entry for the
+     release, including links to docs and example
+   - Check if any release is EOL, if so move it to the "End of Life Releases"
+     section
 
-1. Push & make PR for updated `README.md`
+1. Push & make PR for updated `releases.md` and `README.md`
 
 1. Test release that you just made against your own cluster (note `--context my-dev-cluster`):
 
