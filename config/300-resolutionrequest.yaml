@@ -73,9 +73,21 @@ spec:
           # See issue: https://github.com/knative/serving/issues/912
           x-kubernetes-preserve-unknown-fields: true
       additionalPrinterColumns:
+        - name: OwnerKind
+          type: string
+          jsonPath: ".metadata.ownerReferences[0].kind"
+        - name: Owner
+          type: string
+          jsonPath: ".metadata.ownerReferences[0].name"
         - name: Succeeded
           type: string
           jsonPath: ".status.conditions[?(@.type=='Succeeded')].status"
         - name: Reason
           type: string
           jsonPath: ".status.conditions[?(@.type=='Succeeded')].reason"
+        - name: StartTime
+          type: string
+          jsonPath: .metadata.creationTimestamp
+        - name: EndTime
+          type: string
+          jsonPath: .status.conditions[?(@.type=='Succeeded')].lastTransitionTime
