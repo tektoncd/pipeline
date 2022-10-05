@@ -190,7 +190,7 @@ spec:
 	if err := WaitForPipelineRunState(ctx, c, prName, timeout,
 		Chain(
 			FailedWithReason(pod.ReasonCouldntGetTask, prName),
-			FailedWithMessage("requested resource 'https://api.hub.tekton.dev/v1/resource/Tekton/task/git-clone-this-does-not-exist/0.7/yaml' not found on hub", prName),
+			FailedWithMessage("requested resource 'https://artifacthub.io/api/v1/packages/tekton-task/tekton-catalog-tasks/git-clone-this-does-not-exist/0.7.0' not found on hub", prName),
 		), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}

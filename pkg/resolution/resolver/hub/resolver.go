@@ -15,11 +15,14 @@ package hub
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -32,13 +35,21 @@ const (
 	// resolution.tekton.dev/type label on resource requests
 	LabelValueHubResolverType string = "hub"
 
+	// ArtifactHubType is the value to use setting the type field to artifact
+	ArtifactHubType string = "artifact"
+
+	// TektonHubType is the value to use setting the type field to tekton
+	TektonHubType string = "tekton"
+
 	disabledError = "cannot handle resolution request, enable-hub-resolver feature flag not true"
 )
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 type Resolver struct {
-	// HubURL is the URL for hub resolver
-	HubURL string
+	// TektonHubURL is the URL for hub resolver with type tekton
+	TektonHubURL string
+	// ArtifactHubURL is the URL for hub resolver with type artifact
+	ArtifactHubURL string
 }
 
 // Initialize sets up any dependencies needed by the resolver. None atm.
@@ -68,30 +79,32 @@ func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.
 	if r.isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
-	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
-	for _, p := range params {
-		paramsMap[p.Name] = p.Value
+
+	paramsMap, err := populateDefaultParams(ctx, params)
+	if err != nil {
+		return fmt.Errorf("failed to populate default params: %v", err)
 	}
-	if _, ok := paramsMap[ParamName]; !ok {
-		return errors.New("must include name param")
+	if err := r.validateParams(ctx, paramsMap); err != nil {
+		return fmt.Errorf("failed to validate params: %v", err)
 	}
-	if _, ok := paramsMap[ParamVersion]; !ok {
-		return errors.New("must include version param")
-	}
-	if kind, ok := paramsMap[ParamKind]; ok {
-		if kind.StringVal != "task" && kind.StringVal != "pipeline" {
-			return errors.New("kind param must be task or pipeline")
-		}
-	}
+
 	return nil
 }
 
-type dataResponse struct {
+type tektonHubDataResponse struct {
 	YAML string `json:"yaml"`
 }
 
-type hubResponse struct {
-	Data dataResponse `json:"data"`
+type tektonHubResponse struct {
+	Data tektonHubDataResponse `json:"data"`
+}
+
+type artifactHubDataResponse struct {
+	YAML string `json:"manifestRaw"`
+}
+
+type artifactHubResponse struct {
+	Data artifactHubDataResponse `json:"data"`
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
@@ -100,62 +113,50 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) 
 		return nil, errors.New(disabledError)
 	}
 
-	conf := framework.GetResolverConfigFromContext(ctx)
-
-	paramsMap := make(map[string]string)
-	for _, p := range params {
-		paramsMap[p.Name] = p.Value.StringVal
+	paramsMap, err := populateDefaultParams(ctx, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to populate default params: %v", err)
+	}
+	if err := r.validateParams(ctx, paramsMap); err != nil {
+		return nil, fmt.Errorf("failed to validate params: %v", err)
 	}
 
-	if _, ok := paramsMap[ParamCatalog]; !ok {
-		if catalogString, ok := conf[ConfigCatalog]; ok {
-			paramsMap[ParamCatalog] = catalogString
-		} else {
-			return nil, fmt.Errorf("default catalog was not set during installation of the hub resolver")
+	resVer, err := resolveVersion(paramsMap[ParamVersion], paramsMap[ParamType])
+	if err != nil {
+		return nil, err
+	}
+	paramsMap[ParamVersion] = resVer
+
+	// call hub API
+	switch paramsMap[ParamType] {
+	case ArtifactHubType:
+		url := fmt.Sprintf(r.ArtifactHubURL, paramsMap[ParamKind], paramsMap[ParamCatalog], paramsMap[ParamName], paramsMap[ParamVersion])
+		resp := artifactHubResponse{}
+		if err := fetchHubResource(url, &resp); err != nil {
+			return nil, fmt.Errorf("fail to fetch Artifact Hub resource: %v", err)
 		}
-	}
-
-	kind, ok := paramsMap[ParamKind]
-	if !ok {
-		if kindString, ok := conf[ConfigKind]; ok {
-			kind = kindString
-		} else {
-			return nil, fmt.Errorf("default resource Kind was not set during installation of the hub resolver")
+		return &ResolvedHubResource{
+			URL:     url,
+			Content: []byte(resp.Data.YAML),
+		}, nil
+	case TektonHubType:
+		url := fmt.Sprintf(r.TektonHubURL, paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
+		resp := tektonHubResponse{}
+		if err := fetchHubResource(url, &resp); err != nil {
+			return nil, fmt.Errorf("fail to fetch Tekton Hub resource: %v", err)
 		}
-	}
-	if kind != "task" && kind != "pipeline" {
-		return nil, fmt.Errorf("kind param must be task or pipeline")
+		return &ResolvedHubResource{
+			URL:     url,
+			Content: []byte(resp.Data.YAML),
+		}, nil
 	}
 
-	paramsMap[ParamKind] = kind
-	url := fmt.Sprintf(r.HubURL, paramsMap[ParamCatalog], paramsMap[ParamKind], paramsMap[ParamName], paramsMap[ParamVersion])
-	// #nosec G107 -- URL cannot be constant in this case.
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("error requesting resource from hub: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("requested resource '%s' not found on hub", url)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %w", err)
-	}
-	hr := hubResponse{}
-	err = json.Unmarshal(body, &hr)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling json response: %w", err)
-	}
-	return &ResolvedHubResource{
-		Content: []byte(hr.Data.YAML),
-	}, nil
+	return nil, fmt.Errorf("hub resolver type: %s is not supported", paramsMap[ParamType])
 }
 
 // ResolvedHubResource wraps the data we want to return to Pipelines
 type ResolvedHubResource struct {
+	URL     string
 	Content []byte
 }
 
@@ -174,7 +175,16 @@ func (*ResolvedHubResource) Annotations() map[string]string {
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
 func (rr *ResolvedHubResource) Source() *pipelinev1beta1.ConfigSource {
-	return nil
+	h := sha256.New()
+	h.Write(rr.Content)
+	sha256CheckSum := hex.EncodeToString(h.Sum(nil))
+
+	return &pipelinev1beta1.ConfigSource{
+		URI: rr.URL,
+		Digest: map[string]string{
+			"sha256": sha256CheckSum,
+		},
+	}
 }
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
@@ -184,4 +194,145 @@ func (r *Resolver) isDisabled(ctx context.Context) bool {
 	}
 
 	return true
+}
+
+func fetchHubResource(apiEndpoint string, v interface{}) error {
+	// #nosec G107 -- URL cannot be constant in this case.
+	resp, err := http.Get(apiEndpoint)
+	if err != nil {
+		return fmt.Errorf("error requesting resource from Hub: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("requested resource '%s' not found on hub", apiEndpoint)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response body: %w", err)
+	}
+
+	err = json.Unmarshal(body, v)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling json response: %w", err)
+	}
+
+	return nil
+}
+
+func resolveCatalogName(paramsMap, conf map[string]string) (string, error) {
+	var configTHCatalog, configAHTaskCatalog, configAHPipelineCatalog string
+	var ok bool
+
+	if configTHCatalog, ok = conf[ConfigTektonHubCatalog]; !ok {
+		return "", fmt.Errorf("default Tekton Hub catalog was not set during installation of the hub resolver")
+	}
+	if configAHTaskCatalog, ok = conf[ConfigArtifactHubTaskCatalog]; !ok {
+		return "", fmt.Errorf("default Artifact Hub task catalog was not set during installation of the hub resolver")
+	}
+	if configAHPipelineCatalog, ok = conf[ConfigArtifactHubPipelineCatalog]; !ok {
+		return "", fmt.Errorf("default Artifact Hub pipeline catalog was not set during installation of the hub resolver")
+	}
+	if _, ok := paramsMap[ParamCatalog]; !ok {
+		switch paramsMap[ParamType] {
+		case ArtifactHubType:
+			switch paramsMap[ParamKind] {
+			case "task":
+				return configAHTaskCatalog, nil
+			case "pipeline":
+				return configAHPipelineCatalog, nil
+			default:
+				return "", fmt.Errorf("failed to resolve catalog name with kind: %s", paramsMap[ParamKind])
+			}
+		case TektonHubType:
+			return configTHCatalog, nil
+		default:
+			return "", fmt.Errorf("failed to resolve catalog name with type: %s", paramsMap[ParamType])
+		}
+	}
+
+	return paramsMap[ParamCatalog], nil
+}
+
+// the Artifact Hub follows the semVer (i.e. <major-version>.<minor-version>.0)
+// the Tekton Hub follows the simplified semVer (i.e. <major-version>.<minor-version>)
+// for resolution request with "artifact" type, we append ".0" suffix if the input version is simplified semVer
+// for resolution request with "tekton" type, we only use <major-version>.<minor-version> part of the input if it is semVer
+func resolveVersion(version, hubType string) (string, error) {
+	semVer := strings.Split(version, ".")
+	resVer := version
+
+	if hubType == ArtifactHubType && len(semVer) == 2 {
+		resVer = version + ".0"
+	} else if hubType == TektonHubType && len(semVer) > 2 {
+		resVer = strings.Join(semVer[0:2], ".")
+	}
+
+	return resVer, nil
+}
+
+func (r *Resolver) validateParams(ctx context.Context, paramsMap map[string]string) error {
+	var missingParams []string
+	if _, ok := paramsMap[ParamName]; !ok {
+		missingParams = append(missingParams, ParamName)
+	}
+	if _, ok := paramsMap[ParamVersion]; !ok {
+		missingParams = append(missingParams, ParamVersion)
+	}
+	if kind, ok := paramsMap[ParamKind]; ok {
+		if kind != "task" && kind != "pipeline" {
+			return errors.New("kind param must be task or pipeline")
+		}
+	}
+	if hubType, ok := paramsMap[ParamType]; ok {
+		if hubType != ArtifactHubType && hubType != TektonHubType {
+			return fmt.Errorf(fmt.Sprintf("type param must be %s or %s", ArtifactHubType, TektonHubType))
+		}
+
+		if hubType == TektonHubType && r.TektonHubURL == "" {
+			return fmt.Errorf("pleaes configure TEKTON_HUB_API env variable to use tekton type")
+		}
+	}
+
+	if len(missingParams) > 0 {
+		return fmt.Errorf("missing required hub resolver params: %s", strings.Join(missingParams, ", "))
+	}
+
+	return nil
+}
+
+func populateDefaultParams(ctx context.Context, params []pipelinev1beta1.Param) (map[string]string, error) {
+	conf := framework.GetResolverConfigFromContext(ctx)
+	paramsMap := make(map[string]string)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value.StringVal
+	}
+
+	// type
+	if _, ok := paramsMap[ParamType]; !ok {
+		if typeString, ok := conf[ConfigType]; ok {
+			paramsMap[ParamType] = typeString
+		} else {
+			return nil, fmt.Errorf("default type was not set during installation of the hub resolver")
+		}
+	}
+
+	// kind
+	if _, ok := paramsMap[ParamKind]; !ok {
+		if kindString, ok := conf[ConfigKind]; ok {
+			paramsMap[ParamKind] = kindString
+		} else {
+			return nil, fmt.Errorf("default resource kind was not set during installation of the hub resolver")
+		}
+	}
+
+	// catalog
+	resCatName, err := resolveCatalogName(paramsMap, conf)
+	if err != nil {
+		return nil, err
+	}
+	paramsMap[ParamCatalog] = resCatName
+
+	return paramsMap, nil
 }

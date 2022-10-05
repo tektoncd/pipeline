@@ -93,8 +93,8 @@ spec:
         - name: METRICS_DOMAIN
           value: tekton.dev/resolution
         # Override this env var to set a private hub api endpoint
-        - name: HUB_API
-          value: "https://api.hub.tekton.dev/"
+        - name: ARTIFACT_HUB_API
+          value: "https://artifacthub.io/"
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
