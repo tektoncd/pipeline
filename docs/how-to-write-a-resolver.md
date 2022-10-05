@@ -185,13 +185,12 @@ We'll also need to add another import for this package at the top:
 ```go
 import (
   "context"
-
-  // Add this one; it defines LabelKeyResolverType we use in GetSelector
+  
+  "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+// Add this one; it defines LabelKeyResolverType we use in GetSelector
   "github.com/tektoncd/pipeline/pkg/resolution/common"
-
   "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
   "knative.dev/pkg/injection/sharedmain"
-  "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 )
 ```
 
@@ -263,7 +262,7 @@ func (*myResolvedResource) Annotations() map[string]string {
 
 // Source is the source reference of the remote data that records where the remote 
 // file came from including the url, digest and the entrypoint. None atm.
-func (*myResolvedResource) Source() *v1alpha1.ConfigSource {
+func (*myResolvedResource) Source() *v1beta1.ConfigSource {
 	return nil
 }
 ```
@@ -276,8 +275,8 @@ following example.
 ```go
 // Source is the source reference of the remote data that records where the remote 
 // file came from including the url, digest and the entrypoint.
-func (*myResolvedResource) Source() *v1alpha1.ConfigSource {
-	return &v1alpha1.ConfigSource{
+func (*myResolvedResource) Source() *v1beta1.ConfigSource {
+	return &v1beta1.ConfigSource{
 		URI: "https://github.com/user/example",
 		Digest: map[string]string{
 			"sha1": "example",
@@ -394,7 +393,7 @@ pipeline. Create a file called `test-request.yaml` with the following
 content:
 
 ```yaml
-apiVersion: resolution.tekton.dev/v1alpha1
+apiVersion: resolution.tekton.dev/v1beta1
 kind: ResolutionRequest
 metadata:
   name: test-request

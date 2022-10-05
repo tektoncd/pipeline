@@ -264,7 +264,6 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
 	ctx = config.ToContext(ctx, cfg)
 	pipeline := parse.MustParsePipeline(t, pipelineYAMLString)
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
@@ -299,7 +298,6 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
 	ctx = config.ToContext(ctx, cfg)
 	pipeline := parse.MustParsePipeline(t, pipelineYAMLString)
 	pipelineRef := &v1beta1.PipelineRef{
@@ -322,10 +320,13 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
-		Params: map[string]string{
-			"foo": "bar",
-			"bar": "test-pipeline",
-		},
+		Params: []v1beta1.Param{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("bar"),
+		}, {
+			Name:  "bar",
+			Value: *v1beta1.NewStructuredValues("test-pipeline"),
+		}},
 	}
 	fn, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -389,7 +390,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for non-matching params, did not get one")
 	}
-	if !strings.Contains(err.Error(), "expected foo param to be bar, but was banana") {
+	if !strings.Contains(err.Error(), `StringVal: "banana"`) {
 		t.Fatalf("did not receive expected error, got '%s'", err.Error())
 	}
 }
@@ -397,7 +398,6 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
 	ctx = config.ToContext(ctx, cfg)
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 	resolvesTo := []byte("INVALID YAML")

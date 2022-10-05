@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
-	rrreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1alpha1/resolutionrequest"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	rrreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
@@ -44,7 +44,7 @@ const defaultMaximumResolutionDuration = 1 * time.Minute
 
 // ReconcileKind processes updates to ResolutionRequests, sets status
 // fields on it, and returns any errors experienced along the way.
-func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1alpha1.ResolutionRequest) reconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1beta1.ResolutionRequest) reconciler.Event {
 	if rr == nil {
 		return nil
 	}
@@ -72,7 +72,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1alpha1.ResolutionR
 
 // requestDuration returns the amount of time that has passed since a
 // given ResolutionRequest was created.
-func requestDuration(rr *v1alpha1.ResolutionRequest) time.Duration {
+func requestDuration(rr *v1beta1.ResolutionRequest) time.Duration {
 	creationTime := rr.ObjectMeta.CreationTimestamp.DeepCopy().Time.UTC()
 	return time.Now().UTC().Sub(creationTime)
 }

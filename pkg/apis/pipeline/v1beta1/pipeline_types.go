@@ -299,15 +299,6 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 		if !cfg.FeatureFlags.EnableTektonOCIBundles && pt.TaskRef.Bundle != "" {
 			errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
 		}
-		if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
-			// fail if resolver or resource are present when enable-api-fields is false.
-			if pt.TaskRef.Resolver != "" {
-				errs = errs.Also(apis.ErrDisallowedFields("taskref.resolver"))
-			}
-			if len(pt.TaskRef.Params) > 0 {
-				errs = errs.Also(apis.ErrDisallowedFields("taskref.resource"))
-			}
-		}
 	}
 	return errs
 }

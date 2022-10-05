@@ -29,6 +29,63 @@ weight: 1000
 </div>
 Resource Types:
 <ul></ul>
+<h3 id="resolution.tekton.dev/v1alpha1.ConfigSource">ConfigSource
+</h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1alpha1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>)
+</p>
+<div>
+<p>ConfigSource records where the task/pipeline file came from.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>uri</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>URI indicating the identity of the source of the config.
+<a href="https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI">https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI</a>
+Example: <a href="https://github.com/tektoncd/catalog">https://github.com/tektoncd/catalog</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>digest</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
+<a href="https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet">https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet</a>
+Example: {&ldquo;sha1&rdquo;: &ldquo;f99d13e554ffcb696dee719fa85b695cb5b0f428&rdquo;}</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>entryPoint</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>EntryPoint identifying the entry point into the build. This is often a path to a
+configuration file and/or a target label within that file.
+Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="resolution.tekton.dev/v1alpha1.ResolutionRequest">ResolutionRequest
 </h3>
 <div>
@@ -221,6 +278,20 @@ of the requested resource in-lined into the ResolutionRequest
 object.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>source</code><br/>
+<em>
+<a href="#resolution.tekton.dev/v1alpha1.ConfigSource">
+ConfigSource
+</a>
+</em>
+</td>
+<td>
+<p>Source is the source reference of the remote data that records where the remote
+file came from including the url, digest and the entrypoint.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <hr/>
@@ -229,6 +300,63 @@ object.</p>
 </div>
 Resource Types:
 <ul></ul>
+<h3 id="resolution.tekton.dev/v1beta1.ConfigSource">ConfigSource
+</h3>
+<p>
+(<em>Appears on:</em><a href="#resolution.tekton.dev/v1beta1.ResolutionRequestStatusFields">ResolutionRequestStatusFields</a>)
+</p>
+<div>
+<p>ConfigSource records where the task/pipeline file came from.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>uri</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>URI indicating the identity of the source of the config.
+<a href="https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI">https://github.com/in-toto/attestation/blob/main/spec/field_types.md#ResourceURI</a>
+Example: <a href="https://github.com/tektoncd/catalog">https://github.com/tektoncd/catalog</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>digest</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Digest is a collection of cryptographic digests for the contents of the artifact specified by URI.
+<a href="https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet">https://github.com/in-toto/attestation/blob/main/spec/field_types.md#DigestSet</a>
+Example: {&ldquo;sha1&rdquo;: &ldquo;f99d13e554ffcb696dee719fa85b695cb5b0f428&rdquo;}</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>entryPoint</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>EntryPoint identifying the entry point into the build. This is often a path to a
+configuration file and/or a target label within that file.
+Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="resolution.tekton.dev/v1beta1.ResolutionRequest">ResolutionRequest
 </h3>
 <div>
@@ -423,6 +551,20 @@ string
 <p>Data is a string representation of the resolved content
 of the requested resource in-lined into the ResolutionRequest
 object.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>source</code><br/>
+<em>
+<a href="#resolution.tekton.dev/v1beta1.ConfigSource">
+ConfigSource
+</a>
+</em>
+</td>
+<td>
+<p>Source is the source reference of the remote data that records the url, digest
+and the entrypoint.</p>
 </td>
 </tr>
 </tbody>
@@ -2880,8 +3022,8 @@ requested.</p>
 </p>
 <div>
 <p>ResolverRef can be used to refer to a Pipeline or Task in a remote
-location like a git repo. This feature is in alpha and these fields
-are only available when the alpha feature gate is enabled.</p>
+location like a git repo. This feature is in beta and these fields
+are only available when the beta feature gate is enabled.</p>
 </div>
 <table>
 <thead>
@@ -4760,6 +4902,9 @@ Kubernetes core/v1.ResourceRequirements
 <tbody><tr><td><p>&#34;TaskRun cancelled as the PipelineRun it belongs to has been cancelled.&#34;</p></td>
 <td><p>TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
 TaskRun was a part of has been cancelled.</p>
+</td>
+</tr><tr><td><p>&#34;TaskRun cancelled as the PipelineRun it belongs to has timed out.&#34;</p></td>
+<td><p>TaskRunCancelledByPipelineTimeoutMsg indicates that the TaskRun was cancelled because the PipelineRun running it timed out.</p>
 </td>
 </tr></tbody>
 </table>
@@ -10273,8 +10418,7 @@ requested.</p>
 </p>
 <div>
 <p>ResolverRef can be used to refer to a Pipeline or Task in a remote
-location like a git repo. This feature is in alpha and these fields
-are only available when the alpha feature gate is enabled.</p>
+location like a git repo.</p>
 </div>
 <table>
 <thead>

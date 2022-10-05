@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
-	rrinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1alpha1/resolutionrequest"
-	rrlister "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1alpha1"
+	rrinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
+	rrlister "github.com/tektoncd/pipeline/pkg/client/resolution/listers/resolution/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/common"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -100,7 +100,7 @@ func NewController(ctx context.Context, resolver Resolver, modifiers ...Reconcil
 
 func filterResolutionRequestsBySelector(selector map[string]string) func(obj interface{}) bool {
 	return func(obj interface{}) bool {
-		rr, ok := obj.(*v1alpha1.ResolutionRequest)
+		rr, ok := obj.(*v1beta1.ResolutionRequest)
 		if !ok {
 			return false
 		}

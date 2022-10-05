@@ -34,7 +34,8 @@ import (
 	"github.com/jenkins-x/go-scm/scm"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"go.uber.org/zap"
@@ -110,7 +111,7 @@ func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the gitresolver.
-func (r *Resolver) ValidateParams(ctx context.Context, params map[string]string) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.Param) error {
 	if r.isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
@@ -124,7 +125,7 @@ func (r *Resolver) ValidateParams(ctx context.Context, params map[string]string)
 
 // Resolve performs the work of fetching a file from git given a map of
 // parameters.
-func (r *Resolver) Resolve(ctx context.Context, origParams map[string]string) (framework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Param) (framework.ResolvedResource, error) {
 	if r.isDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
@@ -332,7 +333,7 @@ func (r *resolvedGitResource) Annotations() map[string]string {
 
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r *resolvedGitResource) Source() *v1alpha1.ConfigSource {
+func (r *resolvedGitResource) Source() *v1beta1.ConfigSource {
 	return nil
 }
 
@@ -403,38 +404,43 @@ func (r *Resolver) getAPIToken(ctx context.Context) ([]byte, error) {
 	return secretVal, nil
 }
 
-func populateDefaultParams(ctx context.Context, params map[string]string) (map[string]string, error) {
+func populateDefaultParams(ctx context.Context, params []pipelinev1beta1.Param) (map[string]string, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
+
+	paramsMap := make(map[string]string)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value.StringVal
+	}
 
 	var missingParams []string
 
-	if _, ok := params[revisionParam]; !ok {
+	if _, ok := paramsMap[revisionParam]; !ok {
 		if defaultRevision, ok := conf[defaultRevisionKey]; ok {
-			params[revisionParam] = defaultRevision
+			paramsMap[revisionParam] = defaultRevision
 		} else {
 			missingParams = append(missingParams, revisionParam)
 		}
 	}
-	if _, ok := params[pathParam]; !ok {
+	if _, ok := paramsMap[pathParam]; !ok {
 		missingParams = append(missingParams, pathParam)
 	}
 
-	if params[urlParam] != "" && params[repoParam] != "" {
+	if paramsMap[urlParam] != "" && paramsMap[repoParam] != "" {
 		return nil, fmt.Errorf("cannot specify both '%s' and '%s'", urlParam, repoParam)
 	}
 
-	if params[urlParam] == "" && params[repoParam] == "" {
+	if paramsMap[urlParam] == "" && paramsMap[repoParam] == "" {
 		if urlString, ok := conf[defaultURLKey]; ok {
-			params[urlParam] = urlString
+			paramsMap[urlParam] = urlString
 		} else {
 			return nil, fmt.Errorf("must specify one of '%s' or '%s'", urlParam, repoParam)
 		}
 	}
 
-	if params[repoParam] != "" {
-		if _, ok := params[orgParam]; !ok {
+	if paramsMap[repoParam] != "" {
+		if _, ok := paramsMap[orgParam]; !ok {
 			if defaultOrg, ok := conf[defaultOrgKey]; ok {
-				params[orgParam] = defaultOrg
+				paramsMap[orgParam] = defaultOrg
 			} else {
 				return nil, fmt.Errorf("'%s' is required when '%s' is specified", orgParam, repoParam)
 			}
@@ -446,5 +452,5 @@ func populateDefaultParams(ctx context.Context, params map[string]string) (map[s
 
 	// TODO(sbwsg): validate repo url is well-formed, git:// or https://
 	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
-	return params, nil
+	return paramsMap, nil
 }

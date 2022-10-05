@@ -54,6 +54,10 @@ var requireFeatureFlags = requireAnyGate(map[string]string{
 	"enable-api-fields":         "alpha",
 })
 
+var resolverFeatureFlags = requireAnyGate(map[string]string{
+	"enable-bundles-resolver": "true",
+})
+
 // TestTektonBundlesSimpleWorkingExample is an integration test which tests a simple, working Tekton bundle using OCI
 // images.
 func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
@@ -197,7 +201,7 @@ spec:
 // images using the remote resolution bundles resolver.
 func TestTektonBundlesResolver(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, withRegistry, requireFeatureFlags)
+	c, namespace := setup(ctx, t, withRegistry, resolverFeatureFlags)
 
 	t.Parallel()
 

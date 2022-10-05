@@ -20,8 +20,6 @@ import (
 	"context"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"knative.dev/pkg/apis"
 )
 
@@ -34,7 +32,6 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	if ref.Resolver != "" || ref.Params != nil {
 		if ref.Resolver != "" {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.AlphaAPIFields).ViaField("resolver"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
 			}
@@ -43,7 +40,6 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 		}
 		if ref.Params != nil {
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "params", config.AlphaAPIFields).ViaField("params"))
 			if ref.Name != "" {
 				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
 			}
@@ -54,7 +50,6 @@ func (ref *TaskRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 				errs = errs.Also(apis.ErrMissingField("resolver"))
 			}
 			errs = errs.Also(ValidateParameters(ctx, ref.Params))
-			errs = errs.Also(validateResolutionParamTypes(ref.Params).ViaField("params"))
 		}
 	} else {
 		if ref.Name == "" {

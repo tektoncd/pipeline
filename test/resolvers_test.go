@@ -62,17 +62,14 @@ var (
 
 	hubFeatureFlags = requireAllGates(map[string]string{
 		"enable-hub-resolver": "true",
-		"enable-api-fields":   "alpha",
 	})
 
 	gitFeatureFlags = requireAllGates(map[string]string{
 		"enable-git-resolver": "true",
-		"enable-api-fields":   "alpha",
 	})
 
 	clusterFeatureFlags = requireAllGates(map[string]string{
 		"enable-cluster-resolver": "true",
-		"enable-api-fields":       "alpha",
 	})
 )
 

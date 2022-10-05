@@ -23,7 +23,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 )
 
@@ -50,7 +51,7 @@ var _ Resolver = &FakeResolver{}
 type FakeResolvedResource struct {
 	Content       string
 	AnnotationMap map[string]string
-	ContentSource *v1alpha1.ConfigSource
+	ContentSource *v1beta1.ConfigSource
 	ErrorWith     string
 	WaitFor       time.Duration
 }
@@ -67,7 +68,7 @@ func (f *FakeResolvedResource) Annotations() map[string]string {
 
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (f *FakeResolvedResource) Source() *v1alpha1.ConfigSource {
+func (f *FakeResolvedResource) Source() *v1beta1.ConfigSource {
 	return f.ContentSource
 }
 
@@ -102,7 +103,12 @@ func (r *FakeResolver) GetSelector(_ context.Context) map[string]string {
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the fake resolver.
-func (r *FakeResolver) ValidateParams(_ context.Context, params map[string]string) error {
+func (r *FakeResolver) ValidateParams(_ context.Context, params []pipelinev1beta1.Param) error {
+	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value
+	}
+
 	required := []string{
 		FakeParamName,
 	}
@@ -111,8 +117,8 @@ func (r *FakeResolver) ValidateParams(_ context.Context, params map[string]strin
 		missing = required
 	} else {
 		for _, p := range required {
-			v, has := params[p]
-			if !has || v == "" {
+			v, has := paramsMap[p]
+			if !has || v.StringVal == "" {
 				missing = append(missing, p)
 			}
 		}
@@ -126,8 +132,13 @@ func (r *FakeResolver) ValidateParams(_ context.Context, params map[string]strin
 
 // Resolve performs the work of fetching a file from the fake resolver given a map of
 // parameters.
-func (r *FakeResolver) Resolve(_ context.Context, params map[string]string) (ResolvedResource, error) {
-	paramValue := params[FakeParamName]
+func (r *FakeResolver) Resolve(_ context.Context, params []pipelinev1beta1.Param) (ResolvedResource, error) {
+	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value
+	}
+
+	paramValue := paramsMap[FakeParamName].StringVal
 
 	frr, ok := r.ForParam[paramValue]
 	if !ok {

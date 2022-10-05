@@ -34,7 +34,8 @@ spec:
   versions:
     - name: v1alpha1
       served: true
-      storage: true
+      deprecated: true
+      storage: false
       subresources:
         status: {}
       schema:
@@ -56,8 +57,8 @@ spec:
           type: string
           jsonPath: ".status.conditions[?(@.type=='Succeeded')].reason"
     - name: v1beta1
-      served: false
-      storage: false
+      served: true
+      storage: true
       subresources:
         status: {}
       schema:

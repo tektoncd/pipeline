@@ -100,11 +100,10 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 
 			return resolveTask(ctx, resolver, name, kind)
 		}, nil
-	case cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields && tr != nil && tr.Resolver != "" && requester != nil:
+	case tr != nil && tr.Resolver != "" && requester != nil:
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a TaskObject.
 		return func(ctx context.Context, name string) (v1beta1.TaskObject, error) {
-			params := map[string]string{}
 			var replacedParams []v1beta1.Param
 			if ownerAsTR, ok := owner.(*v1beta1.TaskRun); ok {
 				stringReplacements, arrayReplacements := paramsFromTaskRun(ctx, ownerAsTR)
@@ -118,10 +117,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			} else {
 				replacedParams = append(replacedParams, tr.Params...)
 			}
-			for _, p := range replacedParams {
-				params[p.Name] = p.Value.StringVal
-			}
-			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, params)
+			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, replacedParams)
 			return resolveTask(ctx, resolver, name, kind)
 		}, nil
 

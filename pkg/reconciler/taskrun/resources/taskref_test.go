@@ -509,7 +509,6 @@ echo hello
 func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
 	ctx = config.ToContext(ctx, cfg)
 	task := parse.MustParseTask(t, taskYAMLString)
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
@@ -545,7 +544,6 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
 	ctx = config.ToContext(ctx, cfg)
 	task := parse.MustParseTask(t, taskYAMLString)
 	taskRef := &v1beta1.TaskRef{
@@ -568,10 +566,13 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	resolved := test.NewResolvedResource([]byte(taskYAML), nil, nil)
 	requester := &test.Requester{
 		ResolvedResource: resolved,
-		Params: map[string]string{
-			"foo": "bar",
-			"bar": "test-task",
-		},
+		Params: []v1beta1.Param{{
+			Name:  "foo",
+			Value: *v1beta1.NewStructuredValues("bar"),
+		}, {
+			Name:  "bar",
+			Value: *v1beta1.NewStructuredValues("test-task"),
+		}},
 	}
 	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -637,7 +638,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for non-matching params, did not get one")
 	}
-	if !strings.Contains(err.Error(), "expected foo param to be bar, but was banana") {
+	if !strings.Contains(err.Error(), `StringVal: "banana"`) {
 		t.Fatalf("did not receive expected error, got '%s'", err.Error())
 	}
 }
@@ -645,7 +646,6 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
 	ctx = config.ToContext(ctx, cfg)
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 	resolvesTo := []byte("INVALID YAML")

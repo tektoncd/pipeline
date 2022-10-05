@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
 
@@ -38,50 +39,55 @@ const ParamKind = "kind"
 
 // OptionsFromParams parses the params from a resolution request and
 // converts them into options to pass as part of a bundle request.
-func OptionsFromParams(ctx context.Context, params map[string]string) (RequestOptions, error) {
+func OptionsFromParams(ctx context.Context, params []pipelinev1beta1.Param) (RequestOptions, error) {
 	opts := RequestOptions{}
 	conf := framework.GetResolverConfigFromContext(ctx)
 
-	saVal, ok := params[ParamServiceAccount]
+	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value
+	}
+
+	saVal, ok := paramsMap[ParamServiceAccount]
 	sa := ""
-	if !ok || saVal == "" {
+	if !ok || saVal.StringVal == "" {
 		if saString, ok := conf[ConfigServiceAccount]; ok {
 			sa = saString
 		} else {
 			return opts, fmt.Errorf("default Service Account  was not set during installation of the bundle resolver")
 		}
 	} else {
-		sa = saVal
+		sa = saVal.StringVal
 	}
 
-	bundleVal, ok := params[ParamBundle]
-	if !ok || bundleVal == "" {
+	bundleVal, ok := paramsMap[ParamBundle]
+	if !ok || bundleVal.StringVal == "" {
 		return opts, fmt.Errorf("parameter %q required", ParamBundle)
 	}
-	if _, err := name.ParseReference(bundleVal); err != nil {
+	if _, err := name.ParseReference(bundleVal.StringVal); err != nil {
 		return opts, fmt.Errorf("invalid bundle reference: %w", err)
 	}
 
-	nameVal, ok := params[ParamName]
-	if !ok || nameVal == "" {
+	nameVal, ok := paramsMap[ParamName]
+	if !ok || nameVal.StringVal == "" {
 		return opts, fmt.Errorf("parameter %q required", ParamName)
 	}
 
-	kindVal, ok := params[ParamKind]
+	kindVal, ok := paramsMap[ParamKind]
 	kind := ""
-	if !ok || kindVal == "" {
+	if !ok || kindVal.StringVal == "" {
 		if kindString, ok := conf[ConfigKind]; ok {
 			kind = kindString
 		} else {
 			return opts, fmt.Errorf("default resource Kind  was not set during installation of the bundle resolver")
 		}
 	} else {
-		kind = kindVal
+		kind = kindVal.StringVal
 	}
 
 	opts.ServiceAccount = sa
-	opts.Bundle = bundleVal
-	opts.EntryName = nameVal
+	opts.Bundle = bundleVal.StringVal
+	opts.EntryName = nameVal.StringVal
 	opts.Kind = kind
 
 	return opts, nil

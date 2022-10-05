@@ -186,9 +186,10 @@ func TestPipelineTask_ValidateCustomTask(t *testing.T) {
 
 func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 	tests := []struct {
-		name            string
-		tasks           PipelineTask
-		enableAPIFields bool
+		name                 string
+		tasks                PipelineTask
+		enableAlphaAPIFields bool
+		enableBetaAPIFields  bool
 	}{{
 		name: "pipeline task - valid taskRef name",
 		tasks: PipelineTask{
@@ -206,13 +207,19 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 		tasks: PipelineTask{
 			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
 		},
-		enableAPIFields: true,
+		enableBetaAPIFields: true,
+	}, {
+		name: "pipeline task - use of resolver with the feature flag set to alpha",
+		tasks: PipelineTask{
+			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
+		},
+		enableAlphaAPIFields: true,
 	}, {
 		name: "pipeline task - use of resolver params with the feature flag set",
 		tasks: PipelineTask{
 			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: []Param{{}}}},
 		},
-		enableAPIFields: true,
+		enableBetaAPIFields: true,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -220,8 +227,10 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 			cfg := &config.Config{
 				FeatureFlags: &config.FeatureFlags{},
 			}
-			if tt.enableAPIFields {
+			if tt.enableAlphaAPIFields {
 				cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+			} else if tt.enableBetaAPIFields {
+				cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
 			}
 			ctx = config.ToContext(ctx, cfg)
 			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)

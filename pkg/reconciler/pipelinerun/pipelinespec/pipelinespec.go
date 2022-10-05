@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -35,7 +34,6 @@ type GetPipeline func(context.Context, string) (v1beta1.PipelineObject, error)
 func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getPipeline GetPipeline) (*metav1.ObjectMeta, *v1beta1.PipelineSpec, error) {
 	pipelineMeta := metav1.ObjectMeta{}
 	pipelineSpec := v1beta1.PipelineSpec{}
-	cfg := config.FromContextOrDefaults(ctx)
 	switch {
 	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Name != "":
 		// Get related pipeline for pipelinerun
@@ -49,7 +47,7 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 	case pipelineRun.Spec.PipelineSpec != nil:
 		pipelineMeta = pipelineRun.ObjectMeta
 		pipelineSpec = *pipelineRun.Spec.PipelineSpec
-	case cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields && pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Resolver != "":
+	case pipelineRun.Spec.PipelineRef != nil && pipelineRun.Spec.PipelineRef.Resolver != "":
 		pipeline, err := getPipeline(ctx, "")
 		switch {
 		case err != nil:

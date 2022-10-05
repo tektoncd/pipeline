@@ -26,7 +26,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test"
@@ -56,17 +57,17 @@ var (
 func TestReconcile(t *testing.T) {
 	testCases := []struct {
 		name              string
-		inputRequest      *v1alpha1.ResolutionRequest
+		inputRequest      *v1beta1.ResolutionRequest
 		paramMap          map[string]*FakeResolvedResource
 		reconcilerTimeout time.Duration
-		expectedStatus    *v1alpha1.ResolutionRequestStatus
+		expectedStatus    *v1beta1.ResolutionRequestStatus
 		expectedErr       error
 	}{
 		{
 			name: "unknown value",
-			inputRequest: &v1alpha1.ResolutionRequest{
+			inputRequest: &v1beta1.ResolutionRequest{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "resolution.tekton.dev/v1alpha1",
+					APIVersion: "resolution.tekton.dev/v1beta1",
 					Kind:       "ResolutionRequest",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -77,19 +78,20 @@ func TestReconcile(t *testing.T) {
 						resolutioncommon.LabelKeyResolverType: LabelValueFakeResolverType,
 					},
 				},
-				Spec: v1alpha1.ResolutionRequestSpec{
-					Parameters: map[string]string{
-						FakeParamName: "bar",
-					},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1beta1.Param{{
+						Name:  FakeParamName,
+						Value: *pipelinev1beta1.NewStructuredValues("bar"),
+					}},
 				},
-				Status: v1alpha1.ResolutionRequestStatus{},
+				Status: v1beta1.ResolutionRequestStatus{},
 			},
 			expectedErr: errors.New("error getting \"Fake\" \"foo/rr\": couldn't find resource for param value bar"),
 		}, {
 			name: "known value",
-			inputRequest: &v1alpha1.ResolutionRequest{
+			inputRequest: &v1beta1.ResolutionRequest{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "resolution.tekton.dev/v1alpha1",
+					APIVersion: "resolution.tekton.dev/v1beta1",
 					Kind:       "ResolutionRequest",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -100,18 +102,19 @@ func TestReconcile(t *testing.T) {
 						resolutioncommon.LabelKeyResolverType: LabelValueFakeResolverType,
 					},
 				},
-				Spec: v1alpha1.ResolutionRequestSpec{
-					Parameters: map[string]string{
-						FakeParamName: "bar",
-					},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1beta1.Param{{
+						Name:  FakeParamName,
+						Value: *pipelinev1beta1.NewStructuredValues("bar"),
+					}},
 				},
-				Status: v1alpha1.ResolutionRequestStatus{},
+				Status: v1beta1.ResolutionRequestStatus{},
 			},
 			paramMap: map[string]*FakeResolvedResource{
 				"bar": {
 					Content:       "some content",
 					AnnotationMap: map[string]string{"foo": "bar"},
-					ContentSource: &v1alpha1.ConfigSource{
+					ContentSource: &v1beta1.ConfigSource{
 						URI: "https://abc.com",
 						Digest: map[string]string{
 							"sha1": "xyz",
@@ -120,15 +123,15 @@ func TestReconcile(t *testing.T) {
 					},
 				},
 			},
-			expectedStatus: &v1alpha1.ResolutionRequestStatus{
+			expectedStatus: &v1beta1.ResolutionRequestStatus{
 				Status: duckv1.Status{
 					Annotations: map[string]string{
 						"foo": "bar",
 					},
 				},
-				ResolutionRequestStatusFields: v1alpha1.ResolutionRequestStatusFields{
+				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
 					Data: base64.StdEncoding.Strict().EncodeToString([]byte("some content")),
-					Source: &v1alpha1.ConfigSource{
+					Source: &v1beta1.ConfigSource{
 						URI: "https://abc.com",
 						Digest: map[string]string{
 							"sha1": "xyz",
@@ -139,9 +142,9 @@ func TestReconcile(t *testing.T) {
 			},
 		}, {
 			name: "error resolving",
-			inputRequest: &v1alpha1.ResolutionRequest{
+			inputRequest: &v1beta1.ResolutionRequest{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "resolution.tekton.dev/v1alpha1",
+					APIVersion: "resolution.tekton.dev/v1beta1",
 					Kind:       "ResolutionRequest",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -152,12 +155,13 @@ func TestReconcile(t *testing.T) {
 						resolutioncommon.LabelKeyResolverType: LabelValueFakeResolverType,
 					},
 				},
-				Spec: v1alpha1.ResolutionRequestSpec{
-					Parameters: map[string]string{
-						FakeParamName: "bar",
-					},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1beta1.Param{{
+						Name:  FakeParamName,
+						Value: *pipelinev1beta1.NewStructuredValues("bar"),
+					}},
 				},
-				Status: v1alpha1.ResolutionRequestStatus{},
+				Status: v1beta1.ResolutionRequestStatus{},
 			},
 			paramMap: map[string]*FakeResolvedResource{
 				"bar": {
@@ -167,9 +171,9 @@ func TestReconcile(t *testing.T) {
 			expectedErr: errors.New(`error getting "Fake" "foo/rr": fake failure`),
 		}, {
 			name: "timeout",
-			inputRequest: &v1alpha1.ResolutionRequest{
+			inputRequest: &v1beta1.ResolutionRequest{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "resolution.tekton.dev/v1alpha1",
+					APIVersion: "resolution.tekton.dev/v1beta1",
 					Kind:       "ResolutionRequest",
 				},
 				ObjectMeta: metav1.ObjectMeta{
@@ -180,12 +184,13 @@ func TestReconcile(t *testing.T) {
 						resolutioncommon.LabelKeyResolverType: LabelValueFakeResolverType,
 					},
 				},
-				Spec: v1alpha1.ResolutionRequestSpec{
-					Parameters: map[string]string{
-						FakeParamName: "bar",
-					},
+				Spec: v1beta1.ResolutionRequestSpec{
+					Params: []pipelinev1beta1.Param{{
+						Name:  FakeParamName,
+						Value: *pipelinev1beta1.NewStructuredValues("bar"),
+					}},
 				},
-				Status: v1alpha1.ResolutionRequestStatus{},
+				Status: v1beta1.ResolutionRequestStatus{},
 			},
 			paramMap: map[string]*FakeResolvedResource{
 				"bar": {
@@ -200,7 +205,7 @@ func TestReconcile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
-				ResolutionRequests: []*v1alpha1.ResolutionRequest{tc.inputRequest},
+				ResolutionRequests: []*v1beta1.ResolutionRequest{tc.inputRequest},
 			}
 
 			fakeResolver := &FakeResolver{ForParam: tc.paramMap}
@@ -227,7 +232,7 @@ func TestReconcile(t *testing.T) {
 					}
 				}
 
-				c := testAssets.Clients.ResolutionRequests.ResolutionV1alpha1()
+				c := testAssets.Clients.ResolutionRequests.ResolutionV1beta1()
 				reconciledRR, err := c.ResolutionRequests(tc.inputRequest.Namespace).Get(testAssets.Ctx, tc.inputRequest.Name, metav1.GetOptions{})
 				if err != nil {
 					t.Fatalf("getting updated ResolutionRequest: %v", err)
@@ -267,7 +272,7 @@ func getResolverFrameworkController(ctx context.Context, t *testing.T, d test.Da
 	}, cancel
 }
 
-func getRequestName(rr *v1alpha1.ResolutionRequest) string {
+func getRequestName(rr *v1beta1.ResolutionRequest) string {
 	return strings.Join([]string{rr.Namespace, rr.Name}, "/")
 }
 

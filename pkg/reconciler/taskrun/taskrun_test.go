@@ -1376,16 +1376,8 @@ spec:
   serviceAccountName: default
 `)
 
-	cms := []*corev1.ConfigMap{{
-		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-api-fields": config.AlphaAPIFields,
-		},
-	}}
-
 	d := test.Data{
-		ConfigMaps: cms,
-		TaskRuns:   []*v1beta1.TaskRun{tr},
+		TaskRuns: []*v1beta1.TaskRun{tr},
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: tr.Spec.ServiceAccountName, Namespace: "foo"},
 		}},
@@ -1411,7 +1403,7 @@ spec:
 		t.Errorf("expected no error. Got error %v", err)
 	}
 
-	client := testAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	client := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(testAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error listing resource requests: %v", err)
@@ -1484,16 +1476,8 @@ spec:
   serviceAccountName: default
 `)
 
-	cms := []*corev1.ConfigMap{{
-		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-api-fields": config.AlphaAPIFields,
-		},
-	}}
-
 	d := test.Data{
-		ConfigMaps: cms,
-		TaskRuns:   []*v1beta1.TaskRun{tr},
+		TaskRuns: []*v1beta1.TaskRun{tr},
 		ServiceAccounts: []*corev1.ServiceAccount{{
 			ObjectMeta: metav1.ObjectMeta{Name: tr.Spec.ServiceAccountName, Namespace: "foo"},
 		}},
@@ -1519,7 +1503,7 @@ spec:
 		t.Errorf("expected no error. Got error %v", err)
 	}
 
-	client := testAssets.Clients.ResolutionRequests.ResolutionV1alpha1().ResolutionRequests("default")
+	client := testAssets.Clients.ResolutionRequests.ResolutionV1beta1().ResolutionRequests("default")
 	resolutionrequests, err := client.List(testAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error listing resource requests: %v", err)

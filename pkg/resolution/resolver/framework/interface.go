@@ -20,7 +20,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 )
 
 // Resolver is the interface to implement for type-specific resource
@@ -41,7 +42,7 @@ type Resolver interface {
 
 	// ValidateParams is given the parameters from a resource
 	// request and should return an error if any are missing or invalid.
-	ValidateParams(context.Context, map[string]string) error
+	ValidateParams(context.Context, []pipelinev1beta1.Param) error
 
 	// Resolve receives the parameters passed via a resource request
 	// and returns the resolved data along with any annotations
@@ -49,7 +50,7 @@ type Resolver interface {
 	// should be returned instead. If a resolution.Error
 	// is returned then its Reason and Message are used as part of the
 	// response to the request.
-	Resolve(context.Context, map[string]string) (ResolvedResource, error)
+	Resolve(context.Context, []pipelinev1beta1.Param) (ResolvedResource, error)
 }
 
 // ConfigWatcher is the interface to implement if your resolver accepts
@@ -96,5 +97,5 @@ type TimedResolution interface {
 type ResolvedResource interface {
 	Data() []byte
 	Annotations() map[string]string
-	Source() *v1alpha1.ConfigSource
+	Source() *v1beta1.ConfigSource
 }

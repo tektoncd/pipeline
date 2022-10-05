@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -154,11 +153,7 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 			Spec:       *sourceSpec.DeepCopy(),
 		}, nil
 	}
-	// Enable alpha fields for remote resolution
 	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	resolvedMeta, resolvedSpec, err := GetPipelineData(ctx, pr, getPipeline)
 	if err != nil {
 		t.Fatalf("Unexpected error getting mocked data: %v", err)
@@ -207,11 +202,7 @@ func TestGetPipelineData_ResolutionError(t *testing.T) {
 	getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, error) {
 		return nil, errors.New("something went wrong")
 	}
-	// Enable alpha fields for remote resolution
 	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	_, _, err := GetPipelineData(ctx, pr, getPipeline)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")
@@ -234,11 +225,7 @@ func TestGetPipelineData_ResolvedNilPipeline(t *testing.T) {
 	getPipeline := func(ctx context.Context, n string) (v1beta1.PipelineObject, error) {
 		return nil, nil
 	}
-	// Enable alpha fields for remote resolution
 	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	_, _, err := GetPipelineData(ctx, pr, getPipeline)
 	if err == nil {
 		t.Fatalf("Expected error when unable to find referenced Pipeline but got none")

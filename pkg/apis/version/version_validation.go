@@ -30,20 +30,20 @@ import (
 func ValidateEnabledAPIFields(ctx context.Context, featureName string, wantVersion string) *apis.FieldError {
 	currentVersion := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields
 	var errs *apis.FieldError
-	message := `%s requires "enable-api-fields" feature gate to be %q but it is %q`
+	message := `%s requires "enable-api-fields" feature gate to be %s but it is %q`
 	switch wantVersion {
 	case config.StableAPIFields:
 		// If the feature is stable, it doesn't matter what the current version is
 	case config.BetaAPIFields:
 		// If the feature requires "beta" fields to be enabled, the current version may be "beta" or "alpha"
 		if currentVersion != config.BetaAPIFields && currentVersion != config.AlphaAPIFields {
-			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%s or %s", config.AlphaAPIFields, config.BetaAPIFields), currentVersion)
+			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q or %q", config.AlphaAPIFields, config.BetaAPIFields), currentVersion)
 			errs = apis.ErrGeneric(message)
 		}
 	case config.AlphaAPIFields:
 		// If the feature requires "alpha" fields to be enabled, the current version must be "alpha"
 		if currentVersion != wantVersion {
-			message = fmt.Sprintf(message, featureName, config.AlphaAPIFields, currentVersion)
+			message = fmt.Sprintf(message, featureName, fmt.Sprintf("%q", config.AlphaAPIFields), currentVersion)
 			errs = apis.ErrGeneric(message)
 		}
 	default:

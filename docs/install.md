@@ -86,6 +86,10 @@ To install Tekton Pipelines on a Kubernetes cluster:
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
    ```
 
+1. **Note**: To install Tekton Pipelines without including [the built-in remote resolvers](#installing-and-configuring-remote-task-and-pipeline-resolution)
+   follow the directions above, but replace `release.yaml` or `release.notags.yaml` with `minimal-release.yaml` or
+   `minimal-release.notags.yaml` as appropriate. 
+
 1. **Note**: Some cloud providers (such as [GKE](https://github.com/tektoncd/pipeline/issues/3317#issuecomment-708066087))
    may also require you to allow port 8443 in your firewall rules so that the Tekton Pipelines webhook is reachable.
 
@@ -270,10 +274,14 @@ data:
 
 ## Installing and configuring remote Task and Pipeline resolution
 
-**NOTE**: Remote resolution is currently [an `alpha` feature](#alpha-features).
+By default, when Tekton Pipelines is installed using `release.yaml` or `release.notags.yaml`, the
+[built-in resolvers](#built-in-resolvers) are installed into the `tekton-pipelines-resolvers` namespace.
 
-To install the latest release of the [built-in remote resolvers](#built-in-resolvers),
-run the following command:
+### Installing built-in remote resolvers with a minimal Tekton Pipelines installation
+
+If you have installed Tekton Pipelines using `minimal-release.yaml` or `minimal-release.notags.yaml` and
+wish to add the [built-in remote resolvers](#built-in-resolvers) later, you can install them separately 
+by running the following command:
 
    ```bash
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/resolvers.yaml
@@ -464,7 +472,6 @@ Features currently in "alpha" are:
 | [Propagated `Parameters`](./taskruns.md#propagated-parameters)                                        | [TEP-0107](https://github.com/tektoncd/community/blob/main/teps/0107-propagating-parameters.md)                            | [v0.36.0](https://github.com/tektoncd/pipeline/releases/tag/v0.36.0) |                             |
 | [Propagated `Workspaces`](./pipelineruns.md#propagated-workspaces)                                    | [TEP-0111](https://github.com/tektoncd/community/blob/main/teps/0111-propagating-workspaces.md)                      |            v0.40.0                                                          |                             |
 | [Windows Scripts](./tasks.md#windows-scripts)                                                         | [TEP-0057](https://github.com/tektoncd/community/blob/main/teps/0057-windows-support.md)                                   | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                             |
-| [Remote Tasks](./taskruns.md#remote-tasks) and [Remote Pipelines](./pipelineruns.md#remote-pipelines) | [TEP-0060](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resolution.md)                                 | [v0.35.0](https://github.com/tektoncd/pipeline/releases/tag/v0.35.0) |                             |
 | [Debug](./debug.md)                                                                                   | [TEP-0042](https://github.com/tektoncd/community/blob/main/teps/0042-taskrun-breakpoint-on-failure.md)                     | [v0.26.0](https://github.com/tektoncd/pipeline/releases/tag/v0.26.0) |                             |
 | [Step and Sidecar Overrides](./taskruns.md#overriding-task-steps-and-sidecars)                        | [TEP-0094](https://github.com/tektoncd/community/blob/main/teps/0094-specifying-resource-requirements-at-runtime.md)       |   [v0.34.0](https://github.com/tektoncd/pipeline/releases/tag/v0.34.0)                                                                   |                             |
 | [Matrix](./matrix.md)                                                                                 | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                                            | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |

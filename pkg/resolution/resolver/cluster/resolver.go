@@ -23,7 +23,8 @@ import (
 	"strings"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -76,7 +77,7 @@ func (r *Resolver) GetSelector(_ context.Context) map[string]string {
 
 // ValidateParams returns an error if the given parameter map is not
 // valid for a resource request targeting the cluster resolver.
-func (r *Resolver) ValidateParams(ctx context.Context, params map[string]string) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []pipelinev1beta1.Param) error {
 	if r.isDisabled(ctx) {
 		return errors.New(disabledError)
 	}
@@ -87,7 +88,7 @@ func (r *Resolver) ValidateParams(ctx context.Context, params map[string]string)
 
 // Resolve performs the work of fetching a resource from a namespace with the given
 // parameters.
-func (r *Resolver) Resolve(ctx context.Context, origParams map[string]string) (framework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Param) (framework.ResolvedResource, error) {
 	if r.isDisabled(ctx) {
 		return nil, errors.New(disabledError)
 	}
@@ -182,36 +183,49 @@ func (r *ResolvedClusterResource) Annotations() map[string]string {
 
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
-func (r ResolvedClusterResource) Source() *v1alpha1.ConfigSource {
+func (r ResolvedClusterResource) Source() *v1beta1.ConfigSource {
 	return nil
 }
 
-func populateParamsWithDefaults(ctx context.Context, params map[string]string) (map[string]string, error) {
+func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1beta1.Param) (map[string]string, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
+
+	paramsMap := make(map[string]pipelinev1beta1.ParamValue)
+	for _, p := range origParams {
+		paramsMap[p.Name] = p.Value
+	}
+
+	params := make(map[string]string)
 
 	var missingParams []string
 
-	if _, ok := params[KindParam]; !ok {
+	if pKind, ok := paramsMap[KindParam]; !ok || pKind.StringVal == "" {
 		if kindVal, ok := conf[DefaultKindKey]; !ok {
 			missingParams = append(missingParams, KindParam)
 		} else {
 			params[KindParam] = kindVal
 		}
+	} else {
+		params[KindParam] = pKind.StringVal
 	}
 	if kindVal, ok := params[KindParam]; ok && kindVal != "task" && kindVal != "pipeline" {
 		return nil, fmt.Errorf("unknown or unsupported resource kind '%s'", kindVal)
 	}
 
-	if _, ok := params[NameParam]; !ok {
+	if pName, ok := paramsMap[NameParam]; !ok || pName.StringVal == "" {
 		missingParams = append(missingParams, NameParam)
+	} else {
+		params[NameParam] = pName.StringVal
 	}
 
-	if _, ok := params[NamespaceParam]; !ok {
+	if pNS, ok := paramsMap[NamespaceParam]; !ok || pNS.StringVal == "" {
 		if nsVal, ok := conf[DefaultNamespaceKey]; !ok {
 			missingParams = append(missingParams, NamespaceParam)
 		} else {
 			params[NamespaceParam] = nsVal
 		}
+	} else {
+		params[NamespaceParam] = pNS.StringVal
 	}
 
 	if len(missingParams) > 0 {

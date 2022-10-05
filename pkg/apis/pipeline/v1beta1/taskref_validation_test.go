@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"knative.dev/pkg/apis"
@@ -38,11 +37,10 @@ func TestTaskRef_Valid(t *testing.T) {
 		name:    "simple taskref",
 		taskRef: &v1beta1.TaskRef{Name: "taskrefname"},
 	}, {
-		name:    "alpha feature: valid resolver",
+		name:    "valid resolver",
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}},
-		wc:      config.EnableAlphaAPIFields,
 	}, {
-		name: "alpha feature: valid resolver with params",
+		name: "valid resolver with params",
 		taskRef: &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git", Params: []v1beta1.Param{{
 			Name: "repo",
 			Value: v1beta1.ParamValue{
@@ -56,13 +54,12 @@ func TestTaskRef_Valid(t *testing.T) {
 				StringVal: "baz",
 			},
 		}}}},
-		wc: config.EnableAlphaAPIFields,
 	}, {
 		name: "valid bundle",
 		taskRef: &v1beta1.TaskRef{
 			Name:   "bundled-task",
 			Bundle: "gcr.io/my-bundle"},
-		wc: config.EnableAlphaAPIFields,
+		wc: enableTektonOCIBundles(t),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
@@ -110,22 +107,6 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrInvalidValue("invalid bundle reference", "bundle", "could not parse reference: invalid reference"),
 		wc:      enableTektonOCIBundles(t),
 	}, {
-		name: "taskref resolver disallowed without alpha feature gate",
-		taskRef: &v1beta1.TaskRef{
-			ResolverRef: v1beta1.ResolverRef{
-				Resolver: "git",
-			},
-		},
-		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
-	}, {
-		name: "taskref params disallowed without alpha feature gate",
-		taskRef: &v1beta1.TaskRef{
-			ResolverRef: v1beta1.ResolverRef{
-				Params: []v1beta1.Param{},
-			},
-		},
-		wantErr: apis.ErrMissingField("resolver").Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
-	}, {
 		name: "taskref params disallowed without resolver",
 		taskRef: &v1beta1.TaskRef{
 			ResolverRef: v1beta1.ResolverRef{
@@ -133,7 +114,6 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMissingField("resolver"),
-		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "taskref resolver disallowed in conjunction with taskref name",
 		taskRef: &v1beta1.TaskRef{
@@ -143,7 +123,6 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("name", "resolver"),
-		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "taskref resolver disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{
@@ -153,7 +132,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("bundle", "resolver"),
-		wc:      config.EnableAlphaAPIFields,
+		wc:      enableTektonOCIBundles(t),
 	}, {
 		name: "taskref params disallowed in conjunction with taskref name",
 		taskRef: &v1beta1.TaskRef{
@@ -169,7 +148,6 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
-		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "taskref params disallowed in conjunction with taskref bundle",
 		taskRef: &v1beta1.TaskRef{
@@ -185,24 +163,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 			},
 		},
 		wantErr: apis.ErrMultipleOneOf("bundle", "params").Also(apis.ErrMissingField("resolver")),
-		wc:      config.EnableAlphaAPIFields,
-	}, {
-		name: "taskref param array not allowed",
-		taskRef: &v1beta1.TaskRef{
-			ResolverRef: v1beta1.ResolverRef{
-				Resolver: "some-resolver",
-				Params: []v1beta1.Param{{
-					Name: "foo",
-					Value: v1beta1.ParamValue{
-						Type:     v1beta1.ParamTypeArray,
-						ArrayVal: []string{"bar", "baz"},
-					},
-				}},
-			},
-		},
-		wantErr: apis.ErrGeneric("remote resolution parameter type must be string, not array").
-			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
-			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+		wc:      enableTektonOCIBundles(t),
 	}, {
 		name: "taskref param object requires alpha",
 		taskRef: &v1beta1.TaskRef{
@@ -217,10 +178,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				}},
 			},
 		},
-		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"").
-			Also(apis.ErrGeneric("remote resolution parameter type must be string, not object")).
-			Also(apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")).
-			Also(apis.ErrGeneric("params requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"")),
+		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

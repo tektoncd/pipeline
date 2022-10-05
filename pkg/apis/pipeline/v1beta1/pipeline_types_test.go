@@ -247,17 +247,15 @@ func TestPipelineTask_ValidateRegularTask_Success(t *testing.T) {
 			TaskSpec: &EmbeddedTask{TaskSpec: getTaskSpec()},
 		},
 	}, {
-		name: "pipeline task - use of resolver with the feature flag set",
+		name: "pipeline task - use of resolver",
 		tasks: PipelineTask{
 			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
 		},
-		enableAPIFields: true,
 	}, {
-		name: "pipeline task - use of params with the feature flag set",
+		name: "pipeline task - use of params",
 		tasks: PipelineTask{
 			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: []Param{}}},
 		},
-		enableAPIFields: true,
 	}, {
 		name: "pipeline task - use of bundle with the feature flag set",
 		tasks: PipelineTask{
@@ -330,25 +328,6 @@ func TestPipelineTask_ValidateRegularTask_Failure(t *testing.T) {
 			TaskRef: &TaskRef{Name: "bar", Bundle: "docker.io/foo"},
 		},
 		expectedError: *apis.ErrDisallowedFields("taskref.bundle"),
-	}, {
-		name: "pipeline task - use of resolver without the feature flag set",
-		task: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Resolver: "bar"}},
-		},
-		expectedError: *apis.ErrDisallowedFields("taskref.resolver"),
-	}, {
-		name: "pipeline task - use of resolver params without the feature flag set",
-		task: PipelineTask{
-			TaskRef: &TaskRef{Name: "boo", ResolverRef: ResolverRef{Params: []Param{{
-				Name: "bar",
-				Value: ParamValue{
-					Type:      ParamTypeString,
-					StringVal: "baz",
-				},
-			}},
-			}},
-		},
-		expectedError: *apis.ErrDisallowedFields("taskref.resource"),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
