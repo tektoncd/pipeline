@@ -51,7 +51,7 @@ spec:
     - name: name
       value: hello-world
     - name: kind
-      value: pipeline
+      value: task
 ```
 
 ### Pipeline Resolution
