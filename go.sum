@@ -1257,8 +1257,8 @@ github.com/spf13/viper v1.8.1/go.mod h1:o0Pch8wJ9BVSWGQMbra6iw0oQ5oktSIBaujf1rJH
 github.com/spf13/viper v1.9.0/go.mod h1:+i6ajR7OX2XaiBkrcZJFK21htRk7eDeLg7+O6bhUPP4=
 github.com/spiffe/go-spiffe/v2 v2.1.1 h1:RT9kM8MZLZIsPTH+HKQEP5yaAk3yd/VBzlINaRjXs8k=
 github.com/spiffe/go-spiffe/v2 v2.1.1/go.mod h1:5qg6rpqlwIub0JAiF1UK9IMD6BpPTmvG6yfSgDBs5lg=
-github.com/spiffe/spire-api-sdk v1.4.2 h1:WOEoRsKSud01R9wCJOGyJ/QZ8r7S4Z7itOAAB8LKhoI=
-github.com/spiffe/spire-api-sdk v1.4.2/go.mod h1:73BC0cOGkqRQrqoB1Djk7etxN+bE1ypmzZMkhCQs6kY=
+github.com/spiffe/spire-api-sdk v1.4.4 h1:hHB0VZeD1JKHd27Hd7RdrL/8Q/A1Y31K1RS/2eYdafQ=
+github.com/spiffe/spire-api-sdk v1.4.4/go.mod h1:73BC0cOGkqRQrqoB1Djk7etxN+bE1ypmzZMkhCQs6kY=
 github.com/src-d/gcfg v1.4.0/go.mod h1:p/UMsR43ujA89BJY9duynAwIpvqEujIH/jFlfL7jWoI=
 github.com/ssgreg/nlreturn/v2 v2.2.1/go.mod h1:E/iiPB78hV7Szg2YfRgyIrk1AD6JVMTRkkxBiELzh2I=
 github.com/stefanberger/go-pkcs11uri v0.0.0-20201008174630-78d3cae3a980/go.mod h1:AO3tvPzVZ/ayst6UlUKUv6rcPQInYe3IknH3jYhAKu8=
