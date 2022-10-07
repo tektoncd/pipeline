@@ -101,7 +101,7 @@ spec:
   conversion:
     strategy: Webhook
     webhook:
-      conversionReviewVersions: ["v1beta1"]
+      conversionReviewVersions: ["v1beta1", "v1"]
       clientConfig:
         service:
           name: tekton-pipelines-webhook

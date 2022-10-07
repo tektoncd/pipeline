@@ -30,7 +30,7 @@ func (pr *PipelineRun) ConvertTo(ctx context.Context, sink apis.Convertible) err
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
-	return fmt.Errorf("v1beta1 is the highest known version, got: %T", sink)
+	return fmt.Errorf("v1 is the highest known version, got: %T", sink)
 }
 
 // ConvertFrom implements apis.Convertible
@@ -38,5 +38,5 @@ func (pr *PipelineRun) ConvertFrom(ctx context.Context, source apis.Convertible)
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
-	return fmt.Errorf("v1beta1 is the highest known version, got: %T", source)
+	return fmt.Errorf("v1 is the highest known version, got: %T", source)
 }
