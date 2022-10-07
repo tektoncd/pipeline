@@ -179,7 +179,7 @@ github.com/blang/semver/v4
 # github.com/blendle/zapdriver v1.3.1
 ## explicit; go 1.12
 github.com/blendle/zapdriver
-# github.com/bluekeyes/go-gitdiff v0.6.1
+# github.com/bluekeyes/go-gitdiff v0.7.0
 ## explicit; go 1.13
 github.com/bluekeyes/go-gitdiff/gitdiff
 # github.com/census-instrumentation/opencensus-proto v0.3.0
@@ -458,7 +458,7 @@ github.com/imdario/mergo
 # github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
 ## explicit
 github.com/jbenet/go-context/io
-# github.com/jenkins-x/go-scm v1.11.29
+# github.com/jenkins-x/go-scm v1.11.32
 ## explicit; go 1.18
 github.com/jenkins-x/go-scm/pkg/hmac
 github.com/jenkins-x/go-scm/scm
