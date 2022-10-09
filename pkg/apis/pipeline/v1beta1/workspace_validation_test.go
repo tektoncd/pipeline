@@ -20,7 +20,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -110,7 +109,6 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 				Driver: "my-csi",
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -172,14 +170,6 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 			Projected: &corev1.ProjectedVolumeSource{},
 		},
 	}, {
-		name: "csi workspace should be disallowed without alpha feature gate",
-		binding: &v1beta1.WorkspaceBinding{
-			Name: "beth",
-			CSI: &corev1.CSIVolumeSource{
-				Driver: "csi-driver",
-			},
-		},
-	}, {
 		name: "Provide csi without a driver",
 		binding: &v1beta1.WorkspaceBinding{
 			Name: "beth",
@@ -187,7 +177,6 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 				Driver: "",
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
