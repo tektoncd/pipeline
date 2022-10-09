@@ -1285,6 +1285,11 @@ func (in *TaskResult) DeepCopyInto(out *TaskResult) {
 			(*out)[key] = val
 		}
 	}
+	if in.Default != nil {
+		in, out := &in.Default, &out.Default
+		*out = new(ParamValue)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

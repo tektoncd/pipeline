@@ -1615,6 +1615,10 @@
         "name"
       ],
       "properties": {
+        "default": {
+          "description": "This is an alpha field. You must set the \"enable-api-fields\" feature flag to \"alpha\" for this field to be supported.\n\nDefault is the value a result produces if no result is produced by Task",
+          "$ref": "#/definitions/v1.ParamValue"
+        },
         "description": {
           "description": "Description is a human-readable description of the result",
           "type": "string"

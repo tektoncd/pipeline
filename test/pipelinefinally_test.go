@@ -273,8 +273,8 @@ spec:
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 		case n == "finaltask1":
-			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
-				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunFailed(taskrunItem.Name), "TaskRunFailed"); err != nil {
+				t.Errorf("Error waiting for TaskRun to fail: %v", err)
 			}
 			finalTaskStartTime = taskrunItem.Status.StartTime
 		case n == "finaltask2":

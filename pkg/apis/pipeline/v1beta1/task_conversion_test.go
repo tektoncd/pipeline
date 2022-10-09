@@ -160,6 +160,55 @@ func TestTaskConversion(t *testing.T) {
 				}},
 			},
 		},
+	}, {
+		name: "task conversion with default results",
+		in: &v1beta1.Task{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       "foo",
+				Namespace:  "bar",
+				Generation: 1,
+			},
+			Spec: v1beta1.TaskSpec{
+				Description: "test",
+				Steps: []v1beta1.Step{{
+					Image: "foo",
+				}},
+				Volumes: []corev1.Volume{{}},
+				Params: []v1beta1.ParamSpec{{
+					Name:        "param-1",
+					Type:        v1beta1.ParamTypeString,
+					Description: "My first param",
+				}},
+				Results: []v1beta1.TaskResult{
+					{
+						Name:        "string result",
+						Type:        v1beta1.ResultsTypeString,
+						Properties:  map[string]v1beta1.PropertySpec{},
+						Description: "description",
+						Default:     v1beta1.NewArrayOrString("default"),
+					},
+					{
+						Name:        "array result",
+						Type:        v1beta1.ResultsTypeArray,
+						Properties:  map[string]v1beta1.PropertySpec{},
+						Description: "description",
+						Default:     v1beta1.NewArrayOrString("result1", "result2"),
+					},
+					{
+						Name:        "object result",
+						Type:        v1beta1.ResultsTypeObject,
+						Description: "description",
+						Properties:  map[string]v1beta1.PropertySpec{"url": {Type: "string"}, "commit": {Type: "string"}},
+						Default:     &v1beta1.ParamValue{ObjectVal: map[string]string{"url": "foobar", "commit": "commit"}},
+					}, {
+						Name:        "object result 2",
+						Type:        v1beta1.ResultsTypeObject,
+						Description: "description",
+						Properties:  map[string]v1beta1.PropertySpec{"foo": {Type: v1beta1.ParamTypeString}},
+						Default:     v1beta1.NewStructuredValues("bar"),
+					}},
+			},
+		},
 	}}
 
 	for _, test := range tests {

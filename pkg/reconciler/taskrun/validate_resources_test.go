@@ -19,6 +19,7 @@ package taskrun
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -1076,4 +1077,171 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		})
 	}
 
+}
+
+func TestValidateMissingResultsInTaskRuns(t *testing.T) {
+	tcs := []struct {
+		name    string
+		tr      *v1beta1.TaskRun
+		rtr     *v1beta1.TaskSpec
+		wantErr bool
+	}{{
+		name: "all results emitted by taskrun",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{
+						{
+							Name: "string-result",
+							Type: v1beta1.ResultsTypeString,
+						},
+						{
+							Name: "array-result",
+							Type: v1beta1.ResultsTypeArray,
+						},
+						{
+							Name:       "object-result",
+							Type:       v1beta1.ResultsTypeObject,
+							Properties: map[string]v1beta1.PropertySpec{"hello": {Type: "string"}},
+						},
+					},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "string-result",
+							Type:  v1beta1.ResultsTypeString,
+							Value: *v1beta1.NewStructuredValues("hello"),
+						},
+						{
+							Name:  "array-result",
+							Type:  v1beta1.ResultsTypeArray,
+							Value: *v1beta1.NewStructuredValues("hello", "world"),
+						},
+						{
+							Name:  "object-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{},
+		},
+		wantErr: false,
+	}, {
+		name: "result was missed to be produced",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{
+						{
+							Name: "string-result",
+							Type: v1beta1.ResultsTypeString,
+						},
+						{
+							Name: "array-result",
+							Type: v1beta1.ResultsTypeArray,
+						},
+						{
+							Name:       "object-result",
+							Type:       v1beta1.ResultsTypeObject,
+							Properties: map[string]v1beta1.PropertySpec{"hello": {Type: "string"}},
+						},
+					},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "string-result",
+							Type:  v1beta1.ResultsTypeArray,
+							Value: *v1beta1.NewStructuredValues("hello", "world"),
+						},
+						{
+							Name:  "array-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{},
+		},
+		wantErr: true,
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateResultsProduced(tc.tr, tc.rtr)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("expected err: %t, but got err %s", tc.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestCollectAllTaskResults(t *testing.T) {
+	tcs := []struct {
+		name     string
+		tr       *v1beta1.TaskRun
+		rtr      *v1beta1.TaskSpec
+		expected []v1beta1.TaskResult
+	}{{
+		name: "all results emitted by taskrun",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{
+						{
+							Name: "string-result",
+							Type: v1beta1.ResultsTypeString,
+						},
+						{
+							Name: "array-result",
+							Type: v1beta1.ResultsTypeArray,
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{
+				{
+					Name:       "object-result",
+					Type:       v1beta1.ResultsTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{"hello": {Type: "string"}},
+				},
+			},
+		},
+		expected: []v1beta1.TaskResult{
+			{
+				Name: "string-result",
+				Type: v1beta1.ResultsTypeString,
+			},
+			{
+				Name: "array-result",
+				Type: v1beta1.ResultsTypeArray,
+			},
+			{
+				Name:       "object-result",
+				Type:       v1beta1.ResultsTypeObject,
+				Properties: map[string]v1beta1.PropertySpec{"hello": {Type: "string"}},
+			},
+		},
+	}}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			actualResultsArray := collectAllTaskResults(tc.tr, tc.rtr)
+			if !reflect.DeepEqual(tc.expected, actualResultsArray) {
+				t.Errorf("expected length: %d, but got length: %d", len(tc.expected), len(actualResultsArray))
+			}
+		})
+	}
 }

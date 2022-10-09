@@ -3176,12 +3176,18 @@ func schema_pkg_apis_pipeline_v1_TaskResult(ref common.ReferenceCallback) common
 							Format:      "",
 						},
 					},
+					"default": {
+						SchemaProps: spec.SchemaProps{
+							Description: "This is an alpha field. You must set the \"enable-api-fields\" feature flag to \"alpha\" for this field to be supported.\n\nDefault is the value a result produces if no result is produced by Task",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue"),
+						},
+					},
 				},
 				Required: []string{"name"},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PropertySpec"},
 	}
 }
 

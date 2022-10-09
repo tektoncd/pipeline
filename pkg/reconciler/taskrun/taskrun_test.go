@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -5160,6 +5161,116 @@ status:
 			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
 			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != podconvert.ReasonResourceVerificationFailed {
 				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", podconvert.ReasonResourceVerificationFailed, tr.Status.Conditions)
+			}
+
+		})
+	}
+}
+
+func TestReconcile_TestDefaultResults(t *testing.T) {
+
+	defaultStringResult := "default-result"
+	defaultArrayResult := []string{"default-result-a", "default-result-b"}
+	defaultObjectResult := map[string]string{"url": "foobar", "commit": "commit"}
+
+	defaultResultsTask := &v1beta1.Task{
+		ObjectMeta: objectMeta("test-results-task", "foo"),
+		Spec: v1beta1.TaskSpec{
+			Steps: []v1beta1.Step{simpleStep},
+			Results: []v1beta1.TaskResult{
+				{
+					Name:    "aResult",
+					Type:    v1beta1.ResultsTypeString,
+					Default: &v1beta1.ParamValue{StringVal: defaultStringResult},
+				},
+				{
+					Name:    "bResult",
+					Type:    v1beta1.ResultsTypeArray,
+					Default: &v1beta1.ParamValue{ArrayVal: defaultArrayResult},
+				},
+				{
+					Name:       "cResult",
+					Type:       v1beta1.ResultsTypeObject,
+					Properties: map[string]v1beta1.PropertySpec{"url": {Type: "string"}, "commit": {Type: "string"}},
+					Default:    &v1beta1.ParamValue{ObjectVal: defaultObjectResult},
+				},
+			},
+		},
+	}
+
+	taskRunWithResults := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-results-type-valid
+  namespace: foo
+spec:
+  taskRef:
+    name: test-results-task
+status:
+  taskResults:
+    - name: aResult
+      type: string
+      value: default-result
+    - name: bResult
+      type: array
+      value:
+      - default-result-a
+      - default-result-b
+    - name: cResult
+      type: object
+      value:
+        url: foobar
+        commit: commit
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{taskRunWithResults},
+		Tasks:    []*v1beta1.Task{defaultResultsTask},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-api-fields": config.AlphaAPIFields,
+			},
+		}},
+	}
+	for _, tc := range []struct {
+		name    string
+		taskRun *v1beta1.TaskRun
+	}{{
+		name:    "taskrun with default results",
+		taskRun: taskRunWithResults,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, tc.taskRun.Spec.ServiceAccountName, tc.taskRun.Namespace)
+
+			// Reconcile the TaskRun.  This creates a Pod.
+			if err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("Error reconciling TaskRun. Got error %v", err)
+			}
+
+			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition.Type != apis.ConditionSucceeded || condition.Reason != "Running" {
+				t.Errorf("Expected TaskRun to succeed but it did not. Final conditions were:\n%#v", tr.Status.Conditions)
+			}
+
+			if !strings.EqualFold(tr.Status.TaskRunResults[0].Value.StringVal, defaultStringResult) {
+				t.Errorf("Expected default result but found something else")
+			}
+
+			if !reflect.DeepEqual(tr.Status.TaskRunResults[1].Value.ArrayVal, defaultArrayResult) {
+				t.Errorf("Expected default result but found something else")
+			}
+
+			if !reflect.DeepEqual(tr.Status.TaskRunResults[2].Value.ObjectVal, defaultObjectResult) {
+				t.Errorf("Expected default result but found something else")
 			}
 
 		})

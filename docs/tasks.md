@@ -847,6 +847,48 @@ available size will less than 4096 bytes.
 As a general rule-of-thumb, if a result needs to be larger than a kilobyte, you should likely use a
 [`Workspace`](#specifying-workspaces) to store and pass it between `Tasks` within a `Pipeline`.
 
+#### Default value
+
+> **Note**: This is an alpha gated feature.
+
+Results declarations (within Tasks and Pipelines) can include default values which will be used if the Result is
+not produced, for example to specify defaults for both string params and array params
+([full example](../examples/v1beta1/taskruns/alpha/default-result.yaml)) :
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: task-with-default-result
+spec:
+  results:
+  - name: branch
+    default: main
+```
+
+**Note**: If a Task doesn't specify any default value for a particular `Result`
+and also fails to emit that `Result`, in that case, the following `Task` is going
+to be marked as `Failed` as specified in [TEP-0048](https://github.com/tektoncd/community/blob/main/teps/0048-task-results-without-results.md). Below is the example in which the TaskRun
+is going to fail as one of the Result wasn't produced.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: test-tr-
+spec:
+  taskSpec:
+    results:
+      - name: result1
+        description: will be produced
+      - name: result2
+        description: will not be produced
+    steps:
+      - name: failing-step
+        image: busybox
+        script: "echo -n 123 | tee $(results.result1.path)"
+```
+
 ### Specifying `Volumes`
 
 Specifies one or more [`Volumes`](https://kubernetes.io/docs/concepts/storage/volumes/) that the `Steps` in your

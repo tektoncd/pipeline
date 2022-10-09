@@ -26,7 +26,7 @@ import (
 
 	"github.com/tektoncd/pipeline/test/parse"
 
-	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
@@ -77,7 +77,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(pipelinerun.ReasonInvalidTaskResultReference, pipelineRun.Name), "InvalidTaskResultReference"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonFailed.String(), pipelineRun.Name), "Tasks Completed: 1 (Failed: 1, Cancelled 0), Skipped: 1"); err != nil {
 		t.Errorf("Error waiting for PipelineRun to fail: %s", err)
 	}
 

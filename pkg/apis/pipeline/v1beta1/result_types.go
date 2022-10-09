@@ -32,6 +32,13 @@ type TaskResult struct {
 	// Description is a human-readable description of the result
 	// +optional
 	Description string `json:"description,omitempty"`
+
+	// This is an alpha field. You must set the "enable-api-fields" feature flag to "alpha"
+	// for this field to be supported.
+	//
+	// Default is the value a result produces if no result is produced by Task
+	// +optional
+	Default *ResultValue `json:"default,omitempty"`
 }
 
 // TaskRunResult used to describe the results of a task

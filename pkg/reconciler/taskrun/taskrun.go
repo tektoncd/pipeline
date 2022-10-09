@@ -433,6 +433,19 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
+	if tr.Status.TaskRunResults == nil || len(tr.Status.TaskRunResults) == 0 {
+		tr.Status.TaskRunResults = make([]v1beta1.TaskRunResult, 0)
+		for _, tR := range rtr.TaskSpec.Results {
+			if tR.Default != nil {
+				tr.Status.TaskRunResults = append(tr.Status.TaskRunResults, v1beta1.TaskRunResult{
+					Name:  tR.Name,
+					Type:  tR.Type,
+					Value: *tR.Default,
+				})
+			}
+		}
+	}
+
 	// Initialize the cloud events if at least a CloudEventResource is defined
 	// and they have not been initialized yet.
 	// FIXME(afrittoli) This resource specific logic will have to be replaced
@@ -548,6 +561,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return err
+	}
+
+	if string(tr.Status.Conditions[0].Type) == string(apis.ConditionSucceeded) && string(tr.Status.Conditions[0].Status) != string(corev1.ConditionUnknown) {
+
+		if err := validateResultsProduced(tr, rtr.TaskSpec); err != nil {
+			logger.Error(err)
+			tr.Status.MarkResourceFailed(v1beta1.TaskRunReasonFailed, err)
+			return err
+		}
 	}
 
 	logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, tr.Status.GetCondition(apis.ConditionSucceeded))

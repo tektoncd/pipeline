@@ -291,14 +291,7 @@ func validateSidecarOverrides(ts *v1beta1.TaskSpec, trs *v1beta1.TaskRunSpec) er
 
 // validateResults checks the emitted results type and object properties against the ones defined in spec.
 func validateTaskRunResults(tr *v1beta1.TaskRun, resolvedTaskSpec *v1beta1.TaskSpec) error {
-	specResults := []v1beta1.TaskResult{}
-	if tr.Spec.TaskSpec != nil {
-		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
-	}
-
-	if resolvedTaskSpec != nil {
-		specResults = append(specResults, resolvedTaskSpec.Results...)
-	}
+	specResults := collectAllTaskResults(tr, resolvedTaskSpec)
 
 	// When get the results, check if the type of result is the expected one
 	if missmatchedTypes := mismatchedTypesResults(tr, specResults); len(missmatchedTypes) != 0 {
@@ -309,6 +302,28 @@ func validateTaskRunResults(tr *v1beta1.TaskRun, resolvedTaskSpec *v1beta1.TaskS
 	if missingKeysObjectNames := missingKeysofObjectResults(tr, specResults); len(missingKeysObjectNames) != 0 {
 		return fmt.Errorf("missing keys for these results which are required in TaskResult's properties %v", missingKeysObjectNames)
 	}
+	return nil
+}
+
+func validateResultsProduced(tr *v1beta1.TaskRun, resolvedTaskSpec *v1beta1.TaskSpec) error {
+	specResults := collectAllTaskResults(tr, resolvedTaskSpec)
+
+	neededResults := make([]string, 0)
+	providedResults := make([]string, 0)
+	// collect needed keys for object results
+	for _, r := range specResults {
+		neededResults = append(neededResults, r.Name)
+	}
+
+	// collect provided keys for object results
+	for _, trr := range tr.Status.TaskRunResults {
+		providedResults = append(providedResults, trr.Name)
+	}
+
+	if missingKeys := list.DiffLeft(neededResults, providedResults); len(missingKeys) != 0 {
+		return fmt.Errorf("%s TaskRun missing following results: %v", tr.Name, missingKeys)
+	}
+
 	return nil
 }
 
@@ -547,4 +562,17 @@ func validateContainerParamArrayIndexing(c *corev1.Container, arrayParams map[st
 		extractParamIndex(v.MountPath, arrayParams, outofBoundParams)
 		extractParamIndex(v.SubPath, arrayParams, outofBoundParams)
 	}
+}
+
+// Collects all the Results from TaskRun.Spec.TaskSpec and Task.TaskSpec into one array
+func collectAllTaskResults(tr *v1beta1.TaskRun, resolvedTaskSpec *v1beta1.TaskSpec) []v1beta1.TaskResult {
+	specResults := []v1beta1.TaskResult{}
+	if tr.Spec.TaskSpec != nil {
+		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
+	}
+
+	if resolvedTaskSpec != nil {
+		specResults = append(specResults, resolvedTaskSpec.Results...)
+	}
+	return specResults
 }

@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: default-result-run-
+spec:
+  taskSpec:
+    results:
+      - name: result1
+        description: will be produced
+      - name: string-result
+        description: will not be produced by step but has default value
+        default: "string value"
+      - name: array-result
+        description: default array result will be produced
+        default:
+          - "foo"
+          - "bar"
+      - name: eight-results
+        type: object
+        properties:
+          IMAGE_URL: {type: string}
+          IMAGE_DIGEST: {type: string}
+        default:
+          IMAGE_URL: "default.com"
+          IMAGE_DIGEST: "defaultsha"
+    steps:
+      - name: failing-step
+        onError: continue
+        image: busybox
+        script: |
+          echo -n 123 | tee $(results.result1.path)
+          exit 1
+          echo -n 456 | tee $(results.string-result.path)

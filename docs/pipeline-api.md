@@ -1669,7 +1669,7 @@ Used to distinguish between a single string and an array of strings.</p>
 <h3 id="tekton.dev/v1.ParamValue">ParamValue
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1.Param">Param</a>, <a href="#tekton.dev/v1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1.TaskRunResult">TaskRunResult</a>)
 </p>
 <div>
 <p>ResultValue is a type alias of ParamValue</p>
@@ -4474,6 +4474,22 @@ string
 <td>
 <em>(Optional)</em>
 <p>Description is a human-readable description of the result</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>default</code><br/>
+<em>
+<a href="#tekton.dev/v1.ParamValue">
+ParamValue
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>This is an alpha field. You must set the &ldquo;enable-api-fields&rdquo; feature flag to &ldquo;alpha&rdquo;
+for this field to be supported.</p>
+<p>Default is the value a result produces if no result is produced by Task</p>
 </td>
 </tr>
 </tbody>
@@ -8761,7 +8777,7 @@ Used to distinguish between a single string and an array of strings.</p>
 <h3 id="tekton.dev/v1beta1.ParamValue">ParamValue
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Param">Param</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1beta1.TaskRunResult">TaskRunResult</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.Param">Param</a>, <a href="#tekton.dev/v1beta1.ParamSpec">ParamSpec</a>, <a href="#tekton.dev/v1beta1.PipelineResult">PipelineResult</a>, <a href="#tekton.dev/v1beta1.PipelineRunResult">PipelineRunResult</a>, <a href="#tekton.dev/v1beta1.TaskResult">TaskResult</a>, <a href="#tekton.dev/v1beta1.TaskRunResult">TaskRunResult</a>)
 </p>
 <div>
 <p>ResultValue is a type alias of ParamValue</p>
@@ -12417,8 +12433,30 @@ string
 <p>Description is a human-readable description of the result</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>default</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.ParamValue">
+ParamValue
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>This is an alpha field. You must set the &ldquo;enable-api-fields&rdquo; feature flag to &ldquo;alpha&rdquo;
+for this field to be supported.</p>
+<p>Default is the value a result produces if no result is produced by Task</p>
+</td>
+</tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.TaskRunConditionType">TaskRunConditionType
+(<code>string</code> alias)</h3>
+<div>
+<p>TaskRunConditionType is an enum used to store TaskRun custom conditions
+conditions such as one used in spire results verification</p>
+</div>
 <h3 id="tekton.dev/v1beta1.TaskRunDebug">TaskRunDebug
 </h3>
 <p>

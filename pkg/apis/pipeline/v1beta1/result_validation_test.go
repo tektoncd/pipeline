@@ -67,6 +67,15 @@ func TestResultsValidate(t *testing.T) {
 			Properties:  map[string]v1beta1.PropertySpec{"hello": {Type: v1beta1.ParamTypeString}},
 		},
 		apiFields: "alpha",
+	}, {
+		name: "valid result with default value",
+		Result: v1beta1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1beta1.ResultsTypeString,
+			Description: "my great result",
+			Default:     &v1beta1.ParamValue{StringVal: "string value"},
+		},
+		apiFields: "alpha",
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -160,6 +169,18 @@ func TestResultsValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: "missing field(s)",
 			Paths:   []string{"MY-RESULT.properties"},
+		},
+	}, {
+		name: "valid result with default value",
+		Result: v1beta1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1beta1.ResultsTypeString,
+			Description: "my great result",
+			Default:     &v1beta1.ParamValue{StringVal: "string value"},
+		},
+		apiFields: "stable",
+		expectedError: apis.FieldError{
+			Message: "default results requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"",
 		},
 	}}
 	for _, tt := range tests {
