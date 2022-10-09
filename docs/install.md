@@ -477,7 +477,6 @@ Features currently in "alpha" are:
 | [Matrix](./matrix.md)                                                                                 | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                                            | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 | [Embedded Statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses)           | [TEP-0100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md) |   [v0.35.0](https://github.com/tektoncd/pipeline/releases/tag/v0.35.0)     |     embedded-status                 |
 | [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration)   | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)                   | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0)  |                             |
-| [CSI Workspace Type](workspaces.md#csi)                                                               | N/A                                                                                                                        | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 | [Object Params and Results](pipelineruns.md#specifying-parameters)                                    | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 | [Array Results](pipelineruns.md#specifying-parameters)                                                | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)                                | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 
@@ -489,6 +488,12 @@ the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment via
 `kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"enable-api-fields":"beta"}}'`.
 
 For beta versions of Tekton CRDs, setting `enable-api-fields` to "beta" is the same as setting it to "stable".
+
+Features currently in "beta" are:
+
+| Feature                                                                                               | TEP                                                                                                                        | Release                                                              | Individual Flag             |
+|:------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|:----------------------------|
+| [CSI Workspace Type](workspaces.md#csi)                                                               | N/A                                                                                                                        | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 
 ## Configuring High Availability
 

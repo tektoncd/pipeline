@@ -110,7 +110,7 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 				Driver: "my-csi",
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: config.EnableBetaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -172,7 +172,7 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 			Projected: &corev1.ProjectedVolumeSource{},
 		},
 	}, {
-		name: "csi workspace should be disallowed without alpha feature gate",
+		name: "csi workspace should be disallowed without beta feature gate",
 		binding: &v1.WorkspaceBinding{
 			Name: "beth",
 			CSI: &corev1.CSIVolumeSource{
@@ -187,7 +187,7 @@ func TestWorkspaceBindingValidateInvalid(t *testing.T) {
 				Driver: "",
 			},
 		},
-		wc: config.EnableAlphaAPIFields,
+		wc: config.EnableBetaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()

@@ -534,7 +534,7 @@ workspaces:
 
 ##### `csi`
 
-This is an alpha feature. The `enable-api-fields` feature flag [must be set to `"alpha"`](./install.md)
+This is a beta feature. The `enable-api-fields` feature flag [must be set to `"beta"`](./install.md)
 for csi volume source to function.
 
 The `csi` field references a [`csi` volume](https://kubernetes.io/docs/concepts/storage/volumes/#csi).
