@@ -77,6 +77,9 @@ These changes must be approved by at least 2 [OWNERS](OWNERS).
 Backwards incompatible changes change the API, e.g. by removing fields from a CRD
 spec. These changes will mean that folks using a previous version of the API will need
 to adjust their usage in order to use the new version.
+Adding a new field to the CustomRun API that all CustomRun controllers are expected to support
+is also a backwards incompatible change, as CustomRun controllers that were valid before the change
+would be invalid after the change.
 
 These changes must be approved by [more than half of the project OWNERS](OWNERS)
 (i.e. 50% + 1).
