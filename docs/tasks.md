@@ -741,30 +741,10 @@ results have a wide variety of potential uses. To highlight just a few examples 
 cloned commit SHA as a result, the [`generate-build-id` Task](https://github.com/tektoncd/catalog/blob/main/task/generate-build-id/0.1/generate-build-id.yaml)
 emits a randomized ID as a result, and the [`kaniko` Task](https://github.com/tektoncd/catalog/tree/main/task/kaniko/0.1)
 emits a container image digest as a result. In each case these results convey information for users to see when
-looking at their TaskRuns and can also be used in a Pipeline to pass data along from one Task to the next.
+looking at their TaskRuns and can also be used in a Pipeline to pass data along from one Task to the next. `Task` results are best suited for holding small amounts of data,
+such as commit SHAs, branch names, ephemeral namespaces, and so on.
 
-To define a `Task's` results, use the `results` field. Each `results` entry in the `Task's` YAML corresponds to a
-file that the `Task` should stores the result in. These files should be created by a `Task` in the
-`/tekton/results` directory. The directory itself is created automatically if the `Task` has
-a `results` field but it's the responsibility of the `Task` to generate its contents.
-
-It's important to note that Tekton does not perform any processing on the contents of results; they are emitted
-verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
-precise string you want returned from your `Task` into the `/tekton/results/` files that your `Task` creates.
-You can use [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-task)**
-to avoid having to hardcode this path.
-
-Note: Tekton uses [termination
-messages](https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/#writing-and-reading-a-termination-message). As
-written in
-[tektoncd/pipeline#4808](https://github.com/tektoncd/pipeline/issues/4808),
-this has some *shortcomings*. The main point here is that the more
-containers we have in our pod, *the smaller the allowed size of each container's
-message*, which translates in Tekton to the **more steps you
-have in a Task, the smaller the result for each step can be**. Be aware that the number of
-steps in a Task affects the maximum size of a Result. *For example, if
-you have 10 steps, the size of each step's Result will have a maximum of less than 1KB*.
-
+To define a `Task's` results, use the `results` field.
 In the example below, the `Task` specifies two files in the `results` field:
 `current-date-unix-timestamp` and `current-date-human-readable`.
 
@@ -795,16 +775,36 @@ spec:
         date | tee $(results.current-date-human-readable.path)
 ```
 
+In this example, [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-task)**
+is replaced with the path where Tekton will store the Task's results.
+
+When this Task is executed in a TaskRun, the results will appear in the TaskRun's status:
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+# ...
+status:
+  # ...
+  taskResults:
+    - name: current-date-human-readable
+      value: |
+        Wed Jan 22 19:47:26 UTC 2020
+    - name: current-date-unix-timestamp
+      value: |
+        1579722445
+```
+Tekton does not perform any processing on the contents of results; they are emitted
+verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
+precise string you want returned from your `Task` into the result files that your `Task` creates.
+
 The stored results can be used [at the `Task` level](./pipelines.md#configuring-execution-results-at-the-task-level)
 or [at the `Pipeline` level](./pipelines.md#configuring-execution-results-at-the-pipeline-level).
 
-**Note:** The maximum size of a `Task's` results is limited by the container termination message feature of Kubernetes,
-as results are passed back to the controller via this mechanism. At present, the limit is
-["4096 bytes"](https://github.com/kubernetes/kubernetes/blob/96e13de777a9eb57f87889072b68ac40467209ac/pkg/kubelet/container/runtime.go#L632).
+**Note:**  The result type currently supports `string` and `array` (`array` is alpha gated feature).
+`array` is currently supported for Task results, not Pipeline results.
+You can write `array` results via JSON escaped format, for example:
 
-**Note:**  The result type currently support `string` and `array` (`array` is alpha gated feature), you can write `array` results via JSON escaped format. In the example below, the task specifies one files in the `results` field and write `array` to the file. And `array` is currently supported in Task level not in Pipeline level.
-
-```
+```yaml
 kind: Task
 apiVersion: tekton.dev/v1beta1
 metadata:
@@ -825,9 +825,17 @@ spec:
         echo -n "[\"hello\",\"world\"]" | tee $(results.array-results.path)
 ```
 
-Results are written to the termination message encoded as JSON objects and Tekton uses those objects
-to pass additional information to the controller. As such, `Task` results are best suited for holding
-small amounts of data, such as commit SHAs, branch names, ephemeral namespaces, and so on.
+**Note**: Tekton uses [termination
+messages](https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/#writing-and-reading-a-termination-message). As
+written in
+[tektoncd/pipeline#4808](https://github.com/tektoncd/pipeline/issues/4808),
+the maximum size of a `Task's` results is limited by the container termination message feature of Kubernetes.
+At present, the limit is ["4096 bytes"](https://github.com/kubernetes/kubernetes/blob/96e13de777a9eb57f87889072b68ac40467209ac/pkg/kubelet/container/runtime.go#L632).
+This also means that the number of Steps in a Task affects the maximum size of a Result,
+as each Step is implemented as a container in the TaskRun's pod.
+The more containers we have in our pod, *the smaller the allowed size of each container's
+message*, meaning that the **more steps you have in a Task, the smaller the result for each step can be**. 
+For example, if you have 10 steps, the size of each step's Result will have a maximum of less than 1KB*.
 
 If your `Task` writes a large number of small results, you can work around this limitation
 by writing each result from a separate `Step` so that each `Step` has its own termination message.
