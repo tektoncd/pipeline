@@ -1,13 +1,9 @@
 # API compatibility policy
 
-This document proposes a policy regarding making API updates to the CRDs in this
+This document proposes a policy regarding making updates to the Tekton API surface in this
 repo. Users should be able to build on the APIs in these projects with a clear
 idea of what they can rely on and what should be considered in progress and
 therefore likely to change.
-
-The use of `alpha`, `beta` and `GA` in this document is meant to correspond
-roughly to
-[the kubernetes API deprecation policies](https://kubernetes.io/docs/reference/using-api/deprecation-policy/#deprecating-a-flag-or-cli).
 
 ## What is the API?
 
@@ -29,35 +25,95 @@ A backwards incompatible change would be a change that requires a user to update
 existing instances of these CRDs in clusters where they are deployed and/or cause them
 to change their CRD definitions to account for changes in the above.
 
-## Alpha, Beta and GA
+## CRD API Versions
 
-Some of our CRDs and features are considered alpha, some are beta, and we are working
-toward GA.
+The `apiVersion` field in a Tekton CRD determines whether the overall API (and its default behaviors) is considered to be in `alpha`, `beta`, or `GA`. The use of `alpha`, `beta` and `GA` (aka `stable`) follows the corresponding Kubernetes [API stages definition](https://kubernetes.io/docs/reference/using-api/#api-versioning).
+
+Within a stable CRD, certain opt-in features or API fields gated may be considered `alpha` or `beta`. Similarly, within a beta CRD, certain opt-in features may be considered `alpha`. See the section on Feature Gates for details.
 
 The following CRDs are considered beta, though features may be introduced that are
 alpha:
 
-* `Task`
-* `TaskRun`
-* `ClusterTask`
-* `Pipeline`
-* `PipelineRun`
+- `Task`
+- `TaskRun`
+- `ClusterTask`
+- `Pipeline`
+- `PipelineRun`
 
-We are following [the Kubernetes definitions of these stages](https://kubernetes.io/docs/reference/using-api/api-overview/#api-versioning)
-and we are following [the Kubernetes deprecation policy](https://kubernetes.io/docs/reference/using-api/deprecation-policy/).
+### Alpha CRDs
 
-* Alpha:
-  * These features may be dropped at any time, though you will be given at least
-    one release worth of warning.
-* Beta:
-  * These features will not be dropped, though the details may change.
-  * Any [backwards incompatible changes](#backwards-incompatible-changes) must be
-    introduced in a backwards compatible manner first, with a deprecation warning
-    in the release notes and migration instructions.
-  * You will be given at least 9 months to migrate before a backward incompatible
-    change is made. This means an older beta API version will continue to be
-    supported in new releases for a period of at least 9 months from the time a
-    newer version is made available.
+- For Alpha CRDs, the `apiVersion` contains the `alpha` (e.g. `v1alpha1`)
+  
+- Features may be dropped at any time, though you will be given at least one release worth of warning.
+
+### Beta CRDs
+
+- The `apiVersion` field of the CRD contains contain `beta` (for example, `v1beta1`).
+
+- These features will not be dropped, though the details may change.
+
+- Any [backwards incompatible changes](#backwards-incompatible-changes) must be introduced in a backwards compatible manner first, with a   deprecation warning in the release notes and migration instructions.
+
+- Users will be given at least 9 months to migrate before a backward incompatible change is made. This means an older beta API version will continue to be supported in new releases for a period of at least 9 months from the time a newer version is made available.
+
+
+### GA CRDs
+
+- The `apiVersion` field of the CRD is `vX` where `X` is an integer.
+
+- Stable API versions remain available for all future releases within a [semver major version](https://semver.org/#summary).
+
+- Stable features may be marked as deprecated but may only be removed by incrementing the api version (i.e v1 to v2).
+
+- We will not make any backwards incompatible changes to fields that are stable without incrementing the api version.
+
+- Alpha and Beta features may be present within a stable API version. However, they will not be enabled by default and must be enabled by setting `enable-api-fields` to `alpha` or `beta`.
+
+## Feature Gates
+
+CRD API versions gate the overall stability of the CRD and its default behaviors. Within a particular CRD version, certain opt-in features may be at a lower stability level as described in [TEP-33](https://github.com/tektoncd/community/blob/main/teps/0033-tekton-feature-gates.md). These fields may be disabled by default and can be enabled by setting the right `enable-api-fields` feature-flag as described in TEP-33:
+
+* `stable` (default) - This value indicates that only fields of the highest stability level are enabled; For `beta` CRDs, this means only     beta stability fields are enabled, i.e. `alpha` fields are not enabled. For  `GA` CRDs, this means only `GA` fields are enabled by defaultd, i.e. `beta` and `alpha` fields would not be enabled.
+* `beta` - This value indicates that only fields which are of `beta` (or greater) stability are enabled, i.e. `alpha` fields are not enabled. 
+* `alpha` - This value indicates that fields of all stability levels are enabled, specifically `alpha`, `beta` and `GA`.
+
+
+| Feature Versions -> | v1 | beta | alpha |
+|---------------------|----|------|-------|
+| stable              | x  |      |       |
+| beta                | x  | x    |       |
+| alpha               | x  | x    | x     |
+
+
+See the current list of [alpha features](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features) and [beta features](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features).
+
+
+### Alpha features
+
+- Alpha feature in beta or GA CRDs are disabled by default and must be enabled by [setting `enable-api-fields` to `alpha`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features)
+
+- These features may be dropped or backwards incompatible changes made at any time though will be given at least one release worth of warning
+
+- Alpha features are reviewed for promotion to beta at a regular basis. However, there is no guarantee that they will be promoted to beta.
+
+### Beta features
+
+- Beta features in GA CRDs are disabled by default and must be enabled by [setting `enable-api-fields` to `beta`](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features). In beta API versions, beta features are enabled by default.
+
+- Beta features may be deprecated or changed in a backwards incompatible way by following the same process as [Beta CRDs](#beta-crds) 
+  i.e. by providing a 9 month support period.
+
+- Beta features are reviewed for promotion to GA/Stable on a regular basis. However, there is no guarantee that they will be promoted to GA/stable.
+
+- For beta API versions, beta is the highest level of stability possible for any feature.
+  
+### GA/Stable features
+
+- GA/Stable features are present in a [GA CRD](#ga-crds) only.
+
+- GA/Stable features are enabled by default
+
+- GA/Stable features will not be removed or changed in a backwards incompatible manner without incrementing the API Version.
 
 ## Approving API changes
 
