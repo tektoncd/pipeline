@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const testWaitPollingInterval = 10 * time.Millisecond
+const testWaitPollingInterval = 50 * time.Millisecond
 
 func TestRealWaiterWaitMissingFile(t *testing.T) {
 	// Create a temp file and then immediately delete it to get
