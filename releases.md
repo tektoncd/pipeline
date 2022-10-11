@@ -13,7 +13,7 @@ as follows:
     - LTS releases take place in January, April, July and October every year
     - The first Tekton Pipelines LTS release will be **v0.41.0** in October 2022
     - Releases happen towards the middle of the month, between the 13th and the
-      20th, depending on week-ends and readyness
+      20th, depending on week-ends and readiness
 
 Tekton Pipelines produces nightly builds, publicly available on
 `gcr.io/tekton-nightly`. 
@@ -85,9 +85,20 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
 
 [v0-40-2]: https://github.com/tektoncd/pipeline/releases/tag/v0.40.2
+[v0-40-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.40.1
+[v0-40-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.40.0
 [v0-39-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.39.0
 [v0-38-4]: https://github.com/tektoncd/pipeline/releases/tag/v0.38.4
+[v0-38-3]: https://github.com/tektoncd/pipeline/releases/tag/v0.38.3
+[v0-38-2]: https://github.com/tektoncd/pipeline/releases/tag/v0.38.2
+[v0-38-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.38.1
+[v0-38-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.38.0
 [v0-37-5]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.5
+[v0-37-4]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.4
+[v0-37-3]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.3
+[v0-37-2]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.2
+[v0-37-1]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.1
+[v0-37-0]: https://github.com/tektoncd/pipeline/releases/tag/v0.37.0
 
 [v0-40-2-docs]: https://github.com/tektoncd/pipeline/tree/v0.40.2/docs#tekton-pipelines
 [v0-39-0-docs]: https://github.com/tektoncd/pipeline/tree/v0.39.0/docs#tekton-pipelines
