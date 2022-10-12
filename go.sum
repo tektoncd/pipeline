@@ -254,8 +254,8 @@ github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2y
 github.com/blendle/zapdriver v1.3.1 h1:C3dydBOWYRiOk+B8X9IVZ5IOe+7cl+tGOexN4QqHfpE=
 github.com/blendle/zapdriver v1.3.1/go.mod h1:mdXfREi6u5MArG4j9fewC+FGnXaBR+T4Ox4J2u4eHCc=
 github.com/blizzy78/varnamelen v0.3.0/go.mod h1:hbwRdBvoBqxk34XyQ6HA0UH3G0/1TKuv5AC4eaBT0Ec=
-github.com/bluekeyes/go-gitdiff v0.6.1 h1:VPpQZanEVwFid0IoAIyiJLD+SMWM/AXZXYFc+3E9CS4=
-github.com/bluekeyes/go-gitdiff v0.6.1/go.mod h1:QpfYYO1E0fTVHVZAZKiRjtSGY9823iCdvGXBcEzHGbM=
+github.com/bluekeyes/go-gitdiff v0.7.0 h1:w4SrRFcufU0/tEpWx3VurDBAnWfpxsmwS7yWr14meQk=
+github.com/bluekeyes/go-gitdiff v0.7.0/go.mod h1:QpfYYO1E0fTVHVZAZKiRjtSGY9823iCdvGXBcEzHGbM=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
 github.com/bombsimon/wsl/v3 v3.3.0/go.mod h1:st10JtZYLE4D5sC7b8xV4zTKZwAQjCH/Hy2Pm1FNZIc=
 github.com/breml/bidichk v0.1.1/go.mod h1:zbfeitpevDUGI7V91Uzzuwrn4Vls8MoBMrwtt78jmso=
@@ -838,8 +838,8 @@ github.com/jcmturner/gofork v1.0.0/go.mod h1:MK8+TM0La+2rjBD4jE12Kj1pCCxK7d2LK/U
 github.com/jcmturner/goidentity/v6 v6.0.1/go.mod h1:X1YW3bgtvwAXju7V3LCIMpY0Gbxyjn/mY9zx4tFonSg=
 github.com/jcmturner/gokrb5/v8 v8.4.2/go.mod h1:sb+Xq/fTY5yktf/VxLsE3wlfPqQjp0aWNYyvBVK62bc=
 github.com/jcmturner/rpc/v2 v2.0.3/go.mod h1:VUJYCIDm3PVOEHw8sgt091/20OJjskO/YJki3ELg/Hc=
-github.com/jenkins-x/go-scm v1.11.29 h1:SXpqD+ZTs9yMH9FHfX3ysXOq6RaKO9vVdwaqDoqMJNA=
-github.com/jenkins-x/go-scm v1.11.29/go.mod h1:s5AZIMeNzvDHRnOG1nhD/OLZZ/LOwHTGLXehCsjwGuo=
+github.com/jenkins-x/go-scm v1.11.34 h1:DkwBdA/uwAC0w9wWHh+X/TMW7L7hmki3FvfyiEeI458=
+github.com/jenkins-x/go-scm v1.11.34/go.mod h1:JyL6p5dNNeJZt41yfysDTBe0Q51cLa5MVK0du7JnXt0=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
 github.com/jgautheron/goconst v1.5.1/go.mod h1:aAosetZ5zaeC/2EfMeRswtxUFBpe2Hr7HzkgX4fanO4=
