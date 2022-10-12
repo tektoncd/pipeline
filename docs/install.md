@@ -494,6 +494,7 @@ Features currently in "beta" are:
 | Feature                                                                                               | TEP                                                                                                                        | Release                                                              | Individual Flag             |
 |:------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|:----------------------------|
 | [CSI Workspace Type](workspaces.md#csi)                                                               | N/A                                                                                                                        | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
+| [Projected Workspace Type](workspaces.md#projected)                                                   |  N/A                                                                                                                       | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 
 ## Configuring High Availability
 

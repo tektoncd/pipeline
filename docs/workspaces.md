@@ -514,6 +514,9 @@ workspaces:
 
 ##### `projected`
 
+This is an beta feature. The `enable-api-fields` feature flag [must be set to `"beta"`](./install.md)
+for projected volume source to function.
+
 The `projected` field references a [`projected` volume](https://kubernetes.io/docs/concepts/storage/projected-volumes).
 Using a `projected` volume has the following limitations:
 

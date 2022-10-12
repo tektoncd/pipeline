@@ -68,9 +68,15 @@ func (b *WorkspaceBinding) Validate(ctx context.Context) (errs *apis.FieldError)
 		return apis.ErrMissingField("secret.secretName")
 	}
 
+	// The projected workspace is only supported when the beta feature gate is enabled.
 	// For a Projected volume to work, you must provide at least one source.
-	if b.Projected != nil && len(b.Projected.Sources) == 0 {
-		return apis.ErrMissingField("projected.sources")
+	if b.Projected != nil {
+		if err := version.ValidateEnabledAPIFields(ctx, "projected workspace type", config.BetaAPIFields).ViaField("workspace"); err != nil {
+			return err
+		}
+		if len(b.Projected.Sources) == 0 {
+			return apis.ErrMissingField("projected.sources")
+		}
 	}
 
 	// The csi workspace is only supported when the beta feature gate is enabled.
