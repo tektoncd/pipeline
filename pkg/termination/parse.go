@@ -53,7 +53,7 @@ func ParseMessage(logger *zap.SugaredLogger, msg string) ([]v1beta1.PipelineReso
 	for _, rr := range r {
 		m[rr.Key] = rr
 	}
-	var r2 []v1beta1.PipelineResourceResult
+	r2 := make([]v1beta1.PipelineResourceResult, 0, len(m))
 	for _, v := range m {
 		r2 = append(r2, v)
 	}
