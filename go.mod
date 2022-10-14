@@ -28,13 +28,13 @@ require (
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gopkg.in/square/go-jose.v2 v2.6.0
-	k8s.io/api v0.23.9
-	k8s.io/apimachinery v0.23.9
-	k8s.io/client-go v0.23.9
-	k8s.io/code-generator v0.23.9
+	k8s.io/api v0.25.2
+	k8s.io/apimachinery v0.25.2
+	k8s.io/client-go v0.25.2
+	k8s.io/code-generator v0.25.2
 	k8s.io/klog v1.0.0
-	k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf
-	knative.dev/pkg v0.0.0-20220818004048-4a03844c0b15
+	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1
+	knative.dev/pkg v0.0.0-20221014164553-b812affa3893
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -43,8 +43,9 @@ require github.com/benbjohnson/clock v1.1.0 // indirect
 require (
 	code.gitea.io/sdk/gitea v0.15.1
 	github.com/goccy/kpoward v0.1.0
-	github.com/hashicorp/hcl v1.0.0
-	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9
+	github.com/letsencrypt/boulder v0.0.0-20220929215747-76583552c2be
+	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399
+	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed
 )
 
 require (
@@ -62,13 +63,12 @@ require (
 
 require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.13.6 // indirect
-	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/emicklei/go-restful/v3 v3.8.0 // indirect
+	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/kr/pretty v0.3.0 // indirect
-	github.com/letsencrypt/boulder v0.0.0-20220929215747-76583552c2be // indirect
-	github.com/onsi/gomega v1.19.0 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/theupdateframework/go-tuf v0.5.2-0.20220930112810-3890c1e7ace4 // indirect
-	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399 // indirect
 	github.com/zeebo/errs v1.2.2 // indirect
 	go.uber.org/goleak v1.2.0 // indirect
 )
@@ -114,7 +114,6 @@ require (
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.17+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
-	github.com/emicklei/go-restful v2.16.0+incompatible // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
@@ -130,7 +129,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-containerregistry/pkg/authn/kubernetes v0.0.0-20220301182634-bfe2ffc6b6bd // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
@@ -164,7 +162,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/automaxprocs v1.4.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be // indirect
+	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/net v0.0.0-20220927171203-f486391704dc // indirect
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0 // indirect
@@ -180,12 +178,12 @@ require (
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.23.9 // indirect
+	gopkg.in/yaml.v3 v3.0.1
+	k8s.io/apiextensions-apiserver v0.25.2 // indirect
 	k8s.io/gengo v0.0.0-20220613173612-397b4ae3bce7 // indirect
 	k8s.io/klog/v2 v2.70.2-0.20220707122935-0990e81f1a8f // indirect
-	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
+	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
 replace github.com/ahmetb/gen-crd-api-reference-docs => github.com/tektoncd/ahmetb-gen-crd-api-reference-docs v0.3.1-0.20220729140133-6ce2d5aafcb4 // Waiting for https://github.com/ahmetb/gen-crd-api-reference-docs/pull/43/files to merge

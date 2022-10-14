@@ -17,10 +17,13 @@ limitations under the License.
 package webhook
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -90,10 +93,12 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 		logger.Infof("Webhook ServeHTTP request=%#v", r)
 
 		var review admissionv1.AdmissionReview
-		if err := json.NewDecoder(r.Body).Decode(&review); err != nil {
+		bodyBuffer := bytes.Buffer{}
+		if err := json.NewDecoder(io.TeeReader(r.Body, &bodyBuffer)).Decode(&review); err != nil {
 			http.Error(w, fmt.Sprint("could not decode body:", err), http.StatusBadRequest)
 			return
 		}
+		r.Body = io.NopCloser(&bodyBuffer)
 
 		logger = logger.With(
 			logkey.Kind, review.Request.Kind.String(),
@@ -124,6 +129,18 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 		if !reviewResponse.Allowed || reviewResponse.PatchType != nil || response.Response == nil {
 			response.Response = reviewResponse
 		}
+
+		// If warnings contain newlines, which they will do by default if
+		// using Knative apis.FieldError, split them based on newlines
+		// and create a new warning. This is because any control characters
+		// in the warnings will cause the warning to be dropped silently.
+		if reviewResponse.Warnings != nil {
+			cleanedWarnings := make([]string, 0, len(reviewResponse.Warnings))
+			for _, w := range reviewResponse.Warnings {
+				cleanedWarnings = append(cleanedWarnings, strings.Split(w, "\n")...)
+			}
+			reviewResponse.Warnings = cleanedWarnings
+		}
 		response.Response.UID = review.Request.UID
 
 		logger = logger.With(
@@ -141,7 +158,7 @@ func admissionHandler(rootLogger *zap.SugaredLogger, stats StatsReporter, c Admi
 
 		if stats != nil {
 			// Only report valid requests
-			stats.ReportRequest(review.Request, response.Response, time.Since(ttStart))
+			stats.ReportAdmissionRequest(review.Request, response.Response, time.Since(ttStart))
 		}
 	}
 }

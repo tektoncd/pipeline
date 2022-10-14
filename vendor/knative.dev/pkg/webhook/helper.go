@@ -35,7 +35,10 @@ func EnsureLabelSelectorExpressions(
 	}
 
 	if len(current.MatchExpressions) == 0 {
-		return want
+		return &metav1.LabelSelector{
+			MatchLabels:      current.MatchLabels,
+			MatchExpressions: want.MatchExpressions,
+		}
 	}
 
 	var wantExpressions []metav1.LabelSelectorRequirement
@@ -44,6 +47,7 @@ func EnsureLabelSelectorExpressions(
 	}
 
 	return &metav1.LabelSelector{
+		MatchLabels: current.MatchLabels,
 		MatchExpressions: ensureLabelSelectorRequirements(
 			current.MatchExpressions, wantExpressions),
 	}
