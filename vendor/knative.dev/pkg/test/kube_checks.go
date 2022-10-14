@@ -34,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	k8styped "k8s.io/client-go/kubernetes/typed/core/v1"
+
 	"knative.dev/pkg/test/logging"
 )
 
@@ -141,6 +142,9 @@ func WaitForServiceEndpoints(ctx context.Context, client kubernetes.Interface, s
 	waitErr := wait.PollImmediate(interval, podTimeout, func() (bool, error) {
 		var err error
 		endpoints, err = endpointsService.Get(ctx, svcName, metav1.GetOptions{})
+		if apierrs.IsNotFound(err) {
+			return false, nil
+		}
 		if err != nil {
 			return false, err
 		}

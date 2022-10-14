@@ -17,6 +17,7 @@ limitations under the License.
 package resourcesemantics
 
 import (
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
 )
@@ -27,4 +28,23 @@ type GenericCRD interface {
 	apis.Defaultable
 	apis.Validatable
 	runtime.Object
+}
+
+// VerbLimited defines which Verbs you want to have the webhook invoked on.
+type VerbLimited interface {
+	// SupportedVerbs define which operations (verbs) webhook is called on.
+	SupportedVerbs() []admissionregistrationv1.OperationType
+}
+
+// SubResourceLimited defines which subresources you want to have the webhook
+// invoked on. For example "status", "scale", etc.
+type SubResourceLimited interface {
+	// SupportedSubResources are the subresources that will be registered
+	// for the resource validation.
+	// If you wanted to add for example scale validation for Deployments, you'd
+	// do:
+	// []string{"", "/status", "/scale"}
+	// And to get just the main resource, you would do:
+	// []string{""}
+	SupportedSubResources() []string
 }

@@ -30,6 +30,11 @@ import (
 
 const failedGenerationBump = "NewObservedGenFailure"
 
+// DefaultTimeout is used in some downstream reconcilers to put a context
+// deadline on reconciliation.  It is a variable so that it can be exposed by
+// entrypoints as a flag, e.g. via flag.DurationVar
+var DefaultTimeout = 30 * time.Second
+
 const (
 	// DoReconcileKind is the function name for reconciling the resource (as a leader).
 	DoReconcileKind = "ReconcileKind"
