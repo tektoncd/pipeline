@@ -2178,34 +2178,29 @@ func TestReconcileTaskResolutionError(t *testing.T) {
 	}
 	ptName := "hello-world-1"
 	prName := "test-pipeline-fails-task-resolution"
-	prs := []*v1beta1.PipelineRun{{
-		ObjectMeta: baseObjectMeta(prName, "foo"),
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "test-pipeline"},
-			Status:      v1beta1.PipelineRunSpecStatusCancelledRunFinally,
-		},
-		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
-					apis.Condition{
-						Type:    apis.ConditionSucceeded,
-						Status:  corev1.ConditionUnknown,
-						Reason:  v1beta1.PipelineRunReasonRunning.String(),
-						Message: "running...",
-					},
-				},
-			},
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					prName + ptName: {
-						PipelineTaskName: ptName,
-						Status:           &v1beta1.TaskRunStatus{},
-					},
-				},
-				StartTime: &metav1.Time{Time: now},
-			},
-		},
-	}}
+	prs := []*v1beta1.PipelineRun{
+		parse.MustParsePipelineRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  status: %s
+status:
+  conditions:
+  - type: Succeeded
+    status: Unknown
+    reason: Running
+    message: "running..."
+  taskRuns:
+    %s%s:
+      pipelineTaskName: %s
+      status: {}
+      startTime: %s
+`, prName, v1beta1.PipelineRunSpecStatusCancelledRunFinally, ptName, prName, ptName, now.Format(time.RFC3339))),
+	}
+
 	trs := []*v1beta1.TaskRun{
 		getTaskRun(
 			t,
