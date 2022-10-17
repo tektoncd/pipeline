@@ -1034,6 +1034,59 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				Sidecars: []v1beta1.SidecarState{},
 			},
 		},
+	}, {
+		desc: "report init container err message when container from step PodInitializing and init container failed",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name: "init-A",
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-A",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase: corev1.PodFailed,
+				InitContainerStatuses: []corev1.ContainerStatus{{
+					Name:    "init-A",
+					ImageID: "init-image-id-A",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 1,
+						}},
+				}},
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name:    "step-A",
+					ImageID: "image-id-A",
+					State: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+				}},
+			},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "init container failed, \"init-A\" exited with code 1 (image: \"init-image-id-A\"); for logs run: kubectl -n foo logs pod -c init-A\n"),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Waiting: &corev1.ContainerStateWaiting{
+							Reason: "PodInitializing",
+						},
+					},
+					Name:          "A",
+					ContainerName: "step-A",
+					ImageID:       "image-id-A",
+				}},
+				Sidecars:       []v1beta1.SidecarState{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			now := metav1.Now()

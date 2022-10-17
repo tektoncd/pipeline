@@ -333,15 +333,20 @@ func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) 
 
 // DidTaskRunFail check the status of pod to decide if related taskrun is failed
 func DidTaskRunFail(pod *corev1.Pod) bool {
-	f := pod.Status.Phase == corev1.PodFailed
+	if pod.Status.Phase == corev1.PodFailed {
+		return true
+	}
+
 	for _, s := range pod.Status.ContainerStatuses {
 		if IsContainerStep(s.Name) {
 			if s.State.Terminated != nil {
-				f = f || s.State.Terminated.ExitCode != 0 || isOOMKilled(s)
+				if s.State.Terminated.ExitCode != 0 || isOOMKilled(s) {
+					return true
+				}
 			}
 		}
 	}
-	return f
+	return false
 }
 
 func areStepsComplete(pod *corev1.Pod) bool {
@@ -357,26 +362,17 @@ func areStepsComplete(pod *corev1.Pod) bool {
 }
 
 func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
-	// First, try to surface an error about the actual build step that failed.
+	// First, try to surface an error about the actual init container that failed.
+	for _, status := range pod.Status.InitContainerStatuses {
+		if msg := extractContainerFailureMessage(logger, status, pod.ObjectMeta); len(msg) > 0 {
+			return fmt.Sprintf("init container failed, %s", msg)
+		}
+	}
+
+	// Next, try to surface an error about the actual build step that failed.
 	for _, status := range pod.Status.ContainerStatuses {
-		term := status.State.Terminated
-		if term != nil {
-			msg := status.State.Terminated.Message
-			r, _ := termination.ParseMessage(logger, msg)
-			for _, result := range r {
-				if result.ResultType == v1beta1.InternalTektonResultType && result.Key == "Reason" && result.Value == "TimeoutExceeded" {
-					// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
-					return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit; for logs run: kubectl -n %s logs %s -c %s\n",
-						status.Name,
-						pod.Namespace, pod.Name, status.Name)
-				}
-			}
-			if term.ExitCode != 0 {
-				// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
-				return fmt.Sprintf("%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s\n",
-					status.Name, term.ExitCode, status.ImageID,
-					pod.Namespace, pod.Name, status.Name)
-			}
+		if msg := extractContainerFailureMessage(logger, status, pod.ObjectMeta); len(msg) > 0 {
+			return msg
 		}
 	}
 	// Next, return the Pod's status message if it has one.
@@ -396,6 +392,31 @@ func getFailureMessage(logger *zap.SugaredLogger, pod *corev1.Pod) string {
 
 	// Lastly fall back on a generic error message.
 	return "build failed for unspecified reasons."
+}
+
+// extractContainerFailureMessage returns the container failure message by container status or init container status.
+func extractContainerFailureMessage(logger *zap.SugaredLogger, status corev1.ContainerStatus, podMetaData metav1.ObjectMeta) string {
+	term := status.State.Terminated
+	if term != nil {
+		msg := status.State.Terminated.Message
+		r, _ := termination.ParseMessage(logger, msg)
+		for _, result := range r {
+			if result.ResultType == v1beta1.InternalTektonResultType && result.Key == "Reason" && result.Value == "TimeoutExceeded" {
+				// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
+				return fmt.Sprintf("%q exited because the step exceeded the specified timeout limit; for logs run: kubectl -n %s logs %s -c %s\n",
+					status.Name,
+					podMetaData.Namespace, podMetaData.Name, status.Name)
+			}
+		}
+		if term.ExitCode != 0 {
+			// Newline required at end to prevent yaml parser from breaking the log help text at 80 chars
+			return fmt.Sprintf("%q exited with code %d (image: %q); for logs run: kubectl -n %s logs %s -c %s\n",
+				status.Name, term.ExitCode, status.ImageID,
+				podMetaData.Namespace, podMetaData.Name, status.Name)
+		}
+	}
+
+	return ""
 }
 
 // IsPodExceedingNodeResources returns true if the Pod's status indicates there
