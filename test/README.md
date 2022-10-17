@@ -253,6 +253,18 @@ There are two scenarios in upgrade tests. One is to install the previous release
 validate whether the Tekton pipeline works. The other is to install the previous release, create the pipelines and tasks,
 upgrade to the current release, and validate whether the Tekton pipeline works.
 
+
+#### Prerequisites for running upgrade tests locally:
+- Change the [PREVIOUS_PIPELINE_VERSION](https://github.com/tektoncd/pipeline/blob/d4c2f75e32a8657f486790da8d665019f5e0550b/test/e2e-tests-upgrade.sh#L28) to the expected previous release version
+- Set up the cluster
+  - Running against a fresh kind cluster
+    - comment out the default [GKE clutser setup](https://github.com/tektoncd/pipeline/blob/d4c2f75e32a8657f486790da8d665019f5e0550b/test/e2e-tests-upgrade.sh#L32)
+    *TODO: future work on implementation of kind cluster setup https://github.com/tektoncd/pipeline/issues/5689 *
+
+  - Running against a GKE cluster
+    - export PROJECT_ID=<my_gcp_project>
+    - install [kubetest](https://github.com/kubernetes/test-infra/blob/master/kubetest/README.md)
+
 To run the upgrade tests, run the following command:
 
 ```bash
