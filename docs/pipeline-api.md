@@ -6753,7 +6753,7 @@ Resource Types:
 <div>
 <p>ClusterTask is a Task with a cluster scope. ClusterTasks are used to
 represent Tasks that should be publicly addressable from any namespace in the
-cluster.</p>
+cluster. Deprecated: Please use the cluster resolver instead.</p>
 </div>
 <table>
 <thead>
@@ -8954,7 +8954,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Bundle url reference to a Tekton Bundle.</p>
+<p>Bundle url reference to a Tekton Bundle.
+Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
 </td>
 </tr>
 <tr>
@@ -12218,7 +12219,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Bundle url reference to a Tekton Bundle.</p>
+<p>Bundle url reference to a Tekton Bundle.
+Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
 </td>
 </tr>
 <tr>

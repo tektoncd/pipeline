@@ -1469,7 +1469,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRef(ref common.ReferenceCallback) 
 					},
 					"bundle": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Bundle url reference to a Tekton Bundle.",
+							Description: "Bundle url reference to a Tekton Bundle. Deprecated: Please use ResolverRef with the bundles resolver instead.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4173,7 +4173,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 					},
 					"bundle": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Bundle url reference to a Tekton Bundle.",
+							Description: "Bundle url reference to a Tekton Bundle. Deprecated: Please use ResolverRef with the bundles resolver instead.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
