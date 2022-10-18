@@ -1634,17 +1634,9 @@ status:
 			}
 		}
 	}
-	want := []jsonpatch.JsonPatchOperation{{
-		Operation: "add",
-		Path:      "/spec/status",
-		Value:     "RunCancelled",
-	}, {
-		Operation: "add",
-		Path:      "/spec/statusMessage",
-		Value:     string(v1alpha1.RunCancelledByPipelineMsg),
-	}}
+	var want []jsonpatch.JsonPatchOperation
 	if d := cmp.Diff(got, want); d != "" {
-		t.Fatalf("Expected cancel patch operation, but got a mismatch %s", diff.PrintWantGot(d))
+		t.Fatalf("Expected no operation, but got %v", got)
 	}
 }
 
@@ -1718,6 +1710,7 @@ status:
   - status: Unknown
     type: Succeeded
   startTime: "2021-12-31T11:58:59Z"
+  creationTime: "2021-12-31T11:58:58Z"
 `)}
 
 			cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
@@ -1768,11 +1761,11 @@ status:
 			want := []jsonpatch.JsonPatchOperation{{
 				Operation: "add",
 				Path:      "/spec/status",
-				Value:     "RunCancelled",
+				Value:     string(v1alpha1.RunReasonCancelled),
 			}, {
 				Operation: "add",
 				Path:      "/spec/statusMessage",
-				Value:     string(v1alpha1.RunCancelledByPipelineMsg),
+				Value:     string(v1alpha1.RunCancelledByPipelineTimeoutMsg),
 			}}
 			if d := cmp.Diff(got, want); d != "" {
 				t.Fatalf("Expected RunCancelled patch operation, but got a mismatch %s", diff.PrintWantGot(d))

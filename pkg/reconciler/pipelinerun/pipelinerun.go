@@ -655,10 +655,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return err
 	}
 
-	if err := c.processRunTimeouts(ctx, pr, pipelineRunState); err != nil {
-		return err
-	}
-
 	// Reset the skipped status to trigger recalculation
 	pipelineRunFacts.ResetSkippedCache()
 
@@ -702,34 +698,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	logger.Infof("PipelineRun %s status is being set to %s", pr.Name, after)
-	return nil
-}
-
-// processRunTimeouts custom tasks are requested to cancel, if they have timed out. Since there is no guarantee that a
-// custom task reconciler has its own logic for timing out a Run, this needs to be handled by the PipelineRun reconciler.
-// Custom tasks can do any cleanup during this step.
-func (c *Reconciler) processRunTimeouts(ctx context.Context, pr *v1beta1.PipelineRun, pipelineState resources.PipelineRunState) error {
-	errs := []string{}
-	logger := logging.FromContext(ctx)
-	if pr.IsCancelled() {
-		return nil
-	}
-	for _, rpt := range pipelineState {
-		if rpt.IsCustomTask() {
-			if rpt.Run != nil && !rpt.Run.IsCancelled() && rpt.Run.HasTimedOut(c.Clock) && !rpt.Run.IsDone() {
-				logger.Infof("Cancelling run task: %s due to timeout.", rpt.RunName)
-				err := cancelRun(ctx, rpt.RunName, pr.Namespace, c.PipelineClientSet)
-				if err != nil {
-					errs = append(errs,
-						fmt.Errorf("failed to patch Run `%s` with cancellation: %s", rpt.RunName, err).Error())
-				}
-			}
-		}
-	}
-	if len(errs) > 0 {
-		e := strings.Join(errs, "\n")
-		return fmt.Errorf("error(s) from processing cancel request for timed out Run(s) of PipelineRun %s: %s", pr.Name, e)
-	}
 	return nil
 }
 
