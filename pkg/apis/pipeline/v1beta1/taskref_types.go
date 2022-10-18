@@ -26,6 +26,7 @@ type TaskRef struct {
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 	// Bundle url reference to a Tekton Bundle.
+	// Deprecated: Please use ResolverRef with the bundles resolver instead.
 	// +optional
 	Bundle string `json:"bundle,omitempty"`
 

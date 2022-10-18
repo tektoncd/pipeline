@@ -887,7 +887,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.",
+          "description": "Bundle url reference to a Tekton Bundle. Deprecated: Please use ResolverRef with the bundles resolver instead.",
           "type": "string"
         },
         "name": {
@@ -2469,7 +2469,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.",
+          "description": "Bundle url reference to a Tekton Bundle. Deprecated: Please use ResolverRef with the bundles resolver instead.",
           "type": "string"
         },
         "kind": {
