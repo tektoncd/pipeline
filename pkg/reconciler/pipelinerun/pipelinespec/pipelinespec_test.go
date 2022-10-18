@@ -143,6 +143,7 @@ func TestGetPipelineData_ResolutionSuccess(t *testing.T) {
 		Tasks: []v1beta1.PipelineTask{{
 			Name: "pt1",
 			TaskRef: &v1beta1.TaskRef{
+				Kind: "Task",
 				Name: "tref",
 			},
 		}},

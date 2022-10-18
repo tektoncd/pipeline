@@ -49,7 +49,6 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 		}
 		taskMeta = t.TaskMetadata()
 		taskSpec = t.TaskSpec()
-		taskSpec.SetDefaults(ctx)
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
 		taskSpec = *taskRun.Spec.TaskSpec
@@ -67,5 +66,7 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 	default:
 		return nil, nil, fmt.Errorf("taskRun %s not providing TaskRef or TaskSpec", taskRun.Name)
 	}
+
+	taskSpec.SetDefaults(ctx)
 	return &taskMeta, &taskSpec, nil
 }

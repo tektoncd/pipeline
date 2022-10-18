@@ -43,7 +43,6 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 		}
 		pipelineMeta = t.PipelineMetadata()
 		pipelineSpec = t.PipelineSpec()
-		pipelineSpec.SetDefaults(ctx)
 	case pipelineRun.Spec.PipelineSpec != nil:
 		pipelineMeta = pipelineRun.ObjectMeta
 		pipelineSpec = *pipelineRun.Spec.PipelineSpec
@@ -61,5 +60,7 @@ func GetPipelineData(ctx context.Context, pipelineRun *v1beta1.PipelineRun, getP
 	default:
 		return nil, nil, fmt.Errorf("pipelineRun %s not providing PipelineRef or PipelineSpec", pipelineRun.Name)
 	}
+
+	pipelineSpec.SetDefaults(ctx)
 	return &pipelineMeta, &pipelineSpec, nil
 }
