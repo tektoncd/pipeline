@@ -50,7 +50,7 @@ Following values are available in the configmap:
 | metrics.taskrun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds` and `tekton_pipelines_controller_taskrun_duration_seconds` is of type histogram |
 | metrics.taskrun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_taskrun_duration_seconds` and `tekton_pipelines_controller_taskrun_duration_seconds` is of type gauge |
 | metrics.pipelinerun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type histogram |
-| metrics.pipelinerun.duration-type | `histogram` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type gauge or lastvalue |
+| metrics.pipelinerun.duration-type | `lastvalue` | `tekton_pipelines_controller_pipelinerun_duration_seconds` is of type gauge or lastvalue |
 
 Histogram value isn't available when pipelinerun or taskrun labels are selected. The Lastvalue or Gauge will be provided.
 
