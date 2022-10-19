@@ -146,6 +146,55 @@ spec:
   * BitBucket Server
   * BitBucket Cloud
 
+## `ResolutionRequest` Status
+`ResolutionRequest.Status.Source` field captures the source where the remote resource came from. It includes the 3 subfields: `url`, `digest` and `entrypoint`.
+- `url`
+  - If users choose to use anonymous cloning, the url is just user-provided value for the `url` param in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field). 
+  - If scm api is used, it would be the clone URL of the repo fetched from scm repository service in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field). 
+- `digest`
+  - The algorithm name is fixed "sha1", but subject to be changed to "sha256" once Git eventually uses SHA256 at some point later. See https://git-scm.com/docs/hash-function-transition for more details.
+  - The value is the actual commit sha at the moment of resolving the resource even if a user provides a tag/branch name for the param `revision`.
+- `entrypoint`: the user-provided value for the `path` param.
+
+Example:
+- Pipeline Resolution
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: git-demo
+spec:
+  pipelineRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/<username>/<reponame>.git
+    - name: revision
+      value: main
+    - name: pathInRepo
+      value: pipeline.yaml
+```
+
+- `ResolutionRequest`
+```yaml
+apiVersion: resolution.tekton.dev/v1alpha1
+kind: ResolutionRequest
+metadata:
+  ... 
+spec:
+  params:
+    pathInRepo: pipeline.yaml
+    revision: main
+    url: https://github.com/<username>/<reponame>.git
+status:
+  source:
+    uri: git+https://github.com/<username>/<reponame>.git
+    digest:
+      sha1: <The latest commit sha on main at the moment of resolving>
+    entrypoint: pipeline.yaml
+  data: a2luZDogUGxxxx...
+```
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the

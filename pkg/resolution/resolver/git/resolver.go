@@ -156,22 +156,34 @@ func (r *Resolver) resolveAPIGit(ctx context.Context, params map[string]string) 
 		return nil, fmt.Errorf("failed to create SCM client: %w", err)
 	}
 
-	content, _, err := scmClient.Contents.Find(ctx, fmt.Sprintf("%s/%s", params[orgParam], params[repoParam]), params[pathParam], params[revisionParam])
+	orgRepo := fmt.Sprintf("%s/%s", params[orgParam], params[repoParam])
+	path := params[pathParam]
+	ref := params[revisionParam]
+
+	// fetch the actual content from a file in the repo
+	content, _, err := scmClient.Contents.Find(ctx, orgRepo, path, ref)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't fetch resource content: %w", err)
 	}
 	if content == nil || len(content.Data) == 0 {
-		return nil, fmt.Errorf("no content for resource in %s/%s %s", params[orgParam], params[repoParam], params[pathParam])
+		return nil, fmt.Errorf("no content for resource in %s %s", orgRepo, path)
 	}
 
-	repo, _, err := scmClient.Repositories.Find(ctx, fmt.Sprintf("%s/%s", params[orgParam], params[repoParam]))
+	// find the actual git commit sha by the ref
+	commit, _, err := scmClient.Git.FindCommit(ctx, orgRepo, ref)
+	if err != nil || commit == nil {
+		return nil, fmt.Errorf("couldn't fetch the commit sha for the ref %s in the repo: %w", ref, err)
+	}
+
+	// fetch the repository URL
+	repo, _, err := scmClient.Repositories.Find(ctx, orgRepo)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't fetch repository: %w", err)
 	}
 
 	return &resolvedGitResource{
 		Content:  content.Data,
-		Revision: content.Sha,
+		Revision: commit.Sha,
 		Org:      params[orgParam],
 		Repo:     params[repoParam],
 		Path:     content.Path,
@@ -250,7 +262,7 @@ func (r *Resolver) resolveAnonymousGit(ctx context.Context, params map[string]st
 	}
 
 	return &resolvedGitResource{
-		Revision: revision,
+		Revision: h.String(),
 		Content:  buf.Bytes(),
 		URL:      params[urlParam],
 		Path:     params[pathParam],
@@ -314,6 +326,7 @@ func (r *resolvedGitResource) Annotations() map[string]string {
 	m := map[string]string{
 		AnnotationKeyRevision:                     r.Revision,
 		AnnotationKeyPath:                         r.Path,
+		AnnotationKeyURL:                          r.URL,
 		resolutioncommon.AnnotationKeyContentType: yamlContentType,
 	}
 
@@ -323,9 +336,6 @@ func (r *resolvedGitResource) Annotations() map[string]string {
 	if r.Repo != "" {
 		m[AnnotationKeyRepo] = r.Repo
 	}
-	if r.URL != "" {
-		m[AnnotationKeyURL] = r.URL
-	}
 
 	return m
 }
@@ -333,7 +343,13 @@ func (r *resolvedGitResource) Annotations() map[string]string {
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
 func (r *resolvedGitResource) Source() *pipelinev1beta1.ConfigSource {
-	return nil
+	return &pipelinev1beta1.ConfigSource{
+		URI: spdxGit(r.URL),
+		Digest: map[string]string{
+			"sha1": r.Revision,
+		},
+		EntryPoint: r.Path,
+	}
 }
 
 type secretCacheKey struct {
@@ -452,4 +468,11 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1beta1.Param) 
 	// TODO(sbwsg): validate repo url is well-formed, git:// or https://
 	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
 	return paramsMap, nil
+}
+
+// supports the SPDX format which is recommended by in-toto
+// ref: https://spdx.dev/spdx-specification-21-web-version/#h.49x2ik5
+// ref: https://github.com/in-toto/attestation/blob/main/spec/field_types.md
+func spdxGit(url string) string {
+	return "git+" + url
 }
