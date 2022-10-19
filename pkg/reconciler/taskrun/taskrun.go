@@ -913,28 +913,10 @@ func storeTaskSpecAndMergeMeta(tr *v1beta1.TaskRun, ts *v1beta1.TaskSpec, meta *
 	// Only store the TaskSpec once, if it has never been set before.
 	if tr.Status.TaskSpec == nil {
 		tr.Status.TaskSpec = ts
-		// Propagate annotations from Task to TaskRun.
-		if tr.ObjectMeta.Annotations == nil {
-			tr.ObjectMeta.Annotations = make(map[string]string, len(meta.Annotations))
-		}
-		for key, value := range meta.Annotations {
-			// Do not override duplicates between TaskRun and Task
-			// TaskRun labels take precedences over Task
-			if _, ok := tr.ObjectMeta.Annotations[key]; !ok {
-				tr.ObjectMeta.Annotations[key] = value
-			}
-		}
-		// Propagate labels from Task to TaskRun.
-		if tr.ObjectMeta.Labels == nil {
-			tr.ObjectMeta.Labels = make(map[string]string, len(meta.Labels)+1)
-		}
-		for key, value := range meta.Labels {
-			// Do not override duplicates between TaskRun and Task
-			// TaskRun labels take precedences over Task
-			if _, ok := tr.ObjectMeta.Labels[key]; !ok {
-				tr.ObjectMeta.Labels[key] = value
-			}
-		}
+		// Propagate annotations from Task to TaskRun. TaskRun annotations take precedences over Task.
+		tr.ObjectMeta.Annotations = kmap.Union(meta.Annotations, tr.ObjectMeta.Annotations)
+		// Propagate labels from Task to TaskRun. TaskRun labels take precedences over Task.
+		tr.ObjectMeta.Labels = kmap.Union(meta.Labels, tr.ObjectMeta.Labels)
 		if tr.Spec.TaskRef != nil {
 			if tr.Spec.TaskRef.Kind == "ClusterTask" {
 				tr.ObjectMeta.Labels[pipeline.ClusterTaskLabelKey] = meta.Name
