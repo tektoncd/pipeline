@@ -1258,30 +1258,12 @@ func storePipelineSpecAndMergeMeta(pr *v1beta1.PipelineRun, ps *v1beta1.Pipeline
 	if pr.Status.PipelineSpec == nil {
 		pr.Status.PipelineSpec = ps
 
-		// Propagate labels from Pipeline to PipelineRun.
-		if pr.ObjectMeta.Labels == nil {
-			pr.ObjectMeta.Labels = make(map[string]string, len(meta.Labels)+1)
-		}
-		for key, value := range meta.Labels {
-			// Do not override duplicates between PipelineRun and Pipeline
-			// PipelineRun labels take precedences over Pipeline
-			if _, ok := pr.ObjectMeta.Labels[key]; !ok {
-				pr.ObjectMeta.Labels[key] = value
-			}
-		}
+		// Propagate labels from Pipeline to PipelineRun. PipelineRun labels take precedences over Pipeline.
+		pr.ObjectMeta.Labels = kmap.Union(meta.Labels, pr.ObjectMeta.Labels)
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
 
-		// Propagate annotations from Pipeline to PipelineRun.
-		if pr.ObjectMeta.Annotations == nil {
-			pr.ObjectMeta.Annotations = make(map[string]string, len(meta.Annotations))
-		}
-		for key, value := range meta.Annotations {
-			// Do not override duplicates between PipelineRun and Pipeline
-			// PipelineRun labels take precedences over Pipeline
-			if _, ok := pr.ObjectMeta.Annotations[key]; !ok {
-				pr.ObjectMeta.Annotations[key] = value
-			}
-		}
+		// Propagate annotations from Pipeline to PipelineRun. PipelineRun annotations take precedences over Pipeline.
+		pr.ObjectMeta.Annotations = kmap.Union(meta.Annotations, pr.ObjectMeta.Annotations)
 
 	}
 	return nil
