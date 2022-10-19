@@ -19,7 +19,6 @@ package git
 import (
 	"context"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -191,7 +190,38 @@ func TestResolveNotEnabled(t *testing.T) {
 	}
 }
 
+type params struct {
+	url        string
+	revision   string
+	pathInRepo string
+	org        string
+	repo       string
+}
+
 func TestResolve(t *testing.T) {
+	// lcoal repo set up for anonymous cloning
+	// ----
+	commits := []commitForRepo{{
+		Dir:      "foo/",
+		Filename: "old",
+		Content:  "old content in test branch",
+		Branch:   "test-branch",
+	}, {
+		Dir:      "foo/",
+		Filename: "new",
+		Content:  "new content in test branch",
+		Branch:   "test-branch",
+	}, {
+		Dir:      "./",
+		Filename: "released",
+		Content:  "released content in main branch and in tag v1",
+		Tag:      "v1",
+	}}
+
+	anonFakeRepoURL, commitSHAsInAnonRepo := createTestRepo(t, commits)
+
+	// local repo set up for scm cloning
+	// ----
 	withTemporaryGitConfig(t)
 
 	testOrg := "test-org"
@@ -212,240 +242,241 @@ func TestResolve(t *testing.T) {
 		t.Fatalf("couldn't read main task: %v", err)
 	}
 
+	commitSHAsInSCMRepo := []string{"abc", "xyz"}
+
+	scmFakeRepoURL := fmt.Sprintf("https://fake/%s/%s.git", testOrg, testRepo)
+	resolver := &Resolver{
+		clientFunc: func(driver string, serverURL string, token string, opts ...factory.ClientOptionFunc) (*scm.Client, error) {
+			scmClient, scmData := fake.NewDefault()
+
+			// repository service
+			scmData.Repositories = []*scm.Repository{{
+				FullName: fmt.Sprintf("%s/%s", testOrg, testRepo),
+				Clone:    scmFakeRepoURL,
+			}}
+
+			// git service
+			scmData.Commits = map[string]*scm.Commit{
+				"main":  {Sha: commitSHAsInSCMRepo[0]},
+				"other": {Sha: commitSHAsInSCMRepo[1]},
+			}
+			return scmClient, nil
+		},
+	}
+
 	testCases := []struct {
-		name           string
-		commits        []commitForRepo
-		revision       string
-		org            string
-		repo           string
-		useNthCommit   int
-		specificCommit string
-		pathInRepo     string
-		config         map[string]string
-		apiToken       string
-		expectedStatus *v1beta1.ResolutionRequestStatus
-		expectedErr    error
-	}{
-		{
-			name: "clone: single commit with default revision",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}},
-			pathInRepo:     "foo/bar/somefile",
-			expectedStatus: createStatus([]byte("some content")),
-		}, {
-			name: "clone: branch revision",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-				Branch:   "other-revision",
-			}, {
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "wrong content",
-			}},
-			revision:       "other-revision",
-			pathInRepo:     "foo/bar/somefile",
-			expectedStatus: createStatus([]byte("some content")),
-		}, {
-			name: "clone: commit revision",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}, {
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "different content",
-			}},
-			pathInRepo:     "foo/bar/somefile",
-			useNthCommit:   1,
-			expectedStatus: createStatus([]byte("different content")),
-		}, {
-			name: "clone: tag revision",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-				Tag:      "tag1",
-			}, {
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "different content",
-			}},
-			pathInRepo:     "foo/bar/somefile",
-			revision:       "tag1",
-			expectedStatus: createStatus([]byte("some content")),
-		}, {
-			name: "clone: file does not exist",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}},
-			pathInRepo:  "foo/bar/some other file",
-			expectedErr: createError(`error opening file "foo/bar/some other file": file does not exist`),
-		}, {
-			name: "clone: revision does not exist",
-			commits: []commitForRepo{{
-				Dir:      "foo/bar",
-				Filename: "somefile",
-				Content:  "some content",
-			}},
-			revision:    "does-not-exist",
-			pathInRepo:  "foo/bar/some other file",
-			expectedErr: createError("revision error: reference not found"),
-		}, {
-			name:       "api: successful task",
+		name              string
+		args              *params
+		config            map[string]string
+		apiToken          string
+		expectedCommitSHA string
+		expectedStatus    *v1beta1.ResolutionRequestStatus
+		expectedErr       error
+	}{{
+		name: "clone: default revision main",
+		args: &params{
+			pathInRepo: "./released",
+			url:        anonFakeRepoURL,
+		},
+		expectedCommitSHA: commitSHAsInAnonRepo[2],
+		expectedStatus:    createStatus([]byte("released content in main branch and in tag v1")),
+	}, {
+		name: "clone: revision is tag name",
+		args: &params{
+			revision:   "v1",
+			pathInRepo: "./released",
+			url:        anonFakeRepoURL,
+		},
+		expectedCommitSHA: commitSHAsInAnonRepo[2],
+		expectedStatus:    createStatus([]byte("released content in main branch and in tag v1")),
+	}, {
+		name: "clone: revision is the full tag name i.e. refs/tags/v1",
+		args: &params{
+			revision:   "refs/tags/v1",
+			pathInRepo: "./released",
+			url:        anonFakeRepoURL,
+		},
+		expectedCommitSHA: commitSHAsInAnonRepo[2],
+		expectedStatus:    createStatus([]byte("released content in main branch and in tag v1")),
+	}, {
+		name: "clone: revision is a branch name",
+		args: &params{
+			revision:   "test-branch",
+			pathInRepo: "foo/new",
+			url:        anonFakeRepoURL,
+		},
+		expectedCommitSHA: commitSHAsInAnonRepo[1],
+		expectedStatus:    createStatus([]byte("new content in test branch")),
+	}, {
+		name: "clone: revision is a specific commit sha",
+		args: &params{
+			revision:   commitSHAsInAnonRepo[0],
+			pathInRepo: "foo/old",
+			url:        anonFakeRepoURL,
+		},
+		expectedCommitSHA: commitSHAsInAnonRepo[0],
+		expectedStatus:    createStatus([]byte("old content in test branch")),
+	}, {
+		name: "clone: file does not exist",
+		args: &params{
+			pathInRepo: "foo/non-exist",
+			url:        anonFakeRepoURL,
+		},
+		expectedErr: createError(`error opening file "foo/non-exist": file does not exist`),
+	}, {
+		name: "clone: revision does not exist",
+		args: &params{
+			revision:   "non-existent-revision",
+			pathInRepo: "foo/new",
+			url:        anonFakeRepoURL,
+		},
+		expectedErr: createError("revision error: reference not found"),
+	}, {
+		name: "api: successful task",
+		args: &params{
 			revision:   "main",
 			pathInRepo: "tasks/example-task.yaml",
 			org:        testOrg,
 			repo:       testRepo,
-			config: map[string]string{
-				ServerURLKey:          "fake",
-				SCMTypeKey:            "fake",
-				APISecretNameKey:      "token-secret",
-				APISecretKeyKey:       "token",
-				APISecretNamespaceKey: system.Namespace(),
-			},
-			apiToken:       "some-token",
-			expectedStatus: createStatus(mainTaskYAML),
-		}, {
-			name:       "api: successful pipeline",
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "token-secret",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    createStatus(mainTaskYAML),
+	}, {
+		name: "api: successful pipeline",
+		args: &params{
 			revision:   "main",
 			pathInRepo: "pipelines/example-pipeline.yaml",
 			org:        testOrg,
 			repo:       testRepo,
-			config: map[string]string{
-				ServerURLKey:          "fake",
-				SCMTypeKey:            "fake",
-				APISecretNameKey:      "token-secret",
-				APISecretKeyKey:       "token",
-				APISecretNamespaceKey: system.Namespace(),
-			},
-			apiToken:       "some-token",
-			expectedStatus: createStatus(mainPipelineYAML),
-		}, {
-			name:       "api: successful pipeline with default revision",
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "token-secret",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[0],
+		expectedStatus:    createStatus(mainPipelineYAML),
+	}, {
+		name: "api: successful pipeline with default revision",
+		args: &params{
 			pathInRepo: "pipelines/example-pipeline.yaml",
 			org:        testOrg,
 			repo:       testRepo,
-			config: map[string]string{
-				ServerURLKey:          "fake",
-				SCMTypeKey:            "fake",
-				APISecretNameKey:      "token-secret",
-				APISecretKeyKey:       "token",
-				APISecretNamespaceKey: system.Namespace(),
-				defaultRevisionKey:    "other",
-			},
-			apiToken:       "some-token",
-			expectedStatus: createStatus(otherPipelineYAML),
-		}, {
-			name:       "api: file does not exist",
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "token-secret",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
+			defaultRevisionKey:    "other",
+		},
+		apiToken:          "some-token",
+		expectedCommitSHA: commitSHAsInSCMRepo[1],
+		expectedStatus:    createStatus(otherPipelineYAML),
+	}, {
+		name: "api: file does not exist",
+		args: &params{
 			revision:   "main",
 			pathInRepo: "pipelines/other-pipeline.yaml",
 			org:        testOrg,
 			repo:       testRepo,
-			config: map[string]string{
-				ServerURLKey:          "fake",
-				SCMTypeKey:            "fake",
-				APISecretNameKey:      "token-secret",
-				APISecretKeyKey:       "token",
-				APISecretNamespaceKey: system.Namespace(),
-			},
-			apiToken:       "some-token",
-			expectedStatus: createFailureStatus(),
-			expectedErr:    createError("couldn't fetch resource content: file testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml does not exist: stat testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml: no such file or directory"),
-		}, {
-			name:       "api: token not found",
-			revision:   "main",
-			pathInRepo: "pipelines/example-pipeline.yaml",
-			org:        testOrg,
-			repo:       testRepo,
-			config: map[string]string{
-				ServerURLKey:          "fake",
-				SCMTypeKey:            "fake",
-				APISecretNameKey:      "token-secret",
-				APISecretKeyKey:       "token",
-				APISecretNamespaceKey: system.Namespace(),
-			},
-			expectedStatus: createFailureStatus(),
-			expectedErr:    createError(fmt.Sprintf("cannot get API token, secret token-secret not found in namespace %s", system.Namespace())),
-		}, {
-			name:       "api: token secret name not specified",
-			revision:   "main",
-			pathInRepo: "pipelines/example-pipeline.yaml",
-			org:        testOrg,
-			repo:       testRepo,
-			config: map[string]string{
-				ServerURLKey:          "fake",
-				SCMTypeKey:            "fake",
-				APISecretKeyKey:       "token",
-				APISecretNamespaceKey: system.Namespace(),
-			},
-			apiToken:       "some-token",
-			expectedStatus: createFailureStatus(),
-			expectedErr:    createError("cannot get API token, required when specifying 'repo' param, 'api-token-secret-name' not specified in config"),
-		}, {
-			name:       "api: token secret key not specified",
-			revision:   "main",
-			pathInRepo: "pipelines/example-pipeline.yaml",
-			org:        testOrg,
-			repo:       testRepo,
-			config: map[string]string{
-				ServerURLKey:          "fake",
-				SCMTypeKey:            "fake",
-				APISecretNameKey:      "token-secret",
-				APISecretNamespaceKey: system.Namespace(),
-			},
-			apiToken:       "some-token",
-			expectedStatus: createFailureStatus(),
-			expectedErr:    createError("cannot get API token, required when specifying 'repo' param, 'api-token-secret-key' not specified in config"),
-		}, {
-			name:       "api: SCM type not specified",
-			revision:   "main",
-			pathInRepo: "pipelines/example-pipeline.yaml",
-			org:        testOrg,
-			repo:       testRepo,
-			config: map[string]string{
-				APISecretNameKey:      "token-secret",
-				APISecretKeyKey:       "token",
-				APISecretNamespaceKey: system.Namespace(),
-			},
-			apiToken:       "some-token",
-			expectedStatus: createFailureStatus(),
-			expectedErr:    createError("missing or empty scm-type value in configmap"),
 		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "token-secret",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
+		},
+		apiToken:       "some-token",
+		expectedStatus: createFailureStatus(),
+		expectedErr:    createError("couldn't fetch resource content: file testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml does not exist: stat testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml: no such file or directory"),
+	}, {
+		name: "api: token not found",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "token-secret",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
+		},
+		expectedStatus: createFailureStatus(),
+		expectedErr:    createError(fmt.Sprintf("cannot get API token, secret token-secret not found in namespace %s", system.Namespace())),
+	}, {
+		name: "api: token secret name not specified",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
+		},
+		apiToken:       "some-token",
+		expectedStatus: createFailureStatus(),
+		expectedErr:    createError("cannot get API token, required when specifying 'repo' param, 'api-token-secret-name' not specified in config"),
+	}, {
+		name: "api: token secret key not specified",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+		},
+		config: map[string]string{
+			ServerURLKey:          "fake",
+			SCMTypeKey:            "fake",
+			APISecretNameKey:      "token-secret",
+			APISecretNamespaceKey: system.Namespace(),
+		},
+		apiToken:       "some-token",
+		expectedStatus: createFailureStatus(),
+		expectedErr:    createError("cannot get API token, required when specifying 'repo' param, 'api-token-secret-key' not specified in config"),
+	}, {
+		name: "api: SCM type not specified",
+		args: &params{
+			revision:   "main",
+			pathInRepo: "pipelines/example-pipeline.yaml",
+			org:        testOrg,
+			repo:       testRepo,
+		},
+		config: map[string]string{
+			APISecretNameKey:      "token-secret",
+			APISecretKeyKey:       "token",
+			APISecretNamespaceKey: system.Namespace(),
+		},
+		apiToken:       "some-token",
+		expectedStatus: createFailureStatus(),
+		expectedErr:    createError("missing or empty scm-type value in configmap"),
+	},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, _ := ttesting.SetupFakeContext(t)
 
-			fakeClone := fmt.Sprintf("https://fake/%s/%s.git", testOrg, testRepo)
-			resolver := &Resolver{
-				clientFunc: func(driver string, serverURL string, token string, opts ...factory.ClientOptionFunc) (*scm.Client, error) {
-					scmClient, scmData := fake.NewDefault()
-
-					// Currently, we only could care about repositories.
-					scmData.Repositories = []*scm.Repository{{
-						FullName: fmt.Sprintf("%s/%s", testOrg, testRepo),
-						Clone:    fakeClone,
-					}}
-
-					return scmClient, nil
-				},
-			}
-
-			var repoPath string
-			var commits map[string][]string
-
-			if len(tc.commits) > 0 {
-				repoPath, commits = createTestRepo(t, tc.commits)
-			}
 			cfg := tc.config
 			if cfg == nil {
 				cfg = make(map[string]string)
@@ -455,7 +486,7 @@ func TestResolve(t *testing.T) {
 				cfg[defaultRevisionKey] = plumbing.Master.Short()
 			}
 
-			request := createRequest(repoPath, tc.org, tc.repo, tc.pathInRepo, tc.revision, tc.specificCommit, tc.useNthCommit, commits)
+			request := createRequest(tc.args)
 
 			d := test.Data{
 				ConfigMaps: []*corev1.ConfigMap{{
@@ -481,32 +512,29 @@ func TestResolve(t *testing.T) {
 				expectedStatus = tc.expectedStatus.DeepCopy()
 
 				if tc.expectedErr == nil {
-					reqParams := make(map[string]string)
-					for _, p := range request.Spec.Params {
-						reqParams[p.Name] = p.Value.StringVal
-					}
+					// status.annotations
 					if expectedStatus.Annotations == nil {
 						expectedStatus.Annotations = make(map[string]string)
 					}
 					expectedStatus.Annotations[resolutioncommon.AnnotationKeyContentType] = "application/x-yaml"
-					switch {
-					case tc.useNthCommit > 0:
-						expectedStatus.Annotations[AnnotationKeyRevision] = commits[plumbing.Master.Short()][tc.useNthCommit]
-					case tc.revision == "" && reqParams[urlParam] != "":
-						expectedStatus.Annotations[AnnotationKeyRevision] = plumbing.Master.Short()
-					case tc.revision == "":
-						expectedStatus.Annotations[AnnotationKeyRevision] = tc.config[defaultRevisionKey]
-					default:
-						expectedStatus.Annotations[AnnotationKeyRevision] = tc.revision
-					}
-					expectedStatus.Annotations[AnnotationKeyPath] = reqParams[pathParam]
+					expectedStatus.Annotations[AnnotationKeyRevision] = tc.expectedCommitSHA
+					expectedStatus.Annotations[AnnotationKeyPath] = tc.args.pathInRepo
 
-					if reqParams[urlParam] != "" {
-						expectedStatus.Annotations[AnnotationKeyURL] = reqParams[urlParam]
+					if tc.args.url != "" {
+						expectedStatus.Annotations[AnnotationKeyURL] = anonFakeRepoURL
 					} else {
-						expectedStatus.Annotations[AnnotationKeyOrg] = reqParams[orgParam]
-						expectedStatus.Annotations[AnnotationKeyRepo] = reqParams[repoParam]
-						expectedStatus.Annotations[AnnotationKeyURL] = fakeClone
+						expectedStatus.Annotations[AnnotationKeyOrg] = testOrg
+						expectedStatus.Annotations[AnnotationKeyRepo] = testRepo
+						expectedStatus.Annotations[AnnotationKeyURL] = scmFakeRepoURL
+					}
+
+					// status.source
+					expectedStatus.Source = &pipelinev1beta1.ConfigSource{
+						URI: "git+" + expectedStatus.Annotations[AnnotationKeyURL],
+						Digest: map[string]string{
+							"sha1": tc.expectedCommitSHA,
+						},
+						EntryPoint: tc.args.pathInRepo,
 					}
 				} else {
 					expectedStatus.Status.Conditions[0].Message = tc.expectedErr.Error()
@@ -537,7 +565,9 @@ func TestResolve(t *testing.T) {
 }
 
 // createTestRepo is used to instantiate a local test repository with the desired commits.
-func createTestRepo(t *testing.T, commits []commitForRepo) (string, map[string][]string) {
+func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
+	commitSHAs := []string{}
+
 	t.Helper()
 	tempDir := t.TempDir()
 
@@ -577,6 +607,7 @@ func createTestRepo(t *testing.T, commits []commitForRepo) (string, map[string][
 		}
 
 		hash := writeAndCommitToTestRepo(t, worktree, tempDir, cmt.Dir, cmt.Filename, []byte(cmt.Content))
+		commitSHAs = append(commitSHAs, hash.String())
 
 		if _, ok := hashesByBranch[branch]; !ok {
 			hashesByBranch[branch] = []string{hash.String()}
@@ -599,7 +630,7 @@ func createTestRepo(t *testing.T, commits []commitForRepo) (string, map[string][
 		}
 	}
 
-	return tempDir, hashesByBranch
+	return tempDir, commitSHAs
 }
 
 // commitForRepo provides the directory, filename, content and revision for a test commit.
@@ -661,7 +692,7 @@ func withTemporaryGitConfig(t *testing.T) {
 	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
 }
 
-func createRequest(repoURL, apiOrg, apiRepo, pathInRepo, revision, specificCommit string, useNthCommit int, commitsByBranch map[string][]string) *v1beta1.ResolutionRequest {
+func createRequest(args *params) *v1beta1.ResolutionRequest {
 	rr := &v1beta1.ResolutionRequest{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "resolution.tekton.dev/v1beta1",
@@ -678,42 +709,31 @@ func createRequest(repoURL, apiOrg, apiRepo, pathInRepo, revision, specificCommi
 		Spec: v1beta1.ResolutionRequestSpec{
 			Params: []pipelinev1beta1.Param{{
 				Name:  pathParam,
-				Value: *pipelinev1beta1.NewStructuredValues(pathInRepo),
+				Value: *pipelinev1beta1.NewStructuredValues(args.pathInRepo),
 			}},
 		},
 	}
 
-	switch {
-	case useNthCommit > 0:
+	if args.revision != "" {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
 			Name:  revisionParam,
-			Value: *pipelinev1beta1.NewStructuredValues(commitsByBranch[plumbing.Master.Short()][useNthCommit]),
-		})
-	case specificCommit != "":
-		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
-			Name:  revisionParam,
-			Value: *pipelinev1beta1.NewStructuredValues(hex.EncodeToString([]byte(specificCommit))),
-		})
-	case revision != "":
-		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
-			Name:  revisionParam,
-			Value: *pipelinev1beta1.NewStructuredValues(revision),
+			Value: *pipelinev1beta1.NewStructuredValues(args.revision),
 		})
 	}
 
-	if repoURL != "" {
+	if args.url != "" {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
 			Name:  urlParam,
-			Value: *pipelinev1beta1.NewStructuredValues(repoURL),
+			Value: *pipelinev1beta1.NewStructuredValues(args.url),
 		})
 	} else {
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
 			Name:  repoParam,
-			Value: *pipelinev1beta1.NewStructuredValues(apiRepo),
+			Value: *pipelinev1beta1.NewStructuredValues(args.repo),
 		})
 		rr.Spec.Params = append(rr.Spec.Params, pipelinev1beta1.Param{
 			Name:  orgParam,
-			Value: *pipelinev1beta1.NewStructuredValues(apiOrg),
+			Value: *pipelinev1beta1.NewStructuredValues(args.org),
 		})
 	}
 
