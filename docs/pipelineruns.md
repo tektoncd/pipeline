@@ -1386,6 +1386,7 @@ Your `PipelineRun`'s `status` field can contain the following fields:
     - [`kind`][kubernetes-overview] - Generally either `TaskRun` or `Run`.
     - [`apiVersion`][kubernetes-overview] - The API version for the underlying `TaskRun` or `Run`.
     - [`whenExpressions`](pipelines.md#guard-task-execution-using-when-expressions) - The list of when expressions guarding the execution of this task.
+  - `provenance` - Metadata about resources used in the PipelineRun such as the source from where a remote pipeline definition was fetched.
 
 ### Configuring usage of `TaskRun` and `Run` embedded statuses
 
