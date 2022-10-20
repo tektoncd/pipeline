@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -104,9 +105,9 @@ func main() {
 
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 	sharedmain.MainWithConfig(ctx, ControllerLogKey, cfg,
-		taskrun.NewController(opts, clock.RealClock{}),
-		pipelinerun.NewController(opts, clock.RealClock{}),
-		run.NewController(),
+		taskrun.NewController(opts, clock.RealClock{}, &sync.WaitGroup{}),
+		pipelinerun.NewController(opts, clock.RealClock{}, &sync.WaitGroup{}),
+		run.NewController(&sync.WaitGroup{}),
 		resolutionrequest.NewController(clock.RealClock{}),
 	)
 }

@@ -19,6 +19,7 @@ package run
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -54,7 +55,8 @@ func initializeRunControllerAssets(t *testing.T, d test.Data) (test.Assets, func
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController()(ctx, configMapWatcher)
+	var wg sync.WaitGroup
+	ctl := NewController(&wg)(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
@@ -68,6 +70,7 @@ func initializeRunControllerAssets(t *testing.T, d test.Data) (test.Assets, func
 		Controller: ctl,
 		Clients:    c,
 		Informers:  informers,
+		WaitGroup:  &wg,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
 		Ctx:        ctx,
 	}, cancel
@@ -188,7 +191,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 			if d := cmp.Diff(&run, urun, ignoreResourceVersion); d != "" {
 				t.Fatalf("run should not have changed, go %v instead", d)
 			}
-
+			testAssets.WaitGroup.Wait()
 			ceClient := clients.CloudEvents.(cloudevent.FakeClient)
 			err = eventstest.CheckEventsUnordered(t, ceClient.Events, tc.name, tc.wantCloudEvents)
 			if err != nil {

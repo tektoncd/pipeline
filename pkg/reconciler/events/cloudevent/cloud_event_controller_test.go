@@ -18,6 +18,7 @@ package cloudevent
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -607,9 +608,11 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := setupFakeContext(t, tc.clientBehaviour, true)
-			if err := SendCloudEventWithRetries(ctx, tc.object); err != nil {
+			var wg sync.WaitGroup
+			if err := SendCloudEventWithRetries(ctx, &wg, tc.object); err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
+			wg.Wait()
 			ceClient := Get(ctx).(FakeClient)
 			if err := eventstest.CheckEventsUnordered(t, ceClient.Events, tc.name, tc.wantCEvents); err != nil {
 				t.Fatalf(err.Error())
@@ -651,7 +654,9 @@ func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 			}, true)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			err := SendCloudEventWithRetries(ctx, tc.object)
+			var wg sync.WaitGroup
+			err := SendCloudEventWithRetries(ctx, &wg, tc.object)
+			wg.Wait()
 			if err == nil {
 				t.Fatalf("Expected an error sending cloud events for invalid object, got none")
 			}
@@ -662,7 +667,9 @@ func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
 
 	ctx := setupFakeContext(t, FakeClientBehaviour{}, false)
-	err := SendCloudEventWithRetries(ctx, &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{}})
+	var wg sync.WaitGroup
+	err := SendCloudEventWithRetries(ctx, &wg, &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{}})
+	wg.Wait()
 	if err == nil {
 		t.Fatalf("Expected an error sending cloud events with no client in the context, got none")
 	}

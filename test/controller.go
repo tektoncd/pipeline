@@ -19,6 +19,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -116,6 +117,7 @@ type Assets struct {
 	Controller *controller.Impl
 	Clients    Clients
 	Informers  Informers
+	WaitGroup  *sync.WaitGroup
 	Recorder   *record.FakeRecorder
 	Ctx        context.Context
 }

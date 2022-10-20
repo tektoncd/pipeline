@@ -18,6 +18,7 @@ package events
 
 import (
 	"context"
+	"sync"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -47,7 +48,7 @@ const (
 //
 // k8s events are always sent if afterCondition is different from beforeCondition
 // Cloud events are always sent if enabled, i.e. if a sink is available
-func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object, wg *sync.WaitGroup) {
 	recorder := controller.GetEventRecorder(ctx)
 	logger := logging.FromContext(ctx)
 	configs := config.FromContextOrDefaults(ctx)
@@ -61,7 +62,7 @@ func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *
 	if sendCloudEvents {
 		// Only send events if the new condition represents a change
 		if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
-			err := cloudevent.SendCloudEventWithRetries(ctx, object)
+			err := cloudevent.SendCloudEventWithRetries(ctx, wg, object)
 			if err != nil {
 				logger.Warnf("Failed to emit cloud events %v", err.Error())
 			}
@@ -70,7 +71,7 @@ func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *
 }
 
 // EmitCloudEvents emits CloudEvents (only) for object
-func EmitCloudEvents(ctx context.Context, object runtime.Object) {
+func EmitCloudEvents(ctx context.Context, object runtime.Object, wg *sync.WaitGroup) {
 	logger := logging.FromContext(ctx)
 	configs := config.FromContextOrDefaults(ctx)
 	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
@@ -79,7 +80,7 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 	}
 
 	if sendCloudEvents {
-		err := cloudevent.SendCloudEventWithRetries(ctx, object)
+		err := cloudevent.SendCloudEventWithRetries(ctx, wg, object)
 		if err != nil {
 			logger.Warnf("Failed to emit cloud events %v", err.Error())
 		}

@@ -18,6 +18,7 @@ package run
 
 import (
 	"context"
+	"sync"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -36,6 +37,7 @@ import (
 type Reconciler struct {
 	cloudEventClient cloudevent.CEClient
 	cacheClient      *lru.Cache
+	waitGroup        *sync.WaitGroup
 }
 
 // Check that our Reconciler implements runreconciler.Interface
@@ -66,7 +68,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, run *v1alpha1.Run) pkgre
 		condition := runEvents.Status.GetCondition(apis.ConditionSucceeded)
 		logger.Debugf("Emitting cloudevent for %s, condition: %s", runEvents.Name, condition)
 
-		events.EmitCloudEvents(ctx, &runEvents)
+		events.EmitCloudEvents(ctx, &runEvents, c.waitGroup)
 	}
 
 	return nil

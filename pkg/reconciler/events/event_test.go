@@ -18,6 +18,7 @@ package events
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -235,7 +236,9 @@ func TestEmit(t *testing.T) {
 		ctx = config.ToContext(ctx, cfg)
 
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-		Emit(ctx, nil, after, object)
+		var wg sync.WaitGroup
+		Emit(ctx, nil, after, object, &wg)
+		wg.Wait()
 		if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
@@ -291,7 +294,9 @@ func TestEmitCloudEvents(t *testing.T) {
 		ctx = config.ToContext(ctx, cfg)
 
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-		EmitCloudEvents(ctx, object)
+		var wg sync.WaitGroup
+		EmitCloudEvents(ctx, object, &wg)
+		wg.Wait()
 		if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}

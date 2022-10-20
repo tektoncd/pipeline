@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -137,7 +138,8 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
+	var wg sync.WaitGroup
+	ctl := NewController(&opts, testClock, &wg)(ctx, configMapWatcher)
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
 		if err := la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {}); err != nil {
 			t.Fatalf("error promoting reconciler leader: %v", err)
@@ -151,6 +153,7 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 		Clients:    c,
 		Controller: ctl,
 		Informers:  informers,
+		WaitGroup:  &wg,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
 		Ctx:        ctx,
 	}, cancel
@@ -6549,7 +6552,7 @@ spec:
 	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
 
 	verifyTaskRunStatusesCount(t, cms[0].Data[embeddedStatusFeatureFlag], reconciledRun.Status, 1)
-
+	prt.TestAssets.WaitGroup.Wait()
 	wantCloudEvents := []string{
 		`(?s)dev.tekton.event.pipelinerun.started.v1.*test-pipelinerun`,
 		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,

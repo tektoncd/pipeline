@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -481,7 +482,8 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
+	var wg sync.WaitGroup
+	ctl := NewController(&opts, testClock, &wg)(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
@@ -495,6 +497,7 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 		Controller: ctl,
 		Clients:    c,
 		Informers:  informers,
+		WaitGroup:  &wg,
 		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
 		Ctx:        ctx,
 	}, cancel
@@ -691,7 +694,8 @@ spec:
 	if condition != nil && condition.Reason != v1beta1.TaskRunReasonRunning.String() {
 		t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
 	}
-
+	// make sure cloud events sending gorountines are completed
+	testAssets.WaitGroup.Wait()
 	wantEvents := []string{
 		"Normal Start",
 		"Normal Running",

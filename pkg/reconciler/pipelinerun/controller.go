@@ -18,6 +18,7 @@ package pipelinerun
 
 import (
 	"context"
+	"sync"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -43,7 +44,7 @@ import (
 )
 
 // NewController instantiates a new controller.Impl from knative.dev/pkg/controller
-func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(context.Context, configmap.Watcher) *controller.Impl {
+func NewController(opts *pipeline.Options, clock clock.PassiveClock, wg *sync.WaitGroup) func(context.Context, configmap.Watcher) *controller.Impl {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 		kubeclientset := kubeclient.Get(ctx)
@@ -61,6 +62,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock) func(contex
 			PipelineClientSet:   pipelineclientset,
 			Images:              opts.Images,
 			Clock:               clock,
+			waitGroup:           wg,
 			pipelineRunLister:   pipelineRunInformer.Lister(),
 			taskRunLister:       taskRunInformer.Lister(),
 			runLister:           runInformer.Lister(),
