@@ -74,6 +74,8 @@ const (
 	DefaultEnableSpire = false
 	// DefaultResourceVerificationMode is the default value for "resource-verification-mode".
 	DefaultResourceVerificationMode = SkipResourceVerificationMode
+	// DefaultEnableProvenanceInStatus is the default value for "enable-provenance-status".
+	DefaultEnableProvenanceInStatus = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -87,6 +89,7 @@ const (
 	embeddedStatus                      = "embedded-status"
 	enableSpire                         = "enable-spire"
 	verificationMode                    = "resource-verification-mode"
+	enableProvenanceInStatus            = "enable-provenance-in-status"
 )
 
 // FeatureFlags holds the features configurations
@@ -105,6 +108,7 @@ type FeatureFlags struct {
 	EmbeddedStatus                   string
 	EnableSpire                      bool
 	ResourceVerificationMode         string
+	EnableProvenanceInStatus         bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -157,6 +161,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setResourceVerificationMode(cfgMap, DefaultResourceVerificationMode, &tc.ResourceVerificationMode); err != nil {
+		return nil, err
+	}
+	if err := setFeature(enableProvenanceInStatus, DefaultEnableProvenanceInStatus, &tc.EnableProvenanceInStatus); err != nil {
 		return nil, err
 	}
 

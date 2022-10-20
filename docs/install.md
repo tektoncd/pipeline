@@ -422,6 +422,11 @@ features](#alpha-features) to be used.
 
 - `resource-verification-mode`: Setting this flag to "enforce" will enforce verification of tasks/pipeline. Failing to verify will fail the taskrun/pipelinerun. "warn" will only log the err message and "skip" will skip the whole verification.
 
+- `enable-provenance-in-status`: set this flag to "true" to enable recording 
+  the `provenance` field in `TaskRun` and `PipelineRun` status. The `provenance` 
+  field contains metadata about resources used in the TaskRun/PipelineRun such as the 
+  source from where a remote Task/Pipeline definition was fetched.
+
 For example:
 
 ```yaml
@@ -435,15 +440,16 @@ data:
 
 ### Alpha Features
 
-Alpha features are still in development and their syntax is subject to change.
-To enable these, set the `enable-api-fields` feature flag to `"alpha"` in
-the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment via
-`kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"enable-api-fields":"alpha"}}'`.
-Setting `enable-api-fields` to "alpha" also enables [beta features](#beta-features).
+Alpha features in the following table are still in development and their syntax is subject to change.
+- To enable the features ***without*** an individual flag:
+  set the `enable-api-fields` feature flag to `"alpha"` in the `feature-flags` ConfigMap alongside your Tekton Pipelines deployment via `kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"enable-api-fields":"alpha"}}'`.
+- To enable the features ***with*** an individual flag:
+  set the individual flag accordingly in the `feature-flag` ConfigMap alongside your Tekton Pipelines deployment. Example: `kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"<FLAG-NAME>":"<FLAG-VALUE>"}}'`.
+
 
 Features currently in "alpha" are:
 
-| Feature                                                                                               | TEP                                                                                                                        | Release                                                              | Individual Flag             |
+| Feature                                                                                               | Proposal                                                                                                                        | Release                                                              | Individual Flag             |
 |:------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|:----------------------------|
 | [Bundles ](./pipelineruns.md#tekton-bundles)                                                          | [TEP-0005](https://github.com/tektoncd/community/blob/main/teps/0005-tekton-oci-bundles.md)                                | [v0.18.0](https://github.com/tektoncd/pipeline/releases/tag/v0.18.0) | `enable-tekton-oci-bundles` |
 | [`Runs` and `Custom Tasks`](./runs.md)                                                                | [TEP-0002](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md)                                      | [v0.19.0](https://github.com/tektoncd/pipeline/releases/tag/v0.19.0) | `enable-custom-tasks`       |
@@ -455,11 +461,12 @@ Features currently in "alpha" are:
 | [Debug](./debug.md)                                                                                   | [TEP-0042](https://github.com/tektoncd/community/blob/main/teps/0042-taskrun-breakpoint-on-failure.md)                     | [v0.26.0](https://github.com/tektoncd/pipeline/releases/tag/v0.26.0) |                             |
 | [Step and Sidecar Overrides](./taskruns.md#overriding-task-steps-and-sidecars)                        | [TEP-0094](https://github.com/tektoncd/community/blob/main/teps/0094-specifying-resource-requirements-at-runtime.md)       |   [v0.34.0](https://github.com/tektoncd/pipeline/releases/tag/v0.34.0)                                                                   |                             |
 | [Matrix](./matrix.md)                                                                                 | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                                            | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
-| [Embedded Statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses)           | [TEP-0100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md) |   [v0.35.0](https://github.com/tektoncd/pipeline/releases/tag/v0.35.0)     |     embedded-status                 |
+| [Embedded Statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses)           | [TEP-0100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md) |   [v0.35.0](https://github.com/tektoncd/pipeline/releases/tag/v0.35.0)     |     `embedded-status`                 |
 | [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration)   | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)                   | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0)  |                             |
 | [Object Params and Results](pipelineruns.md#specifying-parameters)                                    | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 | [Array Results](pipelineruns.md#specifying-parameters)                                                | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)                                | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
-| [Trusted Resources](./trusted-resources.md)                                                | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                | N/A |     resource-verification-mode                        |
+| [Trusted Resources](./trusted-resources.md)                                                | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                | N/A |     `resource-verification-mode`                        |
+|[`Provenance` field in Status](pipeline-api.md#provenance) |[issue#5550](https://github.com/tektoncd/pipeline/issues/5550)|N/A|`enable-provenance-in-status`|
 
 ### Beta Features
 

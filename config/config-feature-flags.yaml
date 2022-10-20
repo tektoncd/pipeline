@@ -85,3 +85,8 @@ data:
   # will fail the taskrun/pipelinerun. "warn" will only log the err message and "skip"
   # will skip the whole verification
   resource-verification-mode: "skip"
+  # Setting this flag to "true" enables populating the "provenance" field in TaskRun
+  # and PipelineRun status. This field contains metadata about resources used
+  # in the TaskRun/PipelineRun such as the source from where a remote Task/Pipeline
+  # definition was fetched.
+  enable-provenance-in-status: "false"

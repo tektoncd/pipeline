@@ -46,6 +46,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SendCloudEventsForRuns:   config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:           config.DefaultEmbeddedStatus,
 				ResourceVerificationMode: config.DefaultResourceVerificationMode,
+				EnableProvenanceInStatus: config.DefaultEnableProvenanceInStatus,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -62,6 +63,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EmbeddedStatus:                   "both",
 				EnableSpire:                      true,
 				ResourceVerificationMode:         "enforce",
+				EnableProvenanceInStatus:         true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -156,6 +158,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 		EnableSpire:                      config.DefaultEnableSpire,
 		ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+		EnableProvenanceInStatus:         config.DefaultEnableProvenanceInStatus,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
