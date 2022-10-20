@@ -36,7 +36,7 @@ For support in contributing to specific areas, contact the relevant [Tekton Pipe
 ## Contributing to Tekton documentation
 
 If you want to contribute to Tekton documentation, see the
-[Tekton Documentation Contributor's Guide](https://github.com/tektoncd/website/blob/main/content/en/doc-con-main.md).
+[Tekton Documentation Contributor's Guide](https://github.com/tektoncd/website/blob/main/content/en/docs/Contribute/_index.md).
 
 This guide describes:
 - The contribution process for documentation
