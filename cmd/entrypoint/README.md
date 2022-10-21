@@ -30,6 +30,12 @@ The following flags are available:
   same value as `{{stdout_path}}` so both streams are copied to the same
   file. However, there is no ordering guarantee on data copied from both
   streams.
+- `-enable_spire`: If set will enable signing of the results by SPIRE. Signing
+  results by SPIRE ensures that no process other than the current process can
+  tamper the results and go undetected.
+- `-spire_socket_path`: This flag makes sense only when enable_spire is set. 
+  When enable_spire is set, spire_socket_path is used to point to the
+  SPIRE agent socket for SPIFFE workload API.
 
 Any extra positional arguments are passed to the original entrypoint command.
 

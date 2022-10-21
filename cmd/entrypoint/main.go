@@ -34,6 +34,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/credentials/dockercreds"
 	"github.com/tektoncd/pipeline/pkg/credentials/gitcreds"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
+	"github.com/tektoncd/pipeline/pkg/spire"
+	"github.com/tektoncd/pipeline/pkg/spire/config"
 	"github.com/tektoncd/pipeline/pkg/termination"
 )
 
@@ -51,6 +53,8 @@ var (
 	onError             = flag.String("on_error", "", "Set to \"continue\" to ignore an error and continue when a container terminates with a non-zero exit code."+
 		" Set to \"stopAndFail\" to declare a failure with a step error and stop executing the rest of the steps.")
 	stepMetadataDir = flag.String("step_metadata_dir", "", "If specified, create directory to store the step metadata e.g. /tekton/steps/<step-name>/")
+	enableSpire     = flag.Bool("enable_spire", false, "If specified by configmap, this enables spire signing and verification")
+	socketPath      = flag.String("spire_socket_path", "unix:///spiffe-workload-api/spire-agent.sock", "Experimental: The SPIRE agent socket for SPIFFE workload API.")
 )
 
 const (
@@ -131,6 +135,14 @@ func main() {
 		}
 	}
 
+	var spireWorkloadAPI spire.EntrypointerAPIClient
+	if enableSpire != nil && *enableSpire && socketPath != nil && *socketPath != "" {
+		spireConfig := config.SpireConfig{
+			SocketPath: *socketPath,
+		}
+		spireWorkloadAPI = spire.NewEntrypointerAPIClient(&spireConfig)
+	}
+
 	e := entrypoint.Entrypointer{
 		Command:         append(cmd, commandArgs...),
 		WaitFiles:       strings.Split(*waitFiles, ","),
@@ -148,6 +160,7 @@ func main() {
 		BreakpointOnFailure: *breakpointOnFailure,
 		OnError:             *onError,
 		StepMetadataDir:     *stepMetadataDir,
+		SpireWorkloadAPI:    spireWorkloadAPI,
 	}
 
 	// Copy any creds injected by the controller into the $HOME directory of the current
