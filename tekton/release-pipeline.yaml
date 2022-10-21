@@ -50,12 +50,6 @@ spec:
     - name: release-file-no-tag
       description: the URL of the release file
       value: $(tasks.report-bucket.results.release-no-tag)
-    - name: resolvers-file
-      description: the URL of the resolvers release file
-      value: $(tasks.report-bucket.results.resolvers)
-    - name: resolvers-file-no-tag
-      description: the URL of the resolvers release file
-      value: $(tasks.report-bucket.results.resolvers-no-tag)
   tasks:
     - name: git-clone
       taskRef:
@@ -192,14 +186,6 @@ spec:
             description: The full URL of the release file in the bucket
           - name: release-no-tag
             description: The full URL of the release file (no tag) in the bucket
-          - name: minimal-release
-            description: The full URL of the minimal release (without resolvers) file in the bucket
-          - name: minimal-release-no-tag
-            description: The full URL of the minimal release file (without resolvers, no tag) in the bucket
-          - name: resolvers
-            description: The full URL of the resolvers release file in the bucket
-          - name: resolvers-no-tag
-            description: The full URL of the resolvers file (no tag) in the bucket
         steps:
           - name: create-results
             image: alpine
@@ -214,7 +200,3 @@ spec:
               BASE_URL=$(echo ${BASE_URL} | sed 's,gs://,https://storage.googleapis.com/,g')
               echo "${BASE_URL}/release.yaml" > $(results.release.path)
               echo "${BASE_URL}/release.notag.yaml" > $(results.release-no-tag.path)
-              echo "${BASE_URL}/minimal-release.yaml" > $(results.minimal-release.path)
-              echo "${BASE_URL}/minimal-release.notag.yaml" > $(results.minimal-release-no-tag.path)
-              echo "${BASE_URL}/resolvers.yaml" > $(results.resolvers.path)
-              echo "${BASE_URL}/resolvers.notags.yaml" > $(results.resolvers-no-tag.path)

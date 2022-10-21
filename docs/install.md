@@ -86,10 +86,6 @@ To install Tekton Pipelines on a Kubernetes cluster:
    kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
    ```
 
-1. **Note**: To install Tekton Pipelines without including [the built-in remote resolvers](#installing-and-configuring-remote-task-and-pipeline-resolution)
-   follow the directions above, but replace `release.yaml` or `release.notags.yaml` with `minimal-release.yaml` or
-   `minimal-release.notags.yaml` as appropriate. 
-
 1. **Note**: Some cloud providers (such as [GKE](https://github.com/tektoncd/pipeline/issues/3317#issuecomment-708066087))
    may also require you to allow port 8443 in your firewall rules so that the Tekton Pipelines webhook is reachable.
 
@@ -272,27 +268,9 @@ data:
   bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS
 ```
 
-## Installing and configuring remote Task and Pipeline resolution
+## Configuring built-in remote Task and Pipeline resolution
 
-By default, when Tekton Pipelines is installed using `release.yaml` or `release.notags.yaml`, the
-[built-in resolvers](#built-in-resolvers) are installed into the `tekton-pipelines-resolvers` namespace.
-
-### Installing built-in remote resolvers with a minimal Tekton Pipelines installation
-
-If you have installed Tekton Pipelines using `minimal-release.yaml` or `minimal-release.notags.yaml` and
-wish to add the [built-in remote resolvers](#built-in-resolvers) later, you can install them separately 
-by running the following command:
-
-   ```bash
-   kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/resolvers.yaml
-   ```
-
-To install a specific version, see [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes).
-Change `release.yaml` to `resolvers.yaml`.
-
-### Built-in Resolvers
-
-Three remote resolvers are currently provided as part of the `resolvers.yaml` installation.
+Three remote resolvers are currently provided as part of the Tekton Pipelines installation.
 By default, these remote resolvers are disabled. Each resolver is enabled by setting 
 the appropriate feature flag in the `resolvers-feature-flags` ConfigMap in the `tekton-pipelines-resolvers` 
 namespace:
