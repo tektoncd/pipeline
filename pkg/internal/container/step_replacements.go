@@ -18,7 +18,7 @@ package container
 
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/pkg/internal/substitution"
 )
 
 // ApplyStepReplacements applies variable interpolation on a Step.

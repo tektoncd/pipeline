@@ -34,13 +34,14 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	listersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/matrix"
+	"github.com/tektoncd/pipeline/pkg/internal/artifacts"
+	"github.com/tektoncd/pipeline/pkg/internal/matrix"
+	"github.com/tektoncd/pipeline/pkg/internal/workspace"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
@@ -53,7 +54,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
-	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,9 +89,6 @@ const (
 	// ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec
 	// misses some keys required for the object param declared in Pipeline spec.
 	ReasonObjectParameterMissKeys = "ObjectParameterMissKeys"
-	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
-	// associated Pipeline's Tasks couldn't all be retrieved
-	ReasonCouldntGetTask = "CouldntGetTask"
 	// ReasonCouldntGetResource indicates that the reason for the failure status is that the
 	// associated PipelineRun's bound PipelineResources couldn't all be retrieved
 	ReasonCouldntGetResource = "CouldntGetResource"
@@ -313,7 +310,7 @@ func (c *Reconciler) resolvePipelineState(
 		fn, err := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName)
 		if err != nil {
 			// This Run has failed, so we need to mark it as failed and stop reconciling it
-			pr.Status.MarkFailed(ReasonCouldntGetTask, "Pipeline %s/%s can't be Run; task %s could not be fetched: %s",
+			pr.Status.MarkFailed(v1beta1.ReasonCouldntGetTask, "Pipeline %s/%s can't be Run; task %s could not be fetched: %s",
 				pipelineMeta.Namespace, pipelineMeta.Name, task.Name, err)
 			return nil, controller.NewPermanentError(err)
 		}
@@ -338,7 +335,7 @@ func (c *Reconciler) resolvePipelineState(
 			}
 			switch err := err.(type) {
 			case *resources.TaskNotFoundError:
-				pr.Status.MarkFailed(ReasonCouldntGetTask,
+				pr.Status.MarkFailed(v1beta1.ReasonCouldntGetTask,
 					"Pipeline %s/%s can't be Run; it contains Tasks that don't exist: %s",
 					pipelineMeta.Namespace, pipelineMeta.Name, err)
 			default:

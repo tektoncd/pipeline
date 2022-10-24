@@ -18,7 +18,7 @@ package container
 
 import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/pkg/internal/substitution"
 	corev1 "k8s.io/api/core/v1"
 )
 

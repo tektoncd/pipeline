@@ -34,7 +34,7 @@ import (
 	"github.com/goccy/kpoward"
 	"github.com/jenkins-x/go-scm/scm/factory"
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
-	"github.com/tektoncd/pipeline/pkg/pod"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/git"
 	"github.com/tektoncd/pipeline/test/parse"
@@ -189,7 +189,7 @@ spec:
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
 	if err := WaitForPipelineRunState(ctx, c, prName, timeout,
 		Chain(
-			FailedWithReason(pod.ReasonCouldntGetTask, prName),
+			FailedWithReason(v1beta1.ReasonCouldntGetTask, prName),
 			FailedWithMessage("requested resource 'https://api.hub.tekton.dev/v1/resource/Tekton/task/git-clone-this-does-not-exist/0.7/yaml' not found on hub", prName),
 		), "PipelineRunFailed"); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
@@ -354,7 +354,7 @@ spec:
 			t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
 			if err := WaitForPipelineRunState(ctx, c, prName, timeout,
 				Chain(
-					FailedWithReason(pod.ReasonCouldntGetTask, prName),
+					FailedWithReason(v1beta1.ReasonCouldntGetTask, prName),
 					FailedWithMessage(expectedErr, prName),
 				), "PipelineRunFailed"); err != nil {
 				t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)

@@ -54,7 +54,7 @@ var (
 	}
 
 	ignoreReleaseAnnotation = func(k string, v string) bool {
-		return k == ReleaseAnnotation
+		return k == config.ReleaseAnnotation
 	}
 	featureInjectedSidecar                   = "running-in-environment-with-injected-sidecars"
 	featureAwaitSidecarReadiness             = "await-sidecar-readiness"
@@ -1823,11 +1823,11 @@ _EOF_
 			var trAnnotations map[string]string
 			if c.trAnnotation == nil {
 				trAnnotations = map[string]string{
-					ReleaseAnnotation: fakeVersion,
+					config.ReleaseAnnotation: fakeVersion,
 				}
 			} else {
 				trAnnotations = c.trAnnotation
-				trAnnotations[ReleaseAnnotation] = fakeVersion
+				trAnnotations[config.ReleaseAnnotation] = fakeVersion
 			}
 			testTaskRunName := taskRunName
 			if c.trName != "" {
@@ -2032,11 +2032,11 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 			var trAnnotations map[string]string
 			if c.trAnnotation == nil {
 				trAnnotations = map[string]string{
-					ReleaseAnnotation: fakeVersion,
+					config.ReleaseAnnotation: fakeVersion,
 				}
 			} else {
 				trAnnotations = c.trAnnotation
-				trAnnotations[ReleaseAnnotation] = fakeVersion
+				trAnnotations[config.ReleaseAnnotation] = fakeVersion
 			}
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{

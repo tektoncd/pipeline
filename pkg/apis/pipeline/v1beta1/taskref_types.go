@@ -47,4 +47,7 @@ const (
 	NamespacedTaskKind TaskKind = "Task"
 	// ClusterTaskKind indicates that task type has a cluster scope.
 	ClusterTaskKind TaskKind = "ClusterTask"
+	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
+	// Task couldn't be found
+	ReasonCouldntGetTask = "CouldntGetTask"
 )

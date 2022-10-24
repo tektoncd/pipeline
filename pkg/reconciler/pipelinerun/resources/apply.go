@@ -27,7 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/pkg/internal/substitution"
 )
 
 const (

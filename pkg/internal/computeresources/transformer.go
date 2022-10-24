@@ -21,7 +21,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/compare"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/limitrange"
-	"github.com/tektoncd/pipeline/pkg/pod"
+	"github.com/tektoncd/pipeline/pkg/internal/pod"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	corev1listers "k8s.io/client-go/listers/core/v1"

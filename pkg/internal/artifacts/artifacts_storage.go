@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/artifacts"
+
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -172,7 +174,7 @@ func newArtifactBucketFromConfig(ctx context.Context, images pipeline.Images) *s
 }
 
 func createPVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interface) (*corev1.PersistentVolumeClaim, error) {
-	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, GetPVCName(pr), metav1.GetOptions{}); err != nil {
+	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, artifacts.GetPVCName(pr), metav1.GetOptions{}); err != nil {
 		if errors.IsNotFound(err) {
 			pvcConfig := config.FromContextOrDefaults(ctx).ArtifactPVC
 			pvcSize, err := resource.ParseQuantity(pvcConfig.Size)
@@ -205,11 +207,11 @@ func createPVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interf
 }
 
 func deletePVC(ctx context.Context, pr *v1beta1.PipelineRun, c kubernetes.Interface) error {
-	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, GetPVCName(pr), metav1.GetOptions{}); err != nil {
+	if _, err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Get(ctx, artifacts.GetPVCName(pr), metav1.GetOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get Persistent Volume %q due to error: %w", GetPVCName(pr), err)
+			return fmt.Errorf("failed to get Persistent Volume %q due to error: %w", artifacts.GetPVCName(pr), err)
 		}
-	} else if err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Delete(ctx, GetPVCName(pr), metav1.DeleteOptions{}); err != nil {
+	} else if err := c.CoreV1().PersistentVolumeClaims(pr.Namespace).Delete(ctx, artifacts.GetPVCName(pr), metav1.DeleteOptions{}); err != nil {
 		return fmt.Errorf("failed to delete Persistent Volume %q due to error: %w", pr.Name, err)
 	}
 	return nil
@@ -220,7 +222,7 @@ func getPVCSpec(pr *v1beta1.PipelineRun, pvcSize resource.Quantity, storageClass
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       pr.Namespace,
-			Name:            GetPVCName(pr),
+			Name:            artifacts.GetPVCName(pr),
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(pr)},
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
@@ -233,13 +235,4 @@ func getPVCSpec(pr *v1beta1.PipelineRun, pvcSize resource.Quantity, storageClass
 			StorageClassName: storageClassName,
 		},
 	}
-}
-
-// GetPVCName returns the name that should be used for the PVC for a PipelineRun
-func GetPVCName(n named) string {
-	return fmt.Sprintf("%s-pvc", n.GetName())
-}
-
-type named interface {
-	GetName() string
 }

@@ -37,7 +37,8 @@ import (
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources"
-	podconvert "github.com/tektoncd/pipeline/pkg/pod"
+	podconvert "github.com/tektoncd/pipeline/pkg/internal/pod"
+	"github.com/tektoncd/pipeline/pkg/internal/workspace"
 	tknreconciler "github.com/tektoncd/pipeline/pkg/reconciler"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -47,7 +48,6 @@ import (
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
-	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -589,7 +589,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1
 	if tr.Annotations == nil {
 		tr.Annotations = make(map[string]string, 1)
 	}
-	tr.Annotations[podconvert.ReleaseAnnotation] = changeset.Get()
+	tr.Annotations[config.ReleaseAnnotation] = changeset.Get()
 
 	newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
 	if err != nil {
@@ -634,7 +634,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) erro
 			msg += "invalid TaskSpec"
 		}
 		err = controller.NewPermanentError(errors.New(msg))
-		tr.Status.MarkResourceFailed(podconvert.ReasonCouldntGetTask, err)
+		tr.Status.MarkResourceFailed(v1beta1.ReasonCouldntGetTask, err)
 	}
 	return err
 }

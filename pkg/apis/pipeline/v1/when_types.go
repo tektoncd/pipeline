@@ -19,7 +19,7 @@ package v1
 import (
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/pkg/internal/substitution"
 	"k8s.io/apimachinery/pkg/selection"
 )
 

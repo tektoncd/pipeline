@@ -38,13 +38,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	podconvert "github.com/tektoncd/pipeline/pkg/pod"
+	podconvert "github.com/tektoncd/pipeline/pkg/internal/pod"
+	"github.com/tektoncd/pipeline/pkg/internal/workspace"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
-	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	eventstest "github.com/tektoncd/pipeline/test/events"
@@ -2709,7 +2709,7 @@ status:
 		err:            errors.New("this is a fatal error"),
 		expectedType:   apis.ConditionSucceeded,
 		expectedStatus: corev1.ConditionFalse,
-		expectedReason: podconvert.ReasonCouldntGetTask,
+		expectedReason: v1beta1.ReasonCouldntGetTask,
 	}}
 	for _, tc := range testcases {
 		t.Run(tc.description, func(t *testing.T) {
@@ -4635,7 +4635,7 @@ func podObjectMeta(name, taskName, taskRunName, ns string, isClusterTask bool) m
 		Name:      name,
 		Namespace: ns,
 		Annotations: map[string]string{
-			podconvert.ReleaseAnnotation: fakeVersion,
+			config.ReleaseAnnotation: fakeVersion,
 		},
 		Labels: map[string]string{
 			pipeline.TaskRunLabelKey:       taskRunName,

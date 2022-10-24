@@ -19,8 +19,8 @@ package affinityassistant
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/workspace"
+	"github.com/tektoncd/pipeline/pkg/internal/pod"
+	"github.com/tektoncd/pipeline/pkg/internal/workspace"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

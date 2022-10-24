@@ -39,4 +39,7 @@ type TaskKind string
 const (
 	// NamespacedTaskKind indicates that the task type has a namespaced scope.
 	NamespacedTaskKind TaskKind = "Task"
+	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
+	// Task couldn't be found
+	ReasonCouldntGetTask = "CouldntGetTask"
 )

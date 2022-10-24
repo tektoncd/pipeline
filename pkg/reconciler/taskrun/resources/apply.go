@@ -28,9 +28,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/container"
-	"github.com/tektoncd/pipeline/pkg/pod"
-	"github.com/tektoncd/pipeline/pkg/substitution"
+	"github.com/tektoncd/pipeline/pkg/internal/container"
+	"github.com/tektoncd/pipeline/pkg/internal/pod"
+	"github.com/tektoncd/pipeline/pkg/internal/substitution"
 )
 
 const (

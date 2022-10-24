@@ -24,7 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
+	"github.com/tektoncd/pipeline/pkg/internal/artifacts"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -37,8 +37,10 @@ var (
 // target directory.
 // Steps executed:
 //  1. If taskrun has owner reference as pipelinerun then all outputs are copied to parents PVC
+//
 // and also runs any custom upload steps (upload to blob store)
-//  2.  If taskrun does not have pipelinerun as owner reference then all outputs resources execute their custom
+//  2. If taskrun does not have pipelinerun as owner reference then all outputs resources execute their custom
+//
 // upload steps (like upload to blob store )
 //
 // Resource source path determined

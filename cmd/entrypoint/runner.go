@@ -8,7 +8,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,8 +30,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
-	"github.com/tektoncd/pipeline/pkg/pod"
 )
 
 // TODO(jasonhall): Test that original exit code is propagated and that
@@ -112,7 +112,7 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	// main process and all children
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	if os.Getenv("TEKTON_RESOURCE_NAME") == "" && os.Getenv(pod.TektonHermeticEnvVar) == "1" {
+	if os.Getenv("TEKTON_RESOURCE_NAME") == "" && os.Getenv(config.TektonHermeticEnvVar) == "1" {
 		dropNetworking(cmd)
 	}
 

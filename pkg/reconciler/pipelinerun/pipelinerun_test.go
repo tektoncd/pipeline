@@ -1005,7 +1005,7 @@ spec:
   pipelineRef:
     name: pipeline-missing-tasks
 `),
-		reason:         ReasonCouldntGetTask,
+		reason:         v1beta1.ReasonCouldntGetTask,
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
@@ -7566,7 +7566,7 @@ spec:
 
 	// Check that the pipeline fails.
 	updatedPipelineRun, _ := prt.reconcileRun("default", "pr", nil, true)
-	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionFalse, ReasonCouldntGetTask)
+	checkPipelineRunConditionStatusAndReason(t, updatedPipelineRun, corev1.ConditionFalse, v1beta1.ReasonCouldntGetTask)
 }
 
 // TestReconcileWithTaskResolver checks that a PipelineRun with a populated Resolver

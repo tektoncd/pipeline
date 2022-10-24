@@ -30,8 +30,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
@@ -127,11 +127,11 @@ spec:
 		t.Fatalf("-got, +want: %v", d)
 	}
 
-	releaseAnnotation, ok := taskrun.Annotations[pod.ReleaseAnnotation]
+	releaseAnnotation, ok := taskrun.Annotations[config.ReleaseAnnotation]
 	// This should always contain a commit truncated to 7 characters, possibly with "-dirty" suffix (based on knative.dev/pkg/changeset)
 	commitIDRegexp := regexp.MustCompile(`^[a-f0-9]{7}(-dirty)?$`)
 	if !ok || !commitIDRegexp.MatchString(releaseAnnotation) {
-		t.Fatalf("expected Taskrun to be annotated with %s=devel or with nightly release tag, got %s=%s", pod.ReleaseAnnotation, pod.ReleaseAnnotation, releaseAnnotation)
+		t.Fatalf("expected Taskrun to be annotated with %s=devel or with nightly release tag, got %s=%s", config.ReleaseAnnotation, config.ReleaseAnnotation, releaseAnnotation)
 	}
 }
 

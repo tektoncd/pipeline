@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
+	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -295,9 +296,9 @@ func TestInitializeArtifactStorage(t *testing.T) {
 			}
 			// If the expected storage type is PVC, make sure we're actually creating that PVC.
 			if c.storagetype == "pvc" {
-				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
+				_, err := fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, artifacts.GetPVCName(pipelinerun), metav1.GetOptions{})
 				if err != nil {
-					t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
+					t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelinerun), pipelinerun.Name, err)
 				}
 			}
 			// Make sure we don't get any errors running CleanupArtifactStorage against the resulting storage, whether it's
@@ -455,18 +456,18 @@ func TestCleanupArtifactStorage(t *testing.T) {
 				ArtifactBucket: ab,
 			}
 			ctx := config.ToContext(context.Background(), &configs)
-			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
+			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, artifacts.GetPVCName(pipelinerun), metav1.GetOptions{})
 			if err != nil {
-				t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
+				t.Fatalf("Error getting expected PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelinerun), pipelinerun.Name, err)
 			}
 			if err := CleanupArtifactStorage(ctx, pipelinerun, fakekubeclient); err != nil {
 				t.Fatalf("Error cleaning up artifact storage: %s", err)
 			}
-			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, GetPVCName(pipelinerun), metav1.GetOptions{})
+			_, err = fakekubeclient.CoreV1().PersistentVolumeClaims(pipelinerun.Namespace).Get(ctx, artifacts.GetPVCName(pipelinerun), metav1.GetOptions{})
 			if err == nil {
-				t.Fatalf("Found PVC %s for PipelineRun %s after it should have been cleaned up", GetPVCName(pipelinerun), pipelinerun.Name)
+				t.Fatalf("Found PVC %s for PipelineRun %s after it should have been cleaned up", artifacts.GetPVCName(pipelinerun), pipelinerun.Name)
 			} else if !errors.IsNotFound(err) {
-				t.Fatalf("Error checking if PVC %s for PipelineRun %s has been cleaned up: %s", GetPVCName(pipelinerun), pipelinerun.Name, err)
+				t.Fatalf("Error checking if PVC %s for PipelineRun %s has been cleaned up: %s", artifacts.GetPVCName(pipelinerun), pipelinerun.Name, err)
 			}
 		})
 	}

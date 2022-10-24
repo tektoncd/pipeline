@@ -39,9 +39,6 @@ import (
 )
 
 const (
-	// TektonHermeticEnvVar is the env var we set in containers to indicate they should be run hermetically
-	TektonHermeticEnvVar = "TEKTON_HERMETIC"
-
 	// ExecutionModeAnnotation is an experimental optional annotation to set the execution mode on a TaskRun
 	ExecutionModeAnnotation = "experimental.tekton.dev/execution-mode"
 
@@ -55,8 +52,6 @@ const (
 
 // These are effectively const, but Go doesn't have such an annotation.
 var (
-	ReleaseAnnotation = "pipeline.tekton.dev/release"
-
 	groupVersionKind = schema.GroupVersionKind{
 		Group:   v1beta1.SchemeGroupVersion.Group,
 		Version: v1beta1.SchemeGroupVersion.Version,
@@ -218,7 +213,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	if taskRun.Annotations[ExecutionModeAnnotation] == ExecutionModeHermetic && alphaAPIEnabled {
 		for i, s := range stepContainers {
 			// Add it at the end so it overrides
-			env := append(s.Env, corev1.EnvVar{Name: TektonHermeticEnvVar, Value: "1"}) //nolint
+			env := append(s.Env, corev1.EnvVar{Name: config.TektonHermeticEnvVar, Value: "1"}) //nolint
 			stepContainers[i].Env = env
 		}
 	}
@@ -294,7 +289,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	}
 
 	podAnnotations := kmeta.CopyMap(taskRun.Annotations)
-	podAnnotations[ReleaseAnnotation] = changeset.Get()
+	podAnnotations[config.ReleaseAnnotation] = changeset.Get()
 
 	if readyImmediately {
 		podAnnotations[readyAnnotation] = readyAnnotationValue

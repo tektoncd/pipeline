@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/container"
+	"github.com/tektoncd/pipeline/pkg/internal/container"
 	corev1 "k8s.io/api/core/v1"
 )
 

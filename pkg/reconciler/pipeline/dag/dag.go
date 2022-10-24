@@ -22,7 +22,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/tektoncd/pipeline/pkg/list"
+	"github.com/tektoncd/pipeline/pkg/internal/list"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
