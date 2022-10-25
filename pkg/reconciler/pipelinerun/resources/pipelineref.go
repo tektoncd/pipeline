@@ -81,7 +81,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			return resolvePipeline(ctx, resolver, name)
 		}, nil
 	default:
-		// Even if there is no task ref, we should try to return a local resolver.
+		// Even if there is no pipeline ref, we should try to return a local resolver.
 		local := &LocalPipelineRefResolver{
 			Namespace:    namespace,
 			Tektonclient: tekton,
