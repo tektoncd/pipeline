@@ -1262,7 +1262,7 @@ func combineTaskRunAndTaskSpecAnnotations(pr *v1beta1.PipelineRun, pipelineTask 
 // addMetadataByPrecedence() adds the elements in addedMetadata to metadata. If the same key is present in both maps, the value from metadata will be used.
 func addMetadataByPrecedence(metadata map[string]string, addedMetadata map[string]string) {
 	for key, value := range addedMetadata {
-		// add new annotations if the key not exists in current ones
+		// add new annotations/labels  if the key not exists in current ones
 		if _, ok := metadata[key]; !ok {
 			metadata[key] = value
 		}

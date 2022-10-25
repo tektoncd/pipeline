@@ -290,14 +290,14 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 		if pt.TaskRef.Name != "" {
 			// TaskRef name must be a valid k8s name
 			if errSlice := validation.IsQualifiedName(pt.TaskRef.Name); len(errSlice) != 0 {
-				errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
+				errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "taskRef.name"))
 			}
 		} else if pt.TaskRef.Resolver == "" {
 			errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
 		}
 		// fail if bundle is present when EnableTektonOCIBundles feature flag is off (as it won't be allowed nor used)
 		if !cfg.FeatureFlags.EnableTektonOCIBundles && pt.TaskRef.Bundle != "" {
-			errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
+			errs = errs.Also(apis.ErrDisallowedFields("taskRef.bundle"))
 		}
 	}
 	return errs
