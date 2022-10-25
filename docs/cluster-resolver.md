@@ -74,6 +74,60 @@ spec:
       value: namespace-containing-pipeline
 ```
 
+## `ResolutionRequest` Status
+`ResolutionRequest.Status.Source` field captures the source where the remote resource came from. It includes the 3 subfields: `url`, `digest` and `entrypoint`.
+- `url`: url is the unique full identifier for the resource in the cluster. It is in the format of `<resource uri>@<uid>`. Resource URI part is the namespace-scoped uri i.e. `/apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE/NAME`. See [K8s Resource URIs](https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-uris) for more details.
+- `digest`: hex-encoded sha256 checksum of the content in the in-cluster resource's spec field. The reason why it's the checksum of the spec content rather than the whole object is because the metadata of in-cluster resources might be modified i.e. annotations. Therefore, the checksum of the spec content should be sufficient for source verifiers to verify if things have been changed maliciously even though the metadata is modified with good intentions.
+- `entrypoint`: ***empty*** because the path information is already available in the url field.
+
+Example:
+- TaskRun Resolution
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: cluster-demo
+spec:
+  taskRef:
+    resolver: cluster
+    params:
+    - name: kind
+      value: task
+    - name: name
+      value: a-simple-task
+    - name: namespace
+      value: default
+```
+
+
+- `ResolutionRequest`
+```yaml
+apiVersion: resolution.tekton.dev/v1beta1
+kind: ResolutionRequest
+metadata:
+  labels:
+    resolution.tekton.dev/type: cluster
+  name: cluster-7a04be6baa3eeedd232542036b7f3b2d
+  namespace: default
+  ownerReferences: ...
+spec:
+  params:
+  - name: kind
+    value: task
+  - name: name
+    value: a-simple-task
+  - name: namespace
+    value: default
+status:
+  annotations: ...
+  conditions: ...
+  data: xxx
+  source:
+    digest:
+      sha256: 245b1aa918434cc8195b4d4d026f2e43df09199e2ed31d4dfd9c2cbea1c7ce54
+    uri: /apis/tekton.dev/v1beta1/namespaces/default/task/a-simple-task@3b82d8c4-f89e-47ea-a49d-3be0dca4c038
+```
 ---
 
 Except as otherwise noted, the content of this page is licensed under the

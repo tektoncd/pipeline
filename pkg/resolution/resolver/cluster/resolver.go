@@ -18,11 +18,14 @@ package cluster
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
 
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -101,6 +104,8 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 	}
 
 	var data []byte
+	var spec []byte
+	var uid string
 	groupVersion := pipelinev1beta1.SchemeGroupVersion.String()
 
 	switch params[KindParam] {
@@ -110,11 +115,18 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 			logger.Infof("failed to load task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
 		}
+		uid = string(task.UID)
 		task.Kind = "Task"
 		task.APIVersion = groupVersion
 		data, err = yaml.Marshal(task)
 		if err != nil {
 			logger.Infof("failed to marshal task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+			return nil, err
+		}
+
+		spec, err = yaml.Marshal(task.Spec)
+		if err != nil {
+			logger.Infof("failed to marshal the spec of the task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
 		}
 	case "pipeline":
@@ -123,11 +135,18 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 			logger.Infof("failed to load pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
 		}
+		uid = string(pipeline.UID)
 		pipeline.Kind = "Pipeline"
 		pipeline.APIVersion = groupVersion
 		data, err = yaml.Marshal(pipeline)
 		if err != nil {
 			logger.Infof("failed to marshal pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
+			return nil, err
+		}
+
+		spec, err = yaml.Marshal(pipeline.Spec)
+		if err != nil {
+			logger.Infof("failed to marshal the spec of the pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
 			return nil, err
 		}
 	default:
@@ -136,9 +155,11 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 	}
 
 	return &ResolvedClusterResource{
-		Content:   data,
-		Name:      params[NameParam],
-		Namespace: params[NamespaceParam],
+		Content:    data,
+		Spec:       spec,
+		Name:       params[NameParam],
+		Namespace:  params[NamespaceParam],
+		Identifier: fmt.Sprintf("/apis/%s/namespaces/%s/%s/%s@%s", groupVersion, params[NamespaceParam], params[KindParam], params[NameParam], uid),
 	}, nil
 }
 
@@ -161,9 +182,19 @@ func (r *Resolver) isDisabled(ctx context.Context) bool {
 // ResolvedClusterResource implements framework.ResolvedResource and returns
 // the resolved file []byte data and an annotation map for any metadata.
 type ResolvedClusterResource struct {
-	Content   []byte
-	Name      string
+	// Content is the actual resolved resource data.
+	Content []byte
+	// Spec is the data in the resolved task/pipeline CRD spec.
+	Spec []byte
+	// Name is the resolved resource name in the cluster
+	Name string
+	// Namespace is the namespace in the cluster under which the resolved resource was created.
 	Namespace string
+	// Identifier is the unique identifier for the resource in the cluster.
+	// It is in the format of <resource uri>@<uid>.
+	// Resource URI is the namespace-scoped uri i.e. /apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE/NAME.
+	// https://kubernetes.io/docs/reference/using-api/api-concepts/#resource-uris
+	Identifier string
 }
 
 var _ framework.ResolvedResource = &ResolvedClusterResource{}
@@ -184,7 +215,16 @@ func (r *ResolvedClusterResource) Annotations() map[string]string {
 // Source is the source reference of the remote data that records where the remote
 // file came from including the url, digest and the entrypoint.
 func (r ResolvedClusterResource) Source() *pipelinev1beta1.ConfigSource {
-	return nil
+	h := sha256.New()
+	h.Write(r.Spec)
+	sha256CheckSum := hex.EncodeToString(h.Sum(nil))
+
+	return &v1beta1.ConfigSource{
+		URI: r.Identifier,
+		Digest: map[string]string{
+			"sha256": sha256CheckSum,
+		},
+	}
 }
 
 func populateParamsWithDefaults(ctx context.Context, origParams []pipelinev1beta1.Param) (map[string]string, error) {
