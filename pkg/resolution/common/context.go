@@ -48,3 +48,29 @@ func RequestNamespace(ctx context.Context) string {
 	}
 	return ""
 }
+
+// requestNameContextKey is the key stored in a context alongside
+// the string name of a resolution request.
+var requestNameContextKey = contextKey{}
+
+// InjectRequestName returns a new context with a request-scoped
+// name. This value may only be set once per request; subsequent
+// calls with the same context or a derived context will be ignored.
+func InjectRequestName(ctx context.Context, name string) context.Context {
+	// Once set don't allow the value to be overwritten.
+	if val := ctx.Value(requestNameContextKey); val != nil {
+		return ctx
+	}
+	return context.WithValue(ctx, requestNameContextKey, name)
+}
+
+// RequestName returns the name of the resolution request
+// currently being processed or an empty string if none were registered.
+func RequestName(ctx context.Context) string {
+	if val := ctx.Value(requestNameContextKey); val != nil {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
+}

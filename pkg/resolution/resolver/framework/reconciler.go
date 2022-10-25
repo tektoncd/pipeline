@@ -94,6 +94,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	// the namespace that the request originates from and the
 	// configuration from the configmap this resolver is watching.
 	ctx = resolutioncommon.InjectRequestNamespace(ctx, namespace)
+	ctx = resolutioncommon.InjectRequestName(ctx, name)
 	if r.configStore != nil {
 		ctx = r.configStore.ToContext(ctx)
 	}
