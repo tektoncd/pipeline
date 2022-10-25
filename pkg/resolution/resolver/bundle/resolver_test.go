@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -245,12 +246,6 @@ func TestResolve(t *testing.T) {
 		t.Fatalf("couldn't marshal pipeline: %v", err)
 	}
 
-	validObjects := map[string][]runtime.Object{
-		"single-task":        {exampleTask},
-		"single-pipeline":    {examplePipeline},
-		"multiple-resources": {exampleTask, examplePipeline},
-	}
-
 	// too many objects in bundle resolver test
 	var tooManyObjs []runtime.Object
 	for i := 0; i <= MaximumBundleObjects; i++ {
@@ -267,14 +262,6 @@ func TestResolve(t *testing.T) {
 		tooManyObjs = append(tooManyObjs, &obj)
 	}
 
-	invalidObjects := map[string][]runtime.Object{
-		"too-many-objs":                   tooManyObjs,
-		"single-task-no-version":          {&pipelinev1beta1.Task{TypeMeta: metav1.TypeMeta{Kind: "task"}, ObjectMeta: metav1.ObjectMeta{Name: "foo"}}},
-		"single-task-no-kind":             {&pipelinev1beta1.Task{TypeMeta: metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"}, ObjectMeta: metav1.ObjectMeta{Name: "foo"}}},
-		"single-task-no-name":             {&pipelinev1beta1.Task{TypeMeta: metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "task"}}},
-		"single-task-kind-incorrect-form": {&pipelinev1beta1.Task{TypeMeta: metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "Task"}, ObjectMeta: metav1.ObjectMeta{Name: "foo"}}},
-	}
-
 	// Set up a fake registry to push an image to.
 	s := httptest.NewServer(registry.New())
 	defer s.Close()
@@ -282,52 +269,73 @@ func TestResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	validImageRefs := pushImagesToRegistry(t, u.Host, validObjects, test.DefaultObjectAnnotationMapper)
-	invalidImageRefs := pushImagesToRegistry(t, u.Host, invalidObjects, asIsMapper)
+	r := fmt.Sprintf("%s/%s", u.Host, "testbundleresolver")
+	testImages := map[string]*imageRef{
+		"single-task":                     pushToRegistry(t, r, "single-task", []runtime.Object{exampleTask}, test.DefaultObjectAnnotationMapper),
+		"single-pipeline":                 pushToRegistry(t, r, "single-pipeline", []runtime.Object{examplePipeline}, test.DefaultObjectAnnotationMapper),
+		"multiple-resources":              pushToRegistry(t, r, "multiple-resources", []runtime.Object{exampleTask, examplePipeline}, test.DefaultObjectAnnotationMapper),
+		"too-many-objs":                   pushToRegistry(t, r, "too-many-objs", tooManyObjs, asIsMapper),
+		"single-task-no-version":          pushToRegistry(t, r, "single-task-no-version", []runtime.Object{&pipelinev1beta1.Task{TypeMeta: metav1.TypeMeta{Kind: "task"}, ObjectMeta: metav1.ObjectMeta{Name: "foo"}}}, asIsMapper),
+		"single-task-no-kind":             pushToRegistry(t, r, "single-task-no-kind", []runtime.Object{&pipelinev1beta1.Task{TypeMeta: metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"}, ObjectMeta: metav1.ObjectMeta{Name: "foo"}}}, asIsMapper),
+		"single-task-no-name":             pushToRegistry(t, r, "single-task-no-name", []runtime.Object{&pipelinev1beta1.Task{TypeMeta: metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "task"}}}, asIsMapper),
+		"single-task-kind-incorrect-form": pushToRegistry(t, r, "single-task-kind-incorrect-form", []runtime.Object{&pipelinev1beta1.Task{TypeMeta: metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1", Kind: "Task"}, ObjectMeta: metav1.ObjectMeta{Name: "foo"}}}, asIsMapper),
+	}
 
 	testcases := []struct {
 		name               string
 		args               *params
+		imageName          string
 		expectedStatus     *v1beta1.ResolutionRequestStatus
 		expectedErrMessage string
 	}{
 		{
-			name: "single task",
+			name: "single task: digest is included in the bundle parameter",
 			args: &params{
-				bundle: validImageRefs["single-task"],
+				bundle: fmt.Sprintf("%s@%s:%s", testImages["single-task"].uri, testImages["single-task"].algo, testImages["single-task"].hex),
 				name:   "example-task",
 				kind:   "task",
 			},
+			imageName:      "single-task",
 			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
-			name: "single task using default kind value from configmap",
+			name: "single task: tag is included in the bundle parameter",
 			args: &params{
-				bundle: validImageRefs["single-task"],
+				bundle: testImages["single-task"].uri + ":latest",
+				name:   "example-task",
+				kind:   "task",
+			},
+			imageName:      "single-task",
+			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
+		}, {
+			name: "single task: using default kind value from configmap",
+			args: &params{
+				bundle: testImages["single-task"].uri + ":latest",
 				name:   "example-task",
 			},
+			imageName:      "single-task",
 			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
 			name: "single pipeline",
 			args: &params{
-				bundle: validImageRefs["single-pipeline"],
+				bundle: testImages["single-pipeline"].uri + ":latest",
 				name:   "example-pipeline",
 				kind:   "pipeline",
 			},
+			imageName:      "single-pipeline",
 			expectedStatus: internal.CreateResolutionRequestStatusWithData(pipelineAsYAML),
 		}, {
-			name: "multiple resources",
+			name: "multiple resources: an image has both task and pipeline resource",
 			args: &params{
-				bundle: validImageRefs["multiple-resources"],
+				bundle: testImages["multiple-resources"].uri + ":latest",
 				name:   "example-pipeline",
 				kind:   "pipeline",
 			},
+			imageName:      "multiple-resources",
 			expectedStatus: internal.CreateResolutionRequestStatusWithData(pipelineAsYAML),
-		},
-		{
+		}, {
 			name: "too many objects in an image",
 			args: &params{
-				bundle: invalidImageRefs["too-many-objs"],
+				bundle: testImages["too-many-objs"].uri + ":latest",
 				name:   "2-task",
 				kind:   "task",
 			},
@@ -336,7 +344,7 @@ func TestResolve(t *testing.T) {
 		}, {
 			name: "single task no version",
 			args: &params{
-				bundle: invalidImageRefs["single-task-no-version"],
+				bundle: testImages["single-task-no-version"].uri + ":latest",
 				name:   "foo",
 				kind:   "task",
 			},
@@ -345,7 +353,7 @@ func TestResolve(t *testing.T) {
 		}, {
 			name: "single task no kind",
 			args: &params{
-				bundle: invalidImageRefs["single-task-no-kind"],
+				bundle: testImages["single-task-no-kind"].uri + ":latest",
 				name:   "foo",
 				kind:   "task",
 			},
@@ -354,7 +362,7 @@ func TestResolve(t *testing.T) {
 		}, {
 			name: "single task no name",
 			args: &params{
-				bundle: invalidImageRefs["single-task-no-name"],
+				bundle: testImages["single-task-no-name"].uri + ":latest",
 				name:   "foo",
 				kind:   "task",
 			},
@@ -363,7 +371,7 @@ func TestResolve(t *testing.T) {
 		}, {
 			name: "single task kind incorrect form",
 			args: &params{
-				bundle: invalidImageRefs["single-task-kind-incorrect-form"],
+				bundle: testImages["single-task-kind-incorrect-form"].uri + ":latest",
 				name:   "foo",
 				kind:   "task",
 			},
@@ -421,6 +429,15 @@ func TestResolve(t *testing.T) {
 
 					expectedStatus.Annotations[ResolverAnnotationName] = tc.args.name
 					expectedStatus.Annotations[ResolverAnnotationAPIVersion] = "v1beta1"
+
+					expectedStatus.Source = &pipelinev1beta1.ConfigSource{
+						URI: testImages[tc.imageName].uri,
+						Digest: map[string]string{
+							testImages[tc.imageName].algo: testImages[tc.imageName].hex,
+						},
+						EntryPoint: tc.args.name,
+					}
+
 				} else {
 					expectedError = createError(tc.args.bundle, tc.expectedErrMessage)
 					expectedStatus.Status.Conditions[0].Message = expectedError.Error()
@@ -493,16 +510,33 @@ func resolverContext() context.Context {
 	return frtesting.ContextWithBundlesResolverEnabled(context.Background())
 }
 
-func pushImagesToRegistry(t *testing.T, host string, objects map[string][]runtime.Object, mapper test.ObjectAnnotationMapper) map[string]string {
-	refs := map[string]string{}
+type imageRef struct {
+	// uri is the image repositry identifier i.e. "gcr.io/tekton-releases/catalog/upstream/golang-build"
+	uri string
+	// algo is the algorithm portion of a particular image digest i.e. "sha256".
+	algo string
+	// hex is hex encoded portion of a particular image digest i.e. "23293df97dc11957ec36a88c80101bb554039a76e8992a435112eea8283b30d4".
+	hex string
+}
 
-	for name, objs := range objects {
-		ref, err := test.CreateImageWithAnnotations(fmt.Sprintf("%s/testbundleresolver/%s", host, name), mapper, objs...)
-		if err != nil {
-			t.Fatalf("couldn't push the image: %v", err)
-		}
-		refs[name] = ref
+// pushToRegistry pushes an image to the registry and returns an imageRef.
+// It accepts a registry address, image name, the data and an ObjectAnnotationMapper
+// to map an object to the annotations for it.
+// NOTE: Every image pushed to the registry has a default tag named "latest".
+func pushToRegistry(t *testing.T, registry, imageName string, data []runtime.Object, mapper test.ObjectAnnotationMapper) *imageRef {
+	ref, err := test.CreateImageWithAnnotations(fmt.Sprintf("%s/%s:latest", registry, imageName), mapper, data...)
+	if err != nil {
+		t.Fatalf("couldn't push the image: %v", err)
 	}
 
-	return refs
+	refSplit := strings.Split(ref, "@")
+	uri, digest := refSplit[0], refSplit[1]
+	digSplits := strings.Split(digest, ":")
+	algo, hex := digSplits[0], digSplits[1]
+
+	return &imageRef{
+		uri:  uri,
+		algo: algo,
+		hex:  hex,
+	}
 }

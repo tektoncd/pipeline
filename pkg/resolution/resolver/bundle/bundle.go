@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 )
@@ -72,9 +73,14 @@ func (br *ResolvedResource) Source() *pipelinev1beta1.ConfigSource {
 // GetEntry accepts a keychain and options for the request and returns
 // either a successfully resolved bundle entry or an error.
 func GetEntry(ctx context.Context, keychain authn.Keychain, opts RequestOptions) (*ResolvedResource, error) {
-	img, err := retrieveImage(ctx, keychain, opts.Bundle)
+	uri, img, err := retrieveImage(ctx, keychain, opts.Bundle)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot retrieve the oci image: %w", err)
+	}
+
+	h, err := img.Digest()
+	if err != nil {
+		return nil, fmt.Errorf("cannot get the oci digest: %w", err)
 	}
 
 	manifest, err := img.Manifest()
@@ -117,19 +123,28 @@ func GetEntry(ctx context.Context, keychain authn.Keychain, opts RequestOptions)
 					ResolverAnnotationName:       lName,
 					ResolverAnnotationAPIVersion: l.Annotations[BundleAnnotationAPIVersion],
 				},
+				source: &v1beta1.ConfigSource{
+					URI: uri,
+					Digest: map[string]string{
+						h.Algorithm: h.Hex,
+					},
+					EntryPoint: opts.EntryName,
+				},
 			}, nil
 		}
 	}
 	return nil, fmt.Errorf("could not find object in image with kind: %s and name: %s", opts.Kind, opts.EntryName)
 }
 
-// retrieveImage will fetch the image's contents and manifest.
-func retrieveImage(ctx context.Context, keychain authn.Keychain, ref string) (v1.Image, error) {
+// retrieveImage will fetch the image's url, contents and manifest.
+func retrieveImage(ctx context.Context, keychain authn.Keychain, ref string) (string, v1.Image, error) {
 	imgRef, err := name.ParseReference(ref)
 	if err != nil {
-		return nil, fmt.Errorf("%s is an unparseable image reference: %w", ref, err)
+		return "", nil, fmt.Errorf("%s is an unparseable image reference: %w", ref, err)
 	}
-	return remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx))
+
+	img, err := remote.Image(imgRef, remote.WithAuthFromKeychain(keychain), remote.WithContext(ctx))
+	return imgRef.Context().Name(), img, err
 }
 
 // checkImageCompliance will perform common checks to ensure the Tekton Bundle is compliant to our spec.
