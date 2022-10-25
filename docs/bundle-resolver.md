@@ -81,6 +81,73 @@ spec:
     value: "tekton pipelines"
 ```
 
+## `ResolutionRequest` Status
+`ResolutionRequest.Status.Source` field captures the source where the remote resource came from. It includes the 3 subfields: `url`, `digest` and `entrypoint`.
+- `uri`: The image repository URI
+- `digest`: The map of the algorithm portion -> the hex encoded portion of the image digest.
+- `entrypoint`: The resource name in the OCI bundle image.
+
+Example:
+- TaskRun Resolution
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: remote-task-reference
+spec:
+  taskRef:
+    resolver: bundles
+    params:
+    - name: bundle
+      value: gcr.io/tekton-releases/catalog/upstream/git-clone:0.7
+    - name: name
+      value: git-clone
+    - name: kind
+      value: task
+  params:
+    - name: url
+      value: https://github.com/octocat/Hello-World
+  workspaces:
+    - name: output
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 500Mi
+```
+
+- `ResolutionRequest`
+```yaml
+apiVersion: resolution.tekton.dev/v1beta1
+kind: ResolutionRequest
+metadata:
+  ...
+  labels:
+    resolution.tekton.dev/type: bundles
+  name: bundles-21ad80ec13f3e8b73fed5880a64d4611
+  ...
+spec:
+  params:
+  - name: bundle
+    value: gcr.io/tekton-releases/catalog/upstream/git-clone:0.7
+  - name: name
+    value: git-clone
+  - name: kind
+    value: task
+status:
+  annotations: ...
+  ...
+  data: xxx
+  observedGeneration: 1
+  source:
+    digest:
+      sha256: f51ca50f1c065acba8290ef14adec8461915ecc5f70a8eb26190c6e8e0ededaf
+    entryPoint: git-clone
+    uri: gcr.io/tekton-releases/catalog/upstream/git-clone
+```
+
 ---
 
 Except as otherwise noted, the content of this page is licensed under the
