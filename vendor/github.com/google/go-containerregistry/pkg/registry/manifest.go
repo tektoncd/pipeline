@@ -237,12 +237,6 @@ func (m *manifests) handleTags(resp http.ResponseWriter, req *http.Request) *reg
 	elem := strings.Split(req.URL.Path, "/")
 	elem = elem[1:]
 	repo := strings.Join(elem[1:len(elem)-2], "/")
-	query := req.URL.Query()
-	nStr := query.Get("n")
-	n := 1000
-	if nStr != "" {
-		n, _ = strconv.Atoi(nStr)
-	}
 
 	if req.Method == "GET" {
 		m.lock.Lock()
@@ -258,18 +252,36 @@ func (m *manifests) handleTags(resp http.ResponseWriter, req *http.Request) *reg
 		}
 
 		var tags []string
-		countTags := 0
-		// TODO: implement pagination https://github.com/opencontainers/distribution-spec/blob/b505e9cc53ec499edbd9c1be32298388921bb705/detail.md#tags-paginated
 		for tag := range c {
-			if countTags >= n {
-				break
-			}
-			countTags++
 			if !strings.Contains(tag, "sha256:") {
 				tags = append(tags, tag)
 			}
 		}
 		sort.Strings(tags)
+
+		// https://github.com/opencontainers/distribution-spec/blob/b505e9cc53ec499edbd9c1be32298388921bb705/detail.md#tags-paginated
+		// Offset using last query parameter.
+		if last := req.URL.Query().Get("last"); last != "" {
+			for i, t := range tags {
+				if t > last {
+					tags = tags[i:]
+					break
+				}
+			}
+		}
+
+		// Limit using n query parameter.
+		if ns := req.URL.Query().Get("n"); ns != "" {
+			if n, err := strconv.Atoi(ns); err != nil {
+				return &regError{
+					Status:  http.StatusBadRequest,
+					Code:    "BAD_REQUEST",
+					Message: fmt.Sprintf("parsing n: %v", err),
+				}
+			} else if n < len(tags) {
+				tags = tags[:n]
+			}
+		}
 
 		tagsToList := listTags{
 			Name: repo,
