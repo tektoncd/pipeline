@@ -255,8 +255,14 @@ func (s *pullService) Update(_ context.Context, fullName string, number int, inp
 	return answer, nil, nil
 }
 
-func (s *pullService) Close(context.Context, string, int) (*scm.Response, error) {
-	panic("implement me")
+func (s *pullService) Close(_ context.Context, fullName string, number int) (*scm.Response, error) {
+	pr, ok := s.data.PullRequests[number]
+	if !ok || pr == nil {
+		return nil, fmt.Errorf("pull request %d not found", number)
+	}
+	pr.State = "closed"
+	pr.Closed = true
+	return nil, nil
 }
 
 func (s *pullService) Reopen(context.Context, string, int) (*scm.Response, error) {
