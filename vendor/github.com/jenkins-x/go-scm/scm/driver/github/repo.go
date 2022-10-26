@@ -458,19 +458,9 @@ func convertCombinedStatus(from *combinedStatus) *scm.CombinedStatus {
 }
 
 func convertStatusList(from []*status) []*scm.Status {
-	// The GitHub API may return multiple statuses with the same Context, in
-	// reverse chronological order:
-	// https://developer.github.com/v3/repos/statuses/#list-statuses-for-a-specific-ref.
-	// We only expose the most recent one to consumers.
 	to := []*scm.Status{}
-	unique := make(map[string]interface{})
 	for _, v := range from {
-		convertedStatus := convertStatus(v)
-		if _, ok := unique[convertedStatus.Label]; ok {
-			continue
-		}
-		to = append(to, convertedStatus)
-		unique[convertedStatus.Label] = nil
+		to = append(to, convertStatus(v))
 	}
 	return to
 }
