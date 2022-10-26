@@ -10,7 +10,7 @@ contrib.go.opencensus.io/exporter/ocagent
 # contrib.go.opencensus.io/exporter/prometheus v0.4.0
 ## explicit; go 1.13
 contrib.go.opencensus.io/exporter/prometheus
-# github.com/Azure/azure-sdk-for-go v66.0.0+incompatible
+# github.com/Azure/azure-sdk-for-go v67.0.0+incompatible
 ## explicit
 github.com/Azure/azure-sdk-for-go/services/preview/containerregistry/runtime/2019-08-15-preview/containerregistry
 github.com/Azure/azure-sdk-for-go/version
@@ -584,7 +584,7 @@ github.com/shurcooL/githubv4
 github.com/shurcooL/graphql
 github.com/shurcooL/graphql/ident
 github.com/shurcooL/graphql/internal/jsonutil
-# github.com/sigstore/sigstore v1.4.4
+# github.com/sigstore/sigstore v1.4.5
 ## explicit; go 1.18
 github.com/sigstore/sigstore/pkg/cryptoutils
 github.com/sigstore/sigstore/pkg/signature
@@ -790,8 +790,8 @@ golang.org/x/tools/internal/typesinternal
 # gomodules.xyz/jsonpatch/v2 v2.2.0
 ## explicit; go 1.12
 gomodules.xyz/jsonpatch/v2
-# google.golang.org/api v0.98.0
-## explicit; go 1.15
+# google.golang.org/api v0.100.0
+## explicit; go 1.19
 google.golang.org/api/support/bundler
 # google.golang.org/appengine v1.6.7
 ## explicit; go 1.11
@@ -805,7 +805,7 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20220929141241-1ce7b20da813
+# google.golang.org/genproto v0.0.0-20221014213838-99cd37c6964a
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/api/httpbody
 google.golang.org/genproto/googleapis/rpc/status

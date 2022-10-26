@@ -19,7 +19,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/opencontainers/image-spec v1.1.0-rc2
 	github.com/pkg/errors v0.9.1
-	github.com/sigstore/sigstore v1.4.4
+	github.com/sigstore/sigstore v1.4.5
 	github.com/spiffe/go-spiffe/v2 v2.1.1
 	github.com/spiffe/spire-api-sdk v1.4.4
 	github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
@@ -77,7 +77,7 @@ require (
 	cloud.google.com/go/compute v1.10.0 // indirect
 	contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0 // indirect
-	github.com/Azure/azure-sdk-for-go v66.0.0+incompatible // indirect
+	github.com/Azure/azure-sdk-for-go v67.0.0+incompatible // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest v0.11.28 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.21 // indirect
@@ -171,9 +171,9 @@ require (
 	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
 	golang.org/x/tools v0.1.12 // indirect
-	google.golang.org/api v0.98.0 // indirect
+	google.golang.org/api v0.100.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220929141241-1ce7b20da813 // indirect
+	google.golang.org/genproto v0.0.0-20221014213838-99cd37c6964a // indirect
 	google.golang.org/grpc v1.50.1
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/inf.v0 v0.9.1 // indirect
