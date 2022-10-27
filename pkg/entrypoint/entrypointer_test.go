@@ -134,7 +134,10 @@ func TestEntrypointer(t *testing.T) {
 	for _, c := range []struct {
 		desc, entrypoint, postFile, stepDir, stepDirLink string
 		waitFiles, args                                  []string
+		waitDebugFiles                                   []string
 		breakpointOnFailure                              bool
+		debugBeforeStep                                  bool
+		debugAfterStep                                   bool
 	}{{
 		desc: "do nothing",
 	}, {
@@ -165,6 +168,23 @@ func TestEntrypointer(t *testing.T) {
 	}, {
 		desc:                "breakpointOnFailure to wait or not to wait ",
 		breakpointOnFailure: true,
+	}, {
+		desc:            "breakpointBeforeStep to wait or not to wait",
+		debugBeforeStep: true,
+		waitFiles:       []string{"waitforme"},
+		waitDebugFiles:  []string{".beforestepexit"},
+	}, {
+		desc:           "breakpointAfterStep to wait or not to wait",
+		debugAfterStep: true,
+		waitFiles:      []string{"waitforme"},
+		waitDebugFiles: []string{".afterstepexit"},
+	}, {
+		desc:                "all breakpoints to wait or not to wait",
+		breakpointOnFailure: true,
+		debugBeforeStep:     true,
+		debugAfterStep:      true,
+		waitFiles:           []string{"waitforme", ".beforestepexit", ".afterstepexit"},
+		waitDebugFiles:      []string{".beforestepexit", ".afterstepexit"},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
@@ -186,6 +206,8 @@ func TestEntrypointer(t *testing.T) {
 				TerminationPath:     terminationPath,
 				Timeout:             &timeout,
 				BreakpointOnFailure: c.breakpointOnFailure,
+				DebugBeforeStep:     c.debugBeforeStep,
+				DebugAfterStep:      c.debugAfterStep,
 				StepMetadataDir:     c.stepDir,
 			}.Go()
 			if err != nil {
@@ -195,7 +217,7 @@ func TestEntrypointer(t *testing.T) {
 			if len(c.waitFiles) > 0 {
 				if fw.waited == nil {
 					t.Error("Wanted waited file, got nil")
-				} else if !reflect.DeepEqual(fw.waited, c.waitFiles) {
+				} else if !reflect.DeepEqual(fw.waited, append(c.waitFiles, c.waitDebugFiles...)) {
 					t.Errorf("Waited for %v, want %v", fw.waited, c.waitFiles)
 				}
 			}
@@ -358,11 +380,54 @@ func TestEntrypointer_ReadBreakpointExitCodeFromDisk(t *testing.T) {
 	}
 }
 
+func TestCheckForBreakpointOnFailure(t *testing.T) {
+	testCases := []struct {
+		name                string
+		breakpointOnFailure bool
+	}{
+		{
+			name:                "set breakpoint on failure and exit with code 0",
+			breakpointOnFailure: true,
+		},
+		{
+			name:                "unset breakpoint on failure",
+			breakpointOnFailure: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp, err := os.CreateTemp("", "1*.breakpoint")
+			if err != nil {
+				t.Fatalf("error while creating temp file for testing exit code written by breakpoint")
+			}
+			breakpointFile, err := os.Create(tmp.Name() + breakpointExitSuffix)
+			if err != nil {
+				t.Fatalf("failed to create breakpoint waiting file, err: %v", err)
+			}
+			// write exit code to file
+			if err = os.WriteFile(breakpointFile.Name(), []byte(fmt.Sprintf("%d", 0)), 0700); err != nil {
+				t.Fatalf("failed writing to temp file create temp file for testing exit code written by breakpoint, err: %v", err)
+			}
+			e := Entrypointer{
+				BreakpointOnFailure: tc.breakpointOnFailure,
+				PostFile:            tmp.Name(),
+				Waiter:              &fakeWaiter{},
+			}
+			defer func() {
+				recover()
+			}()
+			e.CheckForBreakpointOnFailure()
+		})
+	}
+}
+
 func TestEntrypointer_OnError(t *testing.T) {
 	for _, c := range []struct {
 		desc, postFile, onError string
 		runner                  Runner
 		expectedError           bool
+		debugBeforeStep         bool
+		debugAfterStep          bool
 	}{{
 		desc:          "the step is exiting with 1, ignore the step error when onError is set to continue",
 		runner:        &fakeExitErrorRunner{},
@@ -387,6 +452,20 @@ func TestEntrypointer_OnError(t *testing.T) {
 		postFile:      "step-one",
 		onError:       FailOnError,
 		expectedError: false,
+	}, {
+		desc:            "the step set debug before step, and before step breakpoint fail-continue",
+		runner:          &fakeRunner{},
+		postFile:        "step-one",
+		onError:         errorDebugBeforeStep.Error(),
+		debugBeforeStep: true,
+		expectedError:   true,
+	}, {
+		desc:           "the step set debug after step, and after step breakpoint fail-continue",
+		runner:         &fakeRunner{},
+		postFile:       "step-one",
+		onError:        errorDebugAfterStep.Error(),
+		debugAfterStep: true,
+		expectedError:  true,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			fpw := &fakePostWriter{}
@@ -397,7 +476,7 @@ func TestEntrypointer_OnError(t *testing.T) {
 				terminationPath = terminationFile.Name()
 				defer os.Remove(terminationFile.Name())
 			}
-			err := Entrypointer{
+			entry := Entrypointer{
 				Command:         []string{"echo", "some", "args"},
 				WaitFiles:       []string{},
 				PostFile:        c.postFile,
@@ -406,7 +485,13 @@ func TestEntrypointer_OnError(t *testing.T) {
 				PostWriter:      fpw,
 				TerminationPath: terminationPath,
 				OnError:         c.onError,
-			}.Go()
+				DebugBeforeStep: c.debugBeforeStep,
+				DebugAfterStep:  c.debugAfterStep,
+			}
+			if c.expectedError && (c.debugBeforeStep || c.debugAfterStep) {
+				entry.Waiter = &fakeErrorWaiter{}
+			}
+			err := entry.Go()
 
 			if c.expectedError && err == nil {
 				t.Fatalf("Entrypointer didn't fail")
@@ -433,6 +518,12 @@ func TestEntrypointer_OnError(t *testing.T) {
 					t.Error("Wanted post file written, got nil")
 				case c.expectedError && *fpw.wrote != c.postFile+".err":
 					t.Errorf("Wrote post file %q, want %q", *fpw.wrote, c.postFile+".err")
+				}
+			}
+
+			if c.expectedError && (c.debugBeforeStep || c.debugAfterStep) {
+				if err.Error() != c.onError {
+					t.Errorf("breakpoint fail-continue, want err: %s but got: %s", c.onError, err.Error())
 				}
 			}
 		})

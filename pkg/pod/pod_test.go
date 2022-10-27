@@ -143,7 +143,9 @@ func TestPodBuild(t *testing.T) {
 		desc: "simple with breakpoint onFailure enabled, alpha api fields disabled",
 		trs: v1beta1.TaskRunSpec{
 			Debug: &v1beta1.TaskRunDebug{
-				Breakpoint: []string{breakpointOnFailure},
+				Breakpoints: &v1beta1.TaskBreakpoints{
+					OnFailure: &[]bool{true}[0],
+				},
 			},
 		},
 		ts: v1beta1.TaskSpec{
@@ -2069,8 +2071,8 @@ func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'debug-continue-heredoc-randomly-generated-9l9zj'
 #!/bin/sh
+# This script file is used to exit onFailure breakpoint and continue subsequent steps.
 set -e
-
 numberOfSteps=1
 debugInfo=/tekton/debug/info
 tektonRun=/tekton/run
@@ -2091,8 +2093,8 @@ tmpfile="/tekton/debug/scripts/debug-fail-continue"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'debug-fail-continue-heredoc-randomly-generated-mz4c7'
 #!/bin/sh
+# This script file is used to exit onFailure breakpoint and fail-continue subsequent steps.
 set -e
-
 numberOfSteps=1
 debugInfo=/tekton/debug/info
 tektonRun=/tekton/run
@@ -2133,7 +2135,9 @@ debug-fail-continue-heredoc-randomly-generated-mz4c7
 		desc: "simple with debug breakpoint onFailure",
 		trs: v1beta1.TaskRunSpec{
 			Debug: &v1beta1.TaskRunDebug{
-				Breakpoint: []string{breakpointOnFailure},
+				Breakpoints: &v1beta1.TaskBreakpoints{
+					OnFailure: &[]bool{true}[0],
+				},
 			},
 		},
 		ts: v1beta1.TaskSpec{

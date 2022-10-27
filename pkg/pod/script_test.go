@@ -194,9 +194,7 @@ _EOF_
 	}
 }
 
-func TestConvertScripts_WithBreakpoint_OnFailure(t *testing.T) {
-	names.TestingSeed()
-
+func TestConvertScripts_WithBreakpoints(t *testing.T) {
 	preExistingVolumeMounts := []corev1.VolumeMount{{
 		Name:      "pre-existing-volume-mount",
 		MountPath: "/mount/path",
@@ -205,34 +203,45 @@ func TestConvertScripts_WithBreakpoint_OnFailure(t *testing.T) {
 		MountPath: "/another/one",
 	}}
 
-	gotInit, gotSteps, gotSidecars := convertScripts(images.ShellImage, images.ShellImageWin, []v1beta1.Step{{
-		Script: `#!/bin/sh
+	testCases := []struct {
+		name         string
+		steps        []v1beta1.Step
+		wantInit     *corev1.Container
+		wantSteps    []corev1.Container
+		taskRunDebug *v1beta1.TaskRunDebug
+	}{
+		{
+			name: "set breakpoint only on failure",
+			steps: []v1beta1.Step{{
+				Script: `#!/bin/sh
 script-1`,
-		Image: "step-1",
-	}, {
-		// No script to convert here.
-		Image: "step-2",
-	}, {
-		Script: `
+				Image: "step-1",
+			}, {
+				// No script to convert here.
+				Image: "step-2",
+			}, {
+				Script: `
 #!/bin/sh
 script-3`,
-		Image:        "step-3",
-		VolumeMounts: preExistingVolumeMounts,
-		Args:         []string{"my", "args"},
-	}, {
-		Script:       `no-shebang`,
-		Image:        "step-3",
-		VolumeMounts: preExistingVolumeMounts,
-		Args:         []string{"my", "args"},
-	}}, []v1beta1.Sidecar{}, &v1beta1.TaskRunDebug{
-		Breakpoint: []string{breakpointOnFailure},
-	})
-
-	wantInit := &corev1.Container{
-		Name:    "place-scripts",
-		Image:   images.ShellImage,
-		Command: []string{"sh"},
-		Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
+				Image:        "step-3",
+				VolumeMounts: preExistingVolumeMounts,
+				Args:         []string{"my", "args"},
+			}, {
+				Script:       `no-shebang`,
+				Image:        "step-3",
+				VolumeMounts: preExistingVolumeMounts,
+				Args:         []string{"my", "args"},
+			}},
+			taskRunDebug: &v1beta1.TaskRunDebug{
+				Breakpoints: &v1beta1.TaskBreakpoints{
+					OnFailure: &[]bool{true}[0],
+				},
+			},
+			wantInit: &corev1.Container{
+				Name:    "place-scripts",
+				Image:   images.ShellImage,
+				Command: []string{"sh"},
+				Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '_EOF_'
 IyEvYmluL3NoCnNjcmlwdC0x
@@ -254,8 +263,8 @@ tmpfile="/tekton/debug/scripts/debug-continue"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'debug-continue-heredoc-randomly-generated-78c5n'
 #!/bin/sh
+# This script file is used to exit onFailure breakpoint and continue subsequent steps.
 set -e
-
 numberOfSteps=4
 debugInfo=/tekton/debug/info
 tektonRun=/tekton/run
@@ -276,8 +285,8 @@ tmpfile="/tekton/debug/scripts/debug-fail-continue"
 touch ${tmpfile} && chmod +x ${tmpfile}
 cat > ${tmpfile} << 'debug-fail-continue-heredoc-randomly-generated-6nl7g'
 #!/bin/sh
+# This script file is used to exit onFailure breakpoint and fail-continue subsequent steps.
 set -e
-
 numberOfSteps=4
 debugInfo=/tekton/debug/info
 tektonRun=/tekton/run
@@ -295,49 +304,215 @@ else
 fi
 debug-fail-continue-heredoc-randomly-generated-6nl7g
 `},
-		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
-	}
-
-	want := []corev1.Container{{
-		Image:   "step-1",
-		Command: []string{"/tekton/scripts/script-0-9l9zj"},
-		VolumeMounts: []corev1.VolumeMount{debugScriptsVolumeMount,
-			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/0"}, scriptsVolumeMount},
-	}, {
-		Image: "step-2",
-		VolumeMounts: []corev1.VolumeMount{
-			debugScriptsVolumeMount, {Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/1"},
+				VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
+			},
+			wantSteps: []corev1.Container{{
+				Image:   "step-1",
+				Command: []string{"/tekton/scripts/script-0-9l9zj"},
+				VolumeMounts: []corev1.VolumeMount{debugScriptsVolumeMount,
+					{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/0"}, scriptsVolumeMount},
+			}, {
+				Image: "step-2",
+				VolumeMounts: []corev1.VolumeMount{
+					debugScriptsVolumeMount, {Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/1"},
+				},
+			}, {
+				Image:   "step-3",
+				Command: []string{"/tekton/scripts/script-2-mz4c7"},
+				Args:    []string{"my", "args"},
+				VolumeMounts: append(preExistingVolumeMounts, debugScriptsVolumeMount,
+					corev1.VolumeMount{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/2"},
+					scriptsVolumeMount),
+			}, {
+				Image:   "step-3",
+				Command: []string{"/tekton/scripts/script-3-mssqb"},
+				Args:    []string{"my", "args"},
+				VolumeMounts: []corev1.VolumeMount{
+					{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
+					{Name: "another-one", MountPath: "/another/one"},
+					debugScriptsVolumeMount,
+					{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/3"},
+					scriptsVolumeMount,
+				},
+			}},
 		},
-	}, {
-		Image:   "step-3",
-		Command: []string{"/tekton/scripts/script-2-mz4c7"},
-		Args:    []string{"my", "args"},
-		VolumeMounts: append(preExistingVolumeMounts, debugScriptsVolumeMount,
-			corev1.VolumeMount{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/2"},
-			scriptsVolumeMount),
-	}, {
-		Image:   "step-3",
-		Command: []string{"/tekton/scripts/script-3-mssqb"},
-		Args:    []string{"my", "args"},
-		VolumeMounts: []corev1.VolumeMount{
-			{Name: "pre-existing-volume-mount", MountPath: "/mount/path"},
-			{Name: "another-one", MountPath: "/another/one"},
-			debugScriptsVolumeMount,
-			{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/3"},
-			scriptsVolumeMount,
+		{
+			name: "set all breakpoints with onfailure debugBeforeStep debugAfterStep",
+			steps: []v1beta1.Step{{
+				Name: "step-1",
+				Script: `#!/bin/sh
+script-1`,
+				Image: "step-1",
+			}},
+			taskRunDebug: &v1beta1.TaskRunDebug{
+				Breakpoints: &v1beta1.TaskBreakpoints{
+					OnFailure:   &[]bool{true}[0],
+					BeforeSteps: []string{"step-1"},
+					AfterSteps:  []string{"step-1"},
+				},
+			},
+			wantInit: &corev1.Container{
+				Name:    "place-scripts",
+				Image:   images.ShellImage,
+				Command: []string{"sh"},
+				Args: []string{"-c", `scriptfile="/tekton/scripts/script-0-9l9zj"
+touch ${scriptfile} && chmod +x ${scriptfile}
+cat > ${scriptfile} << '_EOF_'
+IyEvYmluL3NoCnNjcmlwdC0x
+_EOF_
+/tekton/bin/entrypoint decode-script "${scriptfile}"
+tmpfile="/tekton/debug/scripts/debug-continue"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'debug-continue-heredoc-randomly-generated-mz4c7'
+#!/bin/sh
+# This script file is used to exit onFailure breakpoint and continue subsequent steps.
+set -e
+numberOfSteps=1
+debugInfo=/tekton/debug/info
+tektonRun=/tekton/run
+
+postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
+stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
+
+if [ $stepNumber -lt $numberOfSteps ]; then
+	touch ${tektonRun}/${stepNumber}/out # Mark step as success
+	echo "0" > ${tektonRun}/${stepNumber}/out.breakpointexit
+	echo "Executing step $stepNumber..."
+else
+	echo "Last step (no. $stepNumber) has already been executed, breakpoint exiting !"
+	exit 0
+fi
+debug-continue-heredoc-randomly-generated-mz4c7
+tmpfile="/tekton/debug/scripts/debug-fail-continue"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'debug-fail-continue-heredoc-randomly-generated-mssqb'
+#!/bin/sh
+# This script file is used to exit onFailure breakpoint and fail-continue subsequent steps.
+set -e
+numberOfSteps=1
+debugInfo=/tekton/debug/info
+tektonRun=/tekton/run
+
+postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
+stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
+
+if [ $stepNumber -lt $numberOfSteps ]; then
+	touch ${tektonRun}/${stepNumber}/out.err # Mark step as a failure
+	echo "1" > ${tektonRun}/${stepNumber}/out.breakpointexit
+	echo "Executing step $stepNumber..."
+else
+	echo "Last step (no. $stepNumber) has already been executed, breakpoint exiting !"
+	exit 0
+fi
+debug-fail-continue-heredoc-randomly-generated-mssqb
+tmpfile="/tekton/debug/scripts/debug-beforestep-continue"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'debug-beforestep-continue-heredoc-randomly-generated-78c5n'
+#!/bin/sh
+# This script file is used to exit before step breakpoint and process current step
+set -e
+numberOfSteps=1
+debugInfo=/tekton/debug/info
+tektonRun=/tekton/run
+
+postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
+stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
+
+if [ $stepNumber -lt $numberOfSteps ]; then
+	echo "0" > ${tektonRun}/${stepNumber}/out.beforestepexit
+	echo "Executing step $stepNumber..."
+else
+	echo "Last step (no. $stepNumber) has already been executed, before step breakpoint exiting !"
+	exit 0
+fi
+debug-beforestep-continue-heredoc-randomly-generated-78c5n
+tmpfile="/tekton/debug/scripts/debug-beforestep-fail-continue"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'debug-beforestep-fail-continue-heredoc-randomly-generated-6nl7g'
+#!/bin/sh
+# This script file is used to exit before step breakpoint and fail-continue current step
+set -e
+numberOfSteps=1
+debugInfo=/tekton/debug/info
+tektonRun=/tekton/run
+
+postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
+stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
+
+if [ $stepNumber -lt $numberOfSteps ]; then
+	echo "1" > ${tektonRun}/${stepNumber}/out.beforestepexit.err
+	echo "Executing step $stepNumber..."
+else
+	echo "Last step (no. $stepNumber) has already been executed, before step breakpoint exiting !"
+	exit 0
+fi
+debug-beforestep-fail-continue-heredoc-randomly-generated-6nl7g
+tmpfile="/tekton/debug/scripts/debug-afterstep-continue"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'debug-afterstep-continue-heredoc-randomly-generated-j2tds'
+#!/bin/sh
+# This script file is used to exit after step breakpoint and continue subsequent steps.
+set -e
+numberOfSteps=1
+debugInfo=/tekton/debug/info
+tektonRun=/tekton/run
+
+postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
+stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
+
+if [ $stepNumber -lt $numberOfSteps ]; then
+	echo "0" > ${tektonRun}/${stepNumber}/out.afterstepexit
+	echo "Executing step $stepNumber..."
+else
+	echo "Last step (no. $stepNumber) has already been executed, after step breakpoint exiting !"
+	exit 0
+fi
+debug-afterstep-continue-heredoc-randomly-generated-j2tds
+tmpfile="/tekton/debug/scripts/debug-afterstep-fail-continue"
+touch ${tmpfile} && chmod +x ${tmpfile}
+cat > ${tmpfile} << 'debug-afterstep-fail-continue-heredoc-randomly-generated-vr6ds'
+#!/bin/sh
+# This script file is used to exit after step breakpoint and don't execute subsequent steps.
+set -e
+numberOfSteps=1
+debugInfo=/tekton/debug/info
+tektonRun=/tekton/run
+
+postFile="$(ls ${debugInfo} | grep -E '[0-9]+' | tail -1)"
+stepNumber="$(echo ${postFile} | sed 's/[^0-9]*//g')"
+
+if [ $stepNumber -lt $numberOfSteps ]; then
+	echo "1" > ${tektonRun}/${stepNumber}/out.afterstepexit.err
+	echo "Executing step $stepNumber..."
+else
+	echo "Last step (no. $stepNumber) has already been executed, after step breakpoint exiting !"
+	exit 0
+fi
+debug-afterstep-fail-continue-heredoc-randomly-generated-vr6ds
+`},
+				VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount, debugScriptsVolumeMount},
+			},
+			wantSteps: []corev1.Container{{
+				Name:    "step-1",
+				Image:   "step-1",
+				Command: []string{"/tekton/scripts/script-0-9l9zj"},
+				VolumeMounts: []corev1.VolumeMount{debugScriptsVolumeMount,
+					{Name: debugInfoVolumeName, MountPath: "/tekton/debug/info/0"}, scriptsVolumeMount},
+			}},
 		},
-	}}
-
-	if d := cmp.Diff(wantInit, gotInit); d != "" {
-		t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
 	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			names.TestingSeed()
+			gotInit, gotSteps, _ := convertScripts(images.ShellImage, images.ShellImageWin, tc.steps, []v1beta1.Sidecar{}, tc.taskRunDebug)
+			if d := cmp.Diff(tc.wantInit, gotInit); d != "" {
+				t.Errorf("Init Container Diff %s", diff.PrintWantGot(d))
+			}
 
-	if d := cmp.Diff(want, gotSteps); d != "" {
-		t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
-	}
-
-	if len(gotSidecars) != 0 {
-		t.Errorf("Expected zero sidecars, got %v", len(gotSidecars))
+			if d := cmp.Diff(tc.wantSteps, gotSteps); d != "" {
+				t.Errorf("Containers Diff %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 

@@ -43,6 +43,31 @@ const (
 	FailOnError     = "stopAndFail"
 )
 
+const (
+	breakpointExitSuffix       = ".breakpointexit"
+	breakpointAfterStepSuffix  = ".afterstepexit"
+	breakpointBeforeStepSuffix = ".beforestepexit"
+)
+
+// ErrorDebugBeforeStep is an error means mark before step breakpoint failure
+type ErrorDebugBeforeStep string
+
+func (e ErrorDebugBeforeStep) Error() string {
+	return string(e)
+}
+
+// ErrorDebugAftetStep is an error means mark after step breakpoint failure
+type ErrorDebugAftetStep string
+
+func (e ErrorDebugAftetStep) Error() string {
+	return string(e)
+}
+
+var (
+	errorDebugBeforeStep = ErrorDebugBeforeStep("before step breakpoint error file, user decided to skip the current step execution")
+	errorDebugAfterStep  = ErrorDebugAftetStep("after step breakpoint error file, user decided to mark the current step failed")
+)
+
 // Entrypointer holds fields for running commands with redirected
 // entrypoints.
 type Entrypointer struct {
@@ -75,6 +100,10 @@ type Entrypointer struct {
 	Timeout *time.Duration
 	// BreakpointOnFailure helps determine if entrypoint execution needs to adapt debugging requirements
 	BreakpointOnFailure bool
+	// DebugBeforeStep help user attach container before execution
+	DebugBeforeStep bool
+	// DebugAfterStep help user attach container after execution
+	DebugAfterStep bool
 	// OnError defines exiting behavior of the entrypoint
 	// set it to "stopAndFail" to indicate the entrypoint to exit the taskRun if the container exits with non zero exit code
 	// set it to "continue" to indicate the entrypoint to continue executing the rest of the steps irrespective of the container exit code
@@ -120,6 +149,7 @@ func (e Entrypointer) Go() error {
 		_ = logger.Sync()
 	}()
 
+	// waiting for previous step or debug before step
 	for _, f := range e.WaitFiles {
 		if err := e.Waiter.Wait(f, e.WaitFileContent, e.BreakpointOnFailure); err != nil {
 			// An error happened while waiting, so we bail
@@ -137,6 +167,19 @@ func (e Entrypointer) Go() error {
 		}
 	}
 
+	var err error
+
+	if e.DebugBeforeStep {
+		log.Println(`debug before step breakpoint has taken effect, waiting for user's decision:
+1) continue, use cmd: /tekton/debug/scripts/debug-beforestep-continue
+2) fail-continue, use cmd: /tekton/debug/scripts/debug-beforestep-fail-continue`)
+		breakpointBeforeStepPostFile := e.PostFile + breakpointBeforeStepSuffix
+		if waitErr := e.Waiter.Wait(breakpointBeforeStepPostFile, false, false); waitErr != nil {
+			err = errorDebugBeforeStep
+			log.Println("error occurred while waiting for " + breakpointBeforeStepPostFile + " : " + err.Error())
+		}
+	}
+
 	output = append(output, v1beta1.PipelineResourceResult{
 		Key:        "StartedAt",
 		Value:      time.Now().Format(timeFormat),
@@ -144,7 +187,6 @@ func (e Entrypointer) Go() error {
 	})
 
 	ctx := context.Background()
-	var err error
 
 	if e.Timeout != nil && *e.Timeout < time.Duration(0) {
 		err = fmt.Errorf("negative timeout specified")
@@ -168,6 +210,8 @@ func (e Entrypointer) Go() error {
 
 	var ee *exec.ExitError
 	switch {
+	case err != nil && errors.Is(err, errorDebugBeforeStep):
+		e.WritePostFile(e.PostFile, err)
 	case err != nil && e.BreakpointOnFailure:
 		logger.Info("Skipping writing to PostFile")
 	case e.OnError == ContinueOnError && errors.As(err, &ee):
@@ -181,6 +225,21 @@ func (e Entrypointer) Go() error {
 		e.WritePostFile(e.PostFile, nil)
 		e.WriteExitCodeFile(e.StepMetadataDir, exitCode)
 	case err == nil:
+		// If there is no error in the user's execution program and a after step breakpoint is configured,
+		// it should monitor the file and wait for the user to enter debugging
+		// If an error occurs, there will be breakpointOnFailure waiting for the user to debug
+		if e.DebugAfterStep {
+			log.Println(`debug after step breakpoint has taken effect, waiting for user's decision:
+1) continue, use cmd: /tekton/debug/scripts/debug-afterstep-continue
+2) fail-continue, use cmd: /tekton/debug/scripts/debug-afterstep-fail-continue`)
+			breakpointAfterStepPostFile := e.PostFile + breakpointAfterStepSuffix
+			if waitErr := e.Waiter.Wait(breakpointAfterStepPostFile, false, false); waitErr != nil {
+				err = errorDebugAfterStep
+				log.Println("error occurred while waiting for " + breakpointAfterStepPostFile + " : " + errorDebugAfterStep.Error())
+				e.WritePostFile(e.PostFile, err)
+				break
+			}
+		}
 		// if err is nil, write zero exit code and a post file
 		e.WritePostFile(e.PostFile, nil)
 		e.WriteExitCodeFile(e.StepMetadataDir, "0")
@@ -266,4 +325,26 @@ func (e Entrypointer) WritePostFile(postFile string, err error) {
 func (e Entrypointer) WriteExitCodeFile(stepPath, content string) {
 	exitCodeFile := filepath.Join(stepPath, "exitCode")
 	e.PostWriter.Write(exitCodeFile, content)
+}
+
+// CheckForBreakpointOnFailure if step up breakpoint on failure
+// waiting breakpointExitPostFile to be written
+func (e Entrypointer) CheckForBreakpointOnFailure() {
+	if e.BreakpointOnFailure {
+		log.Println(`debug onFailure breakpoint has taken effect, waiting for user's decision:
+1) continue, use cmd: /tekton/debug/scripts/debug-continue
+2) fail-continue, use cmd: /tekton/debug/scripts/debug-fail-continue`)
+		breakpointExitPostFile := e.PostFile + breakpointExitSuffix
+		if waitErr := e.Waiter.Wait(breakpointExitPostFile, false, false); waitErr != nil {
+			log.Println("error occurred while waiting for " + breakpointExitPostFile + " : " + waitErr.Error())
+		}
+		// get exitcode from .breakpointexit
+		exitCode, readErr := e.BreakpointExitCode(breakpointExitPostFile)
+		// if readErr exists, the exitcode with default to 0 as we would like
+		// to encourage to continue running the next steps in the taskRun
+		if readErr != nil {
+			log.Println("error occurred while reading breakpoint exit code : " + readErr.Error())
+		}
+		os.Exit(exitCode)
+	}
 }

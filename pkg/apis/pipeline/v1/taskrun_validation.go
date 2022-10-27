@@ -212,16 +212,25 @@ func combineParamSpec(p ParamSpec, paramSpecForValidation map[string]ParamSpec) 
 	return paramSpecForValidation, nil
 }
 
-// validateDebug
+// validateDebug verify whether the three breakpoints are legal
+// and no repeated steps are allowed in the same breakpoint
 func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
-	breakpointOnFailure := "onFailure"
-	validBreakpoints := sets.NewString()
-	validBreakpoints.Insert(breakpointOnFailure)
-
-	for _, b := range db.Breakpoint {
-		if !validBreakpoints.Has(b) {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid breakpoint. Available valid breakpoints include %s", b, validBreakpoints.List()), "breakpoint"))
+	if db.Breakpoints == nil {
+		return errs
+	}
+	beforeSteps := sets.NewString()
+	afterSteps := sets.NewString()
+	for i, step := range db.Breakpoints.BeforeSteps {
+		if beforeSteps.Has(step) {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("before step must be unique, the same step: %s is defined multiple times at", step), fmt.Sprintf("breakpoints.beforeSteps[%d]", i)))
 		}
+		beforeSteps.Insert(step)
+	}
+	for i, step := range db.Breakpoints.AfterSteps {
+		if afterSteps.Has(step) {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("after step must be unique, the same step: %s is defined multiple times at", step), fmt.Sprintf("breakpoints.afterSteps[%d]", i)))
+		}
+		afterSteps.Insert(step)
 	}
 	return errs
 }

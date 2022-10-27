@@ -95,7 +95,6 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 		VolumeMounts: []corev1.VolumeMount{writeScriptsVolumeMount, binMount},
 	}
 
-	breakpoints := []string{}
 	sideCarSteps := []v1beta1.Step{}
 	for _, sidecar := range sidecars {
 		c := sidecar.ToK8sContainer()
@@ -108,15 +107,14 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 	}
 
 	// Add mounts for debug
-	if debugConfig != nil && len(debugConfig.Breakpoint) > 0 {
-		breakpoints = debugConfig.Breakpoint
+	if debugConfig != nil && debugConfig.NeedsDebug() {
 		placeScriptsInit.VolumeMounts = append(placeScriptsInit.VolumeMounts, debugScriptsVolumeMount)
 	}
 
-	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, breakpoints, "script")
+	convertedStepContainers := convertListOfSteps(steps, &placeScriptsInit, &placeScripts, debugConfig, "script")
 
 	// Pass empty breakpoint list in "sidecar step to container" converter to not rewrite the scripts and add breakpoints to sidecar
-	sidecarContainers := convertListOfSteps(sideCarSteps, &placeScriptsInit, &placeScripts, []string{}, "sidecar-script")
+	sidecarContainers := convertListOfSteps(sideCarSteps, &placeScriptsInit, &placeScripts, nil, "sidecar-script")
 	if placeScripts {
 		return &placeScriptsInit, convertedStepContainers, sidecarContainers
 	}
@@ -127,16 +125,42 @@ func convertScripts(shellImageLinux string, shellImageWin string, steps []v1beta
 //
 // It iterates through the list of steps (or sidecars), generates the script file name and heredoc termination string,
 // adds an entry to the init container args, sets up the step container to run the script, and sets the volume mounts.
-func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, placeScripts *bool, breakpoints []string, namePrefix string) []corev1.Container {
+func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, placeScripts *bool, debugConfig *v1beta1.TaskRunDebug, namePrefix string) []corev1.Container {
 	containers := []corev1.Container{}
+
+	type script struct {
+		name    string
+		content string
+	}
+
+	isDebugOnFailure := debugConfig != nil && debugConfig.NeedsDebugOnFailure()
+	var needDebugBeforeStep bool
+	var needDebugAfterStep bool
+	debugScripts := make([]script, 0)
+	if isDebugOnFailure {
+		debugScripts = append(debugScripts, []script{{
+			name:    "continue",
+			content: fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, RunDir),
+		}, {
+			name:    "fail-continue",
+			content: fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, RunDir),
+		}}...)
+	}
+
 	for i, s := range steps {
 		// Add debug mounts if breakpoints are present
-		if len(breakpoints) > 0 {
+		if debugConfig != nil && debugConfig.StepNeedsDebug(s.Name) {
 			debugInfoVolumeMount := corev1.VolumeMount{
 				Name:      debugInfoVolumeName,
 				MountPath: filepath.Join(debugInfoDir, fmt.Sprintf("%d", i)),
 			}
 			steps[i].VolumeMounts = append(steps[i].VolumeMounts, debugScriptsVolumeMount, debugInfoVolumeMount)
+		}
+		if debugConfig != nil && debugConfig.NeedsDebugBeforeStep(s.Name) {
+			needDebugBeforeStep = true
+		}
+		if debugConfig != nil && debugConfig.NeedsDebugAfterStep(s.Name) {
+			needDebugAfterStep = true
 		}
 
 		if s.Script == "" {
@@ -178,7 +202,7 @@ func convertListOfSteps(steps []v1beta1.Step, initContainer *corev1.Container, p
 			// Only encode the script for linux scripts
 			// The decode-script subcommand of the entrypoint does not work under windows
 			script = encodeScript(script)
-			heredoc := "_EOF_" // underscores because base64 doesnt include them in its alphabet
+			heredoc := "_EOF_" // underscores because base64 doesn't include them in its alphabet
 			initContainer.Args[1] += fmt.Sprintf(`scriptfile="%s"
 touch ${scriptfile} && chmod +x ${scriptfile}
 cat > ${scriptfile} << '%s'
@@ -199,23 +223,29 @@ cat > ${scriptfile} << '%s'
 		containers = append(containers, *steps[i].ToK8sContainer())
 	}
 
-	// Place debug scripts if breakpoints are enabled
-	if len(breakpoints) > 0 {
+	if needDebugBeforeStep {
+		debugScripts = append(debugScripts, script{
+			name:    "beforestep-continue",
+			content: fmt.Sprintf(debugBeforeContinueScriptTemplate, len(steps), debugInfoDir, RunDir),
+		}, script{
+			name:    "beforestep-fail-continue",
+			content: fmt.Sprintf(debugBeforeFailScriptTemplate, len(steps), debugInfoDir, RunDir),
+		})
+	}
+	if needDebugAfterStep {
+		debugScripts = append(debugScripts, script{
+			name:    "afterstep-continue",
+			content: fmt.Sprintf(debugAfterContinueScriptTemplate, len(steps), debugInfoDir, RunDir),
+		}, script{
+			name:    "afterstep-fail-continue",
+			content: fmt.Sprintf(debugAfterFailScriptTemplate, len(steps), debugInfoDir, RunDir),
+		})
+	}
+
+	if needDebugBeforeStep || isDebugOnFailure || needDebugAfterStep {
 		// If breakpoint is not nil then should add the init container
 		// to write debug script files
 		*placeScripts = true
-
-		type script struct {
-			name    string
-			content string
-		}
-		debugScripts := []script{{
-			name:    "continue",
-			content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, RunDir),
-		}, {
-			name:    "fail-continue",
-			content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, RunDir),
-		}}
 
 		// Add debug or breakpoint related scripts to /tekton/debug/scripts
 		// Iterate through the debugScripts and add routine for each of them in the initContainer for their creation

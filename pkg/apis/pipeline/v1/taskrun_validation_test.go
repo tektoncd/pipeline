@@ -637,21 +637,39 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 				Name: "my-task",
 			},
 			Debug: &v1.TaskRunDebug{
-				Breakpoint: []string{"onFailure"},
+				Breakpoints: &v1.TaskBreakpoints{
+					OnFailure: &[]bool{true}[0],
+				},
 			},
 		},
 		wantErr: apis.ErrGeneric("debug requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
 	}, {
-		name: "invalid breakpoint",
+		name: "invalid breakpoint duplicate before steps",
 		spec: v1.TaskRunSpec{
 			TaskRef: &v1.TaskRef{
 				Name: "my-task",
 			},
 			Debug: &v1.TaskRunDebug{
-				Breakpoint: []string{"breakito"},
+				Breakpoints: &v1.TaskBreakpoints{
+					BeforeSteps: []string{"step-1", "step-1"},
+				},
 			},
 		},
-		wantErr: apis.ErrInvalidValue("breakito is not a valid breakpoint. Available valid breakpoints include [onFailure]", "debug.breakpoint"),
+		wantErr: apis.ErrGeneric("before step must be unique, the same step: step-1 is defined multiple times at", "debug.breakpoints.beforeSteps[1]"),
+		wc:      config.EnableAlphaAPIFields,
+	}, {
+		name: "invalid breakpoint duplicate after steps",
+		spec: v1.TaskRunSpec{
+			TaskRef: &v1.TaskRef{
+				Name: "my-task",
+			},
+			Debug: &v1.TaskRunDebug{
+				Breakpoints: &v1.TaskBreakpoints{
+					AfterSteps: []string{"step-1", "step-1"},
+				},
+			},
+		},
+		wantErr: apis.ErrGeneric("after step must be unique, the same step: step-1 is defined multiple times at", "debug.breakpoints.afterSteps[1]"),
 		wc:      config.EnableAlphaAPIFields,
 	}, {
 		name: "stepSpecs disallowed without alpha feature gate",

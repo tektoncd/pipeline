@@ -185,11 +185,42 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec)
 }
 
 func (trd TaskRunDebug) convertTo(ctx context.Context, sink *v1.TaskRunDebug) {
-	sink.Breakpoint = trd.Breakpoint
+	if trd.Breakpoints != nil {
+		sink.Breakpoints = &v1.TaskBreakpoints{}
+		trd.Breakpoints.convertTo(ctx, sink.Breakpoints)
+	}
 }
 
 func (trd *TaskRunDebug) convertFrom(ctx context.Context, source v1.TaskRunDebug) {
-	trd.Breakpoint = source.Breakpoint
+	if source.Breakpoints != nil {
+		newBreakpoints := TaskBreakpoints{}
+		newBreakpoints.convertFrom(ctx, *source.Breakpoints)
+		trd.Breakpoints = &newBreakpoints
+	}
+}
+
+func (tbp TaskBreakpoints) convertTo(ctx context.Context, sink *v1.TaskBreakpoints) {
+	sink.OnFailure = tbp.OnFailure
+	if len(tbp.AfterSteps) > 0 {
+		sink.AfterSteps = make([]string, 0)
+		sink.AfterSteps = append(sink.AfterSteps, tbp.AfterSteps...)
+	}
+	if len(tbp.BeforeSteps) > 0 {
+		sink.BeforeSteps = make([]string, 0)
+		sink.BeforeSteps = append(sink.BeforeSteps, tbp.BeforeSteps...)
+	}
+}
+
+func (tbp *TaskBreakpoints) convertFrom(ctx context.Context, source v1.TaskBreakpoints) {
+	tbp.OnFailure = source.OnFailure
+	if len(source.AfterSteps) > 0 {
+		tbp.AfterSteps = make([]string, 0)
+		tbp.AfterSteps = append(tbp.AfterSteps, source.AfterSteps...)
+	}
+	if len(source.BeforeSteps) > 0 {
+		tbp.BeforeSteps = make([]string, 0)
+		tbp.BeforeSteps = append(tbp.BeforeSteps, source.BeforeSteps...)
+	}
 }
 
 func (trso TaskRunStepOverride) convertTo(ctx context.Context, sink *v1.TaskRunStepSpec) {

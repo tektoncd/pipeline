@@ -827,16 +827,46 @@ TaskRuns can be halted on failure for troubleshooting by providing the following
 ```yaml
 spec:
   debug:
-    breakpoint: ["onFailure"]
+    breakpoints: 
+      onFailure: true
 ```
 
-Upon failure of a step, the TaskRun Pod execution is halted. If this TaskRun Pod continues to run without any lifecycle
-change done by the user (running the debug-continue or debug-fail-continue script) the TaskRun would be subject to
+### Breakpoint before step
+
+If you want to set a breakpoint before the step is executed, you can add the step name to the `beforeSteps` field in the following way:
+
+```yaml
+spec:
+  debug:
+    breakpoints:
+      beforeSteps: 
+        - {{ stepName }}
+```
+
+### Breakpoint after step
+
+`after step` will take effect when the commands are executed without error, 
+if you want to set a breakpoint after the step is executed, you can add the step name to the `beforeSteps` field in the following way:
+
+```yaml
+spec:
+  debug:
+    breakpoints:
+      afterSteps: 
+        - {{ stepName }}
+```
+
+### How to enter container debugging
+
+Upon any breakpoints of a step, the TaskRun Pod execution is halted. If this TaskRun Pod continues to run without any lifecycle
+change done by the user (running the debug-continue or debug-fail-continue script or debug-beforestep-continue
+or debug-beforestep-fail-continue or debug-afterstep-continue or debug-afterstep-fail-continue)
+the TaskRun would be subject to
 [TaskRunTimeout](#configuring-the-failure-timeout).
 During this time, the user/client can get remote shell access to the step container with a command such as the following.
 
 ```bash
-kubectl exec -it print-date-d7tj5-pod -c step-print-date-human-readable
+kubectl exec -it print-date-d7tj5-pod -c step-print-date-human-readable -- bash
 ```
 
 ### Debug Environment
@@ -851,6 +881,14 @@ perform :-
 `debug-continue`: Mark the step as a success and exit the breakpoint.
 
 `debug-fail-continue`: Mark the step as a failure and exit the breakpoint.
+
+`debug-beforestep-continue`: Mark the step continue to execute
+
+`debug-beforestep-fail-continue`: Mark the step not continue to execute
+
+`debug-afterstep-continue`: Mark the step as completed with success after processed
+
+`debug-afterstep-fail-continue`: Mark the step as completed with failure after processed
 
 *More information on the inner workings of debug can be found in the [Debug documentation](debug.md)*
 

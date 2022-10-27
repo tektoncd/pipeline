@@ -331,6 +331,227 @@ func TestInitializeTaskRunConditions(t *testing.T) {
 	}
 }
 
+func TestIsDebugBeforeStep(t *testing.T) {
+	type args struct {
+		stepName string
+		trd      *v1.TaskRunDebug
+	}
+	testCases := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "empty breakpoints",
+			args: args{
+				stepName: "step1",
+				trd:      &v1.TaskRunDebug{},
+			},
+			want: false,
+		}, {
+			name: "breakpoint before step",
+			args: args{
+				stepName: "step1",
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						BeforeSteps: []string{"step1", "step2"},
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "step not in before step breakpoint",
+			args: args{
+				stepName: "step3",
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						BeforeSteps: []string{"step1", "step2"},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.args.trd.NeedsDebugBeforeStep(tc.args.stepName)
+			if d := cmp.Diff(result, tc.want); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestIsDebugAfterStep(t *testing.T) {
+	type args struct {
+		stepName string
+		trd      *v1.TaskRunDebug
+	}
+	testCases := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "empty breakpoints",
+			args: args{
+				stepName: "step1",
+				trd:      &v1.TaskRunDebug{},
+			},
+			want: false,
+		}, {
+			name: "breakpoint after step",
+			args: args{
+				stepName: "step1",
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						AfterSteps: []string{"step1", "step2"},
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "step not in after steps breakpoint",
+			args: args{
+				stepName: "step3",
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						BeforeSteps: []string{"step1", "step2"},
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.args.trd.NeedsDebugAfterStep(tc.args.stepName)
+			if d := cmp.Diff(result, tc.want); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestIsStepNeedDebug(t *testing.T) {
+	type args struct {
+		stepName string
+		trd      *v1.TaskRunDebug
+	}
+	testCases := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "empty breakpoints",
+			args: args{
+				stepName: "step1",
+				trd:      &v1.TaskRunDebug{},
+			},
+			want: false,
+		}, {
+			name: "breakpoint after step",
+			args: args{
+				stepName: "step1",
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						AfterSteps: []string{"step1", "step2"},
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "breakpoint on failure",
+			args: args{
+				stepName: "step1",
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						OnFailure: &[]bool{true}[0],
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "breakpoint before step",
+			args: args{
+				stepName: "step1",
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						BeforeSteps: []string{"step1"},
+					},
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.args.trd.StepNeedsDebug(tc.args.stepName)
+			if d := cmp.Diff(result, tc.want); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestIsNeedDebug(t *testing.T) {
+	type args struct {
+		trd *v1.TaskRunDebug
+	}
+	testCases := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "empty breakpoints",
+			args: args{
+				trd: &v1.TaskRunDebug{},
+			},
+			want: false,
+		}, {
+			name: "breakpoint after step",
+			args: args{
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						AfterSteps: []string{"step1", "step2"},
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "breakpoint on failure",
+			args: args{
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						OnFailure: &[]bool{true}[0],
+					},
+				},
+			},
+			want: true,
+		}, {
+			name: "breakpoint before step",
+			args: args{
+				trd: &v1.TaskRunDebug{
+					Breakpoints: &v1.TaskBreakpoints{
+						BeforeSteps: []string{"step1"},
+					},
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tc.args.trd.NeedsDebug()
+			if d := cmp.Diff(result, tc.want); d != "" {
+				t.Fatalf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestTaskRunIsRetriable(t *testing.T) {
 	retryStatus := v1.TaskRunStatus{}
 	retryStatus.SetCondition(&apis.Condition{

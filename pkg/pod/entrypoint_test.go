@@ -241,7 +241,125 @@ func TestOrderContainersWithDebugOnFailure(t *testing.T) {
 		TerminationMessagePath: "/tekton/termination",
 	}}
 	taskRunDebugConfig := &v1beta1.TaskRunDebug{
-		Breakpoint: []string{"onFailure"},
+		Breakpoints: &v1beta1.TaskBreakpoints{
+			OnFailure: &[]bool{true}[0],
+		},
+	}
+	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, true)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestTestOrderContainersWithDebugBeforeStep(t *testing.T) {
+	steps := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/run/0/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/0/status", "-debug_before_step",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	taskRunDebugConfig := &v1beta1.TaskRunDebug{
+		Breakpoints: &v1beta1.TaskBreakpoints{
+			BeforeSteps: []string{"my-task"},
+		},
+	}
+	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, true)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestTestOrderContainersWithDebugAfterStep(t *testing.T) {
+	steps := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/run/0/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/0/status",
+			"-debug_after_step",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	taskRunDebugConfig := &v1beta1.TaskRunDebug{
+		Breakpoints: &v1beta1.TaskBreakpoints{
+			AfterSteps: []string{"my-task"},
+		},
+	}
+	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, true)
+	if err != nil {
+		t.Fatalf("orderContainers: %v", err)
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestTestOrderContainersWithAllBreakpoints(t *testing.T) {
+	steps := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{"cmd"},
+		Args:    []string{"arg1", "arg2"},
+	}}
+	want := []corev1.Container{{
+		Name:    "my-task",
+		Image:   "step-1",
+		Command: []string{entrypointBinary},
+		Args: []string{
+			"-wait_file", "/tekton/downward/ready",
+			"-wait_file_content",
+			"-post_file", "/tekton/run/0/out",
+			"-termination_path", "/tekton/termination",
+			"-step_metadata_dir", "/tekton/run/0/status",
+			"-breakpoint_on_failure", "-debug_before_step",
+			"-debug_after_step",
+			"-entrypoint", "cmd", "--",
+			"arg1", "arg2",
+		},
+		VolumeMounts:           []corev1.VolumeMount{downwardMount},
+		TerminationMessagePath: "/tekton/termination",
+	}}
+	taskRunDebugConfig := &v1beta1.TaskRunDebug{
+		Breakpoints: &v1beta1.TaskBreakpoints{
+			OnFailure:   &[]bool{true}[0],
+			BeforeSteps: []string{"my-task"},
+			AfterSteps:  []string{"my-task"},
+		},
 	}
 	got, err := orderContainers([]string{}, steps, nil, taskRunDebugConfig, true)
 	if err != nil {
