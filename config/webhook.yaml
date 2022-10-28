@@ -101,6 +101,10 @@ spec:
           value: config-leader-election
         - name: CONFIG_FEATURE_FLAGS_NAME
           value: feature-flags
+        # If you change WEBHOOK_PORT, you will also need to change the
+        # containerPort "https-webhook" to the same value.
+        - name: WEBHOOK_PORT
+          value: "8443"
         - name: WEBHOOK_SERVICE_NAME
           value: tekton-pipelines-webhook
         - name: WEBHOOK_SECRET_NAME
@@ -123,6 +127,7 @@ spec:
           containerPort: 9090
         - name: profiling
           containerPort: 8008
+        # This must match the value of the environment variable WEBHOOK_PORT.
         - name: https-webhook
           containerPort: 8443
         - name: probes
@@ -171,7 +176,7 @@ spec:
     targetPort: 8008
   - name: https-webhook
     port: 443
-    targetPort: 8443
+    targetPort: https-webhook
   - name: probes
     port: 8080
   selector:
