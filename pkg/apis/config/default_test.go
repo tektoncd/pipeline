@@ -105,6 +105,17 @@ func TestNewDefaultsFromConfigMap(t *testing.T) {
 				DefaultManagedByLabelValue:        config.DefaultManagedByLabelValue,
 			},
 		},
+		{
+			expectedError: false,
+			fileName:      "config-defaults-forbidden-env",
+			expectedConfig: &config.Defaults{
+				DefaultTimeoutMinutes:             50,
+				DefaultServiceAccount:             "tekton",
+				DefaultMaxMatrixCombinationsCount: 256,
+				DefaultManagedByLabelValue:        "tekton-pipelines",
+				DefaultForbiddenEnv:               []string{"TEKTON_POWER_MODE", "TEST_ENV", "TEST_TEKTON"},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -251,6 +262,26 @@ func TestEquals(t *testing.T) {
 			},
 			right: &config.Defaults{
 				DefaultTaskRunWorkspaceBinding: "emptyDir: {}",
+			},
+			expected: true,
+		},
+		{
+			name: "different forbidden env",
+			left: &config.Defaults{
+				DefaultForbiddenEnv: []string{"TEST_ENV", "TEKTON_POWER_MODE"},
+			},
+			right: &config.Defaults{
+				DefaultForbiddenEnv: []string{"TEST_ENV"},
+			},
+			expected: false,
+		},
+		{
+			name: "same forbidden env",
+			left: &config.Defaults{
+				DefaultForbiddenEnv: []string{"TEST_ENV", "TEKTON_POWER_MODE"},
+			},
+			right: &config.Defaults{
+				DefaultForbiddenEnv: []string{"TEST_ENV", "TEKTON_POWER_MODE"},
 			},
 			expected: true,
 		},

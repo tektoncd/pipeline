@@ -20,11 +20,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/yaml"
 )
 
@@ -50,6 +53,7 @@ const (
 	defaultCloudEventsSinkKey            = "default-cloud-events-sink"
 	defaultTaskRunWorkspaceBinding       = "default-task-run-workspace-binding"
 	defaultMaxMatrixCombinationsCountKey = "default-max-matrix-combinations-count"
+	defaultForbiddenEnv                  = "default-forbidden-env"
 )
 
 // Defaults holds the default configurations
@@ -63,6 +67,7 @@ type Defaults struct {
 	DefaultCloudEventsSink            string
 	DefaultTaskRunWorkspaceBinding    string
 	DefaultMaxMatrixCombinationsCount int
+	DefaultForbiddenEnv               []string
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -91,7 +96,8 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 		other.DefaultAAPodTemplate.Equals(cfg.DefaultAAPodTemplate) &&
 		other.DefaultCloudEventsSink == cfg.DefaultCloudEventsSink &&
 		other.DefaultTaskRunWorkspaceBinding == cfg.DefaultTaskRunWorkspaceBinding &&
-		other.DefaultMaxMatrixCombinationsCount == cfg.DefaultMaxMatrixCombinationsCount
+		other.DefaultMaxMatrixCombinationsCount == cfg.DefaultMaxMatrixCombinationsCount &&
+		reflect.DeepEqual(other.DefaultForbiddenEnv, cfg.DefaultForbiddenEnv)
 }
 
 // NewDefaultsFromMap returns a Config given a map corresponding to a ConfigMap
@@ -150,6 +156,14 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing tracing config %q", defaultMaxMatrixCombinationsCountKey)
 		}
 		tc.DefaultMaxMatrixCombinationsCount = int(matrixCombinationsCount)
+	}
+	if defaultForbiddenEnvString, ok := cfgMap[defaultForbiddenEnv]; ok {
+		tmpString := sets.NewString()
+		fEnvs := strings.Split(defaultForbiddenEnvString, ",")
+		for _, fEnv := range fEnvs {
+			tmpString.Insert(strings.TrimSpace(fEnv))
+		}
+		tc.DefaultForbiddenEnv = tmpString.List()
 	}
 
 	return &tc, nil

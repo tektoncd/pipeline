@@ -95,6 +95,7 @@ func TestPodBuild(t *testing.T) {
 		trStatus        v1beta1.TaskRunStatus
 		trName          string
 		ts              v1beta1.TaskSpec
+		configDefaults  map[string]string
 		featureFlags    map[string]string
 		want            *corev1.PodSpec
 		wantAnnotations map[string]string
@@ -1508,6 +1509,115 @@ _EOF_
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}, {
+			desc: "default-forbidden-env - disallowed via podTemplate.",
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+					Env: []corev1.EnvVar{{Name: "SOME_ENV", Value: "some_val"},
+						{Name: "FORBIDDEN_ENV", Value: "some_val"}},
+				}},
+			},
+			configDefaults: map[string]string{"default-forbidden-env": "FORBIDDEN_ENV, TEST_ENV"},
+			trs: v1beta1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					Env: []corev1.EnvVar{{Name: "FORBIDDEN_ENV", Value: "overridden_val"},
+						{Name: "TEST_ENV", Value: "new_val"}},
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+					Env: []corev1.EnvVar{
+						{Name: "SOME_ENV", Value: "some_val"},
+						{Name: "FORBIDDEN_ENV", Value: "some_val"},
+					},
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		}, {
+			desc: "override env var using podTemplate",
+			ts: v1beta1.TaskSpec{
+				Steps: []v1beta1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+					Env:     []corev1.EnvVar{{Name: "SOME_ENV", Value: "some_val"}},
+				}},
+			},
+			trs: v1beta1.TaskRunSpec{
+				PodTemplate: &pod.Template{
+					Env: []corev1.EnvVar{{Name: "SOME_ENV", Value: "overridden_val"},
+						{Name: "SOME_ENV2", Value: "new_val"}},
+				},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy:  corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}})},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+					Env: []corev1.EnvVar{
+						{Name: "SOME_ENV", Value: "some_val"},
+						{Name: "SOME_ENV", Value: "overridden_val"},
+						{Name: "SOME_ENV2", Value: "new_val"},
+					},
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		}, {
 			desc:         "hermetic env var",
 			featureFlags: map[string]string{"enable-api-fields": "alpha"},
 			ts: v1beta1.TaskSpec{
@@ -1864,6 +1974,12 @@ _EOF_
 				&corev1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 					Data:       c.featureFlags,
+				},
+			)
+			store.OnConfigChanged(
+				&corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+					Data:       c.configDefaults,
 				},
 			)
 			kubeclient := fakek8s.NewSimpleClientset(

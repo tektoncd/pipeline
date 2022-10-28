@@ -71,6 +71,11 @@ func (in *Defaults) DeepCopyInto(out *Defaults) {
 		*out = new(pod.AffinityAssistantTemplate)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DefaultForbiddenEnv != nil {
+		in, out := &in.DefaultForbiddenEnv, &out.DefaultForbiddenEnv
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
