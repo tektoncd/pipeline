@@ -326,6 +326,62 @@ data:
 
 The `SSL_CERT_DIR` is set to `/etc/ssl/certs` as the default cert directory. If you are using a self-signed cert for private registry and the cert file is not under the default cert directory, configure your registry cert in the `config-registry-cert` `ConfigMap` with the key `cert`.
 
+## Configuring environment variables
+
+Environment variables can be configured in the following ways, mentioned in order of precedence from lowest to highest.
+
+1. Implicit environment variables
+2. Step environment variables
+3. Environment variables specified via a `default` `PodTemplate`.
+4. Environment variables specified via a `PodTemplate`.
+
+The environment variables specified by a `PodTemplate` supercedes all other ways of specifying environment variables. However, there exists a configuration i.e. `default-forbidden-env`, the environment variable specified in this list cannot be specified or updated via a `PodTemplate`. 
+
+For example:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+data:
+  default-timeout-minutes: "50"
+  default-service-account: "tekton"
+  default-forbidden-env: "TEST_TEKTON"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: mytask
+  namespace: default
+spec:
+  steps:
+    - name: echo-env
+      image: ubuntu
+      command: ["bash", "-c"]
+      args: ["echo $TEST_TEKTON "]
+      env:
+          - name: "TEST_TEKTON"
+            value: "true"
+---
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: mytaskrun
+  namespace: default
+spec:
+  taskRef:
+    name: mytask
+  podTemplate:
+    env:
+        - name: "TEST_TEKTON"
+          value: "false"
+```
+
+_In the above example the environment variable `TEST_TEKTON` will not be overriden by value specified in podTemplate, because the `config-default` option `default-forbidden-env` is configured with value `TEST_TEKTON`._
+
+
 ## Customizing basic execution parameters
 
 You can specify your own values that replace the default service account (`ServiceAccount`), timeout (`Timeout`), and Pod template (`PodTemplate`) values used by Tekton Pipelines in `TaskRun` and `PipelineRun` definitions. To do so, modify the ConfigMap `config-defaults` with your desired values.

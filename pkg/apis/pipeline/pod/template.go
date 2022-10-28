@@ -32,6 +32,13 @@ type Template struct {
 	// +optional
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 
+	// List of environment variables that can be provided to the containers belonging to the pod.
+	// +optional
+	// +patchMergeKey=name
+	// +patchStrategy=merge
+	// +listType=atomic
+	Env []corev1.EnvVar `json:"env,omitempty" patchStrategy:"merge" patchMergeKey:"name" protobuf:"bytes,7,rep,name=env"`
+
 	// If specified, the pod's tolerations.
 	// +optional
 	// +listType=atomic
@@ -164,6 +171,9 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		return defaultTpl
 	default:
 		// Otherwise, merge fields
+		if tpl.Env == nil {
+			tpl.Env = defaultTpl.Env
+		}
 		if tpl.NodeSelector == nil {
 			tpl.NodeSelector = defaultTpl.NodeSelector
 		}

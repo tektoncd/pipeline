@@ -35,6 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/changeset"
 	"knative.dev/pkg/kmeta"
 )
@@ -119,6 +120,7 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	volumeMounts := []corev1.VolumeMount{binROMount}
 	implicitEnvVars := []corev1.EnvVar{}
 	featureFlags := config.FromContextOrDefaults(ctx).FeatureFlags
+	defaultForbiddenEnv := config.FromContextOrDefaults(ctx).Defaults.DefaultForbiddenEnv
 	alphaAPIEnabled := featureFlags.EnableAPIFields == config.AlphaAPIFields
 	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
 
@@ -214,16 +216,29 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 		volumes = append(volumes, downwardVolume)
 	}
 
-	// Add implicit env vars.
-	// They're prepended to the list, so that if the user specified any
-	// themselves their value takes precedence.
+	// Order of precedence for envs
+	// implicit env vars
+	// Superceded by step env vars
+	// Superceded by config-default default-pod-template envs
+	// Superceded by podTemplate envs
 	if len(implicitEnvVars) > 0 {
 		for i, s := range stepContainers {
 			env := append(implicitEnvVars, s.Env...) //nolint
 			stepContainers[i].Env = env
 		}
 	}
-
+	filteredEnvs := []corev1.EnvVar{}
+	for _, e := range podTemplate.Env {
+		if !slices.Contains(defaultForbiddenEnv, e.Name) {
+			filteredEnvs = append(filteredEnvs, e)
+		}
+	}
+	if len(podTemplate.Env) > 0 {
+		for i, s := range stepContainers {
+			env := append(s.Env, filteredEnvs...) //nolint
+			stepContainers[i].Env = env
+		}
+	}
 	// Add env var if hermetic execution was requested & if the alpha API is enabled
 	if taskRun.Annotations[ExecutionModeAnnotation] == ExecutionModeHermetic && alphaAPIEnabled {
 		for i, s := range stepContainers {

@@ -47,6 +47,10 @@ Pod templates support fields listed in the table below.
 	</thead>
 	<tbody>
 		<tr>
+			<td><code>env</code></td>
+			<td>Environment variables defined in the Pod template at <code>TaskRun</code> and <code>PipelineRun</code> level take precedence over the ones defined in <code>steps</code> and <code>stepTemplate</code></td>
+		</tr>
+		<tr>
 			<td><code>nodeSelector</code></td>
 			<td>Must be true for <a href=https://kubernetes.io/docs/concepts/configuration/assign-pod-node/>the Pod to fit on a node</a>.</td>
 		</tr>
