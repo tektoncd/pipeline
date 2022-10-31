@@ -61,7 +61,7 @@ func TestHermeticTaskRun(t *testing.T) {
 			regularTaskRunName := fmt.Sprintf("not-hermetic-%s", test.desc)
 			regularTaskRun := test.getTaskRun(t, regularTaskRunName, namespace, "")
 			t.Logf("Creating TaskRun %s, hermetic=false", regularTaskRunName)
-			if _, err := c.TaskRunClient.Create(ctx, regularTaskRun, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1beta1TaskRunClient.Create(ctx, regularTaskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRunName, err)
 			}
 			if err := WaitForTaskRunState(ctx, c, regularTaskRunName, Succeed(regularTaskRunName), "TaskRunCompleted"); err != nil {
@@ -73,7 +73,7 @@ func TestHermeticTaskRun(t *testing.T) {
 			hermeticTaskRunName := fmt.Sprintf("hermetic-should-fail-%s", test.desc)
 			hermeticTaskRun := test.getTaskRun(t, hermeticTaskRunName, namespace, "hermetic")
 			t.Logf("Creating TaskRun %s, hermetic=true", hermeticTaskRunName)
-			if _, err := c.TaskRunClient.Create(ctx, hermeticTaskRun, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1beta1TaskRunClient.Create(ctx, hermeticTaskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRun.Name, err)
 			}
 			if err := WaitForTaskRunState(ctx, c, hermeticTaskRunName, Failed(hermeticTaskRunName), "Failed"); err != nil {
@@ -84,7 +84,7 @@ func TestHermeticTaskRun(t *testing.T) {
 }
 
 func taskRun(t *testing.T, name, namespace, executionMode string) *v1beta1.TaskRun {
-	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   annotations:
     experimental.tekton.dev/execution-mode: %s
@@ -107,7 +107,7 @@ spec:
 }
 
 func unpriviligedTaskRun(t *testing.T, name, namespace, executionMode string) *v1beta1.TaskRun {
-	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   annotations:
     experimental.tekton.dev/execution-mode: %s

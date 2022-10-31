@@ -56,7 +56,7 @@ func TestTaskRunPipelineRunCancel(t *testing.T) {
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
 
-			pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+			pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -72,7 +72,7 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, numRetries))
 
 			t.Logf("Creating PipelineRun in namespace %s", namespace)
-			if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 			}
 
@@ -81,7 +81,7 @@ spec:
 				t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 			}
 
-			taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+			taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 			if err != nil {
 				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 			}
@@ -100,7 +100,7 @@ spec:
 			}
 			wg.Wait()
 
-			pr, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
+			pr, err := c.V1beta1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 			}
@@ -114,7 +114,7 @@ spec:
 			if err != nil {
 				t.Fatalf("failed to marshal patch bytes in order to cancel")
 			}
-			if _, err := c.PipelineRunClient.Patch(ctx, pr.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
+			if _, err := c.V1beta1PipelineRunClient.Patch(ctx, pr.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
 				t.Fatalf("Failed to patch PipelineRun `%s` with cancellation: %s", pipelineRun.Name, err)
 			}
 
@@ -139,7 +139,7 @@ spec:
 			wg.Wait()
 
 			var trName []string
-			taskrunList, err = c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+			taskrunList, err = c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 			if err != nil {
 				t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 			}

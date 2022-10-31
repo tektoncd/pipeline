@@ -512,7 +512,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	task := parse.MustParseTask(t, taskYAMLString)
+	task := parse.MustParseV1beta1Task(t, taskYAMLString)
 	taskRef := &v1beta1.TaskRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 	taskYAML := strings.Join([]string{
 		"kind: Task",
@@ -547,7 +547,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	task := parse.MustParseTask(t, taskYAMLString)
+	task := parse.MustParseV1beta1Task(t, taskYAMLString)
 	taskRef := &v1beta1.TaskRef{
 		ResolverRef: v1beta1.ResolverRef{
 			Resolver: "git",

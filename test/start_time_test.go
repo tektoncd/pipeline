@@ -6,7 +6,9 @@ Copyright 2019 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
+
+	http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -48,7 +50,7 @@ func TestStartTime(t *testing.T) {
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 	t.Logf("Creating TaskRun in namespace %q", namespace)
-	tr, err := c.TaskRunClient.Create(ctx, parse.MustParseTaskRun(t, fmt.Sprintf(`
+	tr, err := c.V1beta1TaskRunClient.Create(ctx, parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -74,7 +76,7 @@ spec:
 	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess"); err != nil {
 		t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 	}
-	tr, err = c.TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
+	tr, err = c.V1beta1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Error getting TaskRun: %v", err)
 	}

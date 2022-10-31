@@ -64,7 +64,7 @@ func TestGetTaskRunStatusForPipelineTask(t *testing.T) {
 			},
 		}, {
 			name: "success",
-			taskRun: parse.MustParseTaskRun(t, `
+			taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: some-task-run
 spec: {}
@@ -207,7 +207,7 @@ status:
 }
 
 func TestGetFullPipelineTaskStatuses(t *testing.T) {
-	tr1 := parse.MustParseTaskRun(t, `
+	tr1 := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: pr-task-1
 spec: {}
@@ -253,7 +253,7 @@ status:
 		},
 		{
 			name: "minimal embedded",
-			originalPR: parse.MustParsePipelineRun(t, `
+			originalPR: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
 spec: {}
@@ -302,7 +302,7 @@ pr-run-1:
 			expectedErr: nil,
 		}, {
 			name: "full embedded",
-			originalPR: parse.MustParsePipelineRun(t, `
+			originalPR: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
 spec: {}
@@ -364,7 +364,7 @@ pr-run-1:
 			expectedErr: nil,
 		}, {
 			name: "both embedded",
-			originalPR: parse.MustParsePipelineRun(t, `
+			originalPR: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
 spec: {}
@@ -435,7 +435,7 @@ pr-run-1:
 			expectedErr: nil,
 		}, {
 			name: "missing run",
-			originalPR: parse.MustParsePipelineRun(t, `
+			originalPR: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
 spec: {}

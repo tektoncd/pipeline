@@ -82,9 +82,9 @@ func TestCustomTask(t *testing.T) {
 	metadataLabel := map[string]string{"test-label": "test"}
 	// Create a PipelineRun that runs a Custom Task.
 	pipelineRunName := helpers.ObjectNameForTest(t)
-	if _, err := c.PipelineRunClient.Create(
+	if _, err := c.V1beta1PipelineRunClient.Create(
 		ctx,
-		parse.MustParsePipelineRun(t, fmt.Sprintf(`
+		parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -134,7 +134,7 @@ spec:
 	}
 
 	// Get the status of the PipelineRun.
-	pr, err := c.PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
+	pr, err := c.V1beta1PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRunName, err)
 	}
@@ -161,7 +161,7 @@ spec:
 	}
 	for _, runName := range runNames {
 		// Get the Run.
-		r, err := c.RunClient.Get(ctx, runName, metav1.GetOptions{})
+		r, err := c.V1alpha1RunClient.Get(ctx, runName, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("Failed to get Run %q: %v", runName, err)
 		}
@@ -185,12 +185,12 @@ spec:
 			},
 		}
 
-		if _, err := c.RunClient.UpdateStatus(ctx, r, metav1.UpdateOptions{}); err != nil {
+		if _, err := c.V1alpha1RunClient.UpdateStatus(ctx, r, metav1.UpdateOptions{}); err != nil {
 			t.Fatalf("Failed to update Run to successful: %v", err)
 		}
 
 		// Get the Run.
-		r, err = c.RunClient.Get(ctx, runName, metav1.GetOptions{})
+		r, err = c.V1alpha1RunClient.Get(ctx, runName, metav1.GetOptions{})
 
 		if strings.Contains(runName, "custom-task-spec") {
 			if d := cmp.Diff(customTaskRawSpec, r.Spec.Spec.Spec.Raw); d != "" {
@@ -213,7 +213,7 @@ spec:
 	}
 
 	// Get the updated status of the PipelineRun.
-	pr, err = c.PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
+	pr, err = c.V1beta1PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get PipelineRun %q after it completed: %v", pipelineRunName, err)
 	}
@@ -242,7 +242,7 @@ spec:
 	}
 
 	// Get the TaskRun.
-	taskRun, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	taskRun, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get TaskRun %q: %v", taskRunName, err)
 	}
@@ -285,7 +285,7 @@ func WaitForRunSpecCancelled(ctx context.Context, c *clients, name string, desc 
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.RunClient.Get(ctx, name, metav1.GetOptions{})
+		r, err := c.V1alpha1RunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -306,7 +306,7 @@ func TestPipelineRunCustomTaskTimeout(t *testing.T) {
 
 	embeddedStatusValue := GetEmbeddedStatus(ctx, t, c.KubeClient)
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -317,7 +317,7 @@ spec:
       apiVersion: %s
       kind: %s
 `, helpers.ObjectNameForTest(t), namespace, apiVersion, kind))
-	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -326,10 +326,10 @@ spec:
     name: %s
   timeout: 5s
 `, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
@@ -338,7 +338,7 @@ spec:
 		t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 	}
 
-	pr, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
+	pr, err := c.V1beta1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRun.Name, err)
 	}
@@ -362,7 +362,7 @@ spec:
 	}
 
 	// Get the Run.
-	r, err := c.RunClient.Get(ctx, runName, metav1.GetOptions{})
+	r, err := c.V1alpha1RunClient.Get(ctx, runName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get Run %q: %v", runName, err)
 	}
@@ -383,7 +383,7 @@ spec:
 			}},
 		},
 	}
-	if _, err := c.RunClient.UpdateStatus(ctx, r, metav1.UpdateOptions{}); err != nil {
+	if _, err := c.V1alpha1RunClient.UpdateStatus(ctx, r, metav1.UpdateOptions{}); err != nil {
 		t.Fatalf("Failed to update Run to successful: %v", err)
 	}
 
@@ -392,7 +392,7 @@ spec:
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
-	runList, err := c.RunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
+	runList, err := c.V1alpha1RunClient.List(ctx, metav1.ListOptions{LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=%s", pipelineRun.Name)})
 	if err != nil {
 		t.Fatalf("Error listing Runs for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -411,7 +411,7 @@ spec:
 	}
 	wg.Wait()
 
-	if _, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{}); err != nil {
 		t.Fatalf("Failed to get PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 }
@@ -541,7 +541,7 @@ func TestWaitCustomTask_Run(t *testing.T) {
 				},
 			}
 
-			if _, err := c.RunClient.Create(ctx, run, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1alpha1RunClient.Create(ctx, run, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun %q: %v", runName, err)
 			}
 
@@ -551,7 +551,7 @@ func TestWaitCustomTask_Run(t *testing.T) {
 			}
 
 			// Get the actual Run
-			gotRun, err := c.RunClient.Get(ctx, runName, metav1.GetOptions{})
+			gotRun, err := c.V1alpha1RunClient.Get(ctx, runName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("%v", err)
 			}
@@ -785,10 +785,10 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 					Timeout: tc.prTimeout,
 				},
 			}
-			if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Pipeline %q: %v", pipeline.Name, err)
 			}
-			if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create PipelineRun %q: %v", pipelineRun.Name, err)
 			}
 
@@ -798,7 +798,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 			}
 
 			// Get actual pipelineRun
-			gotPipelineRun, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
+			gotPipelineRun, err := c.V1beta1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRun.Name, err)
 			}
@@ -886,7 +886,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 			}
 
 			// Get the Run.
-			_, err = c.RunClient.Get(ctx, wantRunName, metav1.GetOptions{})
+			_, err = c.V1alpha1RunClient.Get(ctx, wantRunName, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to get Run %q: %v", wantRunName, err)
 			}

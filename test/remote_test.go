@@ -40,7 +40,7 @@ func TestCreateImage(t *testing.T) {
 	defer s.Close()
 	u, _ := url.Parse(s.URL)
 
-	task := parse.MustParseTask(t, `
+	task := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-create-image
 `)

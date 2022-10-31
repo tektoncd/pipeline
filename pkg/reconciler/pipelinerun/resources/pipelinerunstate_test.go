@@ -2564,7 +2564,7 @@ func TestPipelineRunFacts_IsRunning(t *testing.T) {
 // TestUpdateTaskRunsState runs "getTaskRunsStatus" and verifies how it updates a PipelineRun status
 // from a TaskRun associated to the PipelineRun
 func TestUpdateTaskRunsState(t *testing.T) {
-	pr := parse.MustParsePipelineRun(t, `
+	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -2592,7 +2592,7 @@ spec:
 		TaskRef: &v1beta1.TaskRef{Name: "unit-test-task"},
 	}
 
-	task := parse.MustParseTask(t, fmt.Sprintf(`
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: unit-test-task
   namespace: foo
@@ -2603,7 +2603,7 @@ spec:
         type: %s
 `, resourcev1alpha1.PipelineResourceTypeGit))
 
-	taskrun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+	taskrun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline-run-success-unit-test-1
   namespace: foo
@@ -2638,7 +2638,7 @@ status:
 	pr.Status.InitializeConditions(testClock)
 	status := state.GetTaskRunsStatus(pr)
 
-	expectedPipelineRunStatus := parse.MustParsePipelineRun(t, `
+	expectedPipelineRunStatus := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipelinerun
   namespace: foo
@@ -2667,7 +2667,7 @@ status:
 // TestUpdateRunsState runs "getRunsStatus" and verifies how it updates a PipelineRun status
 // from a Run associated to the PipelineRun
 func TestUpdateRunsState(t *testing.T) {
-	pr := parse.MustParsePipelineRun(t, `
+	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -2726,7 +2726,7 @@ status:
 	pr.Status.InitializeConditions(testClock)
 	status := state.GetRunsStatus(pr)
 
-	expectedPipelineRunStatus := parse.MustParsePipelineRun(t, `
+	expectedPipelineRunStatus := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipelinerun
   namespace: foo

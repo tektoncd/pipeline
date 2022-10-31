@@ -55,12 +55,12 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	task.Spec.Results = append(task.Spec.Results, v1beta1.TaskResult{
 		Name: "result",
 	})
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	delayedTask := getDelaySuccessTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, delayedTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, delayedTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
@@ -68,12 +68,12 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	successTask.Spec.Results = append(successTask.Spec.Results, v1beta1.TaskResult{
 		Name: "result",
 	})
-	if _, err := c.TaskClient.Create(ctx, successTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, successTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
 	finalTaskWithStatus := getTaskVerifyingStatus(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, finalTaskWithStatus, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, finalTaskWithStatus, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task checking executing status: %s", err)
 	}
 
@@ -81,21 +81,21 @@ func TestPipelineLevelFinally_OneDAGTaskFailed_InvalidTaskResult_Failure(t *test
 	taskProducingResult.Spec.Results = append(taskProducingResult.Spec.Results, v1beta1.TaskResult{
 		Name: "result",
 	})
-	if _, err := c.TaskClient.Create(ctx, taskProducingResult, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, taskProducingResult, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task producing task results: %s", err)
 	}
 
 	taskConsumingResultInParam := getSuccessTaskConsumingResults(t, namespace, "dagtask-result")
-	if _, err := c.TaskClient.Create(ctx, taskConsumingResultInParam, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, taskConsumingResultInParam, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task consuming task results in param: %s", err)
 	}
 
 	taskConsumingResultInWhenExpression := getSuccessTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, taskConsumingResultInWhenExpression, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, taskConsumingResultInWhenExpression, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task consuming task results in when expressions: %s", err)
 	}
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -216,12 +216,12 @@ spec:
 		taskConsumingResultInWhenExpression.Name,
 		// Tasks
 		task.Name, delayedTask.Name, successTask.Name, successTask.Name, taskProducingResult.Name))
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
 	pipelineRun := getPipelineRun(t, namespace, pipeline.Name)
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
@@ -230,12 +230,12 @@ spec:
 	}
 
 	// Get the status of the PipelineRun.
-	pr, err := c.PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
+	pr, err := c.V1beta1PipelineRunClient.Get(ctx, pipelineRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRun.Name, err)
 	}
 
-	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+	taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -402,16 +402,16 @@ func TestPipelineLevelFinally_OneFinalTaskFailed_Failure(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	task := getSuccessTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	finalTask := getFailTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, finalTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, finalTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -425,12 +425,12 @@ spec:
     taskRef:
       name: %s
 `, helpers.ObjectNameForTest(t), namespace, finalTask.Name, task.Name))
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
 	pipelineRun := getPipelineRun(t, namespace, pipeline.Name)
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
@@ -439,7 +439,7 @@ spec:
 		t.Fatalf("PipelineRun execution failed")
 	}
 
-	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+	taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -473,26 +473,26 @@ func TestPipelineLevelFinally_OneFinalTask_CancelledRunFinally(t *testing.T) {
 	task1.Spec.Results = append(task1.Spec.Results, v1beta1.TaskResult{
 		Name: "result",
 	})
-	if _, err := c.TaskClient.Create(ctx, task1, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, task1, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	task2 := getSuccessTaskConsumingResults(t, namespace, "dagtask1-result")
-	if _, err := c.TaskClient.Create(ctx, task2, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, task2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	finalTask1 := getSuccessTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, finalTask1, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, finalTask1, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
 	finalTask2 := getSuccessTaskConsumingResults(t, namespace, "dagtask1-result")
-	if _, err := c.TaskClient.Create(ctx, finalTask2, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, finalTask2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -518,12 +518,12 @@ spec:
     taskRef:
       name: %s
 `, helpers.ObjectNameForTest(t), namespace, finalTask1.Name, finalTask2.Name, task1.Name, task2.Name))
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
 	pipelineRun := getPipelineRun(t, namespace, pipeline.Name)
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
@@ -541,7 +541,7 @@ spec:
 	if err != nil {
 		t.Fatalf("failed to marshal patch bytes in order to stop")
 	}
-	if _, err := c.PipelineRunClient.Patch(ctx, pipelineRun.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Patch(ctx, pipelineRun.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
 		t.Fatalf("Failed to patch PipelineRun `%s` with graceful stop: %s", pipelineRun.Name, err)
 	}
 
@@ -550,7 +550,7 @@ spec:
 		t.Fatalf("PipelineRun execution failed")
 	}
 
-	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+	taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -588,26 +588,26 @@ func TestPipelineLevelFinally_OneFinalTask_StoppedRunFinally(t *testing.T) {
 	task1.Spec.Results = append(task1.Spec.Results, v1beta1.TaskResult{
 		Name: "result",
 	})
-	if _, err := c.TaskClient.Create(ctx, task1, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, task1, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	task2 := getSuccessTaskConsumingResults(t, namespace, "dagtask1-result")
-	if _, err := c.TaskClient.Create(ctx, task2, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, task2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag Task: %s", err)
 	}
 
 	finalTask1 := getSuccessTask(t, namespace)
-	if _, err := c.TaskClient.Create(ctx, finalTask1, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, finalTask1, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
 	finalTask2 := getSuccessTaskConsumingResults(t, namespace, "dagtask1-result")
-	if _, err := c.TaskClient.Create(ctx, finalTask2, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, finalTask2, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create final Task: %s", err)
 	}
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -633,12 +633,12 @@ spec:
     taskRef:
       name: %s
 `, helpers.ObjectNameForTest(t), namespace, finalTask1.Name, finalTask2.Name, task1.Name, task2.Name))
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
 	pipelineRun := getPipelineRun(t, namespace, pipeline.Name)
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
@@ -656,7 +656,7 @@ spec:
 	if err != nil {
 		t.Fatalf("failed to marshal patch bytes in order to stop")
 	}
-	if _, err := c.PipelineRunClient.Patch(ctx, pipelineRun.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Patch(ctx, pipelineRun.Name, types.JSONPatchType, patchBytes, metav1.PatchOptions{}, ""); err != nil {
 		t.Fatalf("Failed to patch PipelineRun `%s` with graceful stop: %s", pipelineRun.Name, err)
 	}
 
@@ -665,7 +665,7 @@ spec:
 		t.Fatalf("PipelineRun execution failed")
 	}
 
-	taskrunList, err := c.TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+	taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
 	if err != nil {
 		t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
 	}
@@ -717,7 +717,7 @@ func isCancelled(t *testing.T, taskRunName string, conds duckv1beta1.Conditions)
 }
 
 func getSuccessTask(t *testing.T, namespace string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -729,7 +729,7 @@ spec:
 }
 
 func getFailTask(t *testing.T, namespace string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -741,7 +741,7 @@ spec:
 }
 
 func getDelaySuccessTask(t *testing.T, namespace string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -753,7 +753,7 @@ spec:
 }
 
 func getTaskVerifyingStatus(t *testing.T, namespace string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -770,7 +770,7 @@ spec:
 }
 
 func getSuccessTaskProducingResults(t *testing.T, namespace string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -784,7 +784,7 @@ spec:
 }
 
 func getDelaySuccessTaskProducingResults(t *testing.T, namespace string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -798,7 +798,7 @@ spec:
 }
 
 func getSuccessTaskConsumingResults(t *testing.T, namespace string, paramName string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -812,7 +812,7 @@ spec:
 }
 
 func getPipelineRun(t *testing.T, namespace, p string) *v1beta1.PipelineRun {
-	return parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s

@@ -268,7 +268,7 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	pipeline := parse.MustParsePipeline(t, pipelineYAMLString)
+	pipeline := parse.MustParseV1beta1Pipeline(t, pipelineYAMLString)
 	pipelineRef := &v1beta1.PipelineRef{ResolverRef: v1beta1.ResolverRef{Resolver: "git"}}
 	pipelineYAML := strings.Join([]string{
 		"kind: Pipeline",
@@ -302,7 +302,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
 	ctx = config.ToContext(ctx, cfg)
-	pipeline := parse.MustParsePipeline(t, pipelineYAMLString)
+	pipeline := parse.MustParseV1beta1Pipeline(t, pipelineYAMLString)
 	pipelineRef := &v1beta1.PipelineRef{
 		ResolverRef: v1beta1.ResolverRef{
 			Resolver: "git",

@@ -45,7 +45,7 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	defer tearDown(ctx, t, c, namespace)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	task := parse.MustParseTask(t, fmt.Sprintf(`
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -53,17 +53,17 @@ spec:
   - name: foo
     image: busybox
     command: ['ls', '-la']`, helpers.ObjectNameForTest(t)))
-	if _, err := c.TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
-	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
   taskRef:
     name: %s
   serviceAccountName: inexistent`, helpers.ObjectNameForTest(t), task.Name))
-	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
@@ -72,7 +72,7 @@ spec:
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -80,17 +80,17 @@ spec:
   - name: foo
     taskRef:
       name: %s`, helpers.ObjectNameForTest(t), task.Name))
-	if _, err := c.PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, pipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", pipeline.Name, err)
 	}
-	pipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
   pipelineRef:
     name: %s
   serviceAccountName: inexistent`, helpers.ObjectNameForTest(t), pipeline.Name))
-	if _, err := c.PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pipelineRun.Name, err)
 	}
 
