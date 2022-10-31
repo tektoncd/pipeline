@@ -387,7 +387,7 @@ func TestGetAssistantAffinityMergedWithPodTemplateAffinity(t *testing.T) {
 		},
 	}
 
-	prWithEmptyAffinityPodTemplate := parse.MustParsePipelineRun(t, `
+	prWithEmptyAffinityPodTemplate := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr-with-no-podTemplate
 `)
@@ -399,7 +399,7 @@ metadata:
 		},
 	}
 
-	prWithPodTemplatePodAffinity := parse.MustParsePipelineRun(t, `
+	prWithPodTemplatePodAffinity := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr-with-podTemplate-podAffinity
 spec:
@@ -448,7 +448,7 @@ spec:
 		},
 	}
 
-	prWithPodTemplateNodeAffinity := parse.MustParsePipelineRun(t, `
+	prWithPodTemplateNodeAffinity := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr-with-podTemplate-nodeAffinity
 spec:

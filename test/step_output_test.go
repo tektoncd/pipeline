@@ -83,7 +83,7 @@ func TestStepOutput(t *testing.T) {
 	}
 
 	t.Logf("Creating TaskRun %q in namespace %q", taskRun.Name, taskRun.Namespace)
-	if _, err := clients.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := clients.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun %q: %s", taskRun.Name, err)
 	}
 
@@ -92,7 +92,7 @@ func TestStepOutput(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %q to finish: %v", taskRun.Name, err)
 	}
 
-	tr, err := clients.TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
+	tr, err := clients.V1beta1TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error getting Taskrun %q: %v", taskRun.Name, err)
 	}
@@ -157,7 +157,7 @@ func TestStepOutputWithWorkspace(t *testing.T) {
 	}
 
 	t.Logf("Creating TaskRun %q in namespace %q", taskRun.Name, taskRun.Namespace)
-	if _, err := clients.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := clients.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun %q: %s", taskRun.Name, err)
 	}
 
@@ -166,7 +166,7 @@ func TestStepOutputWithWorkspace(t *testing.T) {
 		t.Errorf("Error waiting for TaskRun %q to finish: %v", taskRun.Name, err)
 	}
 
-	tr, err := clients.TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
+	tr, err := clients.V1beta1TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Errorf("Error getting Taskrun %q: %v", taskRun.Name, err)
 	}

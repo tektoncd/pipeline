@@ -67,7 +67,7 @@ func TestTrustedResourcesVerify_Success(t *testing.T) {
 
 	// create pipelines
 	fqImageName := getTestImage(busyboxImage)
-	task := parse.MustParseTask(t, fmt.Sprintf(`
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -82,11 +82,11 @@ spec:
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
-	if _, err := c.TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -103,11 +103,11 @@ spec:
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
 
-	if _, err := c.PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -117,7 +117,7 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name))
 
 	t.Logf("Creating PipelineRun %s", pr.Name)
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pr.Name, err)
 	}
 
@@ -126,7 +126,7 @@ spec:
 		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	pr, err = c.PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
+	pr, err = c.V1beta1PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected PipelineRun %s: %s", pr.Name, err)
 	}
@@ -148,7 +148,7 @@ func TestTrustedResourcesVerify_Error(t *testing.T) {
 
 	// create pipelines
 	fqImageName := getTestImage(busyboxImage)
-	task := parse.MustParseTask(t, fmt.Sprintf(`
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -165,11 +165,11 @@ spec:
 	}
 	// modify the task to fail the verification
 	signedTask.Annotations["foo"] = "bar"
-	if _, err := c.TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, signedTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task: %s", err)
 	}
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -186,11 +186,11 @@ spec:
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
 
-	if _, err := c.PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, signedPipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline: %s", err)
 	}
 
-	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -200,7 +200,7 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, signedPipeline.Name))
 
 	t.Logf("Creating PipelineRun %s", pr.Name)
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", pr.Name, err)
 	}
 
@@ -209,7 +209,7 @@ spec:
 		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
-	pr, err = c.PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
+	pr, err = c.V1beta1PipelineRunClient.Get(ctx, pr.Name, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected PipelineRun %s: %s", pr.Name, err)
 	}

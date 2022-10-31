@@ -63,17 +63,17 @@ func TestClusterResource(t *testing.T) {
 	}
 
 	t.Logf("Creating cluster PipelineResource %s", resourceName)
-	if _, err := c.PipelineResourceClient.Create(ctx, getClusterResource(t, resourceName, secretName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1alpha1PipelineResourceClient.Create(ctx, getClusterResource(t, resourceName, secretName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create cluster Pipeline Resource `%s`: %s", resourceName, err)
 	}
 
 	t.Logf("Creating Task %s", taskName)
-	if _, err := c.TaskClient.Create(ctx, getClusterResourceTask(t, namespace, taskName, configName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, getClusterResourceTask(t, namespace, taskName, configName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", taskName, err)
 	}
 
 	t.Logf("Creating TaskRun %s", taskRunName)
-	if _, err := c.TaskRunClient.Create(ctx, getClusterResourceTaskRun(t, namespace, taskRunName, taskName, resourceName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskRunClient.Create(ctx, getClusterResourceTaskRun(t, namespace, taskRunName, taskName, resourceName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Taskrun `%s`: %s", taskRunName, err)
 	}
 
@@ -122,7 +122,7 @@ func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
 }
 
 func getClusterResourceTask(t *testing.T, namespace, name, configName string) *v1beta1.Task {
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -158,7 +158,7 @@ spec:
 }
 
 func getClusterResourceTaskRun(t *testing.T, namespace, name, taskName, resName string) *v1beta1.TaskRun {
-	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s

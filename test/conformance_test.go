@@ -58,7 +58,7 @@ func TestTaskRun(t *testing.T) {
 		expectedStepState       []v1beta1.StepState
 	}{{
 		name: "successful-task-run",
-		tr: parse.MustParseTaskRun(t, fmt.Sprintf(`
+		tr: parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -80,7 +80,7 @@ spec:
 		}},
 	}, {
 		name: "failed-task-run",
-		tr: parse.MustParseTaskRun(t, fmt.Sprintf(`
+		tr: parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -124,7 +124,7 @@ spec:
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Creating TaskRun %s", tc.tr.Name)
-			if _, err := c.TaskRunClient.Create(ctx, tc.tr, metav1.CreateOptions{}); err != nil {
+			if _, err := c.V1beta1TaskRunClient.Create(ctx, tc.tr, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", tc.tr.Name, err)
 			}
 
@@ -132,7 +132,7 @@ spec:
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
 				return
 			}
-			tr, err := c.TaskRunClient.Get(ctx, tc.tr.Name, metav1.GetOptions{})
+			tr, err := c.V1beta1TaskRunClient.Get(ctx, tc.tr.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("Failed to get TaskRun `%s`: %s", tc.tr.Name, err)
 			}

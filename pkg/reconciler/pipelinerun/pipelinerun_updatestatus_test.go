@@ -208,7 +208,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 		}, {
 			prName:   "status-nil-taskruns",
 			prStatus: prStatusWithEmptyTaskRuns,
-			trs: []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+			trs: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-1
@@ -221,7 +221,7 @@ metadata:
 			prName:   "status-missing-taskruns",
 			prStatus: prStatusMissingTaskRun,
 			trs: []*v1beta1.TaskRun{
-				parse.MustParseTaskRun(t, `
+				parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-3
@@ -664,7 +664,7 @@ metadata:
 		}, {
 			prName:   "status-nil-taskruns",
 			prStatus: prStatusWithEmptyChildRefs,
-			trs: []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+			trs: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-1
@@ -682,7 +682,7 @@ metadata:
 			prName:   "status-missing-taskruns",
 			prStatus: prStatusMissingTaskRun,
 			trs: []*v1beta1.TaskRun{
-				parse.MustParseTaskRun(t, `
+				parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-3
@@ -724,7 +724,7 @@ metadata:
 			prName:   "matrixed-taskruns-pr",
 			prStatus: prStatusWithEmptyChildRefs,
 			trs: []*v1beta1.TaskRun{
-				parse.MustParseTaskRun(t, `
+				parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task
@@ -732,7 +732,7 @@ metadata:
   ownerReferences:
   - uid: 11111111-1111-1111-1111-111111111111
 `),
-				parse.MustParseTaskRun(t, `
+				parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task
@@ -856,7 +856,7 @@ metadata:
 		{
 			prName:   "status-nil-taskruns",
 			prStatus: prStatusWithEmptyEverything,
-			trs: []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+			trs: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-1
@@ -1191,7 +1191,7 @@ func prStatusFromInputs(embeddedStatus string, status duckv1beta1.Status, taskRu
 
 func getTestTaskRunsAndRuns(t *testing.T) ([]*v1beta1.TaskRun, []*v1beta1.TaskRun, []*v1beta1.TaskRun, []*v1alpha1.Run, []*v1alpha1.Run, []*v1alpha1.Run) {
 	allTaskRuns := []*v1beta1.TaskRun{
-		parse.MustParseTaskRun(t, `
+		parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-1
@@ -1199,7 +1199,7 @@ metadata:
   ownerReferences:
   - uid: 11111111-1111-1111-1111-111111111111
 `),
-		parse.MustParseTaskRun(t, `
+		parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-3
@@ -1209,7 +1209,7 @@ metadata:
 `),
 	}
 
-	taskRunsFromAnotherPR := []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+	taskRunsFromAnotherPR := []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-1
@@ -1218,7 +1218,7 @@ metadata:
   - uid: 22222222-2222-2222-2222-222222222222
 `)}
 
-	taskRunsWithNoOwner := []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+	taskRunsWithNoOwner := []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     tekton.dev/pipelineTask: task-1

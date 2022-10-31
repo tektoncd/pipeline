@@ -235,7 +235,7 @@ func runTestReconcileWithEmbeddedStatus(t *testing.T, embeddedStatus string) {
 	// TestReconcile runs "Reconcile" on a PipelineRun with one Task that has not been started yet.
 	// It verifies that the TaskRun is created, it checks the resulting API actions, status and events.
 	names.TestingSeed()
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
   namespace: foo
@@ -257,7 +257,7 @@ spec:
       type: image
   serviceAccountName: test-sa
 `)}
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -365,7 +365,7 @@ spec:
       name: unit-test-cluster-task
 `)}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: unit-test-task
   namespace: foo
@@ -393,7 +393,7 @@ spec:
     - name: workspace
       type: git
 `),
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: unit-test-followup-task
   namespace: foo
@@ -598,21 +598,21 @@ spec:
 		embeddedStatus string
 	}{{
 		name:    "simple custom task with taskRef",
-		pr:      parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+		pr:      parse.MustParseV1beta1PipelineRun(t, simpleCustomTaskPRYAML),
 		wantRun: parse.MustParseRun(t, simpleCustomTaskWantRunYAML),
 	}, {
 		name:           "simple custom task with full embedded status",
-		pr:             parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+		pr:             parse.MustParseV1beta1PipelineRun(t, simpleCustomTaskPRYAML),
 		wantRun:        parse.MustParseRun(t, simpleCustomTaskWantRunYAML),
 		embeddedStatus: config.FullEmbeddedStatus,
 	}, {
 		name:           "simple custom task with minimal embedded status",
-		pr:             parse.MustParsePipelineRun(t, simpleCustomTaskPRYAML),
+		pr:             parse.MustParseV1beta1PipelineRun(t, simpleCustomTaskPRYAML),
 		wantRun:        parse.MustParseRun(t, simpleCustomTaskWantRunYAML),
 		embeddedStatus: config.MinimalEmbeddedStatus,
 	}, {
 		name: "simple custom task with taskSpec",
-		pr: parse.MustParsePipelineRun(t, `
+		pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipelinerun
   namespace: namespace
@@ -653,7 +653,7 @@ spec:
 `),
 	}, {
 		name: "custom task with workspace",
-		pr: parse.MustParsePipelineRun(t, `
+		pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipelinerun
   namespace: namespace
@@ -773,7 +773,7 @@ func runTestReconcilePipelineSpecTaskSpec(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
 
 	prs := []*v1beta1.PipelineRun{
-		parse.MustParsePipelineRun(t, `
+		parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
   namespace: foo
@@ -783,7 +783,7 @@ spec:
 `),
 	}
 	ps := []*v1beta1.Pipeline{
-		parse.MustParsePipeline(t, `
+		parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -813,7 +813,7 @@ spec:
 
 	// Check that the expected TaskRun was created
 	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
-	expectedTaskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+	expectedTaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 spec:
   taskSpec:
     steps:
@@ -843,12 +843,12 @@ spec:
 // It verifies that reconcile fails, how it fails and which events are triggered.
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: a-task-that-exists
   namespace: foo
 `),
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: a-task-that-needs-params
   namespace: foo
@@ -856,7 +856,7 @@ spec:
   params:
     - name: some-param
 `),
-		parse.MustParseTask(t, fmt.Sprintf(`
+		parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: a-task-that-needs-array-params
   namespace: foo
@@ -865,7 +865,7 @@ spec:
     - name: some-param
       type: %s
 `, v1beta1.ParamTypeArray)),
-		parse.MustParseTask(t, fmt.Sprintf(`
+		parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: a-task-that-needs-object-params
   namespace: foo
@@ -877,7 +877,7 @@ spec:
         key1: {}
         key2: {}
 `, v1beta1.ParamTypeObject)),
-		parse.MustParseTask(t, fmt.Sprintf(`
+		parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: a-task-that-needs-a-resource
   namespace: foo
@@ -889,7 +889,7 @@ spec:
 `, resourcev1alpha1.PipelineResourceTypeGit)),
 	}
 
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: pipeline-missing-tasks
   namespace: foo
@@ -899,7 +899,7 @@ spec:
       taskRef:
         name: sometask
 `),
-		parse.MustParsePipeline(t, `
+		parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: a-pipeline-without-params
   namespace: foo
@@ -909,7 +909,7 @@ spec:
       taskRef:
         name: a-task-that-needs-params
 `),
-		parse.MustParsePipeline(t, fmt.Sprintf(`
+		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: a-fine-pipeline
   namespace: foo
@@ -926,7 +926,7 @@ spec:
     - name: a-resource
       type: %s
 `, resourcev1alpha1.PipelineResourceTypeGit)),
-		parse.MustParsePipeline(t, `
+		parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: a-pipeline-that-should-be-caught-by-admission-control
   namespace: foo
@@ -940,7 +940,7 @@ spec:
           - name: needed-resource
             resource: a-resource
 `),
-		parse.MustParsePipeline(t, fmt.Sprintf(`
+		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: a-pipeline-with-array-params
   namespace: foo
@@ -953,7 +953,7 @@ spec:
       taskRef:
         name: a-task-that-needs-array-params
 `, v1beta1.ParamTypeArray)),
-		parse.MustParsePipeline(t, fmt.Sprintf(`
+		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: a-pipeline-with-object-params
   namespace: foo
@@ -980,7 +980,7 @@ spec:
 		wantEvents         []string
 	}{{
 		name: "invalid-pipeline-shd-be-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: invalid-pipeline
   namespace: foo
@@ -997,7 +997,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-run-missing-tasks-shd-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipelinerun-missing-tasks
   namespace: foo
@@ -1013,7 +1013,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-run-params-dont-exist-shd-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline-params-dont-exist
   namespace: foo
@@ -1029,7 +1029,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline-resources-not-bound
   namespace: foo
@@ -1045,7 +1045,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-run-missing-resource-shd-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline-resources-dont-exist
   namespace: foo
@@ -1065,7 +1065,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline-resources-not-declared
   namespace: foo
@@ -1081,7 +1081,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline-mismatching-param-type
   namespace: foo
@@ -1100,7 +1100,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-missing-object-keys",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline-missing-object-param-keys
   namespace: foo
@@ -1120,7 +1120,7 @@ spec:
 		},
 	}, {
 		name: "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, fmt.Sprintf(`
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: embedded-pipeline-resources-not-bound
   namespace: foo
@@ -1142,7 +1142,7 @@ spec:
 		},
 	}, {
 		name: "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: embedded-pipeline-invalid
   namespace: foo
@@ -1161,7 +1161,7 @@ spec:
 		},
 	}, {
 		name: "invalid-embedded-pipeline-mismatching-parameter-types",
-		pipelineRun: parse.MustParsePipelineRun(t, fmt.Sprintf(`
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: embedded-pipeline-mismatching-param-type
   namespace: foo
@@ -1186,7 +1186,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-run-missing-params-shd-stop-reconciling",
-		pipelineRun: parse.MustParsePipelineRun(t, fmt.Sprintf(`
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: pipelinerun-missing-params
   namespace: foo
@@ -1208,7 +1208,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-dag-graph",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline-invalid-dag-graph
   namespace: foo
@@ -1228,7 +1228,7 @@ spec:
 		},
 	}, {
 		name: "invalid-pipeline-with-invalid-final-tasks-graph",
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline-invalid-final-graph
   namespace: foo
@@ -1340,7 +1340,7 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// in the PipelineRun status, that the completion status is not altered, that not error is returned and
 	// a successful event is triggered
 	taskRunName := "test-pipeline-run-completed-hello-world"
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-completed
   namespace: foo
@@ -1563,7 +1563,7 @@ func TestReconcileForCustomTaskWithPipelineTaskTimedOut(t *testing.T) {
 	// TestReconcileForCustomTaskWithPipelineTaskTimedOut runs "Reconcile" on a PipelineRun.
 	// It verifies that reconcile is successful, and the individual
 	// custom task which has timed out, is patched as cancelled.
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: test
@@ -1575,7 +1575,7 @@ spec:
       kind: Example
 `)}
 	prName := "test-pipeline-run-custom-task-with-timeout"
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-custom-task-with-timeout
   namespace: test
@@ -1658,7 +1658,7 @@ func TestReconcileForCustomTaskWithPipelineRunTimedOut(t *testing.T) {
 		timeouts: &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: 12 * time.Hour}},
 	}} {
 		t.Run(tc.name, func(*testing.T) {
-			ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+			ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: test
@@ -1671,7 +1671,7 @@ spec:
 `)}
 
 			prName := "test-pipeline-run-custom-task"
-			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+			prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-custom-task
   namespace: test
@@ -1885,7 +1885,7 @@ func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask(t *testing.T,
 	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
 	ps := []*v1beta1.Pipeline{
-		parse.MustParsePipeline(t, `
+		parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -1942,7 +1942,7 @@ spec:
 func TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask(t *testing.T) {
 	// TestReconcileOnCancelledRunFinallyPipelineRunWithRunningFinalTask runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful and completed tasks and running final tasks are left untouched.
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-cancelled-run-finally
   namespace: foo
@@ -1964,7 +1964,7 @@ status:
           status: "True"
           type: Succeeded
 `)}
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -2172,7 +2172,7 @@ func TestReconcileTaskResolutionError(t *testing.T) {
 	ptName := "hello-world-1"
 	prName := "test-pipeline-fails-task-resolution"
 	prs := []*v1beta1.PipelineRun{
-		parse.MustParsePipelineRun(t, fmt.Sprintf(`
+		parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -2338,7 +2338,7 @@ status:
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			pr := parse.MustParsePipelineRun(t, basePRYAML)
+			pr := parse.MustParseV1beta1PipelineRun(t, basePRYAML)
 			if tc.initialTaskRunStatus != nil {
 				pr.Status.TaskRuns = tc.initialTaskRunStatus
 			}
@@ -2396,7 +2396,7 @@ status:
 func TestReconcileOnPendingPipelineRun(t *testing.T) {
 	// TestReconcileOnPendingPipelineRun runs "Reconcile" on a PipelineRun that is pending.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-pending
   namespace: foo
@@ -2434,7 +2434,7 @@ func TestReconcileWithTimeoutDeprecated(t *testing.T) {
 	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as skipped, and the
 	// pipeline status updated and events generated.
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-with-timeout
   namespace: foo
@@ -2482,7 +2482,7 @@ func TestReconcileWithTimeouts_Pipeline(t *testing.T) {
 	// TestReconcileWithTimeouts_Pipeline runs "Reconcile" on a PipelineRun that has timed out.
 	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as skipped, and the
 	// pipeline status updated and events generated.
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -2495,7 +2495,7 @@ spec:
     taskRef:
       name: hello-world
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-with-timeout
   namespace: foo
@@ -2575,7 +2575,7 @@ func TestReconcileWithTimeouts_Tasks(t *testing.T) {
 	// TestReconcileWithTimeouts_Tasks runs "Reconcile" on a PipelineRun with timeouts.tasks configured.
 	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as skipped, and the
 	// pipeline status updated and events generated.
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -2588,7 +2588,7 @@ spec:
     taskRef:
       name: hello-world
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-with-timeout
   namespace: foo
@@ -2673,7 +2673,7 @@ func TestReconcileWithTimeouts_Finally(t *testing.T) {
 	// TestReconcileWithTimeouts_Finally runs "Reconcile" on a PipelineRun with timeouts.finally configured.
 	// It verifies that reconcile is successful, no TaskRun is created, the PipelineTask is marked as skipped, and the
 	// pipeline status updated and events generated.
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline-with-finally
   namespace: foo
@@ -2690,7 +2690,7 @@ spec:
     taskRef:
       name: hello-world
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-with-timeout
   namespace: foo
@@ -2785,7 +2785,7 @@ spec:
 func TestReconcileWithoutPVC(t *testing.T) {
 	// TestReconcileWithoutPVC runs "Reconcile" on a PipelineRun that has two unrelated tasks.
 	// It verifies that reconcile is successful and that no PVC is created
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -2799,7 +2799,7 @@ spec:
       name: hello-world
 `)}
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -2859,7 +2859,7 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 			// The TaskRun cannot be cancelled. Check that the pipelinerun cancel fails, that reconcile fails and
 			// an event is generated
 			names.TestingSeed()
-			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, fmt.Sprintf(`
+			prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline-fails-to-cancel
   namespace: foo
@@ -2878,7 +2878,7 @@ status:
     test-pipeline-fails-to-cancelhello-world-1:
       pipelineTaskName: hello-world-1
 `, tc.specStatus))}
-			ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+			ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -2975,7 +2975,7 @@ func TestReconcileFailsTaskRunTimeOut(t *testing.T) {
 	// The TaskRun cannot be timed out. Check that the pipelinerun timeout fails, that reconcile fails and
 	// an event is generated
 	names.TestingSeed()
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-fails-to-timeout
   namespace: foo
@@ -2994,7 +2994,7 @@ status:
     test-pipeline-fails-to-timeouthello-world-1:
       pipelineTaskName: hello-world-1
 `)}
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -3086,7 +3086,7 @@ func TestReconcilePropagateLabelsAndAnnotations(t *testing.T) {
 	names.TestingSeed()
 
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   annotations:
     PipelineRunAnnotation: PipelineRunValue
@@ -3127,7 +3127,7 @@ spec:
 
 	// Check that the expected TaskRun was created
 	actual := getTaskRunCreations(t, clients.Pipeline.Actions(), 2)[0]
-	// We're ignoring TypeMeta here because parse.MustParseTaskRun populates that, but ktesting does not, so actual does not have it.
+	// We're ignoring TypeMeta here because parse.MustParseV1beta1TaskRun populates that, but ktesting does not, so actual does not have it.
 	if d := cmp.Diff(expected, actual, cmpopts.IgnoreTypes(metav1.TypeMeta{})); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expected, diff.PrintWantGot(d))
 	}
@@ -3152,7 +3152,7 @@ func TestReconcilePropagateLabelsWithSpecStatus(t *testing.T) {
 			names.TestingSeed()
 
 			ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, fmt.Sprintf(`
+			prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   annotations:
     PipelineRunAnnotation: PipelineRunValue
@@ -3197,7 +3197,7 @@ spec:
 func TestReconcileWithDifferentServiceAccounts(t *testing.T) {
 	names.TestingSeed()
 
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -3210,7 +3210,7 @@ spec:
     taskRef:
       name: hello-world-task
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-different-service-accs
   namespace: foo
@@ -3222,7 +3222,7 @@ spec:
   - taskServiceAccountName: test-sa-1
     pipelineTaskName: hello-world-1
 `)}
-	ts := []*v1beta1.Task{parse.MustParseTask(t, `
+	ts := []*v1beta1.Task{parse.MustParseV1beta1Task(t, `
 metadata:
   name: hello-world-task
   namespace: foo
@@ -3279,7 +3279,7 @@ spec:
 func TestReconcileCustomTasksWithDifferentServiceAccounts(t *testing.T) {
 	names.TestingSeed()
 
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -3295,7 +3295,7 @@ spec:
       kind: Example
 `)}
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-different-service-accs
   namespace: foo
@@ -3360,7 +3360,7 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, fmt.Sprintf(`
+			ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline-retry
   namespace: foo
@@ -3371,7 +3371,7 @@ spec:
     taskRef:
       name: hello-world
 `, tc.retries))}
-			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+			prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-retry-run-with-timeout
   namespace: foo
@@ -3387,7 +3387,7 @@ status:
 			ts := []*v1beta1.Task{
 				simpleHelloWorldTask,
 			}
-			trs := []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+			trs := []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: hello-world-1
   namespace: foo
@@ -3437,7 +3437,7 @@ func TestReconcileAndPropagateCustomPipelineTaskRunSpec(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   annotations:
     PipelineRunAnnotation: PipelineRunValue
@@ -3498,7 +3498,7 @@ spec:
 func TestReconcileCustomTasksWithTaskRunSpec(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -3516,7 +3516,7 @@ spec:
 			"workloadtype": "tekton",
 		},
 	}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -3607,7 +3607,7 @@ func TestReconcileWithWhenExpressionsWithTaskResultsAndParams(t *testing.T) {
 
 func runTestReconcileWithWhenExpressionsWithTaskResultsAndParams(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -3653,7 +3653,7 @@ spec:
     taskRef:
       name: d-task
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-different-service-accs
   namespace: foo
@@ -3790,7 +3790,7 @@ func TestReconcileWithWhenExpressions(t *testing.T) {
 	//		\
 	//		(e) ———— (f)
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -3847,7 +3847,7 @@ spec:
       name: f-task
 `)}
 	// initialize the pipelinerun with the skipped a-task
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-different-service-accs
   namespace: foo
@@ -3866,7 +3866,7 @@ status:
 `)}
 	// initialize the tasks used in the pipeline
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: a-task
   namespace: foo
@@ -3984,7 +3984,7 @@ spec:
 
 func TestReconcileWithWhenExpressionsWithResultRefs(t *testing.T) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -4010,7 +4010,7 @@ spec:
     taskRef:
       name: c-task
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-different-service-accs
   namespace: foo
@@ -4020,7 +4020,7 @@ spec:
   serviceAccountName: test-sa-0
 `)}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: a-task
   namespace: foo
@@ -4118,7 +4118,7 @@ func TestReconcileWithAffinityAssistantStatefulSet(t *testing.T) {
 	workspaceName := "ws1"
 	workspaceName2 := "ws2"
 	pipelineRunName := "test-pipeline-run"
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -4148,7 +4148,7 @@ spec:
   - name: emptyDirWorkspace
 `)}
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -4250,7 +4250,7 @@ spec:
 // a PVC is created and that the workspace appears as a PersistentVolumeClaim workspace for TaskRuns.
 func TestReconcileWithVolumeClaimTemplateWorkspace(t *testing.T) {
 	pipelineRunName := "test-pipeline-run"
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -4269,7 +4269,7 @@ spec:
   - name: ws1
 `)}
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -4352,7 +4352,7 @@ func TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths(t *testing.T) {
 	subPath1 := "customdirectory"
 	subPath2 := "otherdirecory"
 	pipelineRunWsSubPath := "mypath"
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -4396,7 +4396,7 @@ spec:
   - name: ws2
 `)}
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -4498,7 +4498,7 @@ spec:
 
 func TestReconcileWithTaskResults(t *testing.T) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -4514,7 +4514,7 @@ spec:
     taskRef:
       name: b-task
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-different-service-accs
   namespace: foo
@@ -4524,13 +4524,13 @@ spec:
   serviceAccountName: test-sa-0
 `)}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: a-task
   namespace: foo
 spec: {}
 `),
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: b-task
   namespace: foo
@@ -4606,7 +4606,7 @@ spec:
 
 func TestReconcileWithTaskResultsEmbeddedNoneStarted(t *testing.T) {
 	names.TestingSeed()
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-different-service-accs
   namespace: foo
@@ -4631,7 +4631,7 @@ spec:
   serviceAccountName: test-sa-0
 `)}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: a-task
   namespace: foo
@@ -4639,7 +4639,7 @@ spec:
   results:
   - name: A_RESULT
 `),
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: b-task
   namespace: foo
@@ -4722,7 +4722,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 
 func runTestReconcileWithFinallyResults(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -4790,7 +4790,7 @@ status:
   - name: b-Result
     value: bResultValue
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-finally-results
   namespace: foo
@@ -4804,7 +4804,7 @@ status:
     reason: Succeeded
 `)}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: a-task
   namespace: foo
@@ -4812,7 +4812,7 @@ spec:
   results:
   - name: a-Result
 `),
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: c-task
   namespace: foo
@@ -4838,7 +4838,7 @@ spec:
 	defer prt.Cancel()
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-finally-results", []string{}, false)
 
-	expectedPrFullStatus := parse.MustParsePipelineRun(t, `
+	expectedPrFullStatus := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-finally-results
   namespace: foo
@@ -4910,7 +4910,7 @@ status:
           value: bResultValue
 `)
 
-	expectedPrBothStatus := parse.MustParsePipelineRun(t, `
+	expectedPrBothStatus := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-finally-results
   namespace: foo
@@ -4995,7 +4995,7 @@ status:
           value: bResultValue
 `)
 
-	expectedPrMinimalStatus := parse.MustParsePipelineRun(t, `
+	expectedPrMinimalStatus := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-finally-results
   namespace: foo
@@ -5075,7 +5075,7 @@ status:
 
 func runTestReconcileWithPipelineResults(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -5129,7 +5129,7 @@ status:
   - name: b-Result
     value: bResultValue
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-results
   namespace: foo
@@ -5142,7 +5142,7 @@ status:
     type: Succeeded
 `)}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: a-task
   namespace: foo
@@ -5165,7 +5165,7 @@ spec:
 	defer prt.Cancel()
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-results", []string{}, false)
 
-	expectedPrFullStatus := parse.MustParsePipelineRun(t, `
+	expectedPrFullStatus := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-results
   namespace: foo
@@ -5226,7 +5226,7 @@ status:
           value: bResultValue
 `)
 
-	expectedPrBothStatus := parse.MustParsePipelineRun(t, `
+	expectedPrBothStatus := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-results
   namespace: foo
@@ -5296,7 +5296,7 @@ status:
           value: bResultValue
 `)
 
-	expectedPrMinimalStatus := parse.MustParsePipelineRun(t, `
+	expectedPrMinimalStatus := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-results
   namespace: foo
@@ -5397,7 +5397,7 @@ func TestReconcileWithPipelineResults_OnFailedPipelineRun(t *testing.T) {
 
 func runTestReconcileWithPipelineResultsOnFailedPipelineRun(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -5452,7 +5452,7 @@ status:
   - name: bResult
     value: bResultValue
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-failed-pr-with-task-results
   namespace: foo
@@ -5472,7 +5472,7 @@ status:
 `)}
 	ts := []*v1beta1.Task{
 		{ObjectMeta: baseObjectMeta("a-task", "foo")},
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: b-task
   namespace: foo
@@ -5482,7 +5482,7 @@ spec:
     type: string
 `),
 	}
-	wantPrs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	wantPrs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-failed-pr-with-task-results
   namespace: foo
@@ -5524,7 +5524,7 @@ status:
 }
 
 func Test_storePipelineSpec(t *testing.T) {
-	pr := parse.MustParsePipelineRun(t, `
+	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
   labels:
@@ -5626,7 +5626,7 @@ func runTestReconcileOutOfSyncPipelineRun(t *testing.T, embeddedStatus string) {
 	prOutOfSyncName := "test-pipeline-run-out-of-sync"
 	helloWorldTask := simpleHelloWorldTask
 
-	testPipeline := parse.MustParsePipeline(t, `
+	testPipeline := parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -5684,7 +5684,7 @@ status:
     type: Succeeded
 `)
 
-	prOutOfSync := parse.MustParsePipelineRun(t, `
+	prOutOfSync := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-out-of-sync
   namespace: foo
@@ -5903,7 +5903,7 @@ func TestUpdatePipelineRunStatusFromInformer(t *testing.T) {
 func runTestUpdatePipelineRunStatusFromInformer(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
 
-	pr := parse.MustParsePipelineRun(t, `
+	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   labels:
     mylabel: myvale
@@ -6471,7 +6471,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 	names.TestingSeed()
 
 	prs := []*v1beta1.PipelineRun{
-		parse.MustParsePipelineRun(t, `
+		parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipelinerun
   namespace: foo
@@ -6482,7 +6482,7 @@ spec:
 `),
 	}
 	ps := []*v1beta1.Pipeline{
-		parse.MustParsePipeline(t, `
+		parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -6494,7 +6494,7 @@ spec:
 `),
 	}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -6583,7 +6583,7 @@ func runTestReconcilePipelineTaskSpecMetadata(t *testing.T, embeddedStatus strin
 	names.TestingSeed()
 
 	prs := []*v1beta1.PipelineRun{
-		parse.MustParsePipelineRun(t, `
+		parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
   namespace: foo
@@ -6594,7 +6594,7 @@ spec:
 	}
 
 	ps := []*v1beta1.Pipeline{
-		parse.MustParsePipeline(t, `
+		parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -6680,7 +6680,7 @@ func TestReconciler_ReconcileKind_PipelineTaskContext(t *testing.T) {
 	pipelineName := "p-pipelinetask-status"
 	pipelineRunName := "pr-pipelinetask-status"
 
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: p-pipelinetask-status
   namespace: foo
@@ -6698,7 +6698,7 @@ spec:
       name: mytask
 `)}
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr-pipelinetask-status
   namespace: foo
@@ -6710,7 +6710,7 @@ spec:
 
 	ts := []*v1beta1.Task{
 		{ObjectMeta: baseObjectMeta("mytask", "foo")},
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: finaltask
   namespace: foo
@@ -6782,7 +6782,7 @@ spec:
 func TestReconcileWithTaskResultsInFinalTasks(t *testing.T) {
 	names.TestingSeed()
 
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -6853,7 +6853,7 @@ spec:
       name: dag-task
 `)}
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-final-task-results
   namespace: foo
@@ -6864,12 +6864,12 @@ spec:
 `)}
 
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: dag-task
   namespace: foo
 `),
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: final-task
   namespace: foo
@@ -7077,7 +7077,7 @@ func runTestReconcileRemotePipelineRef(t *testing.T, embeddedStatus string) {
 
 	ref := u.Host + "/testreconcile_remotepipelineref"
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline-run-success
   namespace: foo
@@ -7088,7 +7088,7 @@ spec:
   serviceAccountName: test-sa
   timeout: 1h0m0s
 `, ref))}
-	ps := parse.MustParsePipeline(t, fmt.Sprintf(`
+	ps := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: test-pipeline
   namespace: foo
@@ -7102,7 +7102,7 @@ spec:
 	cms := []*corev1.ConfigMap{withOCIBundles(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
 
 	// This task will be uploaded along with the pipeline definition.
-	remoteTask := parse.MustParseTask(t, `
+	remoteTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: unit-test-task
   namespace: foo
@@ -7197,7 +7197,7 @@ func runTestReconcileOptionalWorkspacesOmitted(t *testing.T, embeddedStatus stri
 	cfg := config.NewStore(logtesting.TestLogger(t))
 	ctx = cfg.ToContext(ctx)
 
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
   namespace: foo
@@ -7270,7 +7270,7 @@ func TestReconcile_DependencyValidationsImmediatelyFailPipelineRun(t *testing.T)
 	ctx = cfg.ToContext(ctx)
 
 	prs := []*v1beta1.PipelineRun{
-		parse.MustParsePipelineRun(t, `
+		parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipelinerun-param-invalid-result-variable
   namespace: foo
@@ -7292,7 +7292,7 @@ spec:
         - image: foo:latest
   serviceAccountName: test-sa
 `),
-		parse.MustParsePipelineRun(t, `
+		parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipelinerun-pipeline-result-invalid-result-variable
   namespace: foo
@@ -7312,7 +7312,7 @@ spec:
         - image: foo:latest
   serviceAccountName: test-sa
 `),
-		parse.MustParsePipelineRun(t, `
+		parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipelinerun-with-optional-workspace-validation
   namespace: foo
@@ -7377,7 +7377,7 @@ spec:
 // that when the request is successfully resolved the PipelineRun begins running.
 func TestReconcileWithResolver(t *testing.T) {
 	resolverName := "foobar"
-	pr := parse.MustParsePipelineRun(t, `
+	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: default
@@ -7452,7 +7452,7 @@ spec:
 // that when the request fails, the PipelineRun fails.
 func TestReconcileWithFailingResolver(t *testing.T) {
 	resolverName := "does-not-exist"
-	pr := parse.MustParsePipelineRun(t, `
+	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: default
@@ -7508,7 +7508,7 @@ spec:
 // that when the request fails, the PipelineRun fails.
 func TestReconcileWithFailingTaskResolver(t *testing.T) {
 	resolverName := "foobar"
-	pr := parse.MustParsePipelineRun(t, `
+	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: default
@@ -7567,7 +7567,7 @@ spec:
 // that when the request is successfully resolved the PipelineRun begins running.
 func TestReconcileWithTaskResolver(t *testing.T) {
 	resolverName := "foobar"
-	pr := parse.MustParsePipelineRun(t, `
+	pr := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: default
@@ -7741,7 +7741,7 @@ func createHelloWorldTaskRunWithStatusTaskLabel(
 }
 
 func createHelloWorldTaskRun(t *testing.T, trName, ns, prName, pName string) *v1beta1.TaskRun {
-	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -7756,7 +7756,7 @@ spec:
 }
 
 func createCancelledPipelineRun(t *testing.T, prName string, specStatus v1beta1.PipelineRunSpecStatus) *v1beta1.PipelineRun {
-	return parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -7875,7 +7875,7 @@ func filterChildRefsForKind(childRefs []v1beta1.ChildStatusReference, kind strin
 }
 
 func mustParseTaskRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.TaskRun {
-	tr := parse.MustParseTaskRun(t, asYAML)
+	tr := parse.MustParseV1beta1TaskRun(t, asYAML)
 	tr.ObjectMeta = objectMeta
 	return tr
 }
@@ -7887,7 +7887,7 @@ func mustParseRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYA
 }
 
 func helloWorldPipelineWithRunAfter(t *testing.T) *v1beta1.Pipeline {
-	return parse.MustParsePipeline(t, `
+	return parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -7923,7 +7923,7 @@ func TestGetTaskrunWorkspaces_Failure(t *testing.T) {
 		expectedError string
 	}{{
 		name: "failure declaring workspace with different name",
-		pr: parse.MustParsePipelineRun(t, `
+		pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline
 spec:
@@ -7941,7 +7941,7 @@ spec:
 	},
 		{
 			name: "failure mapping workspace with different name",
-			pr: parse.MustParsePipelineRun(t, `
+			pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline
 spec:
@@ -7960,7 +7960,7 @@ spec:
 		},
 		{
 			name: "failure propagating workspaces using scripts",
-			pr: parse.MustParsePipelineRun(t, `
+			pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline
 spec:
@@ -7981,7 +7981,7 @@ spec:
 		},
 		{
 			name: "failure propagating workspaces using args",
-			pr: parse.MustParsePipelineRun(t, `
+			pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline
 spec:
@@ -8028,7 +8028,7 @@ func TestGetTaskrunWorkspaces_Success(t *testing.T) {
 		rprt *resources.ResolvedPipelineTask
 	}{{
 		name: "valid declaration of workspace names",
-		pr: parse.MustParsePipelineRun(t, `
+		pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline
 spec:
@@ -8046,7 +8046,7 @@ spec:
 	},
 		{
 			name: "valid mapping with same workspace names",
-			pr: parse.MustParsePipelineRun(t, `
+			pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline
 spec:
@@ -8064,7 +8064,7 @@ spec:
 		},
 		{
 			name: "propagating workspaces using scripts",
-			pr: parse.MustParsePipelineRun(t, `
+			pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline
 spec:
@@ -8087,7 +8087,7 @@ spec:
 		},
 		{
 			name: "propagating workspaces using args",
-			pr: parse.MustParsePipelineRun(t, `
+			pr: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pipeline
 spec:
@@ -8129,7 +8129,7 @@ func TestReconcile_PropagatePipelineTaskRunSpecMetadata(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -8178,7 +8178,7 @@ spec:
 func TestReconcile_AddMetadataByPrecedence(t *testing.T) {
 	names.TestingSeed()
 	prName := "test-pipeline-run"
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -8195,7 +8195,7 @@ spec:
           annotations:
             TestPrecedenceAnnotation: PipelineTaskSpecValue
 `)}
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run
   namespace: foo
@@ -8250,7 +8250,7 @@ spec:
 func TestReconciler_PipelineTaskMatrix(t *testing.T) {
 	names.TestingSeed()
 
-	task := parse.MustParseTask(t, `
+	task := parse.MustParseV1beta1Task(t, `
 metadata:
   name: mytask
   namespace: foo
@@ -8442,7 +8442,7 @@ spec:
 	}{{
 		name:     "p-dag",
 		memberOf: "tasks",
-		p: parse.MustParsePipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -8467,7 +8467,7 @@ spec:
         - name: version
           value: v0.33.0
 `, "p-dag")),
-		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -8548,7 +8548,7 @@ status:
 	}, {
 		name:     "p-finally",
 		memberOf: "finally",
-		p: parse.MustParsePipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -8608,7 +8608,7 @@ status:
     reason: Succeeded
     message: All Tasks have completed executing
 `),
-		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -8705,7 +8705,7 @@ status:
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+			pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: pr
   namespace: foo
@@ -8762,7 +8762,7 @@ spec:
 func TestReconciler_PipelineTaskMatrixWithResults(t *testing.T) {
 	names.TestingSeed()
 
-	task := parse.MustParseTask(t, `
+	task := parse.MustParseV1beta1Task(t, `
 metadata:
   name: mytask
   namespace: foo
@@ -8778,7 +8778,7 @@ spec:
         echo "$(params.platform) and $(params.browser) and $(params.version)"
 `)
 
-	taskwithresults := parse.MustParseTask(t, `
+	taskwithresults := parse.MustParseV1beta1Task(t, `
 metadata:
   name: taskwithresults
   namespace: foo
@@ -8980,7 +8980,7 @@ spec:
 	}{{
 		name:     "p-dag",
 		memberOf: "tasks",
-		p: parse.MustParsePipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -9049,7 +9049,7 @@ status:
   - name: version
     value: v0.33.0
 `),
-		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -9145,7 +9145,7 @@ status:
 	}, {
 		name:     "p-finally",
 		memberOf: "finally",
-		p: parse.MustParsePipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -9216,7 +9216,7 @@ status:
   - name: version
     value: v0.33.0
 `),
-		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -9313,7 +9313,7 @@ status:
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+			pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: pr
   namespace: foo
@@ -9370,7 +9370,7 @@ spec:
 func TestReconciler_PipelineTaskMatrixWithRetries(t *testing.T) {
 	names.TestingSeed()
 
-	task := parse.MustParseTask(t, `
+	task := parse.MustParseV1beta1Task(t, `
 metadata:
   name: mytask
   namespace: foo
@@ -9440,7 +9440,7 @@ status:
 `),
 		},
 		prs: []*v1beta1.PipelineRun{
-			parse.MustParsePipelineRun(t, `
+			parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -9486,7 +9486,7 @@ status:
   runs: {}
 `),
 		},
-		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -9622,7 +9622,7 @@ status:
 `),
 		},
 		prs: []*v1beta1.PipelineRun{
-			parse.MustParsePipelineRun(t, `
+			parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -9668,7 +9668,7 @@ status:
   runs: {}
 `),
 		},
-		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -9810,7 +9810,7 @@ status:
 func TestReconciler_PipelineTaskMatrixWithCustomTask(t *testing.T) {
 	names.TestingSeed()
 
-	task := parse.MustParseTask(t, `
+	task := parse.MustParseV1beta1Task(t, `
 metadata:
   name: mytask
   namespace: foo
@@ -10022,7 +10022,7 @@ spec:
 	}{{
 		name:     "p-dag",
 		memberOf: "tasks",
-		p: parse.MustParsePipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -10048,7 +10048,7 @@ spec:
         - name: version
           value: v0.1
 `, "p-dag")),
-		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -10129,7 +10129,7 @@ status:
 	}, {
 		name:     "p-finally",
 		memberOf: "finally",
-		p: parse.MustParsePipeline(t, fmt.Sprintf(`
+		p: parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: foo
@@ -10190,7 +10190,7 @@ status:
     reason: Succeeded
     message: All Tasks have completed executing
 `),
-		expectedPipelineRun: parse.MustParsePipelineRun(t, `
+		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
   namespace: foo
@@ -10287,7 +10287,7 @@ status:
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+			pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: pr
   namespace: foo
@@ -10377,7 +10377,7 @@ func TestReconcile_SetDefaults(t *testing.T) {
 
 func runTestReconcileWithoutDefaults(t *testing.T, embeddedStatus string) {
 	names.TestingSeed()
-	prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipeline-run-success
   namespace: foo
@@ -10389,7 +10389,7 @@ spec:
     name: test-pipeline
   serviceAccountName: test-sa
 `)}
-	ps := []*v1beta1.Pipeline{parse.MustParsePipeline(t, `
+	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -10420,7 +10420,7 @@ spec:
       name: unit-test-cluster-task
 `)}
 	ts := []*v1beta1.Task{
-		parse.MustParseTask(t, `
+		parse.MustParseV1beta1Task(t, `
 metadata:
   name: unit-test-task
   namespace: foo
@@ -10491,7 +10491,7 @@ spec:
 }
 
 func TestReconcile_CreateTaskRunWithComputeResources(t *testing.T) {
-	simplePipeline := parse.MustParsePipeline(t, `
+	simplePipeline := parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: foo-pipeline
   namespace: default
@@ -10518,7 +10518,7 @@ spec:
 	}{{
 		name:     "only with requests",
 		pipeline: simplePipeline,
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: foo-pipeline-run
   namespace: default
@@ -10537,7 +10537,7 @@ spec:
 	}, {
 		name:     "only with limits",
 		pipeline: simplePipeline,
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: foo-pipeline-run
   namespace: default
@@ -10556,7 +10556,7 @@ spec:
 	}, {
 		name:     "both with requests and limits",
 		pipeline: simplePipeline,
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: foo-pipeline-run
   namespace: default
@@ -10578,7 +10578,7 @@ spec:
 	}, {
 		name:     "both with cpu and memory",
 		pipeline: simplePipeline,
-		pipelineRun: parse.MustParsePipelineRun(t, `
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: foo-pipeline-run
   namespace: default
@@ -10668,7 +10668,7 @@ func TestReconcile_CancelUnscheduled(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			pipelineRunName := "cancel-test-run"
-			prs := []*v1beta1.PipelineRun{parse.MustParsePipelineRun(t, `metadata:
+			prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `metadata:
   name: cancel-test-run
   namespace: foo
 spec:
@@ -10739,7 +10739,7 @@ func TestReconcile_verifyResolvedPipeline_Success(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	prs := parse.MustParsePipelineRun(t, `
+	prs := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipelinerun
   namespace: foo
@@ -10748,7 +10748,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 `)
-	ps := parse.MustParsePipeline(t, `
+	ps := parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -10758,7 +10758,7 @@ spec:
       taskRef:
         name: test-task
 `)
-	ts := parse.MustParseTask(t, `
+	ts := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -10822,7 +10822,7 @@ func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	prs := parse.MustParsePipelineRun(t, `
+	prs := parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: test-pipelinerun
   namespace: foo
@@ -10831,7 +10831,7 @@ spec:
   pipelineRef:
     name: test-pipeline
 `)
-	ps := parse.MustParsePipeline(t, `
+	ps := parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
   namespace: foo
@@ -10841,7 +10841,7 @@ spec:
       taskRef:
         name: test-task
 `)
-	ts := parse.MustParseTask(t, `
+	ts := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo

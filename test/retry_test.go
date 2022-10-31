@@ -53,7 +53,7 @@ func TestTaskRunRetry(t *testing.T) {
 	// configured to retry 5 times.
 	pipelineRunName := helpers.ObjectNameForTest(t)
 	numRetries := 5
-	if _, err := c.PipelineRunClient.Create(ctx, parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -75,7 +75,7 @@ spec:
 	}
 
 	// Get the status of the PipelineRun.
-	pr, err := c.PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
+	pr, err := c.V1beta1PipelineRunClient.Get(ctx, pipelineRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRunName, err)
 	}
@@ -101,7 +101,7 @@ spec:
 		}
 		taskRunName := pr.Status.ChildReferences[0].Name
 
-		tr, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+		tr, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("Failed to get TaskRun %q: %v", taskRunName, err)
 		}
@@ -111,7 +111,7 @@ spec:
 	}
 
 	// There should only be one TaskRun created.
-	trs, err := c.TaskRunClient.List(ctx, metav1.ListOptions{})
+	trs, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("Failed to list TaskRuns: %v", err)
 	} else if len(trs.Items) != 1 {

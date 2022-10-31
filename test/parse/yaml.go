@@ -24,8 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// MustParseTaskRun takes YAML and parses it into a *v1beta1.TaskRun
-func MustParseTaskRun(t *testing.T, yaml string) *v1beta1.TaskRun {
+// MustParseV1beta1TaskRun takes YAML and parses it into a *v1beta1.TaskRun
+func MustParseV1beta1TaskRun(t *testing.T, yaml string) *v1beta1.TaskRun {
 	var tr v1beta1.TaskRun
 	yaml = `apiVersion: tekton.dev/v1beta1
 kind: TaskRun
@@ -44,8 +44,8 @@ kind: Run
 	return &r
 }
 
-// MustParseTask takes YAML and parses it into a *v1beta1.Task
-func MustParseTask(t *testing.T, yaml string) *v1beta1.Task {
+// MustParseV1beta1Task takes YAML and parses it into a *v1beta1.Task
+func MustParseV1beta1Task(t *testing.T, yaml string) *v1beta1.Task {
 	var task v1beta1.Task
 	yaml = `apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -64,8 +64,8 @@ kind: ClusterTask
 	return &clusterTask
 }
 
-// MustParsePipelineRun takes YAML and parses it into a *v1beta1.PipelineRun
-func MustParsePipelineRun(t *testing.T, yaml string) *v1beta1.PipelineRun {
+// MustParseV1beta1PipelineRun takes YAML and parses it into a *v1beta1.PipelineRun
+func MustParseV1beta1PipelineRun(t *testing.T, yaml string) *v1beta1.PipelineRun {
 	var pr v1beta1.PipelineRun
 	yaml = `apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -74,8 +74,8 @@ kind: PipelineRun
 	return &pr
 }
 
-// MustParsePipeline takes YAML and parses it into a *v1beta1.Pipeline
-func MustParsePipeline(t *testing.T, yaml string) *v1beta1.Pipeline {
+// MustParseV1beta1Pipeline takes YAML and parses it into a *v1beta1.Pipeline
+func MustParseV1beta1Pipeline(t *testing.T, yaml string) *v1beta1.Pipeline {
 	var pipeline v1beta1.Pipeline
 	yaml = `apiVersion: tekton.dev/v1beta1
 kind: Pipeline

@@ -54,7 +54,7 @@ func TestWindows(t *testing.T) {
 	taskRunName := helpers.ObjectNameForTest(t)
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 
-	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -68,7 +68,7 @@ spec:
       command: ['cmd.exe']
       image: mcr.microsoft.com/windows/nanoserver:1809
 `, taskRunName, namespace))
-	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
@@ -77,7 +77,7 @@ spec:
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskrun, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	taskrun, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}
@@ -111,7 +111,7 @@ func TestWindowsFailure(t *testing.T) {
 	taskRunName := helpers.ObjectNameForTest(t)
 	t.Logf("Creating TaskRun in namespace %s", namespace)
 
-	taskRun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+	taskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -131,7 +131,7 @@ spec:
       command: ['cmd.exe']
       image: mcr.microsoft.com/windows/nanoserver:1809
 `, taskRunName, namespace))
-	if _, err := c.TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskRunClient.Create(ctx, taskRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun: %s", err)
 	}
 
@@ -140,7 +140,7 @@ spec:
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
-	taskrun, err := c.TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	taskrun, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected TaskRun %s: %s", taskRunName, err)
 	}

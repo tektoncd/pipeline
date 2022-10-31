@@ -501,7 +501,7 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 }
 
 func TestReconcile_ExplicitDefaultSA(t *testing.T) {
-	taskRunSuccess := parse.MustParseTaskRun(t, `
+	taskRunSuccess := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-success
   namespace: foo
@@ -510,7 +510,7 @@ spec:
     apiVersion: a1
     name: test-task
 `)
-	taskRunWithSaSuccess := parse.MustParseTaskRun(t, `
+	taskRunWithSaSuccess := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-sa-run-success
   namespace: foo
@@ -620,7 +620,7 @@ spec:
 // TestReconcile_CloudEvents runs reconcile with a cloud event sink configured
 // to ensure that events are sent in different cases
 func TestReconcile_CloudEvents(t *testing.T) {
-	task := parse.MustParseTask(t, `
+	task := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -634,7 +634,7 @@ spec:
     image: foo
     name: simple-step
 `)
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-not-started
   namespace: foo
@@ -713,7 +713,7 @@ spec:
 }
 
 func TestReconcile(t *testing.T) {
-	taskRunSuccess := parse.MustParseTaskRun(t, `
+	taskRunSuccess := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-success
   namespace: foo
@@ -722,7 +722,7 @@ spec:
     apiVersion: a1
     name: test-task
 `)
-	taskRunWithSaSuccess := parse.MustParseTaskRun(t, `
+	taskRunWithSaSuccess := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-sa-run-success
   namespace: foo
@@ -732,7 +732,7 @@ spec:
     apiVersion: a1
     name: test-with-sa
 `)
-	taskRunSubstitution := parse.MustParseTaskRun(t, `
+	taskRunSubstitution := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-substitution
   namespace: foo
@@ -757,7 +757,7 @@ spec:
     apiVersion: a1
     name: test-task-with-substitution
 `)
-	taskRunInputOutput := parse.MustParseTaskRun(t, `
+	taskRunInputOutput := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-input-output
   namespace: foo
@@ -786,7 +786,7 @@ spec:
   taskRef:
     name: test-output-task
 `)
-	taskRunWithTaskSpec := parse.MustParseTaskRun(t, `
+	taskRunWithTaskSpec := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-taskspec
   namespace: foo
@@ -817,7 +817,7 @@ spec:
       name: mycontainer
 `)
 
-	taskRunWithResourceSpecAndTaskSpec := parse.MustParseTaskRun(t, `
+	taskRunWithResourceSpecAndTaskSpec := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-resource-spec
   namespace: foo
@@ -844,7 +844,7 @@ spec:
       name: mystep
 `)
 
-	taskRunWithClusterTask := parse.MustParseTaskRun(t, `
+	taskRunWithClusterTask := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-cluster-task
   namespace: foo
@@ -854,7 +854,7 @@ spec:
     name: test-cluster-task
 `)
 
-	taskRunWithLabels := parse.MustParseTaskRun(t, `
+	taskRunWithLabels := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     TaskRunLabel: TaskRunValue
@@ -866,7 +866,7 @@ spec:
     name: test-task
 `)
 
-	taskRunWithAnnotations := parse.MustParseTaskRun(t, `
+	taskRunWithAnnotations := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   annotations:
     TaskRunAnnotation: TaskRunValue
@@ -877,7 +877,7 @@ spec:
     name: test-task
 `)
 
-	taskRunWithPod := parse.MustParseTaskRun(t, `
+	taskRunWithPod := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-pod
   namespace: foo
@@ -888,7 +888,7 @@ status:
   podName: some-pod-abcdethat-no-longer-exists
 `)
 
-	taskRunWithCredentialsVariable := parse.MustParseTaskRun(t, `
+	taskRunWithCredentialsVariable := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-credentials-variable
   namespace: foo
@@ -915,7 +915,7 @@ spec:
 		t.Fatalf("failed to upload image with simple task: %s", err.Error())
 	}
 
-	taskRunBundle := parse.MustParseTaskRun(t, fmt.Sprintf(`
+	taskRunBundle := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: test-taskrun-bundle
   namespace: foo
@@ -1201,7 +1201,7 @@ spec:
 
 func TestAlphaReconcile(t *testing.T) {
 	names.TestingSeed()
-	taskRunWithOutputConfig := parse.MustParseTaskRun(t, `
+	taskRunWithOutputConfig := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-output-config
   namespace: foo
@@ -1216,7 +1216,7 @@ spec:
           path: stdout.txt
 `)
 
-	taskRunWithOutputConfigAndWorkspace := parse.MustParseTaskRun(t, `
+	taskRunWithOutputConfigAndWorkspace := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-output-config-ws
   namespace: foo
@@ -1366,7 +1366,7 @@ func addVolumeMounts(p *corev1.Pod, vms []corev1.VolumeMount) *corev1.Pod {
 // that when the request is successfully resolved the TaskRun begins running.
 func TestReconcileWithResolver(t *testing.T) {
 	resolverName := "foobar"
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: tr
   namespace: default
@@ -1466,7 +1466,7 @@ spec:
 // that when the request fails, the TaskRun fails.
 func TestReconcileWithFailingResolver(t *testing.T) {
 	resolverName := "foobar"
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: tr
   namespace: default
@@ -1544,7 +1544,7 @@ spec:
 }
 
 func TestReconcile_SetsStartTime(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun
   namespace: foo
@@ -1577,7 +1577,7 @@ spec:
 
 func TestReconcile_DoesntChangeStartTime(t *testing.T) {
 	startTime := time.Date(2000, 1, 1, 1, 1, 1, 1, time.UTC)
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun
   namespace: foo
@@ -1611,7 +1611,7 @@ status:
 }
 
 func TestReconcileInvalidTaskRuns(t *testing.T) {
-	noTaskRun := parse.MustParseTaskRun(t, `
+	noTaskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: notaskrun
   namespace: foo
@@ -1619,7 +1619,7 @@ spec:
   taskRef:
     name: notask
 `)
-	withWrongRef := parse.MustParseTaskRun(t, `
+	withWrongRef := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: taskrun-with-wrong-ref
   namespace: foo
@@ -1708,7 +1708,7 @@ spec:
 }
 
 func TestReconcileGetTaskError(t *testing.T) {
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-success
   namespace: foo
@@ -1758,7 +1758,7 @@ spec:
 }
 
 func TestReconcileTaskRunWithPermanentError(t *testing.T) {
-	noTaskRun := parse.MustParseTaskRun(t, `
+	noTaskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: notaskrun
   namespace: foo
@@ -1816,7 +1816,7 @@ status:
 }
 
 func TestReconcilePodFetchError(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-success
   namespace: foo
@@ -1875,7 +1875,7 @@ func makePod(taskRun *v1beta1.TaskRun, task *v1beta1.Task) (*corev1.Pod, error) 
 
 func TestReconcilePodUpdateStatus(t *testing.T) {
 	const taskLabel = "test-task"
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-success
   namespace: foo
@@ -1970,7 +1970,7 @@ status:
 }
 
 func TestReconcileOnCompletedTaskRun(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-success
   namespace: foo
@@ -2010,7 +2010,7 @@ status:
 }
 
 func TestReconcileOnCancelledTaskRun(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-cancelled
   namespace: foo
@@ -2083,7 +2083,7 @@ status:
 }
 
 func TestReconcileOnTimedOutTaskRun(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-timedout
   namespace: foo
@@ -2156,7 +2156,7 @@ status:
 }
 
 func TestReconcilePodFailuresStepImagePullFailed(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-imagepull-fail
   namespace: foo
@@ -2213,7 +2213,7 @@ status:
 }
 
 func TestReconcilePodFailuresSidecarImagePullFailed(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-imagepull-fail
   namespace: foo
@@ -2295,7 +2295,7 @@ func TestReconcileTimeouts(t *testing.T) {
 	testcases := []testCase{
 		{
 			name: "taskrun with timeout",
-			taskRun: parse.MustParseTaskRun(t, `
+			taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-timeout
   namespace: foo
@@ -2321,7 +2321,7 @@ status:
 			},
 		}, {
 			name: "taskrun with default timeout",
-			taskRun: parse.MustParseTaskRun(t, `
+			taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-default-timeout-60-minutes
   namespace: foo
@@ -2345,7 +2345,7 @@ status:
 			},
 		}, {
 			name: "task run with nil timeout uses default",
-			taskRun: parse.MustParseTaskRun(t, `
+			taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-nil-timeout-default-60-minutes
   namespace: foo
@@ -2402,7 +2402,7 @@ status:
 }
 
 func TestPropagatedWorkspaces(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-propagating-workspaces
   namespace: foo
@@ -2449,7 +2449,7 @@ func TestExpandMountPath(t *testing.T) {
 	expectedMountPath := "/temppath/replaced"
 	expectedReplacedArgs := fmt.Sprintf("replacedArgs - %s", expectedMountPath)
 	// The task's Workspace has a parameter variable
-	simpleTask := parse.MustParseTask(t, `
+	simpleTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -2473,7 +2473,7 @@ spec:
     readOnly: true
 `)
 
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-not-started
   namespace: foo
@@ -2548,7 +2548,7 @@ spec:
 func TestExpandMountPath_DuplicatePaths(t *testing.T) {
 	expectedError := "workspace mount path \"/temppath/duplicate\" must be unique: workspaces[1].mountpath"
 	// The task has two workspaces, with different mount path strings.
-	simpleTask := parse.MustParseTask(t, `
+	simpleTask := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -2578,7 +2578,7 @@ spec:
 `)
 
 	// The parameter values will cause the two Workspaces to have duplicate mount path values after the parameters are expanded.
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-not-started
   namespace: foo
@@ -2647,7 +2647,7 @@ spec:
 }
 
 func TestHandlePodCreationError(t *testing.T) {
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-pod-creation-failed
 spec:
@@ -2736,7 +2736,7 @@ status:
 
 func TestReconcileCloudEvents(t *testing.T) {
 
-	taskRunWithNoCEResources := parse.MustParseTaskRun(t, `
+	taskRunWithNoCEResources := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-no-ce-resources
   namespace: foo
@@ -2745,7 +2745,7 @@ spec:
     apiVersion: a1
     name: test-task
 `)
-	taskRunWithTwoCEResourcesNoInit := parse.MustParseTaskRun(t, `
+	taskRunWithTwoCEResourcesNoInit := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-two-ce-resources-no-init
   namespace: foo
@@ -2761,7 +2761,7 @@ spec:
   taskRef:
     name: test-two-output-task
 `)
-	taskRunWithTwoCEResourcesInit := parse.MustParseTaskRun(t, `
+	taskRunWithTwoCEResourcesInit := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-two-ce-resources-init
   namespace: foo
@@ -2785,7 +2785,7 @@ status:
       condition: Unknown
     target: https://bar
 `)
-	taskRunWithCESucceded := parse.MustParseTaskRun(t, `
+	taskRunWithCESucceded := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-ce-succeeded
   namespace: foo
@@ -2813,7 +2813,7 @@ status:
   - status: "True"
     type: Succeeded
 `)
-	taskRunWithCEFailed := parse.MustParseTaskRun(t, `
+	taskRunWithCEFailed := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-ce-failed
   namespace: foo
@@ -2841,7 +2841,7 @@ status:
   - status: "False"
     type: Succeeded
 `)
-	taskRunWithCESuccededOneAttempt := parse.MustParseTaskRun(t, `
+	taskRunWithCESuccededOneAttempt := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-ce-succeeded-one-attempt
   namespace: foo
@@ -3024,7 +3024,7 @@ status:
 
 func TestReconcile_Single_SidecarState(t *testing.T) {
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-sidecars
 spec:
@@ -3074,7 +3074,7 @@ status:
 func TestReconcile_Multiple_SidecarStates(t *testing.T) {
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
 	waitingState := corev1.ContainerStateWaiting{Reason: "PodInitializing"}
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-sidecars
 spec:
@@ -3141,7 +3141,7 @@ status:
 // TestReconcileWorkspaceMissing tests a reconcile of a TaskRun that does
 // not include a Workspace that the Task is expecting.
 func TestReconcileWorkspaceMissing(t *testing.T) {
-	taskWithWorkspace := parse.MustParseTask(t, `
+	taskWithWorkspace := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-with-workspace
   namespace: foo
@@ -3151,7 +3151,7 @@ spec:
     name: ws1
     readOnly: true
 `)
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-missing-workspace
   namespace: foo
@@ -3197,7 +3197,7 @@ spec:
 // TestReconcileValidDefaultWorkspace tests a reconcile of a TaskRun that does
 // not include a Workspace that the Task is expecting and it uses the default Workspace instead.
 func TestReconcileValidDefaultWorkspace(t *testing.T) {
-	taskWithWorkspace := parse.MustParseTask(t, `
+	taskWithWorkspace := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-with-workspace
   namespace: foo
@@ -3212,7 +3212,7 @@ spec:
     name: ws1
     readOnly: true
 `)
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-default-workspace
   namespace: foo
@@ -3262,7 +3262,7 @@ spec:
 // not include a Workspace that the Task is expecting, and gets an error updating
 // the TaskRun with an invalid default workspace.
 func TestReconcileInvalidDefaultWorkspace(t *testing.T) {
-	taskWithWorkspace := parse.MustParseTask(t, `
+	taskWithWorkspace := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-with-workspace
   namespace: foo
@@ -3277,7 +3277,7 @@ spec:
     name: ws1
     readOnly: true
 `)
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-default-workspace
   namespace: foo
@@ -3324,7 +3324,7 @@ spec:
 // injected in place of the omitted optional workspace.
 func TestReconcileValidDefaultWorkspaceOmittedOptionalWorkspace(t *testing.T) {
 	optionalWorkspaceMountPath := "/foo/bar/baz"
-	taskWithOptionalWorkspace := parse.MustParseTask(t, `
+	taskWithOptionalWorkspace := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-with-optional-workspace
   namespace: default
@@ -3339,7 +3339,7 @@ spec:
     name: optional-ws
     optional: true
 `)
-	taskRunOmittingWorkspace := parse.MustParseTaskRun(t, `
+	taskRunOmittingWorkspace := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun
   namespace: default
@@ -3404,7 +3404,7 @@ func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
 	}{{
 		desc: "Fail ResolveTaskResources",
 		d: test.Data{
-			Tasks: []*v1beta1.Task{parse.MustParseTask(t, `
+			Tasks: []*v1beta1.Task{parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-missing-resource
   namespace: foo
@@ -3414,7 +3414,7 @@ spec:
     - name: workspace
       type: git
 `)},
-			TaskRuns: []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+			TaskRuns: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-missing-resource
   namespace: foo
@@ -3440,7 +3440,7 @@ spec:
 	}, {
 		desc: "Fail ValidateResolvedTaskResources",
 		d: test.Data{
-			Tasks: []*v1beta1.Task{parse.MustParseTask(t, `
+			Tasks: []*v1beta1.Task{parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-missing-resource
   namespace: foo
@@ -3450,7 +3450,7 @@ spec:
     - name: workspace
       type: git
 `)},
-			TaskRuns: []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+			TaskRuns: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-missing-resource
   namespace: foo
@@ -3471,7 +3471,7 @@ spec:
 	}, {
 		desc: "Fail ValidateTaskSpecRequestResources",
 		d: test.Data{
-			Tasks: []*v1beta1.Task{parse.MustParseTask(t, `
+			Tasks: []*v1beta1.Task{parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-invalid-taskspec-resource
   namespace: foo
@@ -3492,7 +3492,7 @@ spec:
     name: ws1
     readOnly: true
 `)},
-			TaskRuns: []*v1beta1.TaskRun{parse.MustParseTaskRun(t, `
+			TaskRuns: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-invalid-taskspec-resource
   namespace: foo
@@ -3552,7 +3552,7 @@ spec:
 // Affinity Assistant is validated and that the validation fails for a TaskRun that is incompatible with
 // Affinity Assistant; e.g. using more than one PVC-backed workspace.
 func TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant(t *testing.T) {
-	taskWithTwoWorkspaces := parse.MustParseTask(t, `
+	taskWithTwoWorkspaces := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-two-workspaces
   namespace: foo
@@ -3564,7 +3564,7 @@ spec:
   - description: another workspace
     name: ws2
 `)
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   annotations:
     pipeline.tekton.dev/affinity-assistant: dummy-affinity-assistant
@@ -3620,7 +3620,7 @@ spec:
 // TestReconcileWorkspaceWithVolumeClaimTemplate tests a reconcile of a TaskRun that has
 // a Workspace with VolumeClaimTemplate and check that it is translated to a created PersistentVolumeClaim.
 func TestReconcileWorkspaceWithVolumeClaimTemplate(t *testing.T) {
-	taskWithWorkspace := parse.MustParseTask(t, `
+	taskWithWorkspace := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-with-workspace
   namespace: foo
@@ -3635,7 +3635,7 @@ spec:
     name: ws1
     readOnly: true
 `)
-	taskRun := parse.MustParseTaskRun(t, `
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-missing-workspace
   namespace: foo
@@ -3699,7 +3699,7 @@ func TestFailTaskRun(t *testing.T) {
 		expectedStepStates []v1beta1.StepState
 	}{{
 		name: "no-pod-scheduled",
-		taskRun: parse.MustParseTaskRun(t, `
+		taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-failed
   namespace: foo
@@ -3723,7 +3723,7 @@ status:
 		},
 	}, {
 		name: "pod-scheduled",
-		taskRun: parse.MustParseTaskRun(t, `
+		taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-failed
   namespace: foo
@@ -3751,7 +3751,7 @@ status:
 		},
 	}, {
 		name: "step-status-update-cancel",
-		taskRun: parse.MustParseTaskRun(t, `
+		taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-cancel
   namespace: foo
@@ -3793,7 +3793,7 @@ status:
 		},
 	}, {
 		name: "step-status-update-timeout",
-		taskRun: parse.MustParseTaskRun(t, `
+		taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-timeout
   namespace: foo
@@ -3834,7 +3834,7 @@ status:
 		},
 	}, {
 		name: "step-status-update-multiple-steps",
-		taskRun: parse.MustParseTaskRun(t, `
+		taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-timeout-multiple-steps
   namespace: foo
@@ -3898,7 +3898,7 @@ status:
 		},
 	}, {
 		name: "step-status-update-multiple-steps-waiting-state",
-		taskRun: parse.MustParseTaskRun(t, `
+		taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-timeout-multiple-steps-waiting
   namespace: foo
@@ -3959,7 +3959,7 @@ status:
 		},
 	}, {
 		name: "step-status-update-with-multiple-steps-and-some-continue-on-error",
-		taskRun: parse.MustParseTaskRun(t, `
+		taskRun: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-run-ignore-step-error
   namespace: foo
@@ -4057,7 +4057,7 @@ status:
 }
 
 func Test_storeTaskSpec(t *testing.T) {
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   annotations:
     io.annotation: value
@@ -4189,7 +4189,7 @@ func TestWillOverwritePodAffinity(t *testing.T) {
 }
 
 func TestPodAdoption(t *testing.T) {
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   labels:
     mylabel: myvalue
@@ -4269,7 +4269,7 @@ spec:
 }
 
 func TestStopSidecars_ClientGetPodForTaskSpecWithSidecars(t *testing.T) {
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun
   namespace: foo
@@ -4326,7 +4326,7 @@ func TestStopSidecars_NoClientGetPodForTaskSpecWithoutRunningSidecars(t *testing
 		tr   *v1beta1.TaskRun
 	}{{
 		desc: "no sidecars",
-		tr: parse.MustParseTaskRun(t, `
+		tr: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun
   namespace: foo
@@ -4339,7 +4339,7 @@ status:
 `),
 	}, {
 		desc: "sidecars are terminated",
-		tr: parse.MustParseTaskRun(t, `
+		tr: parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun
   namespace: foo
@@ -4745,7 +4745,7 @@ func objectMeta(name, ns string) metav1.ObjectMeta {
 }
 
 func TestReconcile_validateTaskRunResults_valid(t *testing.T) {
-	taskRunResultsTypeMatched := parse.MustParseTaskRun(t, `
+	taskRunResultsTypeMatched := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-results-type-valid
   namespace: foo
@@ -4759,7 +4759,7 @@ status:
       value: aResultValue
 `)
 
-	taskRunResultsObjectValid := parse.MustParseTaskRun(t, `
+	taskRunResultsObjectValid := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-results-object-valid
   namespace: foo
@@ -4824,7 +4824,7 @@ status:
 }
 
 func TestReconcile_validateTaskRunResults_invalid(t *testing.T) {
-	taskRunResultsTypeMismatched := parse.MustParseTaskRun(t, `
+	taskRunResultsTypeMismatched := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-results-type-mismatched
   namespace: foo
@@ -4838,7 +4838,7 @@ status:
       value: aResultValue
 `)
 
-	taskRunResultsObjectMissKey := parse.MustParseTaskRun(t, `
+	taskRunResultsObjectMissKey := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-results-object-miss-key
   namespace: foo
@@ -4911,7 +4911,7 @@ status:
 }
 
 func TestReconcile_ReplacementsInStatusTaskSpec(t *testing.T) {
-	task := parse.MustParseTask(t, `
+	task := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task-with-replacements
   namespace: foo
@@ -4925,7 +4925,7 @@ spec:
     image: myimage
     name: mycontainer
 `)
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-replacements
   namespace: foo
@@ -4986,7 +4986,7 @@ func TestReconcile_verifyResolvedTask_Success(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ts := parse.MustParseTask(t, `
+	ts := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -5000,7 +5000,7 @@ spec:
     image: myimage
     name: mycontainer
 `)
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun
   namespace: foo
@@ -5061,7 +5061,7 @@ func TestReconcile_verifyResolvedTask_Error(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	ts := parse.MustParseTask(t, `
+	ts := parse.MustParseV1beta1Task(t, `
 metadata:
   name: test-task
   namespace: foo
@@ -5075,7 +5075,7 @@ spec:
     image: myimage
     name: mycontainer
 `)
-	tr := parse.MustParseTaskRun(t, `
+	tr := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun
   namespace: foo

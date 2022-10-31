@@ -101,7 +101,7 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 			t.Log(string(bs))
 		}
 		header(t, fmt.Sprintf("Dumping logs from Pods in the %s", namespace))
-		taskruns, err := cs.TaskRunClient.List(ctx, metav1.ListOptions{})
+		taskruns, err := cs.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
 		if err != nil {
 			t.Errorf("Error getting TaskRun list %s", err)
 		}
@@ -196,7 +196,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		output = append(output, bs...)
 	}
 
-	ps, err := cs.PipelineClient.List(ctx, metav1.ListOptions{})
+	ps, err := cs.V1beta1PipelineClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pipeline: %w", err)
 	}
@@ -205,7 +205,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	prs, err := cs.PipelineResourceClient.List(ctx, metav1.ListOptions{})
+	prs, err := cs.V1alpha1PipelineResourceClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pipelinerun resource: %w", err)
 	}
@@ -214,7 +214,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	prrs, err := cs.PipelineRunClient.List(ctx, metav1.ListOptions{})
+	prrs, err := cs.V1beta1PipelineRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pipelinerun: %w", err)
 	}
@@ -223,7 +223,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	ts, err := cs.TaskClient.List(ctx, metav1.ListOptions{})
+	ts, err := cs.V1beta1TaskClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get tasks: %w", err)
 	}
@@ -232,7 +232,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	cts, err := cs.ClusterTaskClient.List(ctx, metav1.ListOptions{})
+	cts, err := cs.V1beta1ClusterTaskClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get clustertasks: %w", err)
 	}
@@ -241,7 +241,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	trs, err := cs.TaskRunClient.List(ctx, metav1.ListOptions{})
+	trs, err := cs.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get taskruns: %w", err)
 	}
@@ -250,7 +250,7 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	rs, err := cs.RunClient.List(ctx, metav1.ListOptions{})
+	rs, err := cs.V1alpha1RunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get runs: %v", err)
 	}

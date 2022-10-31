@@ -100,7 +100,7 @@ func koCreate(input []byte, namespace string) ([]byte, error) {
 // conflicts during test
 func deleteClusterTask(ctx context.Context, t *testing.T, c *clients, name string) {
 	t.Logf("Deleting clustertask %s", name)
-	if err := c.ClusterTaskClient.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
+	if err := c.V1beta1ClusterTaskClient.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete clustertask: %v", err)
 	}
 }

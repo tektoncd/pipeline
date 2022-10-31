@@ -53,7 +53,7 @@ func TestDuplicatePodTaskRun(t *testing.T) {
 		taskrunName := helpers.ObjectNameForTest(t)
 		t.Logf("Creating taskrun %q.", taskrunName)
 
-		taskrun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+		taskrun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -64,7 +64,7 @@ spec:
       command: ['/bin/echo']
       args: ['simple']
 `, taskrunName, namespace))
-		if _, err := c.TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
+		if _, err := c.V1beta1TaskRunClient.Create(ctx, taskrun, metav1.CreateOptions{}); err != nil {
 			t.Fatalf("Error creating taskrun: %v", err)
 		}
 		go func(t *testing.T) {

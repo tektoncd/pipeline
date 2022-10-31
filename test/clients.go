@@ -25,7 +25,7 @@ that contains initialized clients for accessing:
 
 For example, to create a Pipeline
 
-	_, err = clients.PipelineClient.Pipelines.Create(test.Pipeline(namespaceName, pipelineName))
+	_, err = clients.V1beta1PipelineClient.Pipelines.Create(test.Pipeline(namespaceName, pipelineName))
 
 And you can use the client to clean up resources created by your test
 
@@ -57,14 +57,14 @@ import (
 type clients struct {
 	KubeClient kubernetes.Interface
 
-	PipelineClient          v1beta1.PipelineInterface
-	ClusterTaskClient       v1beta1.ClusterTaskInterface
-	TaskClient              v1beta1.TaskInterface
-	TaskRunClient           v1beta1.TaskRunInterface
-	PipelineRunClient       v1beta1.PipelineRunInterface
-	PipelineResourceClient  resourcev1alpha1.PipelineResourceInterface
-	RunClient               v1alpha1.RunInterface
-	ResolutionRequestclient resolutionv1alpha1.ResolutionRequestInterface
+	V1beta1PipelineClient           v1beta1.PipelineInterface
+	V1beta1ClusterTaskClient        v1beta1.ClusterTaskInterface
+	V1beta1TaskClient               v1beta1.TaskInterface
+	V1beta1TaskRunClient            v1beta1.TaskRunInterface
+	V1beta1PipelineRunClient        v1beta1.PipelineRunInterface
+	V1alpha1PipelineResourceClient  resourcev1alpha1.PipelineResourceInterface
+	V1alpha1RunClient               v1alpha1.RunInterface
+	V1alpha1ResolutionRequestclient resolutionv1alpha1.ResolutionRequestInterface
 }
 
 // newClients instantiates and returns several clientsets required for making requests to the
@@ -98,13 +98,13 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	if err != nil {
 		t.Fatalf("failed to create resolution clientset from config file at %s: %s", configPath, err)
 	}
-	c.PipelineClient = cs.TektonV1beta1().Pipelines(namespace)
-	c.ClusterTaskClient = cs.TektonV1beta1().ClusterTasks()
-	c.TaskClient = cs.TektonV1beta1().Tasks(namespace)
-	c.TaskRunClient = cs.TektonV1beta1().TaskRuns(namespace)
-	c.PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)
-	c.PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
-	c.RunClient = cs.TektonV1alpha1().Runs(namespace)
-	c.ResolutionRequestclient = rrcs.ResolutionV1alpha1().ResolutionRequests(namespace)
+	c.V1beta1PipelineClient = cs.TektonV1beta1().Pipelines(namespace)
+	c.V1beta1ClusterTaskClient = cs.TektonV1beta1().ClusterTasks()
+	c.V1beta1TaskClient = cs.TektonV1beta1().Tasks(namespace)
+	c.V1beta1TaskRunClient = cs.TektonV1beta1().TaskRuns(namespace)
+	c.V1beta1PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)
+	c.V1alpha1PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
+	c.V1alpha1RunClient = cs.TektonV1alpha1().Runs(namespace)
+	c.V1alpha1ResolutionRequestclient = rrcs.ResolutionV1alpha1().ResolutionRequests(namespace)
 	return c
 }

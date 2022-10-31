@@ -88,7 +88,7 @@ func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState C
 	defer span.End()
 
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.TaskRunClient.Get(ctx, name, metav1.GetOptions{})
+		r, err := c.V1beta1TaskRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -108,7 +108,7 @@ func WaitForRunState(ctx context.Context, c *clients, name string, polltimeout t
 	ctx, cancel := context.WithTimeout(ctx, polltimeout)
 	defer cancel()
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.RunClient.Get(ctx, name, metav1.GetOptions{})
+		r, err := c.V1alpha1RunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}
@@ -164,7 +164,7 @@ func WaitForPipelineRunState(ctx context.Context, c *clients, name string, pollt
 	ctx, cancel := context.WithTimeout(ctx, polltimeout)
 	defer cancel()
 	return pollImmediateWithContext(ctx, func() (bool, error) {
-		r, err := c.PipelineRunClient.Get(ctx, name, metav1.GetOptions{})
+		r, err := c.V1beta1PipelineRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}

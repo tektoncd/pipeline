@@ -76,7 +76,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	defer deleteBucketSecret(ctx, c, t, namespace)
 
 	t.Logf("Creating GCS bucket %s", bucketName)
-	createbuckettask := parse.MustParseTask(t, fmt.Sprintf(`
+	createbuckettask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -99,11 +99,11 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, bucketName, bucketSecretName, bucketSecretName, bucketSecretKey, bucketSecretName))
 
 	t.Logf("Creating Task %s", createbuckettask.Name)
-	if _, err := c.TaskClient.Create(ctx, createbuckettask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, createbuckettask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", createbuckettask.Name, err)
 	}
 
-	createbuckettaskrun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+	createbuckettaskrun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -113,7 +113,7 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, createbuckettask.Name))
 
 	t.Logf("Creating TaskRun %s", createbuckettaskrun.Name)
-	if _, err := c.TaskRunClient.Create(ctx, createbuckettaskrun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskRunClient.Create(ctx, createbuckettaskrun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", createbuckettaskrun.Name, err)
 	}
 
@@ -152,12 +152,12 @@ spec:
 	value: master
   type: git
 `, helloworldResourceName))
-	if _, err := c.PipelineResourceClient.Create(ctx, helloworldResource, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1alpha1PipelineResourceClient.Create(ctx, helloworldResource, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline Resource `%s`: %s", helloworldResourceName, err)
 	}
 
 	t.Logf("Creating Task %s", addFileTaskName)
-	addFileTask := parse.MustParseTask(t, fmt.Sprintf(`
+	addFileTask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -179,12 +179,12 @@ spec:
     name: make-executable
     script: chmod +x /workspace/helloworldgit/newfile
 `, addFileTaskName, namespace, helloworldResourceName, helloworldResourceName))
-	if _, err := c.TaskClient.Create(ctx, addFileTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, addFileTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", addFileTaskName, err)
 	}
 
 	t.Logf("Creating Task %s", runFileTaskName)
-	readFileTask := parse.MustParseTask(t, fmt.Sprintf(`
+	readFileTask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -198,12 +198,12 @@ spec:
     image: ubuntu
     name: runfile
 `, runFileTaskName, namespace, helloworldResourceName))
-	if _, err := c.TaskClient.Create(ctx, readFileTask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, readFileTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", runFileTaskName, err)
 	}
 
 	t.Logf("Creating Pipeline %s", bucketTestPipelineName)
-	bucketTestPipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	bucketTestPipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -230,12 +230,12 @@ spec:
     taskRef:
       name: %s
 `, bucketTestPipelineName, namespace, addFileTaskName, runFileTaskName))
-	if _, err := c.PipelineClient.Create(ctx, bucketTestPipeline, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineClient.Create(ctx, bucketTestPipeline, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Pipeline `%s`: %s", bucketTestPipelineName, err)
 	}
 
 	t.Logf("Creating PipelineRun %s", bucketTestPipelineRunName)
-	bucketTestPipelineRun := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	bucketTestPipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -247,7 +247,7 @@ spec:
     resourceRef:
       name: %s
 `, bucketTestPipelineRunName, namespace, bucketTestPipelineName, helloworldResourceName))
-	if _, err := c.PipelineRunClient.Create(ctx, bucketTestPipelineRun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, bucketTestPipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun `%s`: %s", bucketTestPipelineRunName, err)
 	}
 
@@ -308,7 +308,7 @@ func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, co
 }
 
 func runTaskToDeleteBucket(ctx context.Context, c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
-	deletelbuckettask := parse.MustParseTask(t, fmt.Sprintf(`
+	deletelbuckettask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -332,11 +332,11 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, bucketName, bucketSecretName, bucketSecretKey, bucketSecretName, bucketSecretName))
 
 	t.Logf("Creating Task %s", deletelbuckettask.Name)
-	if _, err := c.TaskClient.Create(ctx, deletelbuckettask, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, deletelbuckettask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", deletelbuckettask.Name, err)
 	}
 
-	deletelbuckettaskrun := parse.MustParseTaskRun(t, fmt.Sprintf(`
+	deletelbuckettaskrun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -346,7 +346,7 @@ spec:
 `, helpers.ObjectNameForTest(t), namespace, deletelbuckettask.Name))
 
 	t.Logf("Creating TaskRun %s", deletelbuckettaskrun.Name)
-	if _, err := c.TaskRunClient.Create(ctx, deletelbuckettaskrun, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskRunClient.Create(ctx, deletelbuckettaskrun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", deletelbuckettaskrun.Name, err)
 	}
 

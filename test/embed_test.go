@@ -54,10 +54,10 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	embedTaskRunName := helpers.ObjectNameForTest(t)
 
 	t.Logf("Creating Task and TaskRun in namespace %s", namespace)
-	if _, err := c.TaskClient.Create(ctx, getEmbeddedTask(t, embedTaskName, namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)}), metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskClient.Create(ctx, getEmbeddedTask(t, embedTaskName, namespace, []string{"/bin/sh", "-c", fmt.Sprintf("echo %s", taskOutput)}), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Task `%s`: %s", embedTaskName, err)
 	}
-	if _, err := c.TaskRunClient.Create(ctx, getEmbeddedTaskRun(t, embedTaskRunName, namespace, embedTaskName), metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1TaskRunClient.Create(ctx, getEmbeddedTaskRun(t, embedTaskRunName, namespace, embedTaskName), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create TaskRun `%s`: %s", embedTaskRunName, err)
 	}
 
@@ -75,7 +75,7 @@ func getEmbeddedTask(t *testing.T, taskName, namespace string, args []string) *v
 	for _, s := range args {
 		argsForYaml = append(argsForYaml, fmt.Sprintf("'%s'", s))
 	}
-	return parse.MustParseTask(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -94,7 +94,7 @@ spec:
 }
 
 func getEmbeddedTaskRun(t *testing.T, trName, namespace, taskName string) *v1beta1.TaskRun {
-	return parse.MustParseTaskRun(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s

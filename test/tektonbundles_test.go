@@ -79,7 +79,7 @@ func TestTektonBundlesSimpleWorkingExample(t *testing.T) {
 		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
 	}
 
-	task := parse.MustParseTask(t, fmt.Sprintf(`
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -90,7 +90,7 @@ spec:
     script: 'echo Hello'
 `, taskName, namespace))
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -145,7 +145,7 @@ spec:
 	publishImg(ctx, t, c, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
-	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -153,7 +153,7 @@ spec:
     name: %s
     bundle: %s
 `, pipelineRunName, pipelineName, repo))
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
@@ -162,7 +162,7 @@ spec:
 		t.Errorf("Error waiting for PipelineRun to finish with error: %s", err)
 	}
 
-	trs, err := c.TaskRunClient.List(ctx, metav1.ListOptions{})
+	trs, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
@@ -217,7 +217,7 @@ func TestTektonBundlesResolver(t *testing.T) {
 		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
 	}
 
-	task := parse.MustParseTask(t, fmt.Sprintf(`
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -228,7 +228,7 @@ spec:
     script: 'echo Hello'
 `, taskName, namespace))
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -287,7 +287,7 @@ spec:
 	publishImg(ctx, t, c, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
-	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -301,7 +301,7 @@ spec:
     - name: kind
       value: pipeline
 `, pipelineRunName, repo, pipelineName))
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
@@ -310,7 +310,7 @@ spec:
 		t.Errorf("Error waiting for PipelineRun to finish with error: %s", err)
 	}
 
-	trs, err := c.TaskRunClient.List(ctx, metav1.ListOptions{})
+	trs, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Errorf("Error retrieving taskrun: %s", err)
 	}
@@ -365,7 +365,7 @@ func TestTektonBundlesUsingRegularImage(t *testing.T) {
 		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
 	}
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -405,7 +405,7 @@ spec:
 	publishImg(ctx, t, c, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
-	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -413,7 +413,7 @@ spec:
     name: %s
     bundle: %s
 `, pipelineRunName, pipelineName, repo))
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
@@ -448,7 +448,7 @@ func TestTektonBundlesUsingImproperFormat(t *testing.T) {
 		t.Fatalf("Failed to parse %s as an OCI reference: %s", repo, err)
 	}
 
-	task := parse.MustParseTask(t, fmt.Sprintf(`
+	task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -459,7 +459,7 @@ spec:
     script: 'echo Hello'
 `, taskName, namespace))
 
-	pipeline := parse.MustParsePipeline(t, fmt.Sprintf(`
+	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
@@ -516,7 +516,7 @@ spec:
 	publishImg(ctx, t, c, namespace, img, ref)
 
 	// Now generate a PipelineRun to invoke this pipeline and task.
-	pr := parse.MustParsePipelineRun(t, fmt.Sprintf(`
+	pr := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
 spec:
@@ -524,7 +524,7 @@ spec:
     name: %s
     bundle: %s
 `, pipelineRunName, pipelineName, repo))
-	if _, err := c.PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pr, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
