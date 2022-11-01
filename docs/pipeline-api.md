@@ -7071,18 +7071,6 @@ CustomRunSpecStatusMessage
 </tr>
 <tr>
 <td>
-<code>retries</code><br/>
-<em>
-int
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Used for propagating retries count to custom tasks</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>serviceAccountName</code><br/>
 <em>
 string
@@ -8320,18 +8308,6 @@ CustomRunSpecStatusMessage
 <td>
 <em>(Optional)</em>
 <p>Status message for cancellation.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>retries</code><br/>
-<em>
-int
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Used for propagating retries count to custom tasks</p>
 </td>
 </tr>
 <tr>

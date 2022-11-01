@@ -142,13 +142,14 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 	// Events for Runs require a cache of events that have been sent
 	cacheClient := cache.Get(ctx)
 	_, isRun := object.(*v1alpha1.Run)
+	_, isCustomRun := object.(*v1beta1.CustomRun)
 
 	wasIn := make(chan error)
 	go func() {
 		wasIn <- nil
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
 		// In case of Run event, check cache if cloudevent is already sent
-		if isRun {
+		if isRun || isCustomRun {
 			cloudEventSent, err := cache.ContainsOrAddCloudEvent(cacheClient, event)
 			if err != nil {
 				logger.Errorf("error while checking cache: %s", err)

@@ -72,6 +72,16 @@ const (
 	RunSuccessfulEventV1 TektonEventType = "dev.tekton.event.run.successful.v1"
 	// RunFailedEventV1 is sent for Runs with "ConditionSucceeded" "False"
 	RunFailedEventV1 TektonEventType = "dev.tekton.event.run.failed.v1"
+	// CustomRunStartedEventV1 is sent for CustomRuns with "ConditionSucceeded" "Unknown"
+	// the first time they are picked up by the reconciler
+	CustomRunStartedEventV1 TektonEventType = "dev.tekton.event.customrun.started.v1"
+	// CustomRunRunningEventV1 is sent for CustomRuns with "ConditionSucceeded" "Unknown"
+	// once the CustomRun is validated and Pod created
+	CustomRunRunningEventV1 TektonEventType = "dev.tekton.event.customrun.running.v1"
+	// CustomRunSuccessfulEventV1 is sent for CustomRuns with "ConditionSucceeded" "True"
+	CustomRunSuccessfulEventV1 TektonEventType = "dev.tekton.event.customrun.successful.v1"
+	// CustomRunFailedEventV1 is sent for CustomRuns with "ConditionSucceeded" "False"
+	CustomRunFailedEventV1 TektonEventType = "dev.tekton.event.customrun.failed.v1"
 )
 
 func (t TektonEventType) String() string {
@@ -87,6 +97,7 @@ type TektonCloudEventData struct {
 	TaskRun     *v1beta1.TaskRun     `json:"taskRun,omitempty"`
 	PipelineRun *v1beta1.PipelineRun `json:"pipelineRun,omitempty"`
 	Run         *v1alpha1.Run        `json:"run,omitempty"`
+	CustomRun   *v1beta1.CustomRun   `json:"customRun,omitempty"`
 }
 
 // newTektonCloudEventData returns a new instance of TektonCloudEventData
@@ -99,6 +110,8 @@ func newTektonCloudEventData(runObject objectWithCondition) TektonCloudEventData
 		tektonCloudEventData.PipelineRun = v
 	case *v1alpha1.Run:
 		tektonCloudEventData.Run = v
+	case *v1beta1.CustomRun:
+		tektonCloudEventData.CustomRun = v
 	}
 	return tektonCloudEventData
 }
@@ -166,6 +179,16 @@ func eventForRun(run *v1alpha1.Run) (*cloudevents.Event, error) {
 	return eventForObjectWithCondition(run)
 }
 
+// eventForCustomRun will create a new event based on a CustomRun, or return an error if
+// not possible.
+func eventForCustomRun(customRun *v1beta1.CustomRun) (*cloudevents.Event, error) {
+	// Check if the CustomRun is defined
+	if customRun == nil {
+		return nil, errors.New("Cannot send an event for an empty CustomRun")
+	}
+	return eventForObjectWithCondition(customRun)
+}
+
 func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 	var eventType TektonEventType
 	c := runObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
@@ -176,6 +199,9 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 		switch runObject.(type) {
 		case *v1alpha1.Run:
 			eventType = RunStartedEventV1
+			return &eventType, nil
+		case *v1beta1.CustomRun:
+			eventType = CustomRunStartedEventV1
 			return &eventType, nil
 		default:
 			return nil, fmt.Errorf("no condition for ConditionSucceeded in %T", runObject)
@@ -207,6 +233,11 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			// so we cannot make many assumptions here. If a condition is set
 			// to unknown (not finished), we sent the running event
 			eventType = RunRunningEventV1
+		case *v1beta1.CustomRun:
+			// CustomRun controller have the freedom of setting reasons as they wish
+			// so we cannot make many assumptions here. If a condition is set
+			// to unknown (not finished), we sent the running event
+			eventType = CustomRunRunningEventV1
 		}
 	case c.IsFalse():
 		switch runObject.(type) {
@@ -216,6 +247,8 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			eventType = PipelineRunFailedEventV1
 		case *v1alpha1.Run:
 			eventType = RunFailedEventV1
+		case *v1beta1.CustomRun:
+			eventType = CustomRunFailedEventV1
 		}
 	case c.IsTrue():
 		switch runObject.(type) {
@@ -225,6 +258,8 @@ func getEventType(runObject objectWithCondition) (*TektonEventType, error) {
 			eventType = PipelineRunSuccessfulEventV1
 		case *v1alpha1.Run:
 			eventType = RunSuccessfulEventV1
+		case *v1beta1.CustomRun:
+			eventType = CustomRunSuccessfulEventV1
 		}
 	default:
 		return nil, fmt.Errorf("unknown condition for in %T.Status %s", runObject, c.Status)

@@ -113,6 +113,34 @@ func createRunWithCondition(status corev1.ConditionStatus, reason string) *v1alp
 	return myrun
 }
 
+func createCustomRunWithCondition(status corev1.ConditionStatus, reason string) *v1beta1.CustomRun {
+	myrun := &v1beta1.CustomRun{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "CustomRun",
+			APIVersion: "v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      runName,
+			Namespace: "marshmallow",
+			SelfLink:  defaultEventSourceURI,
+		},
+		Spec: v1beta1.CustomRunSpec{},
+	}
+	switch status {
+	case corev1.ConditionFalse, corev1.ConditionUnknown, corev1.ConditionTrue:
+		myrun.Status = v1beta1.CustomRunStatus{
+			Status: duckv1.Status{
+				Conditions: []apis.Condition{{
+					Type:   apis.ConditionSucceeded,
+					Status: status,
+					Reason: reason,
+				}},
+			},
+		}
+	}
+	return myrun
+}
+
 func TestEventForTaskRun(t *testing.T) {
 	taskRunTests := []struct {
 		desc          string
@@ -269,6 +297,64 @@ func TestEventForRun(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 
 			got, err := eventForRun(c.run)
+			if err != nil {
+				t.Fatalf("I did not expect an error but I got %s", err)
+			} else {
+				wantSubject := runName
+				if d := cmp.Diff(wantSubject, got.Subject()); d != "" {
+					t.Errorf("Wrong Event ID %s", diff.PrintWantGot(d))
+				}
+				if d := cmp.Diff(string(c.wantEventType), got.Type()); d != "" {
+					t.Errorf("Wrong Event Type %s", diff.PrintWantGot(d))
+				}
+				wantData := newTektonCloudEventData(c.run)
+				gotData := TektonCloudEventData{}
+				if err := got.DataAs(&gotData); err != nil {
+					t.Errorf("Unexpected error from DataAsl; %s", err)
+				}
+				if d := cmp.Diff(wantData, gotData); d != "" {
+					t.Errorf("Wrong Event data %s", diff.PrintWantGot(d))
+				}
+
+				if err := got.Validate(); err != nil {
+					t.Errorf("Expected event to be valid; %s", err)
+				}
+			}
+		})
+	}
+}
+
+func TestEventForCustomRun(t *testing.T) {
+	runTests := []struct {
+		desc          string
+		run           *v1beta1.CustomRun
+		wantEventType TektonEventType
+	}{{
+		desc:          "send a cloud event with unset condition, just started",
+		run:           createCustomRunWithCondition("", ""),
+		wantEventType: CustomRunStartedEventV1,
+	}, {
+		desc:          "send a cloud event with unknown status run, empty reason",
+		run:           createCustomRunWithCondition(corev1.ConditionUnknown, ""),
+		wantEventType: CustomRunRunningEventV1,
+	}, {
+		desc:          "send a cloud event with unknown status run, some reason set",
+		run:           createCustomRunWithCondition(corev1.ConditionUnknown, "custom controller reason"),
+		wantEventType: CustomRunRunningEventV1,
+	}, {
+		desc:          "send a cloud event with successful status run",
+		run:           createCustomRunWithCondition(corev1.ConditionTrue, "yay"),
+		wantEventType: CustomRunSuccessfulEventV1,
+	}, {
+		desc:          "send a cloud event with unknown status run",
+		run:           createCustomRunWithCondition(corev1.ConditionFalse, "meh"),
+		wantEventType: CustomRunFailedEventV1,
+	}}
+
+	for _, c := range runTests {
+		t.Run(c.desc, func(t *testing.T) {
+
+			got, err := eventForCustomRun(c.run)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
 			} else {
