@@ -36,4 +36,7 @@ const (
 
 	// RunControllerName holds the name of the Custom Task controller
 	RunControllerName = "Run"
+
+	// CustomRunControllerName holds the name of the CustomRun controller
+	CustomRunControllerName = "CustomRun"
 )

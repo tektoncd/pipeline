@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	lru "github.com/hashicorp/golang-lru"
 
@@ -38,6 +40,9 @@ func getEventData(run interface{}) map[string]interface{} {
 	cloudEventData := map[string]interface{}{}
 	if v, ok := run.(*v1alpha1.Run); ok {
 		cloudEventData["run"] = v
+	}
+	if v, ok := run.(*v1beta1.CustomRun); ok {
+		cloudEventData["customRun"] = v
 	}
 	return cloudEventData
 }
@@ -73,6 +78,21 @@ func getRunByMeta(name string, namespace string) *v1alpha1.Run {
 	}
 }
 
+func getCustomRunByMeta(name string, namespace string) *v1beta1.CustomRun {
+	return &v1beta1.CustomRun{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "CustomRun",
+			APIVersion: "v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec:   v1beta1.CustomRunSpec{},
+		Status: v1beta1.CustomRunStatus{},
+	}
+}
+
 // TestEventsKey verifies that keys are extracted correctly from events
 func TestEventsKey(t *testing.T) {
 	testcases := []struct {
@@ -86,6 +106,12 @@ func TestEventsKey(t *testing.T) {
 		eventtype: "my.test.run.event",
 		run:       getRunByMeta("myrun", "mynamespace"),
 		wantKey:   "my.test.run.event/run/mynamespace/myrun",
+		wantErr:   false,
+	}, {
+		name:      "customrun event",
+		eventtype: "my.test.run.event",
+		run:       getCustomRunByMeta("myrun", "mynamespace"),
+		wantKey:   "my.test.run.event/customrun/mynamespace/myrun",
 		wantErr:   false,
 	}, {
 		name:      "run event missing data",
@@ -114,6 +140,7 @@ func TestEventsKey(t *testing.T) {
 func TestAddCheckEvent(t *testing.T) {
 	run := getRunByMeta("arun", "anamespace")
 	runb := getRunByMeta("arun", "bnamespace")
+	customRun := getCustomRunByMeta("arun", "anamespace")
 	baseEvent := getEventToTest("some.event.type", run)
 
 	testcases := []struct {
@@ -135,6 +162,11 @@ func TestAddCheckEvent(t *testing.T) {
 		name:        "different namespace",
 		firstEvent:  baseEvent,
 		secondEvent: getEventToTest("some.event.type", runb),
+		wantFound:   false,
+	}, {
+		name:        "customrun instead of run",
+		firstEvent:  baseEvent,
+		secondEvent: getEventToTest("some.event.type", customRun),
 		wantFound:   false,
 	}, {
 		name:        "different event type",

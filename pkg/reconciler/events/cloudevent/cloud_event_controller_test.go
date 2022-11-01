@@ -603,6 +603,14 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		object:      &v1alpha1.Run{},
 		wantCEvents: []string{"Context Attributes,"},
 		wantEvents:  []string{},
+	}, {
+		name: "test-send-cloud-event-customrun",
+		clientBehaviour: FakeClientBehaviour{
+			SendSuccessfully: true,
+		},
+		object:      &v1beta1.CustomRun{},
+		wantCEvents: []string{"Context Attributes,"},
+		wantEvents:  []string{},
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

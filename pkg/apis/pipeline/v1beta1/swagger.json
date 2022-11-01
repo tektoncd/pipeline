@@ -525,11 +525,6 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
-        "retries": {
-          "description": "Used for propagating retries count to custom tasks",
-          "type": "integer",
-          "format": "int32"
-        },
         "serviceAccountName": {
           "type": "string",
           "default": ""
