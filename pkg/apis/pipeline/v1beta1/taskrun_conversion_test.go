@@ -301,7 +301,6 @@ func TestTaskRunConversionFromDeprecated(t *testing.T) {
 			},
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef: &v1beta1.TaskRef{
-					Name: "test-bundle-name",
 					ResolverRef: v1beta1.ResolverRef{
 						Resolver: "bundles",
 						Params: []v1beta1.Param{
