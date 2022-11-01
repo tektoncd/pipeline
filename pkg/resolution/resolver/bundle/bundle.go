@@ -82,8 +82,8 @@ func GetEntry(ctx context.Context, keychain authn.Keychain, opts RequestOptions)
 		return nil, fmt.Errorf("could not parse image manifest: %w", err)
 	}
 
-	if err := checkImageCompliance(opts.Bundle, manifest); err != nil {
-		return nil, err
+	if err := checkImageCompliance(manifest); err != nil {
+		return nil, fmt.Errorf("invalid tekton bundle %s, error: %w", opts.Bundle, err)
 	}
 
 	layers, err := img.Layers()
@@ -133,29 +133,28 @@ func retrieveImage(ctx context.Context, keychain authn.Keychain, ref string) (v1
 }
 
 // checkImageCompliance will perform common checks to ensure the Tekton Bundle is compliant to our spec.
-func checkImageCompliance(ref string, manifest *v1.Manifest) error {
+func checkImageCompliance(manifest *v1.Manifest) error {
 	// Check the manifest's layers to ensure there are a maximum of 10.
 	if len(manifest.Layers) > MaximumBundleObjects {
-		return fmt.Errorf("bundle %s contained more than the maximum %d allow objects", ref, MaximumBundleObjects)
+		return fmt.Errorf("contained more than the maximum %d allow objects", MaximumBundleObjects)
 	}
 
 	// Ensure each layer complies to the spec.
-	for _, l := range manifest.Layers {
-		refDigest := fmt.Sprintf("%s:%s", ref, l.Digest.String())
+	for i, l := range manifest.Layers {
 		if _, ok := l.Annotations[BundleAnnotationAPIVersion]; !ok {
-			return fmt.Errorf("invalid tekton bundle: %s does not contain a %s annotation", refDigest, BundleAnnotationKind)
+			return fmt.Errorf("the layer %v does not contain a %s annotation", i, BundleAnnotationAPIVersion)
 		}
 
 		if _, ok := l.Annotations[BundleAnnotationName]; !ok {
-			return fmt.Errorf("invalid tekton bundle: %s does not contain a %s annotation", refDigest, BundleAnnotationName)
+			return fmt.Errorf("the layer %v does not contain a %s annotation", i, BundleAnnotationName)
 		}
 
 		kind, ok := l.Annotations[BundleAnnotationKind]
 		if !ok {
-			return fmt.Errorf("invalid tekton bundle: %s does not contain a %s annotation", refDigest, BundleAnnotationKind)
+			return fmt.Errorf("the layer %v does not contain a %s annotation", i, BundleAnnotationKind)
 		}
 		if strings.TrimSuffix(strings.ToLower(kind), "s") != kind {
-			return fmt.Errorf("invalid tekton bundle: %s annotation for %s must be lowercased and singular, found %s", BundleAnnotationKind, refDigest, kind)
+			return fmt.Errorf("the layer %v the annotation %s must be lowercased and singular, found %s", i, BundleAnnotationKind, kind)
 		}
 	}
 

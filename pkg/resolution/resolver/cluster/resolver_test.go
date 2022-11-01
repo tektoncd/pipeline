@@ -19,7 +19,6 @@ package cluster
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"testing"
 	"time"
@@ -32,12 +31,11 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/internal"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/system"
 	"sigs.k8s.io/yaml"
 
@@ -244,61 +242,33 @@ func TestResolve(t *testing.T) {
 		expectedErr       error
 	}{
 		{
-			name:         "successful task",
-			kind:         "task",
-			resourceName: exampleTask.Name,
-			namespace:    exampleTask.Namespace,
-			expectedStatus: &v1beta1.ResolutionRequestStatus{
-				Status: duckv1.Status{},
-				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString(taskAsYAML),
-				},
-			},
+			name:           "successful task",
+			kind:           "task",
+			resourceName:   exampleTask.Name,
+			namespace:      exampleTask.Namespace,
+			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
-			name:         "successful pipeline",
-			kind:         "pipeline",
-			resourceName: examplePipeline.Name,
-			namespace:    examplePipeline.Namespace,
-			expectedStatus: &v1beta1.ResolutionRequestStatus{
-				Status: duckv1.Status{},
-				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString(pipelineAsYAML),
-				},
-			},
+			name:           "successful pipeline",
+			kind:           "pipeline",
+			resourceName:   examplePipeline.Name,
+			namespace:      examplePipeline.Namespace,
+			expectedStatus: internal.CreateResolutionRequestStatusWithData(pipelineAsYAML),
 		}, {
-			name:         "default namespace",
-			kind:         "pipeline",
-			resourceName: examplePipeline.Name,
-			expectedStatus: &v1beta1.ResolutionRequestStatus{
-				Status: duckv1.Status{},
-				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString(pipelineAsYAML),
-				},
-			},
+			name:           "default namespace",
+			kind:           "pipeline",
+			resourceName:   examplePipeline.Name,
+			expectedStatus: internal.CreateResolutionRequestStatusWithData(pipelineAsYAML),
 		}, {
-			name:         "default kind",
-			resourceName: exampleTask.Name,
-			namespace:    exampleTask.Namespace,
-			expectedStatus: &v1beta1.ResolutionRequestStatus{
-				Status: duckv1.Status{},
-				ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
-					Data: base64.StdEncoding.Strict().EncodeToString(taskAsYAML),
-				},
-			},
+			name:           "default kind",
+			resourceName:   exampleTask.Name,
+			namespace:      exampleTask.Namespace,
+			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
-			name:         "no such task",
-			kind:         "task",
-			resourceName: exampleTask.Name,
-			namespace:    "other-ns",
-			expectedStatus: &v1beta1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-						Reason: resolutioncommon.ReasonResolutionFailed,
-					}},
-				},
-			},
+			name:           "no such task",
+			kind:           "task",
+			resourceName:   exampleTask.Name,
+			namespace:      "other-ns",
+			expectedStatus: internal.CreateResolutionRequestFailureStatus(),
 			expectedErr: &resolutioncommon.ErrorGettingResource{
 				ResolverName: ClusterResolverName,
 				Key:          "foo/rr",
@@ -310,15 +280,7 @@ func TestResolve(t *testing.T) {
 			resourceName:      exampleTask.Name,
 			namespace:         "other-ns",
 			allowedNamespaces: "foo,bar",
-			expectedStatus: &v1beta1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-						Reason: resolutioncommon.ReasonResolutionFailed,
-					}},
-				},
-			},
+			expectedStatus:    internal.CreateResolutionRequestFailureStatus(),
 			expectedErr: &resolutioncommon.ErrorInvalidRequest{
 				ResolutionRequestKey: "foo/rr",
 				Message:              "access to specified namespace other-ns is not allowed",
@@ -329,15 +291,7 @@ func TestResolve(t *testing.T) {
 			resourceName:      exampleTask.Name,
 			namespace:         "other-ns",
 			blockedNamespaces: "foo,other-ns,bar",
-			expectedStatus: &v1beta1.ResolutionRequestStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionFalse,
-						Reason: resolutioncommon.ReasonResolutionFailed,
-					}},
-				},
-			},
+			expectedStatus:    internal.CreateResolutionRequestFailureStatus(),
 			expectedErr: &resolutioncommon.ErrorInvalidRequest{
 				ResolutionRequestKey: "foo/rr",
 				Message:              "access to specified namespace other-ns is blocked",

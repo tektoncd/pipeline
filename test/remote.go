@@ -40,7 +40,7 @@ var (
 	// DefaultObjectAnnotationMapper does the "right" thing by conforming to the Tekton Bundle spec.
 	DefaultObjectAnnotationMapper = func(obj runtime.Object) map[string]string {
 		return map[string]string{
-			tkremote.TitleAnnotation:      getObjectName(obj),
+			tkremote.TitleAnnotation:      GetObjectName(obj),
 			tkremote.KindAnnotation:       strings.TrimSuffix(strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind), "s"),
 			tkremote.APIVersionAnnotation: obj.GetObjectKind().GroupVersionKind().Version,
 		}
@@ -74,7 +74,7 @@ func CreateImageWithAnnotations(ref string, mapper ObjectAnnotationMapper, objs 
 		var tarbundle bytes.Buffer
 		writer := tar.NewWriter(&tarbundle)
 		if err := writer.WriteHeader(&tar.Header{
-			Name:     getObjectName(obj),
+			Name:     GetObjectName(obj),
 			Mode:     0600,
 			Size:     int64(len(data)),
 			Typeflag: tar.TypeReg,
@@ -115,7 +115,7 @@ func CreateImageWithAnnotations(ref string, mapper ObjectAnnotationMapper, objs 
 	return imgRef.Context().Digest(digest.String()).String(), nil
 }
 
-// Return the ObjectMetadata.Name field which every resource should have.
-func getObjectName(obj runtime.Object) string {
+// GetObjectName returns the ObjectMetadata.Name field which every resource should have.
+func GetObjectName(obj runtime.Object) string {
 	return reflect.Indirect(reflect.ValueOf(obj)).FieldByName("ObjectMeta").FieldByName("Name").String()
 }

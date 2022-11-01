@@ -41,12 +41,11 @@ import (
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	frtesting "github.com/tektoncd/pipeline/pkg/resolution/resolver/framework/testing"
+	"github.com/tektoncd/pipeline/pkg/resolution/resolver/internal"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/system"
 
 	_ "knative.dev/pkg/system/testing"
@@ -279,7 +278,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    createStatus([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
 	}, {
 		name: "clone: revision is tag name",
 		args: &params{
@@ -288,7 +287,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    createStatus([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
 	}, {
 		name: "clone: revision is the full tag name i.e. refs/tags/v1",
 		args: &params{
@@ -297,7 +296,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[2],
-		expectedStatus:    createStatus([]byte("released content in main branch and in tag v1")),
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData([]byte("released content in main branch and in tag v1")),
 	}, {
 		name: "clone: revision is a branch name",
 		args: &params{
@@ -306,7 +305,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[1],
-		expectedStatus:    createStatus([]byte("new content in test branch")),
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData([]byte("new content in test branch")),
 	}, {
 		name: "clone: revision is a specific commit sha",
 		args: &params{
@@ -315,7 +314,7 @@ func TestResolve(t *testing.T) {
 			url:        anonFakeRepoURL,
 		},
 		expectedCommitSHA: commitSHAsInAnonRepo[0],
-		expectedStatus:    createStatus([]byte("old content in test branch")),
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData([]byte("old content in test branch")),
 	}, {
 		name: "clone: file does not exist",
 		args: &params{
@@ -348,7 +347,7 @@ func TestResolve(t *testing.T) {
 		},
 		apiToken:          "some-token",
 		expectedCommitSHA: commitSHAsInSCMRepo[0],
-		expectedStatus:    createStatus(mainTaskYAML),
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData(mainTaskYAML),
 	}, {
 		name: "api: successful pipeline",
 		args: &params{
@@ -366,7 +365,7 @@ func TestResolve(t *testing.T) {
 		},
 		apiToken:          "some-token",
 		expectedCommitSHA: commitSHAsInSCMRepo[0],
-		expectedStatus:    createStatus(mainPipelineYAML),
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData(mainPipelineYAML),
 	}, {
 		name: "api: successful pipeline with default revision",
 		args: &params{
@@ -384,7 +383,7 @@ func TestResolve(t *testing.T) {
 		},
 		apiToken:          "some-token",
 		expectedCommitSHA: commitSHAsInSCMRepo[1],
-		expectedStatus:    createStatus(otherPipelineYAML),
+		expectedStatus:    internal.CreateResolutionRequestStatusWithData(otherPipelineYAML),
 	}, {
 		name: "api: file does not exist",
 		args: &params{
@@ -401,7 +400,7 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		apiToken:       "some-token",
-		expectedStatus: createFailureStatus(),
+		expectedStatus: internal.CreateResolutionRequestFailureStatus(),
 		expectedErr:    createError("couldn't fetch resource content: file testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml does not exist: stat testdata/test-org/test-repo/refs/main/pipelines/other-pipeline.yaml: no such file or directory"),
 	}, {
 		name: "api: token not found",
@@ -418,7 +417,7 @@ func TestResolve(t *testing.T) {
 			APISecretKeyKey:       "token",
 			APISecretNamespaceKey: system.Namespace(),
 		},
-		expectedStatus: createFailureStatus(),
+		expectedStatus: internal.CreateResolutionRequestFailureStatus(),
 		expectedErr:    createError(fmt.Sprintf("cannot get API token, secret token-secret not found in namespace %s", system.Namespace())),
 	}, {
 		name: "api: token secret name not specified",
@@ -435,7 +434,7 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		apiToken:       "some-token",
-		expectedStatus: createFailureStatus(),
+		expectedStatus: internal.CreateResolutionRequestFailureStatus(),
 		expectedErr:    createError("cannot get API token, required when specifying 'repo' param, 'api-token-secret-name' not specified in config"),
 	}, {
 		name: "api: token secret key not specified",
@@ -452,7 +451,7 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		apiToken:       "some-token",
-		expectedStatus: createFailureStatus(),
+		expectedStatus: internal.CreateResolutionRequestFailureStatus(),
 		expectedErr:    createError("cannot get API token, required when specifying 'repo' param, 'api-token-secret-key' not specified in config"),
 	}, {
 		name: "api: SCM type not specified",
@@ -468,7 +467,7 @@ func TestResolve(t *testing.T) {
 			APISecretNamespaceKey: system.Namespace(),
 		},
 		apiToken:       "some-token",
-		expectedStatus: createFailureStatus(),
+		expectedStatus: internal.CreateResolutionRequestFailureStatus(),
 		expectedErr:    createError("missing or empty scm-type value in configmap"),
 	},
 	}
@@ -742,27 +741,6 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 
 func resolverContext() context.Context {
 	return frtesting.ContextWithGitResolverEnabled(context.Background())
-}
-
-func createStatus(content []byte) *v1beta1.ResolutionRequestStatus {
-	return &v1beta1.ResolutionRequestStatus{
-		Status: duckv1.Status{},
-		ResolutionRequestStatusFields: v1beta1.ResolutionRequestStatusFields{
-			Data: base64.StdEncoding.Strict().EncodeToString(content),
-		},
-	}
-}
-
-func createFailureStatus() *v1beta1.ResolutionRequestStatus {
-	return &v1beta1.ResolutionRequestStatus{
-		Status: duckv1.Status{
-			Conditions: duckv1.Conditions{{
-				Type:   apis.ConditionSucceeded,
-				Status: corev1.ConditionFalse,
-				Reason: resolutioncommon.ReasonResolutionFailed,
-			}},
-		},
-	}
 }
 
 func createError(msg string) error {

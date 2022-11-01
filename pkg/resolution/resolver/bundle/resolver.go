@@ -30,15 +30,20 @@ import (
 	"knative.dev/pkg/client/injection/kube/client"
 )
 
-const disabledError = "cannot handle resolution request, enable-bundles-resolver feature flag not true"
+const (
+	disabledError = "cannot handle resolution request, enable-bundles-resolver feature flag not true"
 
-// LabelValueBundleResolverType is the value to use for the
-// resolution.tekton.dev/type label on resource requests
-const LabelValueBundleResolverType string = "bundles"
+	// LabelValueBundleResolverType is the value to use for the
+	// resolution.tekton.dev/type label on resource requests
+	LabelValueBundleResolverType string = "bundles"
 
-// TODO(sbwsg): This should be exposed as a configurable option for
-// admins (e.g. via ConfigMap)
-const timeoutDuration = time.Minute
+	// TODO(sbwsg): This should be exposed as a configurable option for
+	// admins (e.g. via ConfigMap)
+	timeoutDuration = time.Minute
+
+	// BundleResolverName is the name that the bundle resolver should be associated with.
+	BundleResolverName = "bundleresolver"
+)
 
 // Resolver implements a framework.Resolver that can fetch files from OCI bundles.
 type Resolver struct {
@@ -53,12 +58,12 @@ func (r *Resolver) Initialize(ctx context.Context) error {
 
 // GetName returns a string name to refer to this Resolver by.
 func (r *Resolver) GetName(context.Context) string {
-	return "bundleresolver"
+	return BundleResolverName
 }
 
 // GetConfigName returns the name of the bundle resolver's configmap.
 func (r *Resolver) GetConfigName(context.Context) string {
-	return "bundleresolver-config"
+	return ConfigMapName
 }
 
 // GetSelector returns a map of labels to match requests to this Resolver.
