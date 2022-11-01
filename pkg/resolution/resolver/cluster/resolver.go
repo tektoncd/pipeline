@@ -101,6 +101,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 	}
 
 	var data []byte
+	groupVersion := pipelinev1beta1.SchemeGroupVersion.String()
 
 	switch params[KindParam] {
 	case "task":
@@ -110,7 +111,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 			return nil, err
 		}
 		task.Kind = "Task"
-		task.APIVersion = "tekton.dev/v1beta1"
+		task.APIVersion = groupVersion
 		data, err = yaml.Marshal(task)
 		if err != nil {
 			logger.Infof("failed to marshal task %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
@@ -123,7 +124,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams []pipelinev1beta1.Par
 			return nil, err
 		}
 		pipeline.Kind = "Pipeline"
-		pipeline.APIVersion = "tekton.dev/v1beta1"
+		pipeline.APIVersion = groupVersion
 		data, err = yaml.Marshal(pipeline)
 		if err != nil {
 			logger.Infof("failed to marshal pipeline %s from namespace %s: %v", params[NameParam], params[NamespaceParam], err)
