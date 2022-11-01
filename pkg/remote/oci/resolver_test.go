@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -39,7 +38,7 @@ import (
 
 func asIsMapper(obj runtime.Object) map[string]string {
 	annotations := map[string]string{
-		oci.TitleAnnotation: getObjectName(obj),
+		oci.TitleAnnotation: test.GetObjectName(obj),
 	}
 	if obj.GetObjectKind().GroupVersionKind().Kind != "" {
 		annotations[oci.KindAnnotation] = obj.GetObjectKind().GroupVersionKind().Kind
@@ -204,7 +203,7 @@ func TestOCIResolver(t *testing.T) {
 			}
 
 			for _, obj := range tc.objs {
-				actual, err := resolver.Get(context.Background(), strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind), getObjectName(obj))
+				actual, err := resolver.Get(context.Background(), strings.ToLower(obj.GetObjectKind().GroupVersionKind().Kind), test.GetObjectName(obj))
 				if err != nil {
 					t.Fatalf("could not retrieve object from image: %#v", err)
 				}
@@ -215,8 +214,4 @@ func TestOCIResolver(t *testing.T) {
 			}
 		})
 	}
-}
-
-func getObjectName(obj runtime.Object) string {
-	return reflect.Indirect(reflect.ValueOf(obj)).FieldByName("ObjectMeta").FieldByName("Name").String()
 }

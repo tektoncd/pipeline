@@ -54,7 +54,7 @@ func OptionsFromParams(ctx context.Context, params []pipelinev1beta1.Param) (Req
 		if saString, ok := conf[ConfigServiceAccount]; ok {
 			sa = saString
 		} else {
-			return opts, fmt.Errorf("default Service Account  was not set during installation of the bundle resolver")
+			return opts, fmt.Errorf("default Service Account was not set during installation of the bundle resolver")
 		}
 	} else {
 		sa = saVal.StringVal
