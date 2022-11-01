@@ -7,7 +7,9 @@ import (
 )
 
 func (pr PipelineRef) convertTo(ctx context.Context, sink *v1.PipelineRef) {
-	sink.Name = pr.Name
+	if pr.Bundle == "" {
+		sink.Name = pr.Name
+	}
 	sink.APIVersion = pr.APIVersion
 	new := v1.ResolverRef{}
 	pr.ResolverRef.convertTo(ctx, &new)

@@ -252,7 +252,6 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 			},
 			Spec: v1beta1.PipelineRunSpec{
 				PipelineRef: &v1beta1.PipelineRef{
-					Name: "test-bundle-name",
 					ResolverRef: v1beta1.ResolverRef{
 						Resolver: "bundles",
 						Params: []v1beta1.Param{

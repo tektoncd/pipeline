@@ -7,7 +7,9 @@ import (
 )
 
 func (tr TaskRef) convertTo(ctx context.Context, sink *v1.TaskRef) {
-	sink.Name = tr.Name
+	if tr.Bundle == "" {
+		sink.Name = tr.Name
+	}
 	sink.Kind = v1.TaskKind(tr.Kind)
 	sink.APIVersion = tr.APIVersion
 	new := v1.ResolverRef{}
