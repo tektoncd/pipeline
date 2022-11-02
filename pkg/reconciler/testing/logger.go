@@ -24,11 +24,15 @@ import (
 // SetupFakeContext sets up the Context and the fake filtered informers for the tests.
 func SetupFakeContext(t *testing.T) (context.Context, []controller.Informer) {
 	ctx, _, informer := setupFakeContextWithLabelKey(t)
+	return WithLogger(ctx, t), informer
+}
+
+// SetupFakeCloudClientContext sets up the fakeclient to context
+func SetupFakeCloudClientContext(ctx context.Context, expectedEventCount int) context.Context {
 	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
 		SendSuccessfully: true,
 	}
-	ctx = cloudevent.WithClient(ctx, &cloudEventClientBehaviour)
-	return WithLogger(ctx, t), informer
+	return cloudevent.WithClient(ctx, &cloudEventClientBehaviour, expectedEventCount)
 }
 
 // SetupDefaultContext sets up the Context and the default filtered informers for the tests.

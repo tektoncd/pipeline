@@ -71,20 +71,21 @@ import (
 // Data represents the desired state of the system (i.e. existing resources) to seed controllers
 // with.
 type Data struct {
-	PipelineRuns       []*v1beta1.PipelineRun
-	Pipelines          []*v1beta1.Pipeline
-	TaskRuns           []*v1beta1.TaskRun
-	Tasks              []*v1beta1.Task
-	ClusterTasks       []*v1beta1.ClusterTask
-	PipelineResources  []*resourcev1alpha1.PipelineResource
-	Runs               []*v1alpha1.Run
-	CustomRuns         []*v1beta1.CustomRun
-	Pods               []*corev1.Pod
-	Namespaces         []*corev1.Namespace
-	ConfigMaps         []*corev1.ConfigMap
-	ServiceAccounts    []*corev1.ServiceAccount
-	LimitRange         []*corev1.LimitRange
-	ResolutionRequests []*resolutionv1alpha1.ResolutionRequest
+	PipelineRuns            []*v1beta1.PipelineRun
+	Pipelines               []*v1beta1.Pipeline
+	TaskRuns                []*v1beta1.TaskRun
+	Tasks                   []*v1beta1.Task
+	ClusterTasks            []*v1beta1.ClusterTask
+	PipelineResources       []*resourcev1alpha1.PipelineResource
+	Runs                    []*v1alpha1.Run
+	CustomRuns              []*v1beta1.CustomRun
+	Pods                    []*corev1.Pod
+	Namespaces              []*corev1.Namespace
+	ConfigMaps              []*corev1.ConfigMap
+	ServiceAccounts         []*corev1.ServiceAccount
+	LimitRange              []*corev1.LimitRange
+	ResolutionRequests      []*resolutionv1alpha1.ResolutionRequest
+	ExpectedCloudEventCount int
 }
 
 // Clients holds references to clients which are useful for reconciler tests.

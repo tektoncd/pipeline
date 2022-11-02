@@ -478,6 +478,7 @@ func getTaskRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 
 func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	ctx, _ := ttesting.SetupFakeContext(t)
+	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
@@ -658,6 +659,13 @@ spec:
 		},
 	}
 
+	wantEvents := []string{
+		"Normal Start",
+		"Normal Running",
+	}
+
+	d.ExpectedCloudEventCount = len(wantEvents)
+
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
 	c := testAssets.Controller
@@ -693,10 +701,6 @@ spec:
 		t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
 	}
 
-	wantEvents := []string{
-		"Normal Start",
-		"Normal Running",
-	}
 	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-cloud-events", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
@@ -707,10 +711,7 @@ spec:
 		`(?s)dev.tekton.event.taskrun.running.v1.*test-taskrun-not-started`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	err = eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents)
-	if !(err == nil) {
-		t.Errorf(err.Error())
-	}
+	ceClient.CheckCloudEventsUnordered(t, "reconcile-cloud-events", wantCloudEvents)
 }
 
 func TestReconcile(t *testing.T) {
@@ -2986,6 +2987,7 @@ status:
 		},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
+			d.ExpectedCloudEventCount = len(tc.wantCloudEvents)
 			testAssets, cancel := getTaskRunController(t, d)
 			defer cancel()
 			c := testAssets.Controller

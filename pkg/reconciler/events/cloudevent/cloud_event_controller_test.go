@@ -234,7 +234,7 @@ func TestSendCloudEvents(t *testing.T) {
 			successfulBehaviour := FakeClientBehaviour{
 				SendSuccessfully: true,
 			}
-			err := SendCloudEvents(tc.taskRun, newFakeClient(&successfulBehaviour), logger, testClock)
+			err := SendCloudEvents(tc.taskRun, newFakeClient(&successfulBehaviour, len(tc.wantTaskRun.Status.CloudEvents)), logger, testClock)
 			if err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
@@ -335,7 +335,7 @@ func TestSendCloudEventsErrors(t *testing.T) {
 			unsuccessfulBehaviour := FakeClientBehaviour{
 				SendSuccessfully: false,
 			}
-			err := SendCloudEvents(tc.taskRun, newFakeClient(&unsuccessfulBehaviour), logger, testClock)
+			err := SendCloudEvents(tc.taskRun, newFakeClient(&unsuccessfulBehaviour, len(tc.wantTaskRun.Status.CloudEvents)), logger, testClock)
 			if err == nil {
 				t.Fatalf("Unexpected success sending cloud events: %v", err)
 			}
@@ -614,14 +614,12 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := setupFakeContext(t, tc.clientBehaviour, true)
+			ctx := setupFakeContext(t, tc.clientBehaviour, true, len(tc.wantCEvents))
 			if err := SendCloudEventWithRetries(ctx, tc.object); err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
 			ceClient := Get(ctx).(FakeClient)
-			if err := eventstest.CheckEventsUnordered(t, ceClient.Events, tc.name, tc.wantCEvents); err != nil {
-				t.Fatalf(err.Error())
-			}
+			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCEvents)
 			recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
 			if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 				t.Fatalf(err.Error())
@@ -656,7 +654,7 @@ func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := setupFakeContext(t, FakeClientBehaviour{
 				SendSuccessfully: true,
-			}, true)
+			}, true, 1)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			err := SendCloudEventWithRetries(ctx, tc.object)
@@ -669,7 +667,7 @@ func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 
 func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
 
-	ctx := setupFakeContext(t, FakeClientBehaviour{}, false)
+	ctx := setupFakeContext(t, FakeClientBehaviour{}, false, 0)
 	err := SendCloudEventWithRetries(ctx, &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{}})
 	if err == nil {
 		t.Fatalf("Expected an error sending cloud events with no client in the context, got none")
@@ -679,11 +677,11 @@ func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
 	}
 }
 
-func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bool) context.Context {
+func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bool, expectedEventCount int) context.Context {
 	var ctx context.Context
 	ctx, _ = rtesting.SetupFakeContext(t)
 	if withClient {
-		ctx = WithClient(ctx, &behaviour)
+		ctx = WithClient(ctx, &behaviour, expectedEventCount)
 	}
 	return ctx
 }

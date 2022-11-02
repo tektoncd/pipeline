@@ -88,8 +88,15 @@ func (t TektonEventType) String() string {
 	return string(t)
 }
 
-// CEClient matches the `Client` interface from github.com/cloudevents/sdk-go/v2/cloudevents
-type CEClient cloudevents.Client
+// CEClient wraps the `Client` interface from github.com/cloudevents/sdk-go/v2/cloudevents
+// and has methods to count the cloud events being sent, those methods are for testing purposes.
+type CEClient interface {
+	cloudevents.Client
+	// addCount increments the count of events to be sent
+	addCount()
+	// decreaseCount decrements the count of events to be sent, indicating the event has been sent
+	decreaseCount()
+}
 
 // TektonCloudEventData type is used to marshal and unmarshal the payload of
 // a Tekton cloud event. It can include a TaskRun or a PipelineRun

@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
-	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +46,7 @@ import (
 
 func initializeCustomRunControllerAssets(t *testing.T, d test.Data) (test.Assets, func()) {
 	ctx, _ := ttesting.SetupFakeContext(t)
+	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
@@ -158,8 +158,9 @@ func TestReconcile_CloudEvents(t *testing.T) {
 			customRuns := []*v1beta1.CustomRun{&customRun}
 
 			d := test.Data{
-				CustomRuns: customRuns,
-				ConfigMaps: cms,
+				CustomRuns:              customRuns,
+				ConfigMaps:              cms,
+				ExpectedCloudEventCount: len(tc.wantCloudEvents),
 			}
 			testAssets, cancel := getCustomRunController(t, d)
 			defer cancel()
@@ -187,19 +188,13 @@ func TestReconcile_CloudEvents(t *testing.T) {
 			}
 
 			ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-			err = eventstest.CheckEventsUnordered(t, ceClient.Events, tc.name, tc.wantCloudEvents)
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 
 			// Try and reconcile again - expect no event
 			if err := c.Reconciler.Reconcile(testAssets.Ctx, getCustomRunName(customRun)); err != nil {
 				t.Fatal("Didn't expect an error, but got one.")
 			}
-			err = eventstest.CheckEventsUnordered(t, ceClient.Events, tc.name, []string{})
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+			ceClient.CheckCloudEventsUnordered(t, tc.name, []string{})
 		})
 	}
 }
@@ -296,10 +291,7 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 			}
 
 			ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-			err = eventstest.CheckEventsUnordered(t, ceClient.Events, tc.name, []string{})
-			if err != nil {
-				t.Errorf(err.Error())
-			}
+			ceClient.CheckCloudEventsUnordered(t, tc.name, []string{})
 		})
 	}
 }

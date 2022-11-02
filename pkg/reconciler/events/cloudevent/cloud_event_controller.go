@@ -145,7 +145,10 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 	_, isCustomRun := object.(*v1beta1.CustomRun)
 
 	wasIn := make(chan error)
+
+	ceClient.addCount()
 	go func() {
+		defer ceClient.decreaseCount()
 		wasIn <- nil
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
 		// In case of Run event, check cache if cloudevent is already sent
