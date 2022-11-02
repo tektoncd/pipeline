@@ -21,6 +21,9 @@ import (
 	"net/http"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	"github.com/cloudevents/sdk-go/v2/client"
+	"github.com/cloudevents/sdk-go/v2/event"
+	"github.com/cloudevents/sdk-go/v2/protocol"
 	"k8s.io/client-go/rest"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -59,7 +62,38 @@ func withCloudEventClient(ctx context.Context) context.Context {
 		logger.Panicf("Error creating the cloudevents client: %s", err)
 	}
 
-	return context.WithValue(ctx, ceKey{}, cloudEventClient)
+	celient := CloudClient{
+		client: cloudEventClient,
+	}
+	return context.WithValue(ctx, ceKey{}, celient)
+}
+
+// CloudClient is a wrapper of CloudEvents client and implements addCount and decreaseCount
+type CloudClient struct {
+	client client.Client
+}
+
+// AddCount does nothing
+func (c CloudClient) addCount() {
+}
+
+// DecreaseCount does nothing
+func (c CloudClient) decreaseCount() {
+}
+
+// Send invokes call client.Send
+func (c CloudClient) Send(ctx context.Context, event cloudevents.Event) protocol.Result {
+	return c.client.Send(ctx, event)
+}
+
+// Request invokes client.Request
+func (c CloudClient) Request(ctx context.Context, event event.Event) (*cloudevents.Event, protocol.Result) {
+	return c.client.Request(ctx, event)
+}
+
+// StartReceiver invokes client.StartReceiver
+func (c CloudClient) StartReceiver(ctx context.Context, fn interface{}) error {
+	return c.client.StartReceiver(ctx, fn)
 }
 
 // Get extracts the cloudEventClient client from the context.

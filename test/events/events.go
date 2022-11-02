@@ -35,19 +35,6 @@ func CheckEventsOrdered(t *testing.T, eventChan chan string, testName string, wa
 	return nil
 }
 
-// CheckEventsUnordered checks that all events in wantEvents, and no others,
-// were received via the given chan, in any order.
-func CheckEventsUnordered(t *testing.T, eventChan chan string, testName string, wantEvents []string) error {
-	t.Helper()
-	// Sleep 50ms to make sure events have delivered
-	time.Sleep(50 * time.Millisecond)
-	err := eventsFromChannelUnordered(eventChan, wantEvents)
-	if err != nil {
-		return fmt.Errorf("error in test %s: %v", testName, err)
-	}
-	return nil
-}
-
 // eventsFromChannel takes a chan of string, a test name, and a list of events that a test
 // expects to receive. The events must be received in the same order they appear in the
 // wantEvents list. Any extra or too few received events are considered errors.
@@ -86,45 +73,4 @@ func eventsFromChannel(c chan string, wantEvents []string) error {
 		}
 	}
 	return nil
-}
-
-// eventsFromChannelUnordered takes a chan of string and a list of events that a test
-// expects to receive. The events can be received in any order. Any extra or too few
-// events are both considered errors.
-func eventsFromChannelUnordered(c chan string, wantEvents []string) error {
-	timer := time.NewTimer(10 * time.Millisecond)
-	expected := append([]string{}, wantEvents...)
-	// loop len(expected) + 1 times to catch extra erroneous events received that the test is not expecting
-	maxEvents := len(expected) + 1
-	for eventCount := 0; eventCount < maxEvents; eventCount++ {
-		select {
-		case event := <-c:
-			if len(expected) == 0 {
-				return fmt.Errorf("extra event received: %q", event)
-			}
-			found := false
-			for wantIdx, want := range expected {
-				matching, err := regexp.MatchString(want, event)
-				if err != nil {
-					return fmt.Errorf("something went wrong matching an event: %s", err)
-				}
-				if matching {
-					found = true
-					// Remove event from list of those we expect to receive
-					expected[wantIdx] = expected[len(expected)-1]
-					expected = expected[:len(expected)-1]
-					break
-				}
-			}
-			if !found {
-				return fmt.Errorf("unexpected event received: %q", event)
-			}
-		case <-timer.C:
-			if len(expected) != 0 {
-				return fmt.Errorf("timed out waiting for %d more events: %#v", len(expected), expected)
-			}
-			return nil
-		}
-	}
-	return fmt.Errorf("too many events received")
 }

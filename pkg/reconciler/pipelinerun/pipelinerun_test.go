@@ -133,6 +133,7 @@ func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
 // controller initialization.
 func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
 	ctx, _ := ttesting.SetupFakeContext(t)
+	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
@@ -6518,19 +6519,21 @@ spec:
 	}
 	t.Logf("config maps: %s", cms)
 
-	d := test.Data{
-		PipelineRuns: prs,
-		Pipelines:    ps,
-		Tasks:        ts,
-		ConfigMaps:   cms,
-	}
-	prt := newPipelineRunTest(d, t)
-	defer prt.Cancel()
-
 	wantEvents := []string{
 		"Normal Started",
 		"Normal Running Tasks Completed: 0",
 	}
+
+	d := test.Data{
+		PipelineRuns:            prs,
+		Pipelines:               ps,
+		Tasks:                   ts,
+		ConfigMaps:              cms,
+		ExpectedCloudEventCount: len(wantEvents),
+	}
+	prt := newPipelineRunTest(d, t)
+	defer prt.Cancel()
+
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipelinerun", wantEvents, false)
 
 	// This PipelineRun is in progress now and the status should reflect that
@@ -6543,9 +6546,7 @@ spec:
 		`(?s)dev.tekton.event.pipelinerun.running.v1.*test-pipelinerun`,
 	}
 	ceClient := clients.CloudEvents.(cloudevent.FakeClient)
-	if err := eventstest.CheckEventsUnordered(t, ceClient.Events, "reconcile-cloud-events", wantCloudEvents); err != nil {
-		t.Errorf(err.Error())
-	}
+	ceClient.CheckCloudEventsUnordered(t, "reconcile-cloud-events", wantCloudEvents)
 }
 
 // this test validates taskSpec metadata is embedded into task run

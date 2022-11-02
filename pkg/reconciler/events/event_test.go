@@ -143,7 +143,6 @@ func TestSendKubernetesEvents(t *testing.T) {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
 		sendKubernetesEvents(fr, ts.before, ts.after, tr)
-
 		err := eventstest.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
@@ -170,7 +169,6 @@ func TestEmitError(t *testing.T) {
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
 		EmitError(fr, ts.err, tr)
-
 		err := eventstest.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
@@ -222,7 +220,7 @@ func TestEmit(t *testing.T) {
 	for _, tc := range testcases {
 		// Setup the context and seed test data
 		ctx, _ := rtesting.SetupFakeContext(t)
-		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true})
+		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
 		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
 		// Setup the config and add it to the context
@@ -239,9 +237,7 @@ func TestEmit(t *testing.T) {
 		if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
-		if err := eventstest.CheckEventsUnordered(t, fakeClient.Events, tc.name, tc.wantCloudEvents); err != nil {
-			t.Fatalf(err.Error())
-		}
+		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 	}
 }
 
@@ -278,7 +274,7 @@ func TestEmitCloudEvents(t *testing.T) {
 	for _, tc := range testcases {
 		// Setup the context and seed test data
 		ctx, _ := rtesting.SetupFakeContext(t)
-		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true})
+		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
 		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
 		// Setup the config and add it to the context
@@ -295,8 +291,6 @@ func TestEmitCloudEvents(t *testing.T) {
 		if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
-		if err := eventstest.CheckEventsUnordered(t, fakeClient.Events, tc.name, tc.wantCloudEvents); err != nil {
-			t.Fatalf(err.Error())
-		}
+		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 	}
 }
