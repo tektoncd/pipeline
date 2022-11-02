@@ -1,3 +1,85 @@
+# v1.17.18 (2022-09-20)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.17 (2022-09-14)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.16 (2022-09-02)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.15 (2022-08-31)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.14 (2022-08-30)
+
+* No change notes available for this release.
+
+# v1.17.13 (2022-08-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.12 (2022-08-11)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.11 (2022-08-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.10 (2022-08-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.9 (2022-08-01)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.8 (2022-07-05)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.7 (2022-06-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.6 (2022-06-07)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.5 (2022-05-17)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.4 (2022-04-25)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.3 (2022-03-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.2 (2022-03-24)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.1 (2022-03-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.17.0 (2022-03-21)
+
+* **Feature**: This release includes a fix in the DescribeImageScanFindings paginated output.
+
+# v1.16.0 (2022-03-08)
+
+* **Feature**: Updated `github.com/aws/smithy-go` to latest version
+* **Feature**: Updated service client model to latest release.
+* **Dependency Update**: Updated to the latest SDK module versions
+
 # v1.15.0 (2022-02-24)
 
 * **Feature**: API client updated

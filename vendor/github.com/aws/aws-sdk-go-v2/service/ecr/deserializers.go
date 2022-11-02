@@ -7295,6 +7295,22 @@ func awsAwsjson11_deserializeDocumentImageDetail(v **types.ImageDetail, value in
 				return err
 			}
 
+		case "lastRecordedPullTime":
+			if value != nil {
+				switch jtv := value.(type) {
+				case json.Number:
+					f64, err := jtv.Float64()
+					if err != nil {
+						return err
+					}
+					sv.LastRecordedPullTime = ptr.Time(smithytime.ParseEpochSeconds(f64))
+
+				default:
+					return fmt.Errorf("expected RecordedPullTimestamp to be a JSON Number, got %T instead", value)
+
+				}
+			}
+
 		case "registryId":
 			if value != nil {
 				jtv, ok := value.(string)
