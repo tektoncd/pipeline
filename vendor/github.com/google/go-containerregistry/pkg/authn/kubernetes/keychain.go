@@ -16,10 +16,12 @@ package kubernetes
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/url"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -101,29 +103,34 @@ func NewInCluster(ctx context.Context, opt Options) (authn.Keychain, error) {
 	return New(ctx, client, opt)
 }
 
+type dockerConfigJSON struct {
+	Auths map[string]authn.AuthConfig
+}
+
 // NewFromPullSecrets returns a new authn.Keychain suitable for resolving image references as
 // scoped by the pull secrets.
 func NewFromPullSecrets(ctx context.Context, secrets []corev1.Secret) (authn.Keychain, error) {
-	m := map[string]authn.AuthConfig{}
+	keyring := &keyring{
+		index: make([]string, 0),
+		creds: make(map[string][]authn.AuthConfig),
+	}
+
+	var cfg dockerConfigJSON
+
+	// From: https://github.com/kubernetes/kubernetes/blob/0dcafb1f37ee522be3c045753623138e5b907001/pkg/credentialprovider/keyring.go
 	for _, secret := range secrets {
-		auths := map[string]authn.AuthConfig{}
 		if b, exists := secret.Data[corev1.DockerConfigJsonKey]; secret.Type == corev1.SecretTypeDockerConfigJson && exists && len(b) > 0 {
-			var cfg struct {
-				Auths map[string]authn.AuthConfig
-			}
 			if err := json.Unmarshal(b, &cfg); err != nil {
 				return nil, err
 			}
-			auths = cfg.Auths
 		}
 		if b, exists := secret.Data[corev1.DockerConfigKey]; secret.Type == corev1.SecretTypeDockercfg && exists && len(b) > 0 {
-			if err := json.Unmarshal(b, &auths); err != nil {
+			if err := json.Unmarshal(b, &cfg.Auths); err != nil {
 				return nil, err
 			}
 		}
 
-		for registry, v := range auths {
-			// From: https://github.com/kubernetes/kubernetes/blob/0dcafb1f37ee522be3c045753623138e5b907001/pkg/credentialprovider/keyring.go
+		for registry, v := range cfg.Auths {
 			value := registry
 			if !strings.HasPrefix(value, "https://") && !strings.HasPrefix(value, "http://") {
 				value = "https://" + value
@@ -150,45 +157,125 @@ func NewFromPullSecrets(ctx context.Context, secrets []corev1.Secret) (authn.Key
 				key = parsed.Host
 			}
 
-			// Don't overwrite previously specified Auths for a given key.
-			if _, found := m[key]; !found {
-				m[key] = v
+			if _, ok := keyring.creds[key]; !ok {
+				keyring.index = append(keyring.index, key)
 			}
+
+			keyring.creds[key] = append(keyring.creds[key], v)
+
 		}
+
+		// We reverse sort in to give more specific (aka longer) keys priority
+		// when matching for creds
+		sort.Sort(sort.Reverse(sort.StringSlice(keyring.index)))
 	}
-	return authsKeychain(m), nil
+	return keyring, nil
 }
 
-type authsKeychain map[string]authn.AuthConfig
+type keyring struct {
+	index []string
+	creds map[string][]authn.AuthConfig
+}
 
-func (kc authsKeychain) Resolve(target authn.Resource) (authn.Authenticator, error) {
-	// Check for an auth that matches the repository, then if that's not
-	// found, one that matches the registry.
-	var cfg authn.AuthConfig
-	for _, key := range []string{target.String(), target.RegistryStr()} {
-		var ok bool
-		cfg, ok = kc[key]
-		if ok {
-			break
+func (keyring *keyring) Resolve(target authn.Resource) (authn.Authenticator, error) {
+	image := target.String()
+	auths := []authn.AuthConfig{}
+
+	for _, k := range keyring.index {
+		// both k and image are schemeless URLs because even though schemes are allowed
+		// in the credential configurations, we remove them when constructing the keyring
+		if matched, _ := urlsMatchStr(k, image); matched {
+			auths = append(auths, keyring.creds[k]...)
 		}
 	}
-	empty := authn.AuthConfig{}
-	if cfg == empty {
+
+	if len(auths) == 0 {
 		return authn.Anonymous, nil
 	}
-	if cfg.Auth != "" {
-		dec, err := base64.StdEncoding.DecodeString(cfg.Auth)
+
+	return toAuthenticator(auths)
+}
+
+// urlsMatchStr is wrapper for URLsMatch, operating on strings instead of URLs.
+func urlsMatchStr(glob string, target string) (bool, error) {
+	globURL, err := parseSchemelessURL(glob)
+	if err != nil {
+		return false, err
+	}
+	targetURL, err := parseSchemelessURL(target)
+	if err != nil {
+		return false, err
+	}
+	return urlsMatch(globURL, targetURL)
+}
+
+// parseSchemelessURL parses a schemeless url and returns a url.URL
+// url.Parse require a scheme, but ours don't have schemes.  Adding a
+// scheme to make url.Parse happy, then clear out the resulting scheme.
+func parseSchemelessURL(schemelessURL string) (*url.URL, error) {
+	parsed, err := url.Parse("https://" + schemelessURL)
+	if err != nil {
+		return nil, err
+	}
+	// clear out the resulting scheme
+	parsed.Scheme = ""
+	return parsed, nil
+}
+
+// splitURL splits the host name into parts, as well as the port
+func splitURL(url *url.URL) (parts []string, port string) {
+	host, port, err := net.SplitHostPort(url.Host)
+	if err != nil {
+		// could not parse port
+		host, port = url.Host, ""
+	}
+	return strings.Split(host, "."), port
+}
+
+// urlsMatch checks whether the given target url matches the glob url, which may have
+// glob wild cards in the host name.
+//
+// Examples:
+//    globURL=*.docker.io, targetURL=blah.docker.io => match
+//    globURL=*.docker.io, targetURL=not.right.io   => no match
+//
+// Note that we don't support wildcards in ports and paths yet.
+func urlsMatch(globURL *url.URL, targetURL *url.URL) (bool, error) {
+	globURLParts, globPort := splitURL(globURL)
+	targetURLParts, targetPort := splitURL(targetURL)
+	if globPort != targetPort {
+		// port doesn't match
+		return false, nil
+	}
+	if len(globURLParts) != len(targetURLParts) {
+		// host name does not have the same number of parts
+		return false, nil
+	}
+	if !strings.HasPrefix(targetURL.Path, globURL.Path) {
+		// the path of the credential must be a prefix
+		return false, nil
+	}
+	for k, globURLPart := range globURLParts {
+		targetURLPart := targetURLParts[k]
+		matched, err := filepath.Match(globURLPart, targetURLPart)
 		if err != nil {
-			return nil, err
+			return false, err
 		}
-		parts := strings.SplitN(string(dec), ":", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("unable to parse auth field, must be formatted as base64(username:password)")
+		if !matched {
+			// glob mismatch for some part
+			return false, nil
 		}
-		cfg.Username = parts[0]
-		cfg.Password = parts[1]
+	}
+	// everything matches
+	return true, nil
+}
+
+func toAuthenticator(configs []authn.AuthConfig) (authn.Authenticator, error) {
+	cfg := configs[0]
+
+	if cfg.Auth != "" {
 		cfg.Auth = ""
 	}
 
-	return authn.FromConfig(authn.AuthConfig(cfg)), nil
+	return authn.FromConfig(cfg), nil
 }

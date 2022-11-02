@@ -46,11 +46,11 @@ func New(ctx context.Context, client kubernetes.Interface, opt Options) (authn.K
 	}
 
 	return authn.NewMultiKeychain(
+		k8s,
 		authn.DefaultKeychain,
 		google.Keychain,
 		amazonKeychain,
 		azureKeychain,
-		k8s,
 	), nil
 }
 
@@ -96,10 +96,10 @@ func NewFromPullSecrets(ctx context.Context, pullSecrets []corev1.Secret) (authn
 	}
 
 	return authn.NewMultiKeychain(
+		k8s,
 		authn.DefaultKeychain,
 		google.Keychain,
 		amazonKeychain,
 		azureKeychain,
-		k8s,
 	), nil
 }

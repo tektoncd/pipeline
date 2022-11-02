@@ -282,6 +282,15 @@ type ImageDetail struct {
 	// The list of tags associated with this image.
 	ImageTags []string
 
+	// The date and time, expressed in standard JavaScript date format, when Amazon ECR
+	// recorded the last image pull. Amazon ECR refreshes the last image pull timestamp
+	// at least once every 24 hours. For example, if you pull an image once a day then
+	// the lastRecordedPullTime timestamp will indicate the exact time that the image
+	// was last pulled. However, if you pull an image once an hour, because Amazon ECR
+	// refreshes the lastRecordedPullTime timestamp at least once every 24 hours, the
+	// result may not be the exact time that the image was last pulled.
+	LastRecordedPullTime *time.Time
+
 	// The Amazon Web Services account ID associated with the registry to which this
 	// image belongs.
 	RegistryId *string
@@ -604,7 +613,10 @@ type RegistryScanningRule struct {
 	// This member is required.
 	RepositoryFilters []ScanningRepositoryFilter
 
-	// The frequency that scans are performed at for a private registry.
+	// The frequency that scans are performed at for a private registry. When the
+	// ENHANCED scan type is specified, the supported scan frequencies are
+	// CONTINUOUS_SCAN and SCAN_ON_PUSH. When the BASIC scan type is specified, the
+	// SCAN_ON_PUSH and MANUAL scan frequencies are supported.
 	//
 	// This member is required.
 	ScanFrequency ScanFrequency
@@ -792,7 +804,10 @@ type ResourceDetails struct {
 	noSmithyDocumentSerde
 }
 
-// The details of a scanning repository filter.
+// The details of a scanning repository filter. For more information on how to use
+// filters, see Using filters
+// (https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html#image-scanning-filters)
+// in the Amazon Elastic Container Registry User Guide.
 type ScanningRepositoryFilter struct {
 
 	// The filter to use when scanning.
@@ -817,18 +832,17 @@ type ScoreDetails struct {
 	noSmithyDocumentSerde
 }
 
-// The metadata that you apply to a resource to help you categorize and organize
-// them. Each tag consists of a key and an optional value, both of which you
-// define. Tag keys can have a maximum character length of 128 characters, and tag
-// values can have a maximum length of 256 characters.
+// The metadata to apply to a resource to help you categorize and organize them.
+// Each tag consists of a key and a value, both of which you define. Tag keys can
+// have a maximum character length of 128 characters, and tag values can have a
+// maximum length of 256 characters.
 type Tag struct {
 
 	// One part of a key-value pair that make up a tag. A key is a general label that
 	// acts like a category for more specific tag values.
 	Key *string
 
-	// The optional part of a key-value pair that make up a tag. A value acts as a
-	// descriptor within a tag category (key).
+	// A value acts as a descriptor within a tag category (key).
 	Value *string
 
 	noSmithyDocumentSerde
