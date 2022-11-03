@@ -29,7 +29,6 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
@@ -116,7 +115,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
-			Reason: v1beta1.TaskRunReasonRunning.String(),
+			Reason: v1alpha1.RunReasonRunning.String(),
 		},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.run.running.v1.*test-run`},
 	}, {
@@ -124,7 +123,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
-			Reason: v1beta1.PipelineRunReasonSuccessful.String(),
+			Reason: v1alpha1.RunReasonSuccessful.String(),
 		},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.run.successful.v1.*test-run`},
 	}, {
@@ -132,7 +131,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
-			Reason: v1beta1.PipelineRunReasonCancelled.String(),
+			Reason: v1alpha1.RunReasonCancelled.String(),
 		},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.run.failed.v1.*test-run`},
 	}}
@@ -255,7 +254,7 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 					{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
-						Reason: v1beta1.PipelineRunReasonCancelled.String(),
+						Reason: v1alpha1.RunReasonCancelled.String(),
 					},
 				},
 			}

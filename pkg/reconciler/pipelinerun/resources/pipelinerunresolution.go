@@ -256,7 +256,7 @@ func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 			isDone = isDone && run.IsDone()
 			c := run.Status.GetCondition(apis.ConditionSucceeded)
 			runCancelled := c.IsFalse() &&
-				c.Reason == v1alpha1.RunReasonCancelled &&
+				c.Reason == v1alpha1.RunReasonCancelled.String() &&
 				run.Spec.StatusMessage == v1alpha1.RunCancelledByPipelineTimeoutMsg
 			atLeastOneCancelled = atLeastOneCancelled || runCancelled
 		}
@@ -267,7 +267,7 @@ func (t ResolvedPipelineTask) isCancelledForTimeOut() bool {
 		}
 		c := t.Run.Status.GetCondition(apis.ConditionSucceeded)
 		return c != nil && c.IsFalse() &&
-			c.Reason == v1alpha1.RunReasonCancelled &&
+			c.Reason == v1alpha1.RunReasonCancelled.String() &&
 			t.Run.Spec.StatusMessage == v1alpha1.RunCancelledByPipelineTimeoutMsg
 	case t.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
@@ -308,7 +308,7 @@ func (t ResolvedPipelineTask) isCancelled() bool {
 		for _, run := range t.Runs {
 			isDone = isDone && run.IsDone()
 			c := run.Status.GetCondition(apis.ConditionSucceeded)
-			runCancelled := c.IsFalse() && c.Reason == v1alpha1.RunReasonCancelled
+			runCancelled := c.IsFalse() && c.Reason == v1alpha1.RunReasonCancelled.String()
 			atLeastOneCancelled = atLeastOneCancelled || runCancelled
 		}
 		return atLeastOneCancelled && isDone
@@ -317,7 +317,7 @@ func (t ResolvedPipelineTask) isCancelled() bool {
 			return false
 		}
 		c := t.Run.Status.GetCondition(apis.ConditionSucceeded)
-		return c != nil && c.IsFalse() && c.Reason == v1alpha1.RunReasonCancelled
+		return c != nil && c.IsFalse() && c.Reason == v1alpha1.RunReasonCancelled.String()
 	case t.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false

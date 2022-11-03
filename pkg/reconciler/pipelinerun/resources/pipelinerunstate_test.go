@@ -1710,7 +1710,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
-					Reason: v1alpha1.RunReasonCancelled,
+					Reason: v1alpha1.RunReasonCancelled.String(),
 				}}},
 			},
 		},
@@ -1728,7 +1728,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
-					Reason: v1alpha1.RunReasonCancelled,
+					Reason: v1alpha1.RunReasonCancelled.String(),
 				}}},
 			},
 		},
