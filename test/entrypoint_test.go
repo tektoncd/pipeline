@@ -39,7 +39,12 @@ func TestEntrypointRunningStepsInOrder(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	c, namespace = setup(ctx, t)
+
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
@@ -68,6 +73,14 @@ spec:
 	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
 	if err := WaitForTaskRunState(ctx, c, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
+	}
+
+	if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+		tr, err := c.V1beta1TaskRunClient.Get(ctx, epTaskRunName, metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Error retrieving taskrun: %s", err)
+		}
+		spireShouldPassTaskRunResultsVerify(tr, t)
 	}
 
 }

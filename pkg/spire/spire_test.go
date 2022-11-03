@@ -23,6 +23,7 @@ import (
 
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
+	pconf "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/spire/config"
@@ -665,6 +666,30 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.success, success)
 			}
 		}
+	}
+}
+
+func TestOnStore(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
+	logger := logging.FromContext(ctx)
+	ctx = context.WithValue(ctx, controllerKey{}, &spireControllerAPIClient{
+		config: &config.SpireConfig{
+			TrustDomain:     "before_test_domain",
+			SocketPath:      "before_test_socket_path",
+			ServerAddr:      "before_test_server_path",
+			NodeAliasPrefix: "before_test_node_alias_prefix",
+		},
+	})
+	want := config.SpireConfig{
+		TrustDomain:     "after_test_domain",
+		SocketPath:      "after_test_socket_path",
+		ServerAddr:      "after_test_server_path",
+		NodeAliasPrefix: "after_test_node_alias_prefix",
+	}
+	OnStore(ctx, logger)(pconf.GetSpireConfigName(), &want)
+	got := *GetControllerAPIClient(ctx).(*spireControllerAPIClient).config
+	if got != want {
+		t.Fatalf("test TestOnStore expected %v but got %v", got, want)
 	}
 }
 

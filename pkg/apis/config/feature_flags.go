@@ -80,8 +80,12 @@ const (
 	DefaultSendCloudEventsForRuns = false
 	// DefaultEmbeddedStatus is the default value for "embedded-status".
 	DefaultEmbeddedStatus = FullEmbeddedStatus
-	// DefaultEnableSpire is the default value for "enable-spire".
-	DefaultEnableSpire = false
+	// EnforceNonfalsifiabilityWithSpire is the value used for  "enable-nonfalsifiability" when SPIRE is used to enable non-falsifiability.
+	EnforceNonfalsifiabilityWithSpire = "spire"
+	// EnforceNonfalsifiabilityNone is the value used for  "enable-nonfalsifiability" when non-falsifiability is not enabled.
+	EnforceNonfalsifiabilityNone = ""
+	// DefaultEnforceNonfalsifiability is the default value for "enforce-nonfalsifiability".
+	DefaultEnforceNonfalsifiability = EnforceNonfalsifiabilityNone
 	// DefaultResourceVerificationMode is the default value for "resource-verification-mode".
 	DefaultResourceVerificationMode = SkipResourceVerificationMode
 	// DefaultEnableProvenanceInStatus is the default value for "enable-provenance-status".
@@ -103,7 +107,7 @@ const (
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
 	embeddedStatus                      = "embedded-status"
-	enableSpire                         = "enable-spire"
+	enforceNonfalsifiability            = "enforce-nonfalsifiability"
 	verificationMode                    = "resource-verification-mode"
 	enableProvenanceInStatus            = "enable-provenance-in-status"
 	resultExtractionMethod              = "results-from"
@@ -125,7 +129,7 @@ type FeatureFlags struct {
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
 	EmbeddedStatus                   string
-	EnableSpire                      bool
+	EnforceNonfalsifiability         string
 	ResourceVerificationMode         string
 	EnableProvenanceInStatus         bool
 	ResultExtractionMethod           string
@@ -142,6 +146,14 @@ func GetFeatureFlagsConfigName() string {
 	return "feature-flags"
 }
 
+func getEnforceNonfalsifiabilityValues() map[string]struct{} {
+	var value struct{}
+	return map[string]struct{}{
+		EnforceNonfalsifiabilityNone:      value,
+		EnforceNonfalsifiabilityWithSpire: value,
+	}
+}
+
 // NewFeatureFlagsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	setFeature := func(key string, defaultValue bool, feature *bool) error {
@@ -154,6 +166,19 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 			return nil
 		}
 		*feature = defaultValue
+		return nil
+	}
+
+	setStringFeature := func(key string, defaultValue string, acceptedValues map[string]struct{}, feature *string) error {
+		value := defaultValue
+		if cfg, ok := cfgMap[key]; ok {
+			value = strings.ToLower(cfg)
+		}
+		if _, ok := acceptedValues[value]; !ok {
+			*feature = defaultValue
+			return fmt.Errorf("invalid value for feature flag %q: %q", key, value)
+		}
+		*feature = value
 		return nil
 	}
 
@@ -207,7 +232,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if tc.EnableAPIFields == AlphaAPIFields {
 		tc.EnableTektonOCIBundles = true
 		tc.EnableCustomTasks = true
-		tc.EnableSpire = true
+		tc.EnforceNonfalsifiability = EnforceNonfalsifiabilityWithSpire
 	} else {
 		if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {
 			return nil, err
@@ -215,7 +240,7 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		if err := setFeature(enableCustomTasks, DefaultEnableCustomTasks, &tc.EnableCustomTasks); err != nil {
 			return nil, err
 		}
-		if err := setFeature(enableSpire, DefaultEnableSpire, &tc.EnableSpire); err != nil {
+		if err := setStringFeature(enforceNonfalsifiability, DefaultEnforceNonfalsifiability, getEnforceNonfalsifiabilityValues(), &tc.EnforceNonfalsifiability); err != nil {
 			return nil, err
 		}
 	}

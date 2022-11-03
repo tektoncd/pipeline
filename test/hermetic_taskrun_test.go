@@ -38,7 +38,11 @@ func TestHermeticTaskRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	c, namespace := setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "alpha"}))
+	var c *clients
+	var namespace string
+
+	c, namespace = setup(ctx, t, requireAnyGate(map[string]string{"enable-api-fields": "alpha"}))
+
 	t.Parallel()
 	defer tearDown(ctx, t, c, namespace)
 
@@ -67,6 +71,13 @@ func TestHermeticTaskRun(t *testing.T) {
 			if err := WaitForTaskRunState(ctx, c, regularTaskRunName, Succeed(regularTaskRunName), "TaskRunCompleted", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun %s to finish: %s", regularTaskRunName, err)
 			}
+			if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+				tr, err := c.V1beta1TaskRunClient.Get(ctx, regularTaskRunName, metav1.GetOptions{})
+				if err != nil {
+					t.Errorf("Error retrieving taskrun: %s", err)
+				}
+				spireShouldPassTaskRunResultsVerify(tr, t)
+			}
 
 			// now, run the task mode with hermetic mode
 			// it should fail, since it shouldn't be able to access any network
@@ -78,6 +89,13 @@ func TestHermeticTaskRun(t *testing.T) {
 			}
 			if err := WaitForTaskRunState(ctx, c, hermeticTaskRunName, Failed(hermeticTaskRunName), "Failed", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun %s to fail: %s", hermeticTaskRunName, err)
+			}
+			if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+				tr, err := c.V1beta1TaskRunClient.Get(ctx, hermeticTaskRunName, metav1.GetOptions{})
+				if err != nil {
+					t.Errorf("Error retrieving taskrun: %s", err)
+				}
+				spireShouldFailTaskRunResultsVerify(tr, t)
 			}
 		})
 	}

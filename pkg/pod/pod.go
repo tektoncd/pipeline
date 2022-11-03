@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -122,6 +123,12 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	alphaAPIEnabled := featureFlags.EnableAPIFields == config.AlphaAPIFields
 	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
 
+	// Entrypoint arg to enable or disable spire
+	commonExtraEntrypointArgs := []string{}
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == config.EnforceNonfalsifiabilityWithSpire {
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-enable_spire")
+	}
+
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)
 	volumeMounts = append(volumeMounts, implicitVolumeMounts...)
@@ -129,7 +136,6 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Create Volumes and VolumeMounts for any credentials found in annotated
 	// Secrets, along with any arguments needed by Step entrypoints to process
 	// those secrets.
-	commonExtraEntrypointArgs := []string{}
 	credEntrypointArgs, credVolumes, credVolumeMounts, err := credsInit(ctx, taskRun.Spec.ServiceAccountName, taskRun.Namespace, b.KubeClient)
 	if err != nil {
 		return nil, err
@@ -305,6 +311,36 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 
 	if err := v1beta1.ValidateVolumes(volumes); err != nil {
 		return nil, err
+	}
+
+	readonly := true
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == config.EnforceNonfalsifiabilityWithSpire {
+		volumes = append(volumes, corev1.Volume{
+			Name: spire.WorkloadAPI,
+			VolumeSource: corev1.VolumeSource{
+				CSI: &corev1.CSIVolumeSource{
+					Driver:   "csi.spiffe.io",
+					ReadOnly: &readonly,
+				},
+			},
+		})
+
+		for i := range stepContainers {
+			c := &stepContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+				ReadOnly:  true,
+			})
+		}
+		for i := range initContainers {
+			c := &initContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+				ReadOnly:  true,
+			})
+		}
 	}
 
 	mergedPodContainers := stepContainers

@@ -46,7 +46,12 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	c, namespace = setup(ctx, t)
+
 	setupClusterBindingForHelm(ctx, c, t, namespace)
 
 	var (
@@ -101,6 +106,16 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	if err := WaitForPipelineRunState(ctx, c, helmDeployPipelineRunName, timeout, PipelineRunSucceed(helmDeployPipelineRunName), "PipelineRunCompleted", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
+	}
+
+	if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+		taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + helmDeployPipelineRunName})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", helmDeployPipelineRunName, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+		}
 	}
 
 	// cleanup task to remove helm releases from cluster and cluster role bindings, will not fail the test if it fails, just log

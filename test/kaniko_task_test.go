@@ -50,7 +50,11 @@ func TestKanikoTaskRun(t *testing.T) {
 		t.Skip("Skip test as skipRootUserTests set to true")
 	}
 
-	c, namespace := setup(ctx, t, withRegistry)
+	var c *clients
+	var namespace string
+
+	c, namespace = setup(ctx, t, withRegistry)
+
 	t.Parallel()
 
 	repo := fmt.Sprintf("registry.%s:5000/kanikotasktest", namespace)
@@ -121,6 +125,10 @@ func TestKanikoTaskRun(t *testing.T) {
 
 	if revision != commit {
 		t.Fatalf("Expected remote commit to match local revision: %s, %s", commit, revision)
+	}
+
+	if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+		spireShouldPassTaskRunResultsVerify(tr, t)
 	}
 
 	// match the local digest, which is first capture group against the remote image

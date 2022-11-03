@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -109,11 +110,16 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 }
 
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
-func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface) (v1beta1.TaskRunStatus, error) {
+func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod,
+	kubeclient kubernetes.Interface, spireEnabled bool, spireAPI spire.ControllerAPIClient) (v1beta1.TaskRunStatus, error) {
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
 		markStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+
+		if spireEnabled {
+			markStatusSignedResultsRunning(trs)
+		}
 	}
 
 	sortPodContainerStatuses(pod.Status.ContainerStatuses, pod.Spec.Containers)
@@ -123,7 +129,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta
 	if complete {
 		updateCompletedTaskRunStatus(logger, trs, pod)
 	} else {
-		updateIncompleteTaskRunStatus(trs, pod)
+		updateIncompleteTaskRunStatus(trs, pod, spireEnabled)
 	}
 
 	trs.PodName = pod.Name
@@ -141,7 +147,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta
 	}
 
 	var merr *multierror.Error
-	if err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient); err != nil {
+	if err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, spireEnabled, spireAPI); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
@@ -152,7 +158,29 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta
 	return *trs, merr.ErrorOrNil()
 }
 
-func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1beta1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface) *multierror.Error {
+func setTaskRunStatusBasedOnSpireVerification(ctx context.Context, logger *zap.SugaredLogger, tr *v1beta1.TaskRun, trs *v1beta1.TaskRunStatus,
+	filteredResults []v1beta1.PipelineResourceResult, spireAPI spire.ControllerAPIClient) {
+
+	if tr.IsSuccessful() && spireAPI != nil &&
+		((tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Results) >= 1) || len(filteredResults) >= 1) {
+		logger.Info("validating signed results with spire: ", trs.TaskRunResults)
+		if err := spireAPI.VerifyTaskRunResults(ctx, filteredResults, tr); err != nil {
+			logger.Errorf("failed to verify signed results with spire: %w", err)
+			markStatusSignedResultsFailure(trs, err.Error())
+		} else {
+			logger.Info("successfully validated signed results with spire")
+			markStatusSignedResultsVerified(trs)
+		}
+	}
+
+	// If no results and no results requested, set verified unless results were specified as part of task spec
+	if len(filteredResults) == 0 && (tr.Status.TaskSpec == nil || len(tr.Status.TaskSpec.Results) == 0) {
+		markStatusSignedResultsVerified(trs)
+	}
+}
+
+func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1beta1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface,
+	spireEnabled bool, spireAPI spire.ControllerAPIClient) *multierror.Error {
 	trs := &tr.Status
 	var merr *multierror.Error
 
@@ -165,7 +193,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 			merr = multierror.Append(merr, err)
 		}
 		// populate task run CRD with results from sidecar logs
-		taskResults, pipelineResourceResults, _ := filterResultsAndResources(sidecarLogResults)
+		taskResults, pipelineResourceResults, _ := filterResultsAndResources(sidecarLogResults, spireEnabled)
 		if tr.IsSuccessful() {
 			trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 			trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
@@ -191,10 +219,13 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					logger.Errorf("error extracting the exit code of step %q in taskrun %q: %v", s.Name, tr.Name, err)
 					merr = multierror.Append(merr, err)
 				}
-				taskResults, pipelineResourceResults, filteredResults := filterResultsAndResources(results)
+				taskResults, pipelineResourceResults, filteredResults := filterResultsAndResources(results, spireEnabled)
 				if tr.IsSuccessful() {
 					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 					trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
+					if spireEnabled {
+						setTaskRunStatusBasedOnSpireVerification(ctx, logger, tr, trs, filteredResults, spireAPI)
+					}
 				}
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {
@@ -245,7 +276,8 @@ func createMessageFromResults(results []v1beta1.PipelineResourceResult) (string,
 	return string(bytes), nil
 }
 
-func filterResultsAndResources(results []v1beta1.PipelineResourceResult) ([]v1beta1.TaskRunResult, []v1beta1.PipelineResourceResult, []v1beta1.PipelineResourceResult) {
+func filterResultsAndResources(results []v1beta1.PipelineResourceResult, spireEnabled bool) ([]v1beta1.TaskRunResult, []v1beta1.PipelineResourceResult, []v1beta1.PipelineResourceResult) {
+
 	var taskResults []v1beta1.TaskRunResult
 	var pipelineResourceResults []v1beta1.PipelineResourceResult
 	var filteredResults []v1beta1.PipelineResourceResult
@@ -256,6 +288,15 @@ func filterResultsAndResources(results []v1beta1.PipelineResourceResult) ([]v1be
 			err := v.UnmarshalJSON([]byte(r.Value))
 			if err != nil {
 				continue
+			}
+			// TODO(#4723): Validate that the type we inferred from aos is matching the
+			// TaskResult Type before setting it to the taskRunResult.
+			// TODO(#4723): Validate the taskrun results against taskresults for object val
+			if spireEnabled {
+				if r.Key == spire.KeySVID || r.Key == spire.KeyResultManifest || strings.HasSuffix(r.Key, spire.KeySignatureSuffix) {
+					filteredResults = append(filteredResults, r)
+					continue
+				}
 			}
 			taskRunResult := v1beta1.TaskRunResult{
 				Name:  r.Key,
@@ -338,10 +379,13 @@ func updateCompletedTaskRunStatus(logger *zap.SugaredLogger, trs *v1beta1.TaskRu
 	trs.CompletionTime = &metav1.Time{Time: time.Now()}
 }
 
-func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) {
+func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod, spireEnabled bool) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		markStatusRunning(trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
+		if spireEnabled {
+			markStatusSignedResultsRunning(trs)
+		}
 	case corev1.PodPending:
 		switch {
 		case IsPodExceedingNodeResources(pod):
@@ -352,6 +396,9 @@ func updateIncompleteTaskRunStatus(trs *v1beta1.TaskRunStatus, pod *corev1.Pod) 
 			markStatusRunning(trs, ReasonPullImageFailed, getWaitingMessage(pod))
 		default:
 			markStatusRunning(trs, ReasonPending, getWaitingMessage(pod))
+			if spireEnabled {
+				markStatusSignedResultsRunning(trs)
+			}
 		}
 	}
 }
@@ -526,6 +573,36 @@ func markStatusSuccess(trs *v1beta1.TaskRunStatus) {
 		Status:  corev1.ConditionTrue,
 		Reason:  v1beta1.TaskRunReasonSuccessful.String(),
 		Message: "All Steps have completed executing",
+	})
+}
+
+// markStatusResultsVerified sets taskrun status to
+func markStatusSignedResultsVerified(trs *v1beta1.TaskRunStatus) {
+	trs.SetCondition(&apis.Condition{
+		Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+		Status:  corev1.ConditionTrue,
+		Reason:  v1beta1.TaskRunReasonResultsVerified.String(),
+		Message: "Successfully verified all spire signed taskrun results",
+	})
+}
+
+// markStatusFailure sets taskrun status to failure with specified reason
+func markStatusSignedResultsFailure(trs *v1beta1.TaskRunStatus, message string) {
+	trs.SetCondition(&apis.Condition{
+		Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+		Status:  corev1.ConditionFalse,
+		Reason:  v1beta1.TaskRunReasonsResultsVerificationFailed.String(),
+		Message: message,
+	})
+}
+
+// markStatusRunning sets taskrun status to running
+func markStatusSignedResultsRunning(trs *v1beta1.TaskRunStatus) {
+	trs.SetCondition(&apis.Condition{
+		Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
+		Status:  corev1.ConditionUnknown,
+		Reason:  v1beta1.AwaitingTaskRunResults.String(),
+		Message: "Waiting upon TaskRun results and signatures to verify",
 	})
 }
 

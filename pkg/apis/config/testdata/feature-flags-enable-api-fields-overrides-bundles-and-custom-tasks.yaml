@@ -6,5 +6,5 @@ metadata:
 data:
   enable-tekton-oci-bundles: "false"
   enable-custom-tasks: "false"
-  enable-spire: "false"
+  enforce-nonfalsifiability: ""
   enable-api-fields: "alpha"

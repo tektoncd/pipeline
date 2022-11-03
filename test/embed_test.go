@@ -44,7 +44,12 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	c, namespace = setup(ctx, t)
+
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
@@ -68,6 +73,15 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 
 	// TODO(#127) Currently we have no reliable access to logs from the TaskRun so we'll assume successful
 	// completion of the TaskRun means the TaskRun did what it was intended.
+
+	if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+		tr, err := c.V1beta1TaskRunClient.Get(ctx, embedTaskRunName, metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Error retrieving taskrun: %s", err)
+		}
+		spireShouldPassTaskRunResultsVerify(tr, t)
+	}
+
 }
 
 func getEmbeddedTask(t *testing.T, taskName, namespace string, args []string) *v1beta1.Task {

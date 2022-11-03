@@ -4,4 +4,4 @@ metadata:
   name: feature-flags
   namespace: tekton-pipelines
 data:
-  enable-spire: "true"
+  enforce-nonfalsifiability: "spire"

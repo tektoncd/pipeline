@@ -33,7 +33,7 @@ func AddOutputImageDigestExporter(
 	imageDigestExporterImage string,
 	tr *v1beta1.TaskRun,
 	taskSpec *v1beta1.TaskSpec,
-	gr GetResource,
+	gr GetResource, spireEnabled bool,
 ) error {
 
 	output := []*image.Resource{}
@@ -80,7 +80,7 @@ func AddOutputImageDigestExporter(
 			}
 
 			augmentedSteps = append(augmentedSteps, taskSpec.Steps...)
-			augmentedSteps = append(augmentedSteps, imageDigestExporterStep(imageDigestExporterImage, imagesJSON))
+			augmentedSteps = append(augmentedSteps, imageDigestExporterStep(imageDigestExporterImage, imagesJSON, spireEnabled))
 
 			taskSpec.Steps = augmentedSteps
 		}
@@ -89,13 +89,19 @@ func AddOutputImageDigestExporter(
 	return nil
 }
 
-func imageDigestExporterStep(imageDigestExporterImage string, imagesJSON []byte) v1beta1.Step {
+func imageDigestExporterStep(imageDigestExporterImage string, imagesJSON []byte, spireEnabled bool) v1beta1.Step {
+	// Add extra entrypoint arg to enable or disable spire
+	commonExtraEntrypointArgs := []string{
+		"-images", string(imagesJSON),
+	}
+	if spireEnabled {
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-enable_spire")
+	}
+
 	return v1beta1.Step{
 		Name:    names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(imageDigestExporterContainerName),
 		Image:   imageDigestExporterImage,
 		Command: []string{"/ko-app/imagedigestexporter"},
-		Args: []string{
-			"-images", string(imagesJSON),
-		},
+		Args:    commonExtraEntrypointArgs,
 	}
 }

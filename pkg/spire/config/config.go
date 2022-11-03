@@ -24,6 +24,7 @@ import (
 
 // SpireConfig holds the images reference for a number of container images used
 // across tektoncd pipelines.
+// +k8s:deepcopy-gen=true
 type SpireConfig struct {
 	// The trust domain corresponds to the trust root of a SPIFFE identity provider.
 	TrustDomain string
@@ -61,7 +62,7 @@ func (c SpireConfig) Validate() error {
 	}
 
 	if !strings.HasPrefix(c.NodeAliasPrefix, "/") {
-		return fmt.Errorf("Spire node alias should start with a /")
+		return fmt.Errorf("spire node alias should start with a /")
 	}
 
 	return nil

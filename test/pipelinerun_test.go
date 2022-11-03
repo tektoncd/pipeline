@@ -315,7 +315,11 @@ spec:
 			ctx := context.Background()
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			c, namespace := setup(ctx, t)
+
+			var c *clients
+			var namespace string
+
+			c, namespace = setup(ctx, t)
 
 			knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 			defer tearDown(ctx, t, c, namespace)
@@ -346,6 +350,9 @@ spec:
 				for _, actualTaskRunItem := range actualTaskrunList.Items {
 					if strings.HasPrefix(actualTaskRunItem.Name, taskRunName) {
 						taskRunName = actualTaskRunItem.Name
+					}
+					if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+						spireShouldPassTaskRunResultsVerify(&actualTaskRunItem, t)
 					}
 				}
 				expectedTaskRunNames = append(expectedTaskRunNames, taskRunName)
@@ -451,7 +458,11 @@ func TestPipelineRunRefDeleted(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	c, namespace = setup(ctx, t)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -515,6 +526,16 @@ spec:
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 
+	if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+		taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + prName})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+		}
+	}
+
 }
 
 // TestPipelineRunPending tests that a Pending PipelineRun is not run until the pending
@@ -525,7 +546,11 @@ func TestPipelineRunPending(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	c, namespace = setup(ctx, t)
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
@@ -600,6 +625,15 @@ spec:
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
 	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
+	}
+	if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+		taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + prName})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", prName, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldPassTaskRunResultsVerify(&taskrunItem, t)
+		}
 	}
 }
 

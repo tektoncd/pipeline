@@ -340,7 +340,7 @@ func PrependResourceVersionReactor(f *ktesting.Fake) {
 
 // EnsureConfigurationConfigMapsExist makes sure all the configmaps exists.
 func EnsureConfigurationConfigMapsExist(d *Data) {
-	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists, metricsExists, trustedresourcesExists bool
+	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists, metricsExists, trustedresourcesExists, spireconfigExists bool
 	for _, cm := range d.ConfigMaps {
 		if cm.Name == config.GetDefaultsConfigName() {
 			defaultsExists = true
@@ -359,6 +359,9 @@ func EnsureConfigurationConfigMapsExist(d *Data) {
 		}
 		if cm.Name == config.GetTrustedResourcesConfigName() {
 			trustedresourcesExists = true
+		}
+		if cm.Name == config.GetSpireConfigName() {
+			spireconfigExists = true
 		}
 	}
 	if !defaultsExists {
@@ -394,6 +397,12 @@ func EnsureConfigurationConfigMapsExist(d *Data) {
 	if !trustedresourcesExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetTrustedResourcesConfigName(), Namespace: system.Namespace()},
+			Data:       map[string]string{},
+		})
+	}
+	if !spireconfigExists {
+		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetSpireConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}

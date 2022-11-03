@@ -14,40 +14,49 @@ import (
 	"knative.dev/pkg/system"
 )
 
+func hasAnyGate(ctx context.Context, gates map[string]string, t *testing.T, c *clients, namespace string) (bool, string) {
+	featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
+	}
+	resolverFeatureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(resolverconfig.ResolversNamespace(system.Namespace())).
+		Get(ctx, resolverconfig.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", resolverconfig.GetFeatureFlagsConfigName(), err)
+	}
+	resolverMap := make(map[string]string)
+	if resolverFeatureFlagsCM != nil {
+		resolverMap = resolverFeatureFlagsCM.Data
+	}
+	pairs := []string{}
+	for name, value := range gates {
+		actual, ok := featureFlagsCM.Data[name]
+		if ok && value == actual {
+			return true, ""
+		}
+		actual, ok = resolverMap[name]
+		if ok && value == actual {
+			return true, ""
+		}
+		pairs = append(pairs, fmt.Sprintf("%q: %q", name, value))
+	}
+	status := fmt.Sprintf(
+		"No feature flag in namespace %q matching %s\nExisting feature flag: %#v\nExisting resolver feature flag (in namespace %q): %#v",
+		system.Namespace(), strings.Join(pairs, " or "), featureFlagsCM.Data,
+		resolverconfig.ResolversNamespace(system.Namespace()), resolverMap)
+	return false, status
+}
+
 // requireAnyGate returns a setup func that will skip the current
 // test if none of the feature-flags in the given map match
 // what's in the feature-flags ConfigMap. It will fatally fail
 // the test if it cannot get the feature-flag configmap.
 func requireAnyGate(gates map[string]string) func(context.Context, *testing.T, *clients, string) {
 	return func(ctx context.Context, t *testing.T, c *clients, namespace string) {
-		featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
+		exists, status := hasAnyGate(ctx, gates, t, c, namespace)
+		if !exists {
+			t.Skipf(status)
 		}
-		resolverFeatureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(resolverconfig.ResolversNamespace(system.Namespace())).
-			Get(ctx, resolverconfig.GetFeatureFlagsConfigName(), metav1.GetOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			t.Fatalf("Failed to get ConfigMap `%s`: %s", resolverconfig.GetFeatureFlagsConfigName(), err)
-		}
-		resolverMap := make(map[string]string)
-		if resolverFeatureFlagsCM != nil {
-			resolverMap = resolverFeatureFlagsCM.Data
-		}
-		pairs := []string{}
-		for name, value := range gates {
-			actual, ok := featureFlagsCM.Data[name]
-			if ok && value == actual {
-				return
-			}
-			actual, ok = resolverMap[name]
-			if ok && value == actual {
-				return
-			}
-			pairs = append(pairs, fmt.Sprintf("%q: %q", name, value))
-		}
-		t.Skipf("No feature flag in namespace %q matching %s\nExisting feature flag: %#v\nExisting resolver feature flag (in namespace %q): %#v",
-			system.Namespace(), strings.Join(pairs, " or "), featureFlagsCM.Data,
-			resolverconfig.ResolversNamespace(system.Namespace()), resolverMap)
 	}
 }
 

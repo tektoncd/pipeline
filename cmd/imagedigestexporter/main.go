@@ -17,9 +17,12 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 
+	"github.com/tektoncd/pipeline/pkg/spire"
+	"github.com/tektoncd/pipeline/pkg/spire/config"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"knative.dev/pkg/logging"
 
@@ -31,9 +34,12 @@ import (
 var (
 	images                 = flag.String("images", "", "List of images resources built by task in json format")
 	terminationMessagePath = flag.String("terminationMessagePath", "/tekton/termination", "Location of file containing termination message")
+	enableSpire            = flag.Bool("enable_spire", false, "If specified by configmap, this enables spire signing and verification")
+	socketPath             = flag.String("spire_socket_path", "unix:///spiffe-workload-api/spire-agent.sock", "Experimental: The SPIRE agent socket for SPIFFE workload API.")
 )
 
-/* The input of this go program will be a JSON string with all the output PipelineResources of type
+/*
+The input of this go program will be a JSON string with all the output PipelineResources of type
 Image, which will include the path to where the index.json file will be located. The program will
 read the related index.json file(s) and log another JSON string including the name of the image resource
 and the digests.
@@ -74,6 +80,21 @@ func main() {
 			ResourceName: imageResource.Name,
 		})
 
+	}
+
+	if enableSpire != nil && *enableSpire && socketPath != nil && *socketPath != "" {
+		ctx := context.Background()
+		spireConfig := config.SpireConfig{
+			SocketPath: *socketPath,
+		}
+
+		spireWorkloadAPI := spire.NewEntrypointerAPIClient(&spireConfig)
+		signed, err := spireWorkloadAPI.Sign(ctx, output)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		output = append(output, signed...)
 	}
 
 	if err := termination.WriteMessage(*terminationMessagePath, output); err != nil {

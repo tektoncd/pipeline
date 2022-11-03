@@ -54,7 +54,12 @@ func TestTaskRunPipelineRunStatus(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setup(ctx, t)
+
+	var c *clients
+	var namespace string
+
+	c, namespace = setup(ctx, t)
+
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
@@ -88,6 +93,14 @@ spec:
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
+	if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+		tr, err := c.V1beta1TaskRunClient.Get(ctx, taskRun.Name, metav1.GetOptions{})
+		if err != nil {
+			t.Errorf("Error retrieving taskrun: %s", err)
+		}
+		spireShouldFailTaskRunResultsVerify(tr, t)
+	}
+
 	pipeline := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -114,6 +127,17 @@ spec:
 	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "BuildValidationFailed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
+
+	if spireEnabled, _ := hasAnyGate(ctx, spireFeatureGates, t, c, namespace); spireEnabled {
+		taskrunList, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{LabelSelector: "tekton.dev/pipelineRun=" + pipelineRun.Name})
+		if err != nil {
+			t.Fatalf("Error listing TaskRuns for PipelineRun %s: %s", pipelineRun.Name, err)
+		}
+		for _, taskrunItem := range taskrunList.Items {
+			spireShouldFailTaskRunResultsVerify(&taskrunItem, t)
+		}
+	}
+
 }
 
 // TestProvenanceFieldInPipelineRunTaskRunStatus is an integration test that will
