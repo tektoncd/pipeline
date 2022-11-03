@@ -13893,20 +13893,6 @@ tasks in a pipeline.</p>
 </tr>
 <tr>
 <td>
-<code>retriesStatus</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.CustomRunStatus">
-[]CustomRunStatus
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>RetriesStatus contains the history of CustomRunStatus, in case of a retry.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>extraFields</code><br/>
 <em>
 k8s.io/apimachinery/pkg/runtime.RawExtension
