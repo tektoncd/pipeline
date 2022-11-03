@@ -301,13 +301,13 @@ func withCancelledForTimeout(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
 }
 
 func withRunCancelled(run *v1alpha1.Run) *v1alpha1.Run {
-	run.Status.Conditions[0].Reason = v1alpha1.RunReasonCancelled
+	run.Status.Conditions[0].Reason = v1alpha1.RunReasonCancelled.String()
 	return run
 }
 
 func withRunCancelledForTimeout(run *v1alpha1.Run) *v1alpha1.Run {
 	run.Spec.StatusMessage = v1alpha1.RunCancelledByPipelineTimeoutMsg
-	run.Status.Conditions[0].Reason = v1alpha1.RunReasonCancelled
+	run.Status.Conditions[0].Reason = v1alpha1.RunReasonCancelled.String()
 	return run
 }
 

@@ -113,7 +113,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,
-			Reason: v1beta1.TaskRunReasonRunning.String(),
+			Reason: v1beta1.CustomRunReasonRunning.String(),
 		},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.running.v1.*test-customRun`},
 	}, {
@@ -121,7 +121,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,
-			Reason: v1beta1.PipelineRunReasonSuccessful.String(),
+			Reason: v1beta1.CustomRunReasonSuccessful.String(),
 		},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.successful.v1.*test-customRun`},
 	}, {
@@ -129,7 +129,7 @@ func TestReconcile_CloudEvents(t *testing.T) {
 		condition: &apis.Condition{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionFalse,
-			Reason: v1beta1.PipelineRunReasonCancelled.String(),
+			Reason: v1beta1.CustomRunReasonCancelled.String(),
 		},
 		wantCloudEvents: []string{`(?s)dev.tekton.event.customrun.failed.v1.*test-customRun`},
 	}}
@@ -252,7 +252,7 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 					{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
-						Reason: v1beta1.PipelineRunReasonCancelled.String(),
+						Reason: v1beta1.CustomRunReasonCancelled.String(),
 					},
 				},
 			}

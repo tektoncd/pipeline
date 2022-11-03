@@ -117,18 +117,33 @@ func (rs RunSpec) GetParam(name string) *v1beta1.Param {
 	return nil
 }
 
+// RunReason is an enum used to store all Run reason for the Succeeded condition that are controlled by the Run itself.
+type RunReason string
+
 const (
+	// RunReasonStarted is the reason set when the Run has just started.
+	RunReasonStarted RunReason = "Started"
+	// RunReasonRunning is the reason set when the Run is running.
+	RunReasonRunning RunReason = "Running"
+	// RunReasonSuccessful is the reason set when the Run completed successfully.
+	RunReasonSuccessful RunReason = "Succeeded"
+	// RunReasonFailed is the reason set when the Run completed with a failure.
+	RunReasonFailed RunReason = "Failed"
 	// RunReasonCancelled must be used in the Condition Reason to indicate that a Run was cancelled.
-	RunReasonCancelled = "RunCancelled"
+	RunReasonCancelled RunReason = "RunCancelled"
 	// RunReasonTimedOut must be used in the Condition Reason to indicate that a Run was timed out.
-	RunReasonTimedOut = "RunTimedOut"
+	RunReasonTimedOut RunReason = "RunTimedOut"
 	// RunReasonWorkspaceNotSupported can be used in the Condition Reason to indicate that the
 	// Run contains a workspace which is not supported by this custom task.
-	RunReasonWorkspaceNotSupported = "RunWorkspaceNotSupported"
+	RunReasonWorkspaceNotSupported RunReason = "RunWorkspaceNotSupported"
 	// RunReasonPodTemplateNotSupported can be used in the Condition Reason to indicate that the
 	// Run contains a pod template which is not supported by this custom task.
-	RunReasonPodTemplateNotSupported = "RunPodTemplateNotSupported"
+	RunReasonPodTemplateNotSupported RunReason = "RunPodTemplateNotSupported"
 )
+
+func (t RunReason) String() string {
+	return string(t)
+}
 
 // RunStatus defines the observed state of Run.
 type RunStatus = runv1alpha1.RunStatus

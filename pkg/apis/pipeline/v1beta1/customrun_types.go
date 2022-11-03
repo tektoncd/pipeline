@@ -109,15 +109,30 @@ func (rs CustomRunSpec) GetParam(name string) *Param {
 	return nil
 }
 
+// CustomRunReason is an enum used to store all Run reason for the Succeeded condition that are controlled by the CustomRun itself.
+type CustomRunReason string
+
 const (
+	// CustomRunReasonStarted is the reason set when the CustomRun has just started.
+	CustomRunReasonStarted CustomRunReason = "Started"
+	// CustomRunReasonRunning is the reason set when the CustomRun is running.
+	CustomRunReasonRunning CustomRunReason = "Running"
+	// CustomRunReasonSuccessful is the reason set when the CustomRun completed successfully.
+	CustomRunReasonSuccessful CustomRunReason = "Succeeded"
+	// CustomRunReasonFailed is the reason set when the CustomRun completed with a failure.
+	CustomRunReasonFailed CustomRunReason = "Failed"
 	// CustomRunReasonCancelled must be used in the Condition Reason to indicate that a CustomRun was cancelled.
-	CustomRunReasonCancelled = "CustomRunCancelled"
+	CustomRunReasonCancelled CustomRunReason = "CustomRunCancelled"
 	// CustomRunReasonTimedOut must be used in the Condition Reason to indicate that a CustomRun was timed out.
-	CustomRunReasonTimedOut = "CustomRunTimedOut"
+	CustomRunReasonTimedOut CustomRunReason = "CustomRunTimedOut"
 	// CustomRunReasonWorkspaceNotSupported can be used in the Condition Reason to indicate that the
 	// CustomRun contains a workspace which is not supported by this custom task.
-	CustomRunReasonWorkspaceNotSupported = "CustomRunWorkspaceNotSupported"
+	CustomRunReasonWorkspaceNotSupported CustomRunReason = "CustomRunWorkspaceNotSupported"
 )
+
+func (t CustomRunReason) String() string {
+	return string(t)
+}
 
 // CustomRunStatus defines the observed state of CustomRun.
 type CustomRunStatus = runv1beta1.CustomRunStatus
