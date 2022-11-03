@@ -32,6 +32,10 @@ func (c *FakeTektonV1alpha1) Runs(namespace string) v1alpha1.RunInterface {
 	return &FakeRuns{c, namespace}
 }
 
+func (c *FakeTektonV1alpha1) VerificationPolicies(namespace string) v1alpha1.VerificationPolicyInterface {
+	return &FakeVerificationPolicies{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeTektonV1alpha1) RESTClient() rest.Interface {

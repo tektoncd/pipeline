@@ -19,21 +19,17 @@ package trustedresources
 import (
 	"bytes"
 	"context"
-	"crypto"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
+	"regexp"
 
-	"github.com/pkg/errors"
-	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	v1 "k8s.io/api/core/v1"
+	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -41,29 +37,11 @@ import (
 const (
 	// SignatureAnnotation is the key of signature in annotation map
 	SignatureAnnotation = "tekton.dev/signature"
-	// keyReference is the prefix of secret reference
-	keyReference = "k8s://"
 )
 
-// VerifyInterface get the checksum of json marshalled object and verify it.
-func VerifyInterface(obj interface{}, verifier signature.Verifier, signature []byte) error {
-	ts, err := json.Marshal(obj)
-	if err != nil {
-		return err
-	}
-
-	h := sha256.New()
-	h.Write(ts)
-
-	if err := verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader(h.Sum(nil))); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// VerifyTask verifies the signature and public key against task
-func VerifyTask(ctx context.Context, taskObj v1beta1.TaskObject, k8s kubernetes.Interface) error {
+// VerifyTask verifies the signature and public key against task.
+// source is from ConfigSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
+func VerifyTask(ctx context.Context, taskObj v1beta1.TaskObject, k8s kubernetes.Interface, source string, policies []*v1alpha1.VerificationPolicy) error {
 	tm, signature, err := prepareObjectMeta(taskObj.TaskMetadata())
 	if err != nil {
 		return err
@@ -75,20 +53,13 @@ func VerifyTask(ctx context.Context, taskObj v1beta1.TaskObject, k8s kubernetes.
 		ObjectMeta: tm,
 		Spec:       taskObj.TaskSpec(),
 	}
-	verifiers, err := getVerifiers(ctx, k8s)
-	if err != nil {
-		return err
-	}
-	for _, verifier := range verifiers {
-		if err := VerifyInterface(task, verifier, signature); err == nil {
-			return nil
-		}
-	}
-	return fmt.Errorf("Task %s in namespace %s fails verification", task.Name, task.Namespace)
+
+	return verifyResource(ctx, &task, k8s, signature, source, policies)
 }
 
-// VerifyPipeline verifies the signature and public key against pipeline
-func VerifyPipeline(ctx context.Context, pipelineObj v1beta1.PipelineObject, k8s kubernetes.Interface) error {
+// VerifyPipeline verifies the signature and public key against pipeline.
+// source is from ConfigSource.URI, which will be used to match policy patterns, k8s is used to fetch secret from cluster
+func VerifyPipeline(ctx context.Context, pipelineObj v1beta1.PipelineObject, k8s kubernetes.Interface, source string, policies []*v1alpha1.VerificationPolicy) error {
 	pm, signature, err := prepareObjectMeta(pipelineObj.PipelineMetadata())
 	if err != nil {
 		return err
@@ -100,18 +71,88 @@ func VerifyPipeline(ctx context.Context, pipelineObj v1beta1.PipelineObject, k8s
 		ObjectMeta: pm,
 		Spec:       pipelineObj.PipelineSpec(),
 	}
-	verifiers, err := getVerifiers(ctx, k8s)
-	if err != nil {
-		return err
+
+	return verifyResource(ctx, &pipeline, k8s, signature, source, policies)
+}
+
+// verifyResource verifies resource which implements metav1.Object by provided signature and public keys from configmap or policies.
+// It will fetch public key from configmap first, if no keys are found then try to fetch keys from VerificationPolicy
+// For verificationPolicies verifyResource will adopt the following rules to do verification:
+// 1. For each policy, check if the resource url is matching any of the `patterns` in the `resources` list. If matched then this policy will be used for verification.
+// 2. If multiple policies are matched, the resource needs to pass all of them to pass verification.
+// 3. To pass one policy, the resource can pass any public keys in the policy.
+func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.Interface, signature []byte, source string, policies []*v1alpha1.VerificationPolicy) error {
+	verifiers, err := verifier.FromConfigMap(ctx, k8s)
+	if err != nil && !errors.Is(err, verifier.ErrorEmptyPublicKeys) {
+		return fmt.Errorf("failed to get verifiers from configmap: %w", err)
+	}
+	if len(verifiers) != 0 {
+		for _, verifier := range verifiers {
+			// if one of the verifier passes verification, then this resource passes verification
+			if err := verifyInterface(resource, verifier, signature); err == nil {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: resource %s in namespace %s fails verification", ErrorResourceVerificationFailed, resource.GetName(), resource.GetNamespace())
 	}
 
-	for _, verifier := range verifiers {
-		if err := VerifyInterface(pipeline, verifier, signature); err == nil {
-			return nil
+	if len(policies) == 0 {
+		return ErrorEmptyVerificationConfig
+	}
+
+	matchedPolicies := []*v1alpha1.VerificationPolicy{}
+	for _, p := range policies {
+		for _, r := range p.Spec.Resources {
+			matching, err := regexp.MatchString(r.Pattern, source)
+			if err != nil {
+				return fmt.Errorf("%v: %w", err, ErrorRegexMatch)
+			}
+			if matching {
+				matchedPolicies = append(matchedPolicies, p)
+				break
+			}
 		}
 	}
+	if len(matchedPolicies) == 0 {
+		return fmt.Errorf("%w: no matching policies are found for resource: %s against source: %s", ErrorNoMatchedPolicies, resource.GetName(), source)
+	}
 
-	return fmt.Errorf("Pipeline %s in namespace %s fails verification", pipeline.Name, pipeline.Namespace)
+	for _, p := range matchedPolicies {
+		passVerification := false
+		verifiers, err := verifier.FromPolicy(ctx, k8s, p)
+		if err != nil {
+			return fmt.Errorf("failed to get verifiers from policy: %w", err)
+		}
+		for _, verifier := range verifiers {
+			// if one of the verifier passes verification, then this policy passes verification
+			if err := verifyInterface(resource, verifier, signature); err == nil {
+				passVerification = true
+				break
+			}
+		}
+		// if this policy fails the verification, should return error directly. No need to check other policies
+		if passVerification == false {
+			return fmt.Errorf("%w: resource %s in namespace %s fails verification", ErrorResourceVerificationFailed, resource.GetName(), resource.GetNamespace())
+		}
+	}
+	return nil
+}
+
+// verifyInterface get the checksum of json marshalled object and verify it.
+func verifyInterface(obj interface{}, verifier signature.Verifier, signature []byte) error {
+	ts, err := json.Marshal(obj)
+	if err != nil {
+		return fmt.Errorf("failed to marshal the object: %w", err)
+	}
+
+	h := sha256.New()
+	h.Write(ts)
+
+	if err := verifier.VerifySignature(bytes.NewReader(signature), bytes.NewReader(h.Sum(nil))); err != nil {
+		return fmt.Errorf("%w:%v", ErrorResourceVerificationFailed, err.Error())
+	}
+
+	return nil
 }
 
 // prepareObjectMeta will remove annotations not configured from user side -- "kubectl-client-side-apply" and "kubectl.kubernetes.io/last-applied-configuration"
@@ -145,7 +186,7 @@ func prepareObjectMeta(in metav1.ObjectMeta) (metav1.ObjectMeta, []byte, error) 
 	// signature should be contained in annotation
 	sig, ok := in.Annotations[SignatureAnnotation]
 	if !ok {
-		return out, nil, fmt.Errorf("signature is missing")
+		return out, nil, ErrorSignatureMissing
 	}
 	// extract signature
 	signature, err := base64.StdEncoding.DecodeString(sig)
@@ -155,87 +196,4 @@ func prepareObjectMeta(in metav1.ObjectMeta) (metav1.ObjectMeta, []byte, error) 
 	delete(out.Annotations, SignatureAnnotation)
 
 	return out, signature, nil
-}
-
-// getVerifiers get all verifiers from configmap
-func getVerifiers(ctx context.Context, k8s kubernetes.Interface) ([]signature.Verifier, error) {
-	cfg := config.FromContextOrDefaults(ctx)
-	verifiers := []signature.Verifier{}
-	// TODO(#5527): consider using k8s://namespace/name instead of mounting files.
-	for key := range cfg.TrustedResources.Keys {
-		v, err := verifierForKeyRef(ctx, key, crypto.SHA256, k8s)
-		if err == nil {
-			verifiers = append(verifiers, v...)
-		}
-	}
-	if len(verifiers) == 0 {
-		return verifiers, fmt.Errorf("no public keys are founded for verification")
-	}
-
-	return verifiers, nil
-}
-
-// verifierForKeyRef parses the given keyRef, loads the key and returns an appropriate
-// verifier using the provided hash algorithm
-// TODO(#5527): consider wrap verifiers to resolver so the same verifiers are used for the same reconcile event
-func verifierForKeyRef(ctx context.Context, keyRef string, hashAlgorithm crypto.Hash, k8s kubernetes.Interface) (verifiers []signature.Verifier, err error) {
-	var raw []byte
-	verifiers = []signature.Verifier{}
-	// if the ref is secret then we fetch the keys from the secrets
-	if strings.HasPrefix(keyRef, keyReference) {
-		s, err := getKeyPairSecret(ctx, keyRef, k8s)
-		if err != nil {
-			return nil, err
-		}
-		for _, raw := range s.Data {
-			pubKey, err := cryptoutils.UnmarshalPEMToPublicKey(raw)
-			if err != nil {
-				return nil, fmt.Errorf("pem to public key: %w", err)
-			}
-			v, _ := signature.LoadVerifier(pubKey, hashAlgorithm)
-			verifiers = append(verifiers, v)
-		}
-		if len(verifiers) == 0 {
-			return verifiers, fmt.Errorf("no public keys are founded for verification")
-		}
-		return verifiers, nil
-	}
-	// read the key from mounted file
-	raw, err = os.ReadFile(filepath.Clean(keyRef))
-	if err != nil {
-		return nil, err
-	}
-
-	// PEM encoded file.
-	pubKey, err := cryptoutils.UnmarshalPEMToPublicKey(raw)
-	if err != nil {
-		return nil, fmt.Errorf("pem to public key: %w", err)
-	}
-	v, _ := signature.LoadVerifier(pubKey, hashAlgorithm)
-	verifiers = append(verifiers, v)
-
-	return verifiers, nil
-}
-
-func getKeyPairSecret(ctx context.Context, k8sRef string, k8s kubernetes.Interface) (*v1.Secret, error) {
-	namespace, name, err := parseRef(k8sRef)
-	if err != nil {
-		return nil, err
-	}
-
-	var s *v1.Secret
-	if s, err = k8s.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{}); err != nil {
-		return nil, errors.Wrap(err, "checking if secret exists")
-	}
-
-	return s, nil
-}
-
-// the reference should be formatted as <namespace>/<secret name>
-func parseRef(k8sRef string) (string, string, error) {
-	s := strings.Split(strings.TrimPrefix(k8sRef, keyReference), "/")
-	if len(s) != 2 {
-		return "", "", errors.New("kubernetes specification should be in the format k8s://<namespace>/<secret>")
-	}
-	return s[0], s[1], nil
 }

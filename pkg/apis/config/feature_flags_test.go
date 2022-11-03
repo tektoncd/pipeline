@@ -17,12 +17,16 @@ limitations under the License.
 package config_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	test "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/logging"
 )
 
 func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
@@ -252,6 +256,48 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 				t.Error("expected error but received nil")
 			}
 		})
+	}
+}
+
+func TestCheckEnforceResourceVerificationMode(t *testing.T) {
+	ctx := context.Background()
+	if config.CheckEnforceResourceVerificationMode(ctx) {
+		t.Errorf("CheckCheckEnforceResourceVerificationMode got true but expected to be false")
+	}
+	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
+	featureflags := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "feature-flags",
+		},
+		Data: map[string]string{
+			"resource-verification-mode": config.EnforceResourceVerificationMode,
+		},
+	}
+	store.OnConfigChanged(featureflags)
+	ctx = store.ToContext(ctx)
+	if !config.CheckEnforceResourceVerificationMode(ctx) {
+		t.Errorf("CheckCheckEnforceResourceVerificationMode got false but expected to be true")
+	}
+}
+
+func TestCheckWarnResourceVerificationMode(t *testing.T) {
+	ctx := context.Background()
+	if config.CheckWarnResourceVerificationMode(ctx) {
+		t.Errorf("CheckWarnResourceVerificationMode got true but expected to be false")
+	}
+	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
+	featureflags := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "feature-flags",
+		},
+		Data: map[string]string{
+			"resource-verification-mode": config.WarnResourceVerificationMode,
+		},
+	}
+	store.OnConfigChanged(featureflags)
+	ctx = store.ToContext(ctx)
+	if !config.CheckWarnResourceVerificationMode(ctx) {
+		t.Errorf("CheckWarnResourceVerificationMode got false but expected to be true")
 	}
 }
 

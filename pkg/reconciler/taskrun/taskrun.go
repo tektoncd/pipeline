@@ -29,11 +29,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
+	alphalisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
@@ -77,15 +79,16 @@ type Reconciler struct {
 	Clock             clock.PassiveClock
 
 	// listers index properties about resources
-	taskRunLister       listers.TaskRunLister
-	resourceLister      resourcelisters.PipelineResourceLister
-	limitrangeLister    corev1Listers.LimitRangeLister
-	podLister           corev1Listers.PodLister
-	cloudEventClient    cloudevent.CEClient
-	entrypointCache     podconvert.EntrypointCache
-	metrics             *taskrunmetrics.Recorder
-	pvcHandler          volumeclaim.PvcHandler
-	resolutionRequester resolution.Requester
+	taskRunLister            listers.TaskRunLister
+	resourceLister           resourcelisters.PipelineResourceLister
+	limitrangeLister         corev1Listers.LimitRangeLister
+	podLister                corev1Listers.PodLister
+	verificationPolicyLister alphalisters.VerificationPolicyLister
+	cloudEventClient         cloudevent.CEClient
+	entrypointCache          podconvert.EntrypointCache
+	metrics                  *taskrunmetrics.Recorder
+	pvcHandler               volumeclaim.PvcHandler
+	resolutionRequester      resolution.Requester
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
@@ -330,7 +333,16 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
 
-	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr)
+	cfg := config.FromContextOrDefaults(ctx)
+	var verificationpolicies []*v1alpha1.VerificationPolicy
+	if cfg.FeatureFlags.ResourceVerificationMode == config.EnforceResourceVerificationMode || cfg.FeatureFlags.ResourceVerificationMode == config.WarnResourceVerificationMode {
+		var err error
+		verificationpolicies, err = c.verificationPolicyLister.VerificationPolicies(tr.Namespace).List(labels.Everything())
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", tr.Namespace, err)
+		}
+	}
+	getTaskfunc := resources.GetTaskFuncFromTaskRun(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, tr, verificationpolicies)
 
 	taskMeta, taskSpec, err := resources.GetTaskData(ctx, tr, getTaskfunc)
 	switch {

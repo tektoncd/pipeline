@@ -34,13 +34,16 @@ import (
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/logging"
 )
 
+// TODO(#5820): refactor those into an internal pkg
 const (
 	namespace = "trusted-resources"
 	// signatureAnnotation is the key of signature in annotation map
@@ -92,8 +95,9 @@ func GetUnsignedPipeline(name string) *v1beta1.Pipeline {
 	}
 }
 
-// SetupTrustedResourceConfig config the keys and feature flag for testing
-func SetupTrustedResourceConfig(ctx context.Context, keypath string, resourceVerificationMode string) context.Context {
+// SetupTrustedResourceKeyConfig config the public keys keypath in config-trusted-resources
+// and resource-verification-mode feature flag by given resourceVerificationMode for testing
+func SetupTrustedResourceKeyConfig(ctx context.Context, keypath string, resourceVerificationMode string) context.Context {
 	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 	cm := &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -109,7 +113,13 @@ func SetupTrustedResourceConfig(ctx context.Context, keypath string, resourceVer
 		},
 	}
 	store.OnConfigChanged(cm)
+	ctx = SetupTrustedResourceConfig(ctx, resourceVerificationMode)
+	return store.ToContext(ctx)
+}
 
+// SetupTrustedResourceConfig config the resource-verification-mode feature flag by given mode for testing
+func SetupTrustedResourceConfig(ctx context.Context, resourceVerificationMode string) context.Context {
+	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 	featureflags := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
@@ -124,44 +134,176 @@ func SetupTrustedResourceConfig(ctx context.Context, keypath string, resourceVer
 	return store.ToContext(ctx)
 }
 
-// GetSignerFromFile generates key files to tmpdir, return signer and pubkey path
-func GetSignerFromFile(ctx context.Context, t *testing.T) (signature.Signer, string, error) {
+// SetupVerificationPolicies set verification policies and secrets to store public keys.
+// This function helps to setup 3 kinds of VerificationPolicies:
+// 1. One public key in inline data
+// 2. One public key in secret
+// 3. 2 authorities referring to the same secret. This is to test and make sure we don't have duplicate counts
+// SignerVerifier is returned to sign resources
+// The k8s clientset is returned to fetch secret from it.
+// VerificationPolicies are returned to fetch public keys
+func SetupVerificationPolicies(t *testing.T) (signature.SignerVerifier, *ecdsa.PrivateKey, *fakek8s.Clientset, []*v1alpha1.VerificationPolicy) {
 	t.Helper()
+	sv, keys, pub, err := GenerateKeys(elliptic.P256(), crypto.SHA256)
+	if err != nil {
+		t.Fatalf("failed to generate keys %v", err)
+	}
+	_, _, pub2, err := GenerateKeys(elliptic.P256(), crypto.SHA256)
+	if err != nil {
+		t.Fatalf("failed to generate keys %v", err)
+	}
 
-	tmpDir := t.TempDir()
-	publicKeyFile := "ecdsa.pub"
-	sv, err := GenerateKeyFile(tmpDir, publicKeyFile)
+	secret := &v1.Secret{
+		Data: map[string][]byte{"cosign.pub": pub},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "verification-secrets",
+			Namespace: namespace}}
+
+	keyInDataVp := getVerificationPolicy(
+		"keyInDataVp",
+		namespace,
+		[]v1alpha1.ResourcePattern{
+			{Pattern: "https://github.com/tektoncd/catalog.git"},
+		},
+		[]v1alpha1.Authority{
+			{
+				Name: "pubkey",
+				Key: &v1alpha1.KeyRef{
+					Data:          string(pub),
+					HashAlgorithm: "sha256",
+				},
+			},
+		})
+
+	keyInSecretVp := getVerificationPolicy(
+		"keyInSecretVp",
+		namespace,
+		[]v1alpha1.ResourcePattern{{
+			Pattern: "gcr.io/tekton-releases/catalog/upstream/git-clone"},
+		},
+		[]v1alpha1.Authority{
+			{
+				Name: "pubkey",
+				Key: &v1alpha1.KeyRef{
+					SecretRef: &v1.SecretReference{
+						Name:      secret.Name,
+						Namespace: secret.Namespace,
+					},
+					HashAlgorithm: "sha256",
+				},
+			},
+		})
+
+	wrongKeyandPatternVp := getVerificationPolicy(
+		"wrongKeyInDataVp",
+		namespace,
+		[]v1alpha1.ResourcePattern{
+			{Pattern: "this should not match any resources"},
+		},
+		[]v1alpha1.Authority{
+			{
+				Name: "pubkey",
+				Key: &v1alpha1.KeyRef{
+					Data:          string(pub2),
+					HashAlgorithm: "sha256",
+				},
+			},
+		})
+
+	k8sclient := fakek8s.NewSimpleClientset(secret)
+
+	return sv, keys, k8sclient, []*v1alpha1.VerificationPolicy{&keyInDataVp, &keyInSecretVp, &wrongKeyandPatternVp}
+}
+
+// SetupMatchAllVerificationPolicies set verification policies with a Pattern to match all resources
+// SignerVerifier is returned to sign resources
+// The k8s clientset is returned to fetch secret from it.
+// VerificationPolicies are returned to fetch public keys
+func SetupMatchAllVerificationPolicies(t *testing.T, namespace string) (signature.SignerVerifier, *fakek8s.Clientset, []*v1alpha1.VerificationPolicy) {
+	t.Helper()
+	sv, _, pub, err := GenerateKeys(elliptic.P256(), crypto.SHA256)
+	if err != nil {
+		t.Fatalf("failed to generate keys %v", err)
+	}
+
+	secret := &v1.Secret{
+		Data: map[string][]byte{"cosign.pub": pub},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "verification-secrets",
+			Namespace: namespace}}
+
+	matchAllVp := getVerificationPolicy(
+		"matchAllVp",
+		namespace,
+		[]v1alpha1.ResourcePattern{
+			{Pattern: ".*"},
+		},
+		[]v1alpha1.Authority{
+			{
+				Name: "pubkey",
+				Key: &v1alpha1.KeyRef{
+					Data:          string(pub),
+					HashAlgorithm: "sha256",
+				},
+			},
+		})
+
+	k8sclient := fakek8s.NewSimpleClientset(secret)
+
+	return sv, k8sclient, []*v1alpha1.VerificationPolicy{&matchAllVp}
+}
+
+// GetSignerFromFile generates key files to tmpdir, return signer and pubkey path
+func GetSignerFromFile(ctx context.Context, t *testing.T) (signature.Signer, string) {
+	t.Helper()
+	sv, _, pub, err := GenerateKeys(elliptic.P256(), crypto.SHA256)
 	if err != nil {
 		t.Fatal(err)
 	}
+	tmpDir := t.TempDir()
+	pubKey := filepath.Join(tmpDir, "ecdsa.pub")
+	if err := os.WriteFile(pubKey, pub, 0600); err != nil {
+		t.Fatal(err)
+	}
 
-	return sv, filepath.Join(tmpDir, publicKeyFile), nil
+	return sv, pubKey
 }
 
-// GenerateKeyFile creates public key files, return the SignerVerifier
-func GenerateKeyFile(dir string, pubkeyfile string) (signature.SignerVerifier, error) {
-	keys, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+// GetKeysFromFile generates key files to tmpdir, return keys and pubkey path
+func GetKeysFromFile(ctx context.Context, t *testing.T) (*ecdsa.PrivateKey, string) {
+	t.Helper()
+	_, keys, pub, err := GenerateKeys(elliptic.P256(), crypto.SHA256)
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
+	}
+	tmpDir := t.TempDir()
+	pubKey := filepath.Join(tmpDir, "ecdsa.pub")
+	if err := os.WriteFile(pubKey, pub, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	return keys, pubKey
+}
+
+// GenerateKeys creates public key files, return the SignerVerifier
+func GenerateKeys(c elliptic.Curve, hashFunc crypto.Hash) (signature.SignerVerifier, *ecdsa.PrivateKey, []byte, error) {
+	keys, err := ecdsa.GenerateKey(c, rand.Reader)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 
 	// Now do the public key
 	pubBytes, err := cryptoutils.MarshalPublicKeyToPEM(keys.Public())
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	pubKey := filepath.Join(dir, pubkeyfile)
-	if err := os.WriteFile(pubKey, pubBytes, 0600); err != nil {
-		return nil, err
-	}
-
-	sv, err := signature.LoadSignerVerifier(keys, crypto.SHA256)
+	sv, err := signature.LoadSignerVerifier(keys, hashFunc)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	return sv, nil
+	return sv, keys, pubBytes, nil
 }
 
 // signInterface returns the encoded signature for the given object.
@@ -218,7 +360,6 @@ func getPass(confirm bool) ([]byte, error) {
 	read := read(confirm)
 	return read()
 }
-
 func readPasswordFn(confirm bool) func() ([]byte, error) {
 	pw, ok := os.LookupEnv("PRIVATE_PASSWORD")
 	if ok {
@@ -228,5 +369,22 @@ func readPasswordFn(confirm bool) func() ([]byte, error) {
 	}
 	return func() ([]byte, error) {
 		return nil, fmt.Errorf("fail to get password")
+	}
+}
+
+func getVerificationPolicy(name, namespace string, patterns []v1alpha1.ResourcePattern, authorities []v1alpha1.Authority) v1alpha1.VerificationPolicy {
+	return v1alpha1.VerificationPolicy{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "VerificationPolicy",
+			APIVersion: "v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources:   patterns,
+			Authorities: authorities,
+		},
 	}
 }

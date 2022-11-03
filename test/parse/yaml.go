@@ -145,6 +145,16 @@ kind: PipelineResource
 	return &resource
 }
 
+// MustParseVerificationPolicy takes YAML and parses it into a *v1alpha1.VerificationPolicy
+func MustParseVerificationPolicy(t *testing.T, yaml string) *v1alpha1.VerificationPolicy {
+	var v v1alpha1.VerificationPolicy
+	yaml = `apiVersion: tekton.dev/v1alpha1
+kind: VerificationPolicy
+` + yaml
+	mustParseYAML(t, yaml, &v)
+	return &v
+}
+
 func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
 	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
 		t.Fatalf("mustParseYAML (%s): %v", yaml, err)

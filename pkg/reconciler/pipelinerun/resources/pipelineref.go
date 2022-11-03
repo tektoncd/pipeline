@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
@@ -76,7 +77,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 				return nil, nil, fmt.Errorf("failed to get keychain: %w", err)
 			}
 			resolver := oci.NewResolver(pr.Bundle, kc)
-			return resolvePipeline(ctx, resolver, name, k8s)
+			return resolvePipeline(ctx, resolver, name)
 		}
 	case pr != nil && pr.Resolver != "" && requester != nil:
 		return func(ctx context.Context, name string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
@@ -86,16 +87,47 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			}
 			replacedParams := replaceParamValues(pr.Params, stringReplacements, arrayReplacements, objectReplacements)
 			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", replacedParams)
-			return resolvePipeline(ctx, resolver, name, k8s)
+			return resolvePipeline(ctx, resolver, name)
 		}
 	default:
 		// Even if there is no task ref, we should try to return a local resolver.
 		local := &LocalPipelineRefResolver{
 			Namespace:    namespace,
 			Tektonclient: tekton,
-			K8sclient:    k8s,
 		}
 		return local.GetPipeline
+	}
+}
+
+// GetVerifiedPipelineFunc is a wrapper of GetPipelineFunc and return the function to
+// verify the pipeline if resource-verification-mode is not "skip"
+func GetVerifiedPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun, verificationpolicies []*v1alpha1.VerificationPolicy) rprp.GetPipeline {
+	get := GetPipelineFunc(ctx, k8s, tekton, requester, pipelineRun)
+	return func(context.Context, string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+		p, s, err := get(ctx, pipelineRun.Spec.PipelineRef.Name)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get pipeline: %w", err)
+		}
+		// if the pipeline is in status, then it has been verified and no need to verify again
+		if pipelineRun.Status.PipelineSpec != nil {
+			return p, s, nil
+		}
+		var source string
+		if s != nil {
+			source = s.URI
+		}
+		logger := logging.FromContext(ctx)
+		if config.CheckEnforceResourceVerificationMode(ctx) || config.CheckWarnResourceVerificationMode(ctx) {
+			if err := trustedresources.VerifyPipeline(ctx, p, k8s, source, verificationpolicies); err != nil {
+				if config.CheckEnforceResourceVerificationMode(ctx) {
+					logger.Errorf("GetVerifiedPipelineFunc failed: %v", err)
+					return nil, nil, fmt.Errorf("GetVerifiedPipelineFunc failed: %w: %v", trustedresources.ErrorResourceVerificationFailed, err)
+				}
+				logger.Warnf("GetVerifiedPipelineFunc failed: %v", err)
+				return p, s, nil
+			}
+		}
+		return p, s, nil
 	}
 }
 
@@ -103,7 +135,6 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 type LocalPipelineRefResolver struct {
 	Namespace    string
 	Tektonclient clientset.Interface
-	K8sclient    kubernetes.Interface
 }
 
 // GetPipeline will resolve a Pipeline from the local cluster using a versioned Tekton client. It will
@@ -120,9 +151,6 @@ func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string)
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := verifyResolvedPipeline(ctx, pipeline, l.K8sclient); err != nil {
-		return nil, nil, err
-	}
 	return pipeline, nil, nil
 }
 
@@ -130,8 +158,8 @@ func (l *LocalPipelineRefResolver) GetPipeline(ctx context.Context, name string)
 // fetch a pipeline with given name. An error is returned if the
 // resolution doesn't work or the returned data isn't a valid
 // v1beta1.PipelineObject.
-func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string, k8s kubernetes.Interface) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
-	obj, source, err := resolver.Get(ctx, "pipeline", name)
+func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
+	obj, configSource, err := resolver.Get(ctx, "pipeline", name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -139,11 +167,7 @@ func resolvePipeline(ctx context.Context, resolver remote.Resolver, name string,
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert obj %s into Pipeline", obj.GetObjectKind().GroupVersionKind().String())
 	}
-	// TODO(#5527): Consider move this function call to GetPipelineData
-	if err := verifyResolvedPipeline(ctx, pipelineObj, k8s); err != nil {
-		return nil, nil, err
-	}
-	return pipelineObj, source, nil
+	return pipelineObj, configSource, nil
 }
 
 // readRuntimeObjectAsPipeline tries to convert a generic runtime.Object
@@ -157,20 +181,4 @@ func readRuntimeObjectAsPipeline(ctx context.Context, obj runtime.Object) (v1bet
 	}
 
 	return nil, errors.New("resource is not a pipeline")
-}
-
-// verifyResolvedPipeline verifies the resolved pipeline
-func verifyResolvedPipeline(ctx context.Context, pipeline v1beta1.PipelineObject, k8s kubernetes.Interface) error {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.ResourceVerificationMode == config.EnforceResourceVerificationMode || cfg.FeatureFlags.ResourceVerificationMode == config.WarnResourceVerificationMode {
-		if err := trustedresources.VerifyPipeline(ctx, pipeline, k8s); err != nil {
-			if cfg.FeatureFlags.ResourceVerificationMode == config.EnforceResourceVerificationMode {
-				return trustedresources.ErrorResourceVerificationFailed
-			}
-			logger := logging.FromContext(ctx)
-			logger.Warnf("trusted resources verification failed: %v", err)
-			return nil
-		}
-	}
-	return nil
 }

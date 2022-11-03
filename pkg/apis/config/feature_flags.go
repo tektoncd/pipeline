@@ -336,6 +336,20 @@ func EnableBetaAPIFields(ctx context.Context) context.Context {
 	return setEnableAPIFields(ctx, "beta")
 }
 
+// CheckEnforceResourceVerificationMode returns true if the ResourceVerificationMode is EnforceResourceVerificationMode
+// else returns false
+func CheckEnforceResourceVerificationMode(ctx context.Context) bool {
+	cfg := FromContextOrDefaults(ctx)
+	return cfg.FeatureFlags.ResourceVerificationMode == EnforceResourceVerificationMode
+}
+
+// CheckWarnResourceVerificationMode returns true if the ResourceVerificationMode is WarnResourceVerificationMode
+// else returns false
+func CheckWarnResourceVerificationMode(ctx context.Context) bool {
+	cfg := FromContextOrDefaults(ctx)
+	return cfg.FeatureFlags.ResourceVerificationMode == WarnResourceVerificationMode
+}
+
 func setEnableAPIFields(ctx context.Context, want string) context.Context {
 	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{
 		"enable-api-fields": want,

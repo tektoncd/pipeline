@@ -33,6 +33,7 @@ import (
 	informersv1beta1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
 	fakepipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client/fake"
 	fakeruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run/fake"
+	fakeverificationpolicyinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/verificationpolicy/fake"
 	fakeclustertaskinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/clustertask/fake"
 	fakecustomruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun/fake"
 	fakepipelineinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/pipeline/fake"
@@ -86,6 +87,7 @@ type Data struct {
 	LimitRange              []*corev1.LimitRange
 	ResolutionRequests      []*resolutionv1alpha1.ResolutionRequest
 	ExpectedCloudEventCount int
+	VerificationPolicies    []*v1alpha1.VerificationPolicy
 }
 
 // Clients holds references to clients which are useful for reconciler tests.
@@ -99,19 +101,20 @@ type Clients struct {
 
 // Informers holds references to informers which are useful for reconciler tests.
 type Informers struct {
-	PipelineRun       informersv1beta1.PipelineRunInformer
-	Pipeline          informersv1beta1.PipelineInformer
-	TaskRun           informersv1beta1.TaskRunInformer
-	Run               informersv1alpha1.RunInformer
-	CustomRun         informersv1beta1.CustomRunInformer
-	Task              informersv1beta1.TaskInformer
-	ClusterTask       informersv1beta1.ClusterTaskInformer
-	PipelineResource  resourceinformersv1alpha1.PipelineResourceInformer
-	Pod               coreinformers.PodInformer
-	ConfigMap         coreinformers.ConfigMapInformer
-	ServiceAccount    coreinformers.ServiceAccountInformer
-	LimitRange        coreinformers.LimitRangeInformer
-	ResolutionRequest resolutioninformersv1alpha1.ResolutionRequestInformer
+	PipelineRun        informersv1beta1.PipelineRunInformer
+	Pipeline           informersv1beta1.PipelineInformer
+	TaskRun            informersv1beta1.TaskRunInformer
+	Run                informersv1alpha1.RunInformer
+	CustomRun          informersv1beta1.CustomRunInformer
+	Task               informersv1beta1.TaskInformer
+	ClusterTask        informersv1beta1.ClusterTaskInformer
+	PipelineResource   resourceinformersv1alpha1.PipelineResourceInformer
+	Pod                coreinformers.PodInformer
+	ConfigMap          coreinformers.ConfigMapInformer
+	ServiceAccount     coreinformers.ServiceAccountInformer
+	LimitRange         coreinformers.LimitRangeInformer
+	ResolutionRequest  resolutioninformersv1alpha1.ResolutionRequestInformer
+	VerificationPolicy informersv1alpha1.VerificationPolicyInformer
 }
 
 // Assets holds references to the controller, logs, clients, and informers.
@@ -183,19 +186,20 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	PrependResourceVersionReactor(&c.Pipeline.Fake)
 
 	i := Informers{
-		PipelineRun:       fakepipelineruninformer.Get(ctx),
-		Pipeline:          fakepipelineinformer.Get(ctx),
-		TaskRun:           faketaskruninformer.Get(ctx),
-		Run:               fakeruninformer.Get(ctx),
-		CustomRun:         fakecustomruninformer.Get(ctx),
-		Task:              faketaskinformer.Get(ctx),
-		ClusterTask:       fakeclustertaskinformer.Get(ctx),
-		PipelineResource:  fakeresourceinformer.Get(ctx),
-		Pod:               fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
-		ConfigMap:         fakeconfigmapinformer.Get(ctx),
-		ServiceAccount:    fakeserviceaccountinformer.Get(ctx),
-		LimitRange:        fakelimitrangeinformer.Get(ctx),
-		ResolutionRequest: fakeresolutionrequestinformer.Get(ctx),
+		PipelineRun:        fakepipelineruninformer.Get(ctx),
+		Pipeline:           fakepipelineinformer.Get(ctx),
+		TaskRun:            faketaskruninformer.Get(ctx),
+		Run:                fakeruninformer.Get(ctx),
+		CustomRun:          fakecustomruninformer.Get(ctx),
+		Task:               faketaskinformer.Get(ctx),
+		ClusterTask:        fakeclustertaskinformer.Get(ctx),
+		PipelineResource:   fakeresourceinformer.Get(ctx),
+		Pod:                fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
+		ConfigMap:          fakeconfigmapinformer.Get(ctx),
+		ServiceAccount:     fakeserviceaccountinformer.Get(ctx),
+		LimitRange:         fakelimitrangeinformer.Get(ctx),
+		ResolutionRequest:  fakeresolutionrequestinformer.Get(ctx),
+		VerificationPolicy: fakeverificationpolicyinformer.Get(ctx),
 	}
 
 	// Attach reactors that add resource mutations to the appropriate
@@ -288,6 +292,14 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, rr := range d.ResolutionRequests {
 		rr := rr.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.ResolutionRequests.ResolutionV1beta1().ResolutionRequests(rr.Namespace).Create(ctx, rr, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	c.Pipeline.PrependReactor("*", "verificationpolicies", AddToInformer(t, i.VerificationPolicy.Informer().GetIndexer()))
+	for _, vp := range d.VerificationPolicies {
+		vp := vp.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Pipeline.TektonV1alpha1().VerificationPolicies(vp.Namespace).Create(ctx, vp, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
