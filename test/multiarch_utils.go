@@ -137,6 +137,8 @@ func initExcludedTests() sets.String {
 	switch getTestArch() {
 	case "s390x":
 		return sets.NewString(
+			// Git resolver test using local Gitea instance
+			"TestGitResolver_API",
 			// examples
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
@@ -144,6 +146,8 @@ func initExcludedTests() sets.String {
 		)
 	case "ppc64le":
 		return sets.NewString(
+			// Git resolver test using local Gitea instance
+			"TestGitResolver_API",
 			// examples
 			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
