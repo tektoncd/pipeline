@@ -24,8 +24,9 @@ message Entry {
     // workload attestation.
     repeated spire.api.types.Selector selectors = 4;
 
-    // The time to live for identities issued for this entry (in seconds).
-    int32 ttl = 5;
+    // The time to live for X509-SVID identities issued for this entry (in seconds).
+    // Previously called ttl
+    int32 x509_svid_ttl = 5;
 
     // The names of trust domains the identity described by this entry
     // federates with.
@@ -53,6 +54,9 @@ message Entry {
 
     // Determines if the issued identity is exportable to a store
     bool store_svid = 12;
+
+    // The time to live for JWT-SVID identities issued for this entry (in seconds), overrides ttl if set.
+    int32 jwt_svid_ttl = 13;
 }
 
 // Field mask for Entry fields
@@ -66,8 +70,8 @@ message EntryMask {
     // selectors field mask
     bool selectors = 4;
 
-    // ttl field mask
-    bool ttl = 5;
+    // x509_svid_ttl field mask
+    bool x509_svid_ttl = 5;
 
     // federates_with field mask
     bool federates_with = 6;
@@ -89,4 +93,7 @@ message EntryMask {
 
     // store_svid field mask
     bool store_svid = 12;
+
+    // jwt_svid_ttl field mask
+    bool jwt_svid_ttl = 13;
 }
