@@ -246,6 +246,137 @@ func (w *wrapTektonV1alpha1RunImpl) Watch(ctx context.Context, opts v1.ListOptio
 	return nil, errors.New("NYI: Watch")
 }
 
+func (w *wrapTektonV1alpha1) VerificationPolicies(namespace string) typedtektonv1alpha1.VerificationPolicyInterface {
+	return &wrapTektonV1alpha1VerificationPolicyImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "tekton.dev",
+			Version:  "v1alpha1",
+			Resource: "verificationpolicies",
+		}),
+
+		namespace: namespace,
+	}
+}
+
+type wrapTektonV1alpha1VerificationPolicyImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+
+	namespace string
+}
+
+var _ typedtektonv1alpha1.VerificationPolicyInterface = (*wrapTektonV1alpha1VerificationPolicyImpl)(nil)
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) Create(ctx context.Context, in *v1alpha1.VerificationPolicy, opts v1.CreateOptions) (*v1alpha1.VerificationPolicy, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "VerificationPolicy",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.VerificationPolicy{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Namespace(w.namespace).Delete(ctx, name, opts)
+}
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.Namespace(w.namespace).DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.VerificationPolicy, error) {
+	uo, err := w.dyn.Namespace(w.namespace).Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.VerificationPolicy{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.VerificationPolicyList, error) {
+	uo, err := w.dyn.Namespace(w.namespace).List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.VerificationPolicyList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.VerificationPolicy, err error) {
+	uo, err := w.dyn.Namespace(w.namespace).Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.VerificationPolicy{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) Update(ctx context.Context, in *v1alpha1.VerificationPolicy, opts v1.UpdateOptions) (*v1alpha1.VerificationPolicy, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "VerificationPolicy",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.VerificationPolicy{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) UpdateStatus(ctx context.Context, in *v1alpha1.VerificationPolicy, opts v1.UpdateOptions) (*v1alpha1.VerificationPolicy, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "VerificationPolicy",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Namespace(w.namespace).UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.VerificationPolicy{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapTektonV1alpha1VerificationPolicyImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
 // TektonV1beta1 retrieves the TektonV1beta1Client
 func (w *wrapClient) TektonV1beta1() typedtektonv1beta1.TektonV1beta1Interface {
 	return &wrapTektonV1beta1{

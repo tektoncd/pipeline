@@ -5738,6 +5738,8 @@ Resource Types:
 <ul><li>
 <a href="#tekton.dev/v1alpha1.Run">Run</a>
 </li><li>
+<a href="#tekton.dev/v1alpha1.VerificationPolicy">VerificationPolicy</a>
+</li><li>
 <a href="#tekton.dev/v1alpha1.PipelineResource">PipelineResource</a>
 </li></ul>
 <h3 id="tekton.dev/v1alpha1.Run">Run
@@ -5955,6 +5957,101 @@ RunStatus
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1alpha1.VerificationPolicy">VerificationPolicy
+</h3>
+<div>
+<p>VerificationPolicy defines the Tekton resources and corresponding authorities to verify.
+The VerificationPolicy is used in trusted resources to store the public keys to verify
+Tekton resources.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+tekton.dev/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>VerificationPolicy</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.VerificationPolicySpec">
+VerificationPolicySpec
+</a>
+</em>
+</td>
+<td>
+<p>Spec holds the desired state of the VerificationPolicy.</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>resources</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ResourcePattern">
+[]ResourcePattern
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the patterns of Resources names that should be subject to this policy.
+For example, we may want to apply this Policy only from a certain github repo.
+Then the ResourcesPattern should include the path. If using gitresolver, and we want to config keys from a certain git repo.
+<code>ResourcesPattern</code> can be <code>https://github.com/tektoncd/catalog.git</code>, we will use regex to filter out those resources.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>authorities</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.Authority">
+[]Authority
+</a>
+</em>
+</td>
+<td>
+<p>Authorities defines the rules for validating signatures.</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1alpha1.PipelineResource">PipelineResource
 </h3>
 <div>
@@ -6085,6 +6182,48 @@ the controller, but was unused as there is no controller for PipelineResource.</
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1alpha1.Authority">Authority
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.VerificationPolicySpec">VerificationPolicySpec</a>)
+</p>
+<div>
+<p>The Authority block defines the rules for validating signatures.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name is the name for this authority.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>key</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.KeyRef">
+KeyRef
+</a>
+</em>
+</td>
+<td>
+<p>Key defines the type of key to validate the resource.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1alpha1.EmbeddedRunSpec">EmbeddedRunSpec
 </h3>
 <p>
@@ -6152,6 +6291,95 @@ structs.</p>
 </td>
 </tr>
 </table>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.KeyRef">KeyRef
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Authority">Authority</a>)
+</p>
+<div>
+<p>KeyRef defines the reference to a public key</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>secretRef</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#secretreference-v1-core">
+Kubernetes core/v1.SecretReference
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecretRef sets a reference to a secret with the key.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>data</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Data contains the inline public key.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>hashAlgorithm</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HashAlgorithm always defaults to sha256 if the algorithm hasn&rsquo;t been explicitly set</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.ResourcePattern">ResourcePattern
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.VerificationPolicySpec">VerificationPolicySpec</a>)
+</p>
+<div>
+<p>ResourcePattern defines the pattern of the resource source</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pattern</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Pattern defines a resource pattern. Regex is created to filter resources based on <code>Pattern</code>
+Examples patterns:
+Github resource: <a href="https://github.com/tektoncd/catalog.git">https://github.com/tektoncd/catalog.git</a>, <a href="https://github.com/tektoncd/*">https://github.com/tektoncd/*</a>
+Bundle resource: gcr.io/tekton-releases/catalog/upstream/git-clone, gcr.io/tekton-releases/catalog/upstream/*
+Hub resource: <a href="https://artifacthub.io/*">https://artifacthub.io/*</a>,</p>
 </td>
 </tr>
 </tbody>
@@ -6333,6 +6561,53 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 <div>
 <p>RunSpecStatusMessage defines human readable status messages for the TaskRun.</p>
 </div>
+<h3 id="tekton.dev/v1alpha1.VerificationPolicySpec">VerificationPolicySpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.VerificationPolicy">VerificationPolicy</a>)
+</p>
+<div>
+<p>VerificationPolicySpec defines the patterns and authorities.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>resources</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.ResourcePattern">
+[]ResourcePattern
+</a>
+</em>
+</td>
+<td>
+<p>Resources defines the patterns of Resources names that should be subject to this policy.
+For example, we may want to apply this Policy only from a certain github repo.
+Then the ResourcesPattern should include the path. If using gitresolver, and we want to config keys from a certain git repo.
+<code>ResourcesPattern</code> can be <code>https://github.com/tektoncd/catalog.git</code>, we will use regex to filter out those resources.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>authorities</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.Authority">
+[]Authority
+</a>
+</em>
+</td>
+<td>
+<p>Authorities defines the rules for validating signatures.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tekton.dev/v1alpha1.PipelineResourceSpec">PipelineResourceSpec
 </h3>
 <p>

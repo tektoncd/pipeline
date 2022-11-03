@@ -30,6 +30,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
 - [Verify Tekton Pipelines release](#verify-tekton-pipelines-release)
     - [Verify signatures using `cosign`](#verify-signatures-using-cosign)
     - [Verify the tansparency logs using `rekor-cli`](#verify-the-transparency-logs-using-rekor-cli)
+- [Verify Tekton Resources](#verify-tekton-resources)
 - [Next steps](#next-steps)
 
 ## Before you begin
@@ -271,11 +272,11 @@ data:
 ## Configuring built-in remote Task and Pipeline resolution
 
 Three remote resolvers are currently provided as part of the Tekton Pipelines installation.
-By default, these remote resolvers are disabled. Each resolver is enabled by setting 
-the appropriate feature flag in the `resolvers-feature-flags` ConfigMap in the `tekton-pipelines-resolvers` 
+By default, these remote resolvers are disabled. Each resolver is enabled by setting
+the appropriate feature flag in the `resolvers-feature-flags` ConfigMap in the `tekton-pipelines-resolvers`
 namespace:
 
-1. [The `bundles` resolver](./bundle-resolver.md), enabled by setting the `enable-bundles-resolver` 
+1. [The `bundles` resolver](./bundle-resolver.md), enabled by setting the `enable-bundles-resolver`
   feature flag to `true`.
 1. [The `git` resolver](./git-resolver.md), enabled by setting the `enable-git-resolver`
    feature flag to `true`.
@@ -423,9 +424,9 @@ features](#alpha-features) to be used.
 - `resource-verification-mode`: Setting this flag to "enforce" will enforce verification of tasks/pipeline. Failing to verify will fail the taskrun/pipelinerun. "warn" will only log the err message and "skip" will skip the whole verification.
 - `results-from`: set this flag to "termination-message" to use the container's termination message to fetch results from. This is the default method of extracting results. Set it to "sidecar-logs" to enable use of a results sidecar logs to extract results instead of termination message.
 
-- `enable-provenance-in-status`: set this flag to "true" to enable recording 
-  the `provenance` field in `TaskRun` and `PipelineRun` status. The `provenance` 
-  field contains metadata about resources used in the TaskRun/PipelineRun such as the 
+- `enable-provenance-in-status`: set this flag to "true" to enable recording
+  the `provenance` field in `TaskRun` and `PipelineRun` status. The `provenance`
+  field contains metadata about resources used in the TaskRun/PipelineRun such as the
   source from where a remote Task/Pipeline definition was fetched.
 
 - `custom-task-version`: set this flag to "v1alpha1" to have `PipelineRuns` create `Runs`
@@ -711,6 +712,10 @@ gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/imagedigestexporter
 gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/pullrequest-init
 gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook
 ```
+
+## Verify Tekton Resources
+
+Trusted Resources is a feature to verify Tekton Tasks and Pipelines. The current version of feature supports `v1beta1` `Task` and `Pipeline`. For more details please take a look at [Trusted Resources](./trusted-resources.md).
 
 ## Next steps
 

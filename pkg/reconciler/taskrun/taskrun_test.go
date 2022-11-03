@@ -46,6 +46,7 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -5081,10 +5082,7 @@ status:
   podName: the-pod
 `)
 
-	signer, secretpath, err := test.GetSignerFromFile(ctx, t)
-	if err != nil {
-		t.Fatal(err)
-	}
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, tr.Namespace)
 	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
@@ -5097,18 +5095,13 @@ status:
 				"resource-verification-mode": "enforce",
 			},
 		},
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetTrustedResourcesConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				config.PublicKeys: secretpath,
-			},
-		},
 	}
 
 	d := test.Data{
-		TaskRuns:   []*v1beta1.TaskRun{tr},
-		Tasks:      []*v1beta1.Task{signedTask},
-		ConfigMaps: cms,
+		TaskRuns:             []*v1beta1.TaskRun{tr},
+		Tasks:                []*v1beta1.Task{signedTask},
+		ConfigMaps:           cms,
+		VerificationPolicies: vps,
 	}
 
 	testAssets, cancel := getTaskRunController(t, d)
@@ -5156,10 +5149,7 @@ status:
   podName: the-pod
 `)
 
-	signer, secretpath, err := test.GetSignerFromFile(ctx, t)
-	if err != nil {
-		t.Fatal(err)
-	}
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, tr.Namespace)
 	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
@@ -5178,12 +5168,6 @@ status:
 				"resource-verification-mode": "enforce",
 			},
 		},
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetTrustedResourcesConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				config.PublicKeys: secretpath,
-			},
-		},
 	}
 
 	testCases := []struct {
@@ -5195,21 +5179,22 @@ status:
 		{
 			name:          "unsigned task fails verification",
 			task:          []*v1beta1.Task{ts},
-			expectedError: fmt.Errorf("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun: resource verification failed"),
+			expectedError: trustedresources.ErrorResourceVerificationFailed,
 		},
 		{
 			name:          "modified task fails verification",
 			task:          []*v1beta1.Task{tamperedTask},
-			expectedError: fmt.Errorf("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun: resource verification failed"),
+			expectedError: trustedresources.ErrorResourceVerificationFailed,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
-				TaskRuns:   []*v1beta1.TaskRun{tr},
-				Tasks:      tc.task,
-				ConfigMaps: cms,
+				TaskRuns:             []*v1beta1.TaskRun{tr},
+				Tasks:                tc.task,
+				ConfigMaps:           cms,
+				VerificationPolicies: vps,
 			}
 
 			testAssets, cancel := getTaskRunController(t, d)
@@ -5217,8 +5202,8 @@ status:
 			createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
 			err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
 
-			if d := cmp.Diff(strings.TrimSuffix(err.Error(), "\n\n"), tc.expectedError.Error()); d != "" {
-				t.Errorf("Expected: %v, but Got: %v", tc.expectedError.Error(), err.Error())
+			if !errors.Is(err, tc.expectedError) {
+				t.Errorf("Reconcile got %v but want %v", err, tc.expectedError)
 			}
 			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
 			if err != nil {

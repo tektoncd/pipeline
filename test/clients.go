@@ -58,19 +58,20 @@ import (
 type clients struct {
 	KubeClient kubernetes.Interface
 
-	V1beta1PipelineClient           v1beta1.PipelineInterface
-	V1beta1ClusterTaskClient        v1beta1.ClusterTaskInterface
-	V1beta1TaskClient               v1beta1.TaskInterface
-	V1beta1TaskRunClient            v1beta1.TaskRunInterface
-	V1beta1PipelineRunClient        v1beta1.PipelineRunInterface
-	V1beta1CustomRunClient          v1beta1.CustomRunInterface
-	V1alpha1PipelineResourceClient  resourcev1alpha1.PipelineResourceInterface
-	V1alpha1RunClient               v1alpha1.RunInterface
-	V1alpha1ResolutionRequestclient resolutionv1alpha1.ResolutionRequestInterface
-	V1PipelineClient                v1.PipelineInterface
-	V1TaskClient                    v1.TaskInterface
-	V1TaskRunClient                 v1.TaskRunInterface
-	V1PipelineRunClient             v1.PipelineRunInterface
+	V1beta1PipelineClient            v1beta1.PipelineInterface
+	V1beta1ClusterTaskClient         v1beta1.ClusterTaskInterface
+	V1beta1TaskClient                v1beta1.TaskInterface
+	V1beta1TaskRunClient             v1beta1.TaskRunInterface
+	V1beta1PipelineRunClient         v1beta1.PipelineRunInterface
+	V1beta1CustomRunClient           v1beta1.CustomRunInterface
+	V1alpha1PipelineResourceClient   resourcev1alpha1.PipelineResourceInterface
+	V1alpha1RunClient                v1alpha1.RunInterface
+	V1alpha1ResolutionRequestclient  resolutionv1alpha1.ResolutionRequestInterface
+	V1alpha1VerificationPolicyClient v1alpha1.VerificationPolicyInterface
+	V1PipelineClient                 v1.PipelineInterface
+	V1TaskClient                     v1.TaskInterface
+	V1TaskRunClient                  v1.TaskRunInterface
+	V1PipelineRunClient              v1.PipelineRunInterface
 }
 
 // newClients instantiates and returns several clientsets required for making requests to the
@@ -113,6 +114,7 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.V1alpha1PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
 	c.V1alpha1RunClient = cs.TektonV1alpha1().Runs(namespace)
 	c.V1alpha1ResolutionRequestclient = rrcs.ResolutionV1alpha1().ResolutionRequests(namespace)
+	c.V1alpha1VerificationPolicyClient = cs.TektonV1alpha1().VerificationPolicies(namespace)
 	c.V1PipelineClient = cs.TektonV1().Pipelines(namespace)
 	c.V1TaskClient = cs.TektonV1().Tasks(namespace)
 	c.V1TaskRunClient = cs.TektonV1().TaskRuns(namespace)

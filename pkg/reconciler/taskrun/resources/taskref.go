@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn/k8schain"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/remote"
@@ -57,7 +58,7 @@ func GetTaskKind(taskrun *v1beta1.TaskRun) v1beta1.TaskKind {
 // also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
-func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, taskrun *v1beta1.TaskRun) GetTask {
+func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, taskrun *v1beta1.TaskRun, verificationpolicies []*v1alpha1.VerificationPolicy) GetTask {
 	// if the spec is already in the status, do not try to fetch it again, just use it as source of truth.
 	// Same for the Source field in the Status.Provenance.
 	if taskrun.Status.TaskSpec != nil {
@@ -75,7 +76,37 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 			}, configsource, nil
 		}
 	}
-	return GetTaskFunc(ctx, k8s, tekton, requester, taskrun, taskrun.Spec.TaskRef, taskrun.Name, taskrun.Namespace, taskrun.Spec.ServiceAccountName)
+	return GetVerifiedTaskFunc(ctx, k8s, tekton, requester, taskrun, taskrun.Spec.TaskRef, taskrun.Name, taskrun.Namespace, taskrun.Spec.ServiceAccountName, verificationpolicies)
+}
+
+// GetVerifiedTaskFunc is a wrapper of GetTaskFunc and return the function to
+// verify the task if resource-verification-mode is not "skip"
+func GetVerifiedTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester,
+	owner kmeta.OwnerRefable, taskref *v1beta1.TaskRef, trName string, namespace, saName string, verificationpolicies []*v1alpha1.VerificationPolicy) GetTask {
+	get := GetTaskFunc(ctx, k8s, tekton, requester, owner, taskref, trName, namespace, saName)
+
+	return func(context.Context, string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error) {
+		t, s, err := get(ctx, taskref.Name)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get task: %w", err)
+		}
+		var source string
+		if s != nil {
+			source = s.URI
+		}
+		logger := logging.FromContext(ctx)
+		if config.CheckEnforceResourceVerificationMode(ctx) || config.CheckWarnResourceVerificationMode(ctx) {
+			if err := trustedresources.VerifyTask(ctx, t, k8s, source, verificationpolicies); err != nil {
+				if config.CheckEnforceResourceVerificationMode(ctx) {
+					logger.Errorf("GetVerifiedTaskFunc failed: %v", err)
+					return nil, nil, fmt.Errorf("GetVerifiedTaskFunc failed: %w: %v", trustedresources.ErrorResourceVerificationFailed, err)
+				}
+				logger.Warnf("GetVerifiedTaskFunc failed: %v", err)
+				return t, s, nil
+			}
+		}
+		return t, s, nil
+	}
 }
 
 // GetTaskFunc is a factory function that will use the given TaskRef as context to return a valid GetTask function. It
@@ -134,7 +165,6 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			Namespace:    namespace,
 			Kind:         kind,
 			Tektonclient: tekton,
-			K8sclient:    k8s,
 		}
 		return local.GetTask
 	}
@@ -154,10 +184,6 @@ func resolveTask(ctx context.Context, resolver remote.Resolver, name string, kin
 	taskObj, err := readRuntimeObjectAsTask(ctx, obj)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to convert obj %s into Task", obj.GetObjectKind().GroupVersionKind().String())
-	}
-	// TODO(#5527): Consider move this function call to GetTaskData
-	if err := verifyResolvedTask(ctx, taskObj, k8s); err != nil {
-		return nil, nil, err
 	}
 	return taskObj, configSource, nil
 }
@@ -179,7 +205,6 @@ type LocalTaskRefResolver struct {
 	Namespace    string
 	Kind         v1beta1.TaskKind
 	Tektonclient clientset.Interface
-	K8sclient    kubernetes.Interface
 }
 
 // GetTask will resolve either a Task or ClusterTask from the local cluster using a versioned Tekton client. It will
@@ -203,29 +228,10 @@ func (l *LocalTaskRefResolver) GetTask(ctx context.Context, name string) (v1beta
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := verifyResolvedTask(ctx, task, l.K8sclient); err != nil {
-		return nil, nil, err
-	}
 	return task, nil, nil
 }
 
 // IsGetTaskErrTransient returns true if an error returned by GetTask is retryable.
 func IsGetTaskErrTransient(err error) bool {
 	return strings.Contains(err.Error(), errEtcdLeaderChange)
-}
-
-// verifyResolvedTask verifies the resolved task
-func verifyResolvedTask(ctx context.Context, task v1beta1.TaskObject, k8s kubernetes.Interface) error {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.ResourceVerificationMode == config.EnforceResourceVerificationMode || cfg.FeatureFlags.ResourceVerificationMode == config.WarnResourceVerificationMode {
-		if err := trustedresources.VerifyTask(ctx, task, k8s); err != nil {
-			if cfg.FeatureFlags.ResourceVerificationMode == config.EnforceResourceVerificationMode {
-				return trustedresources.ErrorResourceVerificationFailed
-			}
-			logger := logging.FromContext(ctx)
-			logger.Warnf("trusted resources verification failed: %v", err)
-			return nil
-		}
-	}
-	return nil
 }

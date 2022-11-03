@@ -36,7 +36,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
-	runlisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
+	alpha1listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
@@ -59,6 +59,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -139,15 +140,16 @@ type Reconciler struct {
 	Clock             clock.PassiveClock
 
 	// listers index properties about resources
-	pipelineRunLister   listers.PipelineRunLister
-	taskRunLister       listers.TaskRunLister
-	customRunLister     listers.CustomRunLister
-	runLister           runlisters.RunLister
-	resourceLister      resourcelisters.PipelineResourceLister
-	cloudEventClient    cloudevent.CEClient
-	metrics             *pipelinerunmetrics.Recorder
-	pvcHandler          volumeclaim.PvcHandler
-	resolutionRequester resolution.Requester
+	pipelineRunLister        listers.PipelineRunLister
+	taskRunLister            listers.TaskRunLister
+	customRunLister          listers.CustomRunLister
+	runLister                alpha1listers.RunLister
+	resourceLister           resourcelisters.PipelineResourceLister
+	verificationPolicyLister alpha1listers.VerificationPolicyLister
+	cloudEventClient         cloudevent.CEClient
+	metrics                  *pipelinerunmetrics.Recorder
+	pvcHandler               volumeclaim.PvcHandler
+	resolutionRequester      resolution.Requester
 }
 
 var (
@@ -185,7 +187,11 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 		before = pr.Status.GetCondition(apis.ConditionSucceeded)
 	}
 
-	getPipelineFunc := resources.GetPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr)
+	vp, err := getVerificationPolicies(ctx, c.verificationPolicyLister, pr.Namespace)
+	if err != nil {
+		return fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", pr.Namespace, err)
+	}
+	getPipelineFunc := resources.GetVerifiedPipelineFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, vp)
 
 	if pr.IsDone() {
 		pr.SetDefaults(ctx)
@@ -221,7 +227,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	}
 
 	// Make sure that the PipelineRun status is in sync with the actual TaskRuns
-	err := c.updatePipelineRunStatusFromInformer(ctx, pr)
+	err = c.updatePipelineRunStatusFromInformer(ctx, pr)
 	if err != nil {
 		// This should not fail. Return the error so we can re-try later.
 		logger.Errorf("Error while syncing the pipelinerun status: %v", err.Error())
@@ -311,7 +317,13 @@ func (c *Reconciler) resolvePipelineState(
 		// We need the TaskRun name to ensure that we don't perform an additional remote resolution request for a PipelineTask
 		// in the TaskRun reconciler.
 		trName := resources.GetTaskRunName(pr.Status.TaskRuns, pr.Status.ChildReferences, task.Name, pr.Name)
-		fn := tresources.GetTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName)
+
+		vp, err := getVerificationPolicies(ctx, c.verificationPolicyLister, pr.Namespace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list VerificationPolicies from namespace %s with error %v", pr.Namespace, err)
+		}
+
+		fn := tresources.GetVerifiedTaskFunc(ctx, c.KubeClientSet, c.PipelineClientSet, c.resolutionRequester, pr, task.TaskRef, trName, pr.Namespace, pr.Spec.ServiceAccountName, vp)
 
 		getRunObjectFunc := func(name string) (v1beta1.RunObject, error) {
 			r, err := c.customRunLister.CustomRuns(pr.Namespace).Get(name)
@@ -1623,4 +1635,17 @@ func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1
 		newChildRefs = append(newChildRefs, *childRefByName[k])
 	}
 	pr.Status.ChildReferences = newChildRefs
+}
+
+// getVerificationPolicies lists the verificationPolicies from given namespace
+func getVerificationPolicies(ctx context.Context, verificationPolicyLister alpha1listers.VerificationPolicyLister, namespace string) ([]*v1alpha1.VerificationPolicy, error) {
+	var verificationpolicies []*v1alpha1.VerificationPolicy
+	if config.CheckEnforceResourceVerificationMode(ctx) || config.CheckWarnResourceVerificationMode(ctx) {
+		var err error
+		verificationpolicies, err = verificationPolicyLister.VerificationPolicies(namespace).List(labels.Everything())
+		if err != nil {
+			return nil, fmt.Errorf("failed to list VerificationPolicies: %w", err)
+		}
+	}
+	return verificationpolicies, nil
 }

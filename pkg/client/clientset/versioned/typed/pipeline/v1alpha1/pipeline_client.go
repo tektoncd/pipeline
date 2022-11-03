@@ -29,6 +29,7 @@ import (
 type TektonV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	RunsGetter
+	VerificationPoliciesGetter
 }
 
 // TektonV1alpha1Client is used to interact with features provided by the tekton.dev group.
@@ -38,6 +39,10 @@ type TektonV1alpha1Client struct {
 
 func (c *TektonV1alpha1Client) Runs(namespace string) RunInterface {
 	return newRuns(c, namespace)
+}
+
+func (c *TektonV1alpha1Client) VerificationPolicies(namespace string) VerificationPolicyInterface {
+	return newVerificationPolicies(c, namespace)
 }
 
 // NewForConfig creates a new TektonV1alpha1Client for the given config.

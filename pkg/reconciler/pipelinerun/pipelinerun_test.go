@@ -11055,10 +11055,7 @@ spec:
          value: bar
 `)
 
-	signer, secretpath, err := test.GetSignerFromFile(ctx, t)
-	if err != nil {
-		t.Fatal(err)
-	}
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, prs.Namespace)
 	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
@@ -11075,20 +11072,15 @@ spec:
 				"resource-verification-mode": "enforce",
 			},
 		},
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetTrustedResourcesConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				config.PublicKeys: secretpath,
-			},
-		},
 	}
 	t.Logf("config maps: %s", cms)
 
 	d := test.Data{
-		PipelineRuns: []*v1beta1.PipelineRun{prs},
-		Pipelines:    []*v1beta1.Pipeline{signedPipeline},
-		Tasks:        []*v1beta1.Task{signedTask},
-		ConfigMaps:   cms,
+		PipelineRuns:         []*v1beta1.PipelineRun{prs},
+		Pipelines:            []*v1beta1.Pipeline{signedPipeline},
+		Tasks:                []*v1beta1.Task{signedTask},
+		ConfigMaps:           cms,
+		VerificationPolicies: vps,
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -11138,10 +11130,7 @@ spec:
          value: bar
 `)
 
-	signer, secretpath, err := test.GetSignerFromFile(ctx, t)
-	if err != nil {
-		t.Fatal(err)
-	}
+	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, prs.Namespace)
 	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
@@ -11168,12 +11157,6 @@ spec:
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
 			Data: map[string]string{
 				"resource-verification-mode": "enforce",
-			},
-		},
-		{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetTrustedResourcesConfigName(), Namespace: system.Namespace()},
-			Data: map[string]string{
-				config.PublicKeys: secretpath,
 			},
 		},
 	}
@@ -11213,10 +11196,11 @@ spec:
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			d := test.Data{
-				PipelineRuns: tc.pipelinerun,
-				Pipelines:    tc.pipeline,
-				Tasks:        tc.task,
-				ConfigMaps:   cms,
+				PipelineRuns:         tc.pipelinerun,
+				Pipelines:            tc.pipeline,
+				Tasks:                tc.task,
+				ConfigMaps:           cms,
+				VerificationPolicies: vps,
 			}
 			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
