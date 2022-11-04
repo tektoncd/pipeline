@@ -36,92 +36,8 @@ spec:
       # we are now pinning the version of Skaffold we pull) or use Tekton Pipelines unit tests.
       echo "pass"
 ---
-# Copied from https://github.com/tektoncd/catalog/blob/v1beta1/git/git-clone.yaml
-# With a few fixes being ported over in https://github.com/tektoncd/catalog/pull/290
-# Post #1839 we can refer to the remote Task in a registry or post #2298 in git directly
-apiVersion: tekton.dev/v1beta1
-kind: Task
-metadata:
-  name: git-clone
-spec:
-  workspaces:
-  - name: output
-    description: The git repo will be cloned onto the volume backing this workspace
-  params:
-  - name: url
-    description: git url to clone
-    type: string
-  - name: revision
-    description: git revision to checkout (branch, tag, sha, ref…)
-    type: string
-    default: master
-  - name: submodules
-    description: defines if the resource should initialize and fetch the submodules
-    type: string
-    default: "true"
-  - name: depth
-    description: performs a shallow clone where only the most recent commit(s) will be fetched
-    type: string
-    default: "1"
-  - name: sslVerify
-    description: defines if http.sslVerify should be set to true or false in the global git config
-    type: string
-    default: "true"
-  - name: subdirectory
-    description: subdirectory inside the "output" workspace to clone the git repo into
-    type: string
-    default: ""
-  - name: deleteExisting
-    description: clean out the contents of the repo's destination directory (if it already exists) before trying to clone the repo there
-    type: string
-    default: "false"
-  results:
-  - name: commit
-    description: The precise commit SHA that was fetched by this Task
-  steps:
-  - name: clone
-    image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:latest
-    securityContext:
-      runAsUser: 0 # This needs root, and git-init is nonroot by default
-    script: |
-      CHECKOUT_DIR="$(workspaces.output.path)/$(params.subdirectory)"
-      cleandir() {
-        # Delete any existing contents of the repo directory if it exists.
-        #
-        # We don't just "rm -rf $CHECKOUT_DIR" because $CHECKOUT_DIR might be "/"
-        # or the root of a mounted volume.
-        if [[ -d "$CHECKOUT_DIR" ]] ; then
-          # Delete non-hidden files and directories
-          rm -rf "$CHECKOUT_DIR"/*
-          # Delete files and directories starting with . but excluding ..
-          rm -rf "$CHECKOUT_DIR"/.[!.]*
-          # Delete files and directories starting with .. plus any other character
-          rm -rf "$CHECKOUT_DIR"/..?*
-        fi
-      }
-      if [[ "$(params.deleteExisting)" == "true" ]] ; then
-        cleandir
-      fi
-      /ko-app/git-init \
-        -url "$(params.url)" \
-        -revision "$(params.revision)" \
-        -path "$CHECKOUT_DIR" \
-        -sslVerify="$(params.sslVerify)" \
-        -submodules="$(params.submodules)" \
-        -depth="$(params.depth)"
-      cd "$CHECKOUT_DIR"
-      RESULT_SHA="$(git rev-parse HEAD | tr -d '\n')"
-      EXIT_CODE="$?"
-      if [ "$EXIT_CODE" != 0 ]
-      then
-        exit $EXIT_CODE
-      fi
-      # Make sure we don't add a trailing newline to the result!
-      echo -n "$RESULT_SHA" > $(results.commit.path)
----
 # Copied from https://github.com/tektoncd/catalog/blob/v1beta1/kaniko/kaniko.yaml
-# with a few fixes that will be port over in https://github.com/tektoncd/catalog/pull/291
-# Post #1839 we can refer to the remote Task in a registry or post #2298 in git directly
+# Using the catalog fails for unknown reasons, so we're keeping this here.
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -239,7 +155,14 @@ spec:
   tasks:
   - name: fetch-from-git
     taskRef:
-      name: git-clone
+      resolver: git
+      params:
+      - name: url
+        value: https://github.com/tektoncd/catalog.git
+      - name: pathInRepo
+        value: /task/git-clone/0.9/git-clone.yaml
+      - name: revision
+        value: main
     params:
     - name: url
       value: https://github.com/GoogleContainerTools/skaffold
