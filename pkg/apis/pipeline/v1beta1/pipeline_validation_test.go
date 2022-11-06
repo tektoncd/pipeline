@@ -2314,6 +2314,29 @@ func TestValidatePipelineWorkspacesUsage_Failure(t *testing.T) {
 			Message: `invalid value: pipeline task "foo" expects workspace with name "taskWorkspaceName" but none exists in pipeline spec`,
 			Paths:   []string{"tasks[0].workspaces[0]"},
 		},
+	}, {
+		name: "invalid pipeline task use duplicate workspace binding name",
+		workspaces: []PipelineWorkspaceDeclaration{{
+			Name: "foo",
+		}},
+		tasks: []PipelineTask{{
+			Name:    "foo",
+			TaskRef: &TaskRef{Name: "foo"},
+			Workspaces: []WorkspacePipelineTaskBinding{
+				{
+					Name:      "repo",
+					Workspace: "foo",
+				},
+				{
+					Name:      "repo",
+					Workspace: "foo",
+				},
+			},
+		}},
+		expectedError: apis.FieldError{
+			Message: `workspace name "repo" must be unique`,
+			Paths:   []string{"tasks[0].workspaces[1]"},
+		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

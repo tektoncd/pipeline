@@ -406,7 +406,13 @@ func (pt *PipelineTask) validateExecutionStatusVariablesAllowed(ptNames sets.Str
 }
 
 func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *apis.FieldError) {
+	workspaceBindingNames := sets.NewString()
 	for i, ws := range pt.Workspaces {
+		if workspaceBindingNames.Has(ws.Name) {
+			errs = errs.Also(apis.ErrGeneric(
+				fmt.Sprintf("workspace name %q must be unique", ws.Name), "").ViaFieldIndex("workspaces", i))
+		}
+
 		if ws.Workspace == "" {
 			if !workspaceNames.Has(ws.Name) {
 				errs = errs.Also(apis.ErrInvalidValue(
@@ -420,6 +426,8 @@ func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *ap
 				"",
 			).ViaFieldIndex("workspaces", i))
 		}
+
+		workspaceBindingNames.Insert(ws.Name)
 	}
 	return errs
 }
