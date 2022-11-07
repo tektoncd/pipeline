@@ -26,13 +26,13 @@ import (
 
 const (
 	// DefaultEnableGitResolver is the default value for "enable-git-resolver".
-	DefaultEnableGitResolver = false
+	DefaultEnableGitResolver = true
 	// DefaultEnableHubResolver is the default value for "enable-hub-resolver".
-	DefaultEnableHubResolver = false
+	DefaultEnableHubResolver = true
 	// DefaultEnableBundlesResolver is the default value for "enable-bundles-resolver".
-	DefaultEnableBundlesResolver = false
+	DefaultEnableBundlesResolver = true
 	// DefaultEnableClusterResolver is the default value for "enable-cluster-resolver".
-	DefaultEnableClusterResolver = false
+	DefaultEnableClusterResolver = true
 
 	// EnableGitResolver is the flag used to enable the git remote resolver
 	EnableGitResolver = "enable-git-resolver"

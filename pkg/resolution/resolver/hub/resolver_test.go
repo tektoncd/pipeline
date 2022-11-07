@@ -33,7 +33,7 @@ import (
 
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
-	sel := resolver.GetSelector(resolverContext())
+	sel := resolver.GetSelector(context.Background())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != LabelValueHubResolverType {
@@ -101,7 +101,7 @@ func TestValidateParamsDisabled(t *testing.T) {
 		ParamVersion: "bar",
 		ParamCatalog: "baz",
 	}
-	err = resolver.ValidateParams(context.Background(), toParams(params))
+	err = resolver.ValidateParams(resolverDisabledContext(), toParams(params))
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
@@ -299,7 +299,7 @@ func TestResolveDisabled(t *testing.T) {
 		ParamVersion: "bar",
 		ParamCatalog: "baz",
 	}
-	_, err = resolver.Resolve(context.Background(), toParams(params))
+	_, err = resolver.Resolve(resolverDisabledContext(), toParams(params))
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
@@ -415,8 +415,8 @@ func TestResolve(t *testing.T) {
 	}
 }
 
-func resolverContext() context.Context {
-	return frtesting.ContextWithHubResolverEnabled(context.Background())
+func resolverDisabledContext() context.Context {
+	return frtesting.ContextWithHubResolverDisabled(context.Background())
 }
 
 func toParams(m map[string]string) []pipelinev1beta1.Param {
@@ -440,7 +440,7 @@ func contextWithConfig() context.Context {
 		"default-type":                          "artifact",
 	}
 
-	return framework.InjectResolverConfigToContext(resolverContext(), config)
+	return framework.InjectResolverConfigToContext(context.Background(), config)
 }
 
 func checkExpectedErr(expectedErr, actualErr error, t *testing.T) {

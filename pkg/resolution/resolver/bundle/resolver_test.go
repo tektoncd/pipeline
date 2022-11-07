@@ -73,7 +73,7 @@ func TestValidateParams(t *testing.T) {
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 
-	if err := resolver.ValidateParams(resolverContext(), paramsWithTask); err != nil {
+	if err := resolver.ValidateParams(context.Background(), paramsWithTask); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 
@@ -90,7 +90,7 @@ func TestValidateParams(t *testing.T) {
 		Name:  ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
-	if err := resolver.ValidateParams(resolverContext(), paramsWithPipeline); err != nil {
+	if err := resolver.ValidateParams(context.Background(), paramsWithPipeline); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 }
@@ -113,7 +113,7 @@ func TestValidateParamsDisabled(t *testing.T) {
 		Name:  ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
-	err = resolver.ValidateParams(context.Background(), params)
+	err = resolver.ValidateParams(resolverDisabledContext(), params)
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}
@@ -138,7 +138,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		Name:  ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
-	err = resolver.ValidateParams(resolverContext(), paramsMissingBundle)
+	err = resolver.ValidateParams(context.Background(), paramsMissingBundle)
 	if err == nil {
 		t.Fatalf("expected missing kind err")
 	}
@@ -153,7 +153,7 @@ func TestValidateParamsMissing(t *testing.T) {
 		Name:  ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
-	err = resolver.ValidateParams(resolverContext(), paramsMissingName)
+	err = resolver.ValidateParams(context.Background(), paramsMissingName)
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
@@ -178,7 +178,7 @@ func TestResolveDisabled(t *testing.T) {
 		Name:  ParamServiceAccount,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
-	_, err = resolver.Resolve(context.Background(), params)
+	_, err = resolver.Resolve(resolverDisabledContext(), params)
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}
@@ -506,8 +506,8 @@ func asIsMapper(obj runtime.Object) map[string]string {
 	return annotations
 }
 
-func resolverContext() context.Context {
-	return frtesting.ContextWithBundlesResolverEnabled(context.Background())
+func resolverDisabledContext() context.Context {
+	return frtesting.ContextWithBundlesResolverDisabled(context.Background())
 }
 
 type imageRef struct {

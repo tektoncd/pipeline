@@ -48,7 +48,7 @@ import (
 
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
-	sel := resolver.GetSelector(resolverContext())
+	sel := resolver.GetSelector(context.Background())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != LabelValueClusterResolverType {
@@ -70,7 +70,7 @@ func TestValidateParams(t *testing.T) {
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
 
-	ctx := framework.InjectResolverConfigToContext(resolverContext(), map[string]string{
+	ctx := framework.InjectResolverConfigToContext(context.Background(), map[string]string{
 		AllowedNamespacesKey: "foo,bar",
 		BlockedNamespacesKey: "abc,def",
 	})
@@ -95,7 +95,7 @@ func TestValidateParamsNotEnabled(t *testing.T) {
 		Name:  NameParam,
 		Value: *pipelinev1beta1.NewStructuredValues("baz"),
 	}}
-	err = resolver.ValidateParams(context.Background(), params)
+	err = resolver.ValidateParams(resolverDisabledContext(), params)
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}
@@ -161,7 +161,7 @@ func TestValidateParamsFailure(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := &Resolver{}
 
-			ctx := resolverContext()
+			ctx := context.Background()
 			if len(tc.conf) > 0 {
 				ctx = framework.InjectResolverConfigToContext(ctx, tc.conf)
 			}
@@ -462,8 +462,8 @@ func createRequest(kind, name, namespace string) *v1beta1.ResolutionRequest {
 	return rr
 }
 
-func resolverContext() context.Context {
-	return frtesting.ContextWithClusterResolverEnabled(context.Background())
+func resolverDisabledContext() context.Context {
+	return frtesting.ContextWithClusterResolverDisabled(context.Background())
 }
 
 func sha256CheckSum(input []byte) string {

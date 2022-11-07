@@ -34,19 +34,19 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 	testCases := []testCase{
 		{
 			expectedConfig: &resolver.FeatureFlags{
-				EnableGitResolver:     false,
-				EnableHubResolver:     false,
-				EnableBundleResolver:  false,
-				EnableClusterResolver: false,
+				EnableGitResolver:     true,
+				EnableHubResolver:     true,
+				EnableBundleResolver:  true,
+				EnableClusterResolver: true,
 			},
 			fileName: "feature-flags-empty",
 		},
 		{
 			expectedConfig: &resolver.FeatureFlags{
-				EnableGitResolver:     true,
-				EnableHubResolver:     true,
-				EnableBundleResolver:  true,
-				EnableClusterResolver: true,
+				EnableGitResolver:     false,
+				EnableHubResolver:     false,
+				EnableBundleResolver:  false,
+				EnableClusterResolver: false,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -64,9 +64,10 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 	FeatureFlagsConfigEmptyName := "feature-flags-empty"
 	expectedConfig := &resolver.FeatureFlags{
-		EnableGitResolver:    resolver.DefaultEnableGitResolver,
-		EnableHubResolver:    resolver.DefaultEnableHubResolver,
-		EnableBundleResolver: resolver.DefaultEnableBundlesResolver,
+		EnableGitResolver:     resolver.DefaultEnableGitResolver,
+		EnableHubResolver:     resolver.DefaultEnableHubResolver,
+		EnableBundleResolver:  resolver.DefaultEnableBundlesResolver,
+		EnableClusterResolver: resolver.DefaultEnableClusterResolver,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }

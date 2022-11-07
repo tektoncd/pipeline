@@ -53,7 +53,7 @@ import (
 
 func TestGetSelector(t *testing.T) {
 	resolver := Resolver{}
-	sel := resolver.GetSelector(resolverContext())
+	sel := resolver.GetSelector(context.Background())
 	if typ, has := sel[resolutioncommon.LabelKeyResolverType]; !has {
 		t.Fatalf("unexpected selector: %v", sel)
 	} else if typ != labelValueGitResolverType {
@@ -70,7 +70,7 @@ func TestValidateParams(t *testing.T) {
 		revisionParam: "baz",
 	}
 
-	if err := resolver.ValidateParams(resolverContext(), toParams(paramsWithRevision)); err != nil {
+	if err := resolver.ValidateParams(context.Background(), toParams(paramsWithRevision)); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
 	}
 }
@@ -84,7 +84,7 @@ func TestValidateParamsNotEnabled(t *testing.T) {
 		pathParam:     "bar",
 		revisionParam: "baz",
 	}
-	err = resolver.ValidateParams(context.Background(), toParams(someParams))
+	err = resolver.ValidateParams(resolverDisabledContext(), toParams(someParams))
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}
@@ -137,7 +137,7 @@ func TestValidateParams_Failure(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := &Resolver{}
-			err := resolver.ValidateParams(resolverContext(), toParams(tc.params))
+			err := resolver.ValidateParams(context.Background(), toParams(tc.params))
 			if err == nil {
 				t.Fatalf("got no error, but expected: %s", tc.expectedErr)
 			}
@@ -151,7 +151,7 @@ func TestValidateParams_Failure(t *testing.T) {
 func TestGetResolutionTimeoutDefault(t *testing.T) {
 	resolver := Resolver{}
 	defaultTimeout := 30 * time.Minute
-	timeout := resolver.GetResolutionTimeout(resolverContext(), defaultTimeout)
+	timeout := resolver.GetResolutionTimeout(context.Background(), defaultTimeout)
 	if timeout != defaultTimeout {
 		t.Fatalf("expected default timeout to be returned")
 	}
@@ -164,7 +164,7 @@ func TestGetResolutionTimeoutCustom(t *testing.T) {
 	config := map[string]string{
 		defaultTimeoutKey: configTimeout.String(),
 	}
-	ctx := framework.InjectResolverConfigToContext(resolverContext(), config)
+	ctx := framework.InjectResolverConfigToContext(context.Background(), config)
 	timeout := resolver.GetResolutionTimeout(ctx, defaultTimeout)
 	if timeout != configTimeout {
 		t.Fatalf("expected timeout from config to be returned")
@@ -180,7 +180,7 @@ func TestResolveNotEnabled(t *testing.T) {
 		pathParam:     "bar",
 		revisionParam: "baz",
 	}
-	_, err = resolver.Resolve(context.Background(), toParams(someParams))
+	_, err = resolver.Resolve(resolverDisabledContext(), toParams(someParams))
 	if err == nil {
 		t.Fatalf("expected disabled err")
 	}
@@ -739,8 +739,8 @@ func createRequest(args *params) *v1beta1.ResolutionRequest {
 	return rr
 }
 
-func resolverContext() context.Context {
-	return frtesting.ContextWithGitResolverEnabled(context.Background())
+func resolverDisabledContext() context.Context {
+	return frtesting.ContextWithGitResolverDisabled(context.Background())
 }
 
 func createError(msg string) error {
