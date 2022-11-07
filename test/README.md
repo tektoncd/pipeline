@@ -257,8 +257,7 @@ upgrade to the current release, and validate whether the Tekton pipeline works.
 #### Prerequisites for running upgrade tests locally:
 - Set up the cluster
   - Running against a fresh kind cluster
-    - comment out the default [GKE clutser setup](https://github.com/tektoncd/pipeline/blob/d4c2f75e32a8657f486790da8d665019f5e0550b/test/e2e-tests-upgrade.sh#L32)
-    *TODO: future work on implementation of kind cluster setup https://github.com/tektoncd/pipeline/issues/5689 *
+    - export SKIP_INITIALIZE=true
 
   - Running against a GKE cluster
     - export PROJECT_ID=<my_gcp_project>
