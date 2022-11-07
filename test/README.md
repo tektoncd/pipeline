@@ -253,6 +253,15 @@ There are two scenarios in upgrade tests. One is to install the previous release
 validate whether the Tekton pipeline works. The other is to install the previous release, create the pipelines and tasks,
 upgrade to the current release, and validate whether the Tekton pipeline works.
 
+#### Prerequisites for running upgrade tests locally:
+- Set up the cluster
+  - Running against a fresh kind cluster
+    - export SKIP_INITIALIZE=true
+
+  - Running against a GKE cluster
+    - export PROJECT_ID=<my_gcp_project>
+    - install [kubetest](https://github.com/kubernetes/test-infra/blob/master/kubetest/README.md)
+
 To run the upgrade tests, run the following command:
 
 ```bash

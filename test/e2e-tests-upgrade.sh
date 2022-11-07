@@ -29,7 +29,9 @@ PREVIOUS_PIPELINE_VERSION=v0.5.2
 
 # Script entry point.
 
-initialize $@
+if [ "${SKIP_INITIALIZE}" != "true" ]; then
+  initialize $@
+fi
 
 header "Setting up environment"
 
