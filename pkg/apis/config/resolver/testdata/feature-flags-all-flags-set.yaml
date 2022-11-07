@@ -18,7 +18,7 @@ metadata:
   name: resolvers-feature-flags
   namespace: tekton-pipelines-resolvers
 data:
-  enable-git-resolver: "true"
-  enable-hub-resolver: "true"
-  enable-bundles-resolver: "true"
-  enable-cluster-resolver: "true"
+  enable-git-resolver: "false"
+  enable-hub-resolver: "false"
+  enable-bundles-resolver: "false"
+  enable-cluster-resolver: "false"

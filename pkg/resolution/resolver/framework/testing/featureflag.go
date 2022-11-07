@@ -23,29 +23,29 @@ import (
 	resolverconfig "github.com/tektoncd/pipeline/pkg/apis/config/resolver"
 )
 
-// ContextWithGitResolverEnabled returns a context containing a Config with the enable-git-resolver feature flag enabled.
-func ContextWithGitResolverEnabled(ctx context.Context) context.Context {
-	return contextWithResolverEnabled(ctx, "enable-git-resolver")
+// ContextWithGitResolverDisabled returns a context containing a Config with the enable-git-resolver feature flag disabled.
+func ContextWithGitResolverDisabled(ctx context.Context) context.Context {
+	return contextWithResolverDisabled(ctx, "enable-git-resolver")
 }
 
-// ContextWithHubResolverEnabled returns a context containing a Config with the enable-hub-resolver feature flag enabled.
-func ContextWithHubResolverEnabled(ctx context.Context) context.Context {
-	return contextWithResolverEnabled(ctx, "enable-hub-resolver")
+// ContextWithHubResolverDisabled returns a context containing a Config with the enable-hub-resolver feature flag disabled.
+func ContextWithHubResolverDisabled(ctx context.Context) context.Context {
+	return contextWithResolverDisabled(ctx, "enable-hub-resolver")
 }
 
-// ContextWithBundlesResolverEnabled returns a context containing a Config with the enable-bundles-resolver feature flag enabled.
-func ContextWithBundlesResolverEnabled(ctx context.Context) context.Context {
-	return contextWithResolverEnabled(ctx, "enable-bundles-resolver")
+// ContextWithBundlesResolverDisabled returns a context containing a Config with the enable-bundles-resolver feature flag disabled.
+func ContextWithBundlesResolverDisabled(ctx context.Context) context.Context {
+	return contextWithResolverDisabled(ctx, "enable-bundles-resolver")
 }
 
-// ContextWithClusterResolverEnabled returns a context containing a Config with the enable-cluster-resolver feature flag enabled.
-func ContextWithClusterResolverEnabled(ctx context.Context) context.Context {
-	return contextWithResolverEnabled(ctx, "enable-cluster-resolver")
+// ContextWithClusterResolverDisabled returns a context containing a Config with the enable-cluster-resolver feature flag disabled.
+func ContextWithClusterResolverDisabled(ctx context.Context) context.Context {
+	return contextWithResolverDisabled(ctx, "enable-cluster-resolver")
 }
 
-func contextWithResolverEnabled(ctx context.Context, resolverFlag string) context.Context {
+func contextWithResolverDisabled(ctx context.Context, resolverFlag string) context.Context {
 	featureFlags, _ := resolverconfig.NewFeatureFlagsFromMap(map[string]string{
-		resolverFlag: "true",
+		resolverFlag: "false",
 	})
 	cfg := &resolverconfig.Config{
 		FeatureFlags: featureFlags,
