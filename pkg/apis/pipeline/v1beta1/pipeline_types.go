@@ -162,6 +162,16 @@ type EmbeddedTask struct {
 	TaskSpec `json:",inline,omitempty"`
 }
 
+// Matrix is used to fan out Tasks in a Pipeline
+type Matrix struct {
+	// Params is a list of parameters used to fan out the pipelineTask
+	// Params takes only `Parameters` of type `"array"`
+	// Each array element is supplied to the `PipelineTask` by substituting `params` of type `"string"` in the underlying `Task`.
+	// The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.
+	// +listType=atomic
+	Params []Param `json:"params,omitempty"`
+}
+
 // PipelineTask defines a task in a Pipeline, passing inputs from both
 // Params and from the output of previous tasks.
 type PipelineTask struct {
@@ -217,16 +227,6 @@ type PipelineTask struct {
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
-}
-
-// Matrix is used to fan out Tasks in a Pipeline
-type Matrix struct {
-	// Params is a list of parameters used to fan out the pipelineTask
-	// Params takes only `Parameters` of type `"array"`
-	// Each array element is supplied to the `PipelineTask` by substituting `params` of type `"string"` in the underlying `Task`.
-	// The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.
-	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
 }
 
 // validateRefOrSpec validates at least one of taskRef or taskSpec is specified
@@ -400,50 +400,6 @@ func (pt *PipelineTask) validateExecutionStatusVariablesAllowed(ptNames sets.Str
 		if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
 			errs = errs.Also(validateExecutionStatusVariablesExpressions(expressions, ptNames, "").
 				ViaFieldIndex("when", i))
-		}
-	}
-	return errs
-}
-
-func validateContainsExecutionStatusVariablesDisallowed(expressions []string, path string) (errs *apis.FieldError) {
-	if containsExecutionStatusReferences(expressions) {
-		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline tasks can not refer to execution status"+
-			" of any other pipeline task or aggregate status of tasks"), path))
-	}
-	return errs
-}
-
-func containsExecutionStatusReferences(expressions []string) bool {
-	// validate tasks.pipelineTask.status/tasks.status if this expression is not a result reference
-	if !LooksLikeContainsResultRefs(expressions) {
-		for _, e := range expressions {
-			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
-			// or an aggregate status - $(tasks.status)
-			if containsExecutionStatusRef(e) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func validateExecutionStatusVariablesExpressions(expressions []string, ptNames sets.String, fieldPath string) (errs *apis.FieldError) {
-	// validate tasks.pipelineTask.status if this expression is not a result reference
-	if !LooksLikeContainsResultRefs(expressions) {
-		for _, expression := range expressions {
-			// its a reference to aggregate status of dag tasks - $(tasks.status)
-			if expression == PipelineTasksAggregateStatus {
-				continue
-			}
-			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
-			if containsExecutionStatusRef(expression) {
-				// strip tasks. and .status from tasks.taskname.status to further verify task name
-				pt := strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".status")
-				// report an error if the task name does not exist in the list of dag tasks
-				if !ptNames.Has(pt) {
-					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline task %s is not defined in the pipeline", pt), fieldPath))
-				}
-			}
 		}
 	}
 	return errs
@@ -662,4 +618,48 @@ type PipelineList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Pipeline `json:"items"`
+}
+
+func validateContainsExecutionStatusVariablesDisallowed(expressions []string, path string) (errs *apis.FieldError) {
+	if containsExecutionStatusReferences(expressions) {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline tasks can not refer to execution status"+
+			" of any other pipeline task or aggregate status of tasks"), path))
+	}
+	return errs
+}
+
+func containsExecutionStatusReferences(expressions []string) bool {
+	// validate tasks.pipelineTask.status/tasks.status if this expression is not a result reference
+	if !LooksLikeContainsResultRefs(expressions) {
+		for _, e := range expressions {
+			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
+			// or an aggregate status - $(tasks.status)
+			if containsExecutionStatusRef(e) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func validateExecutionStatusVariablesExpressions(expressions []string, ptNames sets.String, fieldPath string) (errs *apis.FieldError) {
+	// validate tasks.pipelineTask.status if this expression is not a result reference
+	if !LooksLikeContainsResultRefs(expressions) {
+		for _, expression := range expressions {
+			// its a reference to aggregate status of dag tasks - $(tasks.status)
+			if expression == PipelineTasksAggregateStatus {
+				continue
+			}
+			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
+			if containsExecutionStatusRef(expression) {
+				// strip tasks. and .status from tasks.taskname.status to further verify task name
+				pt := strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".status")
+				// report an error if the task name does not exist in the list of dag tasks
+				if !ptNames.Has(pt) {
+					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline task %s is not defined in the pipeline", pt), fieldPath))
+				}
+			}
+		}
+	}
+	return errs
 }
