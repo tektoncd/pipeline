@@ -1,11 +1,14 @@
-# Tekton Pipelines 2021 Roadmap
+# Tekton Pipelines Roadmap
 
-This is an incomplete list of work we hope to tackle in 2021!
+Our community roadmap can be found [here](https://github.com/orgs/tektoncd/projects/26/views/16).
+This project automatically includes issues and PRs with label `area/roadmap`.
 
-* [The Tekton mission and vision](https://github.com/tektoncd/community/blob/main/roadmap.md#mission-and-vision)
-* [Roadmap items tracked via issues](https://github.com/tektoncd/pipeline/labels/area%2Froadmap)
+See [The Tekton mission and vision](https://github.com/tektoncd/community/blob/main/roadmap.md#mission-and-vision)
+for more information on our long-term goals.
 
-## Roadmap
+## 2021 Roadmap
+
+*2021 Roadmap appears below for historic purposes.*
 
 * [v1 API](https://github.com/tektoncd/pipeline/issues/3548)
   * Support alpha fields within v1 and beta types ([TEP-0033](https://github.com/tektoncd/community/blob/main/teps/0033-tekton-feature-gates.md))
