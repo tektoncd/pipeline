@@ -26,7 +26,7 @@ spec:
   preserveUnknownFields: false
   versions:
   - name: v1beta1
-    served: true
+    served: false
     storage: true
     schema:
       openAPIV3Schema:
