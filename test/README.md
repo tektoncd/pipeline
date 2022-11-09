@@ -30,6 +30,8 @@ in local kubeconfig file (~/.kube/config by default) in you local machine.
 is the difference of running environments. The envs that our presubmit test
 uses are stored in ./*.env files. Specifically,
 > - e2e-tests-kind-prow-alpha.env for [`pull-tekton-pipeline-alpha-integration-tests`](https://github.com/tektoncd/plumbing/blob/d2c8ccb63d02c6e72c62def788af32d63ff1981a/prow/config.yaml#L1304)
+> - e2e-tests-kind-prow-beta.env for [`pull-tekton-pipeline-beta-integration-tests`]
+(TODO: https://github.com/tektoncd/pipeline/issues/6048 Add permanent link after plumbing setup for prow)
 > - e2e-tests-kind-prow.env for [`pull-tekton-pipeline-integration-tests`](https://github.com/tektoncd/plumbing/blob/d2c8ccb63d02c6e72c62def788af32d63ff1981a/prow/config.yaml#L1249)
 
 ## Unit tests
