@@ -24,7 +24,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/reconciler/customrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/reconciler/run"
@@ -109,7 +108,8 @@ func main() {
 		pipelinerun.NewController(opts, clock.RealClock{}),
 		run.NewController(),
 		resolutionrequest.NewController(clock.RealClock{}),
-		customrun.NewController(),
+		// TODO(jerop, abayer) uncomment after we align on retries in customruns
+		// customrun.NewController(),
 	)
 }
 
