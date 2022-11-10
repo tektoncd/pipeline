@@ -113,7 +113,7 @@ See the current list of [alpha features](https://github.com/tektoncd/pipeline/bl
 
 - GA/Stable features are enabled by default
 
-- GA/Stable features will not be removed or changed in a backwards incompatible manner.
+- GA/Stable features will not be removed or changed in a backwards incompatible manner without incrementing the API version.
 
 ## Approving API changes
 
@@ -145,9 +145,16 @@ These changes must be approved by [more than half of the project OWNERS](OWNERS)
 Tekton Pipelines [maintains a list of features that have been deprecated](https://github.com/tektoncd/pipeline/tree/main/docs/deprecations.md)
 which includes the earliest date each feature will be removed.
 
-## Go libraries compatibility policy
+## Go Libraries
 
-Tekton Pipelines may introduce breaking changes to its Go client libraries, as long as these changes
-do not impact users' yaml/json CRD definitions. For example, a change that renames a field of a CRD
-would need to follow the policy on [backwards incompatible changes](#backwards-incompatible-changes),
-but a change that renames the Go struct type for that field is allowed.
+The following guidelines describe backwards incompatible changes and how they relate to release versioning for the public Go packages under `github.com/tektoncd/pipeline/pkg`.
+
+Packages that are part of the Go client library for a particular CRD version should adhere to the stability guarantees for that version. This includes the Go structs for the API types in `pkg/apis/pipeline/$apiVersion` and the client libraries generated from those in `pkg/client`. This means:
+
+- [Backwards incompatible changes](https://go.dev/blog/module-compatibility) such as changing or removing a field in a go struct in `pkg/apis/pipeline/v1alpha1` (or another alpha API) does not require a major version bump.
+
+- Backwards incompatible changes in `pkg/apis/pipeline/v1beta1` (or another beta API) require providing a notice of the upcoming change for at least 3 releases before making the change. However, they do not require a major version bump.
+
+- For `pkg/apis/pipeline/v1` (or any other stable APIs), any [backwards incompatible change](https://go.dev/blog/module-compatibility) will require a major version bump.
+
+For other packages, backwards incompatible changes are discouraged but they do not require a major version bump as long as they do not impact a user's YAML/JSON resource definitions.
