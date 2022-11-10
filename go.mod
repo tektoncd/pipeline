@@ -9,7 +9,7 @@ require (
 	github.com/containerd/containerd v1.6.9
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/google/go-cmp v0.5.9
-	github.com/google/go-containerregistry v0.12.0
+	github.com/google/go-containerregistry v0.12.1
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-multierror v1.1.1
