@@ -292,6 +292,7 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 			// This is a wrapped error, don't emit an event.
 		} else {
 			logger.Errorw("Returned an error", zap.Error(reconcileEvent))
+			fmt.Println("#####Emit InternalError")
 			r.Recorder.Event(resource, v1.EventTypeWarning, "InternalError", reconcileEvent.Error())
 		}
 		return reconcileEvent

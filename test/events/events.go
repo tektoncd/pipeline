@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -57,33 +57,23 @@ func eventsFromChannel(c chan string, wantEvents []string) error {
 	// We only hit the timeout in case of failure of the test, so the actual value
 	// of the timeout is not so relevant, it's only used when tests are going to fail.
 	// on the channel forever if fewer than expected events are received
-	timer := time.NewTimer(10 * time.Millisecond)
 	foundEvents := []string{}
-	for ii := 0; ii < len(wantEvents)+1; ii++ {
-		// We loop over all the events that we expect. Once they are all received
-		// we exit the loop. If we never receive enough events, the timeout takes us
-		// out of the loop.
-		select {
-		case event := <-c:
-			foundEvents = append(foundEvents, event)
-			if ii > len(wantEvents)-1 {
-				return fmt.Errorf("received event \"%s\" but not more expected", event)
+	for ii := 0; ii < len(wantEvents); ii++ {
+		event := <-c
+		foundEvents = append(foundEvents, event)
+		wantEvent := wantEvents[ii]
+		matching, err := regexp.MatchString(wantEvent, event)
+		if err == nil {
+			if !matching {
+				return fmt.Errorf("expected event \"%s\" but got \"%s\" instead", wantEvent, event)
 			}
-			wantEvent := wantEvents[ii]
-			matching, err := regexp.MatchString(wantEvent, event)
-			if err == nil {
-				if !matching {
-					return fmt.Errorf("expected event \"%s\" but got \"%s\" instead", wantEvent, event)
-				}
-			} else {
-				return fmt.Errorf("something went wrong matching the event: %s", err)
-			}
-		case <-timer.C:
-			if len(foundEvents) != len(wantEvents) {
-				return fmt.Errorf("received %d events but %d expected. Found events: %#v", len(foundEvents), len(wantEvents), foundEvents)
-			}
-			return nil
+		} else {
+			return fmt.Errorf("something went wrong matching the event: %s", err)
 		}
+	}
+  fmt.Println("####foundEvents",foundEvents)
+	if len(foundEvents) != len(wantEvents) {
+		return fmt.Errorf("received %d events but %d expected. Found events: %#v", len(foundEvents), len(wantEvents), foundEvents)
 	}
 	return nil
 }
