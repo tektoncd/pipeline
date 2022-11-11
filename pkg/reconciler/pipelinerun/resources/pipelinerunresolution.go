@@ -166,7 +166,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		atLeastOneFailed := false
 		for _, run := range t.Runs {
 			isDone = isDone && run.IsDone()
-			runFailed := run.Status.GetCondition(apis.ConditionSucceeded).IsFalse() && !t.hasRemainingRetries()
+			runFailed := run.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
 			atLeastOneFailed = atLeastOneFailed || runFailed
 		}
 		return atLeastOneFailed && isDone
@@ -184,7 +184,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		atLeastOneFailed := false
 		for _, taskRun := range t.TaskRuns {
 			isDone = isDone && taskRun.IsDone()
-			taskRunFailed := taskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() && !t.hasRemainingRetries()
+			taskRunFailed := taskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
 			atLeastOneFailed = atLeastOneFailed || taskRunFailed
 		}
 		return atLeastOneFailed && isDone
@@ -195,50 +195,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		c = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 		isDone = t.TaskRun.IsDone()
 	}
-	return isDone && c.IsFalse() && !t.hasRemainingRetries()
-}
-
-// hasRemainingRetries returns true only when the number of retries already attempted
-// is less than the number of retries allowed.
-func (t ResolvedPipelineTask) hasRemainingRetries() bool {
-	var retriesDone int
-	switch {
-	case t.IsCustomTask() && t.IsMatrixed():
-		if len(t.Runs) == 0 {
-			return true
-		}
-		// has remaining retries when any Run has a remaining retry
-		for _, run := range t.Runs {
-			retriesDone = len(run.Status.RetriesStatus)
-			if retriesDone < t.PipelineTask.Retries {
-				return true
-			}
-		}
-		return false
-	case t.IsCustomTask():
-		if t.Run == nil {
-			return true
-		}
-		retriesDone = len(t.Run.Status.RetriesStatus)
-	case t.IsMatrixed():
-		if len(t.TaskRuns) == 0 {
-			return true
-		}
-		// has remaining retries when any TaskRun has a remaining retry
-		for _, taskRun := range t.TaskRuns {
-			retriesDone = len(taskRun.Status.RetriesStatus)
-			if retriesDone < t.PipelineTask.Retries {
-				return true
-			}
-		}
-		return false
-	default:
-		if t.TaskRun == nil {
-			return true
-		}
-		retriesDone = len(t.TaskRun.Status.RetriesStatus)
-	}
-	return retriesDone < t.PipelineTask.Retries
+	return isDone && c.IsFalse()
 }
 
 // isCancelledForTimeOut returns true only if the run is cancelled due to PipelineRun-controlled timeout
