@@ -17,6 +17,7 @@ limitations under the License.
 package events
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -32,6 +33,7 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -140,9 +142,11 @@ func TestSendKubernetesEvents(t *testing.T) {
 	}}
 
 	for _, ts := range testcases {
+		ctx := context.Background()
 		fr := record.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
-		sendKubernetesEvents(fr, ts.before, ts.after, tr)
+		logger := logging.FromContext(ctx)
+		sendKubernetesEvents(fr, ts.before, ts.after, tr, logger)
 
 		err := eventstest.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {

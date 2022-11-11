@@ -22,6 +22,7 @@ import (
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,7 +57,7 @@ func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *
 		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
 	}
 
-	sendKubernetesEvents(recorder, beforeCondition, afterCondition, object)
+	sendKubernetesEvents(recorder, beforeCondition, afterCondition, object, logger)
 
 	if sendCloudEvents {
 		// Only send events if the new condition represents a change
@@ -86,7 +87,7 @@ func EmitCloudEvents(ctx context.Context, object runtime.Object) {
 	}
 }
 
-func sendKubernetesEvents(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+func sendKubernetesEvents(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object, logger *zap.SugaredLogger) {
 	// Events that are going to be sent
 	//
 	// Status "ConditionUnknown":
@@ -95,22 +96,27 @@ func sendKubernetesEvents(c record.EventRecorder, beforeCondition *apis.Conditio
 	//
 	//  Status "ConditionTrue": emit EventReasonSucceded
 	//  Status "ConditionFalse": emit EventReasonFailed
+	logger.Debug("######sendKubernetesEvents")
 	if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) && afterCondition != nil {
 		// If the condition changed, and the target condition is not empty, we send an event
 		switch afterCondition.Status {
 		case corev1.ConditionTrue:
+			logger.Debug("######sendKubernetesEvents corev1.ConditionTrue")
 			c.Event(object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
 		case corev1.ConditionFalse:
+			logger.Debug("######sendKubernetesEvents corev1.ConditionFalse")
 			c.Event(object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
 		case corev1.ConditionUnknown:
 			if beforeCondition == nil {
 				// If the condition changed, the status is "unknown", and there was no condition before,
 				// we emit the "Started event". We ignore further updates of the "unknown" status.
+				logger.Debug("######sendKubernetesEvents corev1.ConditionUnknown beforeCondition nil")
 				c.Event(object, corev1.EventTypeNormal, EventReasonStarted, "")
 			} else {
 				// If the condition changed, the status is "unknown", and there was a condition before,
 				// we emit an event that matches the reason and message of the condition.
 				// This is used for instance to signal the transition from "started" to "running"
+				logger.Debug("######sendKubernetesEvents corev1.ConditionUnknown beforeCondition not nil")
 				c.Event(object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
 			}
 		}

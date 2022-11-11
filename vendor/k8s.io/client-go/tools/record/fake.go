@@ -43,6 +43,7 @@ func objectString(object runtime.Object, includeObject bool) string {
 
 func (f *FakeRecorder) Event(object runtime.Object, eventtype, reason, message string) {
 	if f.Events != nil {
+		fmt.Printf("######## FakeRecorder Emit Event: %v", message)
 		f.Events <- fmt.Sprintf("%s %s %s%s", eventtype, reason, message, objectString(object, f.IncludeObject))
 	}
 }
