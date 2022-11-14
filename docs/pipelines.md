@@ -1257,8 +1257,8 @@ spec:
 `finally` tasks after all non-`finally` tasks are done.
 
 The controller resolves task results before executing the `finally` task `discover-git-commit`. If the task
-`clone-app-repo` failed or skipped with [when expression](#guard-task-execution-using-when-expressions) resulting in
-uninitialized task result `commit`, the `finally` Task `discover-git-commit` will be included in the list of
+`clone-app-repo` failed before initializing `commit` or skipped with [when expression](#guard-task-execution-using-when-expressions)
+resulting in uninitialized task result `commit`, the `finally` Task `discover-git-commit` will be included in the list of
 `skippedTasks` and continues executing rest of the `finally` tasks. The pipeline exits with `completion` instead of
 `success` if a `finally` task is added to the list of `skippedTasks`.
 
