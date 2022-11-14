@@ -30,11 +30,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
+	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	testclock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	cminformer "knative.dev/pkg/configmap/informer"
@@ -137,7 +137,7 @@ func initializeResolverFrameworkControllerAssets(ctx context.Context, t *testing
 		Controller: ctl,
 		Clients:    c,
 		Informers:  informers,
-		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
+		Recorder:   controller.GetEventRecorder(ctx).(*eventstest.FakeRecorder),
 		Ctx:        ctx,
 	}, cancel
 }

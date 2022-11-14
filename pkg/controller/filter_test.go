@@ -24,9 +24,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	fakeruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run/fake"
 	"github.com/tektoncd/pipeline/pkg/controller"
+	eventstest "github.com/tektoncd/pipeline/test/events"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 const (
@@ -462,7 +462,7 @@ func TestFilterOwnerRunRef(t *testing.T) {
 		want: false,
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
-			ctx, _ := rtesting.SetupFakeContext(t)
+			ctx, _ := eventstest.SetupFakeContext(t)
 			runInformer := fakeruninformer.Get(ctx)
 			if c.owner != nil {
 				if err := runInformer.Informer().GetIndexer().Add(c.owner); err != nil {

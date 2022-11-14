@@ -56,7 +56,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ktesting "k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -153,7 +152,7 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 		Clients:    c,
 		Controller: ctl,
 		Informers:  informers,
-		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
+		Recorder:   controller.GetEventRecorder(ctx).(*eventstest.FakeRecorder),
 		Ctx:        ctx,
 	}, cancel
 }
@@ -2952,7 +2951,7 @@ spec:
 				"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
 				"Warning InternalError 1 error occurred",
 			}
-			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
+			err = testAssets.Recorder.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 			if err != nil {
 				t.Errorf(err.Error())
 			}
@@ -3068,7 +3067,7 @@ spec:
 		"Normal PipelineRunCouldntTimeOut PipelineRun \"test-pipeline-fails-to-timeout\" was timed out but had errors trying to time out TaskRuns and/or Runs",
 		"Warning InternalError 1 error occurred",
 	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
+	err = testAssets.Recorder.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -7083,7 +7082,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 
 	// Check generated events match what's expected
 	if len(wantEvents) > 0 {
-		if err := eventstest.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, pipelineRunName, wantEvents); err != nil {
+		if err := prt.TestAssets.Recorder.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, pipelineRunName, wantEvents); err != nil {
 			prt.Test.Errorf(err.Error())
 		}
 	}

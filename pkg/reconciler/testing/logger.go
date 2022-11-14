@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	eventstest "github.com/tektoncd/pipeline/test/events"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
 	"knative.dev/pkg/injection"
 	logtesting "knative.dev/pkg/logging/testing"
@@ -56,7 +56,7 @@ func TestLogger(t *testing.T) *zap.SugaredLogger {
 // The provided context includes the FilteredInformerFactory LabelKey.
 func setupFakeContextWithLabelKey(t zaptest.TestingT) (context.Context, context.CancelFunc, []controller.Informer) {
 	ctx, c := context.WithCancel(logtesting.TestContextWithLogger(t))
-	ctx = controller.WithEventRecorder(ctx, record.NewFakeRecorder(1000))
+	ctx = controller.WithEventRecorder(ctx, eventstest.NewFakeRecorder(1000))
 	ctx = filteredinformerfactory.WithSelectors(ctx, v1beta1.ManagedByLabelKey)
 	ctx, is := injection.Fake.SetupInformers(ctx, &rest.Config{})
 	return ctx, c, is

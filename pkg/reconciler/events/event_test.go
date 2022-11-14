@@ -28,11 +28,9 @@ import (
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/controller"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestSendKubernetesEvents(t *testing.T) {
@@ -140,10 +138,11 @@ func TestSendKubernetesEvents(t *testing.T) {
 	}}
 
 	for _, ts := range testcases {
-		fr := record.NewFakeRecorder(1)
+		fr := eventstest.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
 		sendKubernetesEvents(fr, ts.before, ts.after, tr)
-		err := eventstest.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
+
+		err := fr.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -166,10 +165,11 @@ func TestEmitError(t *testing.T) {
 	}}
 
 	for _, ts := range testcases {
-		fr := record.NewFakeRecorder(1)
+		fr := eventstest.NewFakeRecorder(1)
 		tr := &corev1.Pod{}
 		EmitError(fr, ts.err, tr)
-		err := eventstest.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
+
+		err := fr.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -219,7 +219,7 @@ func TestEmit(t *testing.T) {
 
 	for _, tc := range testcases {
 		// Setup the context and seed test data
-		ctx, _ := rtesting.SetupFakeContext(t)
+		ctx, _ := eventstest.SetupFakeContext(t)
 		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
 		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
@@ -232,9 +232,9 @@ func TestEmit(t *testing.T) {
 		}
 		ctx = config.ToContext(ctx, cfg)
 
-		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		recorder := controller.GetEventRecorder(ctx).(*eventstest.FakeRecorder)
 		Emit(ctx, nil, after, object)
-		if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+		if err := recorder.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
 		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
@@ -273,7 +273,7 @@ func TestEmitCloudEvents(t *testing.T) {
 
 	for _, tc := range testcases {
 		// Setup the context and seed test data
-		ctx, _ := rtesting.SetupFakeContext(t)
+		ctx, _ := eventstest.SetupFakeContext(t)
 		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
 		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
@@ -286,9 +286,9 @@ func TestEmitCloudEvents(t *testing.T) {
 		}
 		ctx = config.ToContext(ctx, cfg)
 
-		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		recorder := controller.GetEventRecorder(ctx).(*eventstest.FakeRecorder)
 		EmitCloudEvents(ctx, object)
-		if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+		if err := recorder.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
 		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)

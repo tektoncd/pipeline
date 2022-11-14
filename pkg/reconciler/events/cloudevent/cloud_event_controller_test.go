@@ -29,13 +29,11 @@ import (
 	eventstest "github.com/tektoncd/pipeline/test/events"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -620,8 +618,8 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			}
 			ceClient := Get(ctx).(FakeClient)
 			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCEvents)
-			recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-			if err := eventstest.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+			recorder := controller.GetEventRecorder(ctx).(*eventstest.FakeRecorder)
+			if err := recorder.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 				t.Fatalf(err.Error())
 			}
 		})
@@ -679,7 +677,7 @@ func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
 
 func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bool, expectedEventCount int) context.Context {
 	var ctx context.Context
-	ctx, _ = rtesting.SetupFakeContext(t)
+	ctx, _ = eventstest.SetupFakeContext(t)
 	if withClient {
 		ctx = WithClient(ctx, &behaviour, expectedEventCount)
 	}
