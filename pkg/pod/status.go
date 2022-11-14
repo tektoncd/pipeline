@@ -183,7 +183,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 
 		// populate task run CRD with results from sidecar logs
 		taskResults, _ := filterResults(sidecarLogResults, specResults)
-		if tr.IsSuccessful() {
+		if tr.IsDone() {
 			trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 		}
 	}
@@ -209,7 +209,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				}
 
 				taskResults, filteredResults := filterResults(results, specResults)
-				if tr.IsSuccessful() {
+				if tr.IsDone() {
 					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 				}
 				msg, err = createMessageFromResults(filteredResults)

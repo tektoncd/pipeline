@@ -796,6 +796,40 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			},
 		},
 	}, {
+		desc: "the failed task show task results",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodFailed,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-task-result",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: `[{"key":"resultName","value":"resultValue", "type":1}]`,
+					},
+				},
+			}},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "build failed for unspecified reasons."),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"resultName","value":"resultValue","type":1}]`,
+						},
+					},
+					Name:          "task-result",
+					ContainerName: "step-task-result",
+				}},
+				Sidecars:       []v1beta1.SidecarState{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+				TaskRunResults: []v1beta1.TaskRunResult{{
+					Name:  "resultName",
+					Type:  v1beta1.ResultsTypeString,
+					Value: *v1beta1.NewStructuredValues("resultValue"),
+				}},
+			},
+		},
+	}, {
 		desc: "taskrun status set to failed if task fails",
 		podStatus: corev1.PodStatus{
 			Phase: corev1.PodFailed,

@@ -122,8 +122,8 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	if referencedPipelineTask == nil {
 		return nil, resultRef.PipelineTask, fmt.Errorf("could not find task %q referenced by result", resultRef.PipelineTask)
 	}
-	if !referencedPipelineTask.isSuccessful() {
-		return nil, resultRef.PipelineTask, fmt.Errorf("task %q referenced by result was not successful", referencedPipelineTask.PipelineTask.Name)
+	if !referencedPipelineTask.isSuccessful() && !referencedPipelineTask.isFailure() {
+		return nil, resultRef.PipelineTask, fmt.Errorf("task %q referenced by result was not finished", referencedPipelineTask.PipelineTask.Name)
 	}
 
 	var runName, runValue, taskRunName string
