@@ -203,7 +203,7 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 				}
 
 				taskResults, pipelineResourceResults, filteredResults := filterResultsAndResources(results, specResults)
-				if tr.IsSuccessful() {
+				if tr.IsDone() {
 					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 					trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
 				}

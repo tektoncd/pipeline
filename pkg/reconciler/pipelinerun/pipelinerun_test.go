@@ -6392,11 +6392,20 @@ spec:
       operator: in
       values:
       - aResultValue
+  - name: final-task-7
+    params:
+    - name: finalParam
+      value: $(tasks.dag-task-3.results.aResult)
+    taskRef:
+      name: final-task
   tasks:
   - name: dag-task-1
     taskRef:
       name: dag-task
   - name: dag-task-2
+    taskRef:
+      name: dag-task
+  - name: dag-task-3
     taskRef:
       name: dag-task
 `)}
@@ -6459,6 +6468,23 @@ status:
   - lastTransitionTime: null
     status: "False"
     type: Succeeded
+`),
+		mustParseTaskRunWithObjectMeta(t,
+			taskRunObjectMeta("test-pipeline-run-final-task-results-dag-task-3-xxyyy", "foo",
+				"test-pipeline-run-final-task-results", "test-pipeline", "dag-task-3", false),
+			`
+spec:
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+status:
+  conditions:
+  - lastTransitionTime: null
+    status: "False"
+    type: Succeeded
+  taskResults:
+  - name: aResult
+    value: aResultValue
 `),
 	}
 

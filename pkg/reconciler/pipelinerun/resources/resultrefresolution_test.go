@@ -377,7 +377,7 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		want:    nil,
 		wantErr: true,
 	}, {
-		name: "failed resolution: using result reference to a failed task",
+		name: "failed resolution: using result reference to a failed task with no results",
 		pipelineRunState: PipelineRunState{{
 			TaskRunName: "aTaskRun",
 			TaskRun: &v1beta1.TaskRun{
@@ -460,6 +460,42 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 		},
 		want:    nil,
 		wantErr: true,
+	}, {
+		name: "successful resolution: using result reference to a failed task with some results",
+		pipelineRunState: PipelineRunState{{
+			TaskRunName: "aTaskRun",
+			TaskRun: &v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
+				Status: v1beta1.TaskRunStatus{
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{failedCondition},
+					},
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						TaskRunResults: []v1beta1.TaskRunResult{{
+							Name:  "aResult",
+							Value: *v1beta1.NewStructuredValues("aResultValue"),
+						}},
+					},
+				},
+			},
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "aTask",
+				TaskRef: &v1beta1.TaskRef{Name: "aTask"},
+			},
+		}},
+		param: v1beta1.Param{
+			Name:  "targetParam",
+			Value: *v1beta1.NewStructuredValues("$(tasks.aTask.results.aResult)"),
+		},
+		want: ResolvedResultRefs{{
+			Value: *v1beta1.NewStructuredValues("aResultValue"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		wantErr: false,
 	}} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Logf("test name: %s\n", tt.name)
