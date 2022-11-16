@@ -6129,6 +6129,11 @@ structs.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1alpha1.RunReason">RunReason
+(<code>string</code> alias)</h3>
+<div>
+<p>RunReason is an enum used to store all Run reason for the Succeeded condition that are controlled by the Run itself.</p>
+</div>
 <h3 id="tekton.dev/v1alpha1.RunSpec">RunSpec
 </h3>
 <p>
@@ -8226,6 +8231,11 @@ Example: &ldquo;task/git-clone/0.8/git-clone.yaml&rdquo;</p>
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.CustomRunReason">CustomRunReason
+(<code>string</code> alias)</h3>
+<div>
+<p>CustomRunReason is an enum used to store all Run reason for the Succeeded condition that are controlled by the CustomRun itself.</p>
+</div>
 <h3 id="tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec
 </h3>
 <p>
@@ -12419,6 +12429,12 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.TaskRunConditionType">TaskRunConditionType
+(<code>string</code> alias)</h3>
+<div>
+<p>TaskRunConditionType is an enum used to store TaskRun custom conditions
+conditions such as one used in spire results verification</p>
+</div>
 <h3 id="tekton.dev/v1beta1.TaskRunDebug">TaskRunDebug
 </h3>
 <p>
@@ -13784,7 +13800,7 @@ string
 <h3 id="tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>)
 </p>
 <div>
 <p>CustomRunStatus defines the observed state of CustomRun</p>
