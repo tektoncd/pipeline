@@ -1,0 +1,102 @@
+name: Pipeline kind E2E smoke tests
+
+on:
+  pull_request:
+    branches: [ main ]
+
+defaults:
+  run:
+    shell: bash
+    working-directory: ./
+
+jobs:
+  chains-e2e-tests:
+    name: e2e tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # Keep running if one leg fails.
+      matrix:
+        k8s-version:
+        - v1.23.x
+        - v1.24.x
+        - v1.25.x
+
+    env:
+      GOPATH: ${{ github.workspace }}
+      GO111MODULE: on
+      GOFLAGS: -ldflags=-s -ldflags=-w
+      KO_DOCKER_REPO: registry.local:5000/knative
+      KOCACHE: ~/ko
+      TEKTON_PIPELINES_RELEASE: "https://storage.googleapis.com/tekton-releases/pipeline/previous/v0.41.0/release.yaml"
+      # Note that we do not include the v prefix here so we can use it in all
+      # the places this is used.
+      TEKTON_CLI_RELEASE: "0.26.1"
+
+    steps:
+    # https://github.com/mvdan/github-actions-golang#how-do-i-set-up-caching-between-builds
+    - uses: actions/cache@v2
+      with:
+        # In order:
+        # * Module download cache
+        # * Build cache (Linux)
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ${{ env.KOCACHE }}
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.18.x
+
+    - uses: imjasonh/setup-ko@v0.6
+      with:
+        version: tip
+
+    - name: Install tkn cli
+      run: |
+        curl -Lo ./tkn_${{ env.TEKTON_CLI_RELEASE }}_Linux_x86_64.tar.gz https://github.com/tektoncd/cli/releases/download/v${{ env.TEKTON_CLI_RELEASE }}/tkn_${{ env.TEKTON_CLI_RELEASE }}_Linux_x86_64.tar.gz
+        tar xvzf ./tkn_${{ env.TEKTON_CLI_RELEASE }}_Linux_x86_64.tar.gz tkn
+        chmod u+x ./tkn
+
+    - name: Check out our repo
+      uses: actions/checkout@v2
+      with:
+        path: ./src/github.com/tektoncd/pipeline
+
+    - uses: chainguard-dev/actions/setup-kind@main
+      with:
+        k8s-version: ${{ matrix.k8s-version }}
+
+    - name: Install Tekton pipelines
+      working-directory: ./src/github.com/tektoncd/pipeline
+      run: |
+        ko apply -BRf ./config
+        # TODO(vaikas): Do we need this? Just to make sure things start up.
+        sleep 5
+
+        kubectl wait deployment -n tekton-pipelines --for condition=Available=True --timeout=180s --all
+
+        # Then sleep little more to make sure we're good to go.
+        sleep 10
+
+    - name: Run tutorial taskrun
+      working-directory: ./src/github.com/tektoncd/pipeline
+      run: |
+        kubectl create -f ./examples/v1beta1/pipelineruns/pipelinerun.yaml
+
+        # Sleep so the pipeline shows up.
+        sleep 2
+
+        echo "Waiting for the pipelinerun to complete..."
+        kubectl wait --timeout 3m --for=condition=Succeeded pipelineruns --all || kubectl get taskruns -o yaml
+
+    - name: Collect diagnostics
+      if: ${{ failure() }}
+      uses: chainguard-dev/actions/kind-diag@84c993eaf02da1c325854fb272a4df9184bd80fc # main
+      with:
+        cluster-resources: nodes
+        namespace-resources: pods,taskruns,jobs
