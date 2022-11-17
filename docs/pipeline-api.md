@@ -7076,6 +7076,18 @@ CustomRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for propagating retries count to custom tasks</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>serviceAccountName</code><br/>
 <em>
 string
@@ -8318,6 +8330,18 @@ CustomRunSpecStatusMessage
 <td>
 <em>(Optional)</em>
 <p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Used for propagating retries count to custom tasks</p>
 </td>
 </tr>
 <tr>
@@ -13905,6 +13929,20 @@ Kubernetes meta/v1.Time
 <em>(Optional)</em>
 <p>Results reports any output result values to be consumed by later
 tasks in a pipeline.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retriesStatus</code><br/>
+<em>
+<a href="#tekton.dev/v1beta1.CustomRunStatus">
+[]CustomRunStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RetriesStatus contains the history of CustomRunStatus, in case of a retry.</p>
 </td>
 </tr>
 <tr>

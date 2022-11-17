@@ -198,6 +198,7 @@ kind: CustomRun
 metadata:
   name: run
 spec:
+  retries: 3
   customRef:
     apiVersion: example.dev/v0
     kind: Example
@@ -227,6 +228,7 @@ status:
 			Name: "run",
 		},
 		Spec: v1beta1.CustomRunSpec{
+			Retries: 3,
 			CustomRef: &v1beta1.TaskRef{
 				APIVersion: "example.dev/v0",
 				Kind:       "Example",

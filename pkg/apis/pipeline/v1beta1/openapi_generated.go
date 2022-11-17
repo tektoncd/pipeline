@@ -803,6 +803,13 @@ func schema_pkg_apis_pipeline_v1beta1_CustomRunSpec(ref common.ReferenceCallback
 							Format:      "",
 						},
 					},
+					"retries": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Used for propagating retries count to custom tasks",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"serviceAccountName": {
 						SchemaProps: spec.SchemaProps{
 							Default: "",
