@@ -92,7 +92,13 @@ jobs:
         sleep 2
 
         echo "Waiting for the pipelinerun to complete..."
-        kubectl wait --timeout 3m --for=condition=Succeeded pipelineruns --all || kubectl get taskruns -o yaml
+        if ! kubectl wait --timeout 3m --for=condition=Succeeded pipelineruns --all ; then
+          kubectl get taskruns -oyaml
+          kubectl get pipelineruns -oyaml
+          echo "Pipelinerun failed to complete in time"
+          ./tkn pipelinerun logs demo.pipeline -a -n default
+          exit 1
+        fi
 
     - name: Collect diagnostics
       if: ${{ failure() }}
