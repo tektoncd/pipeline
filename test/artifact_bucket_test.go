@@ -147,9 +147,9 @@ metadata:
 spec:
   params:
   - name: Url
-	value: https://github.com/pivotal-nader-ziada/gohelloworld
+    value: https://github.com/pivotal-nader-ziada/gohelloworld
   - name: Revision
-	value: master
+    value: master
   type: git
 `, helloworldResourceName))
 	if _, err := c.V1alpha1PipelineResourceClient.Create(ctx, helloworldResource, metav1.CreateOptions{}); err != nil {
