@@ -19,6 +19,7 @@ package taskrun
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http/httptest"
@@ -5229,4 +5230,214 @@ status:
 
 		})
 	}
+}
+
+func TestReconcileRetry(t *testing.T) {
+	timedOutTaskRunWithRetries := parse.MustParseV1beta1TaskRun(t, `
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: tr-retries-timeout
+  namespace: default
+spec:
+  retries: 2
+  timeout: "10s"
+  taskSpec:
+    steps:
+    - image: "busybox"
+      args: ['-c', 'sleep 13']
+status:
+  conditions:
+  - message: Not all Steps in the Task have finished executing
+    reason: Running
+    status: Unknown
+    type: Succeeded
+  podName: tr-retries-timeout-pod
+  startTime: "1970-01-01T00:00:00Z"
+  steps:
+  - container: step-unnamed-0
+    name: unnamed-0
+    running:
+      startedAt: "1970-01-01T00:00:00Z"
+`)
+	expectedTimedOutTaskRunWithRetries := parse.MustParseV1beta1TaskRun(t, `
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: tr-retries-timeout
+  namespace: default
+spec:
+  retries: 2
+  timeout: "10s"
+  taskSpec:
+    steps:
+    - image: "busybox"
+      args: ['-c', 'sleep 13']
+status:
+  conditions:
+  - reason: CompletedWithRetries
+    status: Unknown
+    type: Succeeded
+  completionTime: "2022-01-01T00:00:00Z"
+  podName: ""
+  steps:
+  - container: step-unnamed-0
+    name: unnamed-0
+    terminated:
+      exitCode: 1
+      reason: "TaskRunTimeout"
+      startedAt: "1970-01-01T00:00:00Z"
+      finishedAt: "2022-01-01T00:00:00Z"
+  retriesStatus:
+  - conditions:
+    - reason: TaskRunTimeout
+      status: "False"
+      type: Succeeded
+      message: "TaskRun \"tr-retries-timeout\" failed to finish within \"10s\""
+    podName: tr-retries-timeout-pod
+    startTime: "1970-01-01T00:00:00Z"
+    completionTime: "2022-01-01T00:00:00Z"
+    steps:
+    - container: step-unnamed-0
+      name: unnamed-0
+      terminated:
+        exitCode: 1
+        reason: "TaskRunTimeout"
+        startedAt: "1970-01-01T00:00:00Z"
+        finishedAt: "2022-01-01T00:00:00Z"
+  `)
+
+	failedTaskRunWithRetries := parse.MustParseV1beta1TaskRun(t, `
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: tr-retries-failure
+  namespace: default
+spec:
+  retries: 2
+  taskSpec:
+    steps:
+    - image: "busybox"
+      args: ['-c', 'exit1']
+status:
+  conditions:
+  - message: Not all Steps in the Task have finished executing
+    reason: Running
+    status: Unknown
+    type: Succeeded
+  podName: tr-retries-failure-pod
+  startTime: "2021-12-31T23:59:00Z"
+  steps:
+  - container: step-unnamed-0
+    name: unnamed-0
+    terminated:
+      exitCode: 1
+      reason: "Error"
+      startedAt: "2021-12-31T23:59:00Z"
+      finishedAt: "2022-01-01T00:00:00Z"
+`)
+	expectedFailedTaskRunWithRetries := parse.MustParseV1beta1TaskRun(t, `
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: tr-retries-failure
+  namespace: default
+spec:
+  retries: 2
+  taskSpec:
+    steps:
+    - image: "busybox"
+      args: ['-c', 'exit1']
+status:
+  conditions:
+  - reason: CompletedWithRetries
+    status: Unknown
+    type: Succeeded
+  completionTime: "2022-01-01T00:00:00Z"
+  startTime: ""
+  podName: ""
+  steps:
+  - container: step-unnamed-0
+    name: unnamed-0
+    terminated:
+      exitCode: 1
+      reason: "Error"
+      startedAt: "2021-12-31T23:59:00Z"
+      finishedAt: "2022-01-01T00:00:00Z"
+  retriesStatus:
+  - conditions:
+    - reason: Failed
+      status: "False"
+      type: Succeeded
+    podName: tr-retries-failure-pod
+    startTime: "2021-12-31T23:59:00Z"
+    completionTime: "2022-01-01T00:00:00Z"
+    steps:
+    - container: step-unnamed-0
+      name: unnamed-0
+      terminated:
+        exitCode: 1
+        reason: "Failed"
+        startedAt: "2021-12-31T23:59:00Z"
+        finishedAt: "2022-01-01T00:00:00Z"
+  `)
+
+	for _, tc := range []struct {
+		name            string
+		taskRun         *v1beta1.TaskRun
+		expectedTaskRun *v1beta1.TaskRun
+	}{{
+		name:            "Timedout TaskRun",
+		taskRun:         timedOutTaskRunWithRetries,
+		expectedTaskRun: expectedTimedOutTaskRunWithRetries,
+	}, {
+		name:            "Failed TaskRun",
+		taskRun:         failedTaskRunWithRetries,
+		expectedTaskRun: expectedFailedTaskRunWithRetries,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: []*v1beta1.TaskRun{tc.taskRun},
+			}
+			d.ConfigMaps = []*corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
+					Data: map[string]string{
+						"default-cloud-events-sink": "http://synk:8080",
+					},
+				},
+			}
+
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			createServiceAccount(t, testAssets, "default", tc.taskRun.Namespace)
+
+			// Use the test assets to create a *Reconciler directly for focused testing.
+			r := &Reconciler{
+				KubeClientSet:     testAssets.Clients.Kube,
+				PipelineClientSet: testAssets.Clients.Pipeline,
+				Clock:             testClock,
+				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
+				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
+				cloudEventClient:  testAssets.Clients.CloudEvents,
+				metrics:           nil, // Not used
+				entrypointCache:   nil, // Not used
+				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+			}
+
+			r.ReconcileKind(testAssets.Ctx, tc.taskRun)
+
+			ignoreAnnotations := cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Annotations")
+
+			if diff := cmp.Diff(tc.taskRun, expectedTimedOutTaskRunWithRetries, ignoreLastTransitionTime, ignoreAnnotations); diff != "" {
+				t.Error(diff)
+			}
+		})
+	}
+}
+
+func prettyPrint(i interface{}) string {
+	s, _ := json.MarshalIndent(i, "", "  ")
+	return string(s)
 }

@@ -40,6 +40,8 @@ const (
 	EventReasonStarted = "Started"
 	// EventReasonError is the reason set for events related to TaskRuns / PipelineRuns reconcile errors
 	EventReasonError = "Error"
+	// EventReasonRetry is the reason set for events related to retrying a runtime object.
+	EventReasonRetry = "Retry"
 )
 
 // Emit emits events for object
@@ -121,5 +123,30 @@ func sendKubernetesEvents(c record.EventRecorder, beforeCondition *apis.Conditio
 func EmitError(c record.EventRecorder, err error, object runtime.Object) {
 	if err != nil {
 		c.Event(object, corev1.EventTypeWarning, EventReasonError, err.Error())
+	}
+}
+
+// EmitOnRetry always emits events for object no matter if there're condition changes.
+// Two types of events are supported, k8s and cloud events.
+//
+// k8s events are always sent if afterCondition is different from beforeCondition
+// Cloud events are always sent if enabled, i.e. if a sink is available
+func EmitOnRetry(ctx context.Context, object runtime.Object) {
+	recorder := controller.GetEventRecorder(ctx)
+	logger := logging.FromContext(ctx)
+	configs := config.FromContextOrDefaults(ctx)
+
+	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
+	if sendCloudEvents {
+		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
+	}
+
+	recorder.Event(object, corev1.EventTypeNormal, EventReasonRetry, "")
+
+	if sendCloudEvents {
+		err := cloudevent.SendCloudEventWithRetries(ctx, object)
+		if err != nil {
+			logger.Warnf("Failed to emit cloud events %v", err.Error())
+		}
 	}
 }

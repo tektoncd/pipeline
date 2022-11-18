@@ -862,26 +862,10 @@ func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.Resolved
 func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, params []v1beta1.Param, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, storageBasePath string) (*v1beta1.TaskRun, error) {
 	logger := logging.FromContext(ctx)
 
-	tr, _ := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
-	if tr != nil {
-		// retry should happen only when the taskrun has failed
-		if !tr.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
-			return tr, nil
-		}
-		// Don't modify the lister cache's copy.
-		tr = tr.DeepCopy()
-		// is a retry
-		addRetryHistory(tr)
-		clearStatus(tr)
-		tr.Status.MarkResourceOngoing("", "")
-		logger.Infof("Updating taskrun %s with cleared status and retry history (length: %d).", tr.GetName(), len(tr.Status.RetriesStatus))
-		return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).UpdateStatus(ctx, tr, metav1.UpdateOptions{})
-	}
-
 	rpt.PipelineTask = resources.ApplyPipelineTaskContexts(rpt.PipelineTask)
 	taskRunSpec := pr.GetTaskRunSpec(rpt.PipelineTask.Name)
 	params = append(params, rpt.PipelineTask.Params...)
-	tr = &v1beta1.TaskRun{
+	tr := &v1beta1.TaskRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            taskRunName,
 			Namespace:       pr.Namespace,
@@ -890,6 +874,7 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 			Annotations:     combineTaskRunAndTaskSpecAnnotations(pr, rpt.PipelineTask),
 		},
 		Spec: v1beta1.TaskRunSpec{
+			Retries:            rpt.PipelineTask.Retries,
 			Params:             params,
 			ServiceAccountName: taskRunSpec.TaskServiceAccountName,
 			PodTemplate:        taskRunSpec.TaskPodTemplate,
@@ -1102,18 +1087,6 @@ func combinedSubPath(workspaceSubPath string, pipelineTaskSubPath string) string
 		return workspaceSubPath
 	}
 	return filepath.Join(workspaceSubPath, pipelineTaskSubPath)
-}
-
-func addRetryHistory(tr *v1beta1.TaskRun) {
-	newStatus := *tr.Status.DeepCopy()
-	newStatus.RetriesStatus = nil
-	tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, newStatus)
-}
-
-func clearStatus(tr *v1beta1.TaskRun) {
-	tr.Status.StartTime = nil
-	tr.Status.CompletionTime = nil
-	tr.Status.PodName = ""
 }
 
 func getTaskrunAnnotations(pr *v1beta1.PipelineRun) map[string]string {

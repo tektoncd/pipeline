@@ -7889,6 +7889,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this task run should be retried in case of task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -12419,6 +12431,12 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.TaskRunConditionType">TaskRunConditionType
+(<code>string</code> alias)</h3>
+<div>
+<p>TaskRunConditionType is an enum used to store TaskRun custom conditions
+conditions such as one used in spire results verification</p>
+</div>
 <h3 id="tekton.dev/v1beta1.TaskRunDebug">TaskRunDebug
 </h3>
 <p>
@@ -12786,6 +12804,18 @@ TaskRunSpecStatusMessage
 <td>
 <em>(Optional)</em>
 <p>Status message for cancellation.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this task run should be retried in case of task failure.</p>
 </td>
 </tr>
 <tr>

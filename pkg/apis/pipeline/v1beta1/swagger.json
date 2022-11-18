@@ -2788,6 +2788,11 @@
         "resources": {
           "$ref": "#/definitions/v1beta1.TaskRunResources"
         },
+        "retries": {
+          "description": "Retries represents how many times this task run should be retried in case of task failure.",
+          "type": "integer",
+          "format": "int32"
+        },
         "serviceAccountName": {
           "type": "string",
           "default": ""

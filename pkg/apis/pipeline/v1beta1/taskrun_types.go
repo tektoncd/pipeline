@@ -56,6 +56,9 @@ type TaskRunSpec struct {
 	// Status message for cancellation.
 	// +optional
 	StatusMessage TaskRunSpecStatusMessage `json:"statusMessage,omitempty"`
+	// Retries represents how many times this task run should be retried in case of task failure.
+	// +optional
+	Retries int `json:"retries,omitempty"`
 	// Time after which the build times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
@@ -469,6 +472,15 @@ func (tr *TaskRun) IsTaskRunResultVerified() bool {
 // IsTaskRunResultDone returns true if the TaskRun's results are available for verification
 func (tr *TaskRun) IsTaskRunResultDone() bool {
 	return !tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsUnknown()
+}
+
+// IsRetriable returns true if the TaskRun's Retries is not exhausted.
+func (tr *TaskRun) IsRetriable() bool {
+	retriesDone := len(tr.Status.RetriesStatus)
+	if retriesDone < tr.Spec.Retries {
+		return true
+	}
+	return false
 }
 
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout

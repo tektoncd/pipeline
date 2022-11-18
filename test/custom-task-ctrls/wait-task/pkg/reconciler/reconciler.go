@@ -22,14 +22,19 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/clock"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	kreconciler "knative.dev/pkg/reconciler"
 )
 
-const WaitTaskCancelledByRunTimeoutMsg string = "Wait Task cancelled as it times out."
+const (
+	WaitTaskCancelledMsg          string = "Wait Task cancelled."
+	WaitTaskFailedOnRunTimeoutMsg string = "Wait Task failed as it times out."
+)
 
 // Reconciler implements controller.Reconciler for Configuration resources.
 type Reconciler struct {
@@ -80,7 +85,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 		r.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
 		var msg string = fmt.Sprint(r.Spec.StatusMessage)
 		if msg == "" {
-			msg = "The Wait Task is cancelled"
+			msg = WaitTaskCancelledMsg
 		}
 		r.Status.MarkRunFailed("Cancelled", msg)
 		return nil
@@ -91,6 +96,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 		r.Status.InitializeConditions()
 		r.Status.StartTime = &metav1.Time{Time: c.Clock.Now()}
 		r.Status.MarkRunRunning("Running", "Waiting for duration to elapse")
+		controller.NewRequeueImmediately()
 	}
 
 	duration, err := time.ParseDuration(expr.Value.StringVal)
@@ -125,15 +131,22 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 	// Custom Task timed out
 	if r.Status.StartTime != nil && elapsed > timeout {
 		logger.Infof("The Custom Task Run %v timed out", r.GetName())
-		r.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
-		r.Status.MarkRunFailed("TimedOut", WaitTaskCancelledByRunTimeoutMsg)
 
 		// Retry if the current RetriesStatus hasn't reached the retries limit
 		if r.Spec.Retries > len(r.Status.RetriesStatus) {
 			logger.Infof("Run timed out, retrying... %#v", r.Status)
+
+			addRetryHistory(r, apis.Condition{
+				Type:   apis.ConditionSucceeded,
+				Status: v1.ConditionFalse,
+				Reason: "TimedOut",
+			})
 			retryRun(r)
 			return controller.NewRequeueImmediately()
 		}
+
+		r.Status.CompletionTime = &metav1.Time{Time: c.Clock.Now()}
+		r.Status.MarkRunFailed("TimedOut", WaitTaskFailedOnRunTimeoutMsg)
 
 		return nil
 	}
@@ -142,15 +155,18 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, r *v1alpha1.Run) kreconc
 	return nil
 }
 
-func retryRun(run *v1alpha1.Run) {
-	// Add retry history
-	newStatus := *run.Status.DeepCopy()
+func addRetryHistory(r *v1alpha1.Run, c apis.Condition) {
+	newStatus := *r.Status.DeepCopy()
 	newStatus.RetriesStatus = nil
-	run.Status.RetriesStatus = append(run.Status.RetriesStatus, newStatus)
 
+	condSet := r.GetConditionSet()
+	condSet.Manage(&newStatus).SetCondition(c)
+
+	r.Status.RetriesStatus = append(r.Status.RetriesStatus, newStatus)
+}
+
+func retryRun(run *v1alpha1.Run) {
 	// Clear status
 	run.Status.StartTime = nil
 	run.Status.CompletionTime = nil
-
-	run.Status.MarkRunRunning("", "")
 }

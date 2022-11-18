@@ -316,47 +316,6 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 			}
 		}
 	}
-	tasks = append(tasks, state.getRetryableTasks(candidateTasks)...)
-	return tasks
-}
-
-// getRetryableTasks returns a list of pipelinetasks which should be executed next when the pipelinerun is stopping,
-// i.e. a list of failed pipelinetasks from candidateTasks which haven't exhausted their retries. Note that if a
-// pipelinetask is cancelled, the retries are not exhausted - they are not retryable.
-func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*ResolvedPipelineTask {
-	var tasks []*ResolvedPipelineTask
-	for _, t := range state {
-		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
-			var status *apis.Condition
-			switch {
-			case t.TaskRun != nil:
-				status = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
-			case len(t.TaskRuns) != 0:
-				isDone := true
-				for _, taskRun := range t.TaskRuns {
-					isDone = isDone && taskRun.IsDone()
-					c := taskRun.Status.GetCondition(apis.ConditionSucceeded)
-					if c.IsFalse() {
-						status = c
-					}
-				}
-			case t.Run != nil:
-				status = t.Run.Status.GetCondition(apis.ConditionSucceeded)
-			case len(t.Runs) != 0:
-				isDone := true
-				for _, run := range t.Runs {
-					isDone = isDone && run.IsDone()
-					c := run.Status.GetCondition(apis.ConditionSucceeded)
-					if c.IsFalse() {
-						status = c
-					}
-				}
-			}
-			if status.IsFalse() && !t.isCancelled() && t.hasRemainingRetries() {
-				tasks = append(tasks, t)
-			}
-		}
-	}
 	return tasks
 }
 
@@ -416,10 +375,6 @@ func (facts *PipelineRunFacts) DAGExecutionQueue() (PipelineRunState, error) {
 	}
 	if !facts.IsStopping() && !facts.IsGracefullyStopped() {
 		tasks = facts.State.getNextTasks(candidateTasks)
-	} else {
-		// when pipeline run is stopping normally or gracefully, do not schedule any new tasks and only
-		// wait for all running tasks to complete (including exhausting retries) and report their status
-		tasks = facts.State.getRetryableTasks(candidateTasks)
 	}
 	return tasks, nil
 }

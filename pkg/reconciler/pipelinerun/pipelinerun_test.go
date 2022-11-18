@@ -494,6 +494,7 @@ spec:
     value: test-pipeline
   - name: contextRetriesParam
     value: "5"
+  retries: 5
   resources:
     inputs:
     - name: workspace
@@ -3343,19 +3344,35 @@ func TestReconcileWithTimeoutAndRetry(t *testing.T) {
 	for _, tc := range []struct {
 		name               string
 		retries            int
+		retriesStatus      string
 		conditionSucceeded corev1.ConditionStatus
 		wantEvents         []string
 	}{{
-		name:               "One try has to be done",
-		retries:            1,
+		name:    "One try has to be done",
+		retries: 1,
+		retriesStatus: `
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
+`,
 		conditionSucceeded: corev1.ConditionFalse,
 		wantEvents: []string{
 			"Warning Failed PipelineRun \"test-pipeline-retry-run-with-timeout\" failed to finish within",
 		},
 	}, {
-		name:               "No more retries are needed",
-		retries:            2,
-		conditionSucceeded: corev1.ConditionUnknown,
+		name:    "No more retries are needed",
+		retries: 2,
+		retriesStatus: `
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
+  - conditions:
+    - status: "False"
+      type: Succeeded
+`,
+		conditionSucceeded: corev1.ConditionFalse,
 		wantEvents: []string{
 			"Warning Failed PipelineRun \"test-pipeline-retry-run-with-timeout\" failed to finish within",
 		},
@@ -3397,11 +3414,7 @@ status:
   - status: "False"
     type: Succeeded
   podName: my-pod-name
-  retriesStatus:
-  - conditions:
-    - status: "False"
-      type: Succeeded
-`)}
+`+tc.retriesStatus)}
 
 			prtrs := &v1beta1.PipelineRunTaskRunStatus{
 				PipelineTaskName: "hello-world-1",
@@ -3422,7 +3435,7 @@ status:
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-retry-run-with-timeout", []string{}, false)
 
 			if len(reconciledRun.Status.TaskRuns["hello-world-1"].Status.RetriesStatus) != tc.retries {
-				t.Fatalf(" %d retries expected but got %d ", tc.retries, len(reconciledRun.Status.TaskRuns["hello-world-1"].Status.RetriesStatus))
+				t.Fatalf("%d retries expected but got %d ", tc.retries, len(reconciledRun.Status.TaskRuns["hello-world-1"].Status.RetriesStatus))
 			}
 
 			if status := reconciledRun.Status.TaskRuns["hello-world-1"].Status.GetCondition(apis.ConditionSucceeded).Status; status != tc.conditionSucceeded {
@@ -9464,6 +9477,7 @@ spec:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: linux
@@ -9478,12 +9492,17 @@ status:
   conditions:
   - type: Succeeded
     status: "False"
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
 `),
 			mustParseTaskRunWithObjectMeta(t,
 				taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: mac
@@ -9598,6 +9617,7 @@ status:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: linux
@@ -9611,7 +9631,7 @@ spec:
 status:
   conditions:
   - type: Succeeded
-    status: "Unknown"
+    status: "False"
   retriesStatus:
   - conditions:
     - status: "False"
@@ -9622,6 +9642,7 @@ status:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: mac
@@ -9653,13 +9674,18 @@ spec:
     value: chrome
   resources: {}
   serviceAccountName: test-sa
+  retries: 1
   taskRef:
     name: mytask
   timeout: 1h0m0s
 status:
   conditions:
   - type: Succeeded
-    status: "False"
+    status: "Unknown"
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
 `),
 			mustParseTaskRunWithObjectMeta(t,
 				taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
@@ -9673,13 +9699,18 @@ spec:
     value: chrome
   resources: {}
   serviceAccountName: test-sa
+  retries: 1
   taskRef:
     name: mytask
   timeout: 1h0m0s
 status:
   conditions:
   - type: Succeeded
-    status: "False"
+    status: "Unknown"
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
 `),
 		},
 		prs: []*v1beta1.PipelineRun{
@@ -9787,6 +9818,7 @@ spec:
     value: chrome
   resources: {}
   serviceAccountName: test-sa
+  retries: 1
   taskRef:
     name: mytask
   timeout: 1h0m0s
@@ -9811,6 +9843,7 @@ spec:
     value: chrome
   resources: {}
   serviceAccountName: test-sa
+  retries: 1
   taskRef:
     name: mytask
   timeout: 1h0m0s

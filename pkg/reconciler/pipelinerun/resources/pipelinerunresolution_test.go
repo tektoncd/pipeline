@@ -466,22 +466,6 @@ var finalScheduledState = PipelineRunState{{
 	},
 }}
 
-var retryableFinalState = PipelineRunState{{
-	PipelineTask: &pts[0],
-	TaskRunName:  "pipelinerun-mytask1",
-	TaskRun:      makeSucceeded(trs[0]),
-	ResolvedTaskResources: &resources.ResolvedTaskResources{
-		TaskSpec: &task.Spec,
-	},
-}, {
-	PipelineTask: &pts[3],
-	TaskRunName:  "pipelinerun-mytask4",
-	TaskRun:      makeFailed(trs[2]),
-	ResolvedTaskResources: &resources.ResolvedTaskResources{
-		TaskSpec: &task.Spec,
-	},
-}}
-
 var allFinishedState = PipelineRunState{{
 	PipelineTask: &pts[0],
 	TaskRunName:  "pipelinerun-mytask1",
@@ -1295,22 +1279,6 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: true,
 	}, {
-		name: "taskrun failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
-			TaskRun:      makeFailed(trs[0]),
-		},
-		want: false,
-	}, {
-
-		name: "run failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
-			CustomTask:   true,
-			Run:          makeRunFailed(runs[0]),
-		},
-		want: false,
-	}, {
 		name: "taskrun failed: no retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -1494,36 +1462,6 @@ func TestIsFailure(t *testing.T) {
 			CustomTask:   true,
 			PipelineTask: matrixedPipelineTask,
 			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), makeRunStarted(runs[1])},
-		},
-		want: false,
-	}, {
-		name: "matrixed taskruns failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
-		},
-		want: false,
-	}, {
-		name: "matrixed runs failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			CustomTask:   true,
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), makeRunFailed(runs[1])},
-		},
-		want: false,
-	}, {
-		name: "matrixed taskruns failed: one taskrun with retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), withRetries(makeFailed(trs[1]))},
-		},
-		want: false,
-	}, {
-		name: "matrixed runs failed: one run with retries remaining",
-		rpt: ResolvedPipelineTask{
-			CustomTask:   true,
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), withRunRetries(makeRunFailed(runs[1]))},
 		},
 		want: false,
 	}, {
@@ -3946,22 +3884,6 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
-		name: "taskrun failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
-			TaskRun:      makeFailed(trs[0]),
-		},
-		want: false,
-	}, {
-
-		name: "run failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
-			CustomTask:   true,
-			Run:          makeRunFailed(runs[0]),
-		},
-		want: false,
-	}, {
 		name: "taskrun failed: no retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -4138,36 +4060,6 @@ func TestIsSuccessful(t *testing.T) {
 			CustomTask:   true,
 			PipelineTask: matrixedPipelineTask,
 			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), makeRunStarted(runs[1])},
-		},
-		want: false,
-	}, {
-		name: "matrixed taskruns failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
-		},
-		want: false,
-	}, {
-		name: "matrixed runs failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			CustomTask:   true,
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), makeRunFailed(runs[1])},
-		},
-		want: false,
-	}, {
-		name: "matrixed taskruns failed: one taskrun with retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), withRetries(makeFailed(trs[1]))},
-		},
-		want: false,
-	}, {
-		name: "matrixed runs failed: one run with retries remaining",
-		rpt: ResolvedPipelineTask{
-			CustomTask:   true,
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), withRunRetries(makeRunFailed(runs[1]))},
 		},
 		want: false,
 	}, {
@@ -4382,22 +4274,6 @@ func TestIsRunning(t *testing.T) {
 		},
 		want: false,
 	}, {
-		name: "taskrun failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
-			TaskRun:      makeFailed(trs[0]),
-		},
-		want: true,
-	}, {
-
-		name: "run failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
-			CustomTask:   true,
-			Run:          makeRunFailed(runs[0]),
-		},
-		want: true,
-	}, {
 		name: "taskrun failed: no retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -4562,51 +4438,6 @@ func TestIsRunning(t *testing.T) {
 		},
 		want: true,
 	}, {
-		name: "matrixed taskruns failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), makeFailed(trs[1])},
-		},
-		want: true,
-	}, {
-		name: "matrixed runs failed: retries remaining",
-		rpt: ResolvedPipelineTask{
-			CustomTask:   true,
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), makeRunFailed(runs[1])},
-		},
-		want: true,
-	}, {
-		name: "matrixed taskruns failed: one taskrun with retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			TaskRuns:     []*v1beta1.TaskRun{makeFailed(trs[0]), withRetries(makeFailed(trs[1]))},
-		},
-		want: true,
-	}, {
-		name: "matrixed runs failed: one run with retries remaining",
-		rpt: ResolvedPipelineTask{
-			CustomTask:   true,
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			Runs:         []*v1alpha1.Run{makeRunFailed(runs[0]), withRunRetries(makeRunFailed(runs[1]))},
-		},
-		want: true,
-	}, {
-		name: "matrixed taskruns failed: no retries remaining",
-		rpt: ResolvedPipelineTask{
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			TaskRuns:     []*v1beta1.TaskRun{withRetries(makeFailed(trs[0])), withRetries(makeFailed(trs[1]))},
-		},
-		want: false,
-	}, {
-		name: "matrixed runs failed: no retries remaining",
-		rpt: ResolvedPipelineTask{
-			CustomTask:   true,
-			PipelineTask: withPipelineTaskRetries(*matrixedPipelineTask, 1),
-			Runs:         []*v1alpha1.Run{withRunRetries(makeRunFailed(runs[0])), withRunRetries(makeRunFailed(runs[1]))},
-		},
-		want: false,
-	}, {
 		name: "matrixed taskruns cancelled",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: matrixedPipelineTask,
@@ -4731,7 +4562,6 @@ func TestIsRunning(t *testing.T) {
 			if got := tc.rpt.IsRunning(); got != tc.want {
 				t.Errorf("expected IsRunning: %t but got %t", tc.want, got)
 			}
-
 		})
 	}
 }
