@@ -46,12 +46,15 @@ set +o pipefail
 header "Install the previous release of Tekton pipeline $PREVIOUS_PIPELINE_VERSION"
 install_pipeline_crd_version $PREVIOUS_PIPELINE_VERSION
 
+failed=0
+# The integration test for the older version to prevent regression on existing changes.
+go_test_e2e -timeout=20m ./test || failed=1
+
 # Upgrade to the current release.
 header "Upgrade to the current release of Tekton pipeline"
 install_pipeline_crd
 
 # Run the integration tests.
-failed=0
 go_test_e2e -timeout=20m ./test || failed=1
 
 # Run the post-integration tests.
