@@ -2,7 +2,7 @@
 
 ## Getting Started Tutorial
 
-For new users getting started with Tekton Pipeilne remote resolution, check out the
+For new users getting started with Tekton Pipeline remote resolution, check out the
 [resolution-getting-started.md](./resolution-getting-started.md) tutorial.
 
 ## Built-in Resolvers
