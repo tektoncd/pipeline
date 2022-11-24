@@ -25,12 +25,16 @@ import (
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	corev1resources "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
+	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 func TestPipelineRunConversionBadType(t *testing.T) {
@@ -143,6 +147,76 @@ func TestPipelineRunConversion(t *testing.T) {
 					},
 				},
 			},
+			Status: v1beta1.PipelineRunStatus{
+				Status: duckv1beta1.Status{
+					Conditions: duckv1beta1.Conditions{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime:      &metav1.Time{Time: time.Now()},
+					CompletionTime: &metav1.Time{Time: time.Now().Add(1 * time.Minute)},
+					PipelineResults: []v1beta1.PipelineRunResult{{
+						Name: "pipeline-result-1",
+						Value: *v1beta1.NewObject(map[string]string{
+							"pkey1": "val1",
+							"pkey2": "rae",
+						})}, {
+						Name: "pipeline-result-2",
+						Value: *v1beta1.NewObject(map[string]string{
+							"pkey1": "val2",
+							"pkey2": "rae2",
+						}),
+					}},
+					PipelineSpec: &v1beta1.PipelineSpec{
+						Tasks: []v1beta1.PipelineTask{{
+							Name: "mytask",
+							TaskRef: &v1beta1.TaskRef{
+								Name: "mytask",
+							},
+						}},
+					},
+					SkippedTasks: []v1beta1.SkippedTask{
+						{
+							Name:   "skipped-1",
+							Reason: v1beta1.WhenExpressionsSkip,
+							WhenExpressions: []v1beta1.WhenExpression{{
+								Input:    "foo",
+								Operator: "notin",
+								Values:   []string{"foo", "bar"},
+							}},
+						}, {
+							Name:   "skipped-2",
+							Reason: v1beta1.MissingResultsSkip,
+						},
+					},
+					ChildReferences: []v1beta1.ChildStatusReference{
+						{
+							TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+							Name:             "t1",
+							PipelineTaskName: "task-1",
+							WhenExpressions: []v1beta1.WhenExpression{{
+								Input:    "foo",
+								Operator: "notin",
+								Values:   []string{"foo", "bar"},
+							}},
+						},
+						{
+							TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+							Name:             "t2",
+							PipelineTaskName: "task-2",
+						},
+					},
+					FinallyStartTime: &metav1.Time{Time: time.Now()},
+					Provenance: &v1beta1.Provenance{
+						ConfigSource: &v1beta1.ConfigSource{
+							URI:    "test-uri",
+							Digest: map[string]string{"sha256": "digest"},
+						},
+					},
+				},
+			},
 		},
 	}}
 	for _, test := range tests {
@@ -169,6 +243,68 @@ func TestPipelineRunConversion(t *testing.T) {
 }
 
 func TestPipelineRunConversionFromDeprecated(t *testing.T) {
+	taskRuns := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+	runs := make(map[string]*v1beta1.PipelineRunRunStatus)
+	trs0 := &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "ptn",
+		Status: &v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName:        "pod-name",
+				StartTime:      &metav1.Time{Time: time.Now()},
+				CompletionTime: &metav1.Time{Time: time.Now().Add(1 * time.Minute)},
+			},
+		},
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "default-value",
+			Operator: selection.In,
+			Values:   []string{"val"},
+		}},
+	}
+	trs1 := &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "ptn-1",
+		Status: &v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName:        "pod-name-1",
+				StartTime:      &metav1.Time{Time: time.Now()},
+				CompletionTime: &metav1.Time{Time: time.Now().Add(1 * time.Minute)},
+			},
+		},
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "default-value-1",
+			Operator: selection.In,
+			Values:   []string{"val-1", "val-2"},
+		}},
+	}
+	rrs0 := &v1beta1.PipelineRunRunStatus{
+		PipelineTaskName: "ptn-0",
+		Status: &runv1alpha1.RunStatus{
+			RunStatusFields: runv1alpha1.RunStatusFields{
+				StartTime: &metav1.Time{Time: now},
+			},
+		},
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "default-value-0",
+			Operator: selection.In,
+			Values:   []string{"val-0", "val-1"},
+		}},
+	}
+	rrs1 := &v1beta1.PipelineRunRunStatus{
+		PipelineTaskName: "ptn-1",
+		Status: &runv1alpha1.RunStatus{
+			RunStatusFields: runv1alpha1.RunStatusFields{
+				StartTime: &metav1.Time{Time: now},
+			},
+		},
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "default-value-1",
+			Operator: selection.In,
+			Values:   []string{"val-0", "val-1"},
+		}},
+	}
+	taskRuns["tr-0"] = trs0
+	taskRuns["tr-1"] = trs1
+	runs["r-0"] = rrs0
+	runs["r-1"] = rrs1
 	tests := []struct {
 		name string
 		in   *v1beta1.PipelineRun
@@ -260,6 +396,105 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 							{Name: "kind", Value: v1beta1.ParamValue{StringVal: "Task", Type: "string"}},
 						},
 					},
+				},
+			},
+		},
+	}, {
+		name: "taskRuns",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					TaskRuns: taskRuns,
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					ChildReferences: []v1beta1.ChildStatusReference{{
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						Name:             "tr-0",
+						PipelineTaskName: "ptn",
+						WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
+					}, {
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						Name:             "tr-1",
+						PipelineTaskName: "ptn-1",
+						WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value-1", Operator: "in", Values: []string{"val-1", "val-2"}}},
+					}},
+				},
+			},
+		},
+	}, {
+		name: "runs",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test-runs",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					Runs:     runs,
+					TaskRuns: taskRuns,
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test-runs",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					ChildReferences: []v1beta1.ChildStatusReference{{
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						Name:             "tr-0",
+						PipelineTaskName: "ptn",
+						WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
+					}, {
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+						Name:             "tr-1",
+						PipelineTaskName: "ptn-1",
+						WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value-1", Operator: "in", Values: []string{"val-1", "val-2"}}},
+					}, {
+						TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+						Name:             "r-0",
+						PipelineTaskName: "ptn-0",
+						WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
+					}, {
+						TypeMeta:         runtime.TypeMeta{Kind: "Run"},
+						Name:             "r-1",
+						PipelineTaskName: "ptn-1",
+						WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value-1", Operator: "in", Values: []string{"val-0", "val-1"}}},
+					}},
 				},
 			},
 		},
