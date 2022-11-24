@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -250,11 +251,15 @@ func (prs *PipelineRunStatus) ConvertTo(ctx context.Context, sink *v1.PipelineRu
 		prs.Provenance.convertTo(ctx, &new)
 		sink.Provenance = &new
 	}
-	if prs.TaskRuns != nil {
-		sink.ChildReferences = append(sink.ChildReferences, convertTaskRunsToChildReference(ctx, prs.TaskRuns)...)
-	}
-	if prs.Runs != nil {
-		sink.ChildReferences = append(sink.ChildReferences, convertRunsToChildReference(ctx, prs.Runs)...)
+	// If embedded-status is set to "both", both ChildReferences and TaskRuns/Runs
+	// will be populated. In this case, use the value from ChildReferences.
+	if sink.ChildReferences == nil {
+		if prs.TaskRuns != nil {
+			sink.ChildReferences = append(sink.ChildReferences, convertTaskRunsToChildReference(ctx, prs.TaskRuns)...)
+		}
+		if prs.Runs != nil {
+			sink.ChildReferences = append(sink.ChildReferences, convertRunsToChildReference(ctx, prs.Runs)...)
+		}
 	}
 	return nil
 }
@@ -283,6 +288,10 @@ func (prs *PipelineRunStatus) ConvertFrom(ctx context.Context, source *v1.Pipeli
 		new := SkippedTask{}
 		new.convertFrom(ctx, st)
 		prs.SkippedTasks = append(prs.SkippedTasks, new)
+	}
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EmbeddedStatus == config.FullEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus {
+		return fmt.Errorf("PipelineRun .status.taskRuns and .status.runs fields do not exist in v1, and cannot be populated by conversion from a v1 PipelineRun to a v1beta1 PipelineRun when the 'embedded-status' feature flag is not set to 'minimal'")
 	}
 	prs.ChildReferences = nil
 	for _, cr := range source.ChildReferences {
@@ -378,11 +387,14 @@ func deserializePipelineRunResources(meta *metav1.ObjectMeta, spec *PipelineRunS
 	return nil
 }
 
+// convertTaskRunsToChildReference handles the deprecated TaskRuns field PipelineRunTaskRunStatus.
+// The apiVersion is set to 'v1beta1' because we treat all TaskRuns within a PipelineRun
+// as having the same API version as the PipelineRun.
 func convertTaskRunsToChildReference(ctx context.Context, taskRuns map[string]*PipelineRunTaskRunStatus) []v1.ChildStatusReference {
 	csrs := []v1.ChildStatusReference{}
 	for name, status := range taskRuns {
 		csr := v1.ChildStatusReference{}
-		// TODO: is apiVersion required here? and is it set to be `v1beta1`?
+		csr.TypeMeta.APIVersion = "v1beta1"
 		csr.TypeMeta.Kind = "TaskRun"
 		csr.Name = name
 		csr.PipelineTaskName = status.PipelineTaskName
@@ -397,11 +409,13 @@ func convertTaskRunsToChildReference(ctx context.Context, taskRuns map[string]*P
 	return csrs
 }
 
+// convertRunsToChildReference handles the deprecated Runs field PipelineRunRunStatus.
+// The apiViersion is set to 'v1alpha1' as Run is only in `v1alpha1`.
 func convertRunsToChildReference(ctx context.Context, runs map[string]*PipelineRunRunStatus) []v1.ChildStatusReference {
 	csrs := []v1.ChildStatusReference{}
 	for name, status := range runs {
 		csr := v1.ChildStatusReference{}
-		// TODO: is apiVersion required here? and is it set to be `v1alpha1`?
+		csr.TypeMeta.APIVersion = "v1alpha1"
 		csr.TypeMeta.Kind = "Run"
 		csr.Name = name
 		csr.PipelineTaskName = status.PipelineTaskName

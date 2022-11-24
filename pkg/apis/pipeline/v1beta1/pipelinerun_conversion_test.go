@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -34,7 +35,54 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
+<<<<<<< HEAD
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+=======
+	duckv1 "knative.dev/pkg/apis/duck/v1"
+)
+
+var (
+	childRefTaskRuns = []v1beta1.ChildStatusReference{{
+		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "v1beta1"},
+		Name:             "tr-0",
+		PipelineTaskName: "ptn",
+		WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
+	}}
+	childRefRuns = []v1beta1.ChildStatusReference{{
+		TypeMeta:         runtime.TypeMeta{Kind: "Run", APIVersion: "v1alpha1"},
+		Name:             "r-0",
+		PipelineTaskName: "ptn-0",
+		WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
+	}}
+	trs = &v1beta1.PipelineRunTaskRunStatus{
+		PipelineTaskName: "ptn",
+		Status: &v1beta1.TaskRunStatus{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName:        "pod-name",
+				StartTime:      &metav1.Time{Time: time.Now()},
+				CompletionTime: &metav1.Time{Time: time.Now().Add(1 * time.Minute)},
+			},
+		},
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "default-value",
+			Operator: selection.In,
+			Values:   []string{"val"},
+		}},
+	}
+	rrs = &v1beta1.PipelineRunRunStatus{
+		PipelineTaskName: "ptn-0",
+		Status: &runv1alpha1.RunStatus{
+			RunStatusFields: runv1alpha1.RunStatusFields{
+				StartTime: &metav1.Time{Time: now},
+			},
+		},
+		WhenExpressions: v1beta1.WhenExpressions{{
+			Input:    "default-value-0",
+			Operator: selection.In,
+			Values:   []string{"val-0", "val-1"},
+		}},
+	}
+>>>>>>> 85696a326 (Add conversion for PipelineRun Status)
 )
 
 func TestPipelineRunConversionBadType(t *testing.T) {
@@ -148,11 +196,22 @@ func TestPipelineRunConversion(t *testing.T) {
 				},
 			},
 			Status: v1beta1.PipelineRunStatus{
+<<<<<<< HEAD
 				Status: duckv1beta1.Status{
 					Conditions: duckv1beta1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
+=======
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
+						Type:    apis.ConditionSucceeded,
+						Status:  corev1.ConditionTrue,
+						Reason:  "Completed",
+						Message: "All tasks finished running",
+					}},
+					ObservedGeneration: 1,
+>>>>>>> 85696a326 (Add conversion for PipelineRun Status)
 				},
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 					StartTime:      &metav1.Time{Time: time.Now()},
@@ -224,13 +283,14 @@ func TestPipelineRunConversion(t *testing.T) {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+				ctx := withMinimalEmbeddedStatus(context.Background())
+				if err := test.in.ConvertTo(ctx, ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
 					return
 				}
 				t.Logf("ConvertTo() = %#v", ver)
 				got := &v1beta1.PipelineRun{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+				if err := got.ConvertFrom(ctx, ver); err != nil {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
@@ -504,12 +564,13 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				if err := test.in.ConvertTo(context.Background(), ver); err != nil {
+				ctx := withMinimalEmbeddedStatus(context.Background())
+				if err := test.in.ConvertTo(ctx, ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
 				}
 				t.Logf("ConvertTo() = %#v", ver)
 				got := &v1beta1.PipelineRun{}
-				if err := got.ConvertFrom(context.Background(), ver); err != nil {
+				if err := got.ConvertFrom(ctx, ver); err != nil {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
@@ -519,4 +580,264 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestPipelineRunConversionMinimalEmbeddedStatus(t *testing.T) {
+	taskRuns := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
+	runs := make(map[string]*v1beta1.PipelineRunRunStatus)
+	taskRuns["tr-0"] = trs
+	runs["r-0"] = rrs
+
+	tests := []struct {
+		name string
+		in   *v1beta1.PipelineRun
+		want *v1beta1.PipelineRun
+	}{{
+		name: "taskRuns",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					TaskRuns: taskRuns,
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					ChildReferences: childRefTaskRuns,
+				},
+			},
+		},
+	}, {
+		name: "runs",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test-runs",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					Runs:     runs,
+					TaskRuns: taskRuns,
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test-runs",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					ChildReferences: append(childRefTaskRuns, childRefRuns...),
+				},
+			},
+		},
+	}, {
+		name: "runs and childReference",
+		in: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test-runs",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					Runs:            runs,
+					ChildReferences: childRefRuns,
+				},
+			},
+		},
+		want: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "test-runs",
+				},
+			},
+			Status: v1beta1.PipelineRunStatus{
+				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					ChildReferences: childRefRuns,
+				},
+			},
+		},
+	},
+		{
+			name: "taskruns, runs and childReference",
+			in: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "test-runs",
+					},
+				},
+				Status: v1beta1.PipelineRunStatus{
+					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+						Runs:            runs,
+						TaskRuns:        taskRuns,
+						ChildReferences: append(childRefRuns, childRefTaskRuns...),
+					},
+				},
+			},
+			want: &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Spec: v1beta1.PipelineRunSpec{
+					PipelineRef: &v1beta1.PipelineRef{
+						Name: "test-runs",
+					},
+				},
+				Status: v1beta1.PipelineRunStatus{
+					PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+						ChildReferences: append(childRefRuns, childRefTaskRuns...),
+					},
+				},
+			},
+		}}
+	for _, test := range tests {
+		versions := []apis.Convertible{&v1.PipelineRun{}}
+		for _, version := range versions {
+			t.Run(test.name, func(t *testing.T) {
+				ctx := withMinimalEmbeddedStatus(context.Background())
+				ver := version
+
+				if err := test.in.ConvertTo(ctx, ver); err != nil {
+					t.Errorf("ConvertTo() = %v", err)
+				}
+				t.Logf("ConvertTo() = %#v", ver)
+				got := &v1beta1.PipelineRun{}
+
+				if err := got.ConvertFrom(ctx, ver); err != nil {
+					t.Errorf("ConvertFrom() = %v", err)
+				}
+				t.Logf("ConvertFrom() = %#v", got)
+				if d := cmp.Diff(test.want, got); d != "" {
+					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
+				}
+			})
+		}
+	}
+}
+
+func TestPipelineRunConversionEmbeddedStatusError(t *testing.T) {
+	tests := []struct {
+		name           string
+		in             *v1.PipelineRun
+		embeddedStatus string
+		wantErr        bool
+	}{{
+		name: "v1 to v1beta1 with full embedded status invalid",
+		in: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "test",
+				},
+			},
+			Status: v1.PipelineRunStatus{
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
+					ChildReferences: []v1.ChildStatusReference{{
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "v1beta1"},
+						Name:             "tr-0",
+						PipelineTaskName: "ptn",
+						WhenExpressions:  []v1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
+					}},
+				},
+			},
+		},
+		embeddedStatus: config.FullEmbeddedStatus,
+		wantErr:        true,
+	}, {
+		name: "v1 to v1beta1 status with both embedded status invalid",
+		in: &v1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "bar",
+			},
+			Spec: v1.PipelineRunSpec{
+				PipelineRef: &v1.PipelineRef{
+					Name: "test",
+				},
+			},
+			Status: v1.PipelineRunStatus{
+				PipelineRunStatusFields: v1.PipelineRunStatusFields{
+					ChildReferences: []v1.ChildStatusReference{{
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "v1beta1"},
+						Name:             "tr-0",
+						PipelineTaskName: "ptn",
+						WhenExpressions:  []v1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
+					}},
+				},
+			},
+		},
+		embeddedStatus: config.BothEmbeddedStatus,
+		wantErr:        true,
+	}}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+				"embedded-status": test.embeddedStatus,
+			})
+			cfg := &config.Config{FeatureFlags: featureFlags}
+			ctx := config.ToContext(context.Background(), cfg)
+
+			v1beta1PipelineRun := &v1beta1.PipelineRun{}
+
+			err := v1beta1PipelineRun.ConvertFrom(ctx, test.in)
+			if err == nil && test.wantErr {
+				t.Errorf("expected error but received nil")
+			}
+		})
+	}
+}
+
+func withMinimalEmbeddedStatus(ctx context.Context) context.Context {
+	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
+		"embedded-status": config.MinimalEmbeddedStatus,
+	})
+	cfg := &config.Config{FeatureFlags: featureFlags}
+	return config.ToContext(context.Background(), cfg)
 }
