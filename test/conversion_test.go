@@ -759,6 +759,7 @@ func TestTaskRunCRDConversion(t *testing.T) {
 		t.Fatalf("Couldn't get expected Task for %s: %s", v1beta1TaskRunName, err)
 	}
 
+	// TODO: add status diff
 	if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterTaskRunStatus); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
