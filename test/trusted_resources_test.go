@@ -122,7 +122,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to succeed", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunSucceed(pr.Name), "PipelineRunSucceed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunSucceed(pr.Name), "PipelineRunSucceed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
 	}
 
@@ -205,7 +205,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunFailed(pr.Name), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pr.Name, timeout, PipelineRunFailed(pr.Name), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun to finish: %s", err)
 	}
 

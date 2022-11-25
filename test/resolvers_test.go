@@ -127,7 +127,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 
@@ -191,7 +191,7 @@ spec:
 		Chain(
 			FailedWithReason(pod.ReasonCouldntGetTask, prName),
 			FailedWithMessage("requested resource 'https://artifacthub.io/api/v1/packages/tekton-task/tekton-catalog-tasks/git-clone-this-does-not-exist/0.7.0' not found on hub", prName),
-		), "PipelineRunFailed"); err != nil {
+		), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}
 }
@@ -251,7 +251,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 }
@@ -356,7 +356,7 @@ spec:
 				Chain(
 					FailedWithReason(pod.ReasonCouldntGetTask, prName),
 					FailedWithMessage(expectedErr, prName),
-				), "PipelineRunFailed"); err != nil {
+				), "PipelineRunFailed", v1beta1Version); err != nil {
 				t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 			}
 		})
@@ -421,7 +421,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 }
@@ -463,7 +463,7 @@ spec:
 		Chain(
 			FailedWithReason(pipelinerun.ReasonCouldntGetPipeline, prName),
 			FailedWithMessage("pipelines.tekton.dev \"does-not-exist\" not found", prName),
-		), "PipelineRunFailed"); err != nil {
+		), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}
 }
@@ -525,7 +525,7 @@ spec:
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", trName, namespace)
-	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for TaskRun %s to finish: %s", trName, err)
 	}
 }
@@ -604,7 +604,7 @@ spec:
 	}
 
 	t.Logf("Waiting for gitea user setup TaskRun in namespace %s to succeed", namespace)
-	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSucceed"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, trName, TaskRunSucceed(trName), "TaskRunSucceed", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for gitea user setup TaskRun to finish: %s", err)
 	}
 

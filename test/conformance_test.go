@@ -128,7 +128,7 @@ spec:
 				t.Fatalf("Failed to create TaskRun `%s`: %s", tc.tr.Name, err)
 			}
 
-			if err := WaitForTaskRunState(ctx, c, tc.tr.Name, tc.fn(tc.tr.Name), "WaitTaskRunDone"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, tc.tr.Name, tc.fn(tc.tr.Name), "WaitTaskRunDone", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
 				return
 			}

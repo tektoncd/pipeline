@@ -78,7 +78,7 @@ func TestClusterResource(t *testing.T) {
 	}
 
 	// Verify status of TaskRun (wait for it)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunCompleted"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunCompleted", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", taskRunName, err)
 	}
 }

@@ -95,7 +95,7 @@ func TestPropagatedParams(t *testing.T) {
 			}
 
 			t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 			}
 			cl, _ := c.V1beta1PipelineRunClient.Get(ctx, prName, metav1.GetOptions{})

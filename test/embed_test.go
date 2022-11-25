@@ -62,7 +62,7 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", embedTaskRunName, namespace)
-	if err := WaitForTaskRunState(ctx, c, embedTaskRunName, TaskRunSucceed(embedTaskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, embedTaskRunName, TaskRunSucceed(embedTaskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", embedTaskRunName, err)
 	}
 

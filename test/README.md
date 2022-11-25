@@ -366,7 +366,7 @@ err = WaitForTaskRunState(c, hwTaskRunName, func(tr *v1alpha1.TaskRun) (bool, er
         return true, nil
     }
     return false, nil
-}, "TaskRunHasCondition")
+}, "TaskRunHasCondition", v1beta1Version)
 ```
 
 _[Metrics will be emitted](https://github.com/knative/pkg/tree/master/test#emit-metrics)

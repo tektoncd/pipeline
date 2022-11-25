@@ -73,7 +73,7 @@ spec:
 	}
 	t.Logf("Created TaskRun %q in namespace %q", tr.Name, namespace)
 	// Wait for the TaskRun to complete.
-	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, tr.Name, TaskRunSucceed(tr.Name), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 	}
 	tr, err = c.V1beta1TaskRunClient.Get(ctx, tr.Name, metav1.GetOptions{})

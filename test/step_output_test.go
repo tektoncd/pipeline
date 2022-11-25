@@ -88,7 +88,7 @@ func TestStepOutput(t *testing.T) {
 	}
 
 	t.Logf("Waiting for TaskRun %q to finish", taskRun.Name)
-	if err := WaitForTaskRunState(ctx, clients, taskRun.Name, Succeed(taskRun.Name), "TaskRunSucceed"); err != nil {
+	if err := WaitForTaskRunState(ctx, clients, taskRun.Name, Succeed(taskRun.Name), "TaskRunSucceed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun %q to finish: %v", taskRun.Name, err)
 	}
 
@@ -162,7 +162,7 @@ func TestStepOutputWithWorkspace(t *testing.T) {
 	}
 
 	t.Logf("Waiting for TaskRun %q to finish", taskRun.Name)
-	if err := WaitForTaskRunState(ctx, clients, taskRun.Name, Succeed(taskRun.Name), "TaskRunSucceed"); err != nil {
+	if err := WaitForTaskRunState(ctx, clients, taskRun.Name, Succeed(taskRun.Name), "TaskRunSucceed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun %q to finish: %v", taskRun.Name, err)
 	}
 

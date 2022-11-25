@@ -70,7 +70,7 @@ spec:
 		go func(t *testing.T) {
 			defer wg.Done()
 
-			if err := WaitForTaskRunState(ctx, c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, taskrunName, TaskRunSucceed(taskrunName), "TaskRunDuplicatePodTaskRunFailed", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to finish: %s", err)
 				return
 			}

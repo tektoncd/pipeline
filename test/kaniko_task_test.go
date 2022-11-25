@@ -84,7 +84,7 @@ func TestKanikoTaskRun(t *testing.T) {
 
 	// Verify status of TaskRun (wait for it)
 
-	if err := WaitForTaskRunState(ctx, c, tr.Name, Succeed(tr.Name), "TaskRunCompleted"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, tr.Name, Succeed(tr.Name), "TaskRunCompleted", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", tr.Name, err)
 	}
 

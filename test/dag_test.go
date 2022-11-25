@@ -207,7 +207,7 @@ spec:
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}
 	t.Logf("Waiting for DAG pipeline to complete")
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunSucceed(pipelineRun.Name), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish: %s", err)
 	}
 

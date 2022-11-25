@@ -109,7 +109,7 @@ spec:
 				t.Fatalf("Failed to create TaskRun %q: %v", sidecarTaskRunName, err)
 			}
 
-			if err := WaitForTaskRunState(ctx, clients, sidecarTaskRunName, Succeed(sidecarTaskRunName), "TaskRunSucceed"); err != nil {
+			if err := WaitForTaskRunState(ctx, clients, sidecarTaskRunName, Succeed(sidecarTaskRunName), "TaskRunSucceed", v1beta1Version); err != nil {
 				t.Fatalf("Error waiting for TaskRun %q to finish: %v", sidecarTaskRunName, err)
 			}
 

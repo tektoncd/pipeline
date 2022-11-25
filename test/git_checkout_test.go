@@ -155,7 +155,7 @@ spec:
 				t.Fatalf("Failed to create PipelineRun %q: %s", gitTestPipelineRunName, err)
 			}
 
-			if err := WaitForPipelineRunState(ctx, c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for PipelineRun %s to finish: %s", gitTestPipelineRunName, err)
 				t.Fatalf("PipelineRun execution failed")
 			}
@@ -238,7 +238,7 @@ spec:
 				t.Fatalf("Failed to create PipelineRun %q: %s", gitTestPipelineRunName, err)
 			}
 
-			if err := WaitForPipelineRunState(ctx, c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, gitTestPipelineRunName, timeout, PipelineRunSucceed(gitTestPipelineRunName), "PipelineRunCompleted", v1beta1Version); err != nil {
 				taskruns, err := c.V1beta1TaskRunClient.List(ctx, metav1.ListOptions{})
 				if err != nil {
 					t.Errorf("Error getting TaskRun list for PipelineRun %s %s", gitTestPipelineRunName, err)

@@ -70,7 +70,7 @@ spec:
 	}
 
 	// Wait for the PipelineRun to fail, when retries are exhausted.
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, 5*time.Minute, PipelineRunFailed(pipelineRunName), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, 5*time.Minute, PipelineRunFailed(pipelineRunName), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Fatalf("Waiting for PipelineRun to fail: %v", err)
 	}
 
