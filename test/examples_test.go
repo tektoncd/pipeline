@@ -58,7 +58,11 @@ func waitValidatePipelineRunDone(ctx context.Context, t *testing.T, c *clients, 
 }
 
 func waitValidateV1PipelineRunDone(ctx context.Context, t *testing.T, c *clients, pipelineRunName string) {
+<<<<<<< HEAD
 	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, Succeed(pipelineRunName), pipelineRunName, v1Version); err != nil {
+=======
+	if err := WaitForV1PipelineRunState(ctx, c, pipelineRunName, timeout, Succeed(pipelineRunName), pipelineRunName); err != nil {
+>>>>>>> 5ab5b861d (Complete examples tests)
 		t.Fatalf("Failed waiting for V1 pipeline run done: %v", err)
 	}
 }
@@ -72,7 +76,11 @@ func waitValidateTaskRunDone(ctx context.Context, t *testing.T, c *clients, task
 
 func waitValidateV1TaskRunDone(ctx context.Context, t *testing.T, c *clients, taskRunName string) {
 	// Per test basis
+<<<<<<< HEAD
 	if err := WaitForTaskRunState(ctx, c, taskRunName, Succeed(taskRunName), taskRunName, v1Version); err != nil {
+=======
+	if err := WaitForV1TaskRunState(ctx, c, taskRunName, Succeed(taskRunName), taskRunName); err != nil {
+>>>>>>> 5ab5b861d (Complete examples tests)
 		t.Fatalf("Failed waiting for V1 task run done: %v", err)
 	}
 }
