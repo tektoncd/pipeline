@@ -158,7 +158,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun to finish with error: %s", err)
 	}
 
@@ -306,7 +306,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to finish", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, timeout, PipelineRunSucceed(pipelineRunName), "PipelineRunCompleted", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun to finish with error: %s", err)
 	}
 
@@ -422,7 +422,7 @@ spec:
 		Chain(
 			FailedWithReason(pod.ReasonCouldntGetTask, pipelineRunName),
 			FailedWithMessage("does not contain a dev.tekton.image.apiVersion annotation", pipelineRunName),
-		), "PipelineRunFailed"); err != nil {
+		), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}
 }
@@ -533,7 +533,7 @@ spec:
 		Chain(
 			FailedWithReason(pipelinerun.ReasonCouldntGetPipeline, pipelineRunName),
 			FailedWithMessage("does not contain a dev.tekton.image.name annotation", pipelineRunName),
-		), "PipelineRunFailed"); err != nil {
+		), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun to finish with expected error: %s", err)
 	}
 }

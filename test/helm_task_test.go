@@ -98,7 +98,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	// Verify status of PipelineRun (wait for it)
-	if err := WaitForPipelineRunState(ctx, c, helmDeployPipelineRunName, timeout, PipelineRunSucceed(helmDeployPipelineRunName), "PipelineRunCompleted"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, helmDeployPipelineRunName, timeout, PipelineRunSucceed(helmDeployPipelineRunName), "PipelineRunCompleted", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", helmDeployPipelineRunName, err)
 		t.Fatalf("PipelineRun execution failed; helm may or may not have been installed :(")
 	}
@@ -357,7 +357,7 @@ spec:
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", helmRemoveAllTaskRunName, namespace)
-	if err := WaitForTaskRunState(ctx, c, helmRemoveAllTaskRunName, TaskRunSucceed(helmRemoveAllTaskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, helmRemoveAllTaskRunName, TaskRunSucceed(helmRemoveAllTaskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Logf("TaskRun %s failed to finish: %s", helmRemoveAllTaskRunName, err)
 	}
 }

@@ -75,7 +75,7 @@ spec:
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
-	if err := WaitForTaskRunState(ctx, c, wdTaskRunName, TaskRunSucceed(wdTaskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, wdTaskRunName, TaskRunSucceed(wdTaskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}
 
@@ -148,7 +148,7 @@ spec:
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish successfully", namespace)
-	if err := WaitForTaskRunState(ctx, c, wdTaskRunName, TaskRunSucceed(wdTaskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, wdTaskRunName, TaskRunSucceed(wdTaskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}
 

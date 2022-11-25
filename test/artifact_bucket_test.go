@@ -117,7 +117,7 @@ spec:
 		t.Fatalf("Failed to create TaskRun `%s`: %s", createbuckettaskrun.Name, err)
 	}
 
-	if err := WaitForTaskRunState(ctx, c, createbuckettaskrun.Name, TaskRunSucceed(createbuckettaskrun.Name), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, createbuckettaskrun.Name, TaskRunSucceed(createbuckettaskrun.Name), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", createbuckettaskrun.Name, err)
 	}
 
@@ -252,7 +252,7 @@ spec:
 	}
 
 	// Verify status of PipelineRun (wait for it)
-	if err := WaitForPipelineRunState(ctx, c, bucketTestPipelineRunName, timeout, PipelineRunSucceed(bucketTestPipelineRunName), "PipelineRunCompleted"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, bucketTestPipelineRunName, timeout, PipelineRunSucceed(bucketTestPipelineRunName), "PipelineRunCompleted", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", bucketTestPipelineRunName, err)
 		t.Fatalf("PipelineRun execution failed")
 	}
@@ -350,7 +350,7 @@ spec:
 		t.Fatalf("Failed to create TaskRun `%s`: %s", deletelbuckettaskrun.Name, err)
 	}
 
-	if err := WaitForTaskRunState(ctx, c, deletelbuckettaskrun.Name, TaskRunSucceed(deletelbuckettaskrun.Name), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, deletelbuckettaskrun.Name, TaskRunSucceed(deletelbuckettaskrun.Name), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", deletelbuckettaskrun.Name, err)
 	}
 }

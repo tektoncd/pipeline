@@ -225,7 +225,7 @@ spec:
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Fatalf("Waiting for PipelineRun %s to fail: %v", pipelineRun.Name, err)
 	}
 
@@ -262,23 +262,23 @@ spec:
 			}
 			dagTask1EndTime = taskrunItem.Status.CompletionTime
 		case n == "dagtask2":
-			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			dagTask2EndTime = taskrunItem.Status.CompletionTime
 		case n == "dagtask4":
 			t.Fatalf("task %s should have skipped due to when expression", n)
 		case n == "dagtask5":
-			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 		case n == "finaltask1":
-			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			finalTaskStartTime = taskrunItem.Status.StartTime
 		case n == "finaltask2":
-			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			for _, p := range taskrunItem.Spec.Params {
@@ -303,7 +303,7 @@ spec:
 				}
 			}
 		case n == "finaltaskconsumingdagtask5":
-			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, taskrunItem.Name, TaskRunSucceed(taskrunItem.Name), "TaskRunSuccess", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun to succeed: %v", err)
 			}
 			for _, p := range taskrunItem.Spec.Params {
@@ -434,7 +434,7 @@ spec:
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 		t.Fatalf("PipelineRun execution failed")
 	}
@@ -527,7 +527,7 @@ spec:
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to start: %s", pipelineRun.Name, err)
 		t.Fatalf("PipelineRun execution failed")
 	}
@@ -545,7 +545,7 @@ spec:
 		t.Fatalf("Failed to patch PipelineRun `%s` with graceful stop: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonCancelled.String(), pipelineRun.Name), "PipelineRunCancelled"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonCancelled.String(), pipelineRun.Name), "PipelineRunCancelled", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 		t.Fatalf("PipelineRun execution failed")
 	}
@@ -642,7 +642,7 @@ spec:
 		t.Fatalf("Failed to create Pipeline Run `%s`: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to start: %s", pipelineRun.Name, err)
 		t.Fatalf("PipelineRun execution failed")
 	}
@@ -660,7 +660,7 @@ spec:
 		t.Fatalf("Failed to patch PipelineRun `%s` with graceful stop: %s", pipelineRun.Name, err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonCancelled.String(), pipelineRun.Name), "PipelineRunCancelled"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonCancelled.String(), pipelineRun.Name), "PipelineRunCancelled", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 		t.Fatalf("PipelineRun execution failed")
 	}

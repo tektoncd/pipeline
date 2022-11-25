@@ -81,7 +81,7 @@ spec:
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunFailed(taskRunName), "error"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunFailed(taskRunName), "error", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish with error: %s", err)
 	}
 
@@ -243,7 +243,7 @@ spec:
 		t.Fatalf("Failed to create PipelineRun: %s", err)
 	}
 
-	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, 10*time.Second, FailedWithMessage(`pipeline requires workspace with name "foo" be provided by pipelinerun`, pipelineRunName), "PipelineRunHasCondition"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRunName, 10*time.Second, FailedWithMessage(`pipeline requires workspace with name "foo" be provided by pipelinerun`, pipelineRunName), "PipelineRunHasCondition", v1beta1Version); err != nil {
 		t.Fatalf("Failed to wait for PipelineRun %q to finish: %s", pipelineRunName, err)
 	}
 }
@@ -300,7 +300,7 @@ spec:
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to finish", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "success"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "success", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish with error: %s", err)
 	}
 

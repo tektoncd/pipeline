@@ -93,7 +93,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonTimedOut.String(), pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonTimedOut.String(), pipelineRun.Name), "PipelineRunTimedOut", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
@@ -103,7 +103,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be timed out", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonTimedOut.String(), pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonTimedOut.String(), pipelineRun.Name), "PipelineRunTimedOut", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
@@ -113,7 +113,7 @@ spec:
 		wg.Add(1)
 		go func(name string) {
 			defer wg.Done()
-			err := WaitForTaskRunState(ctx, c, name, FailedWithReason(v1beta1.TaskRunReasonCancelled.String(), name), v1beta1.TaskRunReasonCancelled.String())
+			err := WaitForTaskRunState(ctx, c, name, FailedWithReason(v1beta1.TaskRunReasonCancelled.String(), name), v1beta1.TaskRunReasonCancelled.String(), v1beta1Version)
 			if err != nil {
 				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)
 			}
@@ -153,7 +153,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", secondPipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, secondPipelineRun.Name, timeout, PipelineRunSucceed(secondPipelineRun.Name), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, secondPipelineRun.Name, timeout, PipelineRunSucceed(secondPipelineRun.Name), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", secondPipelineRun.Name, err)
 	}
 }
@@ -196,7 +196,7 @@ spec:
 
 	failMsg := "\"step-timeout\" exited because the step exceeded the specified timeout limit"
 	t.Logf("Waiting for %s in namespace %s to time out", "step-timeout", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithMessage(failMsg, taskRun.Name), "StepTimeout"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithMessage(failMsg, taskRun.Name), "StepTimeout", v1beta1Version); err != nil {
 		t.Logf("Error in taskRun %s status: %s\n", taskRun.Name, err)
 		t.Errorf("Expected: %s", failMsg)
 	}
@@ -251,7 +251,7 @@ spec:
 
 	failMsg := "\"step-timeout\" exited because the step exceeded the specified timeout limit"
 	t.Logf("Waiting for %s in namespace %s to time out", "step-timeout", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithMessage(failMsg, taskRun.Name), "StepTimeout"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithMessage(failMsg, taskRun.Name), "StepTimeout", v1beta1Version); err != nil {
 		t.Logf("Error in taskRun %s status: %s\n", taskRun.Name, err)
 		t.Errorf("Expected: %s", failMsg)
 	}
@@ -296,7 +296,7 @@ spec:
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", taskRun.Name, namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithReason(v1beta1.TaskRunReasonTimedOut.String(), taskRun.Name), v1beta1.TaskRunReasonTimedOut.String()); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRun.Name, FailedWithReason(v1beta1.TaskRunReasonTimedOut.String(), taskRun.Name), v1beta1.TaskRunReasonTimedOut.String(), v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", taskRun.Name, err)
 	}
 
@@ -385,7 +385,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s with PipelineTask timeout in namespace %s to fail", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonFailed.String(), pipelineRun.Name), "PipelineRunTimedOut"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonFailed.String(), pipelineRun.Name), "PipelineRunTimedOut", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
@@ -423,7 +423,7 @@ spec:
 					}
 				}
 				return false, nil
-			}, v1beta1.TaskRunReasonCancelled.String())
+			}, v1beta1.TaskRunReasonCancelled.String(), v1beta1Version)
 			if err != nil {
 				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)
 			}
@@ -509,7 +509,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to be failed", pipelineRun.Name, namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonFailed.String(), pipelineRun.Name), "PipelineRunFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, FailedWithReason(v1beta1.PipelineRunReasonFailed.String(), pipelineRun.Name), "PipelineRunFailed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for PipelineRun %s to finish: %s", pipelineRun.Name, err)
 	}
 
@@ -550,7 +550,7 @@ spec:
 					}
 				}
 				return false, nil
-			}, v1beta1.TaskRunReasonCancelled.String())
+			}, v1beta1.TaskRunReasonCancelled.String(), v1beta1Version)
 
 			if err != nil {
 				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)

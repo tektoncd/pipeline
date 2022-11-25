@@ -84,7 +84,7 @@ spec:
 	}
 
 	t.Logf("Waiting for TaskRun in namespace %s to fail", namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRun.Name, TaskRunFailed(taskRun.Name), "BuildValidationFailed"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRun.Name, TaskRunFailed(taskRun.Name), "BuildValidationFailed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 
@@ -111,7 +111,7 @@ spec:
 	}
 
 	t.Logf("Waiting for PipelineRun in namespace %s to fail", namespace)
-	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "BuildValidationFailed"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, PipelineRunFailed(pipelineRun.Name), "BuildValidationFailed", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish: %s", err)
 	}
 }
@@ -177,7 +177,7 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	}
 
 	t.Logf("Waiting for PipelineRun %s in namespace %s to complete", prName, namespace)
-	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess"); err != nil {
+	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
 
@@ -217,7 +217,7 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", taskRunName, namespace)
-	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSuccess"); err != nil {
+	if err := WaitForTaskRunState(ctx, c, taskRunName, TaskRunSucceed(taskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for TaskRun %s to finish: %s", taskRunName, err)
 	}
 	// Get the TaskRun.

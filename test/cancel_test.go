@@ -77,7 +77,7 @@ spec:
 			}
 
 			t.Logf("Waiting for Pipelinerun %s in namespace %s to be started", pipelineRun.Name, namespace)
-			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning"); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, Running(pipelineRun.Name), "PipelineRunRunning", v1beta1Version); err != nil {
 				t.Fatalf("Error waiting for PipelineRun %s to be running: %s", pipelineRun.Name, err)
 			}
 
@@ -92,7 +92,7 @@ spec:
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
-					err := WaitForTaskRunState(ctx, c, name, Running(name), "TaskRunRunning")
+					err := WaitForTaskRunState(ctx, c, name, Running(name), "TaskRunRunning", v1beta1Version)
 					if err != nil {
 						t.Errorf("Error waiting for TaskRun %s to be running: %v", name, err)
 					}
@@ -121,7 +121,7 @@ spec:
 			expectedReason := v1beta1.PipelineRunReasonCancelled.String()
 			expectedCondition := FailedWithReason(expectedReason, pipelineRun.Name)
 			t.Logf("Waiting for PipelineRun %s in namespace %s to be cancelled", pipelineRun.Name, namespace)
-			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, expectedCondition, expectedReason); err != nil {
+			if err := WaitForPipelineRunState(ctx, c, pipelineRun.Name, timeout, expectedCondition, expectedReason, v1beta1Version); err != nil {
 				t.Errorf("Error waiting for PipelineRun %q to finished: %s", pipelineRun.Name, err)
 			}
 
@@ -130,7 +130,7 @@ spec:
 				wg.Add(1)
 				go func(name string) {
 					defer wg.Done()
-					err := WaitForTaskRunState(ctx, c, name, FailedWithReason("TaskRunCancelled", name), "TaskRunCancelled")
+					err := WaitForTaskRunState(ctx, c, name, FailedWithReason("TaskRunCancelled", name), "TaskRunCancelled", v1beta1Version)
 					if err != nil {
 						t.Errorf("Error waiting for TaskRun %s to be finished: %v", name, err)
 					}

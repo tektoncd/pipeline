@@ -64,7 +64,7 @@ func TestHermeticTaskRun(t *testing.T) {
 			if _, err := c.V1beta1TaskRunClient.Create(ctx, regularTaskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRunName, err)
 			}
-			if err := WaitForTaskRunState(ctx, c, regularTaskRunName, Succeed(regularTaskRunName), "TaskRunCompleted"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, regularTaskRunName, Succeed(regularTaskRunName), "TaskRunCompleted", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun %s to finish: %s", regularTaskRunName, err)
 			}
 
@@ -76,7 +76,7 @@ func TestHermeticTaskRun(t *testing.T) {
 			if _, err := c.V1beta1TaskRunClient.Create(ctx, hermeticTaskRun, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create TaskRun `%s`: %s", regularTaskRun.Name, err)
 			}
-			if err := WaitForTaskRunState(ctx, c, hermeticTaskRunName, Failed(hermeticTaskRunName), "Failed"); err != nil {
+			if err := WaitForTaskRunState(ctx, c, hermeticTaskRunName, Failed(hermeticTaskRunName), "Failed", v1beta1Version); err != nil {
 				t.Errorf("Error waiting for TaskRun %s to fail: %s", hermeticTaskRunName, err)
 			}
 		})
