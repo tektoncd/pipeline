@@ -96,6 +96,25 @@ func WaitForTaskRunState(ctx context.Context, c *clients, name string, inState C
 	})
 }
 
+// WaitForV1TaskRunState polls the status of the TaskRun called name from client every
+// interval until inState returns `true` indicating it is done, returns an
+// error or timeout. desc will be used to name the metric that is emitted to
+// track how long it took for name to get into the state checked by inState.
+// TODO: needs to change all WaitForTaskRunState to v1 when switching the stored version
+func WaitForV1TaskRunState(ctx context.Context, c *clients, name string, inState ConditionAccessorFn, desc string) error {
+	metricName := fmt.Sprintf("WaitForV1TaskRunState/%s/%s", name, desc)
+	_, span := trace.StartSpan(context.Background(), metricName)
+	defer span.End()
+
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := c.V1TaskRunClient.Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+		return inState(&r.Status)
+	})
+}
+
 // WaitForRunState polls the status of the Run called name from client every
 // interval until inState returns `true` indicating it is done, returns an
 // error or timeout. desc will be used to name the metric that is emitted to
@@ -165,6 +184,27 @@ func WaitForPipelineRunState(ctx context.Context, c *clients, name string, pollt
 	defer cancel()
 	return pollImmediateWithContext(ctx, func() (bool, error) {
 		r, err := c.V1beta1PipelineRunClient.Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return true, err
+		}
+		return inState(&r.Status)
+	})
+}
+
+// WaitForV1PipelineRunState polls the status of the PipelineRun called name from client every
+// interval until inState returns `true` indicating it is done, returns an
+// error or timeout. desc will be used to name the metric that is emitted to
+// track how long it took for name to get into the state checked by inState.
+// TODO: needs to change all WaitForPipelineRunState to v1 when switching the stored version
+func WaitForV1PipelineRunState(ctx context.Context, c *clients, name string, polltimeout time.Duration, inState ConditionAccessorFn, desc string) error {
+	metricName := fmt.Sprintf("WaitForPipelineRunState/%s/%s", name, desc)
+	_, span := trace.StartSpan(context.Background(), metricName)
+	defer span.End()
+
+	ctx, cancel := context.WithTimeout(ctx, polltimeout)
+	defer cancel()
+	return pollImmediateWithContext(ctx, func() (bool, error) {
+		r, err := c.V1PipelineRunClient.Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return true, err
 		}

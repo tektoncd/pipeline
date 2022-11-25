@@ -43,6 +43,7 @@ import (
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	v1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	resolutionversioned "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
@@ -65,6 +66,10 @@ type clients struct {
 	V1alpha1PipelineResourceClient  resourcev1alpha1.PipelineResourceInterface
 	V1alpha1RunClient               v1alpha1.RunInterface
 	V1alpha1ResolutionRequestclient resolutionv1alpha1.ResolutionRequestInterface
+	V1PipelineClient                v1.PipelineInterface
+	V1TaskClient                    v1.TaskInterface
+	V1TaskRunClient                 v1.TaskRunInterface
+	V1PipelineRunClient             v1.PipelineRunInterface
 }
 
 // newClients instantiates and returns several clientsets required for making requests to the
@@ -106,5 +111,9 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.V1alpha1PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
 	c.V1alpha1RunClient = cs.TektonV1alpha1().Runs(namespace)
 	c.V1alpha1ResolutionRequestclient = rrcs.ResolutionV1alpha1().ResolutionRequests(namespace)
+	c.V1PipelineClient = cs.TektonV1().Pipelines(namespace)
+	c.V1TaskClient = cs.TektonV1().Tasks(namespace)
+	c.V1TaskRunClient = cs.TektonV1().TaskRuns(namespace)
+	c.V1PipelineRunClient = cs.TektonV1().PipelineRuns(namespace)
 	return c
 }

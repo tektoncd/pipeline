@@ -316,7 +316,7 @@ The `Clients` struct contains initialized clients for accessing:
 For example, to create a `Pipeline`:
 
 ```bash
-_, err = clients.PipelineClient.Pipelines.Create(test.Route(namespaceName, pipelineName))
+_, err = clients.V1beta1PipelineClient.Pipelines.Create(test.Route(namespaceName, pipelineName))
 ```
 
 And you can use the client to clean up resources created by your test (e.g. in
