@@ -30,11 +30,7 @@ import (
 	corev1resources "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-<<<<<<< HEAD
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-=======
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
->>>>>>> 0ef12b6b1 (Fix TaskRunStatus Conversion)
 )
 
 const (
@@ -175,7 +171,6 @@ func TestTaskrunConversion(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-<<<<<<< HEAD
 				Status: duckv1.Status{
 					Conditions: []apis.Condition{
 						{
@@ -187,8 +182,6 @@ func TestTaskrunConversion(t *testing.T) {
 					},
 					ObservedGeneration: 1,
 				},
-=======
->>>>>>> 0ef12b6b1 (Fix TaskRunStatus Conversion)
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					PodName:        "pod-name",
 					StartTime:      &metav1.Time{Time: time.Now()},
@@ -214,11 +207,7 @@ func TestTaskrunConversion(t *testing.T) {
 						ImageID:       "image-id",
 					}},
 					RetriesStatus: []v1beta1.TaskRunStatus{{
-<<<<<<< HEAD
 						Status: duckv1.Status{
-=======
-						Status: duckv1beta1.Status{
->>>>>>> 0ef12b6b1 (Fix TaskRunStatus Conversion)
 							Conditions: []apis.Condition{{
 								Type:   apis.ConditionSucceeded,
 								Status: corev1.ConditionFalse,
