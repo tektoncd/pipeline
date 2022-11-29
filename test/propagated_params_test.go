@@ -31,7 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 )
 
@@ -41,7 +41,7 @@ var (
 	ignoreCondition         = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
 	ignorePipelineRunStatus = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime", "CompletionTime", "FinallyStartTime", "ChildReferences", "TaskRuns")
 	ignoreTaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
-	ignoreConditions        = cmpopts.IgnoreFields(duckv1beta1.Status{}, "Conditions")
+	ignoreConditions        = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
 	ignoreContainerStates   = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
 	ignoreStepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
 	ignoreTaskRunSpec       = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "Resources")

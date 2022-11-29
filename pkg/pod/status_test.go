@@ -28,7 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/logging"
 )
 
@@ -1551,26 +1551,26 @@ func TestMarkStatusSuccess(t *testing.T) {
 	}
 }
 
-func statusRunning() duckv1beta1.Status {
+func statusRunning() duckv1.Status {
 	var trs v1beta1.TaskRunStatus
 	markStatusRunning(&trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
 	return trs.Status
 }
 
-func statusFailure(reason, message string) duckv1beta1.Status {
+func statusFailure(reason, message string) duckv1.Status {
 	var trs v1beta1.TaskRunStatus
 	markStatusFailure(&trs, reason, message)
 	return trs.Status
 }
 
-func statusSuccess() duckv1beta1.Status {
+func statusSuccess() duckv1.Status {
 	var trs v1beta1.TaskRunStatus
 	markStatusSuccess(&trs)
 	return trs.Status
 }
 
-func statusPending(reason, message string) duckv1beta1.Status {
-	return duckv1beta1.Status{
+func statusPending(reason, message string) duckv1.Status {
+	return duckv1.Status{
 		Conditions: []apis.Condition{{
 			Type:    apis.ConditionSucceeded,
 			Status:  corev1.ConditionUnknown,

@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 
 	"knative.dev/pkg/kmeta"
 
@@ -1620,14 +1620,14 @@ _EOF_
 			trStatus: v1beta1.TaskRunStatus{
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					RetriesStatus: []v1beta1.TaskRunStatus{{
-						Status: duckv1beta1.Status{
+						Status: duckv1.Status{
 							Conditions: []apis.Condition{{
 								Type:   apis.ConditionSucceeded,
 								Status: corev1.ConditionFalse,
 							}},
 						},
 					}, {
-						Status: duckv1beta1.Status{
+						Status: duckv1.Status{
 							Conditions: []apis.Condition{{
 								Type:   apis.ConditionSucceeded,
 								Status: corev1.ConditionFalse,

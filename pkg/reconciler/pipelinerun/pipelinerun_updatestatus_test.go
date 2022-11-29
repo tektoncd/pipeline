@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	logtesting "knative.dev/pkg/logging/testing"
 	"sigs.k8s.io/yaml"
 )
@@ -118,7 +118,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 
 	taskRunsPRStatusData := getUpdateStatusTaskRunsData(t)
 
-	prRunningStatus := duckv1beta1.Status{
+	prRunningStatus := duckv1.Status{
 		Conditions: []apis.Condition{
 			{
 				Type:    "Succeeded",
@@ -158,7 +158,7 @@ func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
 	}
 
 	prStatusWithOrphans := v1beta1.PipelineRunStatus{
-		Status: duckv1beta1.Status{
+		Status: duckv1.Status{
 			Conditions: []apis.Condition{
 				{
 					Type:    "Succeeded",
@@ -291,7 +291,7 @@ metadata:
 func TestUpdatePipelineRunStatusFromRuns(t *testing.T) {
 	prUID := types.UID("11111111-1111-1111-1111-111111111111")
 
-	prRunningStatus := duckv1beta1.Status{
+	prRunningStatus := duckv1.Status{
 		Conditions: []apis.Condition{
 			{
 				Type:    "Succeeded",
@@ -545,7 +545,7 @@ func TestUpdatePipelineRunStatusFromChildRefs(t *testing.T) {
 
 	childRefsPRStatusData := getUpdateStatusChildRefsData(t)
 
-	prRunningStatus := duckv1beta1.Status{
+	prRunningStatus := duckv1.Status{
 		Conditions: []apis.Condition{
 			{
 				Type:    "Succeeded",
@@ -590,7 +590,7 @@ func TestUpdatePipelineRunStatusFromChildRefs(t *testing.T) {
 	}
 
 	prStatusWithOrphans := v1beta1.PipelineRunStatus{
-		Status: duckv1beta1.Status{
+		Status: duckv1.Status{
 			Conditions: []apis.Condition{
 				{
 					Type:    "Succeeded",
@@ -801,7 +801,7 @@ func TestUpdatePipelineRunStatusFromChildObjects(t *testing.T) {
 	childRefsPRStatusData := getUpdateStatusChildRefsData(t)
 	taskRunsPRStatusData := getUpdateStatusTaskRunsData(t)
 
-	prRunningStatus := duckv1beta1.Status{
+	prRunningStatus := duckv1.Status{
 		Conditions: []apis.Condition{
 			{
 				Type:    "Succeeded",
@@ -813,7 +813,7 @@ func TestUpdatePipelineRunStatusFromChildObjects(t *testing.T) {
 	}
 
 	prStatusWithOrphans := v1beta1.PipelineRunStatus{
-		Status: duckv1beta1.Status{
+		Status: duckv1.Status{
 			Conditions: []apis.Condition{
 				{
 					Type:    "Succeeded",
@@ -1161,7 +1161,7 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 	}
 }
 
-func prStatusFromInputs(embeddedStatus string, status duckv1beta1.Status, taskRuns map[string]*v1beta1.PipelineRunTaskRunStatus, runs map[string]*v1beta1.PipelineRunRunStatus, childRefs []v1beta1.ChildStatusReference) v1beta1.PipelineRunStatus {
+func prStatusFromInputs(embeddedStatus string, status duckv1.Status, taskRuns map[string]*v1beta1.PipelineRunTaskRunStatus, runs map[string]*v1beta1.PipelineRunRunStatus, childRefs []v1beta1.ChildStatusReference) v1beta1.PipelineRunStatus {
 	prs := v1beta1.PipelineRunStatus{
 		Status:                  status,
 		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{},

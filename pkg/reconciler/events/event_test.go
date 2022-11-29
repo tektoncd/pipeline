@@ -30,7 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/controller"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
@@ -177,7 +177,7 @@ func TestEmitError(t *testing.T) {
 }
 
 func TestEmit(t *testing.T) {
-	objectStatus := duckv1beta1.Status{
+	objectStatus := duckv1.Status{
 		Conditions: []apis.Condition{{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionUnknown,

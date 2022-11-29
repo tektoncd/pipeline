@@ -33,7 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/metrics/metricstest"
 	_ "knative.dev/pkg/metrics/testing"
 )
@@ -148,8 +148,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "task-1"},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
@@ -181,8 +181,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "task-1"},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
@@ -217,8 +217,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "task-1"},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
@@ -246,8 +246,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "task-1"},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 					}},
@@ -285,8 +285,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "task-1"},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
@@ -326,8 +326,8 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				TaskRef: &v1beta1.TaskRef{Name: "task-1"},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 					}},
@@ -387,8 +387,8 @@ func TestRecordRunningTaskRunsCount(t *testing.T) {
 		return &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("taskrun-")},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: status,
 					}},
@@ -560,8 +560,8 @@ func TestRecordCloudEvents(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{apis.Condition{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
@@ -605,8 +605,8 @@ func TestRecordCloudEvents(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{apis.Condition{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 					}},
@@ -646,8 +646,8 @@ func TestRecordCloudEvents(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{apis.Condition{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},

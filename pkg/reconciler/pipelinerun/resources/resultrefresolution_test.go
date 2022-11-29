@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var (
@@ -37,8 +36,8 @@ var pipelineRunState = PipelineRunState{{
 			Name: "aTaskRun",
 		},
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{successCondition},
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{successCondition},
 			},
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
@@ -127,8 +126,8 @@ var pipelineRunState = PipelineRunState{{
 			Name: "cTaskRun",
 		},
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{successCondition},
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{successCondition},
 			},
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
@@ -153,8 +152,8 @@ var pipelineRunState = PipelineRunState{{
 			Name: "dTaskRun",
 		},
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{successCondition},
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{successCondition},
 			},
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 				TaskRunResults: []v1beta1.TaskRunResult{{
@@ -205,8 +204,8 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 			TaskRun: &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
 				Status: v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: duckv1beta1.Conditions{successCondition},
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
 					},
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
@@ -241,8 +240,8 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 			TaskRun: &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
 				Status: v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: duckv1beta1.Conditions{successCondition},
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
 					},
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
@@ -261,8 +260,8 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 			TaskRun: &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "bTaskRun"},
 				Status: v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: duckv1beta1.Conditions{successCondition},
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
 					},
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
@@ -304,8 +303,8 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 			TaskRun: &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
 				Status: v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: duckv1beta1.Conditions{successCondition},
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
 					},
 					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 						TaskRunResults: []v1beta1.TaskRunResult{{
@@ -340,8 +339,8 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 			TaskRun: &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
 				Status: v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: duckv1beta1.Conditions{successCondition},
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{successCondition},
 					},
 				},
 			},
@@ -386,8 +385,8 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 			TaskRun: &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "aTaskRun"},
 				Status: v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
-						Conditions: duckv1beta1.Conditions{failedCondition},
+					Status: duckv1.Status{
+						Conditions: duckv1.Conditions{failedCondition},
 					},
 				},
 			},

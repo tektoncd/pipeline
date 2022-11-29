@@ -33,7 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 var (
@@ -1542,14 +1542,14 @@ func TestContext(t *testing.T) {
 			Status: v1beta1.TaskRunStatus{
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 					RetriesStatus: []v1beta1.TaskRunStatus{{
-						Status: duckv1beta1.Status{
+						Status: duckv1.Status{
 							Conditions: []apis.Condition{{
 								Type:   apis.ConditionSucceeded,
 								Status: corev1.ConditionFalse,
 							}},
 						},
 					}, {
-						Status: duckv1beta1.Status{
+						Status: duckv1.Status{
 							Conditions: []apis.Condition{{
 								Type:   apis.ConditionSucceeded,
 								Status: corev1.ConditionFalse,
