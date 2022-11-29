@@ -54,7 +54,10 @@ type TaskRunSpec struct {
 	// Status message for cancellation.
 	// +optional
 	StatusMessage TaskRunSpecStatusMessage `json:"statusMessage,omitempty"`
-	// Time after which the build times out. Defaults to 1 hour.
+	// Retries represents how many times this taskRun should be retried in the event of task failure.
+	// +optional
+	Retries int `json:"retries,omitempty"`
+	// Time after which one retry attempt times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional

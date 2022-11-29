@@ -50,13 +50,16 @@ type TaskRunSpec struct {
 	TaskRef *TaskRef `json:"taskRef,omitempty"`
 	// +optional
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
-	// Used for cancelling a taskrun (and maybe more later on)
+	// Used for cancelling a TaskRun (and maybe more later on)
 	// +optional
 	Status TaskRunSpecStatus `json:"status,omitempty"`
 	// Status message for cancellation.
 	// +optional
 	StatusMessage TaskRunSpecStatusMessage `json:"statusMessage,omitempty"`
-	// Time after which the build times out. Defaults to 1 hour.
+	// Retries represents how many times this TaskRun should be retried in the event of Task failure.
+	// +optional
+	Retries int `json:"retries,omitempty"`
+	// Time after which one retry attempt times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
@@ -85,7 +88,7 @@ type TaskRunSpec struct {
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
 
-// TaskRunSpecStatus defines the taskrun spec status the user can provide
+// TaskRunSpecStatus defines the TaskRun spec status the user can provide
 type TaskRunSpecStatus string
 
 const (
@@ -166,9 +169,11 @@ const (
 	TaskRunReasonSuccessful TaskRunReason = "Succeeded"
 	// TaskRunReasonFailed is the reason set when the TaskRun completed with a failure
 	TaskRunReasonFailed TaskRunReason = "Failed"
-	// TaskRunReasonCancelled is the reason set when the Taskrun is cancelled by the user
+	// TaskRunReasonToBeRetried is the reason set when the last TaskRun retry attempt failed, and will be retried
+	TaskRunReasonToBeRetried TaskRunReason = "ToBeRetried"
+	// TaskRunReasonCancelled is the reason set when the TaskRun is cancelled by the user
 	TaskRunReasonCancelled TaskRunReason = "TaskRunCancelled"
-	// TaskRunReasonTimedOut is the reason set when the Taskrun has timed out
+	// TaskRunReasonTimedOut is the reason set when the TaskRun has timed out
 	TaskRunReasonTimedOut TaskRunReason = "TaskRunTimeout"
 	// TaskRunReasonResolvingTaskRef indicates that the TaskRun is waiting for
 	// its taskRef to be asynchronously resolved.
@@ -417,7 +422,7 @@ type TaskRunList struct {
 	Items           []TaskRun `json:"items"`
 }
 
-// GetPipelineRunPVCName for taskrun gets pipelinerun
+// GetPipelineRunPVCName for TaskRun gets pipelinerun
 func (tr *TaskRun) GetPipelineRunPVCName() string {
 	if tr == nil {
 		return ""
@@ -446,7 +451,7 @@ func (tr *TaskRun) IsDone() bool {
 	return !tr.Status.GetCondition(apis.ConditionSucceeded).IsUnknown()
 }
 
-// HasStarted function check whether taskrun has valid start time set in its status
+// HasStarted function check whether TaskRun has valid start time set in its status
 func (tr *TaskRun) HasStarted() bool {
 	return tr.Status.StartTime != nil && !tr.Status.StartTime.IsZero()
 }
@@ -469,6 +474,11 @@ func (tr *TaskRun) IsTaskRunResultVerified() bool {
 // IsTaskRunResultDone returns true if the TaskRun's results are available for verification
 func (tr *TaskRun) IsTaskRunResultDone() bool {
 	return !tr.Status.GetCondition(apis.ConditionType(TaskRunConditionResultsVerified.String())).IsUnknown()
+}
+
+// IsRetriable returns true if the TaskRun's Retries is not exhausted.
+func (tr *TaskRun) IsRetriable() bool {
+	return len(tr.Status.RetriesStatus) < tr.Spec.Retries
 }
 
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout

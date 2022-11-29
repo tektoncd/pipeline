@@ -96,3 +96,63 @@ func TestEmit(t *testing.T) {
 		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
 	}
 }
+
+func TestEmitOnRetry(t *testing.T) {
+	objectStatus := duckv1.Status{
+		Conditions: []apis.Condition{{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+			Reason: string(v1beta1.TaskRunReasonToBeRetried),
+		}},
+	}
+	object := &v1beta1.TaskRun{
+		ObjectMeta: metav1.ObjectMeta{
+			SelfLink: "/taskruns/test1",
+		},
+		Status: v1beta1.TaskRunStatus{Status: objectStatus},
+	}
+	testcases := []struct {
+		name            string
+		data            map[string]string
+		wantEvents      []string
+		wantCloudEvents []string
+	}{{
+		name:            "without sink",
+		data:            map[string]string{},
+		wantEvents:      []string{"Normal Retry"},
+		wantCloudEvents: []string{},
+	}, {
+		name:            "with empty string sink",
+		data:            map[string]string{"default-cloud-events-sink": ""},
+		wantEvents:      []string{"Normal Retry"},
+		wantCloudEvents: []string{},
+	}, {
+		name:            "with sink",
+		data:            map[string]string{"default-cloud-events-sink": "http://mysink"},
+		wantEvents:      []string{"Normal Retry"},
+		wantCloudEvents: []string{`(?s)dev.tekton.event.taskrun.unknown.v1.*test1`},
+	}}
+
+	for _, tc := range testcases {
+		// Setup the context and seed test data
+		ctx, _ := rtesting.SetupFakeContext(t)
+		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
+		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
+
+		// Setup the config and add it to the context
+		defaults, _ := config.NewDefaultsFromMap(tc.data)
+		featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{})
+		cfg := &config.Config{
+			Defaults:     defaults,
+			FeatureFlags: featureFlags,
+		}
+		ctx = config.ToContext(ctx, cfg)
+
+		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		EmitOnRetry(ctx, object, "")
+		if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+			t.Fatalf(err.Error())
+		}
+		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
+	}
+}

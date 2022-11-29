@@ -1148,6 +1148,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this taskRun should be retried in the event of task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -1157,7 +1169,7 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Time after which the build times out. Defaults to 1 hour.
+<p>Time after which one retry attempt times out. Defaults to 1 hour.
 Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
@@ -4781,6 +4793,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this taskRun should be retried in the event of task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -4790,7 +4814,7 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Time after which the build times out. Defaults to 1 hour.
+<p>Time after which one retry attempt times out. Defaults to 1 hour.
 Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
@@ -7887,7 +7911,7 @@ TaskRunSpecStatus
 </td>
 <td>
 <em>(Optional)</em>
-<p>Used for cancelling a taskrun (and maybe more later on)</p>
+<p>Used for cancelling a TaskRun (and maybe more later on)</p>
 </td>
 </tr>
 <tr>
@@ -7906,6 +7930,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this TaskRun should be retried in the event of Task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -7915,7 +7951,7 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Time after which the build times out. Defaults to 1 hour.
+<p>Time after which one retry attempt times out. Defaults to 1 hour.
 Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
@@ -12811,7 +12847,7 @@ TaskRunSpecStatus
 </td>
 <td>
 <em>(Optional)</em>
-<p>Used for cancelling a taskrun (and maybe more later on)</p>
+<p>Used for cancelling a TaskRun (and maybe more later on)</p>
 </td>
 </tr>
 <tr>
@@ -12830,6 +12866,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this TaskRun should be retried in the event of Task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -12839,7 +12887,7 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Time after which the build times out. Defaults to 1 hour.
+<p>Time after which one retry attempt times out. Defaults to 1 hour.
 Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
@@ -12926,7 +12974,7 @@ Kubernetes core/v1.ResourceRequirements
 (<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
-<p>TaskRunSpecStatus defines the taskrun spec status the user can provide</p>
+<p>TaskRunSpecStatus defines the TaskRun spec status the user can provide</p>
 </div>
 <h3 id="tekton.dev/v1beta1.TaskRunSpecStatusMessage">TaskRunSpecStatusMessage
 (<code>string</code> alias)</h3>

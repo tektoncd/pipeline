@@ -32,6 +32,32 @@ import (
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
+func TestEmitK8sEvents(t *testing.T) {
+	testcases := []struct {
+		name       string
+		reason     string
+		wantEvents []string
+	}{{
+		name:       "Emit on retry",
+		reason:     "Retry",
+		wantEvents: []string{"Normal Retry"},
+	}, {
+		name:       "Emit on other",
+		reason:     "Other",
+		wantEvents: []string{"Normal Other"},
+	}}
+	for _, ts := range testcases {
+		tr := &corev1.Pod{}
+		ctx, _ := rtesting.SetupFakeContext(t)
+		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		EmitK8sEvents(ctx, tr, ts.reason, "")
+		err := CheckEventsOrdered(t, recorder.Events, ts.name, ts.wantEvents)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+	}
+}
+
 func TestEmitK8sEventsOnConditions(t *testing.T) {
 	testcases := []struct {
 		name       string
@@ -140,7 +166,7 @@ func TestEmitK8sEventsOnConditions(t *testing.T) {
 		tr := &corev1.Pod{}
 		ctx, _ := rtesting.SetupFakeContext(t)
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-		EmitK8sEvents(ctx, ts.before, ts.after, tr)
+		EmitK8sEventsWhenConditionChange(ctx, ts.before, ts.after, tr)
 		err := CheckEventsOrdered(t, recorder.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
@@ -148,7 +174,7 @@ func TestEmitK8sEventsOnConditions(t *testing.T) {
 	}
 }
 
-func TestEmitK8sEvents(t *testing.T) {
+func TestEmitK8sEventsWhenConditionChange(t *testing.T) {
 	objectStatus := duckv1.Status{
 		Conditions: []apis.Condition{{
 			Type:   apis.ConditionSucceeded,
@@ -199,7 +225,7 @@ func TestEmitK8sEvents(t *testing.T) {
 		ctx = config.ToContext(ctx, cfg)
 
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-		EmitK8sEvents(ctx, nil, after, object)
+		EmitK8sEventsWhenConditionChange(ctx, nil, after, object)
 		if err := CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}

@@ -4784,7 +4784,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref common.ReferenceCallback) 
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Used for cancelling a taskrun (and maybe more later on)",
+							Description: "Used for cancelling a TaskRun (and maybe more later on)",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4796,9 +4796,16 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref common.ReferenceCallback) 
 							Format:      "",
 						},
 					},
+					"retries": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Retries represents how many times this TaskRun should be retried in the event of Task failure.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Time after which the build times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Description: "Time after which one retry attempt times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},

@@ -95,6 +95,9 @@ var (
 	}
 	now                      = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
+	ignoreCompletionTime     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "CompletionTime")
+	ignoreObjectMeta         = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels", "ResourceVersion", "Annotations")
+	ignoreStatusTaskSpec     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "TaskSpec")
 	// Pods are created with a random 5-character suffix that we want to
 	// ignore in our diffs.
 	ignoreRandomPodNameSuffix = cmp.FilterPath(func(path cmp.Path) bool {
@@ -1707,6 +1710,401 @@ spec:
 		})
 	}
 
+}
+
+func TestReconcileRetry_Cancelled(t *testing.T) {
+	tr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-canceled
+  namespace: foo
+spec:
+  retries: 1
+  status: TaskRunCancelled
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  conditions:
+  - reason: Running
+    status: Unknown
+    type: Succeeded
+`)
+	expectedTr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-canceled
+  namespace: foo
+spec:
+  retries: 1
+  status: TaskRunCancelled
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  completionTime: "2022-01-01T00:00:00Z"
+  conditions:
+  - reason: TaskRunCancelled
+    status: "False"
+    type: Succeeded
+    message: "TaskRun \"test-taskrun-run-retry-canceled\" was cancelled. "
+`)
+	d := test.Data{
+		TaskRuns:          []*v1beta1.TaskRun{tr},
+		Tasks:             []*v1beta1.Task{simpleTask},
+		ClusterTasks:      []*v1beta1.ClusterTask{},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Errorf("unexpected error in TaskRun reconciliation: %v", err)
+		}
+	}
+	reconciledTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	if d := cmp.Diff(reconciledTaskRun, expectedTr, ignoreLastTransitionTime, ignoreObjectMeta, ignoreCompletionTime); d != "" {
+		t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
+	}
+
+	if reconciledTaskRun.Status.CompletionTime == nil {
+		t.Error("Didn't expect completion time to be nil")
+	}
+}
+
+func TestReconcileRetry_TimedOut(t *testing.T) {
+	tr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-timedout
+  namespace: foo
+spec:
+  retries: 1
+  timeout: "10s"
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T00:00:00Z"
+  conditions:
+  - reason: Running
+    status: Unknown
+    type: Succeeded
+`)
+	expectedTr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-timedout
+  namespace: foo
+spec:
+  retries: 1
+  timeout: "10s"
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+  retriesStatus:
+  - conditions:
+    - reason: "TaskRunTimeout"
+      status: "False"
+      type: Succeeded
+      message: TaskRun "test-taskrun-run-retry-timedout" failed to finish within "10s"
+    startTime: "2021-12-31T00:00:00Z"
+    completionTime: "2022-01-01T00:00:00Z"
+`)
+	d := test.Data{
+		TaskRuns:          []*v1beta1.TaskRun{tr},
+		Tasks:             []*v1beta1.Task{simpleTask},
+		ClusterTasks:      []*v1beta1.ClusterTask{},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Errorf("unexpected error in TaskRun reconciliation: %v", err)
+		}
+	}
+	reconciledTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	if d := cmp.Diff(reconciledTaskRun, expectedTr, ignoreLastTransitionTime, ignoreObjectMeta, ignoreCompletionTime); d != "" {
+		t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
+	}
+
+	if reconciledTaskRun.Status.CompletionTime != nil {
+		t.Error("Expect completion time to be nil")
+	}
+}
+
+func TestReconcileRetry_PodFailure(t *testing.T) {
+	tr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-pod-failure
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  podName: test-taskrun-run-retry-pod-failure-pod
+  steps:
+  - container: step-unamed-0
+    name: unamed-0
+    waiting:
+      reason: "ImagePullBackOff"
+`)
+	expectedTr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-pod-failure
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+  steps:
+  - container: step-unamed-0
+    name: unamed-0
+    terminated:
+      exitCode: 1
+      finishedAt: "2022-01-01T00:00:00Z"
+      reason: "TaskRunImagePullFailed"
+  retriesStatus:
+  - conditions:
+    - reason: "TaskRunImagePullFailed"
+      status: "False"
+      type: Succeeded
+      message: "The step \"unamed-0\" in TaskRun \"test-taskrun-run-retry-pod-failure\" failed to pull the image \"\". The pod errored with the message: \".\""
+    startTime: "2021-12-31T23:59:59Z"
+    completionTime: "2022-01-01T00:00:00Z"
+    podName: test-taskrun-run-retry-pod-failure-pod
+    steps:
+    - container: step-unamed-0
+      name: unamed-0
+      terminated:
+        exitCode: 1
+        finishedAt: "2022-01-01T00:00:00Z"
+        reason: "TaskRunImagePullFailed"
+`)
+	failedPod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-taskrun-run-retry-pod-failure-pod",
+		},
+		Status: corev1.PodStatus{
+			Conditions: []corev1.PodCondition{
+				{
+					Type:   corev1.PodReady,
+					Status: "False",
+					Reason: "PodFailed",
+				},
+			},
+		},
+	}
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{tr},
+		Tasks:    []*v1beta1.Task{simpleTask},
+		Pods:     []*corev1.Pod{failedPod},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if err == nil {
+
+	}
+
+	if err != nil {
+		if ok, _ := controller.IsRequeueKey(err); !ok {
+			t.Errorf("unexpected error in TaskRun reconciliation: %v", err)
+		}
+	}
+
+	reconciledTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	if d := cmp.Diff(reconciledTaskRun, expectedTr, ignoreLastTransitionTime, ignoreObjectMeta, ignoreCompletionTime); d != "" {
+		t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
+	}
+
+	if reconciledTaskRun.Status.CompletionTime != nil {
+		t.Error("Expect completion time to be nil")
+	}
+}
+
+func TestReconcileRetry_PrepareFailure(t *testing.T) {
+	tr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-prepare-failure
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  conditions:
+  - reason: Running
+    status: Unknown
+    type: Succeeded
+    lastTransitionTime: "2022-01-01T00:00:00Z"
+`)
+	expectedTr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-prepare-failure
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+  retriesStatus:
+  - conditions:
+    - reason: TaskRunResolutionFailed
+      status: "False"
+      type: "Succeeded"
+      message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: tasks.tekton.dev \"test-task\" not found"
+    startTime: "2021-12-31T23:59:59Z"
+    completionTime: "2022-01-01T00:00:00Z"
+`)
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{tr},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+	createServiceAccount(t, testAssets, "default", tr.Namespace)
+
+	err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if err == nil {
+		t.Error("expect error in TaskRun reconciliation, but got nil")
+	}
+	reconciledTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+	}
+
+	if d := cmp.Diff(reconciledTaskRun, expectedTr, ignoreLastTransitionTime, ignoreObjectMeta, ignoreCompletionTime); d != "" {
+		t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
+	}
+
+	if reconciledTaskRun.Status.CompletionTime != nil {
+		t.Error("Expect completion time to be nil")
+	}
+}
+
+func TestReconcileRetry_ReconcileFailure(t *testing.T) {
+	tr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-results-type-mismatched
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-results-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  taskResults:
+    - name: aResult
+      type: string
+      value: aResultValue
+`)
+	expectedTr := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-results-type-mismatched
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-results-task
+status:
+  taskResults:
+  - name: aResult
+    type: string
+    value: aResultValue
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+  sideCars:
+  retriesStatus:
+  - conditions:
+    - reason: TaskRunValidationFailed
+      status: "False"
+      type: "Succeeded"
+      message: "missmatched Types for these results, map[aResult:[array]]"
+    startTime: "2021-12-31T23:59:59Z"
+    completionTime: "2022-01-01T00:00:00Z"
+    podName: "test-taskrun-results-type-mismatched-pod"
+    taskResults:
+    - name: aResult
+      type: string
+      value: aResultValue
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{tr},
+		Tasks:    []*v1beta1.Task{resultsTask},
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-api-fields": config.AlphaAPIFields,
+			},
+		}},
+	}
+	expectedError := fmt.Errorf("1 error occurred:\n\t* missmatched Types for these results, map[aResult:[array]]")
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, tr.Spec.ServiceAccountName, tr.Namespace)
+
+	err := testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr))
+	if d := cmp.Diff(strings.TrimSuffix(err.Error(), "\n\n"), expectedError.Error()); d != "" {
+		t.Errorf("Expected: %v, but Got: %v", expectedError, err)
+	}
+	reconciledTaskRun, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("getting updated taskrun: %v", err)
+	}
+
+	ignoreTaskRunStatusFields := cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "Steps", "Sidecars")
+
+	if d := cmp.Diff(reconciledTaskRun, expectedTr, ignoreLastTransitionTime, ignoreObjectMeta, ignoreStatusTaskSpec, ignoreTaskRunStatusFields, ignoreCompletionTime); d != "" {
+		t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
+	}
+
+	if reconciledTaskRun.Status.CompletionTime != nil {
+		t.Error("Expect completion time to be nil")
+	}
 }
 
 func TestReconcileGetTaskError(t *testing.T) {

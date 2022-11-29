@@ -36,11 +36,13 @@ const (
 	EventReasonStarted = "Started"
 	// EventReasonError is the reason set for events related to TaskRuns / PipelineRuns reconcile errors
 	EventReasonError = "Error"
+	// EventReasonRetry is the reason set for events related to retrying a runtime object.
+	EventReasonRetry = "Retry"
 )
 
-// EmitK8sEvents emits kubernetes events for object
+// EmitK8sEventsWhenConditionChange emits kubernetes events for object
 // k8s events are always sent if afterCondition is different from beforeCondition
-func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+func EmitK8sEventsWhenConditionChange(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
 	recorder := controller.GetEventRecorder(ctx)
 	// Events that are going to be sent
 	//
@@ -70,6 +72,13 @@ func EmitK8sEvents(ctx context.Context, beforeCondition *apis.Condition, afterCo
 			}
 		}
 	}
+}
+
+// EmitK8sEvents emits kubernetes events for object
+// k8s events are always sent no matter if there are condition changes or not.
+func EmitK8sEvents(ctx context.Context, object runtime.Object, eventReason, eventMessage string) {
+	recorder := controller.GetEventRecorder(ctx)
+	recorder.Event(object, corev1.EventTypeNormal, eventReason, eventMessage)
 }
 
 // EmitError emits a failure associated to an error

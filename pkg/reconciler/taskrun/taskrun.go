@@ -294,8 +294,13 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 
-	// Send k8s events and cloud events (when configured)
-	events.Emit(ctx, beforeCondition, afterCondition, tr)
+	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
+		retryTaskRun(tr)
+		events.EmitOnRetry(ctx, tr, afterCondition.Message)
+	} else {
+		// Send k8s events and cloud events (when configured)
+		events.Emit(ctx, beforeCondition, afterCondition, tr)
+	}
 
 	_, err := c.updateLabelsAndAnnotations(ctx, tr)
 	if err != nil {
@@ -445,7 +450,8 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) error {
-	defer c.durationAndCountMetrics(ctx, tr)
+	newTr := tr.DeepCopy()
+	defer c.durationAndCountMetrics(ctx, newTr)
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 	var err error
@@ -478,7 +484,15 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		for index := range pos {
 			po := pos[index]
 			if metav1.IsControlledBy(po, tr) && !podconvert.DidTaskRunFail(po) {
-				pod = po
+				hasPodFailed := false
+				for _, retryStatus := range tr.Status.RetriesStatus {
+					if retryStatus.PodName == po.GetName() {
+						hasPodFailed = true
+					}
+				}
+				if !hasPodFailed {
+					pod = po
+				}
 			}
 		}
 	}
@@ -967,4 +981,15 @@ func isResourceQuotaConflictError(err error) bool {
 		return false
 	}
 	return k8ErrStatus.Details != nil && k8ErrStatus.Details.Kind == "resourcequotas"
+}
+
+func retryTaskRun(tr *v1beta1.TaskRun) {
+	newStatus := tr.Status.DeepCopy()
+	newStatus.RetriesStatus = nil
+	tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, *newStatus)
+	tr.Status.StartTime = nil
+	tr.Status.CompletionTime = nil
+	tr.Status.PodName = ""
+	taskRunCondSet := apis.NewBatchConditionSet()
+	taskRunCondSet.Manage(&tr.Status).MarkUnknown(apis.ConditionSucceeded, v1beta1.TaskRunReasonToBeRetried.String(), "")
 }
