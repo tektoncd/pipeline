@@ -44,7 +44,6 @@ import (
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	v1 "knative.dev/pkg/apis/duck/v1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -818,7 +817,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 					Timeout:            tc.prTimeout,
 				},
 				Status: v1beta1.PipelineRunStatus{
-					Status: duckv1beta1.Status{
+					Status: duckv1.Status{
 						Conditions: []apis.Condition{
 							tc.wantPrCondition,
 						},

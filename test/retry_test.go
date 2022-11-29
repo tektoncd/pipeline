@@ -32,7 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -160,7 +160,7 @@ spec:
 
 // This method is necessary because PipelineRunTaskRunStatus and TaskRunStatus
 // don't have an IsFailed method.
-func isFailed(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) bool {
+func isFailed(t *testing.T, taskRunName string, conds duckv1.Conditions) bool {
 	for _, c := range conds {
 		if c.Type == apis.ConditionSucceeded {
 			if c.Status != corev1.ConditionFalse {

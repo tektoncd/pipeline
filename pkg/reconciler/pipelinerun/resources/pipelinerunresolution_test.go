@@ -42,7 +42,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	logtesting "knative.dev/pkg/logging/testing"
 )
 
@@ -329,7 +328,7 @@ func makeRetried(tr v1beta1.TaskRun) (newTr *v1beta1.TaskRun) {
 
 func withRetries(tr *v1beta1.TaskRun) *v1beta1.TaskRun {
 	tr.Status.RetriesStatus = []v1beta1.TaskRunStatus{{
-		Status: duckv1beta1.Status{
+		Status: duckv1.Status{
 			Conditions: []apis.Condition{{
 				Type:   apis.ConditionSucceeded,
 				Status: corev1.ConditionFalse,
@@ -359,7 +358,7 @@ func newTaskRun(tr v1beta1.TaskRun) *v1beta1.TaskRun {
 		},
 		Spec: tr.Spec,
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
 		},
@@ -2910,8 +2909,8 @@ func TestResolvedPipelineRunTask_IsFinallySkipped(t *testing.T) {
 			Name: "dag-task",
 		},
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{
 					apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
@@ -3128,7 +3127,7 @@ func TestResolvedPipelineRunTask_IsFinallySkippedByCondition(t *testing.T) {
 				Name: "dag-task",
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
+				Status: duckv1.Status{
 					Conditions: []apis.Condition{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
@@ -3155,7 +3154,7 @@ func TestResolvedPipelineRunTask_IsFinallySkippedByCondition(t *testing.T) {
 						Name: "final-task",
 					},
 					Status: v1beta1.TaskRunStatus{
-						Status: duckv1beta1.Status{
+						Status: duckv1.Status{
 							Conditions: []apis.Condition{{
 								Type:   apis.ConditionSucceeded,
 								Status: corev1.ConditionUnknown,
@@ -3191,7 +3190,7 @@ func TestResolvedPipelineRunTask_IsFinallySkippedByCondition(t *testing.T) {
 						Name: "final-task",
 					},
 					Status: v1beta1.TaskRunStatus{
-						Status: duckv1beta1.Status{
+						Status: duckv1.Status{
 							Conditions: []apis.Condition{ /* explicitly empty */ },
 						},
 					},
@@ -3255,8 +3254,8 @@ func TestResolvedPipelineRunTask_IsFinalTask(t *testing.T) {
 			Name: "dag-task",
 		},
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{
 					apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,

@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 const (
@@ -50,7 +49,7 @@ func getTaskRunByCondition(status corev1.ConditionStatus, reason string) *v1beta
 		},
 		Spec: v1beta1.TaskRunSpec{},
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: status,
@@ -74,7 +73,7 @@ func getPipelineRunByCondition(status corev1.ConditionStatus, reason string) *v1
 		},
 		Spec: v1beta1.PipelineRunSpec{},
 		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: status,

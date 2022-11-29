@@ -34,7 +34,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
@@ -691,7 +691,7 @@ spec:
 	}
 }
 
-func isSuccessful(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) bool {
+func isSuccessful(t *testing.T, taskRunName string, conds duckv1.Conditions) bool {
 	t.Helper()
 	for _, c := range conds {
 		if c.Type == apis.ConditionSucceeded {
@@ -705,7 +705,7 @@ func isSuccessful(t *testing.T, taskRunName string, conds duckv1beta1.Conditions
 	return false
 }
 
-func isCancelled(t *testing.T, taskRunName string, conds duckv1beta1.Conditions) bool {
+func isCancelled(t *testing.T, taskRunName string, conds duckv1.Conditions) bool {
 	t.Helper()
 	for _, c := range conds {
 		if c.Type == apis.ConditionSucceeded {

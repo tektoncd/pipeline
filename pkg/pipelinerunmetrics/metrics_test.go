@@ -32,7 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/metrics/metricstest" // Required to setup metrics env for testing
 	_ "knative.dev/pkg/metrics/testing"
 )
@@ -125,8 +125,8 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
 			},
 			Status: v1beta1.PipelineRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
@@ -157,8 +157,8 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
 			},
 			Status: v1beta1.PipelineRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
@@ -192,8 +192,8 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
 			},
 			Status: v1beta1.PipelineRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionTrue,
 					}},
@@ -220,8 +220,8 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
 			},
 			Status: v1beta1.PipelineRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 						Reason: ReasonCancelled,
@@ -253,8 +253,8 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 				PipelineRef: &v1beta1.PipelineRef{Name: "pipeline-1"},
 			},
 			Status: v1beta1.PipelineRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 					}},
@@ -286,8 +286,8 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 				Status:      v1beta1.PipelineRunSpecStatusPending,
 			},
 			Status: v1beta1.PipelineRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
 					}},
@@ -341,8 +341,8 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 		return &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("pipelinerun-")},
 			Status: v1beta1.PipelineRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{{
 						Type:   apis.ConditionSucceeded,
 						Status: status,
 					}},

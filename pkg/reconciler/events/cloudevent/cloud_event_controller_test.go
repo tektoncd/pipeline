@@ -32,7 +32,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	rtesting "knative.dev/pkg/reconciler/testing"
@@ -107,8 +107,8 @@ func TestSendCloudEvents(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{apis.Condition{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionUnknown,
 						Reason: "somethingelse",
@@ -172,8 +172,8 @@ func TestSendCloudEvents(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{apis.Condition{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionUnknown,
 						Reason: "somethingelse",
@@ -265,8 +265,8 @@ func TestSendCloudEventsErrors(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{apis.Condition{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionUnknown,
 						Reason: "somethingelse",
@@ -301,8 +301,8 @@ func TestSendCloudEventsErrors(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{apis.Condition{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{apis.Condition{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionUnknown,
 						Reason: "somethingelse",
@@ -546,7 +546,7 @@ func TestInitializeCloudEvents(t *testing.T) {
 
 func TestSendCloudEventWithRetries(t *testing.T) {
 
-	objectStatus := duckv1beta1.Status{
+	objectStatus := duckv1.Status{
 		Conditions: []apis.Condition{{
 			Type:   apis.ConditionSucceeded,
 			Status: corev1.ConditionTrue,

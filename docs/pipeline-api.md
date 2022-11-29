@@ -2160,8 +2160,8 @@ with those declared in the pipeline.</p>
 <td>
 <code>Status</code><br/>
 <em>
-<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1beta1#Status">
-knative.dev/pkg/apis/duck/v1beta1.Status
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
 </a>
 </em>
 </td>
@@ -9525,8 +9525,8 @@ with those declared in the pipeline.</p>
 <td>
 <code>Status</code><br/>
 <em>
-<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1beta1#Status">
-knative.dev/pkg/apis/duck/v1beta1.Status
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
 </a>
 </em>
 </td>
@@ -12956,8 +12956,8 @@ Kubernetes core/v1.ResourceRequirements
 <td>
 <code>Status</code><br/>
 <em>
-<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1beta1#Status">
-knative.dev/pkg/apis/duck/v1beta1.Status
+<a href="https://pkg.go.dev/knative.dev/pkg/apis/duck/v1#Status">
+knative.dev/pkg/apis/duck/v1.Status
 </a>
 </em>
 </td>
@@ -13824,7 +13824,7 @@ string
 <h3 id="tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
 </p>
 <div>
 <p>CustomRunStatus defines the observed state of CustomRun</p>

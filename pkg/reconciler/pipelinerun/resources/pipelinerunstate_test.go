@@ -40,7 +40,6 @@ import (
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
 
 var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -1689,7 +1688,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun: &v1beta1.TaskRun{
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
 					Reason: v1beta1.TaskRunSpecStatusCancelled,
@@ -2761,7 +2760,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 		},
 		TaskRun: &v1beta1.TaskRun{
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}}},
@@ -2783,7 +2782,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 		},
 		TaskRun: &v1beta1.TaskRun{
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}}},
@@ -2797,7 +2796,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 		},
 		TaskRun: &v1beta1.TaskRun{
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
 				}}},
@@ -2816,7 +2815,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 		},
 		TaskRun: &v1beta1.TaskRun{
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionUnknown,
 				}}},
@@ -2942,7 +2941,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
 			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-0"},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 					Reason: v1beta1.TaskRunReasonSuccessful.String(),
@@ -2952,7 +2951,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
 			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-1"},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 					Reason: v1beta1.TaskRunReasonSuccessful.String(),
@@ -2962,7 +2961,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
 			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-2"},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 					Reason: v1beta1.TaskRunReasonSuccessful.String(),
@@ -2972,7 +2971,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
 			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-task-run-3"},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{Conditions: []apis.Condition{{
+				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 					Reason: v1beta1.TaskRunReasonSuccessful.String(),

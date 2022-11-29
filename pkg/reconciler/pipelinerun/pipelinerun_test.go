@@ -60,7 +60,6 @@ import (
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -1416,7 +1415,7 @@ status:
 	expectedTaskRunsStatus[taskRunName] = &v1beta1.PipelineRunTaskRunStatus{
 		PipelineTaskName: "hello-world-1",
 		Status: &v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{{Type: apis.ConditionSucceeded}},
 			},
 		},
@@ -2117,7 +2116,7 @@ func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *
 			"test-pipeline-run-cancelled-run-finally-hello-world": {
 				PipelineTaskName: "hello-world-1",
 				Status: &v1beta1.TaskRunStatus{
-					Status: duckv1beta1.Status{
+					Status: duckv1.Status{
 						Conditions: []apis.Condition{{
 							Type:   apis.ConditionSucceeded,
 							Status: corev1.ConditionFalse,
@@ -5845,7 +5844,7 @@ status:
 	expectedTaskRunsStatus[taskRunDone.Name] = &v1beta1.PipelineRunTaskRunStatus{
 		PipelineTaskName: "hello-world-1",
 		Status: &v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{
 					{
 						Type:   apis.ConditionSucceeded,
@@ -5859,7 +5858,7 @@ status:
 	expectedTaskRunsStatus[taskRunOrphaned.Name] = &v1beta1.PipelineRunTaskRunStatus{
 		PipelineTaskName: "hello-world-2",
 		Status: &v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{
 					{
 						Type:   apis.ConditionSucceeded,
@@ -6479,8 +6478,8 @@ func getPipelineRun(pr, p string, status corev1.ConditionStatus, reason string, 
 			ServiceAccountName: "test-sa",
 		},
 		Status: v1beta1.PipelineRunStatus{
-			Status: duckv1beta1.Status{
-				Conditions: duckv1beta1.Conditions{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{
 					apis.Condition{
 						Type:    apis.ConditionSucceeded,
 						Status:  status,
@@ -6518,7 +6517,7 @@ func getTaskRunStatus(t string, status corev1.ConditionStatus) *v1beta1.Pipeline
 	return &v1beta1.PipelineRunTaskRunStatus{
 		PipelineTaskName: t,
 		Status: &v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{
 					{Type: apis.ConditionSucceeded, Status: status},
 				},
@@ -7781,8 +7780,8 @@ func createHelloWorldTaskRunWithStatus(
 ) *v1beta1.TaskRun {
 	p := createHelloWorldTaskRun(t, trName, ns, prName, pName)
 	p.Status = v1beta1.TaskRunStatus{
-		Status: duckv1beta1.Status{
-			Conditions: duckv1beta1.Conditions{condition},
+		Status: duckv1.Status{
+			Conditions: duckv1.Conditions{condition},
 		},
 		TaskRunStatusFields: v1beta1.TaskRunStatusFields{
 			PodName: podName,

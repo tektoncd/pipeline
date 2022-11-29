@@ -27,7 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 func TestTaskRun_GetPipelineRunPVCName(t *testing.T) {
@@ -110,7 +110,7 @@ func TestTaskRun_HasPipelineRun(t *testing.T) {
 func TestTaskRunIsDone(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
@@ -154,7 +154,7 @@ func TestTaskRunIsCancelledWithMessage(t *testing.T) {
 func TestTaskRunIsTaskRunResultVerified(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
 					Status:  corev1.ConditionTrue,
@@ -175,7 +175,7 @@ func TestTaskRunIsTaskRunResultVerified(t *testing.T) {
 func TestTaskRunEmptyIsTaskRunResultVerified(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{},
+			Status: duckv1.Status{},
 		},
 	}
 	if tr.IsTaskRunResultVerified() {
@@ -186,7 +186,7 @@ func TestTaskRunEmptyIsTaskRunResultVerified(t *testing.T) {
 func TestTaskRunIsTaskRunResultDone(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{
+			Status: duckv1.Status{
 				Conditions: []apis.Condition{{
 					Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
 					Status:  corev1.ConditionUnknown,
@@ -207,7 +207,7 @@ func TestTaskRunIsTaskRunResultDone(t *testing.T) {
 func TestTaskRunEmptyIsTaskRunResultDone(t *testing.T) {
 	tr := &v1beta1.TaskRun{
 		Status: v1beta1.TaskRunStatus{
-			Status: duckv1beta1.Status{},
+			Status: duckv1.Status{},
 		},
 	}
 	if tr.IsTaskRunResultDone() {
@@ -291,7 +291,7 @@ func TestHasTimedOut(t *testing.T) {
 		name: "TaskRun not started",
 		taskRun: &v1beta1.TaskRun{
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
+				Status: duckv1.Status{
 					Conditions: []apis.Condition{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
@@ -312,7 +312,7 @@ func TestHasTimedOut(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
+				Status: duckv1.Status{
 					Conditions: []apis.Condition{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
@@ -333,7 +333,7 @@ func TestHasTimedOut(t *testing.T) {
 				},
 			},
 			Status: v1beta1.TaskRunStatus{
-				Status: duckv1beta1.Status{
+				Status: duckv1.Status{
 					Conditions: []apis.Condition{{
 						Type:   apis.ConditionSucceeded,
 						Status: corev1.ConditionFalse,
