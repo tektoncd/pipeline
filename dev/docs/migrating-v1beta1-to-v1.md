@@ -31,6 +31,8 @@ In Tekton `v1`, the following fields have been changed:
 | `pipelineRun.spec.pipelineRef.bundle` | `pipelineRun.spec.pipelineRef.resolver` |
 | `task.spec.resources` | removed from `Task` |
 | `taskrun.spec.resources` | removed from `TaskRun` |
+| `taskRun.status.cloudEvents` | removed from `TaskRun` |
+| `taskRun.status.resourcesResult` | removed from `TaskRun` |
 | `pipeline.spec.resources` | removed from `Pipeline` |
 | `pipelineRun.spec.resources` | removed from `PipelineRun` |
 | `pipelineRun.spec.serviceAccountName` | [`pipelineRun.spec.taskRunTemplate.serviceAccountName`](#adding-taskruntemplate-to-pipelinerun.spec) |
