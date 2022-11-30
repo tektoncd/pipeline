@@ -2217,7 +2217,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>StartTime is the time the PipelineRun is actually started.</p>
 </td>
 </tr>
@@ -2231,7 +2230,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>CompletionTime is the time the PipelineRun completed.</p>
 </td>
 </tr>
@@ -2314,6 +2312,7 @@ Provenance
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
 </td>
 </tr>
@@ -4991,7 +4990,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>StartTime is the time the build is actually started.</p>
 </td>
 </tr>
@@ -5005,7 +5003,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>CompletionTime is the time the build completed.</p>
 </td>
 </tr>
@@ -5089,6 +5086,7 @@ Provenance
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
 </td>
 </tr>
@@ -9582,7 +9580,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>StartTime is the time the PipelineRun is actually started.</p>
 </td>
 </tr>
@@ -9596,7 +9593,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>CompletionTime is the time the PipelineRun completed.</p>
 </td>
 </tr>
@@ -9709,6 +9705,7 @@ Provenance
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
 </td>
 </tr>
@@ -13024,7 +13021,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>StartTime is the time the build is actually started.</p>
 </td>
 </tr>
@@ -13038,7 +13034,6 @@ Kubernetes meta/v1.Time
 </em>
 </td>
 <td>
-<em>(Optional)</em>
 <p>CompletionTime is the time the build completed.</p>
 </td>
 </tr>
@@ -13152,6 +13147,7 @@ Provenance
 </em>
 </td>
 <td>
+<em>(Optional)</em>
 <p>Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).</p>
 </td>
 </tr>
