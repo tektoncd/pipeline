@@ -39,13 +39,13 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
-	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
 	"gomodules.xyz/jsonpatch/v2"
@@ -2951,7 +2951,7 @@ spec:
 				"Normal PipelineRunCouldntCancel PipelineRun \"test-pipeline-fails-to-cancel\" was cancelled but had errors trying to cancel TaskRuns",
 				"Warning InternalError 1 error occurred",
 			}
-			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
+			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 			if err != nil {
 				t.Errorf(err.Error())
 			}
@@ -3067,7 +3067,7 @@ spec:
 		"Normal PipelineRunCouldntTimeOut PipelineRun \"test-pipeline-fails-to-timeout\" was timed out but had errors trying to time out TaskRuns and/or Runs",
 		"Warning InternalError 1 error occurred",
 	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
+	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, prName, wantEvents)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -7082,7 +7082,7 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 
 	// Check generated events match what's expected
 	if len(wantEvents) > 0 {
-		if err := eventstest.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, pipelineRunName, wantEvents); err != nil {
+		if err := k8sevent.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, pipelineRunName, wantEvents); err != nil {
 			prt.Test.Errorf(err.Error())
 		}
 	}

@@ -23,6 +23,7 @@ import (
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -30,9 +31,11 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/clock"
+	"knative.dev/pkg/apis"
 	controller "knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 )
@@ -71,6 +74,43 @@ func cloudEventDeliveryFromTargets(targets []string) []v1beta1.CloudEventDeliver
 		return events
 	}
 	return nil
+}
+
+// EmitCloudEvents emits CloudEvents (only) for object
+func EmitCloudEvents(ctx context.Context, object runtime.Object) {
+	logger := logging.FromContext(ctx)
+	configs := config.FromContextOrDefaults(ctx)
+	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
+	if sendCloudEvents {
+		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
+	}
+
+	if sendCloudEvents {
+		err := SendCloudEventWithRetries(ctx, object)
+		if err != nil {
+			logger.Warnf("Failed to emit cloud events %v", err.Error())
+		}
+	}
+}
+
+// EmitCloudEventsWhenConditionChange emits CloudEvents when there is a change in condition
+func EmitCloudEventsWhenConditionChange(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
+	logger := logging.FromContext(ctx)
+	configs := config.FromContextOrDefaults(ctx)
+	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
+	if sendCloudEvents {
+		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
+	}
+
+	if sendCloudEvents {
+		// Only send events if the new condition represents a change
+		if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
+			err := SendCloudEventWithRetries(ctx, object)
+			if err != nil {
+				logger.Warnf("Failed to emit cloud events %v", err.Error())
+			}
+		}
+	}
 }
 
 // SendCloudEvents is used by the TaskRun controller to send cloud events once
