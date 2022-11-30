@@ -19,27 +19,10 @@ package events
 import (
 	"context"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
-	"knative.dev/pkg/controller"
-	"knative.dev/pkg/logging"
-)
-
-const (
-	// EventReasonSucceded is the reason set for events about successful completion of TaskRuns / PipelineRuns
-	EventReasonSucceded = "Succeeded"
-	// EventReasonFailed is the reason set for events about unsuccessful completion of TaskRuns / PipelineRuns
-	EventReasonFailed = "Failed"
-	// EventReasonStarted is the reason set for events about the start of TaskRuns / PipelineRuns
-	EventReasonStarted = "Started"
-	// EventReasonError is the reason set for events related to TaskRuns / PipelineRuns reconcile errors
-	EventReasonError = "Error"
 )
 
 // Emit emits events for object
@@ -48,78 +31,12 @@ const (
 // k8s events are always sent if afterCondition is different from beforeCondition
 // Cloud events are always sent if enabled, i.e. if a sink is available
 func Emit(ctx context.Context, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
-	recorder := controller.GetEventRecorder(ctx)
-	logger := logging.FromContext(ctx)
-	configs := config.FromContextOrDefaults(ctx)
-	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
-	if sendCloudEvents {
-		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
-	}
-
-	sendKubernetesEvents(recorder, beforeCondition, afterCondition, object)
-
-	if sendCloudEvents {
-		// Only send events if the new condition represents a change
-		if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) {
-			err := cloudevent.SendCloudEventWithRetries(ctx, object)
-			if err != nil {
-				logger.Warnf("Failed to emit cloud events %v", err.Error())
-			}
-		}
-	}
+	k8sevent.EmitK8sEvents(ctx, beforeCondition, afterCondition, object)
+	cloudevent.EmitCloudEventsWhenConditionChange(ctx, beforeCondition, afterCondition, object)
 }
 
-// EmitCloudEvents emits CloudEvents (only) for object
-func EmitCloudEvents(ctx context.Context, object runtime.Object) {
-	logger := logging.FromContext(ctx)
-	configs := config.FromContextOrDefaults(ctx)
-	sendCloudEvents := (configs.Defaults.DefaultCloudEventsSink != "")
-	if sendCloudEvents {
-		ctx = cloudevents.ContextWithTarget(ctx, configs.Defaults.DefaultCloudEventsSink)
-	}
+// EmitCloudEvents is refactored to cloudevent, this is to avoid breaking change
+var EmitCloudEvents = cloudevent.EmitCloudEvents
 
-	if sendCloudEvents {
-		err := cloudevent.SendCloudEventWithRetries(ctx, object)
-		if err != nil {
-			logger.Warnf("Failed to emit cloud events %v", err.Error())
-		}
-	}
-}
-
-func sendKubernetesEvents(c record.EventRecorder, beforeCondition *apis.Condition, afterCondition *apis.Condition, object runtime.Object) {
-	// Events that are going to be sent
-	//
-	// Status "ConditionUnknown":
-	//   beforeCondition == nil, emit EventReasonStarted
-	//   beforeCondition != nil, emit afterCondition.Reason
-	//
-	//  Status "ConditionTrue": emit EventReasonSucceded
-	//  Status "ConditionFalse": emit EventReasonFailed
-	if !equality.Semantic.DeepEqual(beforeCondition, afterCondition) && afterCondition != nil {
-		// If the condition changed, and the target condition is not empty, we send an event
-		switch afterCondition.Status {
-		case corev1.ConditionTrue:
-			c.Event(object, corev1.EventTypeNormal, EventReasonSucceded, afterCondition.Message)
-		case corev1.ConditionFalse:
-			c.Event(object, corev1.EventTypeWarning, EventReasonFailed, afterCondition.Message)
-		case corev1.ConditionUnknown:
-			if beforeCondition == nil {
-				// If the condition changed, the status is "unknown", and there was no condition before,
-				// we emit the "Started event". We ignore further updates of the "unknown" status.
-				c.Event(object, corev1.EventTypeNormal, EventReasonStarted, "")
-			} else {
-				// If the condition changed, the status is "unknown", and there was a condition before,
-				// we emit an event that matches the reason and message of the condition.
-				// This is used for instance to signal the transition from "started" to "running"
-				c.Event(object, corev1.EventTypeNormal, afterCondition.Reason, afterCondition.Message)
-			}
-		}
-	}
-}
-
-// EmitError emits a failure associated to an error
-func EmitError(c record.EventRecorder, err error, object runtime.Object) {
-	if err != nil {
-		c.Event(object, corev1.EventTypeWarning, EventReasonError, err.Error())
-	}
-}
+// EmitError is refactored to k8sevent, this is to avoid breaking change
+var EmitError = k8sevent.EmitError

@@ -41,6 +41,7 @@ import (
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
@@ -48,7 +49,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
-	eventstest "github.com/tektoncd/pipeline/test/events"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
@@ -701,7 +701,7 @@ spec:
 		t.Errorf("Expected reason %q but was %s", v1beta1.TaskRunReasonRunning.String(), condition.Reason)
 	}
 
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-cloud-events", wantEvents)
+	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "reconcile-cloud-events", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -1193,7 +1193,7 @@ spec:
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
+			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if err != nil {
 				t.Errorf(err.Error())
 			}
@@ -1348,7 +1348,7 @@ spec:
 				t.Fatalf("Expected actions to be logged in the kubeclient, got none")
 			}
 
-			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
+			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if err != nil {
 				t.Errorf(err.Error())
 			}
@@ -1687,7 +1687,7 @@ spec:
 				t.Errorf("expected 2 actions, got %d. Actions: %#v", len(actions), actions)
 			}
 
-			err := eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
+			err := k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -1965,7 +1965,7 @@ status:
 		"Normal Running Not all Steps",
 		"Normal Succeeded",
 	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-pod-updateStatus", wantEvents)
+	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-pod-updateStatus", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -2064,7 +2064,7 @@ status:
 		"Normal Started",
 		"Warning Failed TaskRun \"test-taskrun-run-cancelled\" was cancelled",
 	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-cancelled-taskrun", wantEvents)
+	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-cancelled-taskrun", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -2137,7 +2137,7 @@ status:
 		"Normal Started",
 		"Warning Failed TaskRun \"test-taskrun-run-timedout\" was cancelled. TaskRun cancelled as pipeline has been cancelled.",
 	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-timedout-taskrun", wantEvents)
+	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, "test-reconcile-on-timedout-taskrun", wantEvents)
 	if !(err == nil) {
 		t.Errorf(err.Error())
 	}
@@ -2208,7 +2208,7 @@ status:
 	if d := cmp.Diff(expectedStatus, condition, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, taskRun.Name, wantEvents)
+	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, taskRun.Name, wantEvents)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -2280,7 +2280,7 @@ status:
 	if d := cmp.Diff(expectedStatus, condition, ignoreLastTransitionTime); d != "" {
 		t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 	}
-	err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, taskRun.Name, wantEvents)
+	err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, taskRun.Name, wantEvents)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -2395,7 +2395,7 @@ status:
 			if d := cmp.Diff(tc.expectedStatus, condition, ignoreLastTransitionTime); d != "" {
 				t.Fatalf("Did not get expected condition %s", diff.PrintWantGot(d))
 			}
-			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.taskRun.Name, tc.wantEvents)
+			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tc.taskRun.Name, tc.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
@@ -3543,7 +3543,7 @@ spec:
 				}
 			}
 
-			err = eventstest.CheckEventsOrdered(t, testAssets.Recorder.Events, tt.desc, tt.wantEvents)
+			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tt.desc, tt.wantEvents)
 			if !(err == nil) {
 				t.Errorf(err.Error())
 			}
