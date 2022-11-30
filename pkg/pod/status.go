@@ -109,7 +109,7 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 }
 
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
-func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface) (v1beta1.TaskRunStatus, error) {
+func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface, ts *v1beta1.TaskSpec) (v1beta1.TaskRunStatus, error) {
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
@@ -141,7 +141,7 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta
 	}
 
 	var merr *multierror.Error
-	if err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient); err != nil {
+	if err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient, ts); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
@@ -152,9 +152,18 @@ func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta
 	return *trs, merr.ErrorOrNil()
 }
 
-func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1beta1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface) *multierror.Error {
+func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1beta1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface, ts *v1beta1.TaskSpec) *multierror.Error {
 	trs := &tr.Status
 	var merr *multierror.Error
+
+	// collect results from taskrun spec and taskspec
+	specResults := []v1beta1.TaskResult{}
+	if tr.Spec.TaskSpec != nil {
+		specResults = append(specResults, tr.Spec.TaskSpec.Results...)
+	}
+	if ts != nil {
+		specResults = append(specResults, ts.Results...)
+	}
 
 	// Extract results from sidecar logs
 	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
@@ -164,8 +173,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		if err != nil {
 			merr = multierror.Append(merr, err)
 		}
+
 		// populate task run CRD with results from sidecar logs
-		taskResults, pipelineResourceResults, _ := filterResultsAndResources(sidecarLogResults)
+		taskResults, pipelineResourceResults, _ := filterResultsAndResources(sidecarLogResults, specResults)
 		if tr.IsSuccessful() {
 			trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 			trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
@@ -191,7 +201,8 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					logger.Errorf("error extracting the exit code of step %q in taskrun %q: %v", s.Name, tr.Name, err)
 					merr = multierror.Append(merr, err)
 				}
-				taskResults, pipelineResourceResults, filteredResults := filterResultsAndResources(results)
+
+				taskResults, pipelineResourceResults, filteredResults := filterResultsAndResources(results, specResults)
 				if tr.IsSuccessful() {
 					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
 					trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
@@ -245,22 +256,35 @@ func createMessageFromResults(results []v1beta1.PipelineResourceResult) (string,
 	return string(bytes), nil
 }
 
-func filterResultsAndResources(results []v1beta1.PipelineResourceResult) ([]v1beta1.TaskRunResult, []v1beta1.PipelineResourceResult, []v1beta1.PipelineResourceResult) {
+func filterResultsAndResources(results []v1beta1.PipelineResourceResult, specResults []v1beta1.TaskResult) ([]v1beta1.TaskRunResult, []v1beta1.PipelineResourceResult, []v1beta1.PipelineResourceResult) {
 	var taskResults []v1beta1.TaskRunResult
 	var pipelineResourceResults []v1beta1.PipelineResourceResult
 	var filteredResults []v1beta1.PipelineResourceResult
+	neededTypes := make(map[string]v1beta1.ResultsType)
+	for _, r := range specResults {
+		neededTypes[r.Name] = r.Type
+	}
 	for _, r := range results {
 		switch r.ResultType {
 		case v1beta1.TaskRunResultType:
-			v := v1beta1.ResultValue{}
-			err := v.UnmarshalJSON([]byte(r.Value))
-			if err != nil {
-				continue
-			}
-			taskRunResult := v1beta1.TaskRunResult{
-				Name:  r.Key,
-				Type:  v1beta1.ResultsType(v.Type),
-				Value: v,
+			taskRunResult := v1beta1.TaskRunResult{}
+			if neededTypes[r.Key] == v1beta1.ResultsTypeString {
+				taskRunResult = v1beta1.TaskRunResult{
+					Name:  r.Key,
+					Type:  v1beta1.ResultsTypeString,
+					Value: *v1beta1.NewStructuredValues(r.Value),
+				}
+			} else {
+				v := v1beta1.ResultValue{}
+				err := v.UnmarshalJSON([]byte(r.Value))
+				if err != nil {
+					continue
+				}
+				taskRunResult = v1beta1.TaskRunResult{
+					Name:  r.Key,
+					Type:  v1beta1.ResultsType(v.Type),
+					Value: v,
+				}
 			}
 			taskResults = append(taskResults, taskRunResult)
 			filteredResults = append(filteredResults, r)

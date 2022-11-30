@@ -88,7 +88,7 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			merr := setTaskRunStatusBasedOnStepStatus(context.Background(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient)
+			merr := setTaskRunStatusBasedOnStepStatus(context.Background(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient, &v1beta1.TaskSpec{})
 			if merr != nil {
 				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
 			}
@@ -164,7 +164,7 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 			})
 			var wantErr *multierror.Error
 			wantErr = multierror.Append(wantErr, c.wantErr)
-			merr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &tr, pod.Status.Phase, kubeclient)
+			merr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &tr, pod.Status.Phase, kubeclient, &v1beta1.TaskSpec{})
 
 			if d := cmp.Diff(wantErr.Error(), merr.Error()); d != "" {
 				t.Errorf("Got unexpected error  %s", diff.PrintWantGot(d))
@@ -1147,7 +1147,7 @@ func TestMakeTaskRunStatus(t *testing.T) {
 			}
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient)
+			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient, &v1beta1.TaskSpec{})
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -1177,6 +1177,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 		desc      string
 		podStatus corev1.PodStatus
 		pod       corev1.Pod
+		taskSpec  v1beta1.TaskSpec
 		want      v1beta1.TaskRunStatus
 	}{{
 		desc: "test empty result",
@@ -1190,6 +1191,14 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					},
 				},
 			}},
+		},
+		taskSpec: v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1beta1.ResultsTypeString,
+				},
+			},
 		},
 		want: v1beta1.TaskRunStatus{
 			Status: statusSuccess(),
@@ -1230,6 +1239,14 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				},
 			}},
 		},
+		taskSpec: v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1beta1.ResultsTypeString,
+				},
+			},
+		},
 		want: v1beta1.TaskRunStatus{
 			Status: statusSuccess(),
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
@@ -1268,6 +1285,14 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					},
 				},
 			}},
+		},
+		taskSpec: v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1beta1.ResultsTypeArray,
+				},
+			},
 		},
 		want: v1beta1.TaskRunStatus{
 			Status: statusSuccess(),
@@ -1308,6 +1333,14 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				},
 			}},
 		},
+		taskSpec: v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1beta1.ResultsTypeObject,
+				},
+			},
+		},
 		want: v1beta1.TaskRunStatus{
 			Status: statusSuccess(),
 			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
@@ -1329,6 +1362,56 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeObject,
 					Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+				}},
+				// We don't actually care about the time, just that it's not nil
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
+	}, {
+		desc: "test string result with json emitted results",
+		podStatus: corev1.PodStatus{
+			Phase: corev1.PodSucceeded,
+			ContainerStatuses: []corev1.ContainerStatus{{
+				Name: "step-bar",
+				State: corev1.ContainerState{
+					Terminated: &corev1.ContainerStateTerminated{
+						Message: `[{"key":"resultName","value":"{\"hello\":\"world\"}", "type":1}, {"key":"resultName2","value":"[\"hello\",\"world\"]", "type":1}]`,
+					},
+				},
+			}},
+		},
+		taskSpec: v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{
+				{
+					Name: "resultName",
+					Type: v1beta1.ResultsTypeString,
+				},
+				{
+					Name: "resultName2",
+					Type: v1beta1.ResultsTypeString,
+				},
+			},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusSuccess(),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							Message: `[{"key":"resultName","value":"{\"hello\":\"world\"}","type":1},{"key":"resultName2","value":"[\"hello\",\"world\"]","type":1}]`,
+						}},
+					Name:          "bar",
+					ContainerName: "step-bar",
+				}},
+				Sidecars: []v1beta1.SidecarState{},
+				TaskRunResults: []v1beta1.TaskRunResult{{
+					Name:  "resultName",
+					Type:  v1beta1.ResultsTypeString,
+					Value: *v1beta1.NewStructuredValues("{\"hello\":\"world\"}"),
+				}, {
+					Name:  "resultName2",
+					Type:  v1beta1.ResultsTypeString,
+					Value: *v1beta1.NewStructuredValues("[\"hello\",\"world\"]"),
 				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
@@ -1362,7 +1445,7 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 			}
 			logger, _ := logging.NewLogger("", "status")
 			kubeclient := fakek8s.NewSimpleClientset()
-			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient)
+			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient, &c.taskSpec)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -1484,7 +1567,7 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 
 	logger, _ := logging.NewLogger("", "status")
 	kubeclient := fakek8s.NewSimpleClientset()
-	gotTr, err := MakeTaskRunStatus(context.Background(), logger, tr, pod, kubeclient)
+	gotTr, err := MakeTaskRunStatus(context.Background(), logger, tr, pod, kubeclient, &v1beta1.TaskSpec{})
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
