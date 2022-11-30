@@ -1,0 +1,13 @@
+piVersion: tekton.dev/v1beta1
+kind: CustomRun
+metadata:
+  generateName: wait-customrun-
+spec:
+  retries: 2
+  timeout: 10s
+  customRef:
+    apiVersion: wait.testing.tekton.dev/v1beta1
+    kind: Wait
+  params:
+  - name: duration
+    value: 3s

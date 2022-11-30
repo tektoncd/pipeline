@@ -1,0 +1,239 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wait-task-beta
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task-beta
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wait-task-controller
+  namespace: wait-task-beta
+  labels:
+    app.kubernetes.io/component: wait-task-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: wait-task-controller-cluster-access
+  labels:
+    app.kubernetes.io/component: wait-task-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task
+rules:
+  # Controller needs cluster access to all Run CRs.
+  - apiGroups: ["tekton.dev"]
+    resources: ["customruns"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["customruns/finalizers"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["tekton.dev"]
+    resources: ["customruns/status"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+
+  # Controller needs permission to configure master-election.
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+
+  # Controller needs permission to emit events associated with Run CRs.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: wait-task-controller
+  namespace: wait-task-beta
+  labels:
+    app.kubernetes.io/component: wait-task-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["list", "watch"]
+  # The controller needs access to these configmaps for logging information and runtime configuration.
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get"]
+    resourceNames: ["config-logging", "config-observability", "config-leader-election"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: wait-task-controller
+  namespace: wait-task-beta
+  labels:
+    app.kubernetes.io/component: wait-task-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task
+subjects:
+  - kind: ServiceAccount
+    name: wait-task-controller
+    namespace: wait-task-beta
+roleRef:
+  kind: Role
+  name: wait-task-controller
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wait-task-controller-cluster-access
+  labels:
+    app.kubernetes.io/component: wait-task-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task
+subjects:
+  - kind: ServiceAccount
+    name: wait-task-controller
+    namespace: wait-task-beta
+roleRef:
+  kind: ClusterRole
+  name: wait-task-controller-cluster-access
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-logging
+  namespace: wait-task-beta
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task
+data:
+  # Common configuration for all knative codebase
+  zap-logger-config: |
+    {
+      "level": "info",
+      "development": false,
+      "sampling": {
+        "initial": 100,
+        "thereafter": 100
+      },
+      "outputPaths": ["stdout"],
+      "errorOutputPaths": ["stderr"],
+      "encoding": "json",
+      "encoderConfig": {
+        "timeKey": "",
+        "levelKey": "level",
+        "nameKey": "logger",
+        "callerKey": "caller",
+        "messageKey": "msg",
+        "stacktraceKey": "stacktrace",
+        "lineEnding": "",
+        "levelEncoder": "",
+        "timeEncoder": "",
+        "durationEncoder": "",
+        "callerEncoder": ""
+      }
+    }
+
+  # Log level overrides
+  loglevel.controller: "info"
+  loglevel.webhook: "info"
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wait-task-controller
+  namespace: wait-task-beta
+  labels:
+    app.kubernetes.io/name: wait-task-controller
+    app.kubernetes.io/component: wait-task-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: wait-task
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wait-task-controller
+      app.kubernetes.io/component: wait-task-controller
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: wait-task
+  template:
+    metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+      labels:
+        app.kubernetes.io/name: wait-task-controller
+        app.kubernetes.io/component: wait-task-controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: devel
+        app.kubernetes.io/part-of: wait-task
+        app: wait-task-controller
+    spec:
+      serviceAccountName: wait-task-controller
+      containers:
+      - name: wait-task-controller
+        image: ko://github.com/tektoncd/pipeline/test/wait-task-beta/cmd/controller
+        volumeMounts:
+        - name: config-logging
+          mountPath: /etc/config-logging
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        # If you are changing these names, you will also need to update
+        # the controller's Role in 200-role.yaml to include the new
+        # values in the "configmaps" "get" rule.
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging
+        - name: METRICS_DOMAIN
+          value: wait.testing.tekton.dev/wait-task
+      volumes:
+        - name: config-logging
+          configMap:
+            name: config-logging
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: wait-task-controller
+    app.kubernetes.io/component: wait-task-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: devel
+    app.kubernetes.io/part-of: wait-task
+    # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
+    pipeline.tekton.dev/release: "devel"
+    # labels below are related to istio and should not be used for resource lookup
+    app: wait-task-controller
+    version: "devel"
+  name: wait-task-controller
+  namespace: wait-task-beta
+spec:
+  ports:
+  - name: http-metrics
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app.kubernetes.io/name: wait-task-controller
+    app.kubernetes.io/component: wait-task-controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: wait-task
