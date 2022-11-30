@@ -417,11 +417,9 @@ type ChildStatusReference struct {
 // consume these fields via duck typing.
 type PipelineRunStatusFields struct {
 	// StartTime is the time the PipelineRun is actually started.
-	// +optional
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 
 	// CompletionTime is the time the PipelineRun completed.
-	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
 	// Deprecated - use ChildReferences instead.
@@ -457,6 +455,7 @@ type PipelineRunStatusFields struct {
 	FinallyStartTime *metav1.Time `json:"finallyStartTime,omitempty"`
 
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
+	// +optional
 	Provenance *Provenance `json:"provenance,omitempty"`
 }
 
