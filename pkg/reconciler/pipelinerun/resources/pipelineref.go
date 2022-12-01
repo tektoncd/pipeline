@@ -40,7 +40,7 @@ import (
 // GetPipelineFunc is a factory function that will use the given PipelineRef to return a valid GetPipeline function that
 // looks up the pipeline. It uses as context a k8s client, tekton client, namespace, and service account name to return
 // the pipeline. It knows whether it needs to look in the cluster or in a remote location to fetch the reference.
-func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun) (rprp.GetPipeline, error) {
+func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, pipelineRun *v1beta1.PipelineRun) rprp.GetPipeline {
 	cfg := config.FromContextOrDefaults(ctx)
 	pr := pipelineRun.Spec.PipelineRef
 	namespace := pipelineRun.Namespace
@@ -59,7 +59,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 				},
 				Spec: *pipelineRun.Status.PipelineSpec,
 			}, configSource, nil
-		}, nil
+		}
 	}
 
 	switch {
@@ -77,7 +77,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			}
 			resolver := oci.NewResolver(pr.Bundle, kc)
 			return resolvePipeline(ctx, resolver, name, k8s)
-		}, nil
+		}
 	case pr != nil && pr.Resolver != "" && requester != nil:
 		return func(ctx context.Context, name string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
 			stringReplacements, arrayReplacements, objectReplacements := paramsFromPipelineRun(ctx, pipelineRun)
@@ -87,7 +87,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			replacedParams := replaceParamValues(pr.Params, stringReplacements, arrayReplacements, objectReplacements)
 			resolver := resolution.NewResolver(requester, pipelineRun, string(pr.Resolver), "", "", replacedParams)
 			return resolvePipeline(ctx, resolver, name, k8s)
-		}, nil
+		}
 	default:
 		// Even if there is no task ref, we should try to return a local resolver.
 		local := &LocalPipelineRefResolver{
@@ -95,7 +95,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 			Tektonclient: tekton,
 			K8sclient:    k8s,
 		}
-		return local.GetPipeline, nil
+		return local.GetPipeline
 	}
 }
 
