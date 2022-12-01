@@ -57,7 +57,7 @@ func GetTaskKind(taskrun *v1beta1.TaskRun) v1beta1.TaskKind {
 // also requires a kubeclient, tektonclient, namespace, and service account in case it needs to find that task in
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
-func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, taskrun *v1beta1.TaskRun) (GetTask, error) {
+func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester, taskrun *v1beta1.TaskRun) GetTask {
 	// if the spec is already in the status, do not try to fetch it again, just use it as source of truth.
 	// Same for the Source field in the Status.Provenance.
 	if taskrun.Status.TaskSpec != nil {
@@ -73,7 +73,7 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 				},
 				Spec: *taskrun.Status.TaskSpec,
 			}, configsource, nil
-		}, nil
+		}
 	}
 	return GetTaskFunc(ctx, k8s, tekton, requester, taskrun, taskrun.Spec.TaskRef, taskrun.Name, taskrun.Namespace, taskrun.Spec.ServiceAccountName)
 }
@@ -83,7 +83,7 @@ func GetTaskFuncFromTaskRun(ctx context.Context, k8s kubernetes.Interface, tekto
 // cluster or authorize against an external repositroy. It will figure out whether it needs to look in the cluster or in
 // a remote image to fetch the  reference. It will also return the "kind" of the task being referenced.
 func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset.Interface, requester remoteresource.Requester,
-	owner kmeta.OwnerRefable, tr *v1beta1.TaskRef, trName string, namespace, saName string) (GetTask, error) {
+	owner kmeta.OwnerRefable, tr *v1beta1.TaskRef, trName string, namespace, saName string) GetTask {
 	cfg := config.FromContextOrDefaults(ctx)
 	kind := v1beta1.NamespacedTaskKind
 	if tr != nil && tr.Kind != "" {
@@ -106,7 +106,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			resolver := oci.NewResolver(tr.Bundle, kc)
 
 			return resolveTask(ctx, resolver, name, kind, k8s)
-		}, nil
+		}
 	case tr != nil && tr.Resolver != "" && requester != nil:
 		// Return an inline function that implements GetTask by calling Resolver.Get with the specified task type and
 		// casting it to a TaskObject.
@@ -126,7 +126,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			}
 			resolver := resolution.NewResolver(requester, owner, string(tr.Resolver), trName, namespace, replacedParams)
 			return resolveTask(ctx, resolver, name, kind, k8s)
-		}, nil
+		}
 
 	default:
 		// Even if there is no task ref, we should try to return a local resolver.
@@ -136,7 +136,7 @@ func GetTaskFunc(ctx context.Context, k8s kubernetes.Interface, tekton clientset
 			Tektonclient: tekton,
 			K8sclient:    k8s,
 		}
-		return local.GetTask, nil
+		return local.GetTask
 	}
 }
 

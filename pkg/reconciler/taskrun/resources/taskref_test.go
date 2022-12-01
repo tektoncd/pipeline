@@ -445,10 +445,7 @@ func TestGetTaskFunc(t *testing.T) {
 					TaskRef: tc.ref,
 				},
 			}
-			fn, err := resources.GetTaskFunc(ctx, kubeclient, tektonclient, nil, trForFunc, tc.ref, "", "default", "default")
-			if err != nil {
-				t.Fatalf("failed to get task fn: %s", err.Error())
-			}
+			fn := resources.GetTaskFunc(ctx, kubeclient, tektonclient, nil, trForFunc, tc.ref, "", "default", "default")
 
 			task, configSource, err := fn(ctx, tc.ref.Name)
 			if err != nil {
@@ -515,10 +512,7 @@ echo hello
 		Spec: TaskSpec,
 	}
 
-	fn, err := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, TaskRun)
-	if err != nil {
-		t.Fatalf("failed to get Task fn: %s", err.Error())
-	}
+	fn := resources.GetTaskFuncFromTaskRun(ctx, kubeclient, tektonclient, nil, TaskRun)
 	actualTask, actualConfigSource, err := fn(ctx, name)
 	if err != nil {
 		t.Fatalf("failed to call Taskfn: %s", err.Error())
@@ -554,10 +548,7 @@ func TestGetTaskFunc_RemoteResolution(t *testing.T) {
 			ServiceAccountName: "default",
 		},
 	}
-	fn, err := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
-	if err != nil {
-		t.Fatalf("failed to get task fn: %s", err.Error())
-	}
+	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
 	resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
 	if err != nil {
@@ -621,10 +612,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			}},
 		},
 	}
-	fn, err := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
-	if err != nil {
-		t.Fatalf("failed to get task fn: %s", err.Error())
-	}
+	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
 	resolvedTask, resolvedConfigSource, err := fn(ctx, taskRef.Name)
 	if err != nil {
@@ -666,10 +654,7 @@ func TestGetTaskFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			}},
 		},
 	}
-	fnNotMatching, err := resources.GetTaskFunc(ctx, nil, nil, requester, trNotMatching, trNotMatching.Spec.TaskRef, "", "default", "default")
-	if err != nil {
-		t.Fatalf("failed to get task fn: %s", err.Error())
-	}
+	fnNotMatching := resources.GetTaskFunc(ctx, nil, nil, requester, trNotMatching, trNotMatching.Spec.TaskRef, "", "default", "default")
 
 	_, _, err = fnNotMatching(ctx, taskRefNotMatching.Name)
 	if err == nil {
@@ -695,10 +680,7 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 			ServiceAccountName: "default",
 		},
 	}
-	fn, err := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
-	if err != nil {
-		t.Fatalf("failed to get pipeline fn: %s", err.Error())
-	}
+	fn := resources.GetTaskFunc(ctx, nil, nil, requester, tr, tr.Spec.TaskRef, "", "default", "default")
 	if _, _, err := fn(ctx, taskRef.Name); err == nil {
 		t.Fatalf("expected error due to invalid pipeline data but saw none")
 	}
@@ -979,10 +961,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Success(t *tes
 					ServiceAccountName: "default",
 				},
 			}
-			fn, err := resources.GetTaskFunc(ctx, nil, nil, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default")
-			if err != nil {
-				t.Fatalf("failed to get task fn: %s", err.Error())
-			}
+			fn := resources.GetTaskFunc(ctx, nil, nil, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
 			resolvedTask, source, err := fn(ctx, taskRef.Name)
 
@@ -1063,10 +1042,7 @@ func TestGetTaskFunc_RemoteResolution_TrustedResourceVerification_Error(t *testi
 					ServiceAccountName: "default",
 				},
 			}
-			fn, err := resources.GetTaskFunc(ctx, nil, nil, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default")
-			if err != nil {
-				t.Fatalf("failed to get task fn: %s", err.Error())
-			}
+			fn := resources.GetTaskFunc(ctx, nil, nil, tc.requester, tr, tr.Spec.TaskRef, "", "default", "default")
 
 			resolvedTask, source, err := fn(ctx, taskRef.Name)
 

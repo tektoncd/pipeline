@@ -199,7 +199,7 @@ func TestGetPipelineFunc(t *testing.T) {
 				t.Fatalf("failed to upload test image: %s", err.Error())
 			}
 
-			fn, err := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, &v1beta1.PipelineRun{
+			fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 				Spec: v1beta1.PipelineRunSpec{
 					PipelineRef:        tc.ref,
@@ -270,10 +270,7 @@ func TestGetPipelineFuncSpecAlreadyFetched(t *testing.T) {
 		Spec: pipelineSpec,
 	}
 
-	fn, err := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, pipelineRun)
-	if err != nil {
-		t.Fatalf("failed to get pipeline fn: %s", err.Error())
-	}
+	fn := resources.GetPipelineFunc(ctx, kubeclient, tektonclient, nil, pipelineRun)
 	actualPipeline, actualConfigSource, err := fn(ctx, name)
 	if err != nil {
 		t.Fatalf("failed to call pipelinefn: %s", err.Error())
@@ -302,16 +299,13 @@ func TestGetPipelineFunc_RemoteResolution(t *testing.T) {
 
 	resolved := test.NewResolvedResource([]byte(pipelineYAML), nil, sampleConfigSource.DeepCopy(), nil)
 	requester := test.NewRequester(resolved, nil)
-	fn, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef:        pipelineRef,
 			ServiceAccountName: "default",
 		},
 	})
-	if err != nil {
-		t.Fatalf("failed to get pipeline fn: %s", err.Error())
-	}
 
 	resolvedPipeline, resolvedConfigSource, err := fn(ctx, pipelineRef.Name)
 	if err != nil {
@@ -361,7 +355,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			Value: *v1beta1.NewStructuredValues("test-pipeline"),
 		}},
 	}
-	fn, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-pipeline",
 			Namespace: "default",
@@ -375,9 +369,6 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			}},
 		},
 	})
-	if err != nil {
-		t.Fatalf("failed to get pipeline fn: %s", err.Error())
-	}
 
 	resolvedPipeline, resolvedConfigSource, err := fn(ctx, pipelineRef.Name)
 	if err != nil {
@@ -405,7 +396,7 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 		},
 	}
 
-	fnNotMatching, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+	fnNotMatching := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "other-pipeline",
 			Namespace: "default",
@@ -419,9 +410,6 @@ func TestGetPipelineFunc_RemoteResolution_ReplacedParams(t *testing.T) {
 			}},
 		},
 	})
-	if err != nil {
-		t.Fatalf("failed to get pipeline fn: %s", err.Error())
-	}
 
 	_, _, err = fnNotMatching(ctx, pipelineRefNotMatching.Name)
 	if err == nil {
@@ -440,16 +428,13 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 	resolvesTo := []byte("INVALID YAML")
 	resource := test.NewResolvedResource(resolvesTo, nil, nil, nil)
 	requester := test.NewRequester(resource, nil)
-	fn, err := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
+	fn := resources.GetPipelineFunc(ctx, nil, nil, requester, &v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default"},
 		Spec: v1beta1.PipelineRunSpec{
 			PipelineRef:        pipelineRef,
 			ServiceAccountName: "default",
 		},
 	})
-	if err != nil {
-		t.Fatalf("failed to get pipeline fn: %s", err.Error())
-	}
 	if _, _, err := fn(ctx, pipelineRef.Name); err == nil {
 		t.Fatalf("expected error due to invalid pipeline data but saw none")
 	}
@@ -735,10 +720,7 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Success(t 
 					ServiceAccountName: "default",
 				},
 			}
-			fn, err := resources.GetPipelineFunc(ctx, nil, nil, tc.requester, pr)
-			if err != nil {
-				t.Fatalf("failed to get pipeline fn: %s", err.Error())
-			}
+			fn := resources.GetPipelineFunc(ctx, nil, nil, tc.requester, pr)
 
 			resolvedPipeline, source, err := fn(ctx, pipelineRef.Name)
 			if err != nil {
@@ -817,10 +799,7 @@ func TestGetPipelineFunc_RemoteResolution_TrustedResourceVerification_Error(t *t
 					ServiceAccountName: "default",
 				},
 			}
-			fn, err := resources.GetPipelineFunc(ctx, nil, nil, tc.requester, pr)
-			if err != nil {
-				t.Fatalf("failed to get pipeline fn: %s", err.Error())
-			}
+			fn := resources.GetPipelineFunc(ctx, nil, nil, tc.requester, pr)
 
 			resolvedPipeline, source, err := fn(ctx, pipelineRef.Name)
 			if err == nil || !errors.Is(err, tc.expectedErr) {
