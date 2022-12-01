@@ -90,3 +90,8 @@ data:
   # in the TaskRun/PipelineRun such as the source from where a remote Task/Pipeline
   # definition was fetched.
   enable-provenance-in-status: "false"
+  # Setting this flag to "full" to enable full embedding of `TaskRun` and `Run` statuses in the
+  # `PipelineRun` status. Set it to "minimal" to populate the `ChildReferences` field in the
+  # `PipelineRun` status with name, kind, and API version information for each `TaskRun` and
+  # `Run` in the `PipelineRun` instead. Set it to "both" to do both.
+  embedded-status: "full"
