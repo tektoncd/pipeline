@@ -12,7 +12,7 @@ weight: 4000
 - [Deprecating Resources from Task, TaskRun, Pipeline and PipelineRun](#deprecating-resources-from-task,-taskrun,-pipeline-and-pipelinerun)
 - [Replacing `taskRef.bundle` and `pipelineRef.bundle` with Bundle Resolver](#replacing-taskRef.bundle-and-pipelineRef.bundle-with-bundle-resolver)
 - [Adding `TaskRunTemplate` in `PipelineRun.Spec`](#adding-taskruntemplate-to-pipelinerun.spec)
-
+- [Failing conversion when converting with Full EmbeddedStatus from v1 to v1beta1](#pipelinerunstatus-conversion-with-full-or-both-embeddedstatus)
 
 This document describes the differences between `v1beta1` Tekton entities and their
 `v1` counterparts. It also describes the changed fields and the deprecated fields into v1.
@@ -146,3 +146,8 @@ spec:
 ```
 
 For more information, see [TEP-119](https://github.com/tektoncd/community/blob/main/teps/0119-add-taskrun-template-in-pipelinerun.md).
+
+
+## PipelineRunStatus Conversion with Full or Both EmbeddedStatus
+
+`taskruns` and `runs` are deprecated from `PipelineRunStatus` and when the embeddedStatus is set to full.
