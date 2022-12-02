@@ -47,6 +47,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EmbeddedStatus:           config.DefaultEmbeddedStatus,
 				ResourceVerificationMode: config.DefaultResourceVerificationMode,
 				EnableProvenanceInStatus: config.DefaultEnableProvenanceInStatus,
+				ResultExtractionMethod:   config.DefaultResultExtractionMethod,
+				MaxResultSize:            config.DefaultMaxResultSize,
 			},
 			fileName: config.GetFeatureFlagsConfigName(),
 		},
@@ -64,6 +66,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableSpire:                      true,
 				ResourceVerificationMode:         "enforce",
 				EnableProvenanceInStatus:         true,
+				ResultExtractionMethod:           "termination-message",
+				MaxResultSize:                    4096,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},
@@ -84,6 +88,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
+				MaxResultSize:                    config.DefaultMaxResultSize,
 			},
 			fileName: "feature-flags-enable-api-fields-overrides-bundles-and-custom-tasks",
 		},
@@ -101,6 +107,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
+				MaxResultSize:                    config.DefaultMaxResultSize,
 			},
 			fileName: "feature-flags-bundles-and-custom-tasks",
 		},
@@ -118,6 +126,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
+				MaxResultSize:                    config.DefaultMaxResultSize,
 			},
 			fileName: "feature-flags-beta-api-fields",
 		},
@@ -129,6 +139,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
+				MaxResultSize:                    config.DefaultMaxResultSize,
 			},
 			fileName: "feature-flags-enable-spire",
 		},
@@ -159,6 +171,8 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EnableSpire:                      config.DefaultEnableSpire,
 		ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 		EnableProvenanceInStatus:         config.DefaultEnableProvenanceInStatus,
+		ResultExtractionMethod:           config.DefaultResultExtractionMethod,
+		MaxResultSize:                    config.DefaultMaxResultSize,
 	}
 	verifyConfigFileWithExpectedFeatureFlagsConfig(t, FeatureFlagsConfigEmptyName, expectedConfig)
 }
@@ -201,6 +215,12 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-invalid-embedded-status",
 	}, {
 		fileName: "feature-flags-invalid-resource-verification-mode",
+	}, {
+		fileName: "feature-flags-invalid-results-from",
+	}, {
+		fileName: "feature-flags-invalid-max-result-size-too-large",
+	}, {
+		fileName: "feature-flags-invalid-max-result-size-bad-value",
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
