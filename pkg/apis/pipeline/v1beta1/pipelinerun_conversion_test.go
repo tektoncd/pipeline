@@ -35,9 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
-<<<<<<< HEAD
-	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
-=======
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
@@ -82,7 +79,6 @@ var (
 			Values:   []string{"val-0", "val-1"},
 		}},
 	}
->>>>>>> 85696a326 (Add conversion for PipelineRun Status)
 )
 
 func TestPipelineRunConversionBadType(t *testing.T) {
@@ -196,13 +192,6 @@ func TestPipelineRunConversion(t *testing.T) {
 				},
 			},
 			Status: v1beta1.PipelineRunStatus{
-<<<<<<< HEAD
-				Status: duckv1beta1.Status{
-					Conditions: duckv1beta1.Conditions{{
-						Type:   apis.ConditionSucceeded,
-						Status: corev1.ConditionTrue,
-					}},
-=======
 				Status: duckv1.Status{
 					Conditions: duckv1.Conditions{{
 						Type:    apis.ConditionSucceeded,
@@ -211,7 +200,6 @@ func TestPipelineRunConversion(t *testing.T) {
 						Message: "All tasks finished running",
 					}},
 					ObservedGeneration: 1,
->>>>>>> 85696a326 (Add conversion for PipelineRun Status)
 				},
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 					StartTime:      &metav1.Time{Time: time.Now()},
