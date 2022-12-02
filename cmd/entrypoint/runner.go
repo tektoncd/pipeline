@@ -119,7 +119,7 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	// Start defined command
 	if err := cmd.Start(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			fmt.Println("####err return at start")
+			log.Printf("####err return at Start")
 			return context.DeadlineExceeded
 		}
 		return err
@@ -154,7 +154,7 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	// Wait for command to exit
 	if err := cmd.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			fmt.Println("####err return at wait")
+			log.Printf("####err return at wait")
 			return context.DeadlineExceeded
 		}
 		return err
