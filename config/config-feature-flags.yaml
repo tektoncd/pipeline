@@ -90,3 +90,4 @@ data:
   # in the TaskRun/PipelineRun such as the source from where a remote Task/Pipeline
   # definition was fetched.
   enable-provenance-in-status: "false"
+  embedded-status: "minimal"
