@@ -15,7 +15,6 @@ package taskrun
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -33,8 +32,8 @@ func TestInitTracing(t *testing.T) {
 		name              string
 		taskRun           *v1beta1.TaskRun
 		tracerProvider    trace.TracerProvider
-		expectAnnotations bool
-		expectSpanContext bool
+		expectSpanContextStatus bool
+		expectValidSpanContext bool
 		parentTraceID     string
 	}{{
 		name: "with-tracerprovider-no-parent-trace",
@@ -45,8 +44,8 @@ func TestInitTracing(t *testing.T) {
 			},
 		},
 		tracerProvider:    tracesdk.NewTracerProvider(),
-		expectAnnotations: true,
-		expectSpanContext: true,
+		expectSpanContextStatus: true,
+		expectValidSpanContext: true,
 	}, {
 		name: "with-tracerprovider-with-parent-trace",
 		taskRun: &v1beta1.TaskRun{
@@ -59,8 +58,8 @@ func TestInitTracing(t *testing.T) {
 			},
 		},
 		tracerProvider:    tracesdk.NewTracerProvider(),
-		expectAnnotations: true,
-		expectSpanContext: true,
+		expectSpanContextStatus: true,
+		expectValidSpanContext: true,
 		parentTraceID:     "00-0f57e147e992b304d977436289d10628-73d5909e31793992-01",
 	}, {
 		name: "without-tracerprovider",
@@ -71,8 +70,8 @@ func TestInitTracing(t *testing.T) {
 			},
 		},
 		tracerProvider:    trace.NewNoopTracerProvider(),
-		expectAnnotations: false,
-		expectSpanContext: false,
+		expectSpanContextStatus: false,
+		expectValidSpanContext: false,
 	}, {
 		name: "without-tracerprovider-existing-annotations",
 		taskRun: &v1beta1.TaskRun{
@@ -85,8 +84,8 @@ func TestInitTracing(t *testing.T) {
 			},
 		},
 		tracerProvider:    trace.NewNoopTracerProvider(),
-		expectAnnotations: true,
-		expectSpanContext: false,
+		expectSpanContextStatus: true,
+		expectValidSpanContext: false,
 	}}
 
 	for _, tc := range testcases {
@@ -98,23 +97,20 @@ func TestInitTracing(t *testing.T) {
 				t.Fatalf("returned nil context from initTracing")
 			}
 
-			if tc.expectAnnotations && tr.Annotations == nil {
-				t.Fatalf("annotations are empty after initializing tracing")
+			if tc.expectSpanContextStatus && tr.Status.SpanContext == nil {
+				t.Fatalf("spanContext is empty after initializing tracing")
 			}
 
-			if tc.expectSpanContext {
-				if _, e := tr.Annotations["tekton.dev/taskrunSpanContext"]; !e {
+			if !tc.expectSpanContextStatus && len(tr.Status.SpanContext) > 0 {
+				t.Fatalf("spanContext is not empty")
+			}
+
+			if tc.expectValidSpanContext {
+				if len(tr.Status.SpanContext) == 0 {
 					t.Fatalf("spanContext not added to annotations")
 				}
 
-				sc := tr.Annotations["tekton.dev/taskrunSpanContext"]
-				carrier := make(map[string]string)
-				err := json.Unmarshal([]byte(sc), &carrier)
-				if err != nil {
-					t.Errorf("Unable to unmarshal spancontext, err: %s", err)
-				}
-
-				parentID := carrier["traceparent"]
+				parentID := tr.Status.SpanContext["traceparent"]
 				if len(parentID) != 55 {
 					t.Errorf("invalid trace Id")
 				}
