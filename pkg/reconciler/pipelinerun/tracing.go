@@ -42,46 +42,40 @@ const (
 // spanContext is propogated through annotations in the CR
 func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, pr *v1beta1.PipelineRun) context.Context {
 	logger := logging.FromContext(ctx)
-	carrier := make(map[string]string)
-
 	pro := otel.GetTextMapPropagator()
-	prAnnotations := pr.Annotations
-	if prAnnotations == nil {
-		prAnnotations = make(map[string]string)
+
+	// SpanContext was created already
+	if pr.Status.SpanContext != nil && len(pr.Status.SpanContext) > 0 {
+		return pro.Extract(ctx, propagation.MapCarrier(pr.Status.SpanContext))
 	}
 
-	// if spanContext is not present in the CR, create new parent trace and
-	// add the marshalled spancontext to the annotations
-	if _, e := prAnnotations[SpanContextAnnotation]; !e {
-		ctxWithTrace, span := tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:Reconciler")
-		defer span.End()
-		span.SetAttributes(attribute.String("pipeline", pr.Name), attribute.String("namespace", pr.Namespace))
+	pr.Status.SpanContext = make(map[string]string)
 
-		if !span.SpanContext().HasTraceID() {
-			logger.Debug("tracerProvider doesn't provide a traceId, tracing is disabled")
-			return ctx
-		}
-
-		marshalled, err := getMarshalledSpanFromContext(ctxWithTrace)
+	// SpanContext was propogated through annotations
+	if pr.Annotations != nil && pr.Annotations[SpanContextAnnotation] != "" {
+		err := json.Unmarshal([]byte(pr.Annotations[SpanContextAnnotation]), &pr.Status.SpanContext)
 		if err != nil {
-			logger.Error("Unable to marshal spancontext, err: %s", err)
-			return ctx
+			logger.Error("unable to unmarshal spancontext, err: %s", err)
 		}
-		logger.Debug("adding spancontext", marshalled)
-		prAnnotations[SpanContextAnnotation] = marshalled
-		pr.Annotations = prAnnotations
-		span.AddEvent("updating TaskRun CR with SpanContext annotations")
-		return ctxWithTrace
+
+		return pro.Extract(ctx, propagation.MapCarrier(pr.Status.SpanContext))
 	}
 
-	err := json.Unmarshal([]byte(pr.Annotations[SpanContextAnnotation]), &carrier)
-	if err != nil {
-		logger.Error("unable to unmarshal spancontext, err: %s", err)
+	// Create a new root span since there was no parent spanContext provided through annotations
+	ctxWithTrace, span := tracerProvider.Tracer(TracerName).Start(ctx, "PipelineRun:Reconciler")
+	defer span.End()
+	span.SetAttributes(attribute.String("taskrun", pr.Name), attribute.String("namespace", pr.Namespace))
+
+	pro.Inject(ctxWithTrace, propagation.MapCarrier(pr.Status.SpanContext))
+
+	logger.Debug("got tracing carrier", pr.Status.SpanContext)
+	if len(pr.Status.SpanContext) == 0 {
+		logger.Debug("tracerProvider doesn't provide a traceId, tracing is disabled")
+		return ctx
 	}
 
-	logger.Debug("got traceContext %s", carrier)
-
-	return pro.Extract(ctx, propagation.MapCarrier(carrier))
+	span.AddEvent("updating PipelineRun status with SpanContext")
+	return ctxWithTrace
 }
 
 // Extract spanContext from the context and return it as json encoded string
