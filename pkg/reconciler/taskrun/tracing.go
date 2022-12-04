@@ -46,15 +46,16 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 		return pro.Extract(ctx, propagation.MapCarrier(tr.Status.SpanContext))
 	}
 
-	tr.Status.SpanContext = make(map[string]string)
+	spanContext := make(map[string]string)
 
 	// SpanContext was propogated through annotations
 	if tr.Annotations != nil && tr.Annotations[SpanContextAnnotation] != "" {
-		err := json.Unmarshal([]byte(tr.Annotations[SpanContextAnnotation]), &tr.Status.SpanContext)
+		err := json.Unmarshal([]byte(tr.Annotations[SpanContextAnnotation]), &spanContext)
 		if err != nil {
 			logger.Error("unable to unmarshal spancontext, err: %s", err)
 		}
 
+		tr.Status.SpanContext = spanContext
 		return pro.Extract(ctx, propagation.MapCarrier(tr.Status.SpanContext))
 	}
 
@@ -63,14 +64,15 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 	defer span.End()
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 
-	pro.Inject(ctxWithTrace, propagation.MapCarrier(tr.Status.SpanContext))
+	pro.Inject(ctxWithTrace, propagation.MapCarrier(spanContext))
 
-	logger.Debug("got tracing carrier", tr.Status.SpanContext)
-	if len(tr.Status.SpanContext) == 0 {
+	logger.Debug("got tracing carrier", spanContext)
+	if len(spanContext) == 0 {
 		logger.Debug("tracerProvider doesn't provide a traceId, tracing is disabled")
 		return ctx
 	}
 
 	span.AddEvent("updating TaskRun status with SpanContext")
+	tr.Status.SpanContext = spanContext
 	return ctxWithTrace
 }
