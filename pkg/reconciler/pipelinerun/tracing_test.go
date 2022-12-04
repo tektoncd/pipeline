@@ -29,12 +29,12 @@ func TestInitTracing(t *testing.T) {
 	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	testcases := []struct {
-		name              string
-		pipelineRun       *v1beta1.PipelineRun
-		tracerProvider    trace.TracerProvider
+		name                    string
+		pipelineRun             *v1beta1.PipelineRun
+		tracerProvider          trace.TracerProvider
 		expectSpanContextStatus bool
-		expectValidSpanContext bool
-		parentTraceID     string
+		expectValidSpanContext  bool
+		parentTraceID           string
 	}{{
 		name: "with-tracerprovider-no-parent-trace",
 		pipelineRun: &v1beta1.PipelineRun{
@@ -43,9 +43,9 @@ func TestInitTracing(t *testing.T) {
 				Namespace: "testns",
 			},
 		},
-		tracerProvider:    tracesdk.NewTracerProvider(),
+		tracerProvider:          tracesdk.NewTracerProvider(),
 		expectSpanContextStatus: true,
-		expectValidSpanContext: true,
+		expectValidSpanContext:  true,
 	}, {
 		name: "with-tracerprovider-with-parent-trace",
 		pipelineRun: &v1beta1.PipelineRun{
@@ -57,10 +57,10 @@ func TestInitTracing(t *testing.T) {
 				},
 			},
 		},
-		tracerProvider:    tracesdk.NewTracerProvider(),
+		tracerProvider:          tracesdk.NewTracerProvider(),
 		expectSpanContextStatus: true,
-		expectValidSpanContext: true,
-		parentTraceID:     "00-0f57e147e992b304d977436289d10628-73d5909e31793992-01",
+		expectValidSpanContext:  true,
+		parentTraceID:           "00-0f57e147e992b304d977436289d10628-73d5909e31793992-01",
 	}, {
 		name: "without-tracerprovider",
 		pipelineRun: &v1beta1.PipelineRun{
@@ -69,9 +69,9 @@ func TestInitTracing(t *testing.T) {
 				Namespace: "testns",
 			},
 		},
-		tracerProvider:    trace.NewNoopTracerProvider(),
+		tracerProvider:          trace.NewNoopTracerProvider(),
 		expectSpanContextStatus: false,
-		expectValidSpanContext: false,
+		expectValidSpanContext:  false,
 	}, {
 		name: "without-tracerprovider-existing-annotations",
 		pipelineRun: &v1beta1.PipelineRun{
@@ -83,9 +83,9 @@ func TestInitTracing(t *testing.T) {
 				},
 			},
 		},
-		tracerProvider:    trace.NewNoopTracerProvider(),
-		expectSpanContextStatus: true,
-		expectValidSpanContext: false,
+		tracerProvider:          trace.NewNoopTracerProvider(),
+		expectSpanContextStatus: false,
+		expectValidSpanContext:  false,
 	}}
 
 	for _, tc := range testcases {
