@@ -144,6 +144,18 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			},
 			fileName: "feature-flags-enable-spire",
 		},
+		{
+			expectedConfig: &config.FeatureFlags{
+				EnableAPIFields:                  "stable",
+				EmbeddedStatus:                   "full",
+				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+				ResultExtractionMethod:           config.ResultExtractionMethodSidecarLogs,
+				MaxResultSize:                    8192,
+			},
+			fileName: "feature-flags-results-via-sidecar-logs",
+		},
 	}
 
 	for _, tc := range testCases {

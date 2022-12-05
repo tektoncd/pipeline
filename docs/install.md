@@ -500,7 +500,11 @@ kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"results-from":"
 ```
 
 3. If you want the size per result to be something other than 4096 bytes, you can set the `max-result-size` feature flag in bytes by setting `max-result-size: 8192(whatever you need here)`. **Note:** The value you can set here cannot exceed the size of the CRD limit of 1.5 MB.
-  
+ 
+```
+kubectl patch cm feature-flags -n tekton-pipelines -p '{"data":{"max-result-size":"<VALUE-IN-BYTES>"}}'
+```
+
 ## Configuring High Availability
 
 If you want to run Tekton Pipelines in a way so that webhooks are resiliant against failures and support
