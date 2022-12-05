@@ -65,13 +65,70 @@ func TestValidateParams(t *testing.T) {
 	resolver := Resolver{}
 
 	paramsWithRevision := map[string]string{
-		urlParam:      "http://foo",
+		urlParam:      "https://foo",
 		pathParam:     "bar",
 		revisionParam: "baz",
 	}
 
 	if err := resolver.ValidateParams(context.Background(), toParams(paramsWithRevision)); err != nil {
 		t.Fatalf("unexpected error validating params: %v", err)
+	}
+}
+
+func TestValidateParamsURLs(t *testing.T) {
+	testCases := []struct {
+		name        string
+		url         string
+		expectedErr string
+	}{
+		{
+			name: "https",
+			url:  "https://foo",
+		}, {
+			name: "git",
+			url:  "git://foo",
+		}, {
+			name: "ssh",
+			url:  "ssh://foo",
+		}, {
+			name: "file",
+			url:  "file://foo",
+		}, {
+			name: "git+ssh",
+			url:  "git+ssh://foo",
+		}, {
+			name:        "fail:git@",
+			url:         "git@github.com:tektoncd/pipeline.git",
+			expectedErr: "url must start with either git://, ssh://, https://, file://, or git+ssh://, but is git@github.com:tektoncd/pipeline.git",
+		}, {
+			name:        "fail:abcd",
+			url:         "abcd://foo",
+			expectedErr: "url must start with either git://, ssh://, https://, file://, or git+ssh://, but is abcd://foo",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resolver := Resolver{}
+
+			paramsWithRevision := map[string]string{
+				urlParam:      tc.url,
+				pathParam:     "bar",
+				revisionParam: "baz",
+			}
+
+			err := resolver.ValidateParams(context.Background(), toParams(paramsWithRevision))
+			if tc.expectedErr == "" && err != nil {
+				t.Fatalf("unexpected error validating params: %v", err)
+			}
+			if tc.expectedErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %s but got no error", tc.expectedErr)
+				} else if tc.expectedErr != err.Error() {
+					t.Fatalf("expected error %s, but got %s", tc.expectedErr, err.Error())
+				}
+			}
+		})
 	}
 }
 
@@ -119,7 +176,7 @@ func TestValidateParams_Failure(t *testing.T) {
 			params: map[string]string{
 				revisionParam: "abcd1234",
 				pathParam:     "/foo/bar",
-				urlParam:      "http://foo",
+				urlParam:      "https://foo",
 				repoParam:     "foo",
 			},
 			expectedErr: "cannot specify both 'url' and 'repo'",

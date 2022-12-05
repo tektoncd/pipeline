@@ -465,7 +465,17 @@ func populateDefaultParams(ctx context.Context, params []pipelinev1beta1.Param) 
 		return nil, fmt.Errorf("missing required git resolver params: %s", strings.Join(missingParams, ", "))
 	}
 
-	// TODO(sbwsg): validate repo url is well-formed, git:// or https://
+	if paramsMap[urlParam] != "" {
+		if !strings.HasPrefix(paramsMap[urlParam], "git://") &&
+			!strings.HasPrefix(paramsMap[urlParam], "https://") &&
+			!strings.HasPrefix(paramsMap[urlParam], "ssh://") &&
+			!strings.HasPrefix(paramsMap[urlParam], "file://") &&
+			!strings.HasPrefix(paramsMap[urlParam], "git+ssh://") &&
+			!strings.HasPrefix(paramsMap[urlParam], "/") { // We need to allow absolute paths without a protocol for testing purposes, but don't advertise support for such paths.
+			return nil, fmt.Errorf("%s must start with either git://, ssh://, https://, file://, or git+ssh://, but is %s", urlParam, paramsMap[urlParam])
+		}
+	}
+
 	// TODO(sbwsg): validate pathInRepo is valid relative pathInRepo
 	return paramsMap, nil
 }
