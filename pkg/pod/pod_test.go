@@ -31,6 +31,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/internal/sidecarlogsvalidation"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -38,6 +39,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
@@ -1784,6 +1786,76 @@ _EOF_
 					}}, implicitVolumeMounts...),
 					TerminationMessagePath: "/tekton/termination",
 				}},
+				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
+			},
+		}, {
+			desc:         "sidecar logs enabled",
+			featureFlags: map[string]string{"results-from": "sidecar-logs"},
+			ts: v1beta1.TaskSpec{
+				Results: []v1beta1.TaskResult{{
+					Name: "foo",
+					Type: v1beta1.ResultsTypeString,
+				}},
+				Steps: []v1beta1.Step{{
+					Name:    "name",
+					Image:   "image",
+					Command: []string{"cmd"}, // avoid entrypoint lookup.
+				}},
+			},
+			want: &corev1.PodSpec{
+				RestartPolicy: corev1.RestartPolicyNever,
+				InitContainers: []corev1.Container{
+					entrypointInitContainer(images.EntrypointImage, []v1beta1.Step{{Name: "name"}}),
+				},
+				Containers: []corev1.Container{{
+					Name:    "step-name",
+					Image:   "image",
+					Command: []string{"/tekton/bin/entrypoint"},
+					Args: []string{
+						"-wait_file",
+						"/tekton/downward/ready",
+						"-wait_file_content",
+						"-post_file",
+						"/tekton/run/0/out",
+						"-termination_path",
+						"/tekton/termination",
+						"-step_metadata_dir",
+						"/tekton/run/0/status",
+						"-result_from",
+						"sidecar-logs",
+						"-results",
+						"foo",
+						"-entrypoint",
+						"cmd",
+						"--",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{binROMount, runMount(0, false), downwardMount, {
+						Name:      "tekton-creds-init-home-0",
+						MountPath: "/tekton/creds",
+					}}, implicitVolumeMounts...),
+					TerminationMessagePath: "/tekton/termination",
+				}, {
+					Name:  fmt.Sprintf("sidecar-%s", sidecarlogsvalidation.ReservedResultsSidecarName),
+					Image: "",
+					Command: []string{
+						"/ko-app/sidecarlogresults",
+						"-results-dir",
+						"/tekton/results",
+						"-result-names",
+						"foo",
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: nil,
+					},
+					VolumeMounts: append([]v1.VolumeMount{
+						{Name: "tekton-internal-bin", ReadOnly: true, MountPath: "/tekton/bin"},
+						{Name: "tekton-internal-run-0", ReadOnly: true, MountPath: "/tekton/run/0"},
+					}, implicitVolumeMounts...),
+				}},
+				Volumes: append(implicitVolumes, binVolume, runVolume(0), downwardVolume, corev1.Volume{
+					Name:         "tekton-creds-init-home-0",
+					VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{Medium: corev1.StorageMediumMemory}},
+				}),
 				ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			},
 		}} {

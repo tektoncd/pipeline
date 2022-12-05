@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/termination"
@@ -315,8 +316,9 @@ func TestReadResultsFromDisk(t *testing.T) {
 			}
 
 			e := Entrypointer{
-				Results:         resultsFilePath,
-				TerminationPath: terminationPath,
+				Results:                resultsFilePath,
+				TerminationPath:        terminationPath,
+				ResultExtractionMethod: config.ResultExtractionMethodTerminationMessage,
 			}
 			if err := e.readResultsFromDisk(ctx, ""); err != nil {
 				t.Fatal(err)
@@ -544,19 +546,20 @@ func TestEntrypointerResults(t *testing.T) {
 			}
 
 			err := Entrypointer{
-				Command:             append([]string{c.entrypoint}, c.args...),
-				WaitFiles:           c.waitFiles,
-				PostFile:            c.postFile,
-				Waiter:              fw,
-				Runner:              fr,
-				PostWriter:          fpw,
-				Results:             results,
-				ResultsDirectory:    resultsDir,
-				TerminationPath:     terminationPath,
-				Timeout:             &timeout,
-				BreakpointOnFailure: c.breakpointOnFailure,
-				StepMetadataDir:     c.stepDir,
-				SpireWorkloadAPI:    signClient,
+				Command:                append([]string{c.entrypoint}, c.args...),
+				WaitFiles:              c.waitFiles,
+				PostFile:               c.postFile,
+				Waiter:                 fw,
+				Runner:                 fr,
+				PostWriter:             fpw,
+				Results:                results,
+				ResultsDirectory:       resultsDir,
+				ResultExtractionMethod: config.ResultExtractionMethodTerminationMessage,
+				TerminationPath:        terminationPath,
+				Timeout:                &timeout,
+				BreakpointOnFailure:    c.breakpointOnFailure,
+				StepMetadataDir:        c.stepDir,
+				SpireWorkloadAPI:       signClient,
 			}.Go()
 			if err != nil {
 				t.Fatalf("Entrypointer failed: %v", err)
