@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/spire"
@@ -85,6 +86,8 @@ type Entrypointer struct {
 	SpireWorkloadAPI spire.EntrypointerAPIClient
 	// ResultsDirectory is the directory to find results, defaults to pipeline.DefaultResultPath
 	ResultsDirectory string
+	// ResultExtractionMethod is the method using which the controller extracts the results from the task pod.
+	ResultExtractionMethod string
 }
 
 // Waiter encapsulates waiting for files to exist.
@@ -221,7 +224,6 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string)
 			ResultType: v1beta1.TaskRunResultType,
 		})
 	}
-
 	if e.SpireWorkloadAPI != nil {
 		signed, err := e.SpireWorkloadAPI.Sign(ctx, output)
 		if err != nil {
@@ -231,7 +233,7 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string)
 	}
 
 	// push output to termination path
-	if len(output) != 0 {
+	if e.ResultExtractionMethod == config.ResultExtractionMethodTerminationMessage && len(output) != 0 {
 		if err := termination.WriteMessage(e.TerminationPath, output); err != nil {
 			return err
 		}

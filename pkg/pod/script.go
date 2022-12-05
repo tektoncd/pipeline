@@ -211,10 +211,10 @@ cat > ${scriptfile} << '%s'
 		}
 		debugScripts := []script{{
 			name:    "continue",
-			content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, runDir),
+			content: defaultScriptPreamble + fmt.Sprintf(debugContinueScriptTemplate, len(steps), debugInfoDir, RunDir),
 		}, {
 			name:    "fail-continue",
-			content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, runDir),
+			content: defaultScriptPreamble + fmt.Sprintf(debugFailScriptTemplate, len(steps), debugInfoDir, RunDir),
 		}}
 
 		// Add debug or breakpoint related scripts to /tekton/debug/scripts

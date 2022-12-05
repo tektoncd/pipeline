@@ -69,6 +69,7 @@ spec:
           "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
           "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
+          "-sidecarlogresults-image", "ko://github.com/tektoncd/pipeline/cmd/sidecarlogresults",
           "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-pr-image", "ko://github.com/tektoncd/pipeline/cmd/pullrequest-init",
           "-workingdirinit-image", "ko://github.com/tektoncd/pipeline/cmd/workingdirinit",

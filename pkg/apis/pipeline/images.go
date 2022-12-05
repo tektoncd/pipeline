@@ -26,6 +26,8 @@ import (
 type Images struct {
 	// EntrypointImage is container image containing our entrypoint binary.
 	EntrypointImage string
+	// SidecarLogResultsImage is container image containing the binary that fetches results from the steps and logs it to stdout.
+	SidecarLogResultsImage string
 	// NopImage is the container image used to kill sidecars.
 	NopImage string
 	// GitImage is the container image with Git that we use to implement the Git source step.
@@ -55,6 +57,7 @@ func (i Images) Validate() error {
 		v, name string
 	}{
 		{i.EntrypointImage, "entrypoint-image"},
+		{i.SidecarLogResultsImage, "sidecarlogresults-image"},
 		{i.NopImage, "nop-image"},
 		{i.GitImage, "git-image"},
 		{i.KubeconfigWriterImage, "kubeconfig-writer-image"},

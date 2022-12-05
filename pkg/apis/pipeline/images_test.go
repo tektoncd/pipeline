@@ -9,6 +9,7 @@ import (
 func TestValidate(t *testing.T) {
 	valid := pipeline.Images{
 		EntrypointImage:          "set",
+		SidecarLogResultsImage:   "set",
 		NopImage:                 "set",
 		GitImage:                 "set",
 		KubeconfigWriterImage:    "set",
@@ -25,6 +26,7 @@ func TestValidate(t *testing.T) {
 
 	invalid := pipeline.Images{
 		EntrypointImage:          "set",
+		SidecarLogResultsImage:   "set",
 		NopImage:                 "set",
 		GitImage:                 "", // unset!
 		KubeconfigWriterImage:    "set",
