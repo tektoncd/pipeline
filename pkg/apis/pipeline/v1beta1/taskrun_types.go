@@ -186,6 +186,8 @@ const (
 	TaskRunReasonsResultsVerificationFailed TaskRunReason = "TaskRunResultsVerificationFailed"
 	// AwaitingTaskRunResults is the reason set when waiting upon `TaskRun` results and signatures to verify
 	AwaitingTaskRunResults TaskRunReason = "AwaitingTaskRunResults"
+	// TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB
+	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 )
 
 func (t TaskRunReason) String() string {

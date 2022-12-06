@@ -52,6 +52,7 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -4808,6 +4809,115 @@ func objectMeta(name, ns string) metav1.ObjectMeta {
 		Namespace:   ns,
 		Labels:      map[string]string{},
 		Annotations: map[string]string{},
+	}
+}
+
+func TestReconcile_validateLargerResultsSidecarLogs_invalid(t *testing.T) {
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-larger-results-sidecar-logs
+  namespace: foo
+spec:
+  taskSpec:
+    results:
+      - name: result1
+    steps:
+    - script: echo foo >> $(results.result1.path)  
+      image: myimage
+      name: mycontainer
+status:
+  taskSpec:
+    results:
+      - name: result1
+    steps:
+    - script: echo foo >> $(results.result1.path)  
+      image: myimage
+      name: mycontainer
+`)
+
+	taskruns := []*v1beta1.TaskRun{
+		taskRun,
+	}
+
+	for _, tc := range []struct {
+		name          string
+		taskRun       *v1beta1.TaskRun
+		maxResultSize string
+		expectError   bool
+		reason        string
+	}{{
+		name:          "taskrun results too large",
+		taskRun:       taskRun,
+		maxResultSize: "1",
+		expectError:   false,
+		reason:        "TaskRunResultLargerThanAllowedLimit",
+	}, {
+		name:          "taskrun results bad json",
+		taskRun:       taskRun,
+		maxResultSize: "4096",
+		expectError:   true,
+		reason:        "Running",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := test.Data{
+				TaskRuns: taskruns,
+				Tasks:    []*v1beta1.Task{},
+				ConfigMaps: []*corev1.ConfigMap{{
+					ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+					Data: map[string]string{
+						"results-from":    config.ResultExtractionMethodSidecarLogs,
+						"max-result-size": tc.maxResultSize,
+					},
+				}},
+			}
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			clientset := fakekubeclientset.NewSimpleClientset()
+			pod := &v1.Pod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Pod",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-taskrun-larger-results-sidecar-logs-pod",
+					Namespace: "foo",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  "sidecar-tekton-log-results",
+							Image: "image",
+						},
+					},
+				},
+				Status: v1.PodStatus{
+					Phase: corev1.PodRunning,
+				},
+			}
+			pod, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			if err != nil {
+				t.Errorf("Error occurred while creating pod %s: %s", pod.Name, err.Error())
+			}
+			createServiceAccount(t, testAssets, tc.taskRun.Spec.ServiceAccountName, tc.taskRun.Namespace)
+
+			// Reconcile the TaskRun.  This creates a Pod.
+			err = testAssets.Controller.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun))
+			if err != nil && tc.expectError == false {
+				t.Errorf("did not expect to get an error but got %v", err)
+			} else if err == nil && tc.expectError == true {
+				t.Error("expected to get an error but did not")
+			}
+
+			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
+			if condition.Type != apis.ConditionSucceeded || condition.Reason != tc.reason {
+				t.Errorf("Expected TaskRun to terminate with %s reason. Final conditions were:\n%#v", tc.reason, tr.Status.Conditions)
+			}
+
+		})
 	}
 }
 

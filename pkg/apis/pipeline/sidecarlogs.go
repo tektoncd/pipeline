@@ -14,10 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package sidecarlogsvalidation
+package pipeline
 
 const (
 	// ReservedResultsSidecarName is the name of the results sidecar that outputs the results to stdout
 	// when the results-from feature-flag is set to "sidecar-logs".
 	ReservedResultsSidecarName = "tekton-log-results"
+
+	// ReservedResultsSidecarContainerName is the name of the results sidecar container that is injected
+	// by the reconciler.
+	ReservedResultsSidecarContainerName = "sidecar-tekton-log-results"
 )

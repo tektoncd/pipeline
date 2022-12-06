@@ -2,14 +2,22 @@ package sidecarlogresults
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestLookForResults_FanOutAndWait(t *testing.T) {
@@ -116,6 +124,184 @@ func TestLookForResults(t *testing.T) {
 			}
 			if d := cmp.Diff(want, got.Bytes()); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestExtractResultsFromLogs(t *testing.T) {
+	inputResults := []SidecarLogResult{
+		{
+			Name:  "result1",
+			Value: "foo",
+		}, {
+			Name:  "result2",
+			Value: "bar",
+		},
+	}
+	podLogs := ""
+	for _, r := range inputResults {
+		res, _ := json.Marshal(&r)
+		podLogs = fmt.Sprintf("%s%s\n", podLogs, string(res))
+	}
+	logs := strings.NewReader(podLogs)
+
+	results, err := extractResultsFromLogs(logs, []v1beta1.PipelineResourceResult{}, 4096)
+	if err != nil {
+		t.Error(err)
+	}
+	want := []v1beta1.PipelineResourceResult{
+		{
+			Key:        "result1",
+			Value:      "foo",
+			ResultType: v1beta1.TaskRunResultType,
+		}, {
+			Key:        "result2",
+			Value:      "bar",
+			ResultType: v1beta1.TaskRunResultType,
+		},
+	}
+	if d := cmp.Diff(want, results); d != "" {
+		t.Fatal(diff.PrintWantGot(d))
+	}
+}
+
+func TestExtractResultsFromLogs_Failure(t *testing.T) {
+	inputResults := []SidecarLogResult{
+		{
+			Name:  "result1",
+			Value: strings.Repeat("v", 4098),
+		},
+	}
+	podLogs := ""
+	for _, r := range inputResults {
+		res, _ := json.Marshal(&r)
+		podLogs = fmt.Sprintf("%s%s\n", podLogs, string(res))
+	}
+	logs := strings.NewReader(podLogs)
+
+	_, err := extractResultsFromLogs(logs, []v1beta1.PipelineResourceResult{}, 4096)
+	if err != ErrSizeExceeded {
+		t.Fatalf("Expected error %v but got %v", ErrSizeExceeded, err)
+	}
+}
+
+func TestParseResults(t *testing.T) {
+	results := []SidecarLogResult{
+		{
+			Name:  "result1",
+			Value: "foo",
+		}, {
+			Name:  "result2",
+			Value: `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
+		}, {
+			Name:  "result3",
+			Value: `["hello","world"]`,
+		},
+	}
+	podLogs := []string{}
+	for _, r := range results {
+		res, _ := json.Marshal(&r)
+		podLogs = append(podLogs, string(res))
+	}
+	want := []v1beta1.PipelineResourceResult{{
+		Key:        "result1",
+		Value:      "foo",
+		ResultType: v1beta1.TaskRunResultType,
+	}, {
+		Key:        "result2",
+		Value:      `{"IMAGE_URL":"ar.com", "IMAGE_DIGEST":"sha234"}`,
+		ResultType: v1beta1.TaskRunResultType,
+	}, {
+		Key:        "result3",
+		Value:      `["hello","world"]`,
+		ResultType: v1beta1.TaskRunResultType,
+	}}
+	stepResults := []v1beta1.PipelineResourceResult{}
+	for _, plog := range podLogs {
+		res, err := parseResults([]byte(plog), 4096)
+		if err != nil {
+			t.Error(err)
+		}
+		stepResults = append(stepResults, res)
+	}
+	if d := cmp.Diff(want, stepResults); d != "" {
+		t.Fatal(diff.PrintWantGot(d))
+	}
+}
+
+func TestParseResults_Failure(t *testing.T) {
+	result := SidecarLogResult{
+		Name:  "result2",
+		Value: strings.Repeat("k", 4098),
+	}
+	res1, _ := json.Marshal("result1 v1")
+	res2, _ := json.Marshal(&result)
+	podLogs := []string{string(res1), string(res2)}
+	want := []string{
+		"Invalid result json: cannot unmarshal string into Go value of type sidecarlogresults.SidecarLogResult",
+		ErrSizeExceeded.Error(),
+	}
+	got := []string{}
+	for _, plog := range podLogs {
+		_, err := parseResults([]byte(plog), 4096)
+		got = append(got, err.Error())
+	}
+	if d := cmp.Diff(want, got); d != "" {
+		t.Fatal(diff.PrintWantGot(d))
+	}
+}
+
+func TestGetResultsFromSidecarLogs(t *testing.T) {
+	for _, c := range []struct {
+		desc      string
+		podPhase  v1.PodPhase
+		wantError bool
+	}{{
+		desc:      "pod pending to start",
+		podPhase:  corev1.PodPending,
+		wantError: false,
+	}, {
+		desc:      "pod running extract logs",
+		podPhase:  corev1.PodRunning,
+		wantError: true,
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			ctx := context.Background()
+			clientset := fakekubeclientset.NewSimpleClientset()
+			pod := &v1.Pod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Pod",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "foo",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  "container",
+							Image: "image",
+						},
+					},
+				},
+				Status: v1.PodStatus{
+					Phase: c.podPhase,
+				},
+			}
+			pod, err := clientset.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			if err != nil {
+				t.Errorf("Error occurred while creating pod %s: %s", pod.Name, err.Error())
+			}
+
+			// Fake logs are not formatted properly so there will be an error
+			_, err = GetResultsFromSidecarLogs(ctx, clientset, "foo", "pod", "container", pod.Status.Phase)
+			if err != nil && !c.wantError {
+				t.Fatalf("did not expect an error but got: %v", err)
+			}
+			if c.wantError && err == nil {
+				t.Fatal("expected to get an error but did not")
 			}
 		})
 	}
