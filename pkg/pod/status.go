@@ -17,6 +17,7 @@ limitations under the License.
 package pod
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -24,11 +25,15 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/termination"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 )
 
@@ -104,7 +109,7 @@ func SidecarsReady(podStatus corev1.PodStatus) bool {
 }
 
 // MakeTaskRunStatus returns a TaskRunStatus based on the Pod's status.
-func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod) (v1beta1.TaskRunStatus, error) {
+func MakeTaskRunStatus(ctx context.Context, logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev1.Pod, kubeclient kubernetes.Interface) (v1beta1.TaskRunStatus, error) {
 	trs := &tr.Status
 	if trs.GetCondition(apis.ConditionSucceeded) == nil || trs.GetCondition(apis.ConditionSucceeded).Status == corev1.ConditionUnknown {
 		// If the taskRunStatus doesn't exist yet, it's because we just started running
@@ -136,7 +141,7 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	}
 
 	var merr *multierror.Error
-	if err := setTaskRunStatusBasedOnStepStatus(logger, stepStatuses, &tr); err != nil {
+	if err := setTaskRunStatusBasedOnStepStatus(ctx, logger, stepStatuses, &tr, pod.Status.Phase, kubeclient); err != nil {
 		merr = multierror.Append(merr, err)
 	}
 
@@ -147,10 +152,26 @@ func MakeTaskRunStatus(logger *zap.SugaredLogger, tr v1beta1.TaskRun, pod *corev
 	return *trs, merr.ErrorOrNil()
 }
 
-func setTaskRunStatusBasedOnStepStatus(logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1beta1.TaskRun) *multierror.Error {
+func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredLogger, stepStatuses []corev1.ContainerStatus, tr *v1beta1.TaskRun, podPhase corev1.PodPhase, kubeclient kubernetes.Interface) *multierror.Error {
 	trs := &tr.Status
 	var merr *multierror.Error
 
+	// Extract results from sidecar logs
+	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
+	if sidecarLogsResultsEnabled && tr.Status.TaskSpec.Results != nil {
+		// extraction of results from sidecar logs
+		sidecarLogResults, err := sidecarlogresults.GetResultsFromSidecarLogs(ctx, kubeclient, tr.Namespace, tr.Status.PodName, pipeline.ReservedResultsSidecarContainerName, podPhase)
+		if err != nil {
+			merr = multierror.Append(merr, err)
+		}
+		// populate task run CRD with results from sidecar logs
+		taskResults, pipelineResourceResults, _ := filterResultsAndResources(sidecarLogResults)
+		if tr.IsSuccessful() {
+			trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
+			trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
+		}
+	}
+	// Continue with extraction of termination messages
 	for _, s := range stepStatuses {
 		if s.State.Terminated != nil && len(s.State.Terminated.Message) != 0 {
 			msg := s.State.Terminated.Message

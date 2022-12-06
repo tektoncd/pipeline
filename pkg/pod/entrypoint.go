@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"gomodules.xyz/jsonpatch/v2"
@@ -252,6 +253,12 @@ func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.In
 	updated := false
 	if newPod.Status.Phase == corev1.PodRunning {
 		for _, s := range newPod.Status.ContainerStatuses {
+			// If the results-from is set to sidecar logs,
+			// a sidecar container with name `sidecar-log-results` is injected by the reconiler.
+			// Do not kill this sidecar. Let it exit gracefully.
+			if config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs && s.Name == pipeline.ReservedResultsSidecarContainerName {
+				continue
+			}
 			// Stop any running container that isn't a step.
 			// An injected sidecar container might not have the
 			// "sidecar-" prefix, so we can't just look for that

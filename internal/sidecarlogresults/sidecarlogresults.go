@@ -17,14 +17,24 @@ limitations under the License.
 package sidecarlogresults
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"golang.org/x/sync/errgroup"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 )
+
+// ErrSizeExceeded indicates that the result exceeded its maximum allowed size
+var ErrSizeExceeded = errors.New("results size exceeds configured limit")
 
 // SidecarLogResult holds fields for storing extracted results
 type SidecarLogResult struct {
@@ -124,4 +134,60 @@ func LookForResults(w io.Writer, runDir string, resultsDir string, resultNames [
 		return err
 	}
 	return nil
+}
+
+// GetResultsFromSidecarLogs extracts results from the logs of the results sidecar
+func GetResultsFromSidecarLogs(ctx context.Context, clientset kubernetes.Interface, namespace string, name string, container string, podPhase corev1.PodPhase) ([]v1beta1.PipelineResourceResult, error) {
+	sidecarLogResults := []v1beta1.PipelineResourceResult{}
+	if podPhase == corev1.PodPending {
+		return sidecarLogResults, nil
+	}
+	podLogOpts := corev1.PodLogOptions{Container: container}
+	req := clientset.CoreV1().Pods(namespace).GetLogs(name, &podLogOpts)
+	sidecarLogs, err := req.Stream(ctx)
+	if err != nil {
+		return sidecarLogResults, err
+	}
+	defer sidecarLogs.Close()
+	maxResultLimit := config.FromContextOrDefaults(ctx).FeatureFlags.MaxResultSize
+	return extractResultsFromLogs(sidecarLogs, sidecarLogResults, maxResultLimit)
+}
+
+func extractResultsFromLogs(logs io.Reader, sidecarLogResults []v1beta1.PipelineResourceResult, maxResultLimit int) ([]v1beta1.PipelineResourceResult, error) {
+	scanner := bufio.NewScanner(logs)
+	buf := make([]byte, maxResultLimit)
+	scanner.Buffer(buf, maxResultLimit)
+	for scanner.Scan() {
+		result, err := parseResults(scanner.Bytes(), maxResultLimit)
+		if err != nil {
+			return nil, err
+		}
+		sidecarLogResults = append(sidecarLogResults, result)
+	}
+
+	if scanner.Err() != nil {
+		if errors.Is(scanner.Err(), bufio.ErrTooLong) {
+			return sidecarLogResults, ErrSizeExceeded
+		}
+		return nil, scanner.Err()
+	}
+	return sidecarLogResults, nil
+}
+
+func parseResults(resultBytes []byte, maxResultLimit int) (v1beta1.PipelineResourceResult, error) {
+	result := v1beta1.PipelineResourceResult{}
+	if len(resultBytes) > maxResultLimit {
+		return result, ErrSizeExceeded
+	}
+
+	var res SidecarLogResult
+	if err := json.Unmarshal(resultBytes, &res); err != nil {
+		return result, fmt.Errorf("Invalid result %w", err)
+	}
+	result = v1beta1.PipelineResourceResult{
+		Key:        res.Name,
+		Value:      res.Value,
+		ResultType: v1beta1.TaskRunResultType,
+	}
+	return result, nil
 }

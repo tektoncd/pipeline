@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -186,6 +187,12 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	// updates regardless of whether the reconciliation errored out.
 	if err = c.reconcile(ctx, tr, rtr); err != nil {
 		logger.Errorf("Reconcile: %v", err.Error())
+		if errors.Is(err, sidecarlogresults.ErrSizeExceeded) {
+			cfg := config.FromContextOrDefaults(ctx)
+			message := fmt.Sprintf("TaskRun %q failed: results exceeded size limit %d bytes", tr.Name, cfg.FeatureFlags.MaxResultSize)
+			err := c.failTaskRun(ctx, tr, v1beta1.TaskRunReasonResultLargerThanAllowedLimit, message)
+			return c.finishReconcileUpdateEmitEvents(ctx, tr, before, err)
+		}
 	}
 
 	// Emit events (only when ConditionSucceeded was changed)
@@ -252,7 +259,7 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) erro
 	}
 
 	// do not continue if the TaskSpec had no sidecars
-	if tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Sidecars) == 0 {
+	if tr.Status.TaskSpec != nil && len(tr.Status.TaskSpec.Sidecars) == 0 && len(tr.Status.Sidecars) == 0 {
 		return nil
 	}
 
@@ -536,7 +543,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	}
 
 	// Convert the Pod's status to the equivalent TaskRun Status.
-	tr.Status, err = podconvert.MakeTaskRunStatus(logger, *tr, pod)
+	tr.Status, err = podconvert.MakeTaskRunStatus(ctx, logger, *tr, pod, c.KubeClientSet)
 	if err != nil {
 		return err
 	}

@@ -17,16 +17,23 @@ limitations under the License.
 package pod
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/hashicorp/go-multierror"
+	"github.com/tektoncd/pipeline/internal/sidecarlogresults"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakek8s "k8s.io/client-go/kubernetes/fake"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/logging"
@@ -80,9 +87,87 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 			}
 
 			logger, _ := logging.NewLogger("", "status")
-			merr := setTaskRunStatusBasedOnStepStatus(logger, c.ContainerStatuses, &tr)
+			kubeclient := fakek8s.NewSimpleClientset()
+			merr := setTaskRunStatusBasedOnStepStatus(context.Background(), logger, c.ContainerStatuses, &tr, corev1.PodRunning, kubeclient)
 			if merr != nil {
 				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
+			}
+
+		})
+	}
+}
+
+func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
+	for _, c := range []struct {
+		desc          string
+		maxResultSize int
+		wantErr       error
+	}{{
+		desc:          "test result with sidecar logs too large",
+		maxResultSize: 1,
+		wantErr:       sidecarlogresults.ErrSizeExceeded,
+	}, {
+		desc:          "test result with sidecar logs bad format",
+		maxResultSize: 4096,
+		wantErr:       fmt.Errorf("%s", "Invalid result invalid character 'k' in literal false (expecting 'l')"),
+	}} {
+		t.Run(c.desc, func(t *testing.T) {
+			tr := v1beta1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run",
+					Namespace: "foo",
+				},
+				Status: v1beta1.TaskRunStatus{
+					TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+						TaskSpec: &v1beta1.TaskSpec{
+							Results: []v1beta1.TaskResult{{
+								Name: "result1",
+							}},
+						},
+						PodName: "task-run-pod",
+					},
+				},
+			}
+
+			logger, _ := logging.NewLogger("", "status")
+			kubeclient := fakek8s.NewSimpleClientset()
+			pod := &v1.Pod{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Pod",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "task-run-pod",
+					Namespace: "foo",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Name:  "container",
+							Image: "image",
+						},
+					},
+				},
+				Status: v1.PodStatus{
+					Phase: corev1.PodRunning,
+				},
+			}
+			pod, err := kubeclient.CoreV1().Pods(pod.Namespace).Create(context.TODO(), pod, metav1.CreateOptions{})
+			if err != nil {
+				t.Errorf("Error occurred while creating pod %s: %s", pod.Name, err.Error())
+			}
+			ctx := config.ToContext(context.Background(), &config.Config{
+				FeatureFlags: &config.FeatureFlags{
+					ResultExtractionMethod: config.ResultExtractionMethodSidecarLogs,
+					MaxResultSize:          c.maxResultSize,
+				},
+			})
+			var wantErr *multierror.Error
+			wantErr = multierror.Append(wantErr, c.wantErr)
+			merr := setTaskRunStatusBasedOnStepStatus(ctx, logger, []corev1.ContainerStatus{{}}, &tr, pod.Status.Phase, kubeclient)
+
+			if d := cmp.Diff(wantErr.Error(), merr.Error()); d != "" {
+				t.Errorf("Got unexpected error  %s", diff.PrintWantGot(d))
 			}
 
 		})
@@ -1061,7 +1146,8 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				},
 			}
 			logger, _ := logging.NewLogger("", "status")
-			got, err := MakeTaskRunStatus(logger, tr, &c.pod)
+			kubeclient := fakek8s.NewSimpleClientset()
+			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -1275,7 +1361,8 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 				},
 			}
 			logger, _ := logging.NewLogger("", "status")
-			got, err := MakeTaskRunStatus(logger, tr, &c.pod)
+			kubeclient := fakek8s.NewSimpleClientset()
+			got, err := MakeTaskRunStatus(context.Background(), logger, tr, &c.pod, kubeclient)
 			if err != nil {
 				t.Errorf("MakeTaskRunResult: %s", err)
 			}
@@ -1396,7 +1483,8 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 	}
 
 	logger, _ := logging.NewLogger("", "status")
-	gotTr, err := MakeTaskRunStatus(logger, tr, pod)
+	kubeclient := fakek8s.NewSimpleClientset()
+	gotTr, err := MakeTaskRunStatus(context.Background(), logger, tr, pod, kubeclient)
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}

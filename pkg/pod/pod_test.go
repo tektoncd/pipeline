@@ -31,7 +31,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/internal/sidecarlogsvalidation"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -1835,7 +1834,7 @@ _EOF_
 					}}, implicitVolumeMounts...),
 					TerminationMessagePath: "/tekton/termination",
 				}, {
-					Name:  fmt.Sprintf("sidecar-%s", sidecarlogsvalidation.ReservedResultsSidecarName),
+					Name:  pipeline.ReservedResultsSidecarContainerName,
 					Image: "",
 					Command: []string{
 						"/ko-app/sidecarlogresults",

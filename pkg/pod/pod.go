@@ -25,7 +25,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tektoncd/pipeline/internal/sidecarlogsvalidation"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
@@ -478,7 +477,7 @@ func createResultsSidecar(taskSpec v1beta1.TaskSpec, image string) v1beta1.Sidec
 	resultsStr := strings.Join(names, ",")
 	command := []string{"/ko-app/sidecarlogresults", "-results-dir", pipeline.DefaultResultPath, "-result-names", resultsStr}
 	return v1beta1.Sidecar{
-		Name:    sidecarlogsvalidation.ReservedResultsSidecarName,
+		Name:    pipeline.ReservedResultsSidecarName,
 		Image:   image,
 		Command: command,
 	}
