@@ -1,12 +1,9 @@
 /*
 Copyright 2022 The Tekton Authors
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -54,7 +51,10 @@ type TaskRunSpec struct {
 	// Status message for cancellation.
 	// +optional
 	StatusMessage TaskRunSpecStatusMessage `json:"statusMessage,omitempty"`
-	// Time after which the build times out. Defaults to 1 hour.
+	// Retries represents how many times this TaskRun should be retried in the event of task failure.
+	// +optional
+	Retries int `json:"retries,omitempty"`
+	// Time after which one retry attempt times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
@@ -141,9 +141,11 @@ const (
 	TaskRunReasonSuccessful TaskRunReason = "Succeeded"
 	// TaskRunReasonFailed is the reason set when the TaskRun completed with a failure
 	TaskRunReasonFailed TaskRunReason = "Failed"
+	// TaskRunReasonToBeRetried is the reason set when the last TaskRun execution failed, and will be retried
+	TaskRunReasonToBeRetried TaskRunReason = "ToBeRetried"
 	// TaskRunReasonCancelled is the reason set when the TaskRun is cancelled by the user
 	TaskRunReasonCancelled TaskRunReason = "TaskRunCancelled"
-	// TaskRunReasonTimedOut is the reason set when the TaskRun has timed out
+	// TaskRunReasonTimedOut is the reason set when one TaskRun execution has timed out
 	TaskRunReasonTimedOut TaskRunReason = "TaskRunTimeout"
 	// TaskRunReasonResolvingTaskRef indicates that the TaskRun is waiting for
 	// its taskRef to be asynchronously resolved.
@@ -381,6 +383,11 @@ func (tr *TaskRun) IsSuccessful() bool {
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
 func (tr *TaskRun) IsCancelled() bool {
 	return tr.Spec.Status == TaskRunSpecStatusCancelled
+}
+
+// IsRetriable returns true if the TaskRun's Retries is not exhausted.
+func (tr *TaskRun) IsRetriable() bool {
+	return len(tr.Status.RetriesStatus) < tr.Spec.Retries
 }
 
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout

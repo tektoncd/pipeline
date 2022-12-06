@@ -49,7 +49,7 @@ func TestTaskRunConversionBadType(t *testing.T) {
 	}
 }
 
-func TestTaskrunConversion(t *testing.T) {
+func TestTaskRunConversion(t *testing.T) {
 	tests := []struct {
 		name string
 		in   *v1beta1.TaskRun
@@ -533,6 +533,7 @@ func TestTaskRunConvertTo(t *testing.T) {
 				Namespace: "bar",
 			},
 			Spec: v1beta1.TaskRunSpec{
+				Retries: 1,
 				Params: []v1beta1.Param{{
 					Name: "param-task-0",
 					Value: v1beta1.ParamValue{
@@ -561,6 +562,7 @@ func TestTaskRunConvertTo(t *testing.T) {
 				Namespace: "bar",
 			},
 			Spec: v1.TaskRunSpec{
+				Retries: 1,
 				Params: []v1.Param{{
 					Name: "param-task-0",
 					Value: v1.ParamValue{
@@ -614,6 +616,7 @@ func TestTaskRunConvertFrom(t *testing.T) {
 				Namespace: "bar",
 			},
 			Spec: v1.TaskRunSpec{
+				Retries: 1,
 				Params: []v1.Param{{
 					Name: "param-task-1",
 					Value: v1.ParamValue{
@@ -633,6 +636,7 @@ func TestTaskRunConvertFrom(t *testing.T) {
 				Namespace: "bar",
 			},
 			Spec: v1beta1.TaskRunSpec{
+				Retries: 1,
 				Params: []v1beta1.Param{{
 					Name: "param-task-1",
 					Value: v1beta1.ParamValue{

@@ -330,3 +330,51 @@ func TestInitializeTaskRunConditions(t *testing.T) {
 		t.Fatalf("PipelineRun initialize reset the condition reason to %s", newCondition.Reason)
 	}
 }
+
+func TestTaskRunIsRetriable(t *testing.T) {
+	retryStatus := v1.TaskRunStatus{}
+	retryStatus.SetCondition(&apis.Condition{
+		Type:   apis.ConditionSucceeded,
+		Status: corev1.ConditionFalse,
+		Reason: string(v1.TaskRunReasonTimedOut),
+	})
+
+	for _, tc := range []struct {
+		name             string
+		retries          int
+		numRetriesStatus int
+		wantIsRetriable  bool
+	}{{
+		name:            "0 retriesStatus, 1 retries, retriable",
+		retries:         1,
+		wantIsRetriable: true,
+	}, {
+		name:             "1 retriesStatus, 1 retries, not retriable",
+		retries:          1,
+		numRetriesStatus: 1,
+		wantIsRetriable:  false,
+	}, {
+		name:            "0 retriesStatus, 0 retries, not retriable",
+		wantIsRetriable: false,
+	}} {
+		retriesStatus := []v1.TaskRunStatus{}
+		for i := 0; i < tc.numRetriesStatus; i++ {
+			retriesStatus = append(retriesStatus, retryStatus)
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			tr := &v1.TaskRun{
+				Spec: v1.TaskRunSpec{
+					Retries: tc.retries,
+				},
+				Status: v1.TaskRunStatus{
+					TaskRunStatusFields: v1.TaskRunStatusFields{
+						RetriesStatus: retriesStatus,
+					},
+				},
+			}
+			if tr.IsRetriable() != tc.wantIsRetriable {
+				t.Errorf("tr.isRetriable(): %v, want %v", tr.IsRetriable(), tc.wantIsRetriable)
+			}
+		})
+	}
+}
