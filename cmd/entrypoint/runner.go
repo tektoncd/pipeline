@@ -177,7 +177,7 @@ func newTeeReader(pipe func() (io.ReadCloser, error), path string) (*namedReader
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return nil, fmt.Errorf("error creating parent directory: %w", err)
 	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("error opening %s: %w", path, err)
 	}
