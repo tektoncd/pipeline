@@ -85,6 +85,7 @@ func (trs *TaskRunSpec) ConvertTo(ctx context.Context, sink *v1.TaskRunSpec) err
 	}
 	sink.Status = v1.TaskRunSpecStatus(trs.Status)
 	sink.StatusMessage = v1.TaskRunSpecStatusMessage(trs.StatusMessage)
+	sink.Retries = trs.Retries
 	sink.Timeout = trs.Timeout
 	sink.PodTemplate = trs.PodTemplate
 	sink.Workspaces = nil
@@ -164,6 +165,7 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec)
 	}
 	trs.Status = TaskRunSpecStatus(source.Status)
 	trs.StatusMessage = TaskRunSpecStatusMessage(source.StatusMessage)
+	trs.Retries = source.Retries
 	trs.Timeout = source.Timeout
 	trs.PodTemplate = source.PodTemplate
 	trs.Workspaces = nil

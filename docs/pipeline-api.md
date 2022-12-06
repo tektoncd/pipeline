@@ -1148,6 +1148,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this TaskRun should be retried in the event of task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -1157,7 +1169,7 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Time after which the build times out. Defaults to 1 hour.
+<p>Time after which one retry attempt times out. Defaults to 1 hour.
 Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
@@ -4568,7 +4580,10 @@ reasons that emerge from underlying resources are not included here</p>
 <td><p>TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully</p>
 </td>
 </tr><tr><td><p>&#34;TaskRunTimeout&#34;</p></td>
-<td><p>TaskRunReasonTimedOut is the reason set when the TaskRun has timed out</p>
+<td><p>TaskRunReasonTimedOut is the reason set when one TaskRun execution has timed out</p>
+</td>
+</tr><tr><td><p>&#34;ToBeRetried&#34;</p></td>
+<td><p>TaskRunReasonToBeRetried is the reason set when the last TaskRun execution failed, and will be retried</p>
 </td>
 </tr></tbody>
 </table>
@@ -4781,6 +4796,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this TaskRun should be retried in the event of task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -4790,7 +4817,7 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Time after which the build times out. Defaults to 1 hour.
+<p>Time after which one retry attempt times out. Defaults to 1 hour.
 Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
@@ -7906,6 +7933,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this TaskRun should be retried in the event of Task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -7915,7 +7954,7 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Time after which the build times out. Defaults to 1 hour.
+<p>Time after which one retry attempt times out. Defaults to 1 hour.
 Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
@@ -12830,6 +12869,18 @@ TaskRunSpecStatusMessage
 </tr>
 <tr>
 <td>
+<code>retries</code><br/>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Retries represents how many times this TaskRun should be retried in the event of Task failure.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>timeout</code><br/>
 <em>
 <a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
@@ -12839,7 +12890,7 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Time after which the build times out. Defaults to 1 hour.
+<p>Time after which one retry attempt times out. Defaults to 1 hour.
 Specified build timeout should be less than 24h.
 Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
 </td>
