@@ -3465,7 +3465,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Used for cancelling a taskrun (and maybe more later on)",
+							Description: "Used for cancelling a TaskRun (and maybe more later on)",
 							Type:        []string{"string"},
 							Format:      "",
 						},

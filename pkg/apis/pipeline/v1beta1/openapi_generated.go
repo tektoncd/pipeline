@@ -4784,7 +4784,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunSpec(ref common.ReferenceCallback) 
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Used for cancelling a taskrun (and maybe more later on)",
+							Description: "Used for cancelling a TaskRun (and maybe more later on)",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5013,7 +5013,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref common.ReferenceCallback
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Results from Resources built during the taskRun. currently includes the digest of build container images",
+							Description: "Results from Resources built during the TaskRun. currently includes the digest of build container images",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5175,7 +5175,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref common.ReferenceCa
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "Results from Resources built during the taskRun. currently includes the digest of build container images",
+							Description: "Results from Resources built during the TaskRun. currently includes the digest of build container images",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

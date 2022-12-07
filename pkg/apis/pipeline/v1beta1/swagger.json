@@ -2807,7 +2807,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "status": {
-          "description": "Used for cancelling a taskrun (and maybe more later on)",
+          "description": "Used for cancelling a TaskRun (and maybe more later on)",
           "type": "string"
         },
         "statusMessage": {
@@ -2898,7 +2898,7 @@
           "$ref": "#/definitions/v1beta1.Provenance"
         },
         "resourcesResult": {
-          "description": "Results from Resources built during the taskRun. currently includes the digest of build container images",
+          "description": "Results from Resources built during the TaskRun. currently includes the digest of build container images",
           "type": "array",
           "items": {
             "default": {},
@@ -2982,7 +2982,7 @@
           "$ref": "#/definitions/v1beta1.Provenance"
         },
         "resourcesResult": {
-          "description": "Results from Resources built during the taskRun. currently includes the digest of build container images",
+          "description": "Results from Resources built during the TaskRun. currently includes the digest of build container images",
           "type": "array",
           "items": {
             "default": {},
