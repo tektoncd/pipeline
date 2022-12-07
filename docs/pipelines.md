@@ -58,7 +58,10 @@ weight: 400
     - [Specifying matrix](#specifying-matrix)
     - [Specifying workspaces](#specifying-workspaces-1)
     - [Using `Results`](#using-results-1)
+    - [Specifying `Timeout`](#specifying-timeout)
+    - [Specifying `Retries`](#specifying-retries)
     - [Limitations](#limitations)
+    - [Known Custom Tasks](#known-custom-tasks)
   - [Code examples](#code-examples)
 
 ## Overview
@@ -1564,17 +1567,18 @@ no `runAfter` can be specified in `finally` tasks.
 
 ## Using Custom Tasks
 
+We are promoting Custom Task from `v1alpha1` to `v1beta1`. Starting from `v0.43.0`, Pipeline Controller is able to create either `v1alpha1` or `v1beta1` Custom Task gated by a feature flag `custom-task-version`, defaulting to `v1alpha1`. You can set `custom-task-version` to `v1alpha1` or `v1beta1` to control which version to create.
+
+We'll switch the default value of `custom-task-version` to `v1beta1` in release v0.44.0, and remove the flag as well as the entire alpha version in release v0.47.0. See the [migration doc](migrating-v1alpha1.Run-to-v1beta1.CustomRun.md) for details.
+
 [Custom Tasks](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md)
 can implement behavior that doesn't correspond directly to running a workload in a `Pod` on the cluster.
 For example, a custom task might execute some operation outside of the cluster and wait for its execution to complete.
 
-A PipelineRun starts a custom task by creating a [`Run`](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md) instead of a `TaskRun`.
+A `PipelineRun` starts a custom task by creating a [`Run`](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md)/[`CustomRun`](https://github.com/tektoncd/pipeline/blob/main/docs/customruns.md) instead of a `TaskRun`.
 In order for a custom task to execute, there must be a custom task controller running on the cluster
-that is responsible for watching and updating `Run`s which reference their type.
-If no such controller is running, those `Run`s will never complete and Pipelines using them will time out.
-
-Custom tasks are an **_experimental alpha feature_** and should be expected to change
-in breaking ways or even be removed.
+that is responsible for watching and updating `Run/CustomRun`s which reference their type.
+If no such controller is running, those `Run/CustomRun`s will never complete and Pipelines using them will time out.
 
 ### Specifying the target Custom Task
 
@@ -1590,7 +1594,7 @@ spec:
         kind: Example
 ```
 
-This creates a `Run` of a custom task of type `Example` in the `example.dev` API group with the version `v1alpha1`.
+This creates a `Run/CustomRun` of a custom task of type `Example` in the `example.dev` API group with the version `v1alpha1`.
 
 You can also specify the `name` of a custom task resource object previously defined in the cluster.
 
@@ -1612,6 +1616,7 @@ some default behavior for executing unnamed tasks.
 
 ### Specifying a Custom Task Spec in-line (or embedded)
 
+**For `v1alpha1.Run`**
 ```yaml
 spec:
   tasks:
@@ -1624,13 +1629,28 @@ spec:
             field2: value2
 ```
 
-If the custom task controller supports the in-line or embedded task spec, this will create a `Run` of a custom task of
+**For `v1beta1.CustomRun`**
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      taskSpec:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+          customSpec:
+            field1: value1
+            field2: value2
+```
+
+If the custom task controller supports the in-line or embedded task spec, this will create a `Run/CustomRun` of a custom task of
 type `Example` in the `example.dev` API group with the version `v1alpha1`.
 
 If the `taskSpec` is not supported, the custom task controller should produce proper validation errors.
 
 Please take a look at the
-[developer guide for custom controllers supporting `taskSpec`.](runs.md#developer-guide-for-custom-controllers-supporting-spec)
+developer guide for custom controllers supporting `taskSpec`:
+- [guidance for `Run`](runs.md#developer-guide-for-custom-controllers-supporting-spec)
+- [guidance for `CustomRun`](customruns.md#developer-guide-for-custom-controllers-supporting-customspec)
 
 `taskSpec` support for `pipelineRun` was designed and discussed in
 [TEP-0061](https://github.com/tektoncd/community/blob/main/teps/0061-allow-custom-task-to-be-embedded-in-pipeline.md)
@@ -1707,12 +1727,79 @@ Consult the documentation of the custom task that you are using to determine whe
 If the custom task produces results, you can reference them in a Pipeline using the normal syntax,
 `$(tasks.<task-name>.results.<result-name>)`.
 
+### Specifying `Timeout`
+
+#### `v1alpha1.Run`
+If the custom task supports it as [we recommended](runs.md#developer-guide-for-custom-controllers-supporting-timeout), you can provide `timeout` to specify the maximum running time of a `CustomRun` (including all retry attempts or other operations).
+
+#### `v1beta1.CustomRun`
+If the custom task supports it as [we recommended](customruns.md#developer-guide-for-custom-controllers-supporting-timeout), you can provide `timeout` to specify the maximum running time of one `CustomRun` execution.
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      timeout: 2s
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+```
+
+Consult the documentation of the custom task that you are using to determine whether it supports `Timeout`.
+
+### Specifying `Retries`
+If the custom task supports it, you can provide `retries` to specify how many times you want to retry the custom task.
+
+```yaml
+spec:
+  tasks:
+    - name: run-custom-task
+      retries: 2
+      taskRef:
+        apiVersion: example.dev/v1alpha1
+        kind: Example
+        name: myexample
+```
+
+Consult the documentation of the custom task that you are using to determine whether it supports `Retries`.
+
 ### Limitations
 
 Pipelines do not support the following items with custom tasks:
 * Pipeline Resources
-* [`retries`](#using-the-retries-field)
-* [`timeout`](#configuring-the-failure-timeout)
+
+### Known Custom Tasks 
+
+We try to list as many known Custom Tasks as possible here so that users can easily find what they want. Please feel free to share the Custom Task you implemented in this table.
+
+#### v1beta1.CustomRun
+
+| Custom Task | Description |
+|:---|:--- |
+| [Wait Task Beta][wait-task-beta] | Waits a given amount of time before succeeding, specified by an input parameter named duration. Support `timeout` and `retries`. |
+
+#### v1alpha1.Run
+
+| Custom Task | Description |
+|:---|:--- |
+| [Pipeline Loops][pipeline-loops]| Runs a `Pipeline` in a loop with varying `Parameter` values.
+| [Common Expression Language][cel]| Provides Common Expression Language support in Tekton Pipelines.
+| [Wait][wait]| Waits a given amount of time, specified by a `Parameter` named "duration", before succeeding.
+| [Approvals][approvals]| Pauses the execution of `PipelineRuns` and waits for manual approvals.
+| [Pipelines in Pipelines][pipelines-in-pipelines]| Defines and executes a `Pipeline` in a `Pipeline`. 
+| [Task Group][task-group]| Groups `Tasks` together as a `Task`.
+| [Pipeline in a Pod][pipeline-in-pod]| Runs `Pipeline` in a `Pod`.
+
+[pipeline-loops]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/pipeline-loops
+[task-loops]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/task-loops
+[cel]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/cel
+[wait]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/wait-task
+[approvals]: https://github.com/automatiko-io/automatiko-approval-task/tree/71da90361dff9444146d52d0a6e2b542d4bf4edc
+[task-group]: https://github.com/openshift-pipelines/tekton-task-group/tree/39823f26be8f59504f242a45b9f2e791d4b36e1c
+[pipelines-in-pipelines]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/pipelines-in-pipelines
+[pipeline-in-pod]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/pipeline-in-pod
+[wait-task-beta]: https://github.com/tektoncd/pipeline/tree/a127323da31bcb933a04a6a1b5dbb6e0411e3dc1/test/custom-task-ctrls/wait-task-beta
 
 ## Code examples
 
