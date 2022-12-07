@@ -1801,7 +1801,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "status": {
-          "description": "Used for cancelling a taskrun (and maybe more later on)",
+          "description": "Used for cancelling a TaskRun (and maybe more later on)",
           "type": "string"
         },
         "statusMessage": {

@@ -1129,7 +1129,7 @@ TaskRunSpecStatus
 </td>
 <td>
 <em>(Optional)</em>
-<p>Used for cancelling a taskrun (and maybe more later on)</p>
+<p>Used for cancelling a TaskRun (and maybe more later on)</p>
 </td>
 </tr>
 <tr>
@@ -4550,7 +4550,7 @@ reasons that emerge from underlying resources are not included here</p>
 </tr>
 </thead>
 <tbody><tr><td><p>&#34;TaskRunCancelled&#34;</p></td>
-<td><p>TaskRunReasonCancelled is the reason set when the Taskrun is cancelled by the user</p>
+<td><p>TaskRunReasonCancelled is the reason set when the TaskRun is cancelled by the user</p>
 </td>
 </tr><tr><td><p>&#34;Failed&#34;</p></td>
 <td><p>TaskRunReasonFailed is the reason set when the TaskRun completed with a failure</p>
@@ -4568,7 +4568,7 @@ reasons that emerge from underlying resources are not included here</p>
 <td><p>TaskRunReasonSuccessful is the reason set when the TaskRun completed successfully</p>
 </td>
 </tr><tr><td><p>&#34;TaskRunTimeout&#34;</p></td>
-<td><p>TaskRunReasonTimedOut is the reason set when the Taskrun has timed out</p>
+<td><p>TaskRunReasonTimedOut is the reason set when the TaskRun has timed out</p>
 </td>
 </tr></tbody>
 </table>
@@ -4762,7 +4762,7 @@ TaskRunSpecStatus
 </td>
 <td>
 <em>(Optional)</em>
-<p>Used for cancelling a taskrun (and maybe more later on)</p>
+<p>Used for cancelling a TaskRun (and maybe more later on)</p>
 </td>
 </tr>
 <tr>
@@ -4877,7 +4877,7 @@ Kubernetes core/v1.ResourceRequirements
 (<em>Appears on:</em><a href="#tekton.dev/v1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
-<p>TaskRunSpecStatus defines the taskrun spec status the user can provide</p>
+<p>TaskRunSpecStatus defines the TaskRun spec status the user can provide</p>
 </div>
 <h3 id="tekton.dev/v1.TaskRunSpecStatusMessage">TaskRunSpecStatusMessage
 (<code>string</code> alias)</h3>
@@ -7887,7 +7887,7 @@ TaskRunSpecStatus
 </td>
 <td>
 <em>(Optional)</em>
-<p>Used for cancelling a taskrun (and maybe more later on)</p>
+<p>Used for cancelling a TaskRun (and maybe more later on)</p>
 </td>
 </tr>
 <tr>
@@ -12811,7 +12811,7 @@ TaskRunSpecStatus
 </td>
 <td>
 <em>(Optional)</em>
-<p>Used for cancelling a taskrun (and maybe more later on)</p>
+<p>Used for cancelling a TaskRun (and maybe more later on)</p>
 </td>
 </tr>
 <tr>
@@ -12926,7 +12926,7 @@ Kubernetes core/v1.ResourceRequirements
 (<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
 </p>
 <div>
-<p>TaskRunSpecStatus defines the taskrun spec status the user can provide</p>
+<p>TaskRunSpecStatus defines the TaskRun spec status the user can provide</p>
 </div>
 <h3 id="tekton.dev/v1beta1.TaskRunSpecStatusMessage">TaskRunSpecStatusMessage
 (<code>string</code> alias)</h3>
@@ -13097,7 +13097,7 @@ All TaskRunStatus stored in RetriesStatus will have no date within the RetriesSt
 </td>
 <td>
 <em>(Optional)</em>
-<p>Results from Resources built during the taskRun. currently includes
+<p>Results from Resources built during the TaskRun. currently includes
 the digest of build container images</p>
 </td>
 </tr>
