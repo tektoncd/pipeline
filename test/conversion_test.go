@@ -28,22 +28,42 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
 
 var (
+	ReleaseAnnotation     = "pipeline.tekton.dev/release"
+	TaskRunsAnnotationKey = "tekton.dev/v1beta1TaskRuns"
+	RunsAnnotationKey     = "tekton.dev/v1beta1Runs"
+
 	supportedV1ConversionFeatureGates = map[string]string{
 		"enable-api-fields":         "alpha",
 		"enable-tekton-oci-bundles": "true",
 	}
 
+	ignoreUnpredictableStrings = func(k, v interface{}) bool {
+		return k == TaskRunsAnnotationKey || k == RunsAnnotationKey
+	}
+
+	// release Annotation is ignored because it is populated by
+	ignoreReleaseAnnotation = func(k string, v string) bool {
+		return k == ReleaseAnnotation
+	}
+
 	filterLabels                   = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels")
 	filterAnnotations              = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Annotations")
-	filterTaskRunStatus            = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
+	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1PipelineRunStatus      = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
+	filterV1beta1TaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1beta1PipelineRunStatus = cmpopts.IgnoreFields(v1beta1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
+	filterContainerStateTerminated = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
+	filterV1StepState              = cmpopts.IgnoreFields(v1.StepState{}, "Name", "ImageID", "Container")
+	filterV1beta1StepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "Name", "ImageID", "ContainerName")
+	filterAnnotationsStrings       = cmpopts.IgnoreMapEntries(ignoreUnpredictableStrings)
+	filterReleaseAnnotation        = cmpopts.IgnoreMapEntries(ignoreReleaseAnnotation)
 
 	v1beta1TaskYaml = `
 metadata:
@@ -369,41 +389,55 @@ spec:
     value: 1
     type: string
   serviceAccountName: default
-  taskRef:
-    kind: Task
-    apiVersion: v1beta1
-    name: tr
-  timeout: 60s
+  taskSpec:
+    resources:
+      inputs:
+      - name: skaffold
+        type: git
+      outputs:
+      - name: skaffoldout
+        type: git
+    steps:
+      - name: echo
+        image: ubuntu
+        script: |
+          #!/usr/bin/env bash
+          echo "Hello World!"
+    workspaces:
+    - name: output
+  timeout: 20s
+  workspaces:
+    - name: output
+      emptyDir: {}
   podTemplate:
     securityContext:
       fsGroup: 65532
-  workspaces:
-    - name: ws
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 16Mi      
-  podTemplate:
-    nodeSelector:
-      kubernetes.io/os: windows
   resources:
     inputs:
-    - name: sourcerepo
-      resourceRef:
-        name: skaffold-git-output-image
+    - name: skaffold
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: v0.32.0
+          - name: url
+            value: https://github.com/GoogleContainerTools/skaffold
     outputs:
-    - name: builtImage
-      resourceRef:
-        name: skaffold-image-leeroy-web-output-image
+    - name: skaffoldout
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: v0.32.0
+          - name: url
+            value: https://github.com/GoogleContainerTools/skaffold
 `
 
 	v1beta1TaskRunExpectedYaml = `
 metadata:
   name: %s
   namespace: %s
+  annotations: {}
 spec:
   params:
   - name: STRING_LENGTH
@@ -414,40 +448,48 @@ spec:
   podTemplate:
     securityContext:
       fsGroup: 65532
+  taskSpec:
+    steps:
+    - computeResources: {}
+      image: ubuntu
+      name: echo
+      script: |
+        #!/usr/bin/env bash
+        echo "Hello World!"
+    workspaces:
+    - name: output
   workspaces:
-    - name: ws
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 16Mi      
-  podTemplate:
-    nodeSelector:
-      kubernetes.io/os: windows
-  taskRef:
-    kind: Task
-    name: tr
-    apiVersion: v1beta1
-  resources:
-    inputs:
-    - name: sourcerepo
-      resourceRef:
-        name: skaffold-git-output-image
-    outputs:
-    - name: builtImage
-      resourceRef:
-        name: skaffold-image-leeroy-web-output-image
+  - emptyDir: {}
+    name: output   
+status:
+  conditions:
+  - reason: Succeeded
+    status: "True"
+    type: Succeeded
+  podName: %s-pod
+  taskSpec:
+    steps:
+    - computeResources: {}
+      image: ubuntu
+      name: echo
+      script: |
+        #!/usr/bin/env bash
+        echo "Hello World!"
+    workspaces:
+    - name: output
+  workspaces:
+    - name: output
+  steps:
+  - container: echo
+    name: echo
+    terminated:
+      reason: Completed
 `
 
 	v1TaskRunYaml = `
 metadata:
   name: %s
   namespace: %s
-  annotations: {
-    tekton.dev/v1beta1Resources: '{"inputs":[{"name":"sourcerepo","resourceRef":{"name":"skaffold-git-output-image"}}],"outputs":[{"name":"builtImage","resourceRef":{"name":"skaffold-image-leeroy-web-output-image"}}]}'
-  }
 spec:
   params:
   - name: STRING_LENGTH
@@ -459,21 +501,18 @@ spec:
     securityContext:
       fsGroup: 65532
   workspaces:
-    - name: ws
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 16Mi      
-  podTemplate:
-    nodeSelector:
-      kubernetes.io/os: windows
-  taskRef:
-    name: tr
-    kind: Task
-    apiVersion: v1beta1
+  - emptyDir: {}
+    name: output     
+  taskSpec:
+    steps:
+    - computeResources: {}
+      image: ubuntu
+      name: echo
+      script: |
+        #!/usr/bin/env bash
+        echo "Hello World!"
+    workspaces:
+    - name: output
 `
 
 	v1TaskRunExpectedYaml = `
@@ -481,7 +520,8 @@ metadata:
   name: %s
   namespace: %s
   annotations: {
-    tekton.dev/v1beta1Resources: '{"inputs":[{"name":"sourcerepo","resourceRef":{"name":"skaffold-git-output-image"}}],"outputs":[{"name":"builtImage","resourceRef":{"name":"skaffold-image-leeroy-web-output-image"}}]}'
+    tekton.dev/v1beta1Resources: '{"inputs":[{"name":"skaffold","resourceSpec":{"type":"git","params":[{"name":"revision","value":"v0.32.0"},{"name":"url","value":"https://github.com/GoogleContainerTools/skaffold"}]}}],"outputs":[{"name":"skaffoldout","resourceSpec":{"type":"git","params":[{"name":"revision","value":"v0.32.0"},{"name":"url","value":"https://github.com/GoogleContainerTools/skaffold"}]}}]}',
+    tekton.dev/v1beta1ResourcesResult: '[{"key":"commit","value":"6ed7aad5e8a36052ee5f6079fc91368e362121f7","resourceName":"skaffold"},{"key":"url","value":"https://github.com/GoogleContainerTools/skaffold","resourceName":"skaffold"}]',
   }
 spec:
   params:
@@ -489,26 +529,52 @@ spec:
     value: 1
     type: string
   serviceAccountName: default
-  timeout: 60s
+  timeout: 20s
   podTemplate:
     securityContext:
       fsGroup: 65532
   workspaces:
-    - name: ws
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 16Mi      
-  podTemplate:
-    nodeSelector:
-      kubernetes.io/os: windows
-  taskRef:
-    name: tr
-    kind: Task
-    apiVersion: v1beta1
+    - emptyDir: {}
+      name: output 
+  taskSpec:
+    steps:
+    - computeResources: {}
+      image: ubuntu
+      name: echo
+      script: |
+        #!/usr/bin/env bash
+        echo "Hello World!"
+    workspaces:
+    - name: output
+status:
+  conditions:
+  - reason: Succeeded
+    status: "True"
+    type: Succeeded
+  podName: %s-pod
+  taskSpec:
+    steps:
+    - computeResources: {}
+      image: ubuntu
+      name: echo
+      script: |
+        #!/usr/bin/env bash
+        echo "Hello World!"
+    workspaces:
+    - name: output
+  steps:
+  - container: step-create-dir-skaffoldout
+    name: create-dir-skaffoldout
+    terminated:
+      reason: Completed
+  - container: git-source-skaffold
+    name: git-source-skaffold
+    terminated:
+      reason: Completed
+  - container: step-echo
+    name: step-echo
+    terminated:
+      reason: Completed
 `
 
 	v1beta1PipelineRunYaml = `
@@ -586,12 +652,30 @@ status:
         - name: "fetch-and-write-secure"
           image: "ubuntu"
           script: "echo hello"
-  childReferences:
-    - typeMeta:
-      kind: TaskRun
-      apiVersion: tekton.dev/v1beta1
-      name: %s-fetch-secure-data
+  taskRuns:
+    %s-fetch-secure-data:
       pipelineTaskName: fetch-secure-data
+      status:
+        conditions:
+        - reason: Succeeded
+          status: "True"
+          type: Succeeded
+        podName: %s-fetch-secure-data-pod
+        steps:
+        - container: step-fetch-and-write-secure
+          imageID: docker.io/library/ubuntu@sha256:4b1d0c4a2d2aaf63b37111f34eb9fa89fa1bf53dd6e4ca954d47caebca4005c2
+          name: fetch-and-write-secure
+          terminated:
+            containerID: containerd://07b57fc6fd515e6d1d0de27149c60be9149697207aedc130dd0d284fce6df3fd
+            exitCode: 0
+            finishedAt: "2022-12-07T15:56:32Z"
+            reason: Completed
+            startedAt: "2022-12-07T15:56:32Z"
+        taskSpec:
+          steps:
+          - name: "fetch-and-write-secure"
+            image: "ubuntu"
+            script: "echo hello"
 `
 
 	v1PipelineRunYaml = `
@@ -627,7 +711,8 @@ metadata:
   name: %s
   namespace: %s
   annotations: {
-    tekton.dev/v1beta1Resources: '[{"name":"pipeline-git","resourceSpec":{"type":"git","params":[{"name":"revision","value":"main"},{"name":"url","value":"https://github.com/tektoncd/pipeline"}]}}]'
+    tekton.dev/v1beta1Resources: '[{"name":"pipeline-git","resourceSpec":{"type":"git","params":[{"name":"revision","value":"main"},{"name":"url","value":"https://github.com/tektoncd/pipeline"}]}}]',
+    tekton.dev/v1beta1TaskRuns: '{"%s-fetch-secure-data":{"pipelineTaskName":"fetch-secure-data","status":{"conditions":[{"type":"Succeeded","status":"True","reason":"Succeeded","message":"All Steps have completed executing"}],"podName":"%s-fetch-secure-data-pod","steps":[{"terminated":{"exitCode":0,"reason":"Completed","containerID":"containerd://978666d35ed0e20f370227a0a4c3048ef6ec59a3ad5a2f5d83a3210099a9108f"},"name":"fetch-and-write-secure","container":"step-fetch-and-write-secure","imageID":"docker.io/library/ubuntu@sha256:4b1d0c4a2d2aaf63b37111f34eb9fa89fa1bf53dd6e4ca954d47caebca4005c2"}],"taskSpec":{"steps":[{"name":"fetch-and-write-secure","image":"ubuntu","resources":{},"script":"echo hello"}]}}}}',
   }
 spec:
   params:
@@ -668,129 +753,9 @@ status:
   childReferences:
     - typeMeta:
       kind: TaskRun
-      apiVersion: tekton.dev/v1beta1
+      apiVersion: v1beta1
       name: %s-fetch-secure-data
       pipelineTaskName: fetch-secure-data
-`
-
-	// Alpha CRD examples serve for the purpose of testing those fields that
-	// requires the feature flags
-	v1beta1TaskRunYamlAlpha = `
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  timeout: 60s
-  serviceAccountName: default
-  taskRef:
-    name: tr
-    kind: Task
-    bundle: docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828
-`
-
-	v1beta1TaskRunExpectedYamlAlpha = `
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  timeout: 60s
-  serviceAccountName: default
-  taskRef:
-    resolver: "bundles"
-    kind: Task
-    params:
-    - name: bundle
-      type: string
-      value: "docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828"
-    - name: name
-      type: string
-      value: tr
-    - name: kind
-      type: string
-      value: Task
-`
-
-	v1TaskRunYamlAlpha = `
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  timeout: 60s
-  serviceAccountName: default
-  taskRef:
-    resolver: "bundles"
-    kind: Task
-    params:
-    - name: bundle
-      type: string
-      value: "docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828"
-    - name: name
-      type: string
-      value: tr
-    - name: kind
-      type: string
-      value: Task
-`
-
-	v1beta1PipelineRunYamlAlpha = `
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  pipelineRef:
-    name: pr
-    bundle: test-bundle
-    kind: Pipeline
-  timeout: 60s
-  serviceAccountName: default
-`
-
-	v1beta1PipelineRunExpectedYamlAlpha = `
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  pipelineRef:
-    resolver: "bundles"
-    kind: Pipeline
-    params:
-    - name: bundle
-      type: string
-      value: "test-bundle"
-    - name: name
-      type: string
-      value: pr
-    - name: kind
-      type: string
-      value: Task
-  timeouts:
-    pipeline: 60s
-  serviceAccountName: default
-`
-
-	v1PipelineRunYamlAlpha = `
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  pipelineRef:
-    resolver: "bundles"
-    kind: Pipeline
-    params:
-    - name: bundle
-      type: string
-      value: "test-bundle"
-    - name: name
-      type: string
-      value: pr
-    - name: kind
-      type: string
-      value: Task
-  timeouts:
-    pipeline: 60s
-  taskRunTemplate: {
-    serviceAccountName: default
-  }
 `
 )
 
@@ -816,7 +781,6 @@ func TestTaskCRDConversion(t *testing.T) {
 	if _, err := c.V1beta1TaskClient.Create(ctx, v1beta1Task, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 Task: %s", err)
 	}
-
 	v1TaskGot, err := c.V1TaskClient.Get(ctx, v1beta1TaskName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Couldn't get expected v1 Task for %s: %s", v1beta1TaskName, err)
@@ -861,45 +825,43 @@ func TestTaskRunCRDConversion(t *testing.T) {
 
 	v1beta1TaskRunName := helpers.ObjectNameForTest(t)
 	v1beta1TaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunYaml, v1beta1TaskRunName, namespace))
-	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1beta1TaskRunName, namespace))
+	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunExpectedYaml, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
 
 	if _, err := c.V1beta1TaskRunClient.Create(ctx, v1beta1TaskRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun: %s", err)
+		t.Fatalf("Failed to create v1beta1 TaskRun: %s", err)
 	}
 
-	// Added
 	if err := WaitForTaskRunState(ctx, c, v1beta1TaskRunName, Succeed(v1beta1TaskRunName), v1beta1TaskRunName, "v1beta1"); err != nil {
-		t.Fatalf("Failed waiting for task run done: %v", err)
+		t.Fatalf("Failed waiting for v1beta1 TaskRun done: %v", err)
 	}
 
 	v1TaskRunGot, err := c.V1TaskRunClient.Get(ctx, v1beta1TaskRunName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Couldn't get expected Task for %s: %s", v1beta1TaskRunName, err)
+		t.Fatalf("Couldn't get expected v1 TaskRun for %s: %s", v1beta1TaskRunName, err)
 	}
 
-	// TODO: add status diff
-	// if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterTaskRunStatus); d != "" {
-	// 	t.Fatalf("-want, +got: %v", d)
-	// }
-
-	if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterTaskRunStatus); d != "" {
+	if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterReleaseAnnotation, filterV1TaskRunStatus, filterContainerStateTerminated, filterV1StepState); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
 	v1TaskRunName := helpers.ObjectNameForTest(t)
 	v1TaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunYaml, v1TaskRunName, namespace))
-	v1beta1TaskRunExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYaml, v1TaskRunName, namespace))
+	v1beta1TaskRunExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYaml, v1TaskRunName, namespace, v1TaskRunName))
 
 	if _, err := c.V1TaskRunClient.Create(ctx, v1TaskRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create v1beta1 Task: %s", err)
+		t.Fatalf("Failed to create v1 TaskRun: %s", err)
+	}
+
+	if err := WaitForTaskRunState(ctx, c, v1TaskRunName, Succeed(v1TaskRunName), v1TaskRunName, "v1"); err != nil {
+		t.Fatalf("Failed waiting for v1 TaskRun done: %v", err)
 	}
 
 	v1beta1TaskRunGot, err := c.V1beta1TaskRunClient.Get(ctx, v1TaskRunName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Couldn't get expected v1 Task for %s: %s", v1TaskRunName, err)
+		t.Fatalf("Couldn't get expected v1beta1 TaskRun for %s: %s", v1TaskRunName, err)
 	}
 
-	if d := cmp.Diff(v1beta1TaskRunExpected, v1beta1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterAnnotations); d != "" {
+	if d := cmp.Diff(v1beta1TaskRunExpected, v1beta1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterV1beta1TaskRunStatus, filterCondition, filterReleaseAnnotation, filterContainerStateTerminated, filterV1beta1StepState); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 }
@@ -924,12 +886,12 @@ func TestPipelineCRDConversion(t *testing.T) {
 	v1PipelineExpected := parse.MustParseV1Pipeline(t, fmt.Sprintf(v1PipelineYaml, v1beta1PipelineName, namespace))
 
 	if _, err := c.V1beta1PipelineClient.Create(ctx, v1beta1Pipeline, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun: %s", err)
+		t.Fatalf("Failed to create v1beta1 Pipeline: %s", err)
 	}
 
 	v1PipelineGot, err := c.V1PipelineClient.Get(ctx, v1beta1PipelineName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Couldn't get expected Task for %s: %s", v1beta1PipelineName, err)
+		t.Fatalf("Couldn't get expected v1 Pipeline for %s: %s", v1beta1PipelineName, err)
 	}
 
 	if d := cmp.Diff(v1PipelineGot, v1PipelineExpected, filterTypeMeta, filterObjectMeta); d != "" {
@@ -941,12 +903,12 @@ func TestPipelineCRDConversion(t *testing.T) {
 	v1beta1PipelineExpected := parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(v1beta1PipelineYaml, v1PipelineName, namespace))
 
 	if _, err := c.V1PipelineClient.Create(ctx, v1Pipeline, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create v1beta1 Task: %s", err)
+		t.Fatalf("Failed to create v1 Pipeline: %s", err)
 	}
 
 	v1beta1PipelineGot, err := c.V1beta1PipelineClient.Get(ctx, v1PipelineName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Couldn't get expected v1beta1 Task for %s: %s", v1PipelineName, err)
+		t.Fatalf("Couldn't get expected v1beta1 Pipeline for %s: %s", v1PipelineName, err)
 	}
 
 	// TODO:
@@ -973,146 +935,43 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 
 	v1beta1ToV1PipelineRunName := helpers.ObjectNameForTest(t)
 	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunYaml, v1beta1ToV1PipelineRunName, namespace))
-	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName))
-
-	ctx = withFullEmbeddedStatus(ctx)
-	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun: %s", err)
-	}
-
-	if err := WaitForPipelineRunState(ctx, c, v1beta1ToV1PipelineRunName, timeout, Succeed(v1beta1ToV1PipelineRunName), v1beta1ToV1PipelineRunName, "v1"); err != nil {
-		t.Fatalf("Failed waiting for task run done: %v", err)
-	}
-
-	v1PipelineRunGot, err := c.V1beta1PipelineRunClient.Get(ctx, v1beta1ToV1PipelineRunName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Couldn't get expected Task for %s: %s", v1beta1ToV1PipelineRunName, err)
-	}
-
-	if d := cmp.Diff(v1PipelineRunExpected, v1PipelineRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1PipelineRunStatus); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
-
-	// v1ToV1beta1PRName := helpers.ObjectNameForTest(t)
-	// v1PipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYaml, v1ToV1beta1PRName, namespace))
-	// v1beta1PipelineRunExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYaml, v1ToV1beta1PRName, namespace, v1ToV1beta1PRName))
-
-	// if _, err := c.V1PipelineRunClient.Create(ctx, v1PipelineRun, metav1.CreateOptions{}); err != nil {
-	// 	t.Fatalf("Failed to create v1beta1 Task: %s", err)
-	// }
-
-	// if err := WaitForPipelineRunState(ctx, c, v1ToV1beta1PRName, timeout, Succeed(v1ToV1beta1PRName), v1ToV1beta1PRName, "v1beta1"); err != nil {
-	// 	t.Fatalf("Failed waiting for task run done: %v", err)
-	// }
-
-	// v1beta1PipelineRunGot, err := c.V1beta1PipelineRunClient.Get(ctx, v1ToV1beta1PRName, metav1.GetOptions{})
-	// if err != nil {
-	// 	t.Fatalf("Couldn't get expected v1beta1 Task for %s: %s", v1ToV1beta1PRName, err)
-	// }
-
-	// if d := cmp.Diff(v1beta1PipelineRunExpected, v1beta1PipelineRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1beta1PipelineRunStatus); d != "" {
-	// 	t.Fatalf("-want, +got: %v", d)
-	// }
-	// 这里加back and forth 的case
-}
-
-// TestTaskRunCRDConversionAlpha is a duplicate of TestTaskRunfieldsCRDConversion that covers
-// all alpha features included.
-func TestTaskRunCRDConversionAlpha(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	t.Parallel()
-
-	c, namespace := setup(ctx, t, requireAnyGate(supportedV1ConversionFeatureGates))
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	v1beta1TaskRunName := helpers.ObjectNameForTest(t)
-	v1beta1TaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunYamlAlpha, v1beta1TaskRunName, namespace))
-	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunYamlAlpha, v1beta1TaskRunName, namespace))
-
-	if _, err := c.V1beta1TaskRunClient.Create(ctx, v1beta1TaskRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun: %s", err)
-	}
-
-	// v1TaskRunGot, err := c.V1TaskRunClient.Get(ctx, v1beta1TaskRunName, metav1.GetOptions{})
-	// if err != nil {
-	// 	t.Fatalf("Couldn't get expected Task for %s: %s", v1beta1TaskRunName, err)
-	// }
-
-	v1TaskRunGot, err := c.V1beta1TaskRunClient.Get(ctx, v1beta1TaskRunName, metav1.GetOptions{})
-	if err != nil {
-		t.Fatalf("Couldn't get expected Task for %s: %s", v1beta1TaskRunName, err)
-	}
-
-	if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterTaskRunStatus); d != "" {
-		t.Fatalf("-want, +got: %v", d)
-	}
-
-	// v1TaskRunName := helpers.ObjectNameForTest(t)
-	// v1TaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunYamlAlpha, v1TaskRunName, namespace))
-	// v1beta1TaskRunExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYamlAlpha, v1TaskRunName, namespace))
-
-	// if _, err := c.V1TaskRunClient.Create(ctx, v1TaskRun, metav1.CreateOptions{}); err != nil {
-	// 	t.Fatalf("Failed to create v1beta1 Task: %s", err)
-	// }
-
-	// v1beta1TaskRunGot, err := c.V1beta1TaskRunClient.Get(ctx, v1TaskRunName, metav1.GetOptions{})
-	// if err != nil {
-	// 	t.Fatalf("Couldn't get expected v1 Task for %s: %s", v1TaskRunName, err)
-	// }
-
-	// if d := cmp.Diff(v1beta1TaskRunExpected, v1beta1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterAnnotations); d != "" {
-	// 	t.Fatalf("-want, +got: %v", d)
-	// }
-}
-
-// TestPipelineRunCRDConversionAlpha is a duplicate of TestPipelineRunfieldsCRDConversion that covers
-// all alpha features included.
-func TestPipelineRunCRDConversionAlpha(t *testing.T) {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	t.Parallel()
-
-	c, namespace := setup(ctx, t, requireAnyGate(supportedV1ConversionFeatureGates))
-	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
-	defer tearDown(ctx, t, c, namespace)
-
-	v1beta1ToV1PipelineRunName := helpers.ObjectNameForTest(t)
-	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunYamlAlpha, v1beta1ToV1PipelineRunName, namespace))
-	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYamlAlpha, v1beta1ToV1PipelineRunName, namespace))
+	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName, v1beta1ToV1PipelineRunName, v1beta1ToV1PipelineRunName))
 
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create TaskRun: %s", err)
+		t.Fatalf("Failed to create v1beta1 PipelineRun: %s", err)
+	}
+
+	if err := WaitForPipelineRunState(ctx, c, v1beta1ToV1PipelineRunName, timeout, Succeed(v1beta1ToV1PipelineRunName), v1beta1ToV1PipelineRunName, "v1beta1"); err != nil {
+		t.Fatalf("Failed waiting for V1 PipelineRun done: %v", err)
 	}
 
 	v1PipelineRunGot, err := c.V1PipelineRunClient.Get(ctx, v1beta1ToV1PipelineRunName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Couldn't get expected Task for %s: %s", v1beta1ToV1PipelineRunName, err)
+		t.Fatalf("Couldn't get expected v1 PipelineRun for %s: %s", v1beta1ToV1PipelineRunName, err)
 	}
 
-	if d := cmp.Diff(v1PipelineRunExpected, v1PipelineRunGot, filterTypeMeta, filterObjectMeta); d != "" {
+	if d := cmp.Diff(v1PipelineRunExpected, v1PipelineRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1PipelineRunStatus, filterAnnotationsStrings); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
 	v1ToV1beta1PRName := helpers.ObjectNameForTest(t)
-	v1PipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYamlAlpha, v1ToV1beta1PRName, namespace))
-	v1beta1PipelineRunExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYamlAlpha, v1ToV1beta1PRName, namespace))
+	v1PipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYaml, v1ToV1beta1PRName, namespace))
+	v1beta1PipelineRunExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYaml, v1ToV1beta1PRName, namespace, v1ToV1beta1PRName, v1ToV1beta1PRName))
 
 	if _, err := c.V1PipelineRunClient.Create(ctx, v1PipelineRun, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create v1beta1 Task: %s", err)
+		t.Fatalf("Failed to create v1 PipelineRun: %s", err)
+	}
+
+	if err := WaitForPipelineRunState(ctx, c, v1ToV1beta1PRName, timeout, Succeed(v1ToV1beta1PRName), v1ToV1beta1PRName, "v1"); err != nil {
+		t.Fatalf("Failed waiting for v1beta1 pipelineRun done: %v", err)
 	}
 
 	v1beta1PipelineRunGot, err := c.V1beta1PipelineRunClient.Get(ctx, v1ToV1beta1PRName, metav1.GetOptions{})
 	if err != nil {
-		t.Fatalf("Couldn't get expected v1beta1 Task for %s: %s", v1ToV1beta1PRName, err)
+		t.Fatalf("Couldn't get expected v1beta1 PipelineRun for %s: %s", v1ToV1beta1PRName, err)
 	}
 
-	if d := cmp.Diff(v1beta1PipelineRunExpected, v1beta1PipelineRunGot, filterTypeMeta, filterObjectMeta, filterLabels); d != "" {
+	if d := cmp.Diff(v1beta1PipelineRunExpected, v1beta1PipelineRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1beta1PipelineRunStatus, filterV1beta1TaskRunStatus, filterContainerStateTerminated); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 }
