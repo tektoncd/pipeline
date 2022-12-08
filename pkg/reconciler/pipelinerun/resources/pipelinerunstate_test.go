@@ -2451,6 +2451,19 @@ func TestPipelineRunFacts_GetSkippedTasks(t *testing.T) {
 		finallyTasks         []v1beta1.PipelineTask
 		expectedSkippedTasks []v1beta1.SkippedTask
 	}{{
+		name: "stopping-skip-taskruns",
+		state: PipelineRunState{{
+			PipelineTask: &pts[0],
+			TaskRun:      makeFailed(trs[0]),
+		}, {
+			PipelineTask: &pts[14],
+		}},
+		dagTasks: []v1beta1.PipelineTask{pts[0], pts[14]},
+		expectedSkippedTasks: []v1beta1.SkippedTask{{
+			Name:   pts[14].Name,
+			Reason: v1beta1.StoppingSkip,
+		}},
+	}, {
 		name: "missing-results-skip-finally",
 		state: PipelineRunState{{
 			TaskRunName:  "task0taskrun",
