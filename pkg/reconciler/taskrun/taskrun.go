@@ -96,6 +96,7 @@ var (
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
+	defer c.durationAndCountMetrics(ctx, tr)
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 	// By this time, params and workspaces should not be propagated for embedded tasks so we cannot
@@ -445,7 +446,6 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) error {
-	defer c.durationAndCountMetrics(ctx, tr)
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 	var err error
