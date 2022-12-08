@@ -94,7 +94,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 	var taskExpectedState = PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
-		TaskRun:      withRetries(makeFailed(trs[0])),
+		TaskRun:      withRetries(makeToBeRetried(trs[0])),
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
@@ -128,15 +128,6 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		CustomTask:    true,
 		RunObjectName: "pipelinerun-mytask13",
 		RunObject:     makeRunFailed(runs[0]),
-	}}
-
-	var taskFailedWithRetries = PipelineRunState{{
-		PipelineTask: &pts[4], // 2 retries needed
-		TaskRunName:  "pipelinerun-mytask1",
-		TaskRun:      makeFailed(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
-			TaskSpec: &task.Spec,
-		},
 	}}
 
 	var taskCancelledFailedWithRetries = PipelineRunState{{
@@ -203,11 +194,6 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		state:      runFailedState,
 		expected:   true,
 		ptExpected: []bool{true},
-	}, {
-		name:       "run-failed-with-retries",
-		state:      taskFailedWithRetries,
-		expected:   false,
-		ptExpected: []bool{false},
 	}, {
 		name:       "run-cancelled-failed-with-retries",
 		state:      taskCancelledFailedWithRetries,
@@ -571,6 +557,24 @@ func TestGetNextTasks(t *testing.T) {
 }
 
 func TestGetNextTaskWithRetries(t *testing.T) {
+	var failedV1alpha1Run = parse.MustParseRun(t, `
+metadata:
+  name: custom-task
+  namespace: namespace
+spec:
+  retries: 1
+  params:
+  - name: param1
+    value: value1
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+status:
+  conditions:
+  - type: Succeeded
+    status: "False"
+    reason: Timedout
+`)
 	var taskCancelledByStatusState = PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
@@ -611,15 +615,6 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
-			TaskSpec: &task.Spec,
-		},
-	}}
-
-	var taskExpectedState = PipelineRunState{{
-		PipelineTask: &pts[4], // 2 retries needed
-		TaskRunName:  "pipelinerun-mytask1",
-		TaskRun:      withRetries(makeFailed(trs[0])),
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
@@ -678,7 +673,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 	var runExpectedState = PipelineRunState{{
 		PipelineTask:  &pts[4], // 2 retries needed
 		RunObjectName: "pipelinerun-mytask1",
-		RunObject:     withRunRetries(makeRunFailed(runs[0])),
+		RunObject:     failedV1alpha1Run,
 		CustomTask:    true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
@@ -725,15 +720,6 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		PipelineTask: &pts[17], // 1 retry needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeRetried(trs[0]))},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
-			TaskSpec: &task.Spec,
-		},
-	}}
-
-	var taskExpectedStateMatrix = PipelineRunState{{
-		PipelineTask: &pts[20], // 2 retries needed
-		TaskRunNames: []string{"pipelinerun-mytask1"},
-		TaskRuns:     []*v1beta1.TaskRun{withRetries(makeFailed(trs[0]))},
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
@@ -792,7 +778,7 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 	var runExpectedStateMatrix = PipelineRunState{{
 		PipelineTask:   &pts[20], // 2 retries needed
 		RunObjectNames: []string{"pipelinerun-mytask1"},
-		RunObjects:     []v1beta1.RunObject{withRunRetries(makeRunFailed(runs[0]))},
+		RunObjects:     []v1beta1.RunObject{failedV1alpha1Run},
 		CustomTask:     true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
@@ -829,11 +815,6 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		state:        taskRetriedState,
 		candidates:   sets.NewString("mytask5"),
 		expectedNext: []*ResolvedPipelineTask{},
-	}, {
-		name:         "tasks-retried-one-candidates",
-		state:        taskExpectedState,
-		candidates:   sets.NewString("mytask5"),
-		expectedNext: []*ResolvedPipelineTask{taskExpectedState[0]},
 	}, {
 		name:         "runs-cancelled-no-candidates",
 		state:        runCancelledByStatusState,
@@ -889,11 +870,6 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 		state:        taskRetriedStateMatrix,
 		candidates:   sets.NewString("mytask21"),
 		expectedNext: []*ResolvedPipelineTask{},
-	}, {
-		name:         "tasks-retried-one-candidate-matrix",
-		state:        taskExpectedStateMatrix,
-		candidates:   sets.NewString("mytask21"),
-		expectedNext: []*ResolvedPipelineTask{taskExpectedStateMatrix[0]},
 	}, {
 		name:         "runs-cancelled-no-candidates-matrix",
 		state:        runCancelledByStatusStateMatrix,
@@ -1011,7 +987,25 @@ func TestDAGExecutionQueue(t *testing.T) {
 			TaskSpec: &task.Spec,
 		},
 	}
-	failedRun := ResolvedPipelineTask{
+	failedRun := parse.MustParseRun(t, `
+metadata:
+  name: task
+  namespace: namespace
+spec:
+  retries: 1
+  params:
+  - name: param1
+    value: value1
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+status:
+  conditions:
+  - type: Succeeded
+    status: "False"
+    reason: Timedout
+`)
+	failedCustomRun := ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
 			Name:    "failedrun",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
@@ -1020,18 +1014,6 @@ func TestDAGExecutionQueue(t *testing.T) {
 		RunObject:     makeRunFailed(runs[0]),
 		CustomTask:    true,
 	}
-	failedTaskWithRetries := ResolvedPipelineTask{
-		PipelineTask: &v1beta1.PipelineTask{
-			Name:    "failedtaskwithretries",
-			TaskRef: &v1beta1.TaskRef{Name: "task"},
-			Retries: 1,
-		},
-		TaskRunName: "failedtaskwithretries",
-		TaskRun:     makeFailed(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
-			TaskSpec: &task.Spec,
-		},
-	}
 	failedRunWithRetries := ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
 			Name:    "failedrunwithretries",
@@ -1039,7 +1021,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 			Retries: 1,
 		},
 		RunObjectName: "failedrunwithretries",
-		RunObject:     makeRunFailed(runs[0]),
+		RunObject:     failedRun,
 		CustomTask:    true,
 	}
 	tcs := []struct {
@@ -1053,7 +1035,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		state: PipelineRunState{
 			&createdTask, &createdRun,
 			&runningTask, &runningRun, &successfulTask, &successfulRun,
-			&failedTaskWithRetries, &failedRunWithRetries,
+			&failedRunWithRetries,
 		},
 	}, {
 		name:       "gracefully cancelled",
@@ -1061,7 +1043,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		state: PipelineRunState{
 			&createdTask, &createdRun,
 			&runningTask, &runningRun, &successfulTask, &successfulRun,
-			&failedTaskWithRetries, &failedRunWithRetries,
+			&failedRunWithRetries,
 		},
 	}, {
 		name:       "gracefully stopped",
@@ -1074,32 +1056,33 @@ func TestDAGExecutionQueue(t *testing.T) {
 		specStatus: v1beta1.PipelineRunSpecStatusStoppedRunFinally,
 		state: PipelineRunState{
 			&createdTask, &createdRun, &runningTask, &runningRun, &successfulTask, &successfulRun,
-			&failedTask, &failedRun, &failedTaskWithRetries, &failedRunWithRetries,
+			&failedTask, &failedCustomRun, &failedRunWithRetries,
 		},
-		want: PipelineRunState{&failedTaskWithRetries, &failedRunWithRetries},
+		want: PipelineRunState{&failedRunWithRetries},
 	}, {
 		name: "running",
 		state: PipelineRunState{
 			&createdTask, &createdRun, &runningTask, &runningRun,
-			&failedTaskWithRetries, &failedRunWithRetries, &successfulTask, &successfulRun,
+			&successfulTask, &successfulRun,
+			&failedRunWithRetries,
 		},
-		want: PipelineRunState{&createdTask, &createdRun, &failedTaskWithRetries, &failedRunWithRetries},
+		want: PipelineRunState{&createdTask, &createdRun, &failedRunWithRetries},
 	}, {
 		name: "stopped",
 		state: PipelineRunState{
 			&createdTask, &createdRun, &runningTask, &runningRun,
-			&successfulTask, &successfulRun, &failedTask, &failedRun,
+			&successfulTask, &successfulRun, &failedTask, &failedCustomRun,
 		},
 	}, {
 		name: "stopped with retryable tasks",
 		state: PipelineRunState{
-			&createdTask, &createdRun, &runningTask, &runningRun, &successfulTask, &successfulRun,
-			&failedTask, &failedRun, &failedTaskWithRetries, &failedRunWithRetries,
+			&createdTask, &createdRun, &runningTask, &runningRun,
+			&successfulTask, &successfulRun, &failedCustomRun, &failedRunWithRetries,
 		},
-		want: PipelineRunState{&failedTaskWithRetries, &failedRunWithRetries},
+		want: PipelineRunState{&failedRunWithRetries},
 	}, {
 		name:  "all tasks finished",
-		state: PipelineRunState{&successfulTask, &successfulRun, &failedTask, &failedRun},
+		state: PipelineRunState{&successfulTask, &successfulRun, &failedTask, &failedCustomRun},
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1612,17 +1595,6 @@ func TestPipelineRunState_GetFinalTasksAndNames(t *testing.T) {
 		finalTasks:         []v1beta1.PipelineTask{pts[1]},
 		expectedFinalTasks: PipelineRunState{},
 		expectedFinalNames: sets.NewString(pts[1].Name),
-		expectedTaskNames:  sets.NewString(pts[0].Name),
-	}, {
-		// tasks: [ mytask1]
-		// finally: [mytask4]
-		name:               "07 - DAG tasks succeeded, return retryable final tasks",
-		desc:               "DAG task (mytask1) finished successfully - retry failed final tasks (mytask4)",
-		state:              retryableFinalState,
-		DAGTasks:           []v1beta1.PipelineTask{pts[0]},
-		finalTasks:         []v1beta1.PipelineTask{pts[3]},
-		expectedFinalTasks: PipelineRunState{retryableFinalState[1]},
-		expectedFinalNames: sets.NewString(pts[3].Name),
 		expectedTaskNames:  sets.NewString(pts[0].Name),
 	}}
 	for _, tc := range tcs {
@@ -3526,5 +3498,80 @@ func customRunWithName(name string) *v1beta1.CustomRun {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
+	}
+}
+
+func TestGetRetriableTasks(t *testing.T) {
+	failedRun := parse.MustParseRun(t, `
+metadata:
+  name: custom-task
+  namespace: namespace
+spec:
+  retries: 1
+  params:
+  - name: param1
+    value: value1
+  ref:
+    apiVersion: example.dev/v0
+    kind: Example
+status:
+  conditions:
+  - type: Succeeded
+    status: "False"
+    reason: Timedout
+`)
+	failedCustomRunPT := ResolvedPipelineTask{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "failedrun",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+		},
+		RunObjectName: "failedrun",
+		RunObject:     makeRunFailed(runs[0]),
+		CustomTask:    true,
+	}
+	failedTaskRunPTWithRetries := ResolvedPipelineTask{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "failedtask",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			Retries: 1,
+		},
+		TaskRunName: "failedtask",
+		TaskRun:     makeFailed(trs[0]),
+		ResolvedTaskResources: &resources.ResolvedTaskResources{
+			TaskSpec: &task.Spec,
+		},
+	}
+	failedRunPTWithRetries := ResolvedPipelineTask{
+		PipelineTask: &v1beta1.PipelineTask{
+			Name:    "failedrunwithretries",
+			TaskRef: &v1beta1.TaskRef{Name: "task"},
+			Retries: 1,
+		},
+		RunObjectName: "failedrunwithretries",
+		RunObject:     failedRun,
+		CustomTask:    true,
+	}
+	for _, tc := range []struct {
+		name       string
+		state      PipelineRunState
+		candidates sets.String
+		want       []*ResolvedPipelineTask
+	}{{
+		name:       "Failed Custom Task with Retries",
+		state:      PipelineRunState{&failedRunPTWithRetries},
+		candidates: sets.String{}.Insert(failedCustomRunPT.RunObjectName).Insert(failedRunPTWithRetries.RunObjectName),
+		want:       []*ResolvedPipelineTask{&failedRunPTWithRetries},
+	}, {
+		name:       "Failed Custom Task and TaskRuns with Retries",
+		state:      PipelineRunState{&failedRunPTWithRetries},
+		candidates: sets.String{}.Insert(failedRunPTWithRetries.RunObjectName).Insert(failedTaskRunPTWithRetries.TaskRunName),
+		want:       []*ResolvedPipelineTask{&failedRunPTWithRetries},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			queue := tc.state.getRetriableRuns(tc.candidates)
+			if d := cmp.Diff(tc.want, queue); d != "" {
+				t.Errorf("Didn't get expected execution queue: %s", diff.PrintWantGot(d))
+			}
+		})
 	}
 }

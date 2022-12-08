@@ -304,7 +304,10 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	logger := logging.FromContext(ctx)
 
 	afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
-
+	if afterCondition.IsFalse() && !tr.IsCancelled() && tr.IsRetriable() {
+		retryTaskRun(tr, afterCondition.Message)
+		afterCondition = tr.Status.GetCondition(apis.ConditionSucceeded)
+	}
 	// Send k8s events and cloud events (when configured)
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
@@ -496,7 +499,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 		}
 		for index := range pos {
 			po := pos[index]
-			if metav1.IsControlledBy(po, tr) && !podconvert.DidTaskRunFail(po) {
+			if metav1.IsControlledBy(po, tr) && !podconvert.DidTaskRunFail(po) && !podconvert.IsPodArchived(po, &tr.Status) {
 				pod = po
 			}
 		}
@@ -986,4 +989,17 @@ func isResourceQuotaConflictError(err error) bool {
 		return false
 	}
 	return k8ErrStatus.Details != nil && k8ErrStatus.Details.Kind == "resourcequotas"
+}
+
+// retryTaskRun archives taskRun.Status to taskRun.Status.RetriesStatus, and set
+// taskRun status to Unknown with Reason v1beta1.TaskRunReasonToBeRetried.
+func retryTaskRun(tr *v1beta1.TaskRun, message string) {
+	newStatus := tr.Status.DeepCopy()
+	newStatus.RetriesStatus = nil
+	tr.Status.RetriesStatus = append(tr.Status.RetriesStatus, *newStatus)
+	tr.Status.StartTime = nil
+	tr.Status.CompletionTime = nil
+	tr.Status.PodName = ""
+	taskRunCondSet := apis.NewBatchConditionSet()
+	taskRunCondSet.Manage(&tr.Status).MarkUnknown(apis.ConditionSucceeded, v1beta1.TaskRunReasonToBeRetried.String(), message)
 }

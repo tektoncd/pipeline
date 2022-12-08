@@ -157,7 +157,6 @@ func (t ResolvedPipelineTask) isFailure() bool {
 	}
 	var c *apis.Condition
 	var isDone bool
-
 	switch {
 	case t.IsCustomTask() && t.IsMatrixed():
 		if len(t.RunObjects) == 0 {
@@ -167,7 +166,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		atLeastOneFailed := false
 		for _, run := range t.RunObjects {
 			isDone = isDone && run.IsDone()
-			runFailed := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() && !t.hasRemainingRetries()
+			runFailed := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded).IsFalse() && !t.isRunRetriable()
 			atLeastOneFailed = atLeastOneFailed || runFailed
 		}
 		return atLeastOneFailed && isDone
@@ -177,6 +176,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		}
 		c = t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 		isDone = t.RunObject.IsDone()
+		return isDone && c.IsFalse() && !t.isRunRetriable()
 	case t.IsMatrixed():
 		if len(t.TaskRuns) == 0 {
 			return false
@@ -185,7 +185,7 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		atLeastOneFailed := false
 		for _, taskRun := range t.TaskRuns {
 			isDone = isDone && taskRun.IsDone()
-			taskRunFailed := taskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse() && !t.hasRemainingRetries()
+			taskRunFailed := taskRun.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
 			atLeastOneFailed = atLeastOneFailed || taskRunFailed
 		}
 		return atLeastOneFailed && isDone
@@ -195,51 +195,35 @@ func (t ResolvedPipelineTask) isFailure() bool {
 		}
 		c = t.TaskRun.Status.GetCondition(apis.ConditionSucceeded)
 		isDone = t.TaskRun.IsDone()
+		return isDone && c.IsFalse()
 	}
-	return isDone && c.IsFalse() && !t.hasRemainingRetries()
 }
 
-// hasRemainingRetries returns true only when the number of retries already attempted
-// is less than the number of retries allowed.
-func (t ResolvedPipelineTask) hasRemainingRetries() bool {
-	var retriesDone int
+// isRunRetriable returns true only when the number of retries already attempted
+// is less than the number of retries allowed for v1alpha1.Run.
+//
+// This should be removed once v1alpha1.Run is fully deprecated.
+func (t ResolvedPipelineTask) isRunRetriable() bool {
 	switch {
-	case t.IsCustomTask() && t.IsMatrixed():
+	case t.IsMatrixed():
 		if len(t.RunObjects) == 0 {
 			return true
 		}
 		// has remaining retries when any Run has a remaining retry
 		for _, run := range t.RunObjects {
-			retriesDone = run.GetRetryCount()
-			if retriesDone < t.PipelineTask.Retries {
-				return true
-			}
-		}
-		return false
-	case t.IsCustomTask():
-		if t.RunObject == nil {
-			return true
-		}
-		retriesDone = t.RunObject.GetRetryCount()
-	case t.IsMatrixed():
-		if len(t.TaskRuns) == 0 {
-			return true
-		}
-		// has remaining retries when any TaskRun has a remaining retry
-		for _, taskRun := range t.TaskRuns {
-			retriesDone = len(taskRun.Status.RetriesStatus)
-			if retriesDone < t.PipelineTask.Retries {
-				return true
+			if _, ok := run.(*v1alpha1.Run); ok {
+				if run.GetRetryCount() < t.PipelineTask.Retries {
+					return true
+				}
 			}
 		}
 		return false
 	default:
-		if t.TaskRun == nil {
-			return true
+		if _, ok := t.RunObject.(*v1alpha1.Run); ok {
+			return t.RunObject.GetRetryCount() < t.PipelineTask.Retries
 		}
-		retriesDone = len(t.TaskRun.Status.RetriesStatus)
 	}
-	return retriesDone < t.PipelineTask.Retries
+	return false
 }
 
 // isCancelledForTimeOut returns true only if the run is cancelled due to PipelineRun-controlled timeout

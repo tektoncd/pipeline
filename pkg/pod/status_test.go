@@ -1634,6 +1634,51 @@ func TestMarkStatusSuccess(t *testing.T) {
 	}
 }
 
+func TestIsPodArchived(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		podName       string
+		retriesStatus []v1beta1.TaskRunStatus
+		want          bool
+	}{{
+		name:          "Pod is not in the empty retriesStatus",
+		podName:       "pod",
+		retriesStatus: []v1beta1.TaskRunStatus{},
+		want:          false,
+	}, {
+		name:    "Pod is not in the non-empty retriesStatus",
+		podName: "pod-retry1",
+		retriesStatus: []v1beta1.TaskRunStatus{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName: "pod",
+			},
+		}},
+		want: false,
+	}, {
+		name:    "Pod is in the retriesStatus",
+		podName: "pod",
+		retriesStatus: []v1beta1.TaskRunStatus{{
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				PodName: "pod",
+			}},
+		},
+		want: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			trs := v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					PodName:       "pod",
+					RetriesStatus: tc.retriesStatus,
+				},
+			}
+			got := IsPodArchived(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: tc.podName}}, &trs)
+			if tc.want != got {
+				t.Errorf("got: %v, want: %v", got, tc.want)
+			}
+		})
+	}
+}
+
 func statusRunning() duckv1.Status {
 	var trs v1beta1.TaskRunStatus
 	markStatusRunning(&trs, v1beta1.TaskRunReasonRunning.String(), "Not all Steps in the Task have finished executing")
