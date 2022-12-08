@@ -494,6 +494,7 @@ spec:
     value: test-pipeline
   - name: contextRetriesParam
     value: "5"
+  retries: 5
   resources:
     inputs:
     - name: workspace
@@ -3524,103 +3525,6 @@ spec:
 		if actual.Spec.ServiceAccountName != expectedSANames[i] {
 			t.Errorf("Expected Run %s to have service account %s but it was %s", runNames[i], expectedSANames[i], actual.Spec.ServiceAccountName)
 		}
-	}
-}
-
-// TestReconcileWithTimeoutAndRetry runs "Reconcile" against pipelines with
-// retries and timeout settings, and status that represents different number of
-// retries already performed.  It verifies the reconciled status and events
-// generated
-func TestReconcileWithTimeoutAndRetry(t *testing.T) {
-	for _, tc := range []struct {
-		name               string
-		retries            int
-		conditionSucceeded corev1.ConditionStatus
-		wantEvents         []string
-	}{{
-		name:               "One try has to be done",
-		retries:            1,
-		conditionSucceeded: corev1.ConditionFalse,
-		wantEvents: []string{
-			"Warning Failed PipelineRun \"test-pipeline-retry-run-with-timeout\" failed to finish within",
-		},
-	}, {
-		name:               "No more retries are needed",
-		retries:            2,
-		conditionSucceeded: corev1.ConditionUnknown,
-		wantEvents: []string{
-			"Warning Failed PipelineRun \"test-pipeline-retry-run-with-timeout\" failed to finish within",
-		},
-	}} {
-		t.Run(tc.name, func(t *testing.T) {
-			ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
-metadata:
-  name: test-pipeline-retry
-  namespace: foo
-spec:
-  tasks:
-  - name: hello-world-1
-    retries: %d
-    taskRef:
-      name: hello-world
-`, tc.retries))}
-			prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: test-pipeline-retry-run-with-timeout
-  namespace: foo
-spec:
-  pipelineRef:
-    name: test-pipeline-retry
-  serviceAccountName: test-sa
-  timeout: 12h0m0s
-status:
-  startTime: "2021-12-31T00:00:00Z"
-`)}
-
-			ts := []*v1beta1.Task{
-				simpleHelloWorldTask,
-			}
-			trs := []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: hello-world-1
-  namespace: foo
-status:
-  conditions:
-  - status: "False"
-    type: Succeeded
-  podName: my-pod-name
-  retriesStatus:
-  - conditions:
-    - status: "False"
-      type: Succeeded
-`)}
-
-			prtrs := &v1beta1.PipelineRunTaskRunStatus{
-				PipelineTaskName: "hello-world-1",
-				Status:           &trs[0].Status,
-			}
-			prs[0].Status.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-			prs[0].Status.TaskRuns["hello-world-1"] = prtrs
-
-			d := test.Data{
-				PipelineRuns: prs,
-				Pipelines:    ps,
-				Tasks:        ts,
-				TaskRuns:     trs,
-			}
-			prt := newPipelineRunTest(d, t)
-			defer prt.Cancel()
-
-			reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-retry-run-with-timeout", []string{}, false)
-
-			if len(reconciledRun.Status.TaskRuns["hello-world-1"].Status.RetriesStatus) != tc.retries {
-				t.Fatalf(" %d retries expected but got %d ", tc.retries, len(reconciledRun.Status.TaskRuns["hello-world-1"].Status.RetriesStatus))
-			}
-
-			if status := reconciledRun.Status.TaskRuns["hello-world-1"].Status.GetCondition(apis.ConditionSucceeded).Status; status != tc.conditionSucceeded {
-				t.Fatalf("Succeeded expected to be %s but is %s", tc.conditionSucceeded, status)
-			}
-		})
 	}
 }
 
@@ -9673,6 +9577,7 @@ spec:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: linux
@@ -9687,12 +9592,17 @@ status:
   conditions:
   - type: Succeeded
     status: "False"
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
 `),
 			mustParseTaskRunWithObjectMeta(t,
 				taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: mac
@@ -9807,6 +9717,7 @@ status:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: linux
@@ -9820,7 +9731,7 @@ spec:
 status:
   conditions:
   - type: Succeeded
-    status: "Unknown"
+    status: "False"
   retriesStatus:
   - conditions:
     - status: "False"
@@ -9831,6 +9742,7 @@ status:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: mac
@@ -9855,6 +9767,7 @@ status:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: linux
@@ -9868,13 +9781,18 @@ spec:
 status:
   conditions:
   - type: Succeeded
-    status: "False"
+    status: "Unknown"
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
 `),
 			mustParseTaskRunWithObjectMeta(t,
 				taskRunObjectMeta("pr-platforms-and-browsers-1", "foo",
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: mac
@@ -9888,7 +9806,11 @@ spec:
 status:
   conditions:
   - type: Succeeded
-    status: "False"
+    status: "Unknown"
+  retriesStatus:
+  - conditions:
+    - status: "False"
+      type: Succeeded
 `),
 		},
 		prs: []*v1beta1.PipelineRun{
@@ -9989,6 +9911,7 @@ status:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: linux
@@ -10013,6 +9936,7 @@ status:
 					"pr", "p", "platforms-and-browsers", false),
 				`
 spec:
+  retries: 1
   params:
   - name: platform
     value: mac

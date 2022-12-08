@@ -104,6 +104,12 @@ var (
 	}, cmp.Comparer(func(name1, name2 string) bool {
 		return name1[:len(name1)-5] == name2[:len(name2)-5]
 	}))
+	ignoreStartTime           = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime")
+	ignoreCompletionTime      = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "CompletionTime")
+	ignoreObjectMeta          = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels", "ResourceVersion", "Annotations")
+	ignoreStatusTaskSpec      = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "TaskSpec")
+	ignoreTaskRunStatusFields = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "Steps", "Sidecars")
+
 	resourceQuantityCmp = cmp.Comparer(func(x, y resource.Quantity) bool {
 		return x.Cmp(y) == 0
 	})
@@ -1705,6 +1711,402 @@ spec:
 			}
 			if condition != nil && condition.Reason != tc.reason {
 				t.Errorf("Expected failure to be because of reason %q but was %s", tc.reason, condition.Reason)
+			}
+		})
+	}
+}
+
+func TestReconcileRetry(t *testing.T) {
+	var (
+		toBeCanceledTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-canceled
+  namespace: foo
+spec:
+  retries: 1
+  status: TaskRunCancelled
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  conditions:
+  - reason: Running
+    status: Unknown
+    type: Succeeded
+    message: "TaskRun \"test-taskrun-run-retry-canceled\" was cancelled. "
+`)
+		canceledTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-canceled
+  namespace: foo
+spec:
+  retries: 1
+  status: TaskRunCancelled
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  completionTime: "2022-01-01T00:00:00Z"
+  conditions:
+  - reason: TaskRunCancelled
+    status: "False"
+    type: Succeeded
+    message: "TaskRun \"test-taskrun-run-retry-canceled\" was cancelled. "
+`)
+		toBeTimedOutTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-timedout
+  namespace: foo
+spec:
+  retries: 1
+  timeout: "10s"
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T00:00:00Z"
+  conditions:
+  - reason: Running
+    status: Unknown
+    type: Succeeded
+    message: TaskRun "test-taskrun-run-retry-timedout" failed to finish within "10s"
+`)
+		timedOutTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-timedout
+  namespace: foo
+spec:
+  retries: 1
+  timeout: "10s"
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+    message: TaskRun "test-taskrun-run-retry-timedout" failed to finish within "10s"
+  retriesStatus:
+  - conditions:
+    - reason: "TaskRunTimeout"
+      status: "False"
+      type: Succeeded
+      message: TaskRun "test-taskrun-run-retry-timedout" failed to finish within "10s"
+    startTime: "2021-12-31T00:00:00Z"
+    completionTime: "2022-01-01T00:00:00Z"
+    `)
+		toFailOnPodFailureTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-pod-failure
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  podName: test-taskrun-run-retry-pod-failure-pod
+  steps:
+  - container: step-unamed-0
+    name: unamed-0
+    waiting:
+      reason: "ImagePullBackOff"
+`)
+		failedOnPodFailureTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-pod-failure
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+    message: "The step \"unamed-0\" in TaskRun \"test-taskrun-run-retry-pod-failure\" failed to pull the image \"\". The pod errored with the message: \".\""
+  steps:
+  - container: step-unamed-0
+    name: unamed-0
+    terminated:
+      exitCode: 1
+      finishedAt: "2022-01-01T00:00:00Z"
+      reason: "TaskRunImagePullFailed"
+  retriesStatus:
+  - conditions:
+    - reason: "TaskRunImagePullFailed"
+      status: "False"
+      type: Succeeded
+      message: "The step \"unamed-0\" in TaskRun \"test-taskrun-run-retry-pod-failure\" failed to pull the image \"\". The pod errored with the message: \".\""
+    startTime: "2021-12-31T23:59:59Z"
+    completionTime: "2022-01-01T00:00:00Z"
+    podName: test-taskrun-run-retry-pod-failure-pod
+    steps:
+    - container: step-unamed-0
+      name: unamed-0
+      terminated:
+        exitCode: 1
+        finishedAt: "2022-01-01T00:00:00Z"
+        reason: "TaskRunImagePullFailed"
+`)
+		failedPod = &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-taskrun-run-retry-pod-failure-pod"},
+			Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{
+				Type:   corev1.PodReady,
+				Status: "False",
+				Reason: "PodFailed",
+			}}},
+		}
+		toFailOnPrepareTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-prepare-failure
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  conditions:
+  - reason: Running
+    status: Unknown
+    type: Succeeded
+    lastTransitionTime: "2022-01-01T00:00:00Z"
+`)
+		failedOnPrepareTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-run-retry-prepare-failure
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+    message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found"
+  retriesStatus:
+  - conditions:
+    - reason: TaskRunResolutionFailed
+      status: "False"
+      type: "Succeeded"
+      message: "error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found"
+    startTime: "2021-12-31T23:59:59Z"
+    completionTime: "2022-01-01T00:00:00Z"
+`)
+		prepareError                    = fmt.Errorf("1 error occurred:\n\t* error when listing tasks for taskRun test-taskrun-run-retry-prepare-failure: failed to get task: tasks.tekton.dev \"test-task\" not found")
+		toFailOnReconcileFailureTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-results-type-mismatched
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-results-task
+status:
+  startTime: "2021-12-31T23:59:59Z"
+  taskResults:
+    - name: aResult
+      type: string
+      value: aResultValue
+`)
+		failedOnReconcileFailureTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-results-type-mismatched
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-results-task
+status:
+  taskResults:
+  - name: aResult
+    type: string
+    value: aResultValue
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+    message: "missmatched Types for these results, map[aResult:[array]]"
+  sideCars:
+  retriesStatus:
+  - conditions:
+    - reason: TaskRunValidationFailed
+      status: "False"
+      type: "Succeeded"
+      message: "missmatched Types for these results, map[aResult:[array]]"
+    startTime: "2021-12-31T23:59:59Z"
+    completionTime: "2022-01-01T00:00:00Z"
+    podName: "test-taskrun-results-type-mismatched-pod"
+    taskResults:
+    - name: aResult
+      type: string
+      value: aResultValue
+`)
+		reconciliatonError = fmt.Errorf("1 error occurred:\n\t* missmatched Types for these results, map[aResult:[array]]")
+		toBeRetriedTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-to-be-retried
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  conditions:
+  - reason: ToBeRetried
+    status: Unknown
+    type: Succeeded
+  retriesStatus:
+  - conditions:
+    - reason: TimedOut
+      status: "False"
+      type: Succeeded
+`)
+		retriedTaskRun = parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-to-be-retried
+  namespace: foo
+spec:
+  retries: 1
+  taskRef:
+    name: test-task
+status:
+  startTime: "2022-01-01T00:00:00Z"
+  podName:   "test-taskrun-to-be-retried-pod-retry1"
+  conditions:
+  - reason: Running
+    status: Unknown
+    type: Succeeded
+    message: Not all Steps in the Task have finished executing
+  retriesStatus:
+  - conditions:
+    - reason: TimedOut
+      status: "False"
+      type: Succeeded
+`)
+	)
+
+	for _, tc := range []struct {
+		name               string
+		testData           test.Data
+		task               *v1beta1.Task
+		tr                 *v1beta1.TaskRun
+		pod                *corev1.Pod
+		wantTr             *v1beta1.TaskRun
+		wantReconcileError error
+		wantCompletionTime bool
+		wantStartTime      bool
+	}{{
+		name: "No Retry on Cancellation",
+		testData: test.Data{
+			TaskRuns: []*v1beta1.TaskRun{toBeCanceledTaskRun},
+			Tasks:    []*v1beta1.Task{simpleTask},
+		},
+		tr:                 toBeCanceledTaskRun,
+		wantTr:             canceledTaskRun,
+		wantCompletionTime: true,
+		wantStartTime:      true,
+	}, {
+		name: "Retry on TimedOut",
+		testData: test.Data{
+			TaskRuns: []*v1beta1.TaskRun{toBeTimedOutTaskRun},
+			Tasks:    []*v1beta1.Task{simpleTask},
+		},
+		tr:            toBeTimedOutTaskRun,
+		wantTr:        timedOutTaskRun,
+		wantStartTime: false,
+	}, {
+		name: "Retry on TaskRun Pod Failure",
+		testData: test.Data{
+			TaskRuns: []*v1beta1.TaskRun{toFailOnPodFailureTaskRun},
+			Tasks:    []*v1beta1.Task{simpleTask},
+			Pods:     []*corev1.Pod{failedPod},
+		},
+		tr:            toFailOnPodFailureTaskRun,
+		wantTr:        failedOnPodFailureTaskRun,
+		wantStartTime: false,
+	}, {
+		name: "Retry on TaskRun Prepare Failure",
+		testData: test.Data{
+			TaskRuns: []*v1beta1.TaskRun{toFailOnPrepareTaskRun},
+		},
+		tr:                 toFailOnPrepareTaskRun,
+		wantTr:             failedOnPrepareTaskRun,
+		wantReconcileError: prepareError,
+		wantStartTime:      false,
+	}, {
+		name: "Retry on TaskRun Reconciliation Failure",
+		testData: test.Data{
+			TaskRuns: []*v1beta1.TaskRun{toFailOnReconcileFailureTaskRun},
+			Tasks:    []*v1beta1.Task{resultsTask},
+			ConfigMaps: []*corev1.ConfigMap{{
+				ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+				Data: map[string]string{
+					"enable-api-fields": config.AlphaAPIFields,
+				},
+			}},
+		},
+		tr:                 toFailOnReconcileFailureTaskRun,
+		wantTr:             failedOnReconcileFailureTaskRun,
+		wantReconcileError: reconciliatonError,
+		wantStartTime:      false,
+	}, {
+		name: "Start a ToBeRetried TaskRun",
+		testData: test.Data{
+			TaskRuns: []*v1beta1.TaskRun{toBeRetriedTaskRun},
+			Tasks:    []*v1beta1.Task{simpleTask},
+		},
+		tr:            toBeRetriedTaskRun,
+		wantTr:        retriedTaskRun,
+		wantStartTime: true,
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testAssets, cancel := getTaskRunController(t, tc.testData)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+			createServiceAccount(t, testAssets, "default", tc.tr.Namespace)
+
+			err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.tr))
+			if ok, _ := controller.IsRequeueKey(err); err == nil || !ok {
+				// No error; or error equals each other
+				if !(err == nil && tc.wantReconcileError == nil) &&
+					!(err != nil && tc.wantReconcileError != nil && strings.TrimSuffix(err.Error(), "\n\n") == tc.wantReconcileError.Error()) {
+					t.Errorf("Reconcile(): %v, want %v", err, tc.wantReconcileError)
+				}
+			}
+
+			reconciledTaskRun, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").Get(testAssets.Ctx, tc.tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("got %v; want nil", err)
+			}
+
+			ignoreFields := []cmp.Option{
+				ignoreLastTransitionTime,
+				ignoreStartTime,
+				ignoreCompletionTime,
+				ignoreObjectMeta,
+				ignoreStatusTaskSpec,
+				ignoreTaskRunStatusFields,
+			}
+			if d := cmp.Diff(reconciledTaskRun, tc.wantTr, ignoreFields...); d != "" {
+				t.Errorf("Didn't get expected TaskRun: %v", diff.PrintWantGot(d))
+			}
+
+			if !tc.wantCompletionTime && reconciledTaskRun.Status.CompletionTime != nil {
+				t.Error("Expect completion time to be nil")
+			}
+			if tc.wantCompletionTime && reconciledTaskRun.Status.CompletionTime == nil {
+				t.Error("Didn't expect completion time to be nil")
+			}
+			if !tc.wantStartTime && reconciledTaskRun.Status.StartTime != nil {
+				t.Error("Expect completion time to be nil")
+			}
+			if tc.wantStartTime && reconciledTaskRun.Status.StartTime == nil {
+				t.Error("Didn't expect completion time to be nil")
 			}
 		})
 	}

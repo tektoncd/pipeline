@@ -392,6 +392,16 @@ func DidTaskRunFail(pod *corev1.Pod) bool {
 	return f
 }
 
+// IsPodArchived indicates if a pod is archived in the retriesStatus.
+func IsPodArchived(pod *corev1.Pod, trs *v1beta1.TaskRunStatus) bool {
+	for _, retryStatus := range trs.RetriesStatus {
+		if retryStatus.PodName == pod.GetName() {
+			return true
+		}
+	}
+	return false
+}
+
 func areStepsComplete(pod *corev1.Pod) bool {
 	stepsComplete := len(pod.Status.ContainerStatuses) > 0 && pod.Status.Phase == corev1.PodRunning
 	for _, s := range pod.Status.ContainerStatuses {

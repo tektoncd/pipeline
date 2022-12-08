@@ -26,6 +26,7 @@ weight: 300
   - [Specifying `Sidecars`](#specifying-sidecars)
   - [Overriding `Task` `Steps` and `Sidecars`](#overriding-task-steps-and-sidecars)
   - [Specifying `LimitRange` values](#specifying-limitrange-values)
+  - [Specifying `Retries`](#specifying-retries)
   - [Configuring the failure timeout](#configuring-the-failure-timeout)
   - [Specifying `ServiceAccount` credentials](#specifying-serviceaccount-credentials)
 - [Monitoring execution status](#monitoring-execution-status)
@@ -698,11 +699,25 @@ object(s), if present. Any `Request` or `Limit` specified by the user (on `Task`
 
 For more information, see the [`LimitRange` support in Pipeline](./compute-resources.md#limitrange-support).
 
+### Specifying `Retries`
+You can use the `retries` field to set how many times you want to retry on a failed TaskRun.
+All TaskRun failures are retriable except for `Cancellation`.
+
+For a retriable `TaskRun`, when an error occurs:
+- The error status is archived in `status.RetriesStatus`
+- The `Succeeded` condition in `status` is updated:
+```
+Type: Succeeded
+Status: Unknown
+Reason: ToBeRetried
+```
+- `status.StartTime` and `status.PodName` are unset to trigger another retry attempt.
+
 ### Configuring the failure timeout
 
-You can use the `timeout` field to set the `TaskRun's` desired timeout value. If you do not specify this
-value for the `TaskRun`, the global default timeout value applies. If you set the timeout to 0, the `TaskRun` will
-have no timeout and will run until it completes successfully or fails from an error.
+You can use the `timeout` field to set the `TaskRun's` desired timeout value for **each retry attempt**. If you do
+not specify this value, the global default timeout value applies (the same, to `each retry attempt`). If you set the timeout to 0,
+the `TaskRun` will have no timeout and will run until it completes successfully or fails from an error.
 
 The global default timeout is set to 60 minutes when you first install Tekton. You can set
 a different global default timeout value using the `default-timeout-minutes` field in
