@@ -39,11 +39,6 @@ var (
 	TaskRunsAnnotationKey = "tekton.dev/v1beta1TaskRuns"
 	RunsAnnotationKey     = "tekton.dev/v1beta1Runs"
 
-	supportedV1ConversionFeatureGates = map[string]string{
-		"enable-api-fields":         "alpha",
-		"enable-tekton-oci-bundles": "true",
-	}
-
 	ignoreUnpredictableStrings = func(k, v interface{}) bool {
 		return k == TaskRunsAnnotationKey || k == RunsAnnotationKey
 	}
@@ -54,7 +49,6 @@ var (
 	}
 
 	filterLabels                   = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels")
-	filterAnnotations              = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Annotations")
 	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1PipelineRunStatus      = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1beta1TaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
@@ -757,6 +751,210 @@ status:
       name: %s-fetch-secure-data
       pipelineTaskName: fetch-secure-data
 `
+
+	// Alpha CRD examples serve for the purpose of testing those fields that
+	// requires the feature flags
+	v1beta1TaskRunYamlAlpha = `
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  timeout: 60s
+  serviceAccountName: default
+  taskRef:
+    name: hello-world
+    bundle: docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828
+`
+
+	v1TaskRunYamlAlphaExpected = `
+metadata:
+  name: %s
+  namespace: %s
+  annotations: {}
+spec:
+  serviceAccountName: default
+  taskRef:
+    kind: Task
+    params:
+    - name: bundle
+      value: docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828
+    - name: name
+      value: hello-world
+    - name: kind
+      value: Task
+    resolver: bundles
+  timeout: 1m0s
+status:
+  conditions:
+  - reason: Succeeded
+    status: "True"
+    type: Succeeded
+  podName: %s-pod
+  steps:
+  - container: step
+    terminated:
+      reason: Completed
+  taskSpec:
+    steps:
+    - computeResources: {}
+      image: ubuntu
+      name: hellp
+      script: echo "Hello World!"
+`
+
+	v1TaskRunYamlAlpha = `
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  workspaces:
+    - name: output
+      emptyDir: {}
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  taskRef:
+    resolver: bundles
+    params:
+      - name: bundle
+        value: gcr.io/tekton-releases/catalog/upstream/git-clone@sha256:8e2c3fb0f719d6463e950f3e44965aa314e69b800833e29e68ba2616bb82deeb
+      - name: name
+        value: git-clone
+      - name: kind
+        value: task
+  params:
+    - name: url
+      value: https://github.com/kelseyhightower/nocode
+    - name: revision
+      value: master
+`
+
+	v1beta1TaskRunExpectedYamlAlpha = `
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  timeout: 1h
+  serviceAccountName: default
+  taskRef:
+    resolver: "bundles"
+    kind: Task
+    params:
+    - name: bundle
+      value: gcr.io/tekton-releases/catalog/upstream/git-clone@sha256:8e2c3fb0f719d6463e950f3e44965aa314e69b800833e29e68ba2616bb82deeb
+    - name: name
+      value: git-clone
+    - name: kind
+      value: task
+    resolver: bundles
+  podTemplate:
+    securityContext:
+      fsGroup: 65532
+  workspaces:
+    - name: output
+      emptyDir: {}
+  params:
+  - name: url
+    value: https://github.com/kelseyhightower/nocode
+  - name: revision
+    value: master
+status:
+  conditions:
+  - reason: Succeeded
+    status: "True"
+    type: Succeeded
+  podName: %s-pod
+  steps:
+  - container: step-clone
+    terminated:
+      reason: Completed
+  taskSpec:
+    workspaces:
+    - name: output
+`
+
+	v1beta1PipelineRunYamlAlpha = `
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    name: hello-world
+    bundle: docker.io/ptasci67/example-oci@sha256:053a6cb9f3711d4527dd0d37ac610e8727ec0288a898d5dfbd79b25bcaa29828
+`
+
+	v1PipelineRunYamlAlphaExpected = `
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    resolver: "bundles"
+    kind: Pipeline
+    params:
+    - name: bundle
+      type: string
+      value: "test-bundle"
+    - name: name
+      type: string
+      value: pr
+    - name: kind
+      type: string
+      value: Task
+  timeouts:
+    pipeline: 60s
+  taskRunTemplate: {
+    serviceAccountName: default
+  }
+`
+
+	v1beta1PipelineRunExpectedYamlAlpha = `
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    resolver: "bundles"
+    kind: Pipeline
+    params:
+    - name: bundle
+      type: string
+      value: "test-bundle"
+    - name: name
+      type: string
+      value: pr
+    - name: kind
+      type: string
+      value: Task
+  timeouts:
+    pipeline: 60s
+  serviceAccountName: default
+`
+
+	v1PipelineRunYamlAlpha = `
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  pipelineRef:
+    resolver: "bundles"
+    kind: Pipeline
+    params:
+    - name: bundle
+      type: string
+      value: "test-bundle"
+    - name: name
+      type: string
+      value: pr
+    - name: kind
+      type: string
+      value: Task
+  timeouts:
+    pipeline: 60s
+  taskRunTemplate: {
+    serviceAccountName: default
+  }
+`
 )
 
 // TestTaskCRDConversion first creates a v1beta1 Task CRD using v1beta1Clients and
@@ -972,6 +1170,120 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 	}
 
 	if d := cmp.Diff(v1beta1PipelineRunExpected, v1beta1PipelineRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1beta1PipelineRunStatus, filterV1beta1TaskRunStatus, filterContainerStateTerminated); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+}
+
+// TestTaskRunCRDConversionAlpha is a duplicate of TestTaskRunfieldsCRDConversion that covers
+// all alpha features included.
+func TestTaskRunCRDConversionAlpha(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	t.Parallel()
+
+	c, namespace := setup(ctx, t, requireAnyGate(supportedV1ConversionFeatureGates))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	v1beta1TaskRunName := helpers.ObjectNameForTest(t)
+	v1beta1TaskRun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunYamlAlpha, v1beta1TaskRunName, namespace))
+	v1TaskRunExpected := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunYamlAlphaExpected, v1beta1TaskRunName, namespace, v1beta1TaskRunName))
+
+	if _, err := c.V1beta1TaskRunClient.Create(ctx, v1beta1TaskRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create TaskRun: %s", err)
+	}
+
+	if err := WaitForTaskRunState(ctx, c, v1beta1TaskRunName, Succeed(v1beta1TaskRunName), v1beta1TaskRunName, "v1beta1"); err != nil {
+		t.Fatalf("Failed waiting for v1beta1 TaskRun done: %v", err)
+	}
+
+	v1TaskRunGot, err := c.V1TaskRunClient.Get(ctx, v1beta1TaskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected v1 Task for %s: %s", v1beta1TaskRunName, err)
+	}
+
+	if d := cmp.Diff(v1TaskRunExpected, v1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterV1TaskRunStatus, filterReleaseAnnotation, filterCondition, filterContainerStateTerminated, filterV1StepState); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
+	// TODO: confirm if all taskSpec and results need to be tested
+
+	v1TaskRunName := helpers.ObjectNameForTest(t)
+	v1TaskRun := parse.MustParseV1TaskRun(t, fmt.Sprintf(v1TaskRunYamlAlpha, v1TaskRunName, namespace))
+	v1beta1TaskRunExpected := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(v1beta1TaskRunExpectedYamlAlpha, v1TaskRunName, namespace, v1TaskRunName))
+
+	if _, err := c.V1TaskRunClient.Create(ctx, v1TaskRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create v1 TaskRun: %s", err)
+	}
+
+	if err := WaitForTaskRunState(ctx, c, v1TaskRunName, Succeed(v1TaskRunName), v1TaskRunName, "v1"); err != nil {
+		t.Fatalf("Failed waiting for v1 TaskRun done: %v", err)
+	}
+
+	v1beta1TaskRunGot, err := c.V1beta1TaskRunClient.Get(ctx, v1TaskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected v1beta1 TaskRun for %s: %s", v1TaskRunName, err)
+	}
+
+	if d := cmp.Diff(v1beta1TaskRunExpected, v1beta1TaskRunGot, filterTypeMeta, filterObjectMeta, filterLabels, filterReleaseAnnotation, filterCondition, filterV1beta1TaskRunStatus); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+}
+
+// TestPipelineRunCRDConversionAlpha is a duplicate of TestPipelineRunfieldsCRDConversion that covers
+// all alpha features included.
+func TestPipelineRunCRDConversionAlpha(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	t.Parallel()
+
+	c, namespace := setup(ctx, t, requireAnyGate(supportedV1ConversionFeatureGates))
+	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
+	defer tearDown(ctx, t, c, namespace)
+
+	v1beta1ToV1PipelineRunName := helpers.ObjectNameForTest(t)
+	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunYamlAlpha, v1beta1ToV1PipelineRunName, namespace))
+	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYamlAlpha, v1beta1ToV1PipelineRunName, namespace))
+
+	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create TaskRun: %s", err)
+	}
+
+	if err := WaitForPipelineRunState(ctx, c, v1beta1ToV1PipelineRunName, timeout, Succeed(v1beta1ToV1PipelineRunName), v1beta1ToV1PipelineRunName, "v1beta1"); err != nil {
+		t.Fatalf("Failed waiting for V1 PipelineRun done: %v", err)
+	}
+
+	v1PipelineRunGot, err := c.V1PipelineRunClient.Get(ctx, v1beta1ToV1PipelineRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected Task for %s: %s", v1beta1ToV1PipelineRunName, err)
+	}
+
+	if d := cmp.Diff(v1PipelineRunExpected, v1PipelineRunGot, filterTypeMeta, filterObjectMeta); d != "" {
+		t.Fatalf("-want, +got: %v", d)
+	}
+
+	v1ToV1beta1PRName := helpers.ObjectNameForTest(t)
+	v1PipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYamlAlpha, v1ToV1beta1PRName, namespace))
+	v1beta1PipelineRunExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYamlAlpha, v1ToV1beta1PRName, namespace))
+
+	if _, err := c.V1PipelineRunClient.Create(ctx, v1PipelineRun, metav1.CreateOptions{}); err != nil {
+		t.Fatalf("Failed to create v1beta1 Task: %s", err)
+	}
+
+	if err := WaitForPipelineRunState(ctx, c, v1ToV1beta1PRName, timeout, Succeed(v1ToV1beta1PRName), v1ToV1beta1PRName, "v1"); err != nil {
+		t.Fatalf("Failed waiting for v1beta1 pipelineRun done: %v", err)
+	}
+
+	v1beta1PipelineRunGot, err := c.V1beta1PipelineRunClient.Get(ctx, v1ToV1beta1PRName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Couldn't get expected v1beta1 Task for %s: %s", v1ToV1beta1PRName, err)
+	}
+
+	if d := cmp.Diff(v1beta1PipelineRunExpected, v1beta1PipelineRunGot, filterTypeMeta, filterObjectMeta, filterLabels); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
 }
