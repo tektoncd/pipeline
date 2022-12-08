@@ -39,13 +39,13 @@ import (
 
 var (
 	childRefTaskRuns = []v1beta1.ChildStatusReference{{
-		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "v1beta1"},
+		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1beta1"},
 		Name:             "tr-0",
 		PipelineTaskName: "ptn",
 		WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
 	}}
 	childRefRuns = []v1beta1.ChildStatusReference{{
-		TypeMeta:         runtime.TypeMeta{Kind: "Run", APIVersion: "v1alpha1"},
+		TypeMeta:         runtime.TypeMeta{Kind: "Run", APIVersion: "tekton.dev/v1alpha1"},
 		Name:             "r-0",
 		PipelineTaskName: "ptn-0",
 		WhenExpressions:  []v1beta1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
@@ -640,11 +640,11 @@ func TestPipelineRunConversionEmbeddedStatusConvertTo(t *testing.T) {
 			Status: v1.PipelineRunStatus{
 				PipelineRunStatusFields: v1.PipelineRunStatusFields{
 					ChildReferences: []v1.ChildStatusReference{{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "v1beta1"},
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1beta1"},
 						Name:             "tr-0",
 						PipelineTaskName: "ptn",
 						WhenExpressions:  []v1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
-					}, {TypeMeta: runtime.TypeMeta{Kind: "Run", APIVersion: "v1alpha1"},
+					}, {TypeMeta: runtime.TypeMeta{Kind: "Run", APIVersion: "tekton.dev/v1alpha1"},
 						Name:             "r-0",
 						PipelineTaskName: "ptn-0",
 						WhenExpressions:  []v1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
@@ -694,11 +694,11 @@ func TestPipelineRunConversionEmbeddedStatusConvertFrom(t *testing.T) {
 			Status: v1.PipelineRunStatus{
 				PipelineRunStatusFields: v1.PipelineRunStatusFields{
 					ChildReferences: []v1.ChildStatusReference{{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "v1beta1"},
+						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1beta1"},
 						Name:             "tr-0",
 						PipelineTaskName: "ptn",
 						WhenExpressions:  []v1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
-					}, {TypeMeta: runtime.TypeMeta{Kind: "Run", APIVersion: "v1alpha1"},
+					}, {TypeMeta: runtime.TypeMeta{Kind: "Run", APIVersion: "tekton.dev/v1alpha1"},
 						Name:             "r-0",
 						PipelineTaskName: "ptn-0",
 						WhenExpressions:  []v1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},

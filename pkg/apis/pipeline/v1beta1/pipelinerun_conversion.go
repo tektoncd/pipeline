@@ -410,7 +410,7 @@ func convertTaskRunsToChildReference(ctx context.Context, taskRuns map[string]*P
 		csr := v1.ChildStatusReference{}
 		// The apiVersion is defaulted to 'v1beta1' all taskRuns are populated by v1beta1
 		// PipelineRunStatus reconcilers when `embedded-status` is `Full` or `Both`.
-		csr.TypeMeta.APIVersion = "v1beta1"
+		csr.TypeMeta.APIVersion = "tekton.dev/v1beta1"
 		csr.TypeMeta.Kind = "TaskRun"
 		csr.Name = name
 		csr.PipelineTaskName = status.PipelineTaskName
@@ -425,13 +425,13 @@ func convertTaskRunsToChildReference(ctx context.Context, taskRuns map[string]*P
 	return csrs
 }
 
-// convertRunsToChildReference handles the deprecated `status.runs`` field PipelineRunRunStatus.
+// convertRunsToChildReference handles the deprecated `status.runs` field PipelineRunRunStatus.
 func convertRunsToChildReference(ctx context.Context, runs map[string]*PipelineRunRunStatus) []v1.ChildStatusReference {
 	csrs := []v1.ChildStatusReference{}
 	for name, status := range runs {
 		csr := v1.ChildStatusReference{}
 		// The apiViersion is set to 'v1alpha1' as Run is only in `v1alpha1`.
-		csr.TypeMeta.APIVersion = "v1alpha1"
+		csr.TypeMeta.APIVersion = "tekton.dev/v1alpha1"
 		csr.TypeMeta.Kind = "Run"
 		csr.Name = name
 		csr.PipelineTaskName = status.PipelineTaskName
