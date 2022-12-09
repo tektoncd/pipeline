@@ -23,7 +23,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -2777,7 +2776,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 		description   string
 		results       []v1beta1.PipelineResult
 		taskResults   map[string][]v1beta1.TaskRunResult
-		runResults    map[string][]v1alpha1.RunResult
+		runResults    map[string][]v1beta1.CustomRunResult
 		expected      []v1beta1.PipelineRunResult
 		expectedError error
 	}{{
@@ -2822,7 +2821,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 			Name:  "pipeline-result-1",
 			Value: *v1beta1.NewStructuredValues("$(finally.customtask.results.foo)"),
 		}},
-		runResults: map[string][]v1alpha1.RunResult{
+		runResults: map[string][]v1beta1.CustomRunResult{
 			"customtask": {
 				{
 					Name:  "foo",
@@ -2891,7 +2890,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		description     string
 		results         []v1beta1.PipelineResult
 		taskResults     map[string][]v1beta1.TaskRunResult
-		runResults      map[string][]v1alpha1.RunResult
+		runResults      map[string][]v1beta1.CustomRunResult
 		expectedResults []v1beta1.PipelineRunResult
 		expectedError   error
 	}{{
@@ -3261,7 +3260,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
 		}},
-		runResults:      map[string][]v1alpha1.RunResult{},
+		runResults:      map[string][]v1beta1.CustomRunResult{},
 		expectedResults: nil,
 	}, {
 		description: "wrong-customtask-name-no-returned-result",
@@ -3269,7 +3268,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
 		}},
-		runResults: map[string][]v1alpha1.RunResult{
+		runResults: map[string][]v1beta1.CustomRunResult{
 			"differentcustomtask": {{
 				Name:  "foo",
 				Value: "bar",
@@ -3283,7 +3282,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
 		}},
-		runResults: map[string][]v1alpha1.RunResult{
+		runResults: map[string][]v1beta1.CustomRunResult{
 			"customtask": {{
 				Name:  "notfoo",
 				Value: "bar",
@@ -3297,7 +3296,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo)"),
 		}},
-		runResults: map[string][]v1alpha1.RunResult{
+		runResults: map[string][]v1beta1.CustomRunResult{
 			"customtask": {},
 		},
 		expectedResults: nil,
@@ -3308,7 +3307,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "foo",
 			Value: *v1beta1.NewStructuredValues("$(tasks.task.results.foo.foo.foo)"),
 		}},
-		runResults: map[string][]v1alpha1.RunResult{
+		runResults: map[string][]v1beta1.CustomRunResult{
 			"customtask": {},
 		},
 		expectedResults: nil,
@@ -3322,7 +3321,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "pipeline-result-2",
 			Value: *v1beta1.NewStructuredValues("$(tasks.customtask.results.foo), $(tasks.normaltask.results.baz), $(tasks.customtask.results.bar), $(tasks.normaltask.results.baz), $(tasks.customtask.results.foo)"),
 		}},
-		runResults: map[string][]v1alpha1.RunResult{
+		runResults: map[string][]v1beta1.CustomRunResult{
 			"customtask": {
 				{
 					Name:  "foo",

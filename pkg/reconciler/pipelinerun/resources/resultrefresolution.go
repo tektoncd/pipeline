@@ -154,8 +154,8 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	var resultValue v1beta1.ResultValue
 	var err error
 	if referencedPipelineTask.IsCustomTask() {
-		runName = referencedPipelineTask.Run.Name
-		runValue, err = findRunResultForParam(referencedPipelineTask.Run, resultRef)
+		runName = referencedPipelineTask.RunObject.GetObjectMeta().GetName()
+		runValue, err = findRunResultForParam(referencedPipelineTask.RunObject, resultRef)
 		resultValue = *v1beta1.NewStructuredValues(runValue)
 		if err != nil {
 			return nil, resultRef.PipelineTask, err
@@ -176,11 +176,19 @@ func resolveResultRef(pipelineState PipelineRunState, resultRef *v1beta1.ResultR
 	}, "", nil
 }
 
-func findRunResultForParam(run *v1alpha1.Run, reference *v1beta1.ResultRef) (string, error) {
-	results := run.Status.Results
-	for _, result := range results {
-		if result.Name == reference.Result {
-			return result.Value, nil
+func findRunResultForParam(runObj v1beta1.RunObject, reference *v1beta1.ResultRef) (string, error) {
+	switch run := runObj.(type) {
+	case *v1beta1.CustomRun:
+		for _, result := range run.Status.Results {
+			if result.Name == reference.Result {
+				return result.Value, nil
+			}
+		}
+	case *v1alpha1.Run:
+		for _, result := range run.Status.Results {
+			if result.Name == reference.Result {
+				return result.Value, nil
+			}
 		}
 	}
 	return "", fmt.Errorf("Could not find result with name %s for task %s", reference.Result, reference.PipelineTask)

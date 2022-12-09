@@ -95,8 +95,8 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt1",
 			},
-			CustomTask: true,
-			RunName:    "foo-run",
+			CustomTask:    true,
+			RunObjectName: "foo-run",
 		}, {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt2",

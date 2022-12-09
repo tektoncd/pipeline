@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -90,16 +89,16 @@ var pipelineRunState = PipelineRunState{{
 		}},
 	},
 }, {
-	CustomTask: true,
-	RunName:    "aRun",
-	Run: &v1alpha1.Run{
+	CustomTask:    true,
+	RunObjectName: "aRun",
+	RunObject: &v1beta1.CustomRun{
 		ObjectMeta: metav1.ObjectMeta{Name: "aRun"},
-		Status: v1alpha1.RunStatus{
+		Status: v1beta1.CustomRunStatus{
 			Status: duckv1.Status{
 				Conditions: []apis.Condition{successCondition},
 			},
-			RunStatusFields: v1alpha1.RunStatusFields{
-				Results: []v1alpha1.RunResult{{
+			CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+				Results: []v1beta1.CustomRunResult{{
 					Name:  "aResult",
 					Value: "aResultValue",
 				}},
@@ -404,16 +403,16 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 	}, {
 		name: "successful resolution: using result reference to a Run",
 		pipelineRunState: PipelineRunState{{
-			CustomTask: true,
-			RunName:    "aRun",
-			Run: &v1alpha1.Run{
+			CustomTask:    true,
+			RunObjectName: "aRun",
+			RunObject: &v1beta1.CustomRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "aRun"},
-				Status: v1alpha1.RunStatus{
+				Status: v1beta1.CustomRunStatus{
 					Status: duckv1.Status{
 						Conditions: []apis.Condition{successCondition},
 					},
-					RunStatusFields: v1alpha1.RunStatusFields{
-						Results: []v1alpha1.RunResult{{
+					CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+						Results: []v1beta1.CustomRunResult{{
 							Name:  "aResult",
 							Value: "aResultValue",
 						}},
@@ -441,11 +440,11 @@ func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
 	}, {
 		name: "failed resolution: using result reference to a failed Run",
 		pipelineRunState: PipelineRunState{{
-			CustomTask: true,
-			RunName:    "aRun",
-			Run: &v1alpha1.Run{
+			CustomTask:    true,
+			RunObjectName: "aRun",
+			RunObject: &v1beta1.CustomRun{
 				ObjectMeta: metav1.ObjectMeta{Name: "aRun"},
-				Status: v1alpha1.RunStatus{
+				Status: v1beta1.CustomRunStatus{
 					Status: duckv1.Status{
 						Conditions: []apis.Condition{failedCondition},
 					},

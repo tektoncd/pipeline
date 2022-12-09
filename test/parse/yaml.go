@@ -54,6 +54,16 @@ kind: Task
 	return &task
 }
 
+// MustParseCustomRun takes YAML and parses it into a *v1beta1.CustomRun
+func MustParseCustomRun(t *testing.T, yaml string) *v1beta1.CustomRun {
+	var r v1beta1.CustomRun
+	yaml = `apiVersion: tekton.dev/v1beta1
+kind: CustomRun
+` + yaml
+	mustParseYAML(t, yaml, &r)
+	return &r
+}
+
 // MustParseClusterTask takes YAML and parses it into a *v1beta1.ClusterTask
 func MustParseClusterTask(t *testing.T, yaml string) *v1beta1.ClusterTask {
 	var clusterTask v1beta1.ClusterTask

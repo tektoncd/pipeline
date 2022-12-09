@@ -23,7 +23,7 @@ package v1
 
 import (
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
-	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
+	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -369,7 +369,7 @@ func (in *PipelineRunRunStatus) DeepCopyInto(out *PipelineRunRunStatus) {
 	*out = *in
 	if in.Status != nil {
 		in, out := &in.Status, &out.Status
-		*out = new(v1alpha1.RunStatus)
+		*out = new(v1beta1.CustomRunStatus)
 		(*in).DeepCopyInto(*out)
 	}
 	if in.WhenExpressions != nil {

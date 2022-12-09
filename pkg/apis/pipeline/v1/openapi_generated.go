@@ -1120,7 +1120,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunRunStatus(ref common.ReferenceCallba
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Status is the RunStatus for the corresponding Run",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1.RunStatus"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/run/v1beta1.CustomRunStatus"),
 						},
 					},
 					"whenExpressions": {
@@ -1146,7 +1146,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunRunStatus(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1.RunStatus"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1.CustomRunStatus"},
 	}
 }
 

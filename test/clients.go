@@ -63,6 +63,7 @@ type clients struct {
 	V1beta1TaskClient               v1beta1.TaskInterface
 	V1beta1TaskRunClient            v1beta1.TaskRunInterface
 	V1beta1PipelineRunClient        v1beta1.PipelineRunInterface
+	V1beta1CustomRunClient          v1beta1.CustomRunInterface
 	V1alpha1PipelineResourceClient  resourcev1alpha1.PipelineResourceInterface
 	V1alpha1RunClient               v1alpha1.RunInterface
 	V1alpha1ResolutionRequestclient resolutionv1alpha1.ResolutionRequestInterface
@@ -108,6 +109,7 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.V1beta1TaskClient = cs.TektonV1beta1().Tasks(namespace)
 	c.V1beta1TaskRunClient = cs.TektonV1beta1().TaskRuns(namespace)
 	c.V1beta1PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)
+	c.V1beta1CustomRunClient = cs.TektonV1beta1().CustomRuns(namespace)
 	c.V1alpha1PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
 	c.V1alpha1RunClient = cs.TektonV1alpha1().Runs(namespace)
 	c.V1alpha1ResolutionRequestclient = rrcs.ResolutionV1alpha1().ResolutionRequests(namespace)
