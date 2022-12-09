@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -301,7 +300,7 @@ func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]st
 func ApplyTaskResultsToPipelineResults(
 	results []v1beta1.PipelineResult,
 	taskRunResults map[string][]v1beta1.TaskRunResult,
-	customTaskResults map[string][]v1alpha1.RunResult) ([]v1beta1.PipelineRunResult, error) {
+	customTaskResults map[string][]v1beta1.CustomRunResult) ([]v1beta1.PipelineRunResult, error) {
 	var runResults []v1beta1.PipelineRunResult
 	var invalidPipelineResults []string
 	stringReplacements := map[string]string{}
@@ -417,7 +416,7 @@ func taskResultValue(taskName string, resultName string, taskResults map[string]
 // runResultValue returns the result value for a given pipeline task name and result name in a map of RunResults for
 // pipeline task names. It returns nil if either the pipeline task name isn't present in the map, or if there is no
 // result with the result name in the pipeline task name's slice of results.
-func runResultValue(taskName string, resultName string, runResults map[string][]v1alpha1.RunResult) *string {
+func runResultValue(taskName string, resultName string, runResults map[string][]v1beta1.CustomRunResult) *string {
 	for _, runResult := range runResults[taskName] {
 		if runResult.Name == resultName {
 			return &runResult.Value

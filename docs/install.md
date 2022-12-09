@@ -428,6 +428,12 @@ features](#alpha-features) to be used.
   field contains metadata about resources used in the TaskRun/PipelineRun such as the 
   source from where a remote Task/Pipeline definition was fetched.
 
+- `custom-task-version`: set this flag to "v1alpha1" to have `PipelineRuns` create `Runs`
+  from Custom Tasks. Set it to "v1beta1" to have `PipelineRuns` create the beta
+  `CustomRuns`. This may be needed if you are using Custom Tasks that have been updated to
+  listen for `*v1beta1.CustomRun` instead of `*v1alpha1.Run`. For more information, see
+  [Runs](runs.md) and [CustomRuns](customruns.md). Flag defaults to "v1alpha1".
+
 For example:
 
 ```yaml

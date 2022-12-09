@@ -256,3 +256,8 @@ func (r *CustomRun) GetTimeout() time.Duration {
 	}
 	return r.Spec.Timeout.Duration
 }
+
+// GetRetryCount returns the number of times this CustomRun has already been retried
+func (r *CustomRun) GetRetryCount() int {
+	return len(r.Status.RetriesStatus)
+}

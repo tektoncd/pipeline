@@ -376,3 +376,50 @@ func TestRunHasTimedOut(t *testing.T) {
 		})
 	}
 }
+
+func TestRun_GetRetryCount(t *testing.T) {
+	testCases := []struct {
+		name  string
+		run   *v1alpha1.Run
+		count int
+	}{
+		{
+			name: "no retries",
+			run: &v1alpha1.Run{
+				Status: v1alpha1.RunStatus{
+					RunStatusFields: v1alpha1.RunStatusFields{},
+				},
+			},
+			count: 0,
+		}, {
+			name: "one retry",
+			run: &v1alpha1.Run{
+				Status: v1alpha1.RunStatus{
+					RunStatusFields: v1alpha1.RunStatusFields{
+						RetriesStatus: []v1alpha1.RunStatus{{}},
+					},
+				},
+			},
+			count: 1,
+		}, {
+			name: "two retries",
+			run: &v1alpha1.Run{
+				Status: v1alpha1.RunStatus{
+					RunStatusFields: v1alpha1.RunStatusFields{
+						RetriesStatus: []v1alpha1.RunStatus{{}, {}},
+					},
+				},
+			},
+			count: 2,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			seenCount := tc.run.GetRetryCount()
+			if seenCount != tc.count {
+				t.Errorf("expected %d retries, but got %d", tc.count, seenCount)
+			}
+		})
+	}
+}

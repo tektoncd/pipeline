@@ -24,9 +24,11 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
-	"github.com/tektoncd/pipeline/test/parse"
+	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 )
@@ -378,7 +380,7 @@ func TestReconcile(t *testing.T) {
 				Clock: testClock,
 			}
 
-			r := parse.MustParseCustomRun(t, tc.customRun)
+			r := MustParseCustomRun(t, tc.customRun)
 
 			err := rec.ReconcileKind(ctx, r)
 			if err != nil && !strings.Contains(err.Error(), "requeue") {
@@ -386,11 +388,29 @@ func TestReconcile(t *testing.T) {
 			}
 
 			// Compose expected CustomRun
-			wantCustomRun := parse.MustParseCustomRun(t, tc.expectedCustomRun)
+			wantCustomRun := MustParseCustomRun(t, tc.expectedCustomRun)
 
 			if d := cmp.Diff(r, wantCustomRun, filterTypeMeta, filterObjectMeta, filterCondition, filterCustomRunStatus); d != "" {
 				t.Errorf("-got +want: %v", d)
 			}
 		})
+	}
+}
+
+// TODO: Delete when we switch its usage to parse.MustParseCustomRun once that change is in a release.
+// MustParseCustomRun takes YAML and parses it into a *pipelinev1beta1.CustomRun
+func MustParseCustomRun(t *testing.T, yaml string) *pipelinev1beta1.CustomRun {
+	var r pipelinev1beta1.CustomRun
+	yaml = `apiVersion: tekton.dev/v1beta1
+kind: CustomRun
+` + yaml
+	mustParseYAML(t, yaml, &r)
+	return &r
+}
+
+// TODO: Delete once we switch to parse.MustParseCustomRun
+func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
+	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
+		t.Fatalf("mustParseYAML (%s): %v", yaml, err)
 	}
 }

@@ -1054,7 +1054,7 @@
       }
     },
     "v1beta1.PipelineRunRunStatus": {
-      "description": "PipelineRunRunStatus contains the name of the PipelineTask for this Run and the Run's Status",
+      "description": "PipelineRunRunStatus contains the name of the PipelineTask for this CustomRun or Run and the CustomRun or Run's Status",
       "type": "object",
       "properties": {
         "pipelineTaskName": {
@@ -1062,8 +1062,8 @@
           "type": "string"
         },
         "status": {
-          "description": "Status is the RunStatus for the corresponding Run",
-          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1alpha1.RunStatus"
+          "description": "Status is the CustomRunStatus for the corresponding CustomRun or Run",
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1beta1.CustomRunStatus"
         },
         "whenExpressions": {
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",

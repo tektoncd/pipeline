@@ -1987,8 +1987,8 @@ string
 <td>
 <code>status</code><br/>
 <em>
-<a href="#tekton.dev/v1alpha1.RunStatus">
-RunStatus
+<a href="#tekton.dev/v1beta1.CustomRunStatus">
+CustomRunStatus
 </a>
 </em>
 </td>
@@ -6626,7 +6626,7 @@ string
 <h3 id="tekton.dev/v1alpha1.RunStatus">RunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Run">Run</a>, <a href="#tekton.dev/v1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1alpha1.RunStatusFields">RunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Run">Run</a>, <a href="#tekton.dev/v1alpha1.RunStatusFields">RunStatusFields</a>)
 </p>
 <div>
 <p>RunStatus defines the observed state of Run</p>
@@ -9313,7 +9313,7 @@ ParamValue
 (<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
 </p>
 <div>
-<p>PipelineRunRunStatus contains the name of the PipelineTask for this Run and the Run&rsquo;s Status</p>
+<p>PipelineRunRunStatus contains the name of the PipelineTask for this CustomRun or Run and the CustomRun or Run&rsquo;s Status</p>
 </div>
 <table>
 <thead>
@@ -9338,14 +9338,14 @@ string
 <td>
 <code>status</code><br/>
 <em>
-<a href="#tekton.dev/v1alpha1.RunStatus">
-RunStatus
+<a href="#tekton.dev/v1beta1.CustomRunStatus">
+CustomRunStatus
 </a>
 </em>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Status is the RunStatus for the corresponding Run</p>
+<p>Status is the CustomRunStatus for the corresponding CustomRun or Run</p>
 </td>
 </tr>
 <tr>
@@ -10705,6 +10705,11 @@ Used to distinguish between a single string and an array of strings.
 Note that there is ResultType used to find out whether a
 PipelineResourceResult is from a task result or not, which is different from
 this ResultsType.</p>
+</div>
+<h3 id="tekton.dev/v1beta1.RunObject">RunObject
+</h3>
+<div>
+<p>RunObject is implemented by CustomRun and Run</p>
 </div>
 <h3 id="tekton.dev/v1beta1.Sidecar">Sidecar
 </h3>
@@ -13875,7 +13880,7 @@ string
 <h3 id="tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
 </p>
 <div>
 <p>CustomRunStatus defines the observed state of CustomRun</p>

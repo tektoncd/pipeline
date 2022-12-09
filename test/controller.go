@@ -252,8 +252,8 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	}
 	c.Pipeline.PrependReactor("*", "customruns", AddToInformer(t, i.CustomRun.Informer().GetIndexer()))
 	for _, customRun := range d.CustomRuns {
-		run := customRun.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Pipeline.TektonV1beta1().CustomRuns(run.Namespace).Create(ctx, run, metav1.CreateOptions{}); err != nil {
+		customRun := customRun.DeepCopy() // Avoid assumptions that the informer's copy is modified.
+		if _, err := c.Pipeline.TektonV1beta1().CustomRuns(customRun.Namespace).Create(ctx, customRun, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -263,3 +263,8 @@ func (r *Run) GetTimeout() time.Duration {
 	}
 	return r.Spec.Timeout.Duration
 }
+
+// GetRetryCount returns the number of times this Run has already been retried
+func (r *Run) GetRetryCount() int {
+	return len(r.Status.RetriesStatus)
+}

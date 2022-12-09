@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -113,7 +114,7 @@ func (state PipelineRunState) ToMap() map[string]*ResolvedPipelineTask {
 // IsBeforeFirstTaskRun returns true if the PipelineRun has not yet started its first TaskRun
 func (state PipelineRunState) IsBeforeFirstTaskRun() bool {
 	for _, t := range state {
-		if t.IsCustomTask() && t.Run != nil {
+		if t.IsCustomTask() && t.RunObject != nil {
 			return false
 		} else if t.TaskRun != nil {
 			return false
@@ -134,9 +135,10 @@ func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) 
 	adjustedStartTime := unadjustedStartTime
 	for _, rpt := range state {
 		if rpt.TaskRun == nil {
-			if rpt.Run != nil {
-				if rpt.Run.CreationTimestamp.Time.Before(adjustedStartTime.Time) {
-					adjustedStartTime = &rpt.Run.CreationTimestamp
+			if rpt.RunObject != nil {
+				creationTime := rpt.RunObject.GetObjectMeta().GetCreationTimestamp()
+				if creationTime.Time.Before(adjustedStartTime.Time) {
+					adjustedStartTime = &creationTime
 				}
 			}
 		} else {
@@ -214,11 +216,11 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 			continue
 		}
 
-		if rpt.Run == nil {
+		if rpt.RunObject == nil {
 			continue
 		}
 
-		prrs := pr.Status.Runs[rpt.RunName]
+		prrs := pr.Status.Runs[rpt.RunObjectName]
 
 		if prrs == nil {
 			prrs = &v1beta1.PipelineRunRunStatus{
@@ -226,17 +228,24 @@ func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]
 				WhenExpressions:  rpt.PipelineTask.WhenExpressions,
 			}
 		}
-		prrs.Status = &rpt.Run.Status
+		prrs.Status = &v1beta1.CustomRunStatus{}
+		switch r := rpt.RunObject.(type) {
+		case *v1beta1.CustomRun:
+			prrs.Status = &r.Status
+		case *v1alpha1.Run:
+			crs := runv1beta1.FromRunStatus(r.Status)
+			prrs.Status = &crs
+		}
 
-		status[rpt.RunName] = prrs
+		status[rpt.RunObjectName] = prrs
 	}
 	return status
 }
 
 // GetRunsResults returns a map of all successfully completed Runs in the state, with the pipeline task name as the key
 // and the results from the corresponding TaskRun as the value. It only includes runs which have completed successfully.
-func (state PipelineRunState) GetRunsResults() map[string][]v1alpha1.RunResult {
-	results := make(map[string][]v1alpha1.RunResult)
+func (state PipelineRunState) GetRunsResults() map[string][]v1beta1.CustomRunResult {
+	results := make(map[string][]v1beta1.CustomRunResult)
 	for _, rpt := range state {
 		if !rpt.IsCustomTask() {
 			continue
@@ -244,8 +253,18 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1alpha1.RunResult {
 		if !rpt.isSuccessful() {
 			continue
 		}
-		if rpt.Run != nil {
-			results[rpt.PipelineTask.Name] = rpt.Run.Status.Results
+		if rpt.RunObject != nil {
+			switch r := rpt.RunObject.(type) {
+			case *v1beta1.CustomRun:
+				results[rpt.PipelineTask.Name] = r.Status.Results
+			case *v1alpha1.Run:
+				for _, origRes := range r.Status.Results {
+					results[rpt.PipelineTask.Name] = append(results[rpt.PipelineTask.Name], v1beta1.CustomRunResult{
+						Name:  origRes.Name,
+						Value: origRes.Value,
+					})
+				}
+			}
 		}
 	}
 
@@ -259,8 +278,8 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 
 	for _, rpt := range state {
 		switch {
-		case rpt.Run != nil:
-			childRefs = append(childRefs, rpt.getChildRefForRun(rpt.Run.Name))
+		case rpt.RunObject != nil:
+			childRefs = append(childRefs, rpt.getChildRefForRun(rpt.RunObject))
 		case rpt.TaskRun != nil:
 			childRefs = append(childRefs, rpt.getChildRefForTaskRun(rpt.TaskRun))
 		case len(rpt.TaskRuns) != 0:
@@ -269,10 +288,10 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 					childRefs = append(childRefs, rpt.getChildRefForTaskRun(taskRun))
 				}
 			}
-		case len(rpt.Runs) != 0:
-			for _, run := range rpt.Runs {
+		case len(rpt.RunObjects) != 0:
+			for _, run := range rpt.RunObjects {
 				if run != nil {
-					childRefs = append(childRefs, rpt.getChildRefForRun(run.Name))
+					childRefs = append(childRefs, rpt.getChildRefForRun(run))
 				}
 			}
 		}
@@ -280,13 +299,24 @@ func (state PipelineRunState) GetChildReferences() []v1beta1.ChildStatusReferenc
 	return childRefs
 }
 
-func (t *ResolvedPipelineTask) getChildRefForRun(runName string) v1beta1.ChildStatusReference {
+func (t *ResolvedPipelineTask) getChildRefForRun(runObj v1beta1.RunObject) v1beta1.ChildStatusReference {
+	apiVersion := ""
+	kind := ""
+	switch runObj.(type) {
+	case *v1beta1.CustomRun:
+		apiVersion = v1beta1.SchemeGroupVersion.String()
+		kind = pipeline.CustomRunControllerName
+	case *v1alpha1.Run:
+		apiVersion = v1alpha1.SchemeGroupVersion.String()
+		kind = pipeline.RunControllerName
+	}
+
 	return v1beta1.ChildStatusReference{
 		TypeMeta: runtime.TypeMeta{
-			APIVersion: v1alpha1.SchemeGroupVersion.String(),
-			Kind:       pipeline.RunControllerName,
+			APIVersion: apiVersion,
+			Kind:       kind,
 		},
-		Name:             runName,
+		Name:             runObj.GetObjectMeta().GetName(),
 		PipelineTaskName: t.PipelineTask.Name,
 		WhenExpressions:  t.PipelineTask.WhenExpressions,
 	}
@@ -311,7 +341,7 @@ func (state PipelineRunState) getNextTasks(candidateTasks sets.String) []*Resolv
 	tasks := []*ResolvedPipelineTask{}
 	for _, t := range state {
 		if _, ok := candidateTasks[t.PipelineTask.Name]; ok {
-			if t.TaskRun == nil && t.Run == nil && len(t.TaskRuns) == 0 && len(t.Runs) == 0 {
+			if t.TaskRun == nil && t.RunObject == nil && len(t.TaskRuns) == 0 && len(t.RunObjects) == 0 {
 				tasks = append(tasks, t)
 			}
 		}
@@ -340,13 +370,13 @@ func (state PipelineRunState) getRetryableTasks(candidateTasks sets.String) []*R
 						status = c
 					}
 				}
-			case t.Run != nil:
-				status = t.Run.Status.GetCondition(apis.ConditionSucceeded)
-			case len(t.Runs) != 0:
+			case t.RunObject != nil:
+				status = t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
+			case len(t.RunObjects) != 0:
 				isDone := true
-				for _, run := range t.Runs {
+				for _, run := range t.RunObjects {
 					isDone = isDone && run.IsDone()
-					c := run.Status.GetCondition(apis.ConditionSucceeded)
+					c := run.GetStatusCondition().GetCondition(apis.ConditionSucceeded)
 					if c.IsFalse() {
 						status = c
 					}

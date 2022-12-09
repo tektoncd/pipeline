@@ -54,6 +54,12 @@ const (
 	ResultExtractionMethodTerminationMessage = "termination-message"
 	// ResultExtractionMethodSidecarLogs is the value used for "results-from" as a way to extract results from tasks using sidecar logs.
 	ResultExtractionMethodSidecarLogs = "sidecar-logs"
+	// CustomTaskVersionAlpha is the value used for "custom-task-version" when the PipelineRun reconciler should create
+	// v1alpha1.Runs.
+	CustomTaskVersionAlpha = "v1alpha1"
+	// CustomTaskVersionBeta is the value used for "custom-task-version" when the PipelineRun reconciler should create
+	// v1beta1.CustomRuns.
+	CustomTaskVersionBeta = "v1beta1"
 	// DefaultDisableAffinityAssistant is the default value for "disable-affinity-assistant".
 	DefaultDisableAffinityAssistant = false
 	// DefaultDisableCredsInit is the default value for "disable-creds-init".
@@ -84,6 +90,8 @@ const (
 	DefaultResultExtractionMethod = ResultExtractionMethodTerminationMessage
 	// DefaultMaxResultSize is the default value in bytes for the size of a result
 	DefaultMaxResultSize = 4096
+	// DefaultCustomTaskVersion is the default value for "custom-task-version"
+	DefaultCustomTaskVersion = CustomTaskVersionAlpha
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -100,6 +108,7 @@ const (
 	enableProvenanceInStatus            = "enable-provenance-in-status"
 	resultExtractionMethod              = "results-from"
 	maxResultSize                       = "max-result-size"
+	customTaskVersion                   = "custom-task-version"
 )
 
 // FeatureFlags holds the features configurations
@@ -121,6 +130,7 @@ type FeatureFlags struct {
 	EnableProvenanceInStatus         bool
 	ResultExtractionMethod           string
 	MaxResultSize                    int
+	CustomTaskVersion                string
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -182,6 +192,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setMaxResultSize(cfgMap, DefaultMaxResultSize, &tc.MaxResultSize); err != nil {
+		return nil, err
+	}
+	if err := setCustomTaskVersion(cfgMap, DefaultCustomTaskVersion, &tc.CustomTaskVersion); err != nil {
 		return nil, err
 	}
 
@@ -253,6 +266,22 @@ func setResultExtractionMethod(cfgMap map[string]string, defaultValue string, fe
 		*feature = value
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", resultExtractionMethod, value)
+	}
+	return nil
+}
+
+// setCustomTaskVersion sets the "custom-task-version" flag based on the content of a given map.
+// If the feature gate is invalid or missing then an error is returned.
+func setCustomTaskVersion(cfgMap map[string]string, defaultValue string, feature *string) error {
+	value := defaultValue
+	if cfg, ok := cfgMap[customTaskVersion]; ok {
+		value = strings.ToLower(cfg)
+	}
+	switch value {
+	case CustomTaskVersionAlpha, CustomTaskVersionBeta:
+		*feature = value
+	default:
+		return fmt.Errorf("invalid value for feature flag %q: %q", customTaskVersion, value)
 	}
 	return nil
 }

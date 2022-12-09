@@ -1757,7 +1757,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunRunStatus(ref common.ReferenceC
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "PipelineRunRunStatus contains the name of the PipelineTask for this Run and the Run's Status",
+				Description: "PipelineRunRunStatus contains the name of the PipelineTask for this CustomRun or Run and the CustomRun or Run's Status",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"pipelineTaskName": {
@@ -1769,8 +1769,8 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunRunStatus(ref common.ReferenceC
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Status is the RunStatus for the corresponding Run",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1.RunStatus"),
+							Description: "Status is the CustomRunStatus for the corresponding CustomRun or Run",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/run/v1beta1.CustomRunStatus"),
 						},
 					},
 					"whenExpressions": {
@@ -1796,7 +1796,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunRunStatus(ref common.ReferenceC
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1.RunStatus"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1.CustomRunStatus"},
 	}
 }
 

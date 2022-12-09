@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,14 +44,14 @@ func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Inter
 	return &tr.Status, nil
 }
 
-// GetRunStatusForPipelineTask takes a minimal embedded status child reference and returns the actual RunStatus for the
-// PipelineTask. It returns an error if the child reference's kind isn't Run.
-func GetRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1beta1.ChildStatusReference) (*v1alpha1.RunStatus, error) {
-	if childRef.Kind != "Run" {
-		return nil, fmt.Errorf("could not fetch status for PipelineTask %s: should have kind Run, but is %s", childRef.PipelineTaskName, childRef.Kind)
+// GetRunStatusForPipelineTask takes a minimal embedded status child reference and returns the actual CustomRunStatus for the
+// PipelineTask. It returns an error if the child reference's kind isn't CustomRun.
+func GetRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1beta1.ChildStatusReference) (*v1beta1.CustomRunStatus, error) {
+	if childRef.Kind != "CustomRun" {
+		return nil, fmt.Errorf("could not fetch status for PipelineTask %s: should have kind CustomRun, but is %s", childRef.PipelineTaskName, childRef.Kind)
 	}
 
-	r, err := client.TektonV1alpha1().Runs(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
+	r, err := client.TektonV1beta1().CustomRuns(ns).Get(ctx, childRef.Name, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, err
 	}
@@ -96,8 +95,8 @@ func GetFullPipelineTaskStatuses(ctx context.Context, client versioned.Interface
 			if tr != nil {
 				trStatuses[cr.Name].Status = &tr.Status
 			}
-		case "Run":
-			r, err := client.TektonV1alpha1().Runs(ns).Get(ctx, cr.Name, metav1.GetOptions{})
+		case "CustomRun":
+			r, err := client.TektonV1beta1().CustomRuns(ns).Get(ctx, cr.Name, metav1.GetOptions{})
 			if err != nil && !errors.IsNotFound(err) {
 				return nil, nil, err
 			}

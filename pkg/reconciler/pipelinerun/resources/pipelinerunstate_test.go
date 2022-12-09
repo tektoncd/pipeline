@@ -24,7 +24,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
@@ -111,24 +110,24 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 	}}
 
 	var runRunningState = PipelineRunState{{
-		PipelineTask: &pts[12],
-		CustomTask:   true,
-		RunName:      "pipelinerun-mytask13",
-		Run:          makeRunStarted(runs[0]),
+		PipelineTask:  &pts[12],
+		CustomTask:    true,
+		RunObjectName: "pipelinerun-mytask13",
+		RunObject:     makeRunStarted(runs[0]),
 	}}
 
 	var runSucceededState = PipelineRunState{{
-		PipelineTask: &pts[12],
-		CustomTask:   true,
-		RunName:      "pipelinerun-mytask13",
-		Run:          makeRunSucceeded(runs[0]),
+		PipelineTask:  &pts[12],
+		CustomTask:    true,
+		RunObjectName: "pipelinerun-mytask13",
+		RunObject:     makeRunSucceeded(runs[0]),
 	}}
 
 	var runFailedState = PipelineRunState{{
-		PipelineTask: &pts[12],
-		CustomTask:   true,
-		RunName:      "pipelinerun-mytask13",
-		Run:          makeRunFailed(runs[0]),
+		PipelineTask:  &pts[12],
+		CustomTask:    true,
+		RunObjectName: "pipelinerun-mytask13",
+		RunObject:     makeRunFailed(runs[0]),
 	}}
 
 	var taskFailedWithRetries = PipelineRunState{{
@@ -629,60 +628,60 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 	}}
 
 	var runCancelledByStatusState = PipelineRunState{{
-		PipelineTask: &pts[4], // 2 retries needed
-		RunName:      "pipelinerun-mytask1",
-		Run:          withRunCancelled(withRunRetries(newRun(runs[0]))),
-		CustomTask:   true,
+		PipelineTask:  &pts[4], // 2 retries needed
+		RunObjectName: "pipelinerun-mytask1",
+		RunObject:     withRunCancelled(withRunRetries(newRun(runs[0]))),
+		CustomTask:    true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runCancelledBySpecState = PipelineRunState{{
-		PipelineTask: &pts[4],
-		RunName:      "pipelinerun-mytask1",
-		Run:          withRunCancelledBySpec(withRunRetries(newRun(runs[0]))),
-		CustomTask:   true,
+		PipelineTask:  &pts[4],
+		RunObjectName: "pipelinerun-mytask1",
+		RunObject:     withRunCancelledBySpec(withRunRetries(newRun(runs[0]))),
+		CustomTask:    true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runRunningState = PipelineRunState{{
-		PipelineTask: &pts[4],
-		RunName:      "pipelinerun-mytask1",
-		Run:          makeRunStarted(runs[0]),
-		CustomTask:   true,
+		PipelineTask:  &pts[4],
+		RunObjectName: "pipelinerun-mytask1",
+		RunObject:     makeRunStarted(runs[0]),
+		CustomTask:    true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runSucceededState = PipelineRunState{{
-		PipelineTask: &pts[4],
-		RunName:      "pipelinerun-mytask1",
-		Run:          makeRunSucceeded(runs[0]),
-		CustomTask:   true,
+		PipelineTask:  &pts[4],
+		RunObjectName: "pipelinerun-mytask1",
+		RunObject:     makeRunSucceeded(runs[0]),
+		CustomTask:    true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runRetriedState = PipelineRunState{{
-		PipelineTask: &pts[3], // 1 retry needed
-		RunName:      "pipelinerun-mytask1",
-		Run:          withRunCancelled(withRunRetries(newRun(runs[0]))),
-		CustomTask:   true,
+		PipelineTask:  &pts[3], // 1 retry needed
+		RunObjectName: "pipelinerun-mytask1",
+		RunObject:     withRunCancelled(withRunRetries(newRun(runs[0]))),
+		CustomTask:    true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runExpectedState = PipelineRunState{{
-		PipelineTask: &pts[4], // 2 retries needed
-		RunName:      "pipelinerun-mytask1",
-		Run:          withRunRetries(makeRunFailed(runs[0])),
-		CustomTask:   true,
+		PipelineTask:  &pts[4], // 2 retries needed
+		RunObjectName: "pipelinerun-mytask1",
+		RunObject:     withRunRetries(makeRunFailed(runs[0])),
+		CustomTask:    true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
@@ -743,60 +742,60 @@ func TestGetNextTaskWithRetries(t *testing.T) {
 	}}
 
 	var runCancelledByStatusStateMatrix = PipelineRunState{{
-		PipelineTask: &pts[20], // 2 retries needed
-		RunNames:     []string{"pipelinerun-mytask1"},
-		Runs:         []*v1alpha1.Run{withRunCancelled(withRunRetries(newRun(runs[0])))},
-		CustomTask:   true,
+		PipelineTask:   &pts[20], // 2 retries needed
+		RunObjectNames: []string{"pipelinerun-mytask1"},
+		RunObjects:     []v1beta1.RunObject{withRunCancelled(withRunRetries(newRun(runs[0])))},
+		CustomTask:     true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runCancelledBySpecStateMatrix = PipelineRunState{{
-		PipelineTask: &pts[20], // 2 retries needed
-		RunNames:     []string{"pipelinerun-mytask1"},
-		Runs:         []*v1alpha1.Run{withRunCancelledBySpec(withRunRetries(newRun(runs[0])))},
-		CustomTask:   true,
+		PipelineTask:   &pts[20], // 2 retries needed
+		RunObjectNames: []string{"pipelinerun-mytask1"},
+		RunObjects:     []v1beta1.RunObject{withRunCancelledBySpec(withRunRetries(newRun(runs[0])))},
+		CustomTask:     true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runRunningStateMatrix = PipelineRunState{{
-		PipelineTask: &pts[20], // 2 retries needed
-		RunNames:     []string{"pipelinerun-mytask1"},
-		Runs:         []*v1alpha1.Run{makeRunStarted(runs[0])},
-		CustomTask:   true,
+		PipelineTask:   &pts[20], // 2 retries needed
+		RunObjectNames: []string{"pipelinerun-mytask1"},
+		RunObjects:     []v1beta1.RunObject{makeRunStarted(runs[0])},
+		CustomTask:     true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runSucceededStateMatrix = PipelineRunState{{
-		PipelineTask: &pts[20], // 2 retries needed
-		RunNames:     []string{"pipelinerun-mytask1"},
-		Runs:         []*v1alpha1.Run{makeRunSucceeded(runs[0])},
-		CustomTask:   true,
+		PipelineTask:   &pts[20], // 2 retries needed
+		RunObjectNames: []string{"pipelinerun-mytask1"},
+		RunObjects:     []v1beta1.RunObject{makeRunSucceeded(runs[0])},
+		CustomTask:     true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runRetriedStateMatrix = PipelineRunState{{
-		PipelineTask: &pts[17], // 1 retry needed
-		RunNames:     []string{"pipelinerun-mytask1"},
-		Runs:         []*v1alpha1.Run{withRunCancelled(withRunRetries(newRun(runs[0])))},
-		CustomTask:   true,
+		PipelineTask:   &pts[17], // 1 retry needed
+		RunObjectNames: []string{"pipelinerun-mytask1"},
+		RunObjects:     []v1beta1.RunObject{withRunCancelled(withRunRetries(newRun(runs[0])))},
+		CustomTask:     true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
 	}}
 
 	var runExpectedStateMatrix = PipelineRunState{{
-		PipelineTask: &pts[20], // 2 retries needed
-		RunNames:     []string{"pipelinerun-mytask1"},
-		Runs:         []*v1alpha1.Run{withRunRetries(makeRunFailed(runs[0]))},
-		CustomTask:   true,
+		PipelineTask:   &pts[20], // 2 retries needed
+		RunObjectNames: []string{"pipelinerun-mytask1"},
+		RunObjects:     []v1beta1.RunObject{withRunRetries(makeRunFailed(runs[0]))},
+		CustomTask:     true,
 		ResolvedTaskResources: &resources.ResolvedTaskResources{
 			TaskSpec: &task.Spec,
 		},
@@ -960,8 +959,8 @@ func TestDAGExecutionQueue(t *testing.T) {
 			Name:    "createdrun",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
-		RunName:    "createdrun",
-		CustomTask: true,
+		RunObjectName: "createdrun",
+		CustomTask:    true,
 	}
 	runningTask := ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
@@ -979,9 +978,9 @@ func TestDAGExecutionQueue(t *testing.T) {
 			Name:    "runningrun",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
-		RunName:    "runningrun",
-		Run:        newRun(runs[0]),
-		CustomTask: true,
+		RunObjectName: "runningrun",
+		RunObject:     newRun(runs[0]),
+		CustomTask:    true,
 	}
 	successfulTask := ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
@@ -999,9 +998,9 @@ func TestDAGExecutionQueue(t *testing.T) {
 			Name:    "successfulrun",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
-		RunName:    "successfulrun",
-		Run:        makeRunSucceeded(runs[0]),
-		CustomTask: true,
+		RunObjectName: "successfulrun",
+		RunObject:     makeRunSucceeded(runs[0]),
+		CustomTask:    true,
 	}
 	failedTask := ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
@@ -1019,9 +1018,9 @@ func TestDAGExecutionQueue(t *testing.T) {
 			Name:    "failedrun",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
-		RunName:    "failedrun",
-		Run:        makeRunFailed(runs[0]),
-		CustomTask: true,
+		RunObjectName: "failedrun",
+		RunObject:     makeRunFailed(runs[0]),
+		CustomTask:    true,
 	}
 	failedTaskWithRetries := ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
@@ -1041,9 +1040,9 @@ func TestDAGExecutionQueue(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 			Retries: 1,
 		},
-		RunName:    "failedrunwithretries",
-		Run:        makeRunFailed(runs[0]),
-		CustomTask: true,
+		RunObjectName: "failedrunwithretries",
+		RunObject:     makeRunFailed(runs[0]),
+		CustomTask:    true,
 	}
 	tcs := []struct {
 		name       string
@@ -1234,8 +1233,8 @@ func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
 			Name:    "task-1",
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
-		RunName:    "task-1",
-		CustomTask: true,
+		RunObjectName: "task-1",
+		CustomTask:    true,
 	}
 	secondRun := ResolvedPipelineTask{
 		PipelineTask: &v1beta1.PipelineTask{
@@ -1243,14 +1242,14 @@ func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
 			TaskRef:  &v1beta1.TaskRef{Name: "task"},
 			RunAfter: []string{"task-1"},
 		},
-		RunName:    "task-2",
-		CustomTask: true,
+		RunObjectName: "task-2",
+		CustomTask:    true,
 	}
 
 	tcs := []struct {
 		name       string
-		firstRun   *v1alpha1.Run
-		secondRun  *v1alpha1.Run
+		firstRun   *v1beta1.CustomRun
+		secondRun  *v1beta1.CustomRun
 		specStatus v1beta1.PipelineRunSpecStatus
 		wantFirst  bool
 		wantSecond bool
@@ -1282,10 +1281,14 @@ func TestDAGExecutionQueueSequentialRuns(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			firstRun.Run = tc.firstRun
-			defer func() { firstRun.Run = nil }()
-			secondRun.Run = tc.secondRun
-			defer func() { secondRun.Run = nil }()
+			if tc.firstRun != nil {
+				firstRun.RunObject = tc.firstRun
+			}
+			defer func() { firstRun.RunObject = nil }()
+			if tc.secondRun != nil {
+				secondRun.RunObject = tc.secondRun
+			}
+			defer func() { secondRun.RunObject = nil }()
 			state := PipelineRunState{&firstRun, &secondRun}
 			d, err := dagFromState(state)
 			if err != nil {
@@ -1701,42 +1704,42 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 	}}
 
 	var cancelledRun = PipelineRunState{{
-		PipelineTask: &pts[12],
-		CustomTask:   true,
-		RunName:      "pipelinerun-mytask13",
-		Run: &v1alpha1.Run{
-			Status: v1alpha1.RunStatus{
+		PipelineTask:  &pts[12],
+		CustomTask:    true,
+		RunObjectName: "pipelinerun-mytask13",
+		RunObject: &v1beta1.CustomRun{
+			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
-					Reason: v1alpha1.RunReasonCancelled.String(),
+					Reason: v1beta1.CustomRunReasonCancelled.String(),
 				}}},
 			},
 		},
 	}}
 
 	var timedOutRun = PipelineRunState{{
-		PipelineTask: &pts[12],
-		CustomTask:   true,
-		RunName:      "pipelinerun-mytask14",
-		Run: &v1alpha1.Run{
-			Spec: v1alpha1.RunSpec{
-				StatusMessage: v1alpha1.RunCancelledByPipelineTimeoutMsg,
+		PipelineTask:  &pts[12],
+		CustomTask:    true,
+		RunObjectName: "pipelinerun-mytask14",
+		RunObject: &v1beta1.CustomRun{
+			Spec: v1beta1.CustomRunSpec{
+				StatusMessage: v1beta1.CustomRunCancelledByPipelineTimeoutMsg,
 			},
-			Status: v1alpha1.RunStatus{
+			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
-					Reason: v1alpha1.RunReasonCancelled.String(),
+					Reason: v1beta1.CustomRunReasonCancelled.String(),
 				}}},
 			},
 		},
 	}}
 
 	var notRunningRun = PipelineRunState{{
-		PipelineTask: &pts[12],
-		CustomTask:   true,
-		RunName:      "pipelinerun-mytask14",
+		PipelineTask:  &pts[12],
+		CustomTask:    true,
+		RunObjectName: "pipelinerun-mytask14",
 	}}
 
 	// 6 Tasks, 4 that run in parallel in the beginning
@@ -2256,7 +2259,7 @@ func TestAdjustStartTime(t *testing.T) {
 	}, {
 		name: "run starts later",
 		prs: PipelineRunState{{
-			Run: &v1alpha1.Run{
+			RunObject: &v1beta1.CustomRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "blah",
 					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(1 * time.Second)},
@@ -2268,7 +2271,7 @@ func TestAdjustStartTime(t *testing.T) {
 	}, {
 		name: "run starts earlier",
 		prs: PipelineRunState{{
-			Run: &v1alpha1.Run{
+			RunObject: &v1beta1.CustomRun{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "blah",
 					CreationTimestamp: metav1.Time{Time: baseline.Time.Add(-1 * time.Second)},
@@ -2702,7 +2705,7 @@ spec:
 		},
 	}
 
-	run := parse.MustParseRun(t, fmt.Sprintf(`
+	run := parse.MustParseCustomRun(t, fmt.Sprintf(`
 metadata:
   name: unit-test-run
   namespace: foo
@@ -2713,14 +2716,14 @@ status:
 `))
 
 	state := PipelineRunState{{
-		PipelineTask: &pipelineTask,
-		CustomTask:   true,
-		RunName:      "test-pipeline-run-success-unit-test-1",
-		Run:          run,
+		PipelineTask:  &pipelineTask,
+		CustomTask:    true,
+		RunObjectName: "test-pipeline-run-success-unit-test-1",
+		RunObject:     run,
 	}, {
-		PipelineTask: &unscheduledPipelineTask,
-		CustomTask:   true,
-		RunName:      "test-pipeline-run-success-unit-test-2",
+		PipelineTask:  &unscheduledPipelineTask,
+		CustomTask:    true,
+		RunObjectName: "test-pipeline-run-success-unit-test-2",
 	}}
 	pr.Status.InitializeConditions(testClock)
 	status := state.GetRunsStatus(pr)
@@ -2833,19 +2836,19 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			Name: "nil-taskrun-1",
 		},
 	}, {
-		RunName:    "successful-run-with-results",
-		CustomTask: true,
+		RunObjectName: "successful-run-with-results",
+		CustomTask:    true,
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "successful-run-with-results-1",
 		},
-		Run: &v1alpha1.Run{
-			Status: v1alpha1.RunStatus{
+		RunObject: &v1beta1.CustomRun{
+			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}}},
-				RunStatusFields: v1alpha1.RunStatusFields{
-					Results: []v1alpha1.RunResult{{
+				CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+					Results: []v1beta1.CustomRunResult{{
 						Name:  "foo",
 						Value: "oof",
 					}, {
@@ -2856,33 +2859,33 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			},
 		},
 	}, {
-		RunName:    "successful-run-without-results",
-		CustomTask: true,
+		RunObjectName: "successful-run-without-results",
+		CustomTask:    true,
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "successful-run-without-results-1",
 		},
-		Run: &v1alpha1.Run{
-			Status: v1alpha1.RunStatus{
+		RunObject: &v1beta1.CustomRun{
+			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionTrue,
 				}}},
-				RunStatusFields: v1alpha1.RunStatusFields{},
+				CustomRunStatusFields: v1beta1.CustomRunStatusFields{},
 			},
 		},
 	}, {
-		RunName: "failed-run",
+		RunObjectName: "failed-run",
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "failed-run-1",
 		},
-		Run: &v1alpha1.Run{
-			Status: v1alpha1.RunStatus{
+		RunObject: &v1beta1.CustomRun{
+			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionFalse,
 				}}},
-				RunStatusFields: v1alpha1.RunStatusFields{
-					Results: []v1alpha1.RunResult{{
+				CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+					Results: []v1beta1.CustomRunResult{{
 						Name:  "fail-foo",
 						Value: "fail-oof",
 					}},
@@ -2890,18 +2893,18 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			},
 		},
 	}, {
-		RunName: "incomplete-run",
+		RunObjectName: "incomplete-run",
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "incomplete-run-1",
 		},
-		Run: &v1alpha1.Run{
-			Status: v1alpha1.RunStatus{
+		RunObject: &v1beta1.CustomRun{
+			Status: v1beta1.CustomRunStatus{
 				Status: duckv1.Status{Conditions: []apis.Condition{{
 					Type:   apis.ConditionSucceeded,
 					Status: corev1.ConditionUnknown,
 				}}},
-				RunStatusFields: v1alpha1.RunStatusFields{
-					Results: []v1alpha1.RunResult{{
+				CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+					Results: []v1beta1.CustomRunResult{{
 						Name:  "unknown-foo",
 						Value: "unknown-oof",
 					}},
@@ -2909,8 +2912,8 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			},
 		},
 	}, {
-		RunName:    "nil-run",
-		CustomTask: true,
+		RunObjectName: "nil-run",
+		CustomTask:    true,
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "nil-run-1",
 		},
@@ -2979,7 +2982,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 			},
 		}},
 	}, {
-		RunNames: []string{
+		RunObjectNames: []string{
 			"matrixed-run-0",
 			"matrixed-run-1",
 			"matrixed-run-2",
@@ -3000,79 +3003,81 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 					Value: v1beta1.ParamValue{Type: v1beta1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
 				}}},
 		},
-		Runs: []*v1alpha1.Run{{
-			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
-			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-0"},
-			Status: v1alpha1.RunStatus{
-				Status: duckv1.Status{Conditions: []apis.Condition{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-				}}},
-				RunStatusFields: v1alpha1.RunStatusFields{
-					Results: []v1alpha1.RunResult{{
-						Name:  "foo",
-						Value: "oof",
-					}, {
-						Name:  "bar",
-						Value: "rab",
-					}},
+		RunObjects: []v1beta1.RunObject{
+			&v1beta1.CustomRun{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
+				ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-0"},
+				Status: v1beta1.CustomRunStatus{
+					Status: duckv1.Status{Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}}},
+					CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+						Results: []v1beta1.CustomRunResult{{
+							Name:  "foo",
+							Value: "oof",
+						}, {
+							Name:  "bar",
+							Value: "rab",
+						}},
+					},
+				},
+			}, &v1beta1.CustomRun{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
+				ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-1"},
+				Status: v1beta1.CustomRunStatus{
+					Status: duckv1.Status{Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}}},
+					CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+						Results: []v1beta1.CustomRunResult{{
+							Name:  "foo",
+							Value: "oof",
+						}, {
+							Name:  "bar",
+							Value: "rab",
+						}},
+					},
+				},
+			}, &v1beta1.CustomRun{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
+				ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-2"},
+				Status: v1beta1.CustomRunStatus{
+					Status: duckv1.Status{Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}}},
+					CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+						Results: []v1beta1.CustomRunResult{{
+							Name:  "foo",
+							Value: "oof",
+						}, {
+							Name:  "bar",
+							Value: "rab",
+						}},
+					},
+				},
+			}, &v1beta1.CustomRun{
+				TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
+				ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-3"},
+				Status: v1beta1.CustomRunStatus{
+					Status: duckv1.Status{Conditions: []apis.Condition{{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}}},
+					CustomRunStatusFields: v1beta1.CustomRunStatusFields{
+						Results: []v1beta1.CustomRunResult{{
+							Name:  "foo",
+							Value: "oof",
+						}, {
+							Name:  "bar",
+							Value: "rab",
+						}},
+					},
 				},
 			},
-		}, {
-			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
-			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-1"},
-			Status: v1alpha1.RunStatus{
-				Status: duckv1.Status{Conditions: []apis.Condition{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-				}}},
-				RunStatusFields: v1alpha1.RunStatusFields{
-					Results: []v1alpha1.RunResult{{
-						Name:  "foo",
-						Value: "oof",
-					}, {
-						Name:  "bar",
-						Value: "rab",
-					}},
-				},
-			},
-		}, {
-			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
-			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-2"},
-			Status: v1alpha1.RunStatus{
-				Status: duckv1.Status{Conditions: []apis.Condition{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-				}}},
-				RunStatusFields: v1alpha1.RunStatusFields{
-					Results: []v1alpha1.RunResult{{
-						Name:  "foo",
-						Value: "oof",
-					}, {
-						Name:  "bar",
-						Value: "rab",
-					}},
-				},
-			},
-		}, {
-			TypeMeta:   metav1.TypeMeta{APIVersion: "example.dev/v0"},
-			ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-3"},
-			Status: v1alpha1.RunStatus{
-				Status: duckv1.Status{Conditions: []apis.Condition{{
-					Type:   apis.ConditionSucceeded,
-					Status: corev1.ConditionTrue,
-				}}},
-				RunStatusFields: v1alpha1.RunStatusFields{
-					Results: []v1alpha1.RunResult{{
-						Name:  "foo",
-						Value: "oof",
-					}, {
-						Name:  "bar",
-						Value: "rab",
-					}},
-				},
-			},
-		}},
+		},
 	}}
 
 	expectedTaskResults := map[string][]v1beta1.TaskRunResult{
@@ -3085,7 +3090,7 @@ func TestPipelineRunState_GetResultsFuncs(t *testing.T) {
 		}},
 		"successful-task-without-results-1": nil,
 	}
-	expectedRunResults := map[string][]v1alpha1.RunResult{
+	expectedRunResults := map[string][]v1beta1.CustomRunResult{
 		"successful-run-with-results-1": {{
 			Name:  "foo",
 			Value: "oof",
@@ -3136,8 +3141,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 		{
 			name: "unresolved-custom-task",
 			state: PipelineRunState{{
-				RunName:    "unresolved-custom-task-run",
-				CustomTask: true,
+				RunObjectName: "unresolved-custom-task-run",
+				CustomTask:    true,
 				PipelineTask: &v1beta1.PipelineTask{
 					Name: "unresolved-custom-task-1",
 					TaskRef: &v1beta1.TaskRef{
@@ -3188,8 +3193,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 		{
 			name: "single-custom-task",
 			state: PipelineRunState{{
-				RunName:    "single-custom-task-run",
-				CustomTask: true,
+				RunObjectName: "single-custom-task-run",
+				CustomTask:    true,
 				PipelineTask: &v1beta1.PipelineTask{
 					Name: "single-custom-task-1",
 					TaskRef: &v1beta1.TaskRef{
@@ -3203,15 +3208,15 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Values:   []string{"foo", "bar"},
 					}},
 				},
-				Run: &v1alpha1.Run{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1"},
+				RunObject: &v1beta1.CustomRun{
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
 					ObjectMeta: metav1.ObjectMeta{Name: "single-custom-task-run"},
 				},
 			}},
 			childRefs: []v1beta1.ChildStatusReference{{
 				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1alpha1",
-					Kind:       "Run",
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "CustomRun",
 				},
 				Name:             "single-custom-task-run",
 				PipelineTaskName: "single-custom-task-1",
@@ -3239,8 +3244,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "single-task-run"},
 				},
 			}, {
-				RunName:    "single-custom-task-run",
-				CustomTask: true,
+				RunObjectName: "single-custom-task-run",
+				CustomTask:    true,
 				PipelineTask: &v1beta1.PipelineTask{
 					Name: "single-custom-task-1",
 					TaskRef: &v1beta1.TaskRef{
@@ -3249,8 +3254,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						Name:       "single-custom-task",
 					},
 				},
-				Run: &v1alpha1.Run{
-					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1alpha1"},
+				RunObject: &v1beta1.CustomRun{
+					TypeMeta:   metav1.TypeMeta{APIVersion: "tekton.dev/v1beta1"},
 					ObjectMeta: metav1.ObjectMeta{Name: "single-custom-task-run"},
 				},
 			}},
@@ -3263,8 +3268,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				PipelineTaskName: "single-task-1",
 			}, {
 				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1alpha1",
-					Kind:       "Run",
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "CustomRun",
 				},
 				Name:             "single-custom-task-run",
 				PipelineTaskName: "single-custom-task-1",
@@ -3439,20 +3444,17 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 						}}},
 				},
 				CustomTask: true,
-				Runs: []*v1alpha1.Run{{
-					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-0"},
-				}, {
-					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-1"},
-				}, {
-					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-2"},
-				}, {
-					ObjectMeta: metav1.ObjectMeta{Name: "matrixed-run-3"},
-				}},
+				RunObjects: []v1beta1.RunObject{
+					customRunWithName("matrixed-run-0"),
+					customRunWithName("matrixed-run-1"),
+					customRunWithName("matrixed-run-2"),
+					customRunWithName("matrixed-run-3"),
+				},
 			}},
 			childRefs: []v1beta1.ChildStatusReference{{
 				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1alpha1",
-					Kind:       "Run",
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "CustomRun",
 				},
 				Name:             "matrixed-run-0",
 				PipelineTaskName: "matrixed-task",
@@ -3463,8 +3465,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				}},
 			}, {
 				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1alpha1",
-					Kind:       "Run",
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "CustomRun",
 				},
 				Name:             "matrixed-run-1",
 				PipelineTaskName: "matrixed-task",
@@ -3475,8 +3477,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				}},
 			}, {
 				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1alpha1",
-					Kind:       "Run",
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "CustomRun",
 				},
 				Name:             "matrixed-run-2",
 				PipelineTaskName: "matrixed-task",
@@ -3487,8 +3489,8 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				}},
 			}, {
 				TypeMeta: runtime.TypeMeta{
-					APIVersion: "tekton.dev/v1alpha1",
-					Kind:       "Run",
+					APIVersion: "tekton.dev/v1beta1",
+					Kind:       "CustomRun",
 				},
 				Name:             "matrixed-run-3",
 				PipelineTaskName: "matrixed-task",
@@ -3507,5 +3509,13 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				t.Errorf("Didn't get expected child references for %s: %s", tc.name, diff.PrintWantGot(d))
 			}
 		})
+	}
+}
+
+func customRunWithName(name string) *v1beta1.CustomRun {
+	return &v1beta1.CustomRun{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
 	}
 }

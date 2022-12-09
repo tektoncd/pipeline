@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main // import "github.com/tektoncd/pipeline/test/wait-task/cmd/controller"
+package main // import "github.com/tektoncd/pipeline/test/custom-task-ctrls/wait-task-alpha/cmd/controller"
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	runinformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1alpha1/run"
 	runreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1alpha1/run"
 	tkncontroller "github.com/tektoncd/pipeline/pkg/controller"
-	"github.com/tektoncd/pipeline/test/wait-task/pkg/reconciler"
+	"github.com/tektoncd/pipeline/test/custom-task-ctrls/wait-task-alpha/pkg/reconciler"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
 	"knative.dev/pkg/configmap"
@@ -30,7 +30,7 @@ import (
 	"knative.dev/pkg/injection/sharedmain"
 )
 
-const controllerName = "wait-task-controller"
+const controllerName = "wait-task-alpha-controller"
 
 func main() {
 	sharedmain.Main(controllerName, newController)

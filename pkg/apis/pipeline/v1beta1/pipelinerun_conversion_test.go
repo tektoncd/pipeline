@@ -25,7 +25,7 @@ import (
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
+	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -110,9 +110,9 @@ var (
 	}
 	rrs = &v1beta1.PipelineRunRunStatus{
 		PipelineTaskName: "ptn-0",
-		Status: &runv1alpha1.RunStatus{
-			RunStatusFields: runv1alpha1.RunStatusFields{
-				Results: []runv1alpha1.RunResult{{
+		Status: &runv1beta1.CustomRunStatus{
+			CustomRunStatusFields: runv1beta1.CustomRunStatusFields{
+				Results: []runv1beta1.CustomRunResult{{
 					Name:  "foo",
 					Value: "bar",
 				}},
