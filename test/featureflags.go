@@ -14,16 +14,6 @@ import (
 	"knative.dev/pkg/system"
 )
 
-// combineGates returns a setup func wrapping multiple requireAnyGate or requireAllGates calls, and will skip
-// the current test if any of the gate-check funcs fail.
-func combineGates(gateFuncs ...func(context.Context, *testing.T, *clients, string)) func(context.Context, *testing.T, *clients, string) {
-	return func(ctx context.Context, t *testing.T, c *clients, namespace string) {
-		for _, gf := range gateFuncs {
-			gf(ctx, t, c, namespace)
-		}
-	}
-}
-
 // requireAnyGate returns a setup func that will skip the current
 // test if none of the feature-flags in the given map match
 // what's in the feature-flags ConfigMap. It will fatally fail

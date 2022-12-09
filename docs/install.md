@@ -408,7 +408,7 @@ not running.
 and use Workspaces to mount credentials from Secrets instead.
 The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/3399).
 
-- `enable-custom-tasks`: set this flag to `"true"` to enable the
+- `enable-custom-tasks`: set this flag to `"false"` to disable the
 use of custom tasks in pipelines.
 
 - `enable-api-fields`: set this flag to "stable" to allow only the

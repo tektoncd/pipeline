@@ -25,12 +25,10 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/diff"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/apis"
-	logtesting "knative.dev/pkg/logging/testing"
 )
 
 func TestPipeline_Validate_Success(t *testing.T) {
@@ -54,7 +52,6 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
 			},
 		},
-		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}, {
 		name: "pipelinetask custom task spec",
 		p: &Pipeline{
@@ -72,7 +69,6 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				}},
 			},
 		},
-		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -664,10 +660,10 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			},
 		}},
 		finalTasks: nil,
-		expectedError: apis.FieldError{
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: "taskSpec.apiVersion cannot be specified when using taskSpec.steps",
 			Paths:   []string{"tasks[0].taskSpec.apiVersion"},
-		},
+		}).Also(apis.ErrInvalidValue("custom task spec must specify kind", "tasks[0].taskSpec.kind")),
 	}, {
 		name: "kind with steps",
 		tasks: []PipelineTask{{
@@ -3195,20 +3191,5 @@ func getTaskSpec() TaskSpec {
 		Steps: []Step{{
 			Name: "foo", Image: "bar",
 		}},
-	}
-}
-
-func enableFeatures(t *testing.T, features []string) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		s := config.NewStore(logtesting.TestLogger(t))
-		data := make(map[string]string)
-		for _, f := range features {
-			data[f] = "true"
-		}
-		s.OnConfigChanged(&corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-			Data:       data,
-		})
-		return s.ToContext(ctx)
 	}
 }

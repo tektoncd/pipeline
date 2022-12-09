@@ -73,7 +73,7 @@ const (
 	// DefaultEnableTektonOciBundles is the default value for "enable-tekton-oci-bundles".
 	DefaultEnableTektonOciBundles = false
 	// DefaultEnableCustomTasks is the default value for "enable-custom-tasks".
-	DefaultEnableCustomTasks = false
+	DefaultEnableCustomTasks = true
 	// DefaultEnableAPIFields is the default value for "enable-api-fields".
 	DefaultEnableAPIFields = StableAPIFields
 	// DefaultSendCloudEventsForRuns is the default value for "send-cloudevents-for-runs".
