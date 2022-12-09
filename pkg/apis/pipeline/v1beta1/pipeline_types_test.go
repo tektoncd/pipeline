@@ -359,7 +359,6 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 			Message: `invalid value: custom task ref must specify kind`,
 			Paths:   []string{"taskRef.kind"},
 		},
-		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}, {
 		name: "invalid bundle without bundle name",
 		p: PipelineTask{
@@ -707,7 +706,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 			TaskRef: &TaskRef{Name: "task"},
 		}},
 		path: "tasks",
-		wc:   enableFeatures(t, []string{"enable-custom-tasks", "enable-tekton-oci-bundles"}),
+		wc:   enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
 	}, {
 		name: "validate list of tasks with valid custom task and bundle but invalid regular task",
 		tasks: PipelineTaskList{{
@@ -722,7 +721,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 		}},
 		path:          "tasks",
 		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name"),
-		wc:            enableFeatures(t, []string{"enable-custom-tasks", "enable-tekton-oci-bundles"}),
+		wc:            enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
 	}, {
 		name: "validate list of tasks with valid custom task but invalid bundle and invalid regular task",
 		tasks: PipelineTaskList{{
@@ -738,7 +737,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 		path: "tasks",
 		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name").Also(
 			apis.ErrGeneric(`missing field(s)`, "tasks[1].taskRef.name")),
-		wc: enableFeatures(t, []string{"enable-custom-tasks", "enable-tekton-oci-bundles"}),
+		wc: enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
 	}, {
 		name: "validate all three invalid tasks - custom task, bundle and regular task",
 		tasks: PipelineTaskList{{
@@ -755,7 +754,7 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name").Also(
 			apis.ErrGeneric(`missing field(s)`, "tasks[1].taskRef.name")).Also(
 			apis.ErrGeneric(`invalid value: custom task ref must specify kind`, "tasks[0].taskRef.kind")),
-		wc: enableFeatures(t, []string{"enable-custom-tasks", "enable-tekton-oci-bundles"}),
+		wc: enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

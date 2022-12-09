@@ -55,7 +55,6 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				Tasks: []PipelineTask{{Name: "foo", TaskRef: &TaskRef{APIVersion: "example.dev/v0", Kind: "Example", Name: ""}}},
 			},
 		},
-		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}, {
 		name: "pipelinetask custom task spec",
 		p: &Pipeline{
@@ -73,7 +72,6 @@ func TestPipeline_Validate_Success(t *testing.T) {
 				}},
 			},
 		},
-		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}, {
 		name: "valid pipeline with params, resources, workspaces, task results, and pipeline results",
 		p: &Pipeline{
@@ -777,10 +775,10 @@ func TestValidatePipelineTasks_Failure(t *testing.T) {
 			},
 		}},
 		finalTasks: nil,
-		expectedError: apis.FieldError{
+		expectedError: *apis.ErrGeneric("").Also(&apis.FieldError{
 			Message: "taskSpec.apiVersion cannot be specified when using taskSpec.steps",
 			Paths:   []string{"tasks[0].taskSpec.apiVersion"},
-		},
+		}).Also(apis.ErrInvalidValue("custom task spec must specify kind", "tasks[0].taskSpec.kind")),
 	}, {
 		name: "kind with steps",
 		tasks: []PipelineTask{{

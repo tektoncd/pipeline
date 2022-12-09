@@ -110,7 +110,6 @@ var (
 
 const (
 	apiFieldsFeatureFlag           = "enable-api-fields"
-	customTasksFeatureFlag         = "enable-custom-tasks"
 	ociBundlesFeatureFlag          = "enable-tekton-oci-bundles"
 	embeddedStatusFeatureFlag      = "embedded-status"
 	maxMatrixCombinationsCountFlag = "default-max-matrix-combinations-count"
@@ -703,7 +702,7 @@ spec:
 			if embeddedStatus == "" {
 				embeddedStatus = config.DefaultEmbeddedStatus
 			}
-			cms := []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
+			cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
 
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
@@ -898,7 +897,7 @@ spec:
 			if embeddedStatus == "" {
 				embeddedStatus = config.DefaultEmbeddedStatus
 			}
-			cms := []*corev1.ConfigMap{withCustomTaskVersion(withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)), "v1beta1")}
+			cms := []*corev1.ConfigMap{withCustomTaskVersion(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus), "v1beta1")}
 
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
@@ -1642,12 +1641,6 @@ func withEnabledAlphaAPIFields(cm *corev1.ConfigMap) *corev1.ConfigMap {
 	return newCM
 }
 
-func withCustomTasks(cm *corev1.ConfigMap) *corev1.ConfigMap {
-	newCM := cm.DeepCopy()
-	newCM.Data[customTasksFeatureFlag] = "true"
-	return newCM
-}
-
 func withOCIBundles(cm *corev1.ConfigMap) *corev1.ConfigMap {
 	newCM := cm.DeepCopy()
 	newCM.Data[ociBundlesFeatureFlag] = "true"
@@ -1802,7 +1795,7 @@ status:
     type: Succeeded
   startTime: "2021-12-31T23:58:59Z"
 `)}
-	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -1916,7 +1909,7 @@ status:
   creationTime: "2021-12-31T11:58:58Z"
 `)}
 
-			cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
+			cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 			d := test.Data{
 				PipelineRuns: prs,
 				Pipelines:    ps,
@@ -3511,7 +3504,7 @@ spec:
     pipelineTaskName: hello-world-1
 `)}
 
-	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -3730,7 +3723,7 @@ spec:
     taskServiceAccountName: custom-sa
 `)}
 
-	cms := []*corev1.ConfigMap{withCustomTasks(newFeatureFlagsConfigMap())}
+	cms := []*corev1.ConfigMap{newFeatureFlagsConfigMap()}
 	d := test.Data{
 		PipelineRuns: prs,
 		Pipelines:    ps,
@@ -5025,7 +5018,7 @@ spec:
 		Tasks:        ts,
 		TaskRuns:     trs,
 		Runs:         rs,
-		ConfigMaps:   []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))},
+		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 	prt := newPipelineRunTest(d, t)
 	defer prt.Cancel()
@@ -5381,7 +5374,7 @@ spec:
 		Tasks:        ts,
 		TaskRuns:     trs,
 		Runs:         rs,
-		ConfigMaps:   []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))},
+		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 
 	prt := newPipelineRunTest(d, t)
@@ -6008,7 +6001,7 @@ status:
 	trs := []*v1beta1.TaskRun{taskRunDone, taskRunOrphaned}
 	runs := []*v1alpha1.Run{orphanedRun}
 
-	cms := []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
+	cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
 
 	d := test.Data{
 		PipelineRuns: prs,
@@ -6208,7 +6201,7 @@ spec:
         name: some-custom-task
 `)
 
-	cms := []*corev1.ConfigMap{withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus))}
+	cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)}
 
 	d := test.Data{
 		PipelineRuns: []*v1beta1.PipelineRun{pr},
@@ -10989,7 +10982,7 @@ spec:
 
 			ts := []*v1beta1.Task{simpleHelloWorldTask}
 
-			cms := []*corev1.ConfigMap{withEmbeddedStatus(withCustomTasks(newFeatureFlagsConfigMap()), tc.embeddedStatusVal)}
+			cms := []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatusVal)}
 
 			d := test.Data{
 				PipelineRuns: prs,

@@ -320,7 +320,6 @@ func TestPipelineTask_Validate_Failure(t *testing.T) {
 			Message: `invalid value: custom task ref must specify kind`,
 			Paths:   []string{"taskRef.kind"},
 		},
-		wc: enableFeatures(t, []string{"enable-custom-tasks"}),
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

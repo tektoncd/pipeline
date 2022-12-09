@@ -278,7 +278,7 @@ func TestTimeoutPipelineRun(t *testing.T) {
 			}
 			ctx, _ := ttesting.SetupFakeContext(t)
 			cfg := config.NewStore(logtesting.TestLogger(t))
-			cm := withCustomTasks(withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus))
+			cm := withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus)
 			if tc.useV1Beta1CustomTasks {
 				cm = withCustomTaskVersion(cm, config.CustomTaskVersionBeta)
 			}

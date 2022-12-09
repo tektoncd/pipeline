@@ -140,6 +140,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
 				EmbeddedStatus:                   "full",
+				EnableCustomTasks:                config.DefaultEnableCustomTasks,
 				EnableSpire:                      true,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
@@ -158,6 +159,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				ResultExtractionMethod:           config.ResultExtractionMethodSidecarLogs,
+				EnableCustomTasks:                config.DefaultEnableCustomTasks,
 				MaxResultSize:                    8192,
 				CustomTaskVersion:                config.DefaultCustomTaskVersion,
 			},
