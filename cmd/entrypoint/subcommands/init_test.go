@@ -1,7 +1,6 @@
 package subcommands
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,7 +10,7 @@ func TestEntrypointInit(t *testing.T) {
 	tmp := t.TempDir()
 	src := filepath.Join(tmp, "foo.txt")
 	dst := filepath.Join(tmp, "bar.txt")
-	if err := ioutil.WriteFile(src, []byte("hello world"), 0700); err != nil {
+	if err := os.WriteFile(src, []byte("hello world"), 0700); err != nil {
 		t.Fatalf("error writing source file: %v", err)
 	}
 

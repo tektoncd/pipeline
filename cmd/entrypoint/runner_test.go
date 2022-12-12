@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +28,7 @@ func TestRealRunnerSignalForwarding(t *testing.T) {
 }
 
 func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "")
+	tmp, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -45,7 +44,7 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 	}
 
 	for _, path := range []string{"stdout", "subpath/stderr"} {
-		if got, err := ioutil.ReadFile(filepath.Join(tmp, path)); err != nil {
+		if got, err := os.ReadFile(filepath.Join(tmp, path)); err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		} else if gotString := strings.TrimSpace(string(got)); gotString != expectedString {
 			t.Errorf("%v: got: %v, wanted: %v", path, gotString, expectedString)
@@ -54,7 +53,7 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 }
 
 func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "")
+	tmp, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -72,7 +71,7 @@ func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
 
 	// Since writes to stdout and stderr might be racy, we only check for lengths here.
 	expectedSize := (len(expectedString) + 1) * 2
-	if got, err := ioutil.ReadFile(path); err != nil {
+	if got, err := os.ReadFile(path); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	} else if gotSize := len(got); gotSize != expectedSize {
 		t.Errorf("got: %v, wanted: %v", gotSize, expectedSize)
@@ -80,7 +79,7 @@ func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
 }
 
 func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "")
+	tmp, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -113,7 +112,7 @@ func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
 	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && sleep 20", expectedString)); err == nil || err.Error() != expectedError {
 		t.Fatalf("Expected error %v but got %v", expectedError, err)
 	}
-	if got, err := ioutil.ReadFile(path); err != nil {
+	if got, err := os.ReadFile(path); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	} else if gotString := strings.TrimSpace(string(got)); gotString != expectedString {
 		t.Errorf("got: %v, wanted: %v", gotString, expectedString)
