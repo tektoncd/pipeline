@@ -21,7 +21,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 )
 
@@ -35,7 +34,7 @@ func decodeScript(scriptPath string) error {
 	if err != nil {
 		return fmt.Errorf("error decoding script file %q: %w", scriptPath, err)
 	}
-	err = ioutil.WriteFile(scriptPath, decodedBytes, permissions)
+	err = os.WriteFile(scriptPath, decodedBytes, permissions)
 	if err != nil {
 		return fmt.Errorf("error writing decoded script file %q: %w", scriptPath, err)
 	}

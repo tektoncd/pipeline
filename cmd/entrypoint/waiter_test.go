@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -30,7 +29,7 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 	// Create a temp file and then immediately delete it to get
 	// a legitimate tmp path and ensure the file doesnt exist
 	// prior to testing Wait().
-	tmp, err := ioutil.TempFile("", "real_waiter_test_file")
+	tmp, err := os.CreateTemp("", "real_waiter_test_file")
 	if err != nil {
 		t.Errorf("error creating temp file: %v", err)
 	}
@@ -58,7 +57,7 @@ func TestRealWaiterWaitMissingFile(t *testing.T) {
 }
 
 func TestRealWaiterWaitWithFile(t *testing.T) {
-	tmp, err := ioutil.TempFile("", "real_waiter_test_file")
+	tmp, err := os.CreateTemp("", "real_waiter_test_file")
 	if err != nil {
 		t.Errorf("error creating temp file: %v", err)
 	}
@@ -82,7 +81,7 @@ func TestRealWaiterWaitWithFile(t *testing.T) {
 }
 
 func TestRealWaiterWaitMissingContent(t *testing.T) {
-	tmp, err := ioutil.TempFile("", "real_waiter_test_file")
+	tmp, err := os.CreateTemp("", "real_waiter_test_file")
 	if err != nil {
 		t.Errorf("error creating temp file: %v", err)
 	}
@@ -109,7 +108,7 @@ func TestRealWaiterWaitMissingContent(t *testing.T) {
 }
 
 func TestRealWaiterWaitWithContent(t *testing.T) {
-	tmp, err := ioutil.TempFile("", "real_waiter_test_file")
+	tmp, err := os.CreateTemp("", "real_waiter_test_file")
 	if err != nil {
 		t.Errorf("error creating temp file: %v", err)
 	}
@@ -123,7 +122,7 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 		}
 		close(doneCh)
 	}()
-	if err := ioutil.WriteFile(tmp.Name(), []byte("😺"), 0700); err != nil {
+	if err := os.WriteFile(tmp.Name(), []byte("😺"), 0700); err != nil {
 		t.Errorf("error writing content to temp file: %v", err)
 	}
 	delay := time.NewTimer(2 * testWaitPollingInterval)
@@ -136,7 +135,7 @@ func TestRealWaiterWaitWithContent(t *testing.T) {
 }
 
 func TestRealWaiterWaitWithErrorWaitfile(t *testing.T) {
-	tmp, err := ioutil.TempFile("", "real_waiter_test_file*.err")
+	tmp, err := os.CreateTemp("", "real_waiter_test_file*.err")
 	if err != nil {
 		t.Errorf("error creating temp file: %v", err)
 	}
@@ -167,7 +166,7 @@ func TestRealWaiterWaitWithErrorWaitfile(t *testing.T) {
 }
 
 func TestRealWaiterWaitWithBreakpointOnFailure(t *testing.T) {
-	tmp, err := ioutil.TempFile("", "real_waiter_test_file*.err")
+	tmp, err := os.CreateTemp("", "real_waiter_test_file*.err")
 	if err != nil {
 		t.Errorf("error creating temp file: %v", err)
 	}

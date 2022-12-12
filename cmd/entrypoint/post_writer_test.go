@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,7 +32,7 @@ func TestRealPostWriter_WriteFileContent(t *testing.T) {
 				if _, err := os.Stat(tt.file); err != nil {
 					t.Fatalf("Failed to create a file %q", tt.file)
 				}
-				b, err := ioutil.ReadFile(tt.file)
+				b, err := os.ReadFile(tt.file)
 				if err != nil {
 					t.Fatalf("Failed to read the file %q", tt.file)
 				}
