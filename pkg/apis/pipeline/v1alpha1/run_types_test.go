@@ -296,7 +296,7 @@ func TestRunGetTimeOut(t *testing.T) {
 		name: "runWithTimeout",
 		run: v1alpha1.Run{
 			TypeMeta: metav1.TypeMeta{Kind: "kind", APIVersion: "apiVersion"},
-			Spec:     v1alpha1.RunSpec{Timeout: &metav1.Duration{10 * time.Second}},
+			Spec:     v1alpha1.RunSpec{Timeout: &metav1.Duration{Duration: 10 * time.Second}},
 		},
 		expectedValue: 10 * time.Second,
 	}}
@@ -344,7 +344,7 @@ func TestRunHasTimedOut(t *testing.T) {
 		name: "runWithStartTimeAndTimeout",
 		run: v1alpha1.Run{
 			TypeMeta: metav1.TypeMeta{Kind: "kind", APIVersion: "apiVersion"},
-			Spec:     v1alpha1.RunSpec{Timeout: &metav1.Duration{10 * time.Second}},
+			Spec:     v1alpha1.RunSpec{Timeout: &metav1.Duration{Duration: 10 * time.Second}},
 			Status: v1alpha1.RunStatus{RunStatusFields: v1alpha1.RunStatusFields{
 				StartTime: &metav1.Time{Time: now.Add(-1 * (apisconfig.DefaultTimeoutMinutes + 1) * time.Minute)},
 			}}},
@@ -353,14 +353,14 @@ func TestRunHasTimedOut(t *testing.T) {
 		name: "runWithNoStartTimeAndTimeout",
 		run: v1alpha1.Run{
 			TypeMeta: metav1.TypeMeta{Kind: "kind", APIVersion: "apiVersion"},
-			Spec:     v1alpha1.RunSpec{Timeout: &metav1.Duration{1 * time.Second}},
+			Spec:     v1alpha1.RunSpec{Timeout: &metav1.Duration{Duration: 1 * time.Second}},
 		},
 		expectedValue: false,
 	}, {
 		name: "runWithStartTimeAndTimeout2",
 		run: v1alpha1.Run{
 			TypeMeta: metav1.TypeMeta{Kind: "kind", APIVersion: "apiVersion"},
-			Spec:     v1alpha1.RunSpec{Timeout: &metav1.Duration{10 * time.Second}},
+			Spec:     v1alpha1.RunSpec{Timeout: &metav1.Duration{Duration: 10 * time.Second}},
 			Status: v1alpha1.RunStatus{RunStatusFields: v1alpha1.RunStatusFields{
 				StartTime: &metav1.Time{Time: now},
 			}}},
