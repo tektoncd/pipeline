@@ -9,6 +9,7 @@ aliases:
   - jerop
   - lbernick
   - abayer
+  - wlynch
 
   apis-approvers:
   - afrittoli
@@ -20,6 +21,7 @@ aliases:
   - jerop
   - lbernick
   - abayer
+  - wlynch
 
   productivity-approvers:
   - afrittoli
