@@ -51,7 +51,7 @@ func TestLookForResults_FanOutAndWait(t *testing.T) {
 				wantResults = append(wantResults, encodedResult...)
 			}
 			dir2 := t.TempDir()
-			go createRun(t, dir2, false)
+			createRun(t, dir2, false)
 			got := new(bytes.Buffer)
 			err := LookForResults(got, dir2, dir, resultNames)
 			if err != nil {

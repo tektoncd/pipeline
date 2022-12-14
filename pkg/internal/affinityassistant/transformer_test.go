@@ -169,7 +169,7 @@ func TestNewTransformerWithNodeAffinity(t *testing.T) {
 			Spec: corev1.PodSpec{
 				Affinity: &corev1.Affinity{PodAffinity: &corev1.PodAffinity{
 					RequiredDuringSchedulingIgnoredDuringExecution:  []corev1.PodAffinityTerm{*podAffinityTerm},
-					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{100, *podAffinityTerm}},
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{Weight: 100, PodAffinityTerm: *podAffinityTerm}},
 				}},
 			},
 		},
@@ -186,7 +186,7 @@ func TestNewTransformerWithNodeAffinity(t *testing.T) {
 					TopologyKey: "kubernetes.io/hostname",
 				}},
 				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-					{100, *podAffinityTerm},
+					{Weight: 100, PodAffinityTerm: *podAffinityTerm},
 				},
 			},
 		},
@@ -200,7 +200,7 @@ func TestNewTransformerWithNodeAffinity(t *testing.T) {
 				Affinity: &corev1.Affinity{
 					PodAffinity: &corev1.PodAffinity{
 						RequiredDuringSchedulingIgnoredDuringExecution:  []corev1.PodAffinityTerm{*podAffinityTerm},
-						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{100, *podAffinityTerm}},
+						PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{Weight: 100, PodAffinityTerm: *podAffinityTerm}},
 					},
 					NodeAffinity: nodeAffinity},
 			},
@@ -221,7 +221,7 @@ func TestNewTransformerWithNodeAffinity(t *testing.T) {
 					},
 				},
 				PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
-					{100, *podAffinityTerm},
+					{Weight: 100, PodAffinityTerm: *podAffinityTerm},
 				},
 			},
 			NodeAffinity: nodeAffinity,

@@ -94,7 +94,7 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			},
 			Status: v1.PipelineRunStatus{
 				PipelineRunStatusFields: v1.PipelineRunStatusFields{
-					StartTime: &metav1.Time{time.Now()},
+					StartTime: &metav1.Time{Time: time.Now()},
 				},
 			},
 		},

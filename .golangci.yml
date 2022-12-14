@@ -1,3 +1,4 @@
+# Documentation: https://golangci-lint.run/usage/configuration/
 linters-settings:
   errcheck:
     exclude: .errcheck.txt
@@ -21,11 +22,15 @@ linters:
   - goimports
   - gomodguard
   - gosec
+  - govet
   - gocritic
   - revive
   - misspell
   - unconvert
   - depguard
+    # To keep this PR small, I'm going to add one linter at a time.
+    #- unused
+    #- whitespace
 output:
   uniq-by-line: false
 issues:

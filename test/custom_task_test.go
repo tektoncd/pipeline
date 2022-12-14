@@ -469,7 +469,7 @@ func TestWaitCustomTask_Run(t *testing.T) {
 	}, {
 		name:                "Wait Task Timed Out",
 		duration:            "2s",
-		timeout:             &metav1.Duration{time.Second},
+		timeout:             &metav1.Duration{Duration: time.Second},
 		conditionAccessorFn: Failed,
 		wantCondition: apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -479,7 +479,7 @@ func TestWaitCustomTask_Run(t *testing.T) {
 	}, {
 		name:                "Wait Task Retries on Timed Out",
 		duration:            "2s",
-		timeout:             &metav1.Duration{time.Second},
+		timeout:             &metav1.Duration{Duration: time.Second},
 		retries:             2,
 		conditionAccessorFn: Failed,
 		wantCondition: apis.Condition{
@@ -617,7 +617,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 	}{{
 		name:                  "Wait Task Has Succeeded",
 		runDuration:           "1s",
-		prTimeout:             &metav1.Duration{time.Second * 60},
+		prTimeout:             &metav1.Duration{Duration: time.Minute},
 		prConditionAccessorFn: Succeed,
 		wantPrCondition: apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -639,7 +639,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 	}, {
 		name:                  "Wait Task Is Running",
 		runDuration:           "2s",
-		prTimeout:             &metav1.Duration{time.Second * 5},
+		prTimeout:             &metav1.Duration{Duration: time.Second * 5},
 		prConditionAccessorFn: Running,
 		wantPrCondition: apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -661,7 +661,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 	}, {
 		name:                  "Wait Task Failed When PipelineRun Is Timeout",
 		runDuration:           "2s",
-		prTimeout:             &metav1.Duration{time.Second},
+		prTimeout:             &metav1.Duration{Duration: time.Second},
 		prConditionAccessorFn: Failed,
 		wantPrCondition: apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -683,7 +683,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 	}, {
 		name:                  "Wait Task Failed on Timeout",
 		runDuration:           "2s",
-		runTimeout:            &metav1.Duration{time.Second},
+		runTimeout:            &metav1.Duration{Duration: time.Second},
 		prConditionAccessorFn: Failed,
 		wantPrCondition: apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -705,7 +705,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 	}, {
 		name:                  "Wait Task Retries on Timeout",
 		runDuration:           "2s",
-		runTimeout:            &metav1.Duration{time.Second},
+		runTimeout:            &metav1.Duration{Duration: time.Second},
 		runRetries:            1,
 		prConditionAccessorFn: Failed,
 		wantPrCondition: apis.Condition{
@@ -742,7 +742,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.prTimeout == nil {
-				tc.prTimeout = &metav1.Duration{time.Second * 60}
+				tc.prTimeout = &metav1.Duration{Duration: time.Minute}
 			}
 			p := &v1beta1.Pipeline{
 				ObjectMeta: metav1.ObjectMeta{
@@ -905,7 +905,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 	}{{
 		name:                  "Wait Task Has Succeeded",
 		customRunDuration:     "1s",
-		prTimeout:             &metav1.Duration{time.Second * 60},
+		prTimeout:             &metav1.Duration{Duration: time.Minute},
 		prConditionAccessorFn: Succeed,
 		wantPrCondition: apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -927,7 +927,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 	}, {
 		name:                  "Wait Task Is Running",
 		customRunDuration:     "2s",
-		prTimeout:             &metav1.Duration{time.Second * 5},
+		prTimeout:             &metav1.Duration{Duration: time.Second * 5},
 		prConditionAccessorFn: Running,
 		wantPrCondition: apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -971,7 +971,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 	}, {
 		name:                  "Wait Task Failed on Timeout",
 		customRunDuration:     "2s",
-		customRunTimeout:      &metav1.Duration{time.Second},
+		customRunTimeout:      &metav1.Duration{Duration: time.Second},
 		prConditionAccessorFn: Failed,
 		wantPrCondition: apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -993,7 +993,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 	}, {
 		name:                  "Wait Task Retries on Timeout",
 		customRunDuration:     "2s",
-		customRunTimeout:      &metav1.Duration{time.Second},
+		customRunTimeout:      &metav1.Duration{Duration: time.Second},
 		customRunRetries:      1,
 		prConditionAccessorFn: Failed,
 		wantPrCondition: apis.Condition{
@@ -1030,7 +1030,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.prTimeout == nil {
-				tc.prTimeout = &metav1.Duration{time.Second * 60}
+				tc.prTimeout = &metav1.Duration{Duration: time.Minute}
 			}
 			p := &v1beta1.Pipeline{
 				ObjectMeta: metav1.ObjectMeta{

@@ -26,7 +26,7 @@ import (
 func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "tekton_run_indefinitely" {
 		log.Println("Waiting indefinitely...")
-		ch := make(chan os.Signal)
+		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		log.Println("received signal:", <-ch)
 	}
