@@ -576,7 +576,7 @@ func markStatusSuccess(trs *v1beta1.TaskRunStatus) {
 	})
 }
 
-// markStatusResultsVerified sets taskrun status to
+// markStatusResultsVerified sets taskrun status to verified
 func markStatusSignedResultsVerified(trs *v1beta1.TaskRunStatus) {
 	trs.SetCondition(&apis.Condition{
 		Type:    apis.ConditionType(v1beta1.TaskRunConditionResultsVerified.String()),
