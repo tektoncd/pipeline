@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -1413,32 +1414,22 @@ func TestTaskSpecValidateError(t *testing.T) {
 
 func TestTaskSpecValidateErrorSidecarName(t *testing.T) {
 	tests := []struct {
-		name                   string
-		sidecars               []v1beta1.Sidecar
-		resultExtractionMethod string
-		expectedError          apis.FieldError
+		name          string
+		sidecars      []v1beta1.Sidecar
+		expectedError apis.FieldError
 	}{{
 		name: "cannot use reserved sidecar name",
 		sidecars: []v1beta1.Sidecar{{
 			Name:  "tekton-log-results",
 			Image: "my-image",
 		}},
-		resultExtractionMethod: "sidecar-logs",
 		expectedError: apis.FieldError{
-			Message: fmt.Sprintf("Invalid sidecar name tekton-log-results. This is reserved by the controller because the results-from feature flag has been set to %v", config.ResultExtractionMethodSidecarLogs),
+			Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", pipeline.ReservedResultsSidecarName),
 			Paths:   []string{"sidecars"},
 		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			if tt.resultExtractionMethod != "" {
-				ctx = config.ToContext(ctx, &config.Config{
-					FeatureFlags: &config.FeatureFlags{
-						ResultExtractionMethod: tt.resultExtractionMethod,
-					},
-				})
-			}
 			ts := &v1beta1.TaskSpec{
 				Steps: []v1beta1.Step{{
 					Name:  "does-not-matter",
@@ -1446,7 +1437,7 @@ func TestTaskSpecValidateErrorSidecarName(t *testing.T) {
 				}},
 				Sidecars: tt.sidecars,
 			}
-			err := ts.Validate(ctx)
+			err := ts.Validate(context.Background())
 			if err == nil {
 				t.Fatalf("Expected an error, got nothing for %v", ts)
 			}
