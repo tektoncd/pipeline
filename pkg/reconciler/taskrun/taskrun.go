@@ -97,7 +97,6 @@ var (
 // converge the two. It then updates the Status block of the Task Run
 // resource with the current status of the resource.
 func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkgreconciler.Event {
-	defer c.durationAndCountMetrics(ctx, tr)
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 	// By this time, params and workspaces should not be propagated for embedded tasks so we cannot
@@ -106,6 +105,9 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 
 	// Read the initial condition
 	before := tr.Status.GetCondition(apis.ConditionSucceeded)
+
+	// Record the duration and count after the reconcile cycle.
+	defer c.durationAndCountMetrics(ctx, tr, before)
 
 	// If the TaskRun is just starting, this will also set the starttime,
 	// from which the timeout will immediately begin counting down.
@@ -228,27 +230,15 @@ func (c *Reconciler) checkPodFailed(tr *v1beta1.TaskRun) (bool, v1beta1.TaskRunR
 	return false, "", ""
 }
 
-func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.TaskRun) {
+func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition) {
 	logger := logging.FromContext(ctx)
 	if tr.IsDone() {
-		newTr, err := c.taskRunLister.TaskRuns(tr.Namespace).Get(tr.Name)
-		if err != nil && !k8serrors.IsNotFound(err) {
-			logger.Errorf("Error getting TaskRun %s when updating metrics: %w", tr.Name, err)
-			return
-		} else if k8serrors.IsNotFound(err) || newTr == nil {
-			logger.Debugf("TaskRun %s not found when updating metrics: %w", tr.Name, err)
-			return
+		if err := c.metrics.DurationAndCount(ctx, tr, beforeCondition); err != nil {
+			logger.Warnf("Failed to log the duration and count of taskruns : %v", err)
 		}
-
-		before := newTr.Status.GetCondition(apis.ConditionSucceeded)
-		go func(metrics *taskrunmetrics.Recorder) {
-			if err := metrics.DurationAndCount(ctx, tr, before); err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-			if err := metrics.CloudEvents(ctx, tr); err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}(c.metrics)
+		if err := c.metrics.CloudEvents(ctx, tr); err != nil {
+			logger.Warnf("Failed to log the number of cloud events: %v", err)
+		}
 	}
 }
 

@@ -230,7 +230,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 
 	// Reconcile this copy of the pipelinerun and then write back any status or label
 	// updates regardless of whether the reconciliation errored out.
-	if err = c.reconcile(ctx, pr, getPipelineFunc); err != nil {
+	if err = c.reconcile(ctx, pr, getPipelineFunc, before); err != nil {
 		logger.Errorf("Reconcile error: %v", err.Error())
 	}
 
@@ -256,26 +256,13 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	return nil
 }
 
-func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1beta1.PipelineRun) {
+func (c *Reconciler) durationAndCountMetrics(ctx context.Context, pr *v1beta1.PipelineRun, beforeCondition *apis.Condition) {
 	logger := logging.FromContext(ctx)
 	if pr.IsDone() {
-		// We get latest pipelinerun cr already to avoid recount
-		newPr, err := c.pipelineRunLister.PipelineRuns(pr.Namespace).Get(pr.Name)
-		if err != nil && !kerrors.IsNotFound(err) {
-			logger.Errorf("Error getting PipelineRun %s when updating metrics: %w", pr.Name, err)
-			return
-		} else if kerrors.IsNotFound(err) || newPr == nil {
-			logger.Debugf("Pipelinerun %s not found when updating metrics: %w", pr.Name, err)
-			return
+		err := c.metrics.DurationAndCount(pr, beforeCondition)
+		if err != nil {
+			logger.Warnf("Failed to log the metrics : %v", err)
 		}
-
-		before := newPr.Status.GetCondition(apis.ConditionSucceeded)
-		go func(metrics *pipelinerunmetrics.Recorder) {
-			err := metrics.DurationAndCount(pr, before)
-			if err != nil {
-				logger.Warnf("Failed to log the metrics : %v", err)
-			}
-		}(c.metrics)
 	}
 }
 
@@ -379,8 +366,8 @@ func (c *Reconciler) resolvePipelineState(
 	return pst, nil
 }
 
-func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc rprp.GetPipeline) error {
-	defer c.durationAndCountMetrics(ctx, pr)
+func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, getPipelineFunc rprp.GetPipeline, beforeCondition *apis.Condition) error {
+	defer c.durationAndCountMetrics(ctx, pr, beforeCondition)
 	logger := logging.FromContext(ctx)
 	cfg := config.FromContextOrDefaults(ctx)
 	pr.SetDefaults(ctx)
