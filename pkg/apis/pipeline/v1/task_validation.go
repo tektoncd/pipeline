@@ -93,7 +93,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
-	errs = errs.Also(validateSidecarNames(ctx, ts.Sidecars))
+	errs = errs.Also(validateSidecarNames(ts.Sidecars))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
@@ -101,11 +101,11 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	return errs
 }
 
-func validateSidecarNames(ctx context.Context, sidecars []Sidecar) (errs *apis.FieldError) {
+func validateSidecarNames(sidecars []Sidecar) (errs *apis.FieldError) {
 	for _, sc := range sidecars {
-		if config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs && sc.Name == pipeline.ReservedResultsSidecarName {
+		if sc.Name == pipeline.ReservedResultsSidecarName {
 			errs = errs.Also(&apis.FieldError{
-				Message: fmt.Sprintf("Invalid sidecar name %v. This is reserved by the controller because the results-from feature flag has been set to %v", sc.Name, config.ResultExtractionMethodSidecarLogs),
+				Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", sc.Name),
 				Paths:   []string{"sidecars"},
 			})
 		}
