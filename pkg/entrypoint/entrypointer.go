@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -211,7 +210,7 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string)
 		if resultFile == "" {
 			continue
 		}
-		fileContents, err := ioutil.ReadFile(filepath.Join(resultDir, resultFile))
+		fileContents, err := os.ReadFile(filepath.Join(resultDir, resultFile))
 		if os.IsNotExist(err) {
 			continue
 		} else if err != nil {
@@ -243,7 +242,7 @@ func (e Entrypointer) readResultsFromDisk(ctx context.Context, resultDir string)
 
 // BreakpointExitCode reads the post file and returns the exit code it contains
 func (e Entrypointer) BreakpointExitCode(breakpointExitPostFile string) (int, error) {
-	exitCode, err := ioutil.ReadFile(breakpointExitPostFile)
+	exitCode, err := os.ReadFile(breakpointExitPostFile)
 	if os.IsNotExist(err) {
 		return 0, fmt.Errorf("breakpoint postfile %s not found", breakpointExitPostFile)
 	}
