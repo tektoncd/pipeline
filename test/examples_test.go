@@ -38,6 +38,7 @@ import (
 var (
 	defaultKoDockerRepoRE = regexp.MustCompile("gcr.io/christiewilson-catfactory")
 	v1Version             = "v1"
+	imagesMappingRE       = getImagesMappingRE()
 )
 
 // getCreatedTektonCRD parses output of an external ko invocation provided as
@@ -266,4 +267,50 @@ func testYamls(t *testing.T, baseDir string, createFunc createFunc, filter pathF
 
 		t.Run(testName, exampleTest(path, waitValidateFunc, createFunc, kind))
 	}
+}
+
+// getImagesMappingRE generates the map ready to search and replace image names with regexp for examples files.
+// search is done using "image: <name>" pattern.
+func getImagesMappingRE() map[*regexp.Regexp][]byte {
+	imageNamesMapping := imageNamesMapping()
+	imageMappingRE := make(map[*regexp.Regexp][]byte, len(imageNamesMapping))
+
+	for existingImage, archSpecificImage := range imageNamesMapping {
+		imageMappingRE[regexp.MustCompile("(?im)image: "+existingImage+"$")] = []byte("image: " + archSpecificImage)
+		imageMappingRE[regexp.MustCompile("(?im)default: "+existingImage+"$")] = []byte("default: " + archSpecificImage)
+	}
+
+	return imageMappingRE
+}
+
+// imageNamesMapping provides mapping between image name in the examples yaml files and desired image name for specific arch.
+// by default empty map is returned.
+func imageNamesMapping() map[string]string {
+	switch getTestArch() {
+	case "s390x":
+		return map[string]string{
+			"registry":                              getTestImage(registryImage),
+			"node":                                  "node:alpine3.11",
+			"gcr.io/cloud-builders/git":             "alpine/git:latest",
+			"docker:dind":                           "ibmcom/docker-s390x:20.10",
+			"docker":                                "docker:18.06.3",
+			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
+			"stedolan/jq":                           "ibmcom/jq-s390x:latest",
+			"amd64/ubuntu":                          "s390x/ubuntu",
+			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
+		}
+	case "ppc64le":
+		return map[string]string{
+			"registry":                              getTestImage(registryImage),
+			"node":                                  "node:alpine3.11",
+			"gcr.io/cloud-builders/git":             "alpine/git:latest",
+			"docker:dind":                           "ibmcom/docker-ppc64le:19.03-dind",
+			"docker":                                "docker:18.06.3",
+			"mikefarah/yq:3":                        "danielxlee/yq:2.4.0",
+			"stedolan/jq":                           "ibmcom/jq-ppc64le:latest",
+			"gcr.io/kaniko-project/executor:v1.3.0": getTestImage(kanikoImage),
+		}
+	}
+
+	return make(map[string]string)
 }
