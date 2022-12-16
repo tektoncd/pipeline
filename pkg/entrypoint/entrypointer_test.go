@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -94,7 +93,7 @@ func TestEntrypointerFailures(t *testing.T) {
 			}
 			fpw := &fakePostWriter{}
 			terminationPath := "termination"
-			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+			if terminationFile, err := os.CreateTemp("", "termination"); err != nil {
 				t.Fatalf("unexpected error creating temporary termination file: %v", err)
 			} else {
 				terminationPath = terminationFile.Name()
@@ -171,7 +170,7 @@ func TestEntrypointer(t *testing.T) {
 			fw, fr, fpw := &fakeWaiter{}, &fakeRunner{}, &fakePostWriter{}
 			timeout := time.Duration(0)
 			terminationPath := "termination"
-			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+			if terminationFile, err := os.CreateTemp("", "termination"); err != nil {
 				t.Fatalf("unexpected error creating temporary termination file: %v", err)
 			} else {
 				terminationPath = terminationFile.Name()
@@ -230,7 +229,7 @@ func TestEntrypointer(t *testing.T) {
 			if c.postFile == "" && fpw.wrote != nil {
 				t.Errorf("Wrote post file when not required")
 			}
-			fileContents, err := ioutil.ReadFile(terminationPath)
+			fileContents, err := os.ReadFile(terminationPath)
 			if err == nil {
 				var entries []v1beta1.PipelineResourceResult
 				if err := json.Unmarshal(fileContents, &entries); err == nil {
@@ -290,7 +289,7 @@ func TestReadResultsFromDisk(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			ctx := context.Background()
 			terminationPath := "termination"
-			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+			if terminationFile, err := os.CreateTemp("", "termination"); err != nil {
 				t.Fatalf("unexpected error creating temporary termination file: %v", err)
 			} else {
 				terminationPath = terminationFile.Name()
@@ -298,7 +297,7 @@ func TestReadResultsFromDisk(t *testing.T) {
 			}
 			resultsFilePath := []string{}
 			for i, r := range c.results {
-				if resultsFile, err := ioutil.TempFile("", r); err != nil {
+				if resultsFile, err := os.CreateTemp("", r); err != nil {
 					t.Fatalf("unexpected error creating temporary termination file: %v", err)
 				} else {
 					resultName := resultsFile.Name()
@@ -308,7 +307,7 @@ func TestReadResultsFromDisk(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if err := ioutil.WriteFile(resultName, d, 0777); err != nil {
+					if err := os.WriteFile(resultName, d, 0777); err != nil {
 						t.Fatal(err)
 					}
 					defer os.Remove(resultName)
@@ -323,7 +322,7 @@ func TestReadResultsFromDisk(t *testing.T) {
 			if err := e.readResultsFromDisk(ctx, ""); err != nil {
 				t.Fatal(err)
 			}
-			msg, err := ioutil.ReadFile(terminationPath)
+			msg, err := os.ReadFile(terminationPath)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -343,12 +342,12 @@ func TestReadResultsFromDisk(t *testing.T) {
 func TestEntrypointer_ReadBreakpointExitCodeFromDisk(t *testing.T) {
 	expectedExitCode := 1
 	// setup test
-	tmp, err := ioutil.TempFile("", "1*.err")
+	tmp, err := os.CreateTemp("", "1*.err")
 	if err != nil {
 		t.Errorf("error while creating temp file for testing exit code written by breakpoint")
 	}
 	// write exit code to file
-	if err = ioutil.WriteFile(tmp.Name(), []byte(fmt.Sprintf("%d", expectedExitCode)), 0700); err != nil {
+	if err = os.WriteFile(tmp.Name(), []byte(fmt.Sprintf("%d", expectedExitCode)), 0700); err != nil {
 		t.Errorf("error while writing to temp file create temp file for testing exit code written by breakpoint")
 	}
 	e := Entrypointer{}
@@ -392,7 +391,7 @@ func TestEntrypointer_OnError(t *testing.T) {
 		t.Run(c.desc, func(t *testing.T) {
 			fpw := &fakePostWriter{}
 			terminationPath := "termination"
-			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+			if terminationFile, err := os.CreateTemp("", "termination"); err != nil {
 				t.Fatalf("unexpected error creating temporary termination file: %v", err)
 			} else {
 				terminationPath = terminationFile.Name()
@@ -514,7 +513,7 @@ func TestEntrypointerResults(t *testing.T) {
 			var fr Runner = &fakeRunner{}
 			timeout := time.Duration(0)
 			terminationPath := "termination"
-			if terminationFile, err := ioutil.TempFile("", "termination"); err != nil {
+			if terminationFile, err := os.CreateTemp("", "termination"); err != nil {
 				t.Fatalf("unexpected error creating temporary termination file: %v", err)
 			} else {
 				terminationPath = terminationFile.Name()
@@ -565,7 +564,7 @@ func TestEntrypointerResults(t *testing.T) {
 				t.Fatalf("Entrypointer failed: %v", err)
 			}
 
-			fileContents, err := ioutil.ReadFile(terminationPath)
+			fileContents, err := os.ReadFile(terminationPath)
 			if err == nil {
 				resultCheck := map[string]bool{}
 				var entries []v1beta1.PipelineResourceResult
@@ -680,7 +679,7 @@ type fakeResultsWriter struct {
 func (f *fakeResultsWriter) Run(ctx context.Context, args ...string) error {
 	f.args = &args
 	for k, v := range f.resultsToWrite {
-		err := ioutil.WriteFile(k, []byte(v), 0666)
+		err := os.WriteFile(k, []byte(v), 0666)
 		if err != nil {
 			return err
 		}
@@ -689,7 +688,7 @@ func (f *fakeResultsWriter) Run(ctx context.Context, args ...string) error {
 }
 
 func createTmpDir(t *testing.T, name string) string {
-	tmpDir, err := ioutil.TempDir("", name)
+	tmpDir, err := os.MkdirTemp("", name)
 	if err != nil {
 		t.Fatalf("unexpected error creating temporary dir: %v", err)
 	}
