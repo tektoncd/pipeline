@@ -19,7 +19,7 @@ package pullrequest
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strconv"
 
 	"github.com/hashicorp/go-multierror"
@@ -61,7 +61,7 @@ func (h *Handler) Download(ctx context.Context) (*Resource, error) {
 	h.logger.Info("finding combined status")
 	status, out, err := h.client.Repositories.ListStatus(ctx, h.repo, pr.Sha, &scm.ListOptions{})
 	if err != nil {
-		body, _ := ioutil.ReadAll(out.Body)
+		body, _ := io.ReadAll(out.Body)
 		defer out.Body.Close()
 		h.logger.Warnf("%v: %s", err, string(body))
 		return nil, fmt.Errorf("finding combined status for pr %d: %w", h.prNum, err)
