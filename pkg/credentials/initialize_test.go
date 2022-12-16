@@ -1,7 +1,6 @@
 package credentials
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,7 +27,7 @@ func TestTryCopyCredDir(t *testing.T) {
 	if _, err := os.Lstat(filepath.Join(destination, credFilename)); err != nil {
 		t.Fatalf("error accessing copied credential: %v", err)
 	}
-	b, err := ioutil.ReadFile(copiedFile)
+	b, err := os.ReadFile(copiedFile)
 	if err != nil {
 		t.Fatalf("unexpected error opening copied file: %v", err)
 	}
@@ -48,7 +47,7 @@ func TestTryCopyCredFile(t *testing.T) {
 	if _, err := os.Lstat(destination); err != nil {
 		t.Fatalf("error accessing copied credential: %v", err)
 	}
-	b, err := ioutil.ReadFile(destination)
+	b, err := os.ReadFile(destination)
 	if err != nil {
 		t.Fatalf("unexpected error opening copied file: %v", err)
 	}
@@ -68,7 +67,7 @@ func TestTryCopyCredFileMissing(t *testing.T) {
 	if _, err := os.Lstat(destination); err != nil && !os.IsNotExist(err) {
 		t.Fatalf("error accessing copied credential: %v", err)
 	}
-	_, err := ioutil.ReadFile(destination)
+	_, err := os.ReadFile(destination)
 	if !os.IsNotExist(err) {
 		t.Fatalf("destination file exists but should not have been copied: %v", err)
 	}
