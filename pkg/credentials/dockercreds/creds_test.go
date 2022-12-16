@@ -19,7 +19,6 @@ package dockercreds
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,11 +36,11 @@ func TestFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(password) = %v", err)
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
@@ -58,9 +57,9 @@ func TestFlagHandling(t *testing.T) {
 		t.Fatalf("Write() = %v", err)
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	b, err := os.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
 	if err != nil {
-		t.Fatalf("ioutil.ReadFile(.docker/config.json) = %v", err)
+		t.Fatalf("os.ReadFile(.docker/config.json) = %v", err)
 	}
 
 	// Note: "auth" is base64(username + ":" + password)
@@ -76,21 +75,21 @@ func TestFlagHandlingTwice(t *testing.T) {
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("asdf"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("asdf"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("blah"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(password) = %v", err)
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("blah"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 	barDir := credentials.VolumeName("bar")
 	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(barDir, corev1.BasicAuthUsernameKey), []byte("bleh"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthUsernameKey), []byte("bleh"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(barDir, corev1.BasicAuthPasswordKey), []byte("belch"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(password) = %v", err)
+	if err := os.WriteFile(filepath.Join(barDir, corev1.BasicAuthPasswordKey), []byte("belch"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
@@ -108,9 +107,9 @@ func TestFlagHandlingTwice(t *testing.T) {
 		t.Fatalf("Write() = %v", err)
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	b, err := os.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
 	if err != nil {
-		t.Fatalf("ioutil.ReadFile(.docker/config.json) = %v", err)
+		t.Fatalf("os.ReadFile(.docker/config.json) = %v", err)
 	}
 
 	// Note: "auth" is base64(username + ":" + password)
@@ -140,11 +139,11 @@ func TestFlagHandlingURLCollision(t *testing.T) {
 	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", dir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(password) = %v", err)
+	if err := os.WriteFile(filepath.Join(dir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
 	cfg := basicDocker{make(map[string]entry)}
@@ -229,43 +228,43 @@ func TestMultipleFlagHandling(t *testing.T) {
 	if err := os.MkdirAll(fooDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", fooDir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthUsernameKey), []byte("bar"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(password) = %v", err)
+	if err := os.WriteFile(filepath.Join(fooDir, corev1.BasicAuthPasswordKey), []byte("baz"), 0777); err != nil {
+		t.Fatalf("os.WriteFile(password) = %v", err)
 	}
 
 	barDir := credentials.VolumeName("bar")
 	if err := os.MkdirAll(barDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", barDir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(barDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"}}}`), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(barDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"https://index.docker.io/v1":{"auth":"fooisbar"}}}`), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
 	blubbDir := credentials.VolumeName("blubb")
 	if err := os.MkdirAll(blubbDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", blubbDir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(blubbDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"us.icr.io":{"auth":"fooisblubb"}}}`), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(blubbDir, corev1.DockerConfigJsonKey), []byte(`{"auths":{"us.icr.io":{"auth":"fooisblubb"}}}`), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
 	bazDir := credentials.VolumeName("baz")
 	if err := os.MkdirAll(bazDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", bazDir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(bazDir, corev1.DockerConfigKey), []byte(`{"https://my.registry/v1":{"auth":"fooisbaz"}}`), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(bazDir, corev1.DockerConfigKey), []byte(`{"https://my.registry/v1":{"auth":"fooisbaz"}}`), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
 	blaDir := credentials.VolumeName("bla")
 	if err := os.MkdirAll(blaDir, os.ModePerm); err != nil {
 		t.Fatalf("os.MkdirAll(%s) = %v", blaDir, err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(blaDir, corev1.DockerConfigKey), []byte(`{"de.icr.io":{"auth":"fooisbla"}}`), 0777); err != nil {
-		t.Fatalf("ioutil.WriteFile(username) = %v", err)
+	if err := os.WriteFile(filepath.Join(blaDir, corev1.DockerConfigKey), []byte(`{"de.icr.io":{"auth":"fooisbla"}}`), 0777); err != nil {
+		t.Fatalf("os.WriteFile(username) = %v", err)
 	}
 
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
@@ -286,9 +285,9 @@ func TestMultipleFlagHandling(t *testing.T) {
 		t.Fatalf("Write() = %v", err)
 	}
 
-	b, err := ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	b, err := os.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
 	if err != nil {
-		t.Fatalf("ioutil.ReadFile(.docker/config.json) = %v", err)
+		t.Fatalf("os.ReadFile(.docker/config.json) = %v", err)
 	}
 
 	// Note: "auth" is base64(username + ":" + password)
@@ -317,7 +316,7 @@ func TestNoAuthProvided(t *testing.T) {
 	if err := NewBuilder().Write(credentials.VolumePath); err != nil {
 		t.Fatalf("Write() = %v", err)
 	}
-	_, err = ioutil.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
+	_, err = os.ReadFile(filepath.Join(credentials.VolumePath, ".docker", "config.json"))
 	if err == nil || !os.IsNotExist(err) {
 		t.Errorf("expected does not exist error but received: %v", err)
 	}

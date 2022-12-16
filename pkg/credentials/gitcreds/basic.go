@@ -18,8 +18,8 @@ package gitcreds
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -87,7 +87,7 @@ func (dc *basicGitConfig) Write(directory string) error {
 		gitConfigs = append(gitConfigs, v.configBlurb(k))
 	}
 	gitConfigContent := strings.Join(gitConfigs, "")
-	if err := ioutil.WriteFile(gitConfigPath, []byte(gitConfigContent), 0600); err != nil {
+	if err := os.WriteFile(gitConfigPath, []byte(gitConfigContent), 0600); err != nil {
 		return err
 	}
 
@@ -99,7 +99,7 @@ func (dc *basicGitConfig) Write(directory string) error {
 	}
 	gitCredentials = append(gitCredentials, "") // Get a trailing newline
 	gitCredentialsContent := strings.Join(gitCredentials, "\n")
-	return ioutil.WriteFile(gitCredentialsPath, []byte(gitCredentialsContent), 0600)
+	return os.WriteFile(gitCredentialsPath, []byte(gitCredentialsContent), 0600)
 }
 
 type basicEntry struct {
@@ -124,13 +124,13 @@ func (be *basicEntry) escapedUsername() string {
 func newBasicEntry(u, secret string) (*basicEntry, error) {
 	secretPath := credentials.VolumeName(secret)
 
-	ub, err := ioutil.ReadFile(filepath.Join(secretPath, corev1.BasicAuthUsernameKey))
+	ub, err := os.ReadFile(filepath.Join(secretPath, corev1.BasicAuthUsernameKey))
 	if err != nil {
 		return nil, err
 	}
 	username := string(ub)
 
-	pb, err := ioutil.ReadFile(filepath.Join(secretPath, corev1.BasicAuthPasswordKey))
+	pb, err := os.ReadFile(filepath.Join(secretPath, corev1.BasicAuthPasswordKey))
 	if err != nil {
 		return nil, err
 	}
