@@ -18,7 +18,6 @@ package pullrequest
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -96,7 +95,7 @@ func TestToDisk(t *testing.T) {
 	checkRef("base.json", rsrc.PR.Base)
 
 	// Check the Statuses
-	fis, err := ioutil.ReadDir(filepath.Join(d, "status"))
+	fis, err := os.ReadDir(filepath.Join(d, "status"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +116,7 @@ func TestToDisk(t *testing.T) {
 		}
 	}
 	// Check the labels
-	fis, err = ioutil.ReadDir(filepath.Join(d, "labels"))
+	fis, err = os.ReadDir(filepath.Join(d, "labels"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +153,7 @@ func TestToDisk(t *testing.T) {
 	}
 
 	// Check the comments
-	fis, err = ioutil.ReadDir(filepath.Join(d, "comments"))
+	fis, err = os.ReadDir(filepath.Join(d, "comments"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +213,7 @@ func TestFromDiskWithoutComments(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := ioutil.WriteFile(p, b, 0700); err != nil {
+		if err := os.WriteFile(p, b, 0700); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -256,7 +255,7 @@ func TestFromDisk(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := ioutil.WriteFile(p, b, 0700); err != nil {
+		if err := os.WriteFile(p, b, 0700); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -290,7 +289,7 @@ func TestFromDisk(t *testing.T) {
 	}
 	labels := []string{"hey", "you", "size%2Flgtm"}
 	for _, l := range labels {
-		if err := ioutil.WriteFile(filepath.Join(d, l), []byte{}, 0700); err != nil {
+		if err := os.WriteFile(filepath.Join(d, l), []byte{}, 0700); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -322,7 +321,7 @@ func TestFromDisk(t *testing.T) {
 	writeManifest(t, manifest, filepath.Join(d, "comments", manifestPath))
 
 	// Comments can also be plain text.
-	if err := ioutil.WriteFile(filepath.Join(d, "comments", "plain"), []byte("plaincomment"), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(d, "comments", "plain"), []byte("plaincomment"), 0700); err != nil {
 		t.Fatal(err)
 	}
 
@@ -396,7 +395,7 @@ func TestFromDisk(t *testing.T) {
 
 func readAndUnmarshal(t *testing.T, p string, v interface{}) {
 	t.Helper()
-	b, err := ioutil.ReadFile(p)
+	b, err := os.ReadFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +500,7 @@ func TestCommentsFromDisk(t *testing.T) {
 			fileNames := []string{}
 			for fileName, contents := range tt.files {
 				fileNames = append(fileNames, fileName)
-				if err := ioutil.WriteFile(filepath.Join(d, "comments", fileName), contents, 0700); err != nil {
+				if err := os.WriteFile(filepath.Join(d, "comments", fileName), contents, 0700); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -709,7 +708,7 @@ func TestLabelsFromDisk(t *testing.T) {
 			d := t.TempDir()
 
 			for _, l := range tt.args.fileNames {
-				if err := ioutil.WriteFile(filepath.Join(d, l), []byte{}, 0700); err != nil {
+				if err := os.WriteFile(filepath.Join(d, l), []byte{}, 0700); err != nil {
 					t.Errorf("Error creating label: %s", err)
 				}
 			}
@@ -759,7 +758,7 @@ func TestFromDiskPRShaWithNullHeadAndBase(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := ioutil.WriteFile(p, b, 0700); err != nil {
+		if err := os.WriteFile(p, b, 0700); err != nil {
 			t.Fatal(err)
 		}
 	}

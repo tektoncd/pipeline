@@ -20,7 +20,6 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -122,7 +121,7 @@ func labelsToDisk(path string, labels []*scm.Label) error {
 	for _, l := range labels {
 		name := url.QueryEscape(l.Name)
 		labelPath := filepath.Join(path, name)
-		if err := ioutil.WriteFile(labelPath, []byte{}, 0600); err != nil {
+		if err := os.WriteFile(labelPath, []byte{}, 0600); err != nil {
 			return err
 		}
 		manifest[name] = true
@@ -146,7 +145,7 @@ func refToDisk(name, path string, r scm.PullRequestBranch) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filepath.Join(path, name+".json"), b, 0600)
+	return os.WriteFile(filepath.Join(path, name+".json"), b, 0600)
 }
 
 func toDisk(path string, r interface{}, perm os.FileMode) error {
@@ -154,7 +153,7 @@ func toDisk(path string, r interface{}, perm os.FileMode) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, b, perm)
+	return os.WriteFile(path, b, perm)
 }
 
 // FromDisk outputs a PullRequest object from an on-disk representation at the specified path.
@@ -170,7 +169,7 @@ func FromDisk(path string, disableJSONComments bool) (*Resource, error) {
 	// If pr.json exists in output directory, preload r.PR
 	prPath := filepath.Join(path, "pr.json")
 	if _, err := os.Stat(prPath); err == nil {
-		b, err := ioutil.ReadFile(prPath)
+		b, err := os.ReadFile(prPath)
 		if err != nil {
 			return nil, err
 		}
@@ -244,7 +243,7 @@ func manifestFromDisk(path string) (Manifest, error) {
 }
 
 func commentsFromDisk(path string, disableStrictJSON bool) ([]*scm.Comment, Manifest, error) {
-	fis, err := ioutil.ReadDir(path)
+	fis, err := os.ReadDir(path)
 	if isNotExistError(err) {
 		return nil, nil, nil
 	}
@@ -256,7 +255,7 @@ func commentsFromDisk(path string, disableStrictJSON bool) ([]*scm.Comment, Mani
 		if fi.Name() == manifestPath {
 			continue
 		}
-		b, err := ioutil.ReadFile(filepath.Join(path, fi.Name()))
+		b, err := os.ReadFile(filepath.Join(path, fi.Name()))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -284,7 +283,7 @@ func commentsFromDisk(path string, disableStrictJSON bool) ([]*scm.Comment, Mani
 }
 
 func labelsFromDisk(path string) ([]*scm.Label, Manifest, error) {
-	fis, err := ioutil.ReadDir(path)
+	fis, err := os.ReadDir(path)
 	if isNotExistError(err) {
 		return nil, nil, nil
 	}
@@ -312,7 +311,7 @@ func labelsFromDisk(path string) ([]*scm.Label, Manifest, error) {
 }
 
 func statusesFromDisk(path string) ([]*scm.Status, error) {
-	fis, err := ioutil.ReadDir(path)
+	fis, err := os.ReadDir(path)
 	if isNotExistError(err) {
 		return nil, nil
 	}
@@ -322,7 +321,7 @@ func statusesFromDisk(path string) ([]*scm.Status, error) {
 
 	statuses := []*scm.Status{}
 	for _, fi := range fis {
-		b, err := ioutil.ReadFile(filepath.Join(path, fi.Name()))
+		b, err := os.ReadFile(filepath.Join(path, fi.Name()))
 		if err != nil {
 			return nil, err
 		}
@@ -336,7 +335,7 @@ func statusesFromDisk(path string) ([]*scm.Status, error) {
 }
 
 func refFromDisk(path, name string) (scm.PullRequestBranch, error) {
-	b, err := ioutil.ReadFile(filepath.Join(path, name))
+	b, err := os.ReadFile(filepath.Join(path, name))
 	if err != nil {
 		return scm.PullRequestBranch{}, err
 	}
