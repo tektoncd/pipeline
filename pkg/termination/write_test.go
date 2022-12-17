@@ -17,7 +17,6 @@ package termination
 
 import (
 	"errors"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -30,7 +29,7 @@ import (
 )
 
 func TestExistingFile(t *testing.T) {
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "tempFile")
+	tmpFile, err := os.CreateTemp(os.TempDir(), "tempFile")
 	if err != nil {
 		log.Fatal("Cannot create temporary file", err)
 	}
@@ -59,7 +58,7 @@ func TestExistingFile(t *testing.T) {
 		logger.Fatalf("Errot while writing message: %s", err)
 	}
 
-	if fileContents, err := ioutil.ReadFile(tmpFile.Name()); err != nil {
+	if fileContents, err := os.ReadFile(tmpFile.Name()); err != nil {
 		logger.Fatalf("Unexpected error reading %v: %v", tmpFile.Name(), err)
 	} else {
 		want := `[{"key":"key1","value":"hello"},{"key":"key2","value":"world"}]`
@@ -71,7 +70,7 @@ func TestExistingFile(t *testing.T) {
 
 func TestMaxSizeFile(t *testing.T) {
 	value := strings.Repeat("a", 4096)
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "tempFile")
+	tmpFile, err := os.CreateTemp(os.TempDir(), "tempFile")
 	if err != nil {
 		log.Fatal("Cannot create temporary file", err)
 	}
