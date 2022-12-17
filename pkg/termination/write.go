@@ -18,7 +18,6 @@ package termination
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 
 	v1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -34,7 +33,7 @@ const (
 func WriteMessage(path string, pro []v1beta1.PipelineResourceResult) error {
 	// if the file at path exists, concatenate the new values otherwise create it
 	// file at path already exists
-	fileContents, err := ioutil.ReadFile(path)
+	fileContents, err := os.ReadFile(path)
 	if err == nil {
 		var existingEntries []v1beta1.PipelineResourceResult
 		if err := json.Unmarshal(fileContents, &existingEntries); err == nil {
