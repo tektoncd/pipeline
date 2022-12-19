@@ -430,7 +430,6 @@ _EOF_
 	if len(gotSidecars) != 1 {
 		t.Errorf("Wanted 1 sidecar, got %v", len(gotSidecars))
 	}
-
 }
 
 func TestConvertScripts_Windows(t *testing.T) {
@@ -601,7 +600,6 @@ sidecar-1
 	if len(gotSidecars) != 1 {
 		t.Errorf("Wanted 1 sidecar, got %v", len(gotSidecars))
 	}
-
 }
 
 func TestConvertScripts_Windows_SidecarOnly(t *testing.T) {
@@ -649,5 +647,4 @@ sidecar-1
 	if len(gotSidecars) != 1 {
 		t.Errorf("Wanted 1 sidecar, got %v", len(gotSidecars))
 	}
-
 }

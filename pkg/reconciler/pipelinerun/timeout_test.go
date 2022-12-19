@@ -269,7 +269,6 @@ func TestTimeoutPipelineRun(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-
 			d := test.Data{
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pipelineRun},
 				TaskRuns:     tc.taskRuns,

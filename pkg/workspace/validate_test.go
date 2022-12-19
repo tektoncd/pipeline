@@ -82,7 +82,6 @@ func TestValidateBindingsValid(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestValidateBindingsInvalid(t *testing.T) {

@@ -96,7 +96,6 @@ func validateTaskRunResources(ctx context.Context, resources []TaskResourceBindi
 		if r.ResourceSpec != nil && r.ResourceSpec.Validate(ctx) != nil {
 			return r.ResourceSpec.Validate(ctx)
 		}
-
 	}
 	return nil
 }

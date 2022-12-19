@@ -329,7 +329,6 @@ func TestRecordPipelineRunDurationCount(t *testing.T) {
 			} else {
 				metricstest.CheckStatsNotReported(t, "pipelinerun_count")
 			}
-
 		})
 	}
 }
@@ -374,7 +373,6 @@ func TestRecordRunningPipelineRunsCount(t *testing.T) {
 		t.Errorf("RunningPipelineRuns: %v", err)
 	}
 	metricstest.CheckLastValueData(t, "running_pipelineruns_count", map[string]string{}, 1)
-
 }
 
 func unregisterMetrics() {

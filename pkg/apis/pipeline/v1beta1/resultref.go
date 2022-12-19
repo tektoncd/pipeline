@@ -171,7 +171,6 @@ func stripVarSubExpression(expression string) string {
 // - Output: "", "", 0, "", error
 // TODO: may use regex for each type to handle possible reference formats
 func parseExpression(substitutionExpression string) (string, string, int, string, error) {
-
 	if looksLikeResultRef(substitutionExpression) {
 		subExpressions := strings.Split(substitutionExpression, ".")
 		// For string result: tasks.<taskName>.results.<stringResultName>

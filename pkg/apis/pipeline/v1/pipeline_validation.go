@@ -309,7 +309,6 @@ func taskContainsResult(resultExpression string, pipelineTaskNames sets.String, 
 			if strings.HasPrefix(value, "finally") && !pipelineFinallyTaskNames.Has(pipelineTaskName) {
 				return false
 			}
-
 		}
 	}
 	return true

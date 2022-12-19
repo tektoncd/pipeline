@@ -767,5 +767,4 @@ func TestFindCyclesInDependencies(t *testing.T) {
 			}
 		})
 	}
-
 }

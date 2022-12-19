@@ -215,7 +215,6 @@ spec:
 	} else if exitcode := tr.Status.Steps[2].Terminated.ExitCode; exitcode != 1 {
 		t.Logf("step-canceled exited with exit code %d, expected exit code 1", exitcode)
 	}
-
 }
 
 // TestStepTimeoutWithWS is an integration test that will verify a Step can be timed out.
@@ -555,7 +554,6 @@ spec:
 			if err != nil {
 				t.Errorf("Error waiting for TaskRun %s to timeout: %s", name, err)
 			}
-
 		}(taskrunItem)
 	}
 	wg.Wait()

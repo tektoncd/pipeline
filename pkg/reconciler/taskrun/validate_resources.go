@@ -244,9 +244,7 @@ func validateTaskSpecRequestResources(taskSpec *v1beta1.TaskSpec) error {
 							return fmt.Errorf("Invalid request resource value: %v must be less or equal to limit %v", request.String(), limit.String())
 						}
 					}
-
 				}
-
 			}
 		}
 	}
@@ -533,7 +531,6 @@ func validateContainerParamArrayIndexing(c *corev1.Container, arrayParams map[st
 		}
 		if e.SecretRef != nil {
 			extractParamIndex(e.SecretRef.LocalObjectReference.Name, arrayParams, outofBoundParams)
-
 		}
 	}
 

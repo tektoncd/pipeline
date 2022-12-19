@@ -1252,7 +1252,6 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run running",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -1268,7 +1267,6 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run succeeded",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -1284,7 +1282,6 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: true,
 	}, {
-
 		name: "run failed",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -1300,7 +1297,6 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run failed: retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -1316,7 +1312,6 @@ func TestIsFailure(t *testing.T) {
 		},
 		want: true,
 	}, {
-
 		name: "run failed: no retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -1664,7 +1659,6 @@ func TestIsFailure(t *testing.T) {
 			if got := tc.rpt.isFailure(); got != tc.want {
 				t.Errorf("expected isFailure: %t but got %t", tc.want, got)
 			}
-
 		})
 	}
 }
@@ -3304,7 +3298,6 @@ func TestResolvedPipelineRunTask_IsFinalTask(t *testing.T) {
 	if d := cmp.Diff(true, state[1].IsFinalTask(facts)); d != "" {
 		t.Fatalf("Didn't get expected isFinallySkipped from finally task %s: %s", finallyTaskName, diff.PrintWantGot(d))
 	}
-
 }
 
 func TestGetTaskRunName(t *testing.T) {
@@ -3891,7 +3884,6 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run running",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -3907,7 +3899,6 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: true,
 	}, {
-
 		name: "run succeeded",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -3923,7 +3914,6 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run failed",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -3939,7 +3929,6 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run failed: retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -3955,7 +3944,6 @@ func TestIsSuccessful(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run failed: no retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -4296,7 +4284,6 @@ func TestIsSuccessful(t *testing.T) {
 			if got := tc.rpt.isSuccessful(); got != tc.want {
 				t.Errorf("expected isSuccessful: %t but got %t", tc.want, got)
 			}
-
 		})
 	}
 }
@@ -4327,7 +4314,6 @@ func TestIsRunning(t *testing.T) {
 		},
 		want: true,
 	}, {
-
 		name: "run running",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -4343,7 +4329,6 @@ func TestIsRunning(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run succeeded",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -4359,7 +4344,6 @@ func TestIsRunning(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run failed",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task"},
@@ -4375,7 +4359,6 @@ func TestIsRunning(t *testing.T) {
 		},
 		want: true,
 	}, {
-
 		name: "run failed: retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -4391,7 +4374,6 @@ func TestIsRunning(t *testing.T) {
 		},
 		want: false,
 	}, {
-
 		name: "run failed: no retries remaining",
 		rpt: ResolvedPipelineTask{
 			PipelineTask: &v1beta1.PipelineTask{Name: "task", Retries: 1},
@@ -4717,7 +4699,6 @@ func TestIsRunning(t *testing.T) {
 			if got := tc.rpt.IsRunning(); got != tc.want {
 				t.Errorf("expected IsRunning: %t but got %t", tc.want, got)
 			}
-
 		})
 	}
 }

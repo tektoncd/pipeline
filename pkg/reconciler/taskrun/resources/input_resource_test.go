@@ -107,7 +107,6 @@ var (
 )
 
 func setUp() {
-
 	rs := []*resourcev1alpha1.PipelineResource{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "the-git",

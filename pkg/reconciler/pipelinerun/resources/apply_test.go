@@ -3358,7 +3358,6 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestApplyTaskRunContext(t *testing.T) {

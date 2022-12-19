@@ -147,7 +147,6 @@ type ResultType int
 // of string, and then fail the running TaskRun because it doesn't know how to interpret
 // the string value that the TaskRun's entrypoint will emit when it completes.
 func (r *ResultType) UnmarshalJSON(data []byte) error {
-
 	var asInt int
 	var intErr error
 

@@ -232,7 +232,6 @@ func TestFromDiskWithoutComments(t *testing.T) {
 	if d := cmp.Diff(rsrc.PR.Head, head); d != "" {
 		t.Errorf("Get Head %s", diff.PrintWantGot(d))
 	}
-
 }
 
 func TestFromDisk(t *testing.T) {
@@ -774,5 +773,4 @@ func TestFromDiskPRShaWithNullHeadAndBase(t *testing.T) {
 	if rsrc.PR.Sha != expectedSha {
 		t.Errorf("FromDisk() returned sha `%s`, expected `%s`", rsrc.PR.Sha, expectedSha)
 	}
-
 }

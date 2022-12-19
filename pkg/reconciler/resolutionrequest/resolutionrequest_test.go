@@ -184,7 +184,6 @@ func TestReconcile(t *testing.T) {
 			}
 			if d := cmp.Diff(*tc.expectedStatus, reconciledRR.Status, ignoreLastTransitionTime); d != "" {
 				t.Errorf("ResolutionRequest status doesn't match %s", diff.PrintWantGot(d))
-
 			}
 		})
 	}

@@ -374,7 +374,6 @@ func TestDisableAffinityAssistant(t *testing.T) {
 }
 
 func TestGetAssistantAffinityMergedWithPodTemplateAffinity(t *testing.T) {
-
 	assistantPodAffinityTerm := corev1.WeightedPodAffinityTerm{
 		Weight: 100,
 		PodAffinityTerm: corev1.PodAffinityTerm{
@@ -515,6 +514,5 @@ spec:
 				t.Errorf("affinity diff: %s", diff.PrintWantGot(d))
 			}
 		})
-
 	}
 }

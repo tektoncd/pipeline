@@ -514,7 +514,6 @@ spec:
 	if err := WaitForPipelineRunState(ctx, c, prName, timeout, PipelineRunSucceed(prName), "PipelineRunSuccess", v1beta1Version); err != nil {
 		t.Fatalf("Error waiting for PipelineRun %s to finish: %s", prName, err)
 	}
-
 }
 
 // TestPipelineRunPending tests that a Pending PipelineRun is not run until the pending

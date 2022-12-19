@@ -104,5 +104,4 @@ spec:
 			t.Fatalf("task1 should have initialized a result \"result1\" to \"123\"")
 		}
 	}
-
 }

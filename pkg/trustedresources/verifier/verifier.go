@@ -89,7 +89,6 @@ func FromPolicy(ctx context.Context, k8s kubernetes.Interface, policy *v1alpha1.
 		return verifiers, ErrorEmptyPublicKeys
 	}
 	return verifiers, nil
-
 }
 
 // fromKeyRef parses the given keyRef, loads the key and returns an appropriate

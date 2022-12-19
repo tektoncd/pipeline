@@ -28,8 +28,7 @@ linters:
   - unconvert
   - depguard
   - unused
-    # TODO: enable whitespace linter
-    #- whitespace
+  - whitespace
 output:
   uniq-by-line: false
 issues:

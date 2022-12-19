@@ -87,7 +87,6 @@ func getClaimName(w v1beta1.WorkspaceBinding, ownerReference metav1.OwnerReferen
 }
 
 func (c *Reconciler) cleanupAffinityAssistants(ctx context.Context, pr *v1beta1.PipelineRun) error {
-
 	// omit cleanup if the feature is disabled
 	if c.isAffinityAssistantDisabled(ctx) {
 		return nil
@@ -187,7 +186,6 @@ func affinityAssistantStatefulSet(name string, pr *v1beta1.PipelineRun, claimNam
 						Name: "workspace",
 						VolumeSource: corev1.VolumeSource{
 							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-
 								// A Pod mounting a PersistentVolumeClaim that has a StorageClass with
 								// volumeBindingMode: Immediate
 								// the PV is allocated on a Node first, and then the pod need to be

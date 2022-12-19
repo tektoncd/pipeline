@@ -113,7 +113,6 @@ pipelineTaskName: task-4
 }
 
 func TestUpdatePipelineRunStatusFromTaskRuns(t *testing.T) {
-
 	prUID := types.UID("11111111-1111-1111-1111-111111111111")
 
 	taskRunsPRStatusData := getUpdateStatusTaskRunsData(t)

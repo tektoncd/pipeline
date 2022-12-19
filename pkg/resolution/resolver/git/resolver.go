@@ -267,7 +267,6 @@ func (r *Resolver) resolveAnonymousGit(ctx context.Context, params map[string]st
 		URL:      params[urlParam],
 		Path:     params[pathParam],
 	}, nil
-
 }
 
 var _ framework.ConfigWatcher = &Resolver{}

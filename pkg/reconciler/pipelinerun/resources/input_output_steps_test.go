@@ -267,7 +267,6 @@ func TestGetInputSteps(t *testing.T) {
 			if d := cmp.Diff(tc.expectedtaskInputResources, taskInputResources, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
 				t.Errorf("error comparing task resource inputs %s", diff.PrintWantGot(d))
 			}
-
 		})
 	}
 }

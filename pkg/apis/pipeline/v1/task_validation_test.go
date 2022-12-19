@@ -1518,7 +1518,6 @@ func TestStepOnError(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 // TestIncompatibleAPIVersions exercises validation of fields that

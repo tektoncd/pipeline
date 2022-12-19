@@ -157,7 +157,6 @@ func TestValidateParamsMissing(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected missing name err")
 	}
-
 }
 
 func TestResolveDisabled(t *testing.T) {
@@ -437,7 +436,6 @@ func TestResolve(t *testing.T) {
 						},
 						EntryPoint: tc.args.name,
 					}
-
 				} else {
 					expectedError = createError(tc.args.bundle, tc.expectedErrMessage)
 					expectedStatus.Status.Conditions[0].Message = expectedError.Error()
@@ -445,7 +443,6 @@ func TestResolve(t *testing.T) {
 			}
 
 			frtesting.RunResolverReconcileTest(ctx, t, d, resolver, request, expectedStatus, expectedError)
-
 		})
 	}
 }

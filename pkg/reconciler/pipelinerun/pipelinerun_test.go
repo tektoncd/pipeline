@@ -540,7 +540,6 @@ spec:
 
 	// A PVC should have been created to deal with output -> input linking
 	ensurePVCCreated(prt.TestAssets.Ctx, t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
-
 }
 
 // TestReconcile_CustomTask runs "Reconcile" on a PipelineRun with one Custom
@@ -3050,7 +3049,6 @@ func TestReconcileCancelledFailsTaskRunCancellation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			// TestReconcileCancelledFailsTaskRunCancellation runs "Reconcile" on a PipelineRun with a single TaskRun.
 			// The TaskRun cannot be cancelled. Check that the pipelinerun cancel fails, that reconcile fails and
 			// an event is generated
@@ -3468,7 +3466,6 @@ spec:
 		if d := cmp.Diff(actual, expectedTaskRuns[i], ignoreResourceVersion, ignoreTypeMeta); d != "" {
 			t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRuns[i], diff.PrintWantGot(d))
 		}
-
 	}
 }
 
@@ -4409,7 +4406,6 @@ spec:
 		for _, ws := range tr.Spec.Workspaces {
 			propagatedAffinityAssistantName := tr.Annotations["pipeline.tekton.dev/affinity-assistant"]
 			if ws.PersistentVolumeClaim != nil {
-
 				if propagatedAffinityAssistantName != expectedAffinityAssistantName1 && propagatedAffinityAssistantName != expectedAffinityAssistantName2 {
 					t.Fatalf("found taskRun with PVC workspace, but with unexpected AffinityAssistantAnnotation value; expected %s or %s, got %s", expectedAffinityAssistantName1, expectedAffinityAssistantName2, propagatedAffinityAssistantName)
 				}
@@ -4631,7 +4627,6 @@ spec:
 	hasSeenWorkspaceWithRunSubPathAndPipelineTaskSubPath1 := false
 	for _, tr := range taskRuns.Items {
 		for _, ws := range tr.Spec.Workspaces {
-
 			if ws.PersistentVolumeClaim == nil {
 				t.Fatalf("found taskRun workspace that is not PersistentVolumeClaim workspace. Did only expect PersistentVolumeClaims workspaces")
 			}
@@ -5256,7 +5251,6 @@ status:
 	if d := cmp.Diff(expectedPr, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreCompletionTime, ignoreStartTime); d != "" {
 		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
 	}
-
 }
 
 func TestReconcileWithPipelineResults(t *testing.T) {
@@ -5578,7 +5572,6 @@ status:
 	if d := cmp.Diff(expectedPr, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreCompletionTime, ignoreStartTime); d != "" {
 		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
 	}
-
 }
 
 func TestReconcileWithPipelineResults_OnFailedPipelineRun(t *testing.T) {
@@ -6360,7 +6353,6 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		pipelineRunStatusFalse: true,
 	}, {
-
 		// pipeline run should result in error when a dag task is successful but the final task fails
 
 		// pipelineRunName - "pipeline-run-with-dag-successful-but-final-failing"
@@ -6426,7 +6418,6 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		pipelineRunStatusFalse: true,
 	}, {
-
 		// pipeline run should result in error when a dag task and final task both are executed and resulted in failure
 
 		// pipelineRunName - "pipeline-run-with-dag-and-final-failing"
@@ -6492,7 +6483,6 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		pipelineRunStatusFalse: true,
 	}, {
-
 		// pipeline run should not schedule final tasks until dag tasks are done i.e.
 		// dag task 1 fails but dag task 2 is still running, pipeline run should not schedule and create task run for final task
 
@@ -6565,7 +6555,6 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 
 		pipelineRunStatusUnknown: true,
 	}, {
-
 		// pipeline run should not schedule final tasks until dag tasks are done i.e.
 		// dag task is still running and no other dag task available to schedule,
 		// pipeline run should not schedule and create task run for final task
@@ -6681,7 +6670,6 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 			if d := cmp.Diff(reconciledRun.Status.TaskRuns, tt.expectedTaskRuns); d != "" {
 				t.Fatalf("Expected PipelineRunTaskRun status to match TaskRun(s) status, but got a mismatch for %s: %s", tt.name, d)
 			}
-
 		})
 	}
 }
@@ -8301,7 +8289,6 @@ spec:
 			}
 		})
 	}
-
 }
 
 func TestGetTaskrunWorkspaces_Success(t *testing.T) {
@@ -11088,7 +11075,6 @@ spec:
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
 
 	checkPipelineRunConditionStatusAndReason(t, reconciledRun, corev1.ConditionUnknown, v1beta1.PipelineRunReasonRunning.String())
-
 }
 
 func TestReconcile_verifyResolvedPipeline_Error(t *testing.T) {

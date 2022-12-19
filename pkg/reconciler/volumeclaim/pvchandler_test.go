@@ -37,7 +37,6 @@ var _ PvcHandler = (*defaultPVCHandler)(nil)
 // TestCreatePersistentVolumeClaimsForWorkspaces tests that given a TaskRun with volumeClaimTemplate workspace,
 // a PVC is created, with the expected name and that it has the expected OwnerReference.
 func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
-
 	// given
 
 	// 2 workspaces with volumeClaimTemplate
@@ -119,7 +118,6 @@ func TestCreatePersistentVolumeClaimsForWorkspaces(t *testing.T) {
 // TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata tests that given a volumeClaimTemplate workspace
 // without a metadata part, a PVC is created, with the expected name.
 func TestCreatePersistentVolumeClaimsForWorkspacesWithoutMetadata(t *testing.T) {
-
 	// given
 
 	// workspace with volumeClaimTemplate without metadata

@@ -138,7 +138,6 @@ func TestReconcile_CloudEvents(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			objectStatus := duckv1.Status{
 				Conditions: []apis.Condition{},
 			}
@@ -202,7 +201,6 @@ func TestReconcile_CloudEvents(t *testing.T) {
 }
 
 func TestReconcile_CloudEvents_Disabled(t *testing.T) {
-
 	cmSinkOn := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetDefaultsConfigName(), Namespace: system.Namespace()},
 		Data: map[string]string{
@@ -243,7 +241,6 @@ func TestReconcile_CloudEvents_Disabled(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-
 			objectStatus := duckv1.Status{
 				Conditions: []apis.Condition{
 					{

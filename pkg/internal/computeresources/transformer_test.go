@@ -944,7 +944,6 @@ func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
 		t.Errorf("Expected %d init containers, got %d", len(want.InitContainers), len(got.InitContainers))
 	} else {
 		for i, c := range got.InitContainers {
-
 			// compare name only if present in "want" so we can be sure which container gets which resources
 			if want.InitContainers[i].Name != "" {
 				if d := cmp.Diff(want.InitContainers[i].Name, c.Name); d != "" {
@@ -963,7 +962,6 @@ func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
 		t.Errorf("Expected %d containers, got %d", len(want.Containers), len(got.Containers))
 	} else {
 		for i, c := range got.Containers {
-
 			// compare name only if present in "want" so we can be sure which container gets which resources
 			if want.Containers[i].Name != "" {
 				if d := cmp.Diff(want.Containers[i].Name, c.Name); d != "" {

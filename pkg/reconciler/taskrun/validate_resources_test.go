@@ -879,7 +879,6 @@ func TestValidateResult(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestValidateParamArrayIndex(t *testing.T) {
@@ -1075,5 +1074,4 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			}
 		})
 	}
-
 }

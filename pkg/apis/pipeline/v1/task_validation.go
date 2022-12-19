@@ -445,7 +445,6 @@ func validateStepObjectUsageAsWhole(step Step, prefix string, vars sets.String) 
 	}
 	for i, arg := range step.Args {
 		errs = errs.Also(validateTaskNoObjectReferenced(arg, prefix, vars).ViaFieldIndex("args", i))
-
 	}
 	for _, env := range step.Env {
 		errs = errs.Also(validateTaskNoObjectReferenced(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
@@ -475,7 +474,6 @@ func validateStepArrayUsage(step Step, prefix string, vars sets.String) *apis.Fi
 	}
 	for i, arg := range step.Args {
 		errs = errs.Also(validateTaskArraysIsolated(arg, prefix, vars).ViaFieldIndex("args", i))
-
 	}
 	for _, env := range step.Env {
 		errs = errs.Also(validateTaskNoArrayReferenced(env.Value, prefix, vars).ViaFieldKey("env", env.Name))

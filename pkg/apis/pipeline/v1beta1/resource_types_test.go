@@ -141,7 +141,6 @@ func TestApplyTaskModifier_AlreadyAdded(t *testing.T) {
 }
 
 func TestPipelineResourceResult_UnmarshalJSON(t *testing.T) {
-
 	testcases := []struct {
 		name string
 		data string

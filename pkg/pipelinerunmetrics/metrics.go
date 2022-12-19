@@ -209,7 +209,6 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 // count for number of PipelineRuns succeed or failed
 // returns an error if its failed to log the metrics
 func (r *Recorder) DurationAndCount(pr *v1beta1.PipelineRun, beforeCondition *apis.Condition) error {
-
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", pr.Name)
 	}

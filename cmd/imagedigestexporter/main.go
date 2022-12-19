@@ -73,7 +73,6 @@ func main() {
 			Value:        imageResource.URL,
 			ResourceName: imageResource.Name,
 		})
-
 	}
 
 	if err := termination.WriteMessage(*terminationMessagePath, output); err != nil {

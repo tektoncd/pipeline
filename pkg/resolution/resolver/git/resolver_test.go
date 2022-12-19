@@ -94,7 +94,6 @@ func TestValidateParamsNotEnabled(t *testing.T) {
 }
 
 func TestValidateParams_Failure(t *testing.T) {
-
 	testCases := []struct {
 		name        string
 		params      map[string]string

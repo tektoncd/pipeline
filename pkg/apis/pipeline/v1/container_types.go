@@ -22,7 +22,6 @@ import (
 
 // Step runs a subcomponent of a Task
 type Step struct {
-
 	// Name of the Step specified as a DNS_LABEL.
 	// Each Step in a Task must have a unique name.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
@@ -191,7 +190,6 @@ func (s *Step) SetContainerFields(c corev1.Container) {
 
 // StepTemplate is a template for a Step
 type StepTemplate struct {
-
 	// Image reference name.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
 	// This field is optional to allow higher level config management to default or override
@@ -308,7 +306,6 @@ func (s *StepTemplate) ToK8sContainer() *corev1.Container {
 
 // Sidecar has nearly the same data structure as Step but does not have the ability to timeout.
 type Sidecar struct {
-
 	// Name of the Sidecar specified as a DNS_LABEL.
 	// Each Sidecar in a Task must have a unique name (DNS_LABEL).
 	// Cannot be updated.

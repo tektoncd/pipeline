@@ -178,7 +178,6 @@ func TestEventForTaskRun(t *testing.T) {
 
 	for _, c := range taskRunTests {
 		t.Run(c.desc, func(t *testing.T) {
-
 			got, err := eventForTaskRun(c.taskRun)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
@@ -236,7 +235,6 @@ func TestEventForPipelineRun(t *testing.T) {
 
 	for _, c := range pipelineRunTests {
 		t.Run(c.desc, func(t *testing.T) {
-
 			got, err := eventForPipelineRun(c.pipelineRun)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
@@ -294,7 +292,6 @@ func TestEventForRun(t *testing.T) {
 
 	for _, c := range runTests {
 		t.Run(c.desc, func(t *testing.T) {
-
 			got, err := eventForRun(c.run)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
@@ -352,7 +349,6 @@ func TestEventForCustomRun(t *testing.T) {
 
 	for _, c := range runTests {
 		t.Run(c.desc, func(t *testing.T) {
-
 			got, err := eventForCustomRun(c.run)
 			if err != nil {
 				t.Fatalf("I did not expect an error but I got %s", err)
