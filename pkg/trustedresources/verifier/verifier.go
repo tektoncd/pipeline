@@ -26,6 +26,10 @@ import (
 
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"        // imported to execute init function to register aws kms
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"      // imported to execute init function to register azure kms
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/gcp"        // imported to execute init function to register gcp kms
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/hashivault" // imported to execute init function to register hashivault kms
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	v1 "k8s.io/api/core/v1"
