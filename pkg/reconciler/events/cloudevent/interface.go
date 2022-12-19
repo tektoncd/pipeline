@@ -24,7 +24,6 @@ import (
 
 // objectWithCondition is implemented by TaskRun, PipelineRun and Run
 type objectWithCondition interface {
-
 	// Object requires GetObjectKind() and DeepCopyObject()
 	runtime.Object
 

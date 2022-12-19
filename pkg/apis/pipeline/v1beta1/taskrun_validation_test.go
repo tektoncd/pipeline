@@ -956,7 +956,6 @@ func TestResources_Validate(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestResources_Invalidate(t *testing.T) {

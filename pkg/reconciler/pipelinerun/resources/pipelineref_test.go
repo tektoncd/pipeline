@@ -120,7 +120,6 @@ func TestLocalPipelineRef(t *testing.T) {
 			if resolvedConfigSource != nil {
 				t.Errorf("expected configsource is nil, but got %v", resolvedConfigSource)
 			}
-
 		})
 	}
 }

@@ -110,7 +110,6 @@ var (
 // to log the TaskRun related metrics
 func NewRecorder(ctx context.Context) (*Recorder, error) {
 	once.Do(func() {
-
 		r = &Recorder{
 			initialized: true,
 
@@ -281,7 +280,6 @@ func nilInsertTag(task, taskrun string) []tag.Mutator {
 // count for number of TaskRuns succeed or failed
 // returns an error if its failed to log the metrics
 func (r *Recorder) DurationAndCount(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition) error {
-
 	if !r.initialized {
 		return fmt.Errorf("ignoring the metrics recording for %s , failed to initialize the metrics recorder", tr.Name)
 	}

@@ -48,7 +48,6 @@ func TestSend_Success(t *testing.T) {
 		if err != nil {
 			t.Fatalf("got err %v", err)
 		}
-
 	}
 	fakeClient.CheckCloudEventsUnordered(t, "send cloud events", wantEvents)
 }
@@ -70,5 +69,4 @@ func TestSend_Error(t *testing.T) {
 	if err == nil {
 		t.Fatalf("want err but got nil")
 	}
-
 }

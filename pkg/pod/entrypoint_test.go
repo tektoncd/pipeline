@@ -488,7 +488,6 @@ func TestEntryPointOnError(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestEntryPointStepOutputConfigs(t *testing.T) {

@@ -177,9 +177,7 @@ func TestGetImageWithImagePullSecrets(t *testing.T) {
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("get() = %+v, %v, wantErr %t", i, err, tc.wantErr)
 			}
-
 		})
-
 	}
 }
 

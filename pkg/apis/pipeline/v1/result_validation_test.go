@@ -175,7 +175,6 @@ func TestResultsValidateError(t *testing.T) {
 			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
 				t.Errorf("TaskSpec.Validate() errors diff %s", diff.PrintWantGot(d))
 			}
-
 		})
 	}
 }

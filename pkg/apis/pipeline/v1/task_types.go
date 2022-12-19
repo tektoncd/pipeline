@@ -54,7 +54,6 @@ func (*Task) GetGroupVersionKind() schema.GroupVersionKind {
 
 // TaskSpec defines the desired state of Task.
 type TaskSpec struct {
-
 	// Params is a list of input parameters required to run the task. Params
 	// must be supplied as inputs in TaskRuns unless they declare a default
 	// value.

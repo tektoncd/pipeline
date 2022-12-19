@@ -39,7 +39,6 @@ var (
 )
 
 func outputTestResourceSetup() {
-
 	rs := []*resourcev1alpha1.PipelineResource{{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "source-git",
@@ -158,7 +157,6 @@ func outputTestResourceSetup() {
 }
 
 func TestValidOutputResources(t *testing.T) {
-
 	for _, c := range []struct {
 		name        string
 		desc        string

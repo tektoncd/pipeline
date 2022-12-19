@@ -315,7 +315,6 @@ func taskContainsResult(resultExpression string, pipelineTaskNames sets.String, 
 			if strings.HasPrefix(value, "finally") && !pipelineFinallyTaskNames.Has(pipelineTaskName) {
 				return false
 			}
-
 		}
 	}
 	return true
@@ -425,7 +424,6 @@ func validateDeclaredResources(resources []PipelineDeclaredResource, tasks []Pip
 				required = append(required, output.Resource)
 			}
 		}
-
 	}
 	for _, t := range finalTasks {
 		if t.Resources != nil {

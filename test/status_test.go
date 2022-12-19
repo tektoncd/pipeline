@@ -230,7 +230,6 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	if d := cmp.Diff(expectedTaskRunProvenance, taskRun.Status.Provenance); d != "" {
 		t.Errorf("provenance did not match: %s", diff.PrintWantGot(d))
 	}
-
 }
 
 func getExampleTask(t *testing.T, taskName, namespace string) *v1beta1.Task {

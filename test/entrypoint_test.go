@@ -69,5 +69,4 @@ spec:
 	if err := WaitForTaskRunState(ctx, c, epTaskRunName, TaskRunSucceed(epTaskRunName), "TaskRunSuccess", v1beta1Version); err != nil {
 		t.Errorf("Error waiting for TaskRun to finish successfully: %s", err)
 	}
-
 }

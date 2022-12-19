@@ -72,7 +72,6 @@ func TestGet_Successful(t *testing.T) {
 		if _, _, err := resolver.Get(ctx, "foo", "bar"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-
 	}
 }
 

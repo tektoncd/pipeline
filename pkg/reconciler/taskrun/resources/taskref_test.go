@@ -529,7 +529,6 @@ echo hello
 	if d := cmp.Diff(sampleConfigSource, actualConfigSource); d != "" {
 		t.Errorf("configSources did not match: %s", diff.PrintWantGot(d))
 	}
-
 }
 
 func TestGetTaskFunc_RemoteResolution(t *testing.T) {

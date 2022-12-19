@@ -35,7 +35,6 @@ func AddOutputImageDigestExporter(
 	taskSpec *v1beta1.TaskSpec,
 	gr GetResource,
 ) error {
-
 	output := []*image.Resource{}
 	if tr.Spec.Resources != nil && len(tr.Spec.Resources.Outputs) > 0 {
 		for _, trb := range tr.Spec.Resources.Outputs {

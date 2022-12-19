@@ -239,7 +239,6 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 				if d := cmp.Diff(tc.ptExpected[i], isDone); d != "" {
 					t.Errorf("Didn't get expected (ResolvedPipelineTask) isDone %s", diff.PrintWantGot(d))
 				}
-
 			}
 		})
 	}
@@ -572,7 +571,6 @@ func TestGetNextTasks(t *testing.T) {
 }
 
 func TestGetNextTaskWithRetries(t *testing.T) {
-
 	var taskCancelledByStatusState = PipelineRunState{{
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
@@ -1664,7 +1662,6 @@ func TestPipelineRunState_GetFinalTasksAndNames(t *testing.T) {
 }
 
 func TestGetPipelineConditionStatus(t *testing.T) {
-
 	var taskRetriedState = PipelineRunState{{
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
@@ -1978,7 +1975,6 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 }
 
 func TestGetPipelineConditionStatus_WithFinalTasks(t *testing.T) {
-
 	// pipeline state with one DAG successful, one final task failed
 	dagSucceededFinalFailed := PipelineRunState{{
 		TaskRunName:  "task0taskrun",

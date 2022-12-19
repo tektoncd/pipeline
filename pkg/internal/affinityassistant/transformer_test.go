@@ -90,7 +90,6 @@ func TestNewTransformer(t *testing.T) {
 }
 
 func TestNewTransformerWithNodeAffinity(t *testing.T) {
-
 	nodeAffinity := &corev1.NodeAffinity{
 		RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
 			NodeSelectorTerms: []corev1.NodeSelectorTerm{{

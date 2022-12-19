@@ -74,7 +74,6 @@ func TestFromConfigMap_Error(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestFromPolicy_Success(t *testing.T) {

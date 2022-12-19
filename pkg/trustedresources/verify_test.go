@@ -67,7 +67,6 @@ func TestVerifyInterface_Task_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("VerifyInterface() get err %v", err)
 	}
-
 }
 
 func TestVerifyInterface_Task_Error(t *testing.T) {
@@ -123,7 +122,6 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestVerifyTask_Configmap_Success(t *testing.T) {
@@ -144,7 +142,6 @@ func TestVerifyTask_Configmap_Success(t *testing.T) {
 	if err != nil {
 		t.Errorf("VerifyTask() get err %v", err)
 	}
-
 }
 
 func TestVerifyTask_Configmap_Error(t *testing.T) {
@@ -194,7 +191,6 @@ func TestVerifyTask_Configmap_Error(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
@@ -493,8 +489,7 @@ func TestPrepareObjectMeta(t *testing.T) {
 			Annotations: map[string]string{"foo": "bar"},
 		},
 		wantErr: true,
-	},
-	}
+	}}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -512,8 +507,6 @@ func TestPrepareObjectMeta(t *testing.T) {
 			if signature == nil {
 				t.Fatal("signature is not extracted")
 			}
-
 		})
 	}
-
 }

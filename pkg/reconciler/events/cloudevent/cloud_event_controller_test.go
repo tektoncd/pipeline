@@ -546,7 +546,6 @@ func TestInitializeCloudEvents(t *testing.T) {
 }
 
 func TestSendCloudEventWithRetries(t *testing.T) {
-
 	objectStatus := duckv1.Status{
 		Conditions: []apis.Condition{{
 			Type:   apis.ConditionSucceeded,
@@ -630,7 +629,6 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 }
 
 func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
-
 	tests := []struct {
 		name       string
 		object     objectWithCondition
@@ -667,7 +665,6 @@ func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 }
 
 func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
-
 	ctx := setupFakeContext(t, FakeClientBehaviour{}, false, 0)
 	err := SendCloudEventWithRetries(ctx, &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{}})
 	if err == nil {
@@ -679,7 +676,6 @@ func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
 }
 
 func TestEmitCloudEvents(t *testing.T) {
-
 	object := &v1alpha1.Run{
 		ObjectMeta: metav1.ObjectMeta{
 			SelfLink: "/run/test1",

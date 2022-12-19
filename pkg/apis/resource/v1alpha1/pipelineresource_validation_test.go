@@ -168,7 +168,6 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		}, {
 			name: "missing spec",
 			res: &v1alpha1.PipelineResource{
-
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "temp",
 				},
@@ -300,5 +299,4 @@ func TestAllowedGCSStorageType(t *testing.T) {
 			}
 		})
 	}
-
 }

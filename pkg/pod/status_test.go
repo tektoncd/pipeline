@@ -92,7 +92,6 @@ func TestSetTaskRunStatusBasedOnStepStatus(t *testing.T) {
 			if merr != nil {
 				t.Errorf("setTaskRunStatusBasedOnStepStatus: %s", merr)
 			}
-
 		})
 	}
 }
@@ -169,7 +168,6 @@ func TestSetTaskRunStatusBasedOnStepStatus_sidecar_logs(t *testing.T) {
 			if d := cmp.Diff(wantErr.Error(), merr.Error()); d != "" {
 				t.Errorf("Got unexpected error  %s", diff.PrintWantGot(d))
 			}
-
 		})
 	}
 }
@@ -1385,11 +1383,9 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestMakeRunStatusJSONError(t *testing.T) {
-
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod",
@@ -1498,7 +1494,6 @@ func TestMakeRunStatusJSONError(t *testing.T) {
 	if d := cmp.Diff(wantTr, gotTr, ignoreVolatileTime, ensureTimeNotNil); d != "" {
 		t.Errorf("Diff %s", diff.PrintWantGot(d))
 	}
-
 }
 
 func TestSidecarsReady(t *testing.T) {

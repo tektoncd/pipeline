@@ -747,7 +747,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 // pipeline run state, and starts them
 // after all DAG tasks are done, it's responsible for scheduling final tasks and start executing them
 func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.PipelineRun, pipelineRunFacts *resources.PipelineRunFacts, as artifacts.ArtifactStorageInterface) error {
-
 	logger := logging.FromContext(ctx)
 	recorder := controller.GetEventRecorder(ctx)
 
@@ -822,7 +821,6 @@ func (c *Reconciler) runNextSchedulableTask(ctx context.Context, pr *v1beta1.Pip
 				recorder.Eventf(pr, corev1.EventTypeWarning, "TaskRunCreationFailed", "Failed to create TaskRun %q: %v", rpt.TaskRunName, err)
 				return fmt.Errorf("error creating TaskRun called %s for PipelineTask %s from PipelineRun %s: %w", rpt.TaskRunName, rpt.PipelineTask.Name, pr.Name, err)
 			}
-
 		}
 	}
 	return nil
@@ -1135,7 +1133,6 @@ func getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *res
 				return nil, "", fmt.Errorf("expected workspace %q to be provided by pipelinerun for pipeline task %q", pipelineWorkspace, rpt.PipelineTask.Name)
 			}
 		}
-
 	}
 	return workspaces, pipelinePVCWorkspaceName, nil
 }
@@ -1317,7 +1314,6 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1beta1.PipelineRun,
 
 		// Propagate annotations from Pipeline to PipelineRun. PipelineRun annotations take precedences over Pipeline.
 		pr.ObjectMeta.Annotations = kmap.Union(meta.Annotations, pr.ObjectMeta.Annotations)
-
 	}
 
 	// Propagate ConfigSource from remote resolution to PipelineRun Status

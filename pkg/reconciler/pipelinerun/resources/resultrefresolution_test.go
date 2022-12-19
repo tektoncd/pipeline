@@ -173,7 +173,6 @@ var pipelineRunState = PipelineRunState{{
 }}
 
 func TestTaskParamResolver_ResolveResultRefs(t *testing.T) {
-
 	for _, tt := range []struct {
 		name             string
 		pipelineRunState PipelineRunState

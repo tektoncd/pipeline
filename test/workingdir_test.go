@@ -166,5 +166,4 @@ spec:
 			t.Logf("Found a working dir container called `%s` in `%s`  when it should have been excluded:", stat.Name, tr.Status.PodName)
 		}
 	}
-
 }

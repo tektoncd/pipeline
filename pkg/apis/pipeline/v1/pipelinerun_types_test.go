@@ -228,7 +228,6 @@ func TestPipelineRunTimeouts(t *testing.T) {
 		expectedTasksTimeout:   &metav1.Duration{Duration: 10 * time.Minute},
 		expectedFinallyTimeout: &metav1.Duration{Duration: 50 * time.Minute},
 	}, {
-
 		name:                   "pipeline and finally timeout set",
 		timeouts:               &v1.TimeoutFields{Pipeline: &metav1.Duration{Duration: time.Hour}, Finally: &metav1.Duration{Duration: 10 * time.Minute}},
 		expectedTasksTimeout:   &metav1.Duration{Duration: 50 * time.Minute},

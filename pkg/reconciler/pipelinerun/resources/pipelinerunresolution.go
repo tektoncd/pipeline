@@ -354,7 +354,6 @@ func (t ResolvedPipelineTask) isScheduled() bool {
 func (t ResolvedPipelineTask) isStarted() bool {
 	if t.IsCustomTask() {
 		return t.RunObject != nil && t.RunObject.GetStatusCondition().GetCondition(apis.ConditionSucceeded) != nil
-
 	}
 	return t.TaskRun != nil && t.TaskRun.Status.GetCondition(apis.ConditionSucceeded) != nil
 }
@@ -556,7 +555,6 @@ func (t *ResolvedPipelineTask) IsFinallySkipped(facts *PipelineRunFacts) TaskSki
 		IsSkipped:      skippingReason != v1beta1.None,
 		SkippingReason: skippingReason,
 	}
-
 }
 
 // GetRun is a function that will retrieve a Run by name.
@@ -744,7 +742,6 @@ func (t *ResolvedPipelineTask) resolveTaskResources(
 	providedResources map[string]*resourcev1alpha1.PipelineResource,
 	taskRun *v1beta1.TaskRun,
 ) error {
-
 	spec, taskName, kind, err := resolveTask(ctx, taskRun, getTask, pipelineTask)
 	if err != nil {
 		return err

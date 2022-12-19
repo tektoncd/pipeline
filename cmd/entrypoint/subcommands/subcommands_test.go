@@ -58,7 +58,6 @@ func TestProcessSuccessfulSubcommands(t *testing.T) {
 			t.Errorf("unexpected return value from step-init command w/ params: %v", returnValue)
 		}
 	})
-
 }
 
 // TestProcessIgnoresNonSubcommands checks that any input to Process which
@@ -84,7 +83,6 @@ func TestProcessIgnoresNonSubcommands(t *testing.T) {
 	})
 
 	t.Run(DecodeScriptCommand, func(t *testing.T) {
-
 		if err := Process([]string{DecodeScriptCommand}); err != nil {
 			t.Errorf("unexpected error processing command with 0 additional args: %v", err)
 		}

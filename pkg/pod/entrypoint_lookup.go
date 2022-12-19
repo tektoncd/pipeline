@@ -57,7 +57,6 @@ func resolveEntrypoints(ctx context.Context, cache EntrypointCache, namespace, s
 	// can skip lookups while resolving the same TaskRun.
 	localCache := map[name.Reference]imageData{}
 	for i, s := range steps {
-
 		// If the command is already specified, there's nothing to resolve.
 		if len(s.Command) > 0 {
 			continue

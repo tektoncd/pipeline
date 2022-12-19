@@ -151,7 +151,6 @@ spec:
 				if taskrunItem.Spec.StatusMessage != v1beta1.TaskRunCancelledByPipelineMsg {
 					t.Fatalf("Status message is set to %s while it should be %s.", taskrunItem.Spec.StatusMessage, v1beta1.TaskRunCancelledByPipelineMsg)
 				}
-
 			}
 
 			matchKinds := map[string][]string{"PipelineRun": {pipelineRun.Name}}

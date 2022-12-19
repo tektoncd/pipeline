@@ -1708,7 +1708,6 @@ spec:
 			}
 		})
 	}
-
 }
 
 func TestReconcileGetTaskError(t *testing.T) {
@@ -2739,7 +2738,6 @@ status:
 }
 
 func TestReconcileCloudEvents(t *testing.T) {
-
 	taskRunWithNoCEResources := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-no-ce-resources
@@ -4334,7 +4332,6 @@ spec:
 	if reconciledRun.Status.PodName != podName {
 		t.Fatalf("First reconcile created pod %s but TaskRun now has another pod name %s", podName, reconciledRun.Status.PodName)
 	}
-
 }
 
 func TestStopSidecars_ClientGetPodForTaskSpecWithSidecars(t *testing.T) {
@@ -4561,7 +4558,6 @@ func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
@@ -4917,7 +4913,6 @@ status:
 			if condition.Type != apis.ConditionSucceeded || condition.Reason != tc.reason {
 				t.Errorf("Expected TaskRun to terminate with %s reason. Final conditions were:\n%#v", tc.reason, tr.Status.Conditions)
 			}
-
 		})
 	}
 }
@@ -5083,7 +5078,6 @@ status:
 			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != tc.wantFailedReason {
 				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", tc.wantFailedReason, tr.Status.Conditions)
 			}
-
 		})
 	}
 }
@@ -5223,7 +5217,6 @@ status:
 		t.Errorf("Error reconciling TaskRun. Got error %v", err)
 	}
 	return
-
 }
 
 func TestReconcile_verifyResolvedTask_Error(t *testing.T) {
@@ -5323,7 +5316,6 @@ status:
 			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != podconvert.ReasonResourceVerificationFailed {
 				t.Errorf("Expected TaskRun to fail with reason \"%s\" but it did not. Final conditions were:\n%#v", podconvert.ReasonResourceVerificationFailed, tr.Status.Conditions)
 			}
-
 		})
 	}
 }

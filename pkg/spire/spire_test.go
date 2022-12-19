@@ -290,7 +290,6 @@ func TestSpire_CheckTamper(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-
 		for _, tr := range testTaskRuns() {
 			if !tt.skipAnnotation {
 				err := cc.AppendStatusInternalAnnotation(ctx, tr)
@@ -326,9 +325,7 @@ func TestSpire_CheckTamper(t *testing.T) {
 				t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.verify, verified)
 			}
 		}
-
 	}
-
 }
 
 func TestSpire_TaskRunResultsSign(t *testing.T) {
@@ -411,7 +408,6 @@ func TestSpire_TaskRunResultsSign(t *testing.T) {
 
 			for _, results := range tt.pipelineResourceResults {
 				success := func() bool {
-
 					sigResults, err := ec.Sign(ctx, results)
 					if err != nil {
 						return false
@@ -633,10 +629,8 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 	for _, tt := range testCases {
 		ctx := context.Background()
 		for _, tr := range testTaskRuns() {
-
 			results := genPr()
 			success := func() bool {
-
 				resp := &fakeworkloadapi.X509SVIDResponse{
 					Bundle: ca.X509Bundle(),
 					SVIDs:  makeX509SVIDs(ca, spiffeid.RequireFromPath(td, getTaskrunPath(tr))),

@@ -1279,7 +1279,6 @@ _EOF_
 		{
 			desc: "setting host aliases",
 			ts: v1beta1.TaskSpec{
-
 				Steps: []v1beta1.Step{
 					{
 						Name:    "host-aliases",
@@ -1948,7 +1947,6 @@ _EOF_
 }
 
 func TestPodBuildwithAlphaAPIEnabled(t *testing.T) {
-
 	placeScriptsContainer := corev1.Container{
 		Name:         "place-scripts",
 		Image:        "busybox",

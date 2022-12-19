@@ -96,7 +96,6 @@ func TestMetricsOnStore(t *testing.T) {
 	// Comparing function assign to struct with the one which should yield same value
 	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
 		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
-
 	}
 
 	// Config shouldn't change when incorrect config map is pass
@@ -112,7 +111,6 @@ func TestMetricsOnStore(t *testing.T) {
 	// Comparing function assign to struct with the one which should yield same value
 	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(taskrunInsertTag).Pointer() {
 		t.Fatalf("metrics recorder shouldn't change during this OnStore call")
-
 	}
 
 	// We test when we pass correct config
@@ -126,7 +124,6 @@ func TestMetricsOnStore(t *testing.T) {
 	MetricsOnStore(logger)(config.GetMetricsConfigName(), cfg)
 	if reflect.ValueOf(metrics.insertTaskTag).Pointer() != reflect.ValueOf(nilInsertTag).Pointer() {
 		t.Fatalf("metrics recorder didn't change during OnStore call")
-
 	}
 }
 
@@ -375,7 +372,6 @@ func TestRecordTaskRunDurationCount(t *testing.T) {
 				metricstest.CheckLastValueData(t, c.metricName, c.expectedDurationTags, c.expectedDuration)
 			} else {
 				metricstest.CheckStatsNotReported(t, c.metricName)
-
 			}
 		})
 	}
@@ -490,7 +486,6 @@ func TestRecordPodLatency(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestTaskRunIsOfPipelinerun(t *testing.T) {

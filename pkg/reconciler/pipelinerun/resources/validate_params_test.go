@@ -30,7 +30,6 @@ import (
 )
 
 func TestValidateParamTypesMatching_Valid(t *testing.T) {
-
 	stringValue := *v1beta1.NewStructuredValues("stringValue")
 	arrayValue := *v1beta1.NewStructuredValues("arrayValue", "arrayValue")
 
@@ -69,7 +68,6 @@ func TestValidateParamTypesMatching_Valid(t *testing.T) {
 }
 
 func TestValidateParamTypesMatching_Invalid(t *testing.T) {
-
 	stringValue := *v1beta1.NewStructuredValues("stringValue")
 	arrayValue := *v1beta1.NewStructuredValues("arrayValue", "arrayValue")
 
@@ -118,7 +116,6 @@ func TestValidateParamTypesMatching_Invalid(t *testing.T) {
 }
 
 func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
-
 	stringValue := *v1beta1.NewStructuredValues("stringValue")
 	arrayValue := *v1beta1.NewStructuredValues("arrayValue", "arrayValue")
 
@@ -161,7 +158,6 @@ func TestValidateRequiredParametersProvided_Valid(t *testing.T) {
 }
 
 func TestValidateRequiredParametersProvided_Invalid(t *testing.T) {
-
 	stringValue := *v1beta1.NewStructuredValues("stringValue")
 	arrayValue := *v1beta1.NewStructuredValues("arrayValue", "arrayValue")
 

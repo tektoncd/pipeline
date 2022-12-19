@@ -118,7 +118,6 @@ func TestSpireMock_CheckHashSimilarities(t *testing.T) {
 
 // Task run sign, modify signature/hash/svid/content and verify
 func TestSpireMock_CheckTamper(t *testing.T) {
-
 	tests := []struct {
 		// description of test case
 		desc string
@@ -236,9 +235,7 @@ func TestSpireMock_CheckTamper(t *testing.T) {
 				t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.verify, verified)
 			}
 		}
-
 	}
-
 }
 
 // Task result sign and verify
@@ -278,7 +275,6 @@ func TestSpireMock_TaskRunResultsSign(t *testing.T) {
 	for _, tt := range testCases {
 		ctx := context.Background()
 		for _, tr := range testTaskRuns() {
-
 			var err error
 			if !tt.skipEntryCreate {
 				// Pod should not be nil, but it isn't used in mocking
@@ -509,7 +505,6 @@ func TestSpireMock_TaskRunResultsSignTamper(t *testing.T) {
 	for _, tt := range testCases {
 		ctx := context.Background()
 		for _, tr := range testTaskRuns() {
-
 			var err error
 			// Pod should not be nil, but it isn't used in mocking
 			// implementation so should not matter

@@ -134,7 +134,6 @@ spec:
 	if pr.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
 		t.Errorf("Expected PipelineRun to succeed but instead found condition: %s", pr.Status.GetCondition(apis.ConditionSucceeded))
 	}
-
 }
 
 func TestTrustedResourcesVerify_ConfigMap_Error(t *testing.T) {
@@ -220,7 +219,6 @@ spec:
 	if pr.Status.Conditions[0].Reason != pod.ReasonResourceVerificationFailed {
 		t.Errorf("Expected PipelineRun fail condition is: %s but got: %s", pod.ReasonResourceVerificationFailed, pr.Status.Conditions[0].Reason)
 	}
-
 }
 
 func TestTrustedResourcesVerify_VerificationPolicy_Success(t *testing.T) {
@@ -319,7 +317,6 @@ spec:
 	if pr.Status.GetCondition(apis.ConditionSucceeded).IsFalse() {
 		t.Errorf("Expected PipelineRun to succeed but instead found condition: %s", pr.Status.GetCondition(apis.ConditionSucceeded))
 	}
-
 }
 
 func TestTrustedResourcesVerify_VerificationPolicy_Error(t *testing.T) {
@@ -423,7 +420,6 @@ spec:
 	if pr.Status.Conditions[0].Reason != pod.ReasonResourceVerificationFailed {
 		t.Errorf("Expected PipelineRun fail condition is: %s but got: %s", pod.ReasonResourceVerificationFailed, pr.Status.Conditions[0].Reason)
 	}
-
 }
 
 func setupResourceVerificationConfig(ctx context.Context, t *testing.T, keyInConfigMap bool, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string, string, signature.Signer) {

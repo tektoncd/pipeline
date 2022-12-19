@@ -225,7 +225,6 @@ cat > ${scriptfile} << '%s'
 
 			initContainer.Args[1] += fmt.Sprintf(initScriptDirective, tmpFile, heredoc, debugScript.content, heredoc)
 		}
-
 	}
 
 	return containers

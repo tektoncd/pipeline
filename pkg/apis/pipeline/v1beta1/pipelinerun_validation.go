@@ -270,7 +270,6 @@ func validateSpecStatus(status PipelineRunSpecStatus) *apis.FieldError {
 		PipelineRunSpecStatusCancelledRunFinally,
 		PipelineRunSpecStatusStoppedRunFinally,
 		PipelineRunSpecStatusPending), "status")
-
 }
 
 func validateTimeoutDuration(field string, d *metav1.Duration) (errs *apis.FieldError) {

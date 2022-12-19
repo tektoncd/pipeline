@@ -120,7 +120,6 @@ func TestWorkspaceBindingValidateValid(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestWorkspaceBindingValidateInvalid(t *testing.T) {

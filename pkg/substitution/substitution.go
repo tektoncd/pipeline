@@ -72,7 +72,6 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 				Message: errString,
 				Paths:   []string{""},
 			}
-
 		}
 		for _, v := range vs {
 			v = TrimArrayIndex(v)
@@ -112,7 +111,6 @@ func ValidateVariableProhibitedP(value, prefix string, vars sets.String) *apis.F
 				Message: errString,
 				Paths:   []string{""},
 			}
-
 		}
 		for _, v := range vs {
 			v = strings.TrimSuffix(v, "[*]")
@@ -180,7 +178,6 @@ func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.Fie
 				Message: errString,
 				Paths:   []string{""},
 			}
-
 		}
 		firstMatch, _ := extractExpressionFromString(value, prefix)
 		for _, v := range vs {
