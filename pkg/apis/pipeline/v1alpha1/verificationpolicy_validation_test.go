@@ -95,7 +95,7 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				},
 			},
 		},
-		want: apis.ErrMissingOneOf("key[0].data", "key[0].secretref"),
+		want: apis.ErrMissingOneOf("data", "kms", "secretref").ViaFieldIndex("key", 0),
 	}, {
 		name: "should not have both data and secretref",
 		verificationPolicy: &v1alpha1.VerificationPolicy{
@@ -117,7 +117,74 @@ func TestVerificationPolicy_Invalid(t *testing.T) {
 				},
 			},
 		},
-		want: apis.ErrMultipleOneOf("key[0].data", "key[0].secretref"),
+		want: apis.ErrMultipleOneOf("data", "kms", "secretref").ViaFieldIndex("key", 0),
+	}, {
+		name: "should not have both data and KMS",
+		verificationPolicy: &v1alpha1.VerificationPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "vp",
+			},
+			Spec: v1alpha1.VerificationPolicySpec{
+				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Authorities: []v1alpha1.Authority{
+					{
+						Name: "foo",
+						Key: &v1alpha1.KeyRef{
+							Data: "inlinekey",
+							KMS:  "kms://key/path",
+						},
+					},
+				},
+			},
+		},
+		want: apis.ErrMultipleOneOf("data", "kms", "secretref").ViaFieldIndex("key", 0),
+	}, {
+		name: "should not have both secretref and KMS",
+		verificationPolicy: &v1alpha1.VerificationPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "vp",
+			},
+			Spec: v1alpha1.VerificationPolicySpec{
+				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Authorities: []v1alpha1.Authority{
+					{
+						Name: "foo",
+						Key: &v1alpha1.KeyRef{
+							SecretRef: &corev1.SecretReference{
+								Name:      "name",
+								Namespace: "namespace",
+							},
+							KMS: "kms://key/path",
+						},
+					},
+				},
+			},
+		},
+		want: apis.ErrMultipleOneOf("data", "kms", "secretref").ViaFieldIndex("key", 0),
+	}, {
+		name: "should not have data, secretref and KMS at the same time",
+		verificationPolicy: &v1alpha1.VerificationPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "vp",
+			},
+			Spec: v1alpha1.VerificationPolicySpec{
+				Resources: []v1alpha1.ResourcePattern{{".*"}},
+				Authorities: []v1alpha1.Authority{
+					{
+						Name: "foo",
+						Key: &v1alpha1.KeyRef{
+							Data: "inlinekey",
+							SecretRef: &corev1.SecretReference{
+								Name:      "name",
+								Namespace: "namespace",
+							},
+							KMS: "kms://key/path",
+						},
+					},
+				},
+			},
+		},
+		want: apis.ErrMultipleOneOf("data", "kms", "secretref").ViaFieldIndex("key", 0),
 	}, {
 		name: "invalid hash algorithm",
 		verificationPolicy: &v1alpha1.VerificationPolicy{
@@ -189,6 +256,24 @@ func TestVerificationPolicy_Valid(t *testing.T) {
 									Name: "name",
 								},
 								HashAlgorithm: "sha256",
+							},
+						},
+					},
+				},
+			},
+		}, {
+			name: "key in KMS",
+			verificationPolicy: &v1alpha1.VerificationPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "vp",
+				},
+				Spec: v1alpha1.VerificationPolicySpec{
+					Resources: []v1alpha1.ResourcePattern{{".*"}},
+					Authorities: []v1alpha1.Authority{
+						{
+							Name: "foo",
+							Key: &v1alpha1.KeyRef{
+								KMS: "kms://key/path",
 							},
 						},
 					},
