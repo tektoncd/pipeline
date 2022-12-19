@@ -24,6 +24,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
     - [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
     - [Alpha Features](#alpha-features)
     - [Beta Features](#beta-features)
+- [Enabling larger results using sidecar logs](#enabling-larger-results-using-sidecar-logs)
 - [Configuring High Availability](#configuring-high-availability)
 - [Configuring tekton pipeline controller performance](#configuring-tekton-pipeline-controller-performance)
 - [Creating a custom release of Tekton Pipelines](#creating-a-custom-release-of-tekton-pipelines)
@@ -474,6 +475,7 @@ Features currently in "alpha" are:
 | [Array Results](pipelineruns.md#specifying-parameters)                                                | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)                                | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
 | [Trusted Resources](./trusted-resources.md)                                                | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                | N/A |     `resource-verification-mode`                        |
 |[`Provenance` field in Status](pipeline-api.md#provenance) |[issue#5550](https://github.com/tektoncd/pipeline/issues/5550)|N/A|`enable-provenance-in-status`|
+| [Larger Results via Sidecar Logs](#enabling-larger-results-using-sidecar-logs)                      | [TEP-0127](https://github.com/tektoncd/community/blob/main/teps/0127-larger-results-via-sidecar-logs.md)                   | [v0.43.0](https://github.com/tektoncd/pipeline/releases/tag/v0.43.0) | `results-from`                |
 
 ### Beta Features
 
