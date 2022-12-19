@@ -90,6 +90,14 @@ type KeyRef struct {
 	// Data contains the inline public key.
 	// +optional
 	Data string `json:"data,omitempty"`
+	// KMS contains the KMS url of the public key
+	// Supported formats differ based on the KMS system used.
+	// One example of a KMS url could be:
+	// gcpkms://projects/[PROJECT]/locations/[LOCATION]>/keyRings/[KEYRING]/cryptoKeys/[KEY]/cryptoKeyVersions/[KEY_VERSION]
+	// For more examples please refer https://docs.sigstore.dev/cosign/kms_support.
+	// Note that the KMS is not supported yet.
+	// +optional
+	KMS string `json:"kms,omitempty"`
 	// HashAlgorithm always defaults to sha256 if the algorithm hasn't been explicitly set
 	// +optional
 	HashAlgorithm HashAlgorithm `json:"hashAlgorithm,omitempty"`

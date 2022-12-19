@@ -6345,6 +6345,21 @@ string
 </tr>
 <tr>
 <td>
+<code>kms</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.HashAlgorithm">
+HashAlgorithm
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>KMS contains the KMS url of the public key
+Supported formats differ based on the KMS system used.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>hashAlgorithm</code><br/>
 <em>
 <a href="#tekton.dev/v1alpha1.HashAlgorithm">
