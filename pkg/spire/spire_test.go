@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
@@ -38,6 +39,13 @@ var (
 	fooID        = spiffeid.RequireFromPath(td, "/foo")
 	controllerID = spiffeid.RequireFromPath(td, "/controller")
 )
+
+func init() {
+	// shorten timeout and backoff intervals for faster tests;
+	// variables are declared in entrypointer.go
+	timeout = time.Second
+	backoff = 100 * time.Millisecond
+}
 
 func TestSpire_TaskRunSign(t *testing.T) {
 	ctx, _ := ttesting.SetupDefaultContext(t)
@@ -415,12 +423,7 @@ func TestSpire_TaskRunResultsSign(t *testing.T) {
 
 					results = append(results, sigResults...)
 
-					err = cc.VerifyTaskRunResults(ctx, results, tr)
-					if err != nil {
-						return false
-					}
-
-					return true
+					return cc.VerifyTaskRunResults(ctx, results, tr) == nil
 				}()
 
 				if success != tt.success {
@@ -647,12 +650,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 					results = tt.tamperFn(results)
 				}
 
-				err = cc.VerifyTaskRunResults(ctx, results, tr)
-				if err != nil {
-					return false
-				}
-
-				return true
+				return cc.VerifyTaskRunResults(ctx, results, tr) == nil
 			}()
 
 			if success != tt.success {

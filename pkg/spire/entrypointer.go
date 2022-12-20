@@ -58,29 +58,42 @@ func (w *spireEntrypointerAPIClient) dial(ctx context.Context) error {
 	return nil
 }
 
+// package-level timeout and backoff enable shortened timeout for unit tests
+var (
+	timeout = 20 * time.Second
+	backoff = 2 * time.Second
+)
+
 func (w *spireEntrypointerAPIClient) getWorkloadSVID(ctx context.Context) (*x509svid.SVID, error) {
-	backOff := 2
-	var xsvid *x509svid.SVID
-	var err error
-	for i := 0; i < 20; i += backOff {
-		xsvid, err = w.client.FetchX509SVID(ctx)
-		if err == nil {
-			break
+	// Should this be using exponential backoff? IDK enough about the underlying
+	// implementation to know if exponential backoff is in fact justified, so
+	// when I modified this code to use a ticker I didn't change the backoff
+	// logic.
+	ticker := time.NewTicker(backoff)
+	defer ticker.Stop()
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	for {
+		var xsvid *x509svid.SVID
+		var err error
+		if xsvid, err = w.client.FetchX509SVID(ctx); err == nil { // No err -- return immediately on success
+			return xsvid, nil
 		}
-		time.Sleep(time.Duration(backOff) * time.Second)
+		select {
+		case <-ticker.C:
+			// do nothing; loop will try again
+		case <-ctx.Done():
+			// ctx timed out or was cancelled
+			return nil, errors.Wrap(ctx.Err(), errors.Wrap(err, "failed to fetch SVID").Error())
+		}
 	}
-	if xsvid != nil {
-		return xsvid, nil
-	}
-	return nil, errors.Wrap(err, "requested SVID failed to get fetched and timed out")
 }
 
 func (w *spireEntrypointerAPIClient) Close() error {
 	if w.client != nil {
-		err := w.client.Close()
-		if err != nil {
-			return err
-		}
+		return w.client.Close()
 	}
 	return nil
 }

@@ -2614,7 +2614,7 @@ spec:
         type: %s
 `, resourcev1alpha1.PipelineResourceTypeGit))
 
-	taskrun := parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
+	taskrun := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-pipeline-run-success-unit-test-1
   namespace: foo
@@ -2630,7 +2630,7 @@ status:
     - container:
       terminated:
         exitCode: 0
-`))
+`)
 
 	state := PipelineRunState{{
 		PipelineTask: &pipelineTask,
@@ -2714,7 +2714,7 @@ spec:
 		},
 	}
 
-	run := parse.MustParseCustomRun(t, fmt.Sprintf(`
+	run := parse.MustParseCustomRun(t, `
 metadata:
   name: unit-test-run
   namespace: foo
@@ -2722,7 +2722,7 @@ status:
   conditions:
     - type: Succeeded
       status: "True"
-`))
+`)
 
 	state := PipelineRunState{{
 		PipelineTask:  &pipelineTask,

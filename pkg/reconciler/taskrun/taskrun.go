@@ -632,7 +632,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) erro
 	case isResourceQuotaConflictError(err):
 		// Requeue if it runs into ResourceQuotaConflictError Error i.e https://github.com/kubernetes/kubernetes/issues/67761
 		tr.Status.StartTime = nil
-		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, fmt.Sprint("tried to create pod, but it failed with ResourceQuotaConflictError"))
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, "tried to create pod, but it failed with ResourceQuotaConflictError")
 		return controller.NewRequeueAfter(time.Second)
 	case isExceededResourceQuotaError(err):
 		// If we are struggling to create the pod, then it hasn't started.
@@ -642,7 +642,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) erro
 	case isTaskRunValidationFailed(err):
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 	case k8serrors.IsAlreadyExists(err):
-		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, fmt.Sprint("tried to create pod, but it already exists"))
+		tr.Status.MarkResourceOngoing(podconvert.ReasonPending, "tried to create pod, but it already exists")
 	default:
 		// The pod creation failed with unknown reason. The most likely
 		// reason is that something is wrong with the spec of the Task, that we could

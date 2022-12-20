@@ -189,11 +189,7 @@ func (rr *ResolvedHubResource) Source() *pipelinev1beta1.ConfigSource {
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableHubResolver {
-		return false
-	}
-
-	return true
+	return !cfg.FeatureFlags.EnableHubResolver
 }
 
 func fetchHubResource(apiEndpoint string, v interface{}) error {

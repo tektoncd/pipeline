@@ -131,7 +131,7 @@ func verifyResource(ctx context.Context, resource metav1.Object, k8s kubernetes.
 			}
 		}
 		// if this policy fails the verification, should return error directly. No need to check other policies
-		if passVerification == false {
+		if !passVerification {
 			return fmt.Errorf("%w: resource %s in namespace %s fails verification", ErrorResourceVerificationFailed, resource.GetName(), resource.GetNamespace())
 		}
 	}

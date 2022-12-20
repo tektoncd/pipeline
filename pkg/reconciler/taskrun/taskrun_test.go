@@ -5216,7 +5216,6 @@ status:
 	if ok, _ := controller.IsRequeueKey(err); !ok {
 		t.Errorf("Error reconciling TaskRun. Got error %v", err)
 	}
-	return
 }
 
 func TestReconcile_verifyResolvedTask_Error(t *testing.T) {

@@ -59,7 +59,7 @@ func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) protocol.
 	if c.behaviour.SendSuccessfully {
 		// This is to prevent extra events are sent. We don't read events from channel before we call CheckCloudEventsUnordered
 		if len(c.Events) < cap(c.Events) {
-			c.Events <- fmt.Sprintf("%s", event.String())
+			c.Events <- event.String()
 			return nil
 		}
 		return fmt.Errorf("Channel is full of size:%v, but extra event wants to be sent:%v", cap(c.Events), event)

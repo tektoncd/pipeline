@@ -2548,11 +2548,7 @@ status:
 			prt := newPipelineRunTest(d, t)
 			defer prt.Cancel()
 
-			var wantEvents []string
-
-			for _, we := range tc.expectedEvents {
-				wantEvents = append(wantEvents, we)
-			}
+			wantEvents := append([]string{}, tc.expectedEvents...)
 
 			reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-stopped-run-finally", wantEvents, false)
 
@@ -10048,7 +10044,7 @@ status:
 
 			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
 			taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{
-				LabelSelector: fmt.Sprintf("tekton.dev/pipelineRun=pr,tekton.dev/pipelineTask=platforms-and-browsers"),
+				LabelSelector: "tekton.dev/pipelineRun=pr,tekton.dev/pipelineTask=platforms-and-browsers",
 				Limit:         1,
 			})
 			if err != nil {

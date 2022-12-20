@@ -105,9 +105,5 @@ func (r *Resolver) Resolve(ctx context.Context, params []pipelinev1beta1.Param) 
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableBundleResolver {
-		return false
-	}
-
-	return true
+	return !cfg.FeatureFlags.EnableBundleResolver
 }

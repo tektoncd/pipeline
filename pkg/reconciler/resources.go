@@ -29,5 +29,5 @@ const (
 
 // IsYoungResource checks whether the resource is younger than minimumResourceAge, based on its creation timestamp.
 func IsYoungResource(obj kmeta.Accessor) bool {
-	return time.Now().Sub(obj.GetCreationTimestamp().Time) < minimumResourceAge
+	return time.Since(obj.GetCreationTimestamp().Time) < minimumResourceAge
 }

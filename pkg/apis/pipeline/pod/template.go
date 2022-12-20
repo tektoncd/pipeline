@@ -206,7 +206,7 @@ func MergePodTemplateWithDefault(tpl, defaultTpl *PodTemplate) *PodTemplate {
 		if tpl.HostAliases == nil {
 			tpl.HostAliases = defaultTpl.HostAliases
 		}
-		if tpl.HostNetwork == false && defaultTpl.HostNetwork == true {
+		if !tpl.HostNetwork && defaultTpl.HostNetwork {
 			tpl.HostNetwork = true
 		}
 		if tpl.TopologySpreadConstraints == nil {

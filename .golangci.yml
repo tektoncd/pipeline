@@ -23,6 +23,7 @@ linters:
   - goimports
   - gomodguard
   - gosec
+  - gosimple
   - govet
   - misspell
   - revive
