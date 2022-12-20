@@ -84,6 +84,15 @@ You must install these tools:
    generate code and update dependencies. On MacOS the default bash is too old,
    you can use [Homebrew](https://brew.sh) to install a later version.
 
+1. (Optional)
+   [`golangci-lint`](https://golangci-lint.run/usage/install/#local-installation)
+   is run against every PR. You may want to install and [run this tool
+   locally](https://golangci-lint.run/usage/quick-start) to iterate quickly on
+   linter issues.
+
+   > **Note** Linter findings are dependent on your installed Go version. Match
+   the version in [`go.mod`](go.mod) to match the findings in your PR.
+
 ### Configure environment
 
 To [build, deploy and run your Tekton Objects with `ko`](#install-pipeline), you'll need to set these environment variables:
