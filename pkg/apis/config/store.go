@@ -19,6 +19,7 @@ package config
 import (
 	"context"
 
+	sc "github.com/tektoncd/pipeline/pkg/spire/config"
 	"knative.dev/pkg/configmap"
 )
 
@@ -33,6 +34,7 @@ type Config struct {
 	ArtifactPVC      *ArtifactPVC
 	Metrics          *Metrics
 	TrustedResources *TrustedResources
+	SpireConfig      *sc.SpireConfig
 }
 
 // FromContext extracts a Config from the provided context.
@@ -56,6 +58,8 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	artifactPVC, _ := NewArtifactPVCFromMap(map[string]string{})
 	metrics, _ := newMetricsFromMap(map[string]string{})
 	trustedresources, _ := NewTrustedResourcesConfigFromMap(map[string]string{})
+	spireconfig, _ := NewSpireConfigFromMap(map[string]string{})
+
 	return &Config{
 		Defaults:         defaults,
 		FeatureFlags:     featureFlags,
@@ -63,6 +67,7 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 		ArtifactPVC:      artifactPVC,
 		Metrics:          metrics,
 		TrustedResources: trustedresources,
+		SpireConfig:      spireconfig,
 	}
 }
 
@@ -91,6 +96,7 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 				GetArtifactPVCConfigName():      NewArtifactPVCFromConfigMap,
 				GetMetricsConfigName():          NewMetricsFromConfigMap,
 				GetTrustedResourcesConfigName(): NewTrustedResourcesConfigFromConfigMap,
+				GetSpireConfigName():            NewSpireConfigFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -131,6 +137,10 @@ func (s *Store) Load() *Config {
 	if trustedresources == nil {
 		trustedresources, _ = NewTrustedResourcesConfigFromMap(map[string]string{})
 	}
+	spireconfig := s.UntypedLoad(GetSpireConfigName())
+	if spireconfig == nil {
+		spireconfig, _ = NewSpireConfigFromMap(map[string]string{})
+	}
 
 	return &Config{
 		Defaults:         defaults.(*Defaults).DeepCopy(),
@@ -139,5 +149,6 @@ func (s *Store) Load() *Config {
 		ArtifactPVC:      artifactPVC.(*ArtifactPVC).DeepCopy(),
 		Metrics:          metrics.(*Metrics).DeepCopy(),
 		TrustedResources: trustedresources.(*TrustedResources).DeepCopy(),
+		SpireConfig:      spireconfig.(*sc.SpireConfig).DeepCopy(),
 	}
 }

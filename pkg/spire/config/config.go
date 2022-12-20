@@ -24,6 +24,7 @@ import (
 
 // SpireConfig holds the images reference for a number of container images used
 // across tektoncd pipelines.
+// +k8s:deepcopy-gen=true
 type SpireConfig struct {
 	// The trust domain corresponds to the trust root of a SPIFFE identity provider.
 	TrustDomain string

@@ -60,6 +60,11 @@ ${PREFIX}/deepcopy-gen \
 ${PREFIX}/deepcopy-gen \
   -O zz_generated.deepcopy \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+  -i github.com/tektoncd/pipeline/pkg/spire/config
+
+${PREFIX}/deepcopy-gen \
+  -O zz_generated.deepcopy \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
   -i github.com/tektoncd/pipeline/pkg/apis/config/resolver
 
 ${PREFIX}/deepcopy-gen \
