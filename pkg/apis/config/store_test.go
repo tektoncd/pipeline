@@ -35,6 +35,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	artifactPVCConfig := test.ConfigMapFromTestFile(t, "config-artifact-pvc")
 	metricsConfig := test.ConfigMapFromTestFile(t, "config-observability")
 	trustedresourcesConfig := test.ConfigMapFromTestFile(t, "config-trusted-resources")
+	spireConfig := test.ConfigMapFromTestFile(t, "config-spire")
 
 	expectedDefaults, _ := config.NewDefaultsFromConfigMap(defaultConfig)
 	expectedFeatures, _ := config.NewFeatureFlagsFromConfigMap(featuresConfig)
@@ -42,6 +43,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	expectedArtifactPVC, _ := config.NewArtifactPVCFromConfigMap(artifactPVCConfig)
 	metrics, _ := config.NewMetricsFromConfigMap(metricsConfig)
 	expectedTrustedResources, _ := config.NewTrustedResourcesConfigFromConfigMap(trustedresourcesConfig)
+	expectedSpireConfig, _ := config.NewSpireConfigFromConfigMap(spireConfig)
 
 	expected := &config.Config{
 		Defaults:         expectedDefaults,
@@ -50,6 +52,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 		ArtifactPVC:      expectedArtifactPVC,
 		Metrics:          metrics,
 		TrustedResources: expectedTrustedResources,
+		SpireConfig:      expectedSpireConfig,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
@@ -59,6 +62,7 @@ func TestStoreLoadWithContext(t *testing.T) {
 	store.OnConfigChanged(artifactPVCConfig)
 	store.OnConfigChanged(metricsConfig)
 	store.OnConfigChanged(trustedresourcesConfig)
+	store.OnConfigChanged(spireConfig)
 
 	cfg := config.FromContext(store.ToContext(context.Background()))
 
@@ -74,21 +78,23 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 	artifactPVC, _ := config.NewArtifactPVCFromMap(map[string]string{})
 	metrics, _ := config.NewMetricsFromConfigMap(&corev1.ConfigMap{Data: map[string]string{}})
 	trustedresources, _ := config.NewTrustedResourcesConfigFromMap(map[string]string{})
+	spireConfig, _ := config.NewSpireConfigFromMap(map[string]string{})
 
-	expected := &config.Config{
+	want := &config.Config{
 		Defaults:         defaults,
 		FeatureFlags:     featureFlags,
 		ArtifactBucket:   artifactBucket,
 		ArtifactPVC:      artifactPVC,
 		Metrics:          metrics,
 		TrustedResources: trustedresources,
+		SpireConfig:      spireConfig,
 	}
 
 	store := config.NewStore(logtesting.TestLogger(t))
 
-	cfg := config.FromContext(store.ToContext(context.Background()))
+	got := config.FromContext(store.ToContext(context.Background()))
 
-	if d := cmp.Diff(cfg, expected); d != "" {
+	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("Unexpected config %s", diff.PrintWantGot(d))
 	}
 }

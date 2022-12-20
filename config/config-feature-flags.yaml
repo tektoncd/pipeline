@@ -94,3 +94,8 @@ data:
   # Acceptable values are "v1beta1" and "v1alpha1".
   # The default is "v1beta1".
   custom-task-version: "v1beta1"
+  # Setting this flag will determine how Tekton pipelines will handle non-falsifiable provenance.
+  # If set to "spire", then SPIRE will be used to ensure non-falsifiable provenance.
+  # If set to "none", then Tekton will not have non-falsifiable provenance.
+  # This is an experimental feature and thus should still be considered an alpha feature.
+  enforce-nonfalsifiablity: "none"

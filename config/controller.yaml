@@ -116,6 +116,8 @@ spec:
           value: feature-flags
         - name: CONFIG_LEADERELECTION_NAME
           value: config-leader-election
+        - name: CONFIG_SPIRE
+          value: config-spire
         - name: CONFIG_TRUSTED_RESOURCES_NAME
           value: config-trusted-resources
         - name: SSL_CERT_FILE

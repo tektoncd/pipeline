@@ -66,7 +66,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
 				EmbeddedStatus:                   "both",
-				EnableSpire:                      true,
+				EnforceNonfalsifiability:         "spire",
 				ResourceVerificationMode:         "enforce",
 				EnableProvenanceInStatus:         true,
 				ResultExtractionMethod:           "termination-message",
@@ -80,9 +80,8 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableAPIFields: "alpha",
 				// These are prescribed as true by enabling "alpha" API fields, even
 				// if the submitted text value is "false".
-				EnableTektonOCIBundles: true,
-				EnableSpire:            true,
-
+				EnableTektonOCIBundles:           true,
+				EnforceNonfalsifiability:         "",
 				DisableAffinityAssistant:         config.DefaultDisableAffinityAssistant,
 				DisableCredsInit:                 config.DefaultDisableCredsInit,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
@@ -137,9 +136,10 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
-				EnableAPIFields:                  "stable",
-				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
-				EnableSpire:                      true,
+				EnableAPIFields:                  "alpha",
+				EmbeddedStatus:                   "minimal",
+				EnforceNonfalsifiability:         "spire",
+				EnableTektonOCIBundles:           true,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -147,7 +147,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				MaxResultSize:                    config.DefaultMaxResultSize,
 				CustomTaskVersion:                config.DefaultCustomTaskVersion,
 			},
-			fileName: "feature-flags-enable-spire",
+			fileName: "feature-flags-enforce-nonfalsifiability-spire",
 		},
 		{
 			expectedConfig: &config.FeatureFlags{
@@ -185,7 +185,7 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EnableAPIFields:                  config.DefaultEnableAPIFields,
 		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
 		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
-		EnableSpire:                      config.DefaultEnableSpire,
+		EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 		ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 		EnableProvenanceInStatus:         config.DefaultEnableProvenanceInStatus,
 		ResultExtractionMethod:           config.DefaultResultExtractionMethod,
@@ -241,6 +241,10 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-invalid-max-result-size-bad-value",
 	}, {
 		fileName: "feature-flags-invalid-custom-task-version",
+	}, {
+		fileName: "feature-flags-enforce-nonfalsifiability-bad-flag",
+	}, {
+		fileName: "feature-flags-spire-with-stable",
 	}} {
 		t.Run(tc.fileName, func(t *testing.T) {
 			cm := test.ConfigMapFromTestFile(t, tc.fileName)
