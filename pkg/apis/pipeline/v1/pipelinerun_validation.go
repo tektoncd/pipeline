@@ -290,5 +290,8 @@ func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *ap
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
 		errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepSpecs))
 	}
+	if trs.PodTemplate != nil {
+		errs = errs.Also(validatePodTemplateEnv(ctx, *trs.PodTemplate))
+	}
 	return errs
 }

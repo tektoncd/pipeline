@@ -331,11 +331,11 @@ The `SSL_CERT_DIR` is set to `/etc/ssl/certs` as the default cert directory. If 
 Environment variables can be configured in the following ways, mentioned in order of precedence from lowest to highest.
 
 1. Implicit environment variables
-2. Step environment variables
+2. `Step`/`StepTemplate` environment variables
 3. Environment variables specified via a `default` `PodTemplate`.
 4. Environment variables specified via a `PodTemplate`.
 
-The environment variables specified by a `PodTemplate` supercedes all other ways of specifying environment variables. However, there exists a configuration i.e. `default-forbidden-env`, the environment variable specified in this list cannot be specified or updated via a `PodTemplate`. 
+The environment variables specified by a `PodTemplate` supercedes all other ways of specifying environment variables. However, there exists a configuration i.e. `default-forbidden-env`, the environment variable specified in this list cannot be updated via a `PodTemplate`. 
 
 For example:
 

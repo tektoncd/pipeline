@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -32,6 +33,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
+
+func EnableForbiddenEnv(ctx context.Context) context.Context {
+	c := config.FromContextOrDefaults(ctx)
+	c.Defaults.DefaultForbiddenEnv = []string{"TEST_ENV"}
+	return config.ToContext(ctx, c)
+}
 
 func TestTaskRun_Invalidate(t *testing.T) {
 	tests := []struct {
@@ -44,6 +51,26 @@ func TestTaskRun_Invalidate(t *testing.T) {
 		taskRun: &v1beta1.TaskRun{},
 		want: apis.ErrMissingOneOf("spec.taskRef", "spec.taskSpec").Also(
 			apis.ErrGeneric(`invalid resource name "": must be a valid DNS label`, "metadata.name")),
+	}, {
+		name: "PodTmplate with forbidden env",
+		taskRun: &v1beta1.TaskRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "tr"},
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Steps: []v1beta1.Step{{
+						Name:  "echo",
+						Image: "ubuntu",
+					}},
+				},
+				PodTemplate: &pod.Template{
+					Env: []corev1.EnvVar{{
+						Name:  "TEST_ENV",
+						Value: "false",
+					}},
+				},
+			}},
+		wc:   EnableForbiddenEnv,
+		want: apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "spec.PodTemplate.Env"),
 	}, {
 		name: "propagating params not provided but used by step",
 		taskRun: &v1beta1.TaskRun{
