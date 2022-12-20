@@ -25,7 +25,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -45,7 +44,7 @@ var (
 )
 
 func TestPullRequest(t *testing.T) {
-	tmpdir, err := ioutil.TempDir("", t.Name())
+	tmpdir, err := os.MkdirTemp("", t.Name())
 	if err != nil {
 		t.Fatalf("could not create test temp dir: %v", err)
 	}

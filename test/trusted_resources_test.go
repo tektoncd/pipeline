@@ -23,7 +23,6 @@ import (
 	"context"
 	"crypto"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -444,7 +443,7 @@ func setSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Int
 		t.Errorf("error getting signer from key file: %v", err)
 	}
 
-	fileBytes, err := ioutil.ReadFile(filepath.Clean(pubKey))
+	fileBytes, err := os.ReadFile(filepath.Clean(pubKey))
 	if err != nil {
 		t.Fatal(err)
 	}

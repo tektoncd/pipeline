@@ -24,7 +24,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -539,7 +539,7 @@ spec:
 // just confused things.
 func setupGitea(ctx context.Context, t *testing.T, c *clients, namespace string) (string, string) {
 	t.Helper()
-	giteaYaml, err := ioutil.ReadFile(filepath.Join("git-resolver", "gitea.yaml"))
+	giteaYaml, err := os.ReadFile(filepath.Join("git-resolver", "gitea.yaml"))
 	if err != nil {
 		t.Fatalf("failed to read gitea.yaml: %v", err)
 	}
@@ -639,7 +639,7 @@ spec:
 		t.Fatalf("Failed to create gitea token secret %s: %v", secretName, err)
 	}
 
-	remoteTaskBytes, err := ioutil.ReadFile(filepath.Join("git-resolver", "remote-task.yaml"))
+	remoteTaskBytes, err := os.ReadFile(filepath.Join("git-resolver", "remote-task.yaml"))
 	if err != nil {
 		t.Fatalf("Failed to read git-resolver/remote-task.yaml: %v", err)
 	}

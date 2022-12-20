@@ -22,7 +22,6 @@ package test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -280,7 +279,7 @@ func updateConfigMap(ctx context.Context, client kubernetes.Interface, name stri
 
 func getBucketSecret(t *testing.T, configFilePath, namespace string) *corev1.Secret {
 	t.Helper()
-	f, err := ioutil.ReadFile(configFilePath)
+	f, err := os.ReadFile(configFilePath)
 	if err != nil {
 		t.Fatalf("Failed to read json key file %s at path %s", err, configFilePath)
 	}

@@ -25,7 +25,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -540,7 +539,7 @@ spec:
 
 func tarImageInOCIFormat(namespace string, img v1.Image) ([]byte, error) {
 	// Write the image in the OCI layout and then tar it up.
-	dir, err := ioutil.TempDir(os.TempDir(), namespace)
+	dir, err := os.MkdirTemp(os.TempDir(), namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -588,7 +587,7 @@ func tarImageInOCIFormat(namespace string, img v1.Image) ([]byte, error) {
 	}
 
 	// Pull out the tar bundle into a bytes object.
-	return ioutil.ReadAll(&buf)
+	return io.ReadAll(&buf)
 }
 
 // publishImg will generate a Pod that runs in the namespace to publish an OCI compliant image into the local registry
