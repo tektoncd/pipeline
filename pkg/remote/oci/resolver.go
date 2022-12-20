@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 	"time"
 
@@ -210,7 +209,7 @@ func readRawLayer(layer v1.Layer) (runtime.Object, error) {
 	}
 	defer rc.Close()
 
-	contents, err := ioutil.ReadAll(rc)
+	contents, err := io.ReadAll(rc)
 	if err != nil {
 		return nil, fmt.Errorf("could not read contents of image layer: %w", err)
 	}
