@@ -16,17 +16,17 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+  - depguard
   - errcheck
+  - gocritic
   - gofmt
   - goimports
   - gomodguard
   - gosec
   - govet
-  - gocritic
-  - revive
   - misspell
+  - revive
   - unconvert
-  - depguard
   - unused
   - whitespace
 output:
