@@ -179,7 +179,7 @@ Below is an example of setting the resource requests and limits for a step:
 ```yaml
 spec:
   steps:
-    - name: step-with-limts
+    - name: step-with-limits
       resources:
         requests:
           memory: 1Gi
