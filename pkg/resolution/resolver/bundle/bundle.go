@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -212,7 +211,7 @@ func readRawLayer(layer v1.Layer) ([]byte, error) {
 		_ = rc.Close()
 	}()
 
-	contents, err := ioutil.ReadAll(rc)
+	contents, err := io.ReadAll(rc)
 	if err != nil {
 		return nil, fmt.Errorf("could not read contents of image layer: %w", err)
 	}

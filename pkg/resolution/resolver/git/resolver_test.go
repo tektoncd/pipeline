@@ -21,7 +21,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -227,16 +226,16 @@ func TestResolve(t *testing.T) {
 	testRepo := "test-repo"
 
 	refsDir := filepath.Join("testdata", "test-org", "test-repo", "refs")
-	mainPipelineYAML, err := ioutil.ReadFile(filepath.Join(refsDir, "main", "pipelines", "example-pipeline.yaml"))
+	mainPipelineYAML, err := os.ReadFile(filepath.Join(refsDir, "main", "pipelines", "example-pipeline.yaml"))
 	if err != nil {
 		t.Fatalf("couldn't read main pipeline: %v", err)
 	}
-	otherPipelineYAML, err := ioutil.ReadFile(filepath.Join(refsDir, "other", "pipelines", "example-pipeline.yaml"))
+	otherPipelineYAML, err := os.ReadFile(filepath.Join(refsDir, "other", "pipelines", "example-pipeline.yaml"))
 	if err != nil {
 		t.Fatalf("couldn't read other pipeline: %v", err)
 	}
 
-	mainTaskYAML, err := ioutil.ReadFile(filepath.Join(refsDir, "main", "tasks", "example-task.yaml"))
+	mainTaskYAML, err := os.ReadFile(filepath.Join(refsDir, "main", "tasks", "example-task.yaml"))
 	if err != nil {
 		t.Fatalf("couldn't read main task: %v", err)
 	}
@@ -661,7 +660,7 @@ func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir stri
 	}
 
 	outfile := filepath.Join(targetDir, filename)
-	if err := ioutil.WriteFile(outfile, content, 0600); err != nil {
+	if err := os.WriteFile(outfile, content, 0600); err != nil {
 		t.Fatalf("couldn't write content to file %s: %v", outfile, err)
 	}
 
