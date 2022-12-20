@@ -299,12 +299,7 @@ func TestSpireMock_TaskRunResultsSign(t *testing.T) {
 
 					results = append(results, sigResults...)
 
-					err = cc.VerifyTaskRunResults(ctx, results, tr)
-					if err != nil {
-						return false
-					}
-
-					return true
+					return cc.VerifyTaskRunResults(ctx, results, tr) == nil
 				}()
 
 				if success != tt.success {
@@ -312,8 +307,7 @@ func TestSpireMock_TaskRunResultsSign(t *testing.T) {
 				}
 			}
 
-			err = cc.DeleteEntry(ctx, tr, genPodObj(tr, ""))
-			if err != nil {
+			if err = cc.DeleteEntry(ctx, tr, genPodObj(tr, "")); err != nil {
 				t.Fatalf("unable to delete entry: %v", err)
 			}
 		}
@@ -527,20 +521,14 @@ func TestSpireMock_TaskRunResultsSignTamper(t *testing.T) {
 					results = tt.tamperFn(results)
 				}
 
-				err = cc.VerifyTaskRunResults(ctx, results, tr)
-				if err != nil {
-					return false
-				}
-
-				return true
+				return cc.VerifyTaskRunResults(ctx, results, tr) == nil
 			}()
 
 			if success != tt.success {
 				t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.success, success)
 			}
 
-			err = cc.DeleteEntry(ctx, tr, genPodObj(tr, ""))
-			if err != nil {
+			if err = cc.DeleteEntry(ctx, tr, genPodObj(tr, "")); err != nil {
 				t.Fatalf("unable to delete entry: %v", err)
 			}
 		}

@@ -111,7 +111,7 @@ func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) 
 // validatePipelineWorkspacesUsage validates that all the referenced workspaces (by pipeline tasks) are specified in
 // the pipeline
 func validatePipelineWorkspacesUsage(ctx context.Context, wss []PipelineWorkspaceDeclaration, pts []PipelineTask) (errs *apis.FieldError) {
-	if config.ValidateParameterVariablesAndWorkspaces(ctx) == false {
+	if !config.ValidateParameterVariablesAndWorkspaces(ctx) {
 		return nil
 	}
 	workspaceNames := sets.NewString()
@@ -152,7 +152,7 @@ func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTas
 			}
 		}
 	}
-	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
+	if config.ValidateParameterVariablesAndWorkspaces(ctx) {
 		errs = errs.Also(validatePipelineParametersVariables(tasks, "params", parameterNames, arrayParameterNames, objectParameterNameKeys))
 	}
 	return errs

@@ -1594,9 +1594,9 @@ func TestStepOnError(t *testing.T) {
 			Args:    []string{"arg"},
 		}},
 		expectedError: &apis.FieldError{
-			Message: fmt.Sprintf("invalid value: \"onError\""),
+			Message: `invalid value: "onError"`,
 			Paths:   []string{"steps[0].onError"},
-			Details: "Task step onError must be either \"continue\" or \"stopAndFail\"",
+			Details: `Task step onError must be either "continue" or "stopAndFail"`,
 		},
 	}, {
 		name: "invalid step - invalid onError usage - set to a parameter which does not exist in the task",
@@ -1606,7 +1606,7 @@ func TestStepOnError(t *testing.T) {
 			Args:    []string{"arg"},
 		}},
 		expectedError: &apis.FieldError{
-			Message: "non-existent variable in \"$(params.CONTINUE)\"",
+			Message: `non-existent variable in "$(params.CONTINUE)"`,
 			Paths:   []string{"steps[0].onError"},
 		},
 	}}

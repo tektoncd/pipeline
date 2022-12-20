@@ -76,9 +76,7 @@ type MockClient struct {
 	SignOverride func(ctx context.Context, results []v1beta1.PipelineResourceResult) ([]v1beta1.PipelineResourceResult, error)
 }
 
-const (
-	controllerSvid = "CONTROLLER_SVID_DATA"
-)
+const controllerSvid = "CONTROLLER_SVID_DATA"
 
 func (*MockClient) mockSign(content, signedBy string) string {
 	return fmt.Sprintf("signed-by-%s:%x", signedBy, sha256.Sum256([]byte(content)))
@@ -119,10 +117,8 @@ func (sc *MockClient) CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool {
 		return sc.CheckSpireVerifiedFlagOverride(tr)
 	}
 
-	if _, ok := tr.Status.Annotations[VerifiedAnnotation]; !ok {
-		return true
-	}
-	return false
+	_, ok := tr.Status.Annotations[VerifiedAnnotation]
+	return !ok
 }
 
 // CreateEntries adds entries to the dictionary of entries that mock the SPIRE server datastore
@@ -178,11 +174,7 @@ func (sc *MockClient) VerifyStatusInternalAnnotation(ctx context.Context, tr *v1
 	}
 
 	// check current status hash vs annotation status hash by controller
-	if err := CheckStatusInternalAnnotation(tr); err != nil {
-		return err
-	}
-
-	return nil
+	return CheckStatusInternalAnnotation(tr)
 }
 
 // VerifyTaskRunResults checks that all the TaskRun results are valid by the mocked spire client
@@ -304,11 +296,7 @@ func (sc *MockClient) Sign(ctx context.Context, results []v1beta1.PipelineResour
 }
 
 // Close mock closing the spire client connection
-func (sc *MockClient) Close() error {
-	return nil
-}
+func (*MockClient) Close() error { return nil }
 
 // SetConfig sets the spire configuration for MockClient
-func (sc *MockClient) SetConfig(c spireconfig.SpireConfig) {
-	return
-}
+func (*MockClient) SetConfig(spireconfig.SpireConfig) {}

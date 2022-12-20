@@ -294,11 +294,7 @@ func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableGitResolver {
-		return false
-	}
-
-	return true
+	return !cfg.FeatureFlags.EnableGitResolver
 }
 
 // resolvedGitResource implements framework.ResolvedResource and returns

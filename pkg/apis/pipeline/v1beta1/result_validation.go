@@ -42,7 +42,7 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	// By default the result type is string
 	if tr.Type != ResultsTypeString {
-		return apis.ErrInvalidValue(tr.Type, "type", fmt.Sprintf("type must be string"))
+		return apis.ErrInvalidValue(tr.Type, "type", "type must be string")
 	}
 
 	return nil

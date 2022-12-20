@@ -226,7 +226,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	if s.Script != "" {
 		if len(s.Command) > 0 {
 			errs = errs.Also(&apis.FieldError{
-				Message: fmt.Sprintf("script cannot be used with command"),
+				Message: "script cannot be used with command",
 				Paths:   []string{"script"},
 			})
 		}
@@ -341,7 +341,7 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 	if p.Type == ParamTypeObject && p.Properties == nil {
 		// If this we are not skipping validation checks due to propagated params
 		// then properties field is required.
-		if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
+		if config.ValidateParameterVariablesAndWorkspaces(ctx) {
 			return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
 		}
 	}
@@ -387,7 +387,7 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 		}
 	}
 	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParamSpecs))
-	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
+	if config.ValidateParameterVariablesAndWorkspaces(ctx) {
 		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
 		errs = errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
 	}

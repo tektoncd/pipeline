@@ -18,7 +18,6 @@ package bundle
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http/httptest"
 	"net/url"
@@ -484,7 +483,7 @@ func createError(image, msg string) error {
 	return &resolutioncommon.ErrorGettingResource{
 		ResolverName: BundleResolverName,
 		Key:          "foo/rr",
-		Original:     errors.New(fmt.Sprintf("invalid tekton bundle %s, error: %s", image, msg)),
+		Original:     fmt.Errorf("invalid tekton bundle %s, error: %s", image, msg),
 	}
 }
 

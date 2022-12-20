@@ -635,7 +635,7 @@ func TestExtractVariablesFromString(t *testing.T) {
 		prefix:    "inputs.params",
 		want:      []string{""},
 		extracted: true,
-		err:       fmt.Sprintf(`Invalid referencing of parameters in "--flag=$(inputs.params.foo.baz.bar)"! Only two dot-separated components after the prefix "inputs.params" are allowed.`),
+		err:       `Invalid referencing of parameters in "--flag=$(inputs.params.foo.baz.bar)"! Only two dot-separated components after the prefix "inputs.params" are allowed.`,
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -172,11 +172,7 @@ func (r *Resolver) GetConfigName(context.Context) string {
 
 func (r *Resolver) isDisabled(ctx context.Context) bool {
 	cfg := resolverconfig.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableClusterResolver {
-		return false
-	}
-
-	return true
+	return !cfg.FeatureFlags.EnableClusterResolver
 }
 
 // ResolvedClusterResource implements framework.ResolvedResource and returns
