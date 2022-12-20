@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -285,6 +286,30 @@ func TestPipelineRunSpec_Invalidate(t *testing.T) {
 		wantErr     *apis.FieldError
 		withContext func(context.Context) context.Context
 	}{{
+		name: "PodTemplate contains forbidden env.",
+		spec: v1.PipelineRunSpec{
+			PipelineRef: &v1.PipelineRef{Name: "pr"},
+			TaskRunSpecs: []v1.PipelineTaskRunSpec{
+				{
+					PipelineTaskName: "task-1",
+					StepSpecs: []v1.TaskRunStepSpec{{
+						Name: "task-1",
+						ComputeResources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceMemory: corev1resources.MustParse("1Gi")},
+						}},
+					},
+					PodTemplate: &pod.PodTemplate{
+						Env: []corev1.EnvVar{{
+							Name:  "TEST_ENV",
+							Value: "false",
+						}},
+					},
+				},
+			},
+		},
+		withContext: EnableForbiddenEnv,
+		wantErr:     apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "taskRunSpecs[0].PodTemplate.Env"),
+	}, {
 		name: "pipelineRef and pipelineSpec together",
 		spec: v1.PipelineRunSpec{
 			PipelineRef: &v1.PipelineRef{

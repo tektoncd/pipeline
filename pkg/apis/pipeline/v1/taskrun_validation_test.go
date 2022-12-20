@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -497,6 +498,13 @@ func TestTaskRun_Workspaces_Invalid(t *testing.T) {
 	}
 }
 
+func EnableForbiddenEnv(ctx context.Context) context.Context {
+	ctx = config.EnableAlphaAPIFields(ctx)
+	c := config.FromContext(ctx)
+	c.Defaults.DefaultForbiddenEnv = []string{"TEST_ENV"}
+	return config.ToContext(ctx, c)
+}
+
 func TestTaskRunSpec_Invalidate(t *testing.T) {
 	invalidStatusMessage := "status message without status"
 	tests := []struct {
@@ -508,6 +516,24 @@ func TestTaskRunSpec_Invalidate(t *testing.T) {
 		name:    "invalid taskspec",
 		spec:    v1.TaskRunSpec{},
 		wantErr: apis.ErrMissingOneOf("taskRef", "taskSpec"),
+	}, {
+		name: "PodTmplate with forbidden env",
+		spec: v1.TaskRunSpec{
+			TaskSpec: &v1.TaskSpec{
+				Steps: []v1.Step{{
+					Name:  "mystep",
+					Image: "myimage",
+				}},
+			},
+			PodTemplate: &pod.Template{
+				Env: []corev1.EnvVar{{
+					Name:  "TEST_ENV",
+					Value: "false",
+				}},
+			},
+		},
+		wc:      EnableForbiddenEnv,
+		wantErr: apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "PodTemplate.Env"),
 	}, {
 		name: "invalid taskref and taskspec together",
 		spec: v1.TaskRunSpec{

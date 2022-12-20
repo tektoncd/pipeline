@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
@@ -48,6 +49,27 @@ func TestPipelineRun_Invalid(t *testing.T) {
 			},
 		},
 		want: apis.ErrMissingOneOf("spec.pipelineRef", "spec.pipelineSpec"),
+	}, {
+		name: "PodTemplate contains forbidden environment variable.",
+		pr: v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pipelinelinename",
+			},
+			Spec: v1beta1.PipelineRunSpec{
+				ServiceAccountName: "foo",
+				PipelineRef: &v1beta1.PipelineRef{
+					Name: "prname",
+				},
+				PodTemplate: &pod.Template{
+					Env: []corev1.EnvVar{{
+						Name:  "TEST_ENV",
+						Value: "false",
+					}},
+				},
+			},
+		},
+		want: apis.ErrInvalidValue("PodTemplate cannot update a forbidden env: TEST_ENV", "spec.PodTemplate.Env"),
+		wc:   EnableForbiddenEnv,
 	}, {
 		name: "invalid pipelinerun metadata",
 		pr: v1beta1.PipelineRun{
