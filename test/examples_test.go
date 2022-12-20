@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -137,7 +136,7 @@ func exampleTest(path string, waitValidateFunc waitFunc, createFunc createFunc, 
 		knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 		defer tearDown(ctx, t, c, namespace)
 
-		inputExample, err := ioutil.ReadFile(path)
+		inputExample, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("Error reading file: %v", err)
 		}

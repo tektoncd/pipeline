@@ -3,7 +3,6 @@ package pullrequest
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -21,8 +20,8 @@ type handler struct {
 func reflect(w http.ResponseWriter, r *http.Request) {
 	t := io.TeeReader(r.Body, w)
 	defer r.Body.Close()
-	if _, err := ioutil.ReadAll(t); err != nil {
-		log.Printf("ioutil.ReadAll: %v", err)
+	if _, err := io.ReadAll(t); err != nil {
+		log.Printf("io.ReadAll: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
