@@ -656,8 +656,8 @@ github.com/jcmturner/gofork v1.0.0/go.mod h1:MK8+TM0La+2rjBD4jE12Kj1pCCxK7d2LK/U
 github.com/jcmturner/goidentity/v6 v6.0.1/go.mod h1:X1YW3bgtvwAXju7V3LCIMpY0Gbxyjn/mY9zx4tFonSg=
 github.com/jcmturner/gokrb5/v8 v8.4.2/go.mod h1:sb+Xq/fTY5yktf/VxLsE3wlfPqQjp0aWNYyvBVK62bc=
 github.com/jcmturner/rpc/v2 v2.0.3/go.mod h1:VUJYCIDm3PVOEHw8sgt091/20OJjskO/YJki3ELg/Hc=
-github.com/jenkins-x/go-scm v1.11.35 h1:DcxonfFMf8jqqSWZHCsj40Cp1++hTAmlFtIf7IEl3vk=
-github.com/jenkins-x/go-scm v1.11.35/go.mod h1:JyL6p5dNNeJZt41yfysDTBe0Q51cLa5MVK0du7JnXt0=
+github.com/jenkins-x/go-scm v1.12.3 h1:9l0IeFnDrmgTsbgUAE1wgzcqdrpYIRWCAlIRm+1LBoI=
+github.com/jenkins-x/go-scm v1.12.3/go.mod h1:GyT1710F6sTolj1Aiq5tmWxIzAWMp5rnMUQIYAdmw68=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
 github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=

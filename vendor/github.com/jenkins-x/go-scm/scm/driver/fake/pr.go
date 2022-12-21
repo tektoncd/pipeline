@@ -119,9 +119,10 @@ func filterPullRequests(requests []*scm.PullRequest, opts *scm.PullRequestListOp
 		filteredPullRequests = newFilteredPullRequests
 	}
 
-	if len(opts.Labels) > 0 {
-		panic("implement me")
-	}
+	// Filtering on labels is not implemented in all real providers either...
+	// if len(opts.Labels) > 0 {
+	// 	panic("implement me")
+	// }
 
 	returnRequests := []*scm.PullRequest{}
 
@@ -357,6 +358,8 @@ func (s *pullService) Create(_ context.Context, fullName string, input *scm.Pull
 				FullName:  fullName,
 			},
 		},
+		Source: input.Head,
+		Link:   fmt.Sprintf("https://api.fake.com/pull/%d", f.PullRequestID),
 		Head: scm.PullRequestBranch{
 			Ref: input.Head,
 		},

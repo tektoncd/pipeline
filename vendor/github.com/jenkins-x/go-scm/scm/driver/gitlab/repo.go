@@ -38,6 +38,7 @@ type repository struct {
 	HTTPURL       string      `json:"http_url_to_repo"`
 	Namespace     namespace   `json:"namespace"`
 	Permissions   permissions `json:"permissions"`
+	CreatedAt     time.Time   `json:"created_at"`
 }
 
 type namespace struct {
@@ -495,6 +496,7 @@ func convertRepository(from *repository) *scm.Repository {
 		Clone:     from.HTTPURL,
 		CloneSSH:  from.SSHURL,
 		Link:      from.WebURL,
+		Created:   from.CreatedAt,
 		Perm: &scm.Perm{
 			Pull:  true,
 			Push:  canPush(from),
