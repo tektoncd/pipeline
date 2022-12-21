@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-custom-task-beta-
+spec:
+  pipelineSpec:
+    tasks:
+    - name: before
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo before wait
+    - name: wait
+      taskRef:
+        apiVersion: wait.testing.tekton.dev/v1beta1
+        kind: Wait
+      params:
+      - name: duration
+        value: "5s"
+      runAfter: ['before']
+    - name: after
+      taskSpec:
+        steps:
+        - image: busybox
+          script: echo after wait
+      runAfter: ['wait']
