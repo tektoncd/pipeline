@@ -451,8 +451,8 @@ github.com/imdario/mergo
 # github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99
 ## explicit
 github.com/jbenet/go-context/io
-# github.com/jenkins-x/go-scm v1.11.35
-## explicit; go 1.18
+# github.com/jenkins-x/go-scm v1.12.3
+## explicit; go 1.19
 github.com/jenkins-x/go-scm/pkg/hmac
 github.com/jenkins-x/go-scm/scm
 github.com/jenkins-x/go-scm/scm/driver/bitbucket
