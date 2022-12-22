@@ -17,6 +17,7 @@ linters:
   disable-all: true
   enable:
   - depguard
+  - dupword
   - errcheck
   - gocritic
   - gofmt
@@ -29,6 +30,7 @@ linters:
   - revive
   - unconvert
   - unused
+  - usestdlibvars
   - whitespace
 output:
   uniq-by-line: false
