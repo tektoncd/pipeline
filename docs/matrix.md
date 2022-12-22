@@ -175,11 +175,12 @@ tasks:
   taskRef:
     name: task-4
   matrix:
-  - name: values
-    value: 
-    - (tasks.task-1.results.foo) # string
-    - (tasks.task-2.results.bar) # string
-    - (tasks.task-3.results.rad) # string
+    params:
+    - name: values
+      value:
+      - (tasks.task-1.results.foo) # string
+      - (tasks.task-2.results.bar) # string
+      - (tasks.task-3.results.rad) # string
 ```
 
 For further information, see the example in [`PipelineRun` with `Matrix` and `Results`][pr-with-matrix-and-results].
@@ -194,8 +195,9 @@ tasks:
   taskRef:
     name: task-5
   matrix:
-  - name: values
-    value: (tasks.task-4.results.foo) # array
+    params:
+    - name: values
+      value: (tasks.task-4.results.foo) # array
 ```
 
 #### Results from fanned out PipelineTasks

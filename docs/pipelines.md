@@ -375,6 +375,7 @@ spec:
       taskRef:
         name: browser-test
       matrix:
+        params:
         - name: browser
           value:
           - chrome
@@ -1238,6 +1239,7 @@ spec:
         - name: url
           value: "someURL"
       matrix:
+        params:
         - name: slack-channel
           value:
           - "foo"
@@ -1696,6 +1698,7 @@ spec:
         - name: foo
           value: bah
       matrix:
+        params:
         - name: bar
           value:
             - qux
