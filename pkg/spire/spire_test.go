@@ -18,6 +18,7 @@ package spire
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -33,10 +34,10 @@ import (
 	"knative.dev/pkg/logging"
 )
 
+const trustDomain = "example.org"
+
 var (
-	trustDomain  = "example.org"
 	td           = spiffeid.RequireTrustDomainFromString(trustDomain)
-	fooID        = spiffeid.RequireFromPath(td, "/foo")
 	controllerID = spiffeid.RequireFromPath(td, "/controller")
 )
 
@@ -47,7 +48,7 @@ func init() {
 	backoff = 100 * time.Millisecond
 }
 
-func TestSpire_TaskRunSign(t *testing.T) {
+func TestTaskRunSign(t *testing.T) {
 	ctx, _ := ttesting.SetupDefaultContext(t)
 
 	ca := test.NewCA(t, td)
@@ -58,7 +59,7 @@ func TestSpire_TaskRunSign(t *testing.T) {
 
 	resp := &fakeworkloadapi.X509SVIDResponse{
 		Bundle: ca.X509Bundle(),
-		SVIDs:  makeX509SVIDs(ca, controllerID),
+		SVIDs:  x509svids(ca, controllerID),
 	}
 	wl.SetX509SVIDResponse(resp)
 
@@ -87,7 +88,7 @@ func TestSpire_TaskRunSign(t *testing.T) {
 	}
 }
 
-func TestSpire_CheckSpireVerifiedFlag(t *testing.T) {
+func TestCheckSpireVerifiedFlag(t *testing.T) {
 	ctx, _ := ttesting.SetupDefaultContext(t)
 
 	ca := test.NewCA(t, td)
@@ -98,7 +99,7 @@ func TestSpire_CheckSpireVerifiedFlag(t *testing.T) {
 
 	resp := &fakeworkloadapi.X509SVIDResponse{
 		Bundle: ca.X509Bundle(),
-		SVIDs:  makeX509SVIDs(ca, controllerID),
+		SVIDs:  x509svids(ca, controllerID),
 	}
 	wl.SetX509SVIDResponse(resp)
 
@@ -127,7 +128,7 @@ func TestSpire_CheckSpireVerifiedFlag(t *testing.T) {
 	}
 }
 
-func TestSpire_CheckHashSimilarities(t *testing.T) {
+func TestCheckHashSimilarities(t *testing.T) {
 	ctx, _ := ttesting.SetupDefaultContext(t)
 
 	ca := test.NewCA(t, td)
@@ -138,7 +139,7 @@ func TestSpire_CheckHashSimilarities(t *testing.T) {
 
 	resp := &fakeworkloadapi.X509SVIDResponse{
 		Bundle: ca.X509Bundle(),
-		SVIDs:  makeX509SVIDs(ca, controllerID),
+		SVIDs:  x509svids(ca, controllerID),
 	}
 	wl.SetX509SVIDResponse(resp)
 
@@ -181,7 +182,7 @@ func TestSpire_CheckHashSimilarities(t *testing.T) {
 }
 
 // Task run sign, modify signature/hash/svid/content and verify
-func TestSpire_CheckTamper(t *testing.T) {
+func TestCheckTamper(t *testing.T) {
 	ctx, _ := ttesting.SetupDefaultContext(t)
 
 	ca := test.NewCA(t, td)
@@ -192,7 +193,7 @@ func TestSpire_CheckTamper(t *testing.T) {
 
 	resp := &fakeworkloadapi.X509SVIDResponse{
 		Bundle: ca.X509Bundle(),
-		SVIDs:  makeX509SVIDs(ca, controllerID),
+		SVIDs:  x509svids(ca, controllerID),
 	}
 	wl.SetX509SVIDResponse(resp)
 
@@ -336,7 +337,18 @@ func TestSpire_CheckTamper(t *testing.T) {
 	}
 }
 
-func TestSpire_TaskRunResultsSign(t *testing.T) {
+func TestNoSVID(t *testing.T) {
+	ctx := context.Background()
+	cfg := &config.SpireConfig{SocketPath: "tcp://127.0.0.1:12345"} // bogus SocketPath
+	ec := NewEntrypointerAPIClient(cfg)
+	defer ec.Close()
+
+	if _, err := ec.Sign(ctx, nil); !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("got %v; want %v", err, context.DeadlineExceeded)
+	}
+}
+
+func TestBadPodIdentity(t *testing.T) {
 	ctx, _ := ttesting.SetupDefaultContext(t)
 
 	ca := test.NewCA(t, td)
@@ -356,86 +368,80 @@ func TestSpire_TaskRunResultsSign(t *testing.T) {
 	defer cc.Close()
 	defer ec.Close()
 
-	testCases := []struct {
-		// description of test
-		desc string
-		// skip entry creation of pod identity
-		skipEntryCreate bool
-		// set wrong pod identity for signer
-		wrongPodIdentity bool
-		// whether sign/verify procedure should succeed
-		success bool
-		// List of taskruns to test against
-		taskRunList []*v1beta1.TaskRun
-		// List of PipelineResourceResult to test against
-		pipelineResourceResults [][]v1beta1.PipelineResourceResult
-	}{
-		{
-			desc:            "sign/verify result when entry isn't created",
-			skipEntryCreate: true,
-			success:         false,
-			// Using single taskrun and pipelineResourceResults as the unit test
-			// times out with the default 30 second. getWorkloadSVID has a 20 second
-			// time out before it throws an error for no svid found
-			taskRunList:             testSingleTaskRun(),
-			pipelineResourceResults: testSinglePipelineResourceResults(),
-		},
-		{
-			desc:                    "regular sign/verify result",
-			success:                 true,
-			taskRunList:             testTaskRuns(),
-			pipelineResourceResults: testPipelineResourceResults(),
-		},
-		{
-			desc:                    "sign/verify result when signing with wrong pod identity",
-			wrongPodIdentity:        true,
-			success:                 false,
-			taskRunList:             testTaskRuns(),
-			pipelineResourceResults: testPipelineResourceResults(),
-		},
+	trList := testTaskRuns()
+	rsrcResults := testPipelineResourceResults()
+
+	wl.SetX509SVIDResponse(&fakeworkloadapi.X509SVIDResponse{
+		Bundle: ca.X509Bundle(),
+		SVIDs:  x509svids(ca, spiffeid.RequireFromPath(td, "/bogus")),
+	})
+
+	for _, tr := range trList {
+		for i, results := range rsrcResults {
+			t.Run(fmt.Sprintf("%s: %d", tr.ObjectMeta.Name, i), func(t *testing.T) {
+				sigResults, err := ec.Sign(ctx, results)
+				if err != nil {
+					t.Fatalf("ec.Sign error: %v", err)
+				}
+
+				results = append(results, sigResults...)
+				// It would be nice to check the error type, but
+				// VerifyTaskRunResults returns a generic errors.New().
+				if cc.VerifyTaskRunResults(ctx, results, tr) == nil {
+					t.Error("got nil; want error")
+				}
+			})
+		}
+	}
+}
+
+func TestSignTaskRunResults(t *testing.T) {
+	ctx, _ := ttesting.SetupDefaultContext(t)
+
+	wl := fakeworkloadapi.New(t)
+	defer wl.Stop()
+
+	ca := test.NewCA(t, td)
+	wl.SetX509Bundles(ca.X509Bundle())
+
+	cfg := &config.SpireConfig{
+		SocketPath:  wl.Addr(),
+		TrustDomain: trustDomain,
 	}
 
-	for _, tt := range testCases {
-		ctx := context.Background()
-		for _, tr := range tt.taskRunList {
-			if !tt.skipEntryCreate {
-				if !tt.wrongPodIdentity {
-					resp := &fakeworkloadapi.X509SVIDResponse{
-						Bundle: ca.X509Bundle(),
-						SVIDs:  makeX509SVIDs(ca, spiffeid.RequireFromPath(td, getTaskrunPath(tr))),
-					}
-					wl.SetX509SVIDResponse(resp)
-				} else {
-					resp := &fakeworkloadapi.X509SVIDResponse{
-						Bundle: ca.X509Bundle(),
-						SVIDs:  makeX509SVIDs(ca, fooID),
-					}
-					wl.SetX509SVIDResponse(resp)
+	ec := NewEntrypointerAPIClient(cfg)
+	cc := GetControllerAPIClient(ctx)
+	cc.SetConfig(*cfg)
+	defer cc.Close()
+	defer ec.Close()
+
+	trList := testTaskRuns()
+	rsrcResults := testPipelineResourceResults()
+
+	for _, tr := range trList {
+		for i, results := range rsrcResults {
+			t.Run(fmt.Sprintf("%s: %d", tr.ObjectMeta.Name, i), func(t *testing.T) {
+				wl.SetX509SVIDResponse(&fakeworkloadapi.X509SVIDResponse{
+					Bundle: ca.X509Bundle(),
+					SVIDs:  x509svids(ca, spiffeid.RequireFromPath(td, taskrunPath(tr))),
+				})
+
+				sigResults, err := ec.Sign(ctx, results)
+				if err != nil {
+					t.Fatalf("sign error: %v", err)
 				}
-			}
 
-			for _, results := range tt.pipelineResourceResults {
-				success := func() bool {
-					sigResults, err := ec.Sign(ctx, results)
-					if err != nil {
-						return false
-					}
-
-					results = append(results, sigResults...)
-
-					return cc.VerifyTaskRunResults(ctx, results, tr) == nil
-				}()
-
-				if success != tt.success {
-					t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.success, success)
+				results = append(results, sigResults...)
+				if err := cc.VerifyTaskRunResults(ctx, results, tr); err != nil {
+					t.Errorf("verify error: %v", err)
 				}
-			}
+			})
 		}
 	}
 }
 
 // Task result sign, modify signature/content and verify
-func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
+func TestTaskRunResultsSignTamper(t *testing.T) {
 	ctx, _ := ttesting.SetupDefaultContext(t)
 
 	ca := test.NewCA(t, td)
@@ -455,34 +461,16 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 	defer cc.Close()
 	defer ec.Close()
 
-	genPr := func() []v1beta1.PipelineResourceResult {
-		return []v1beta1.PipelineResourceResult{
-			{
-				Key:          "foo",
-				Value:        "foo-value",
-				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-			{
-				Key:          "bar",
-				Value:        "bar-value",
-				ResourceName: "source-image2",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-		}
-	}
-
 	testCases := []struct {
-		// description of test
 		desc string
 		// function to tamper
 		tamperFn func([]v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult
-		// whether sign/verify procedure should succeed
-		success bool
+		wantErr  bool
 	}{
 		{
-			desc:    "no tamper",
-			success: true,
+			desc:     "no tamper",
+			wantErr:  false,
+			tamperFn: func(prs []v1beta1.PipelineResourceResult) []v1beta1.PipelineResourceResult { return prs },
 		},
 		{
 			desc: "non-intrusive tamper",
@@ -493,7 +481,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				})
 				return prs
 			},
-			success: true,
+			wantErr: false,
 		},
 		{
 			desc: "tamper SVID",
@@ -505,7 +493,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "tamper result manifest",
@@ -517,7 +505,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "tamper result manifest signature",
@@ -529,7 +517,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "tamper result field",
@@ -541,7 +529,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "tamper result field signature",
@@ -553,7 +541,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "delete SVID",
@@ -565,7 +553,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "delete result manifest",
@@ -577,7 +565,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "delete result manifest signature",
@@ -589,7 +577,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "delete result field",
@@ -601,7 +589,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "delete result field signature",
@@ -613,7 +601,7 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 		{
 			desc: "add to result manifest",
@@ -625,42 +613,49 @@ func TestSpire_TaskRunResultsSignTamper(t *testing.T) {
 				}
 				return prs
 			},
-			success: false,
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range testCases {
 		ctx := context.Background()
 		for _, tr := range testTaskRuns() {
-			results := genPr()
-			success := func() bool {
-				resp := &fakeworkloadapi.X509SVIDResponse{
+			t.Run(tt.desc+" "+tr.ObjectMeta.Name, func(t *testing.T) {
+				results := []v1beta1.PipelineResourceResult{{
+					Key:          "foo",
+					Value:        "foo-value",
+					ResourceName: "source-image",
+					ResultType:   v1beta1.TaskRunResultType,
+				}, {
+					Key:          "bar",
+					Value:        "bar-value",
+					ResourceName: "source-image2",
+					ResultType:   v1beta1.TaskRunResultType,
+				}}
+
+				wl.SetX509SVIDResponse(&fakeworkloadapi.X509SVIDResponse{
 					Bundle: ca.X509Bundle(),
-					SVIDs:  makeX509SVIDs(ca, spiffeid.RequireFromPath(td, getTaskrunPath(tr))),
-				}
-				wl.SetX509SVIDResponse(resp)
+					SVIDs:  x509svids(ca, spiffeid.RequireFromPath(td, taskrunPath(tr))),
+				})
 
 				sigResults, err := ec.Sign(ctx, results)
 				if err != nil {
-					return false
+					t.Fatalf("ec.Sign(): %v", err)
 				}
 
 				results = append(results, sigResults...)
-				if tt.tamperFn != nil {
-					results = tt.tamperFn(results)
+				results = tt.tamperFn(results)
+				err = cc.VerifyTaskRunResults(ctx, results, tr)
+
+				if gotErr := err != nil; gotErr != tt.wantErr {
+					t.Errorf("got %v, wantErr == %t", err, tt.wantErr)
 				}
-
-				return cc.VerifyTaskRunResults(ctx, results, tr) == nil
-			}()
-
-			if success != tt.success {
-				t.Fatalf("test %v expected verify %v, got %v", tt.desc, tt.success, success)
-			}
+			})
 		}
 	}
 }
 
-func makeX509SVIDs(ca *test.CA, ids ...spiffeid.ID) []*x509svid.SVID {
+func x509svids(ca *test.CA, ids ...spiffeid.ID) []*x509svid.SVID {
 	svids := []*x509svid.SVID{}
 	for _, id := range ids {
 		svids = append(svids, ca.CreateX509SVID(id))
@@ -668,36 +663,6 @@ func makeX509SVIDs(ca *test.CA, ids ...spiffeid.ID) []*x509svid.SVID {
 	return svids
 }
 
-func getTaskrunPath(tr *v1beta1.TaskRun) string {
+func taskrunPath(tr *v1beta1.TaskRun) string {
 	return fmt.Sprintf("/ns/%v/taskrun/%v", tr.Namespace, tr.Name)
-}
-
-func testSingleTaskRun() []*v1beta1.TaskRun {
-	return []*v1beta1.TaskRun{
-		// taskRun 1
-		{
-			ObjectMeta: objectMeta("taskrun-example", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name:       "taskname",
-					APIVersion: "a1",
-				},
-				ServiceAccountName: "test-sa",
-			},
-		},
-	}
-}
-
-func testSinglePipelineResourceResults() [][]v1beta1.PipelineResourceResult {
-	return [][]v1beta1.PipelineResourceResult{
-		// Single result
-		{
-			{
-				Key:          "digest",
-				Value:        "sha256:12345",
-				ResourceName: "source-image",
-				ResultType:   v1beta1.TaskRunResultType,
-			},
-		},
-	}
 }
