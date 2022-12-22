@@ -32,7 +32,7 @@ import (
 )
 
 // Simple task run sign/verify
-func TestSpireMock_TaskRunSign(t *testing.T) {
+func TestMock_TaskRunSign(t *testing.T) {
 	spireMockClient := &MockClient{}
 	var (
 		cc ControllerAPIClient = spireMockClient
@@ -55,7 +55,7 @@ func TestSpireMock_TaskRunSign(t *testing.T) {
 }
 
 // test CheckSpireVerifiedFlag(tr *v1beta1.TaskRun) bool
-func TestSpireMock_CheckSpireVerifiedFlag(t *testing.T) {
+func TestMock_CheckSpireVerifiedFlag(t *testing.T) {
 	spireMockClient := &MockClient{}
 	var (
 		cc ControllerAPIClient = spireMockClient
@@ -79,7 +79,7 @@ func TestSpireMock_CheckSpireVerifiedFlag(t *testing.T) {
 }
 
 // Task run check signed status is not the same with two taskruns
-func TestSpireMock_CheckHashSimilarities(t *testing.T) {
+func TestMock_CheckHashSimilarities(t *testing.T) {
 	spireMockClient := &MockClient{}
 	var (
 		cc ControllerAPIClient = spireMockClient
@@ -117,7 +117,7 @@ func TestSpireMock_CheckHashSimilarities(t *testing.T) {
 }
 
 // Task run sign, modify signature/hash/svid/content and verify
-func TestSpireMock_CheckTamper(t *testing.T) {
+func TestMock_CheckTamper(t *testing.T) {
 	tests := []struct {
 		// description of test case
 		desc string
@@ -239,7 +239,7 @@ func TestSpireMock_CheckTamper(t *testing.T) {
 }
 
 // Task result sign and verify
-func TestSpireMock_TaskRunResultsSign(t *testing.T) {
+func TestMock_TaskRunResultsSign(t *testing.T) {
 	spireMockClient := &MockClient{}
 	var (
 		cc ControllerAPIClient   = spireMockClient
@@ -315,7 +315,7 @@ func TestSpireMock_TaskRunResultsSign(t *testing.T) {
 }
 
 // Task result sign, modify signature/content and verify
-func TestSpireMock_TaskRunResultsSignTamper(t *testing.T) {
+func TestMock_TaskRunResultsSignTamper(t *testing.T) {
 	spireMockClient := &MockClient{}
 	var (
 		cc ControllerAPIClient   = spireMockClient
