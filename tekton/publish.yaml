@@ -11,7 +11,7 @@ spec:
       default: github.com/tektoncd/pipeline
     - name: images
       description: List of cmd/* paths to be published as images
-      default: "controller webhook entrypoint nop kubeconfigwriter git-init imagedigestexporter pullrequest-init workingdirinit resolvers"
+      default: "controller webhook entrypoint nop kubeconfigwriter git-init imagedigestexporter pullrequest-init workingdirinit resolvers sidecarlogresults"
     - name: versionTag
       description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
     - name: imageRegistry
