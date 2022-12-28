@@ -237,7 +237,6 @@ spec:
           - name: revision
             value: main
         params:
-        params:
           - name: url
             value: https://github.com/tektoncd/pipeline
           - name: deleteExisting

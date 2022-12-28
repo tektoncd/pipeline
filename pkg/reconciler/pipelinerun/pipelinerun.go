@@ -318,7 +318,7 @@ func (c *Reconciler) resolvePipelineState(
 				return nil, err
 			}
 			// If we just return c.customRunLister.CustomRuns(...).Get(...) and there is no run, we end up returning
-			// a v1beta1.RunObject that that won't == nil, so do an explicit check.
+			// a v1beta1.RunObject that won't == nil, so do an explicit check.
 			if r == nil {
 				return nil, nil
 			}
@@ -333,7 +333,7 @@ func (c *Reconciler) resolvePipelineState(
 					return nil, err
 				}
 				// If we just return c.runLister.Runs(...).Get(...) and there is no run, we end up returning
-				// a v1beta1.RunObject that that won't == nil, so do an explicit check.
+				// a v1beta1.RunObject that won't == nil, so do an explicit check.
 				if r == nil {
 					return nil, nil
 				}

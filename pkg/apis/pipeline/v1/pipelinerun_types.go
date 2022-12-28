@@ -98,7 +98,7 @@ func (pr *PipelineRun) IsGracefullyStopped() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusStoppedRunFinally
 }
 
-// PipelineTimeout returns the the applicable timeout for the PipelineRun
+// PipelineTimeout returns the applicable timeout for the PipelineRun
 func (pr *PipelineRun) PipelineTimeout(ctx context.Context) time.Duration {
 	if pr.Spec.Timeouts != nil && pr.Spec.Timeouts.Pipeline != nil {
 		return pr.Spec.Timeouts.Pipeline.Duration
@@ -106,7 +106,7 @@ func (pr *PipelineRun) PipelineTimeout(ctx context.Context) time.Duration {
 	return time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
 }
 
-// TasksTimeout returns the the tasks timeout for the PipelineRun, if set,
+// TasksTimeout returns the tasks timeout for the PipelineRun, if set,
 // or the tasks timeout computed from the Pipeline and Finally timeouts, if those are set.
 func (pr *PipelineRun) TasksTimeout() *metav1.Duration {
 	t := pr.Spec.Timeouts
@@ -125,7 +125,7 @@ func (pr *PipelineRun) TasksTimeout() *metav1.Duration {
 	return nil
 }
 
-// FinallyTimeout returns the the finally timeout for the PipelineRun, if set,
+// FinallyTimeout returns the finally timeout for the PipelineRun, if set,
 // or the finally timeout computed from the Pipeline and Tasks timeouts, if those are set.
 func (pr *PipelineRun) FinallyTimeout() *metav1.Duration {
 	t := pr.Spec.Timeouts

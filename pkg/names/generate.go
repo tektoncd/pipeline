@@ -26,7 +26,7 @@ import (
 // NameGenerator generates names for objects. Some backends may have more information
 // available to guide selection of new names and this interface hides those details.
 type NameGenerator interface {
-	// RestrictLengthWithRandomSuffix generates a valid name from the base name, adding a random suffix to the
+	// RestrictLengthWithRandomSuffix generates a valid name from the base name, adding a random suffix to
 	// the base. If base is valid, the returned name must also be valid. The generator is
 	// responsible for knowing the maximum valid name length.
 	RestrictLengthWithRandomSuffix(base string) string

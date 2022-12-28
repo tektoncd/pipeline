@@ -370,17 +370,17 @@ func TestApplyReplacements(t *testing.T) {
 			name: "single replacement requested multiple matches",
 			args: args{
 				input:        "this $(is) a string $(is) a string",
-				replacements: map[string]string{"is": "a"},
+				replacements: map[string]string{"is": "foo"},
 			},
-			expectedOutput: "this a a string a a string",
+			expectedOutput: "this foo a string foo a string",
 		},
 		{
 			name: "multiple replacements requested",
 			args: args{
 				input:        "this $(is) a $(string) $(is) a $(string)",
-				replacements: map[string]string{"is": "a", "string": "sstring"},
+				replacements: map[string]string{"is": "foo", "string": "sstring"},
 			},
-			expectedOutput: "this a a sstring a a sstring",
+			expectedOutput: "this foo a sstring foo a sstring",
 		},
 		{
 			name: "multiple replacements requested nothing replaced",

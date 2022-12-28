@@ -142,7 +142,7 @@ type TaskRunStatus struct {
 	TaskRunStatusFields `json:",inline"`
 }
 
-// TaskRunConditionType is an enum used to store TaskRun custom conditions
+// TaskRunConditionType is an enum used to store TaskRun custom
 // conditions such as one used in spire results verification
 type TaskRunConditionType string
 
