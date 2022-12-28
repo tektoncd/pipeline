@@ -41,12 +41,12 @@ func SetupDefaultContext(t *testing.T) (context.Context, []controller.Informer) 
 	return WithLogger(ctx, t), informer
 }
 
-// WithLogger returns the the Logger
+// WithLogger returns the Logger
 func WithLogger(ctx context.Context, t *testing.T) context.Context {
 	return logging.WithLogger(ctx, TestLogger(t))
 }
 
-// TestLogger sets up the the Logger
+// TestLogger sets up the Logger
 func TestLogger(t *testing.T) *zap.SugaredLogger {
 	logger := zaptest.NewLogger(t, zaptest.WrapOptions(zap.AddCaller()))
 	return logger.Sugar().Named(t.Name())

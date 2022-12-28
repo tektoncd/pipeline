@@ -128,7 +128,7 @@ func CleanupArtifactStorage(ctx context.Context, pr *v1beta1.PipelineRun, c kube
 	return nil
 }
 
-// needsPVC checks if the Tekton is is configured to use a bucket for artifact storage,
+// needsPVC checks if the Tekton is configured to use a bucket for artifact storage,
 // returning true if instead a PVC is needed.
 func needsPVC(ctx context.Context) bool {
 	bucketConfig := config.FromContextOrDefaults(ctx).ArtifactBucket

@@ -472,7 +472,7 @@ func (t *ResolvedPipelineTask) skipBecauseResultReferencesAreMissing(facts *Pipe
 func (t *ResolvedPipelineTask) skipBecausePipelineRunPipelineTimeoutReached(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) {
 		if facts.TimeoutsState.PipelineTimeout != nil && *facts.TimeoutsState.PipelineTimeout != config.NoTimeoutDuration && facts.TimeoutsState.StartTime != nil {
-			// If the elapsed time since the PipelineRun's start time is greater than the the PipelineRun's Pipeline timeout, skip.
+			// If the elapsed time since the PipelineRun's start time is greater than the PipelineRun's Pipeline timeout, skip.
 			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.StartTime) > *facts.TimeoutsState.PipelineTimeout
 		}
 	}
@@ -485,7 +485,7 @@ func (t *ResolvedPipelineTask) skipBecausePipelineRunPipelineTimeoutReached(fact
 func (t *ResolvedPipelineTask) skipBecausePipelineRunTasksTimeoutReached(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) && !t.IsFinalTask(facts) {
 		if facts.TimeoutsState.TasksTimeout != nil && *facts.TimeoutsState.TasksTimeout != config.NoTimeoutDuration && facts.TimeoutsState.StartTime != nil {
-			// If the elapsed time since the PipelineRun's start time is greater than the the PipelineRun's Tasks timeout, skip.
+			// If the elapsed time since the PipelineRun's start time is greater than the PipelineRun's Tasks timeout, skip.
 			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.StartTime) > *facts.TimeoutsState.TasksTimeout
 		}
 	}
@@ -498,7 +498,7 @@ func (t *ResolvedPipelineTask) skipBecausePipelineRunTasksTimeoutReached(facts *
 func (t *ResolvedPipelineTask) skipBecausePipelineRunFinallyTimeoutReached(facts *PipelineRunFacts) bool {
 	if t.checkParentsDone(facts) && t.IsFinalTask(facts) {
 		if facts.TimeoutsState.FinallyTimeout != nil && *facts.TimeoutsState.FinallyTimeout != config.NoTimeoutDuration && facts.TimeoutsState.FinallyStartTime != nil {
-			// If the elapsed time since the PipelineRun's finally start time is greater than the the PipelineRun's finally timeout, skip.
+			// If the elapsed time since the PipelineRun's finally start time is greater than the PipelineRun's finally timeout, skip.
 			return facts.TimeoutsState.Clock.Since(*facts.TimeoutsState.FinallyStartTime) > *facts.TimeoutsState.FinallyTimeout
 		}
 	}

@@ -23,7 +23,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// ResultNameFormat Constant used to define the the regex Result.Name should follow
+// ResultNameFormat Constant used to define the regex Result.Name should follow
 const ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
 
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)

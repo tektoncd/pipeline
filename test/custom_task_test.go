@@ -278,7 +278,7 @@ func WaitForRunSpecCancelled(ctx context.Context, c *clients, name string, desc 
 }
 
 // TestPipelineRunCustomTaskTimeout is an integration test that will
-// verify that pipelinerun timeout works and leads to the the correct Run Spec.status
+// verify that pipelinerun timeout works and leads to the correct Run Spec.status
 func TestPipelineRunCustomTaskTimeout(t *testing.T) {
 	// cancel the context after we have waited a suitable buffer beyond the given deadline.
 	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)

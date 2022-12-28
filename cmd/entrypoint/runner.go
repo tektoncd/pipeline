@@ -85,7 +85,7 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
 
 	// Build a list of tee readers that we'll read from after the command is
-	// is started. If we are not configured to tee stdout/stderr this will be
+	// started. If we are not configured to tee stdout/stderr this will be
 	// empty and contents will not be copied.
 	var readers []*namedReader
 	if rr.stdoutPath != "" {

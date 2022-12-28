@@ -29,7 +29,7 @@ func reflect(w http.ResponseWriter, r *http.Request) {
 
 // ServeHTTP serves the proxy HTTP handler. Any POST requests will reflect
 // provided data back to the client, any other methods will attempt to read
-// an HTTP response from from <data dir>/<url path>/<method>, e.g.
+// an HTTP response from <data dir>/<url path>/<method>, e.g.
 // testdata/github.com/foo/bar/GET.
 // The server will also check headers provided by the client. If they do not
 // match, an error is returned (this is useful for verifying auth headers are
