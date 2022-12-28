@@ -37,8 +37,10 @@ var (
 // target directory.
 // Steps executed:
 //  1. If taskrun has owner reference as pipelinerun then all outputs are copied to parents PVC
+//
 // and also runs any custom upload steps (upload to blob store)
-//  2.  If taskrun does not have pipelinerun as owner reference then all outputs resources execute their custom
+//  2. If taskrun does not have pipelinerun as owner reference then all outputs resources execute their custom
+//
 // upload steps (like upload to blob store )
 //
 // Resource source path determined
