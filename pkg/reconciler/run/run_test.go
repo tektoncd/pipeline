@@ -47,6 +47,7 @@ import (
 )
 
 func initializeRunControllerAssets(t *testing.T, d test.Data) (test.Assets, func()) {
+	t.Helper()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)

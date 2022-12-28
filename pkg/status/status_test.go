@@ -516,6 +516,7 @@ pr-run-1:
 }
 
 func mustParseTaskRunStatusMap(t *testing.T, yamlStr string) map[string]*v1beta1.PipelineRunTaskRunStatus {
+	t.Helper()
 	var output map[string]*v1beta1.PipelineRunTaskRunStatus
 	if err := yaml.Unmarshal([]byte(yamlStr), &output); err != nil {
 		t.Fatalf("parsing task run status map %s: %v", yamlStr, err)
@@ -524,6 +525,7 @@ func mustParseTaskRunStatusMap(t *testing.T, yamlStr string) map[string]*v1beta1
 }
 
 func mustParseRunStatusMap(t *testing.T, yamlStr string) map[string]*v1beta1.PipelineRunRunStatus {
+	t.Helper()
 	var output map[string]*v1beta1.PipelineRunRunStatus
 	if err := yaml.Unmarshal([]byte(yamlStr), &output); err != nil {
 		t.Fatalf("parsing run status map %s: %v", yamlStr, err)

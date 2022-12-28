@@ -717,6 +717,7 @@ func isCancelled(t *testing.T, taskRunName string, conds duckv1.Conditions) bool
 }
 
 func getSuccessTask(t *testing.T, namespace string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -729,6 +730,7 @@ spec:
 }
 
 func getFailTask(t *testing.T, namespace string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -741,6 +743,7 @@ spec:
 }
 
 func getDelaySuccessTask(t *testing.T, namespace string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -753,6 +756,7 @@ spec:
 }
 
 func getTaskVerifyingStatus(t *testing.T, namespace string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -770,6 +774,7 @@ spec:
 }
 
 func getSuccessTaskProducingResults(t *testing.T, namespace string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -784,6 +789,7 @@ spec:
 }
 
 func getDelaySuccessTaskProducingResults(t *testing.T, namespace string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -798,6 +804,7 @@ spec:
 }
 
 func getSuccessTaskConsumingResults(t *testing.T, namespace string, paramName string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -812,6 +819,7 @@ spec:
 }
 
 func getPipelineRun(t *testing.T, namespace, p string) *v1beta1.PipelineRun {
+	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s

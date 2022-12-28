@@ -233,6 +233,7 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 }
 
 func getExampleTask(t *testing.T, taskName, namespace string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -250,6 +251,7 @@ spec:
 }
 
 func getExamplePipeline(t *testing.T, pipelineName, taskName, namespace string) *v1beta1.Pipeline {
+	t.Helper()
 	return parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -272,6 +274,7 @@ spec:
 }
 
 func getExamplePipelineRun(t *testing.T, prName, pipelineName, namespace string) *v1beta1.PipelineRun {
+	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s

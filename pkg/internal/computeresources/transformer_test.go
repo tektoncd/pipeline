@@ -939,6 +939,7 @@ func TestTransformerMultipleContainer(t *testing.T) {
 }
 
 func cmpRequestsAndLimits(t *testing.T, want, got corev1.PodSpec) {
+	t.Helper()
 	// diff init containers
 	if len(want.InitContainers) != len(got.InitContainers) {
 		t.Errorf("Expected %d init containers, got %d", len(want.InitContainers), len(got.InitContainers))

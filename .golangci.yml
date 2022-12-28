@@ -31,6 +31,7 @@ linters:
   - misspell
   - revive
   - typecheck
+  - thelper
   - unconvert
   - unused
   - usestdlibvars

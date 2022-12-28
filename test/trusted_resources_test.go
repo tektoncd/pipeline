@@ -422,6 +422,7 @@ spec:
 }
 
 func setupResourceVerificationConfig(ctx context.Context, t *testing.T, keyInConfigMap bool, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string, string, signature.Signer) {
+	t.Helper()
 	c, ns := setup(ctx, t, requireAnyGate(neededFeatureFlags))
 	secretName, signer := setSecretAndConfig(ctx, t, c.KubeClient, ns, keyInConfigMap)
 	return c, ns, secretName, signer
@@ -468,6 +469,7 @@ func setSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Int
 }
 
 func removeResourceVerificationConfig(ctx context.Context, t *testing.T, c *clients, namespace string, secretName string) {
+	t.Helper()
 	resetSecretAndConfig(ctx, t, c.KubeClient, secretName, namespace)
 	tearDown(ctx, t, c, namespace)
 }

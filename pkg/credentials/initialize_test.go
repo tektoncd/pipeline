@@ -74,6 +74,7 @@ func TestTryCopyCredFileMissing(t *testing.T) {
 }
 
 func writeFakeCred(t *testing.T, dir, name, contents string) string {
+	t.Helper()
 	flags := os.O_RDWR | os.O_CREATE | os.O_TRUNC
 	path := filepath.Join(dir, name)
 	cred, err := os.OpenFile(path, flags, 0600)

@@ -50,6 +50,7 @@ func ConfigMapFromTestFile(t *testing.T, name string) *corev1.ConfigMap {
 
 // EnableFeatureFlagField enables a boolean feature flag in an existing context (for use in testing).
 func EnableFeatureFlagField(ctx context.Context, t *testing.T, flagName string) context.Context {
+	t.Helper()
 	featureFlags, err := config.NewFeatureFlagsFromMap(map[string]string{
 		flagName: "true",
 	})

@@ -3639,6 +3639,7 @@ func getTaskSpec() TaskSpec {
 }
 
 func enableFeatures(t *testing.T, features []string) func(context.Context) context.Context {
+	t.Helper()
 	return func(ctx context.Context) context.Context {
 		s := config.NewStore(logtesting.TestLogger(t))
 		data := make(map[string]string)

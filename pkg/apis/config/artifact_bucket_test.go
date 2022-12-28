@@ -91,6 +91,7 @@ func TestGetArtifactBucketConfigName(t *testing.T) {
 }
 
 func verifyConfigFileWithExpectedArtifactBucketConfig(t *testing.T, fileName string, expectedConfig *config.ArtifactBucket) {
+	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if ab, err := config.NewArtifactBucketFromConfigMap(cm); err == nil {
 		if d := cmp.Diff(ab, expectedConfig); d != "" {

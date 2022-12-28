@@ -77,6 +77,7 @@ func defaultResource() *Resource {
 }
 
 func newHandler(t *testing.T) (*Handler, *fake.Data) {
+	t.Helper()
 	logger := zaptest.NewLogger(t, zaptest.WrapOptions(zap.AddCaller())).Sugar()
 	client, data := fake.NewDefault()
 

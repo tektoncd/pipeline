@@ -71,6 +71,7 @@ func TestTaskRun_EmbeddedResource(t *testing.T) {
 }
 
 func getEmbeddedTask(t *testing.T, taskName, namespace string, args []string) *v1beta1.Task {
+	t.Helper()
 	var argsForYaml []string
 	for _, s := range args {
 		argsForYaml = append(argsForYaml, fmt.Sprintf("'%s'", s))
@@ -94,6 +95,7 @@ spec:
 }
 
 func getEmbeddedTaskRun(t *testing.T, trName, namespace, taskName string) *v1beta1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s

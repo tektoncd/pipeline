@@ -388,6 +388,7 @@ spec:
 }
 
 func applyController(t *testing.T) {
+	t.Helper()
 	t.Log("Creating Wait Custom Task Controller...")
 	cmd := exec.Command("ko", "apply", "-f", "./config/controller.yaml")
 	cmd.Dir = waitTaskDir
@@ -398,6 +399,7 @@ func applyController(t *testing.T) {
 }
 
 func applyV1Beta1Controller(t *testing.T) {
+	t.Helper()
 	t.Log("Creating Wait v1beta1.CustomRun Custom Task Controller...")
 	cmd := exec.Command("ko", "apply", "-f", "./config/controller.yaml")
 	cmd.Dir = betaWaitTaskDir
@@ -408,6 +410,7 @@ func applyV1Beta1Controller(t *testing.T) {
 }
 
 func cleanUpController(t *testing.T) {
+	t.Helper()
 	t.Log("Tearing down Wait Custom Task Controller...")
 	cmd := exec.Command("ko", "delete", "-f", "./config/controller.yaml")
 	cmd.Dir = waitTaskDir
@@ -418,6 +421,7 @@ func cleanUpController(t *testing.T) {
 }
 
 func cleanUpV1Beta1Controller(t *testing.T) {
+	t.Helper()
 	t.Log("Tearing down Wait v1beta1.CustomRun Custom Task Controller...")
 	cmd := exec.Command("ko", "delete", "-f", "./config/controller.yaml")
 	cmd.Dir = betaWaitTaskDir
@@ -1168,6 +1172,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 }
 
 func setUpCustomTask(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
+	t.Helper()
 	c, ns := setup(ctx, t, requireAnyGate(neededFeatureFlags))
 	// Note that this may not work if we run e2e tests in parallel since this feature flag forces custom tasks to be
 	// created as v1alpha1.Run with this value. i.e. Don't add t.Parallel() for this test.
@@ -1185,6 +1190,7 @@ func setUpCustomTask(ctx context.Context, t *testing.T, fn ...func(context.Conte
 }
 
 func setUpV1Beta1CustomTask(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
+	t.Helper()
 	c, ns := setup(ctx, t, requireAnyGate(neededFeatureFlags))
 	// Note that this may not work if we run e2e tests in parallel since this feature flag forces custom tasks to be
 	// created as v1beta1.CustomRuns i.e. Don't add t.Parallel() for this test.

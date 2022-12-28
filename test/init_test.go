@@ -54,6 +54,7 @@ func init() {
 }
 
 func setup(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
+	t.Helper()
 	skipIfExcluded(t)
 
 	t.Helper()
@@ -132,6 +133,7 @@ func tearDown(ctx context.Context, t *testing.T, cs *clients, namespace string) 
 }
 
 func initializeLogsAndMetrics(t *testing.T) {
+	t.Helper()
 	initMetrics.Do(func() {
 		flag.Parse()
 		flag.Set("alsologtostderr", "true")
@@ -144,6 +146,7 @@ func initializeLogsAndMetrics(t *testing.T) {
 }
 
 func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeClient kubernetes.Interface) {
+	t.Helper()
 	t.Logf("Create namespace %s to deploy to", namespace)
 	labels := map[string]string{
 		"tekton.dev/test-e2e": "true",
@@ -159,6 +162,7 @@ func createNamespace(ctx context.Context, t *testing.T, namespace string, kubeCl
 }
 
 func getDefaultSA(ctx context.Context, t *testing.T, kubeClient kubernetes.Interface, namespace string) string {
+	t.Helper()
 	configDefaultsCM, err := kubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetDefaultsConfigName(), metav1.GetOptions{})
 	if err != nil {
 		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetDefaultsConfigName(), err)
@@ -171,6 +175,7 @@ func getDefaultSA(ctx context.Context, t *testing.T, kubeClient kubernetes.Inter
 }
 
 func verifyServiceAccountExistence(ctx context.Context, t *testing.T, namespace string, kubeClient kubernetes.Interface) {
+	t.Helper()
 	defaultSA := getDefaultSA(ctx, t, kubeClient, namespace)
 	t.Logf("Verify SA %q is created in namespace %q", defaultSA, namespace)
 

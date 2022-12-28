@@ -770,8 +770,8 @@ func TestEmitCloudEventsWhenConditionChange(t *testing.T) {
 }
 
 func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bool, expectedEventCount int) context.Context {
-	var ctx context.Context
-	ctx, _ = rtesting.SetupFakeContext(t)
+	t.Helper()
+	ctx, _ := rtesting.SetupFakeContext(t)
 	if withClient {
 		ctx = WithClient(ctx, &behaviour, expectedEventCount)
 	}

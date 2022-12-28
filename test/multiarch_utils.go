@@ -109,6 +109,7 @@ func getTestImage(image int) string {
 
 // skipIfExcluded checks if test name is in the excluded list and skip it
 func skipIfExcluded(t *testing.T) {
+	t.Helper()
 	if excludedTests.Has(t.Name()) {
 		t.Skipf("skip for %s architecture", getTestArch())
 	}

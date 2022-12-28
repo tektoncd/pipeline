@@ -115,6 +115,7 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 }
 
 func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *resolver.FeatureFlags) {
+	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if flags, err := resolver.NewFeatureFlagsFromConfigMap(cm); err == nil {
 		if d := cmp.Diff(expectedConfig, flags); d != "" {

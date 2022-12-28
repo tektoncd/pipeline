@@ -89,6 +89,7 @@ func TestGetArtifactPVCConfigName(t *testing.T) {
 }
 
 func verifyConfigFileWithExpectedArtifactPVCConfig(t *testing.T, fileName string, expectedConfig *config.ArtifactPVC) {
+	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if ab, err := config.NewArtifactPVCFromConfigMap(cm); err == nil {
 		if d := cmp.Diff(ab, expectedConfig); d != "" {

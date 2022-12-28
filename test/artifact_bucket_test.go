@@ -72,7 +72,7 @@ func TestStorageBucketPipelineRun(t *testing.T) {
 	if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, getBucketSecret(t, configFilePath, namespace), metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create Secret %q: %v", bucketSecretName, err)
 	}
-	defer deleteBucketSecret(ctx, c, t, namespace)
+	defer deleteBucketSecret(ctx, t, c, namespace)
 
 	t.Logf("Creating GCS bucket %s", bucketName)
 	createbuckettask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
@@ -120,7 +120,7 @@ spec:
 		t.Errorf("Error waiting for TaskRun %s to finish: %s", createbuckettaskrun.Name, err)
 	}
 
-	defer runTaskToDeleteBucket(ctx, c, t, namespace, bucketName, bucketSecretName, bucketSecretKey)
+	defer runTaskToDeleteBucket(ctx, t, c, namespace, bucketName, bucketSecretName, bucketSecretKey)
 
 	originalConfigMap, err := c.KubeClient.CoreV1().ConfigMaps(systemNamespace).Get(ctx, config.GetArtifactBucketConfigName(), metav1.GetOptions{})
 	if err != nil {
@@ -294,19 +294,22 @@ func getBucketSecret(t *testing.T, configFilePath, namespace string) *corev1.Sec
 	}
 }
 
-func deleteBucketSecret(ctx context.Context, c *clients, t *testing.T, namespace string) {
+func deleteBucketSecret(ctx context.Context, t *testing.T, c *clients, namespace string) {
+	t.Helper()
 	if err := c.KubeClient.CoreV1().Secrets(namespace).Delete(ctx, bucketSecretName, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("Failed to delete Secret `%s`: %s", bucketSecretName, err)
 	}
 }
 
 func resetConfigMap(ctx context.Context, t *testing.T, c *clients, namespace, configName string, values map[string]string) {
+	t.Helper()
 	if err := updateConfigMap(ctx, c.KubeClient, namespace, configName, values); err != nil {
 		t.Log(err)
 	}
 }
 
-func runTaskToDeleteBucket(ctx context.Context, c *clients, t *testing.T, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
+func runTaskToDeleteBucket(ctx context.Context, t *testing.T, c *clients, namespace, bucketName, bucketSecretName, bucketSecretKey string) {
+	t.Helper()
 	deletelbuckettask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s

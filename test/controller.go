@@ -129,6 +129,7 @@ type Assets struct {
 
 // AddToInformer returns a function to add ktesting.Actions to the cache store
 func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool, runtime.Object, error) {
+	t.Helper()
 	return func(action ktesting.Action) (bool, runtime.Object, error) {
 		switch a := action.(type) {
 		case ktesting.CreateActionImpl:
@@ -175,6 +176,7 @@ func AddToInformer(t *testing.T, store cache.Store) func(ktesting.Action) (bool,
 // given Data.
 // nolint: revive
 func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers) {
+	t.Helper()
 	c := Clients{
 		Kube:               fakekubeclient.Get(ctx),
 		Pipeline:           fakepipelineclient.Get(ctx),

@@ -135,6 +135,7 @@ func TestPropagatedParams(t *testing.T) {
 }
 
 func getPropagatedParamPipelineRun(t *testing.T, namespace string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun) {
+	t.Helper()
 	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-fully
@@ -252,6 +253,7 @@ status:
 }
 
 func getPropagatedParamTaskLevelPipelineRun(t *testing.T, namespace string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun) {
+	t.Helper()
 	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-task-level
@@ -336,6 +338,7 @@ status:
 }
 
 func getPropagatedParamTaskLevelDefaultPipelineRun(t *testing.T, namespace string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun) {
+	t.Helper()
 	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: propagated-parameters-default-task-level

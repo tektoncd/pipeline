@@ -34,6 +34,7 @@ import (
 )
 
 func setupTestData(t *testing.T, serviceaccounts []corev1.ServiceAccount, limitranges []corev1.LimitRange) (context.Context, func()) {
+	t.Helper()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	kubeclient := fakekubeclient.Get(ctx)

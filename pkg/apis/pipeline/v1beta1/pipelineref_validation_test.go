@@ -193,6 +193,7 @@ func TestPipelineRef_Valid(t *testing.T) {
 }
 
 func enableTektonOCIBundles(t *testing.T) func(context.Context) context.Context {
+	t.Helper()
 	return func(ctx context.Context) context.Context {
 		s := config.NewStore(logtesting.TestLogger(t))
 		s.OnConfigChanged(&corev1.ConfigMap{
