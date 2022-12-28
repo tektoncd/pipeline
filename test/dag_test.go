@@ -216,6 +216,7 @@ spec:
 }
 
 func verifyExpectedOrder(ctx context.Context, t *testing.T, c clientset.TaskRunInterface, prName string) {
+	t.Helper()
 	t.Logf("Verifying order of execution")
 
 	taskRunsResp, err := c.List(ctx, metav1.ListOptions{})

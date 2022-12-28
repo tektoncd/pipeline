@@ -61,6 +61,7 @@ func TestNewTrustedResourcesFromEmptyConfigMap(t *testing.T) {
 }
 
 func verifyConfigFileWithExpectedTrustedResourcesConfig(t *testing.T, fileName string, expectedConfig *config.TrustedResources) {
+	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if ab, err := config.NewTrustedResourcesConfigFromConfigMap(cm); err == nil {
 		if d := cmp.Diff(ab, expectedConfig); d != "" {

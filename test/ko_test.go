@@ -26,12 +26,11 @@ import (
 	"testing"
 )
 
-var (
-	// Wether missing KO_DOCKER_REPO environment variable should be fatal or not
-	missingKoFatal = "true"
-)
+// missingKoFatal makes missing KO_DOCKER_REPO envvar fatal or optional
+var missingKoFatal = "true"
 
 func ensureDockerRepo(t *testing.T) string {
+	t.Helper()
 	repo, err := getDockerRepo()
 	if err != nil {
 		if missingKoFatal == "false" {

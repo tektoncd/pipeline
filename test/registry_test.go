@@ -28,6 +28,7 @@ import (
 )
 
 func withRegistry(ctx context.Context, t *testing.T, c *clients, namespace string) {
+	t.Helper()
 	deployment := getRegistryDeployment(namespace)
 	if _, err := c.KubeClient.AppsV1().Deployments(namespace).Create(ctx, deployment, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create the local registry deployment: %v", err)

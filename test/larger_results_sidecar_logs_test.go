@@ -121,6 +121,7 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 }
 
 func getLargerResultsPipelineRun(t *testing.T, namespace string) (*v1beta1.PipelineRun, *v1beta1.PipelineRun, []*v1beta1.TaskRun) {
+	t.Helper()
 	pipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: larger-results-sidecar-logs
@@ -373,6 +374,7 @@ status:
 }
 
 func setUpSidecarLogs(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
+	t.Helper()
 	c, ns := setup(ctx, t)
 	configMapData := map[string]string{
 		"results-from": "sidecar-logs",

@@ -84,6 +84,7 @@ func TestClusterResource(t *testing.T) {
 }
 
 func getClusterResource(t *testing.T, name, sname string) *resourcev1alpha1.PipelineResource {
+	t.Helper()
 	return parse.MustParsePipelineResource(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -122,6 +123,7 @@ func getClusterResourceTaskSecret(namespace, name string) *corev1.Secret {
 }
 
 func getClusterResourceTask(t *testing.T, namespace, name, configName string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -158,6 +160,7 @@ spec:
 }
 
 func getClusterResourceTaskRun(t *testing.T, namespace, name, taskName, resName string) *v1beta1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s

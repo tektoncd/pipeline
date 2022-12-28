@@ -84,6 +84,7 @@ func TestHermeticTaskRun(t *testing.T) {
 }
 
 func taskRun(t *testing.T, name, namespace, executionMode string) *v1beta1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   annotations:
@@ -107,6 +108,7 @@ spec:
 }
 
 func unpriviligedTaskRun(t *testing.T, name, namespace, executionMode string) *v1beta1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   annotations:

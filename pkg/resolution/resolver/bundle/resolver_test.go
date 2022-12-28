@@ -520,6 +520,7 @@ type imageRef struct {
 // to map an object to the annotations for it.
 // NOTE: Every image pushed to the registry has a default tag named "latest".
 func pushToRegistry(t *testing.T, registry, imageName string, data []runtime.Object, mapper test.ObjectAnnotationMapper) *imageRef {
+	t.Helper()
 	ref, err := test.CreateImageWithAnnotations(fmt.Sprintf("%s/%s:latest", registry, imageName), mapper, data...)
 	if err != nil {
 		t.Fatalf("couldn't push the image: %v", err)

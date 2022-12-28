@@ -564,6 +564,7 @@ func TestResolve(t *testing.T) {
 
 // createTestRepo is used to instantiate a local test repository with the desired commits.
 func createTestRepo(t *testing.T, commits []commitForRepo) (string, []string) {
+	t.Helper()
 	commitSHAs := []string{}
 
 	t.Helper()
@@ -685,6 +686,7 @@ func writeAndCommitToTestRepo(t *testing.T, worktree *git.Worktree, repoDir stri
 
 // withTemporaryGitConfig resets the .gitconfig for the duration of the test.
 func withTemporaryGitConfig(t *testing.T) {
+	t.Helper()
 	gitConfigDir := t.TempDir()
 	key := "GIT_CONFIG_GLOBAL"
 	t.Setenv(key, filepath.Join(gitConfigDir, "config"))

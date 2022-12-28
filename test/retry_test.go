@@ -161,6 +161,7 @@ spec:
 // This method is necessary because PipelineRunTaskRunStatus and TaskRunStatus
 // don't have an IsFailed method.
 func isFailed(t *testing.T, taskRunName string, conds duckv1.Conditions) bool {
+	t.Helper()
 	for _, c := range conds {
 		if c.Type == apis.ConditionSucceeded {
 			if c.Status != corev1.ConditionFalse {

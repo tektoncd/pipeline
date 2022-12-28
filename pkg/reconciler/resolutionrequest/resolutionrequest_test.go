@@ -61,6 +61,7 @@ func getResolutionRequestController(t *testing.T, d test.Data) (test.Assets, fun
 }
 
 func initializeResolutionRequestControllerAssets(t *testing.T, d test.Data) (test.Assets, func()) {
+	t.Helper()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx, cancel := context.WithCancel(ctx)
 	c, informers := test.SeedTestData(t, ctx, d)

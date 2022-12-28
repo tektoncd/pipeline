@@ -404,6 +404,7 @@ spec:
 }
 
 func getUpdatedStatusSpecPipeline(t *testing.T, namespace string, taskName string) *v1beta1.Pipeline {
+	t.Helper()
 	return parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: pipeline-status-spec-updated
@@ -423,6 +424,7 @@ spec:
 }
 
 func getHelloWorldPipelineWithSingularTask(t *testing.T, namespace string, taskName string) *v1beta1.Pipeline {
+	t.Helper()
 	return parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -603,6 +605,7 @@ spec:
 }
 
 func getFanInFanOutTasks(t *testing.T, namespace string) map[string]*v1beta1.Task {
+	t.Helper()
 	return map[string]*v1beta1.Task{
 		"create-file": parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
@@ -695,6 +698,7 @@ spec:
 }
 
 func getFanInFanOutPipeline(t *testing.T, namespace string, tasks map[string]*v1beta1.Task) *v1beta1.Pipeline {
+	t.Helper()
 	return parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -753,6 +757,7 @@ spec:
 }
 
 func getFanInFanOutGitResources(t *testing.T) map[string]*v1alpha1.PipelineResource {
+	t.Helper()
 	return map[string]*v1alpha1.PipelineResource{
 		"kritis-resource-git": parse.MustParsePipelineResource(t, fmt.Sprintf(`
 metadata:
@@ -779,6 +784,7 @@ func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceA
 	}
 }
 func getFanInFanOutPipelineRun(t *testing.T, _ int, namespace string, pipelineName string, resources map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun {
+	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -823,6 +829,7 @@ func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {
 }
 
 func getUpdatedStatusSpecPipelineRun(t *testing.T, _ int, namespace string, pipelineName string, _ map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun {
+	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: "pipeline-task-update"
@@ -838,6 +845,7 @@ spec:
 }
 
 func getHelloWorldPipelineRun(t *testing.T, suffix int, namespace string, pipelineName string, _ map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun {
+	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   labels:
@@ -896,6 +904,7 @@ func collectMatchingEvents(ctx context.Context, kubeClient kubernetes.Interface,
 // checkLabelPropagation checks that labels are correctly propagating from
 // Pipelines, PipelineRuns, and Tasks to TaskRuns and Pods.
 func checkLabelPropagation(ctx context.Context, t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1beta1.TaskRun) {
+	t.Helper()
 	// Our controllers add 4 labels automatically. If custom labels are set on
 	// the Pipeline, PipelineRun, or Task then the map will have to be resized.
 	labels := make(map[string]string, 4)
@@ -949,6 +958,7 @@ func checkLabelPropagation(ctx context.Context, t *testing.T, c *clients, namesp
 // checkAnnotationPropagation checks that annotations are correctly propagating from
 // Pipelines, PipelineRuns, and Tasks to TaskRuns and Pods.
 func checkAnnotationPropagation(ctx context.Context, t *testing.T, c *clients, namespace string, pipelineRunName string, tr *v1beta1.TaskRun) {
+	t.Helper()
 	annotations := make(map[string]string)
 
 	// Check annotation propagation to PipelineRuns.
@@ -986,6 +996,7 @@ func checkAnnotationPropagation(ctx context.Context, t *testing.T, c *clients, n
 }
 
 func getPodForTaskRun(ctx context.Context, t *testing.T, kubeClient kubernetes.Interface, namespace string, tr *v1beta1.TaskRun) *corev1.Pod {
+	t.Helper()
 	// The Pod name has a random suffix, so we filter by label to find the one we care about.
 	pods, err := kubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: pipeline.TaskRunLabelKey + " = " + tr.Name,
@@ -1000,6 +1011,7 @@ func getPodForTaskRun(ctx context.Context, t *testing.T, kubeClient kubernetes.I
 }
 
 func assertLabelsMatch(t *testing.T, expectedLabels, actualLabels map[string]string) {
+	t.Helper()
 	for key, expectedVal := range expectedLabels {
 		if actualVal := actualLabels[key]; actualVal != expectedVal {
 			t.Errorf("Expected labels containing %s=%s but labels were %v", key, expectedVal, actualLabels)
@@ -1008,6 +1020,7 @@ func assertLabelsMatch(t *testing.T, expectedLabels, actualLabels map[string]str
 }
 
 func assertAnnotationsMatch(t *testing.T, expectedAnnotations, actualAnnotations map[string]string) {
+	t.Helper()
 	for key, expectedVal := range expectedAnnotations {
 		if actualVal := actualAnnotations[key]; actualVal != expectedVal {
 			t.Errorf("Expected annotations containing %s=%s but annotations were %v", key, expectedVal, actualAnnotations)

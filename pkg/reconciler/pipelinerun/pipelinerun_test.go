@@ -126,12 +126,14 @@ type PipelineRunTest struct {
 // getPipelineRunController returns an instance of the PipelineRun controller/reconciler that has been seeded with
 // d, where d represents the state of the system (existing resources) needed for the test.
 func getPipelineRunController(t *testing.T, d test.Data) (test.Assets, func()) {
+	t.Helper()
 	return initializePipelineRunControllerAssets(t, d, pipeline.Options{Images: images})
 }
 
 // initiailizePipelinerunControllerAssets is a shared helper for
 // controller initialization.
 func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipeline.Options) (test.Assets, func()) {
+	t.Helper()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
 	ctx, cancel := context.WithCancel(ctx)
@@ -232,9 +234,11 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
+// runTestReconcileWithEmbeddedStatus runs "Reconcile" on a PipelineRun with one
+// Task that has not been started yet.  It verifies that the TaskRun is created,
+// it checks the resulting API actions, status and events.
 func runTestReconcileWithEmbeddedStatus(t *testing.T, embeddedStatus string) {
-	// TestReconcile runs "Reconcile" on a PipelineRun with one Task that has not been started yet.
-	// It verifies that the TaskRun is created, it checks the resulting API actions, status and events.
+	t.Helper()
 	names.TestingSeed()
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
@@ -465,7 +469,7 @@ spec:
 		PipelineResources: rs,
 		ConfigMaps:        []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -708,7 +712,7 @@ spec:
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
 				ConfigMaps:   cms,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			wantEvents := []string{
@@ -903,7 +907,7 @@ spec:
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pr},
 				ConfigMaps:   cms,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			wantEvents := []string{
@@ -966,6 +970,7 @@ func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 }
 
 func runTestReconcilePipelineSpecTaskSpec(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 
 	prs := []*v1beta1.PipelineRun{
@@ -998,7 +1003,7 @@ spec:
 		Pipelines:    ps,
 		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -1458,7 +1463,7 @@ spec:
 				Tasks:        ts,
 				ConfigMaps:   cms,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			wantEvents := append(tc.wantEvents, "Warning InternalError 1 error occurred") //nolint
@@ -1569,7 +1574,7 @@ status:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -1695,9 +1700,11 @@ func TestReconcileOnCancelledPipelineRun(t *testing.T) {
 	}
 }
 
+// runTestReconcileOnCancelledPipelineRun runs "Reconcile" on a PipelineRun that
+// has been cancelled.  It verifies that reconcile is successful, the pipeline
+// status updated and events generated.
 func runTestReconcileOnCancelledPipelineRun(t *testing.T, embeddedStatus string) {
-	// TestReconcileOnCancelledPipelineRun runs "Reconcile" on a PipelineRun that has been cancelled.
-	// It verifies that reconcile is successful, the pipeline status updated and events generated.
+	t.Helper()
 
 	testCases := []struct {
 		name       string
@@ -1727,7 +1734,7 @@ func runTestReconcileOnCancelledPipelineRun(t *testing.T, embeddedStatus string)
 				TaskRuns:     trs,
 				ConfigMaps:   cms,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			wantEvents := []string{
@@ -1802,7 +1809,7 @@ status:
 		ConfigMaps:   cms,
 		CustomRuns:   runs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -1916,7 +1923,7 @@ status:
 				ConfigMaps:   cms,
 				Runs:         runs,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			wantEvents := []string{
@@ -2001,6 +2008,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T) {
 }
 
 func runTestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	// TestReconcileOnCancelledRunFinallyPipelineRun runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
 	// It verifies that reconcile is successful, the pipeline status updated and events generated.
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
@@ -2013,7 +2021,7 @@ func runTestReconcileOnCancelledRunFinallyPipelineRun(t *testing.T, embeddedStat
 		Tasks:        ts,
 		ConfigMaps:   cms,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2076,9 +2084,12 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask(t *testing.T) {
 	}
 }
 
+// runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask runs
+// "Reconcile" on a PipelineRun that has been gracefully cancelled.  It verifies
+// that reconcile is successful, final tasks run, the pipeline status updated
+// and events generated.
 func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask(t *testing.T, embeddedStatus string) {
-	// TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTask runs "Reconcile" on a PipelineRun that has been gracefully cancelled.
-	// It verifies that reconcile is successful, final tasks run, the pipeline status updated and events generated.
+	t.Helper()
 	prs := []*v1beta1.PipelineRun{createCancelledPipelineRun(t, "test-pipeline-run-cancelled-run-finally", v1beta1.PipelineRunSpecStatusCancelledRunFinally)}
 	ps := []*v1beta1.Pipeline{
 		parse.MustParseV1beta1Pipeline(t, `
@@ -2113,7 +2124,7 @@ spec:
 		Tasks:        ts,
 		ConfigMaps:   cms,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2194,7 +2205,7 @@ spec:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2262,6 +2273,7 @@ func TestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *tes
 }
 
 func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	// Pipeline has a DAG task "hello-world-1" and Finally task "hello-world-2"
 	ps := []*v1beta1.Pipeline{{
 		ObjectMeta: baseObjectMeta("test-pipeline", "foo"),
@@ -2342,7 +2354,7 @@ func runTestReconcileOnCancelledRunFinallyPipelineRunWithFinalTaskAndRetries(t *
 		Tasks:        ts,
 		ConfigMaps:   cms,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2546,7 +2558,7 @@ status:
 				Tasks:        ts,
 				TaskRuns:     tc.taskRuns,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			wantEvents := append([]string{}, tc.expectedEvents...)
@@ -2608,7 +2620,7 @@ spec:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	var wantEvents []string
@@ -2645,7 +2657,7 @@ status:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2726,7 +2738,7 @@ spec:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2824,7 +2836,7 @@ status:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -2937,7 +2949,7 @@ spec:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -3006,7 +3018,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run", []string{}, false)
@@ -3311,7 +3323,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
@@ -3366,7 +3378,7 @@ spec:
 				Pipelines:    ps,
 				Tasks:        ts,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			_, clients := prt.reconcileRun("foo", "test-pipeline-run-with-labels", []string{}, false)
@@ -3424,7 +3436,7 @@ metadata:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
@@ -3504,7 +3516,7 @@ spec:
 		Pipelines:    ps,
 		ConfigMaps:   cms,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
@@ -3558,7 +3570,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
@@ -3626,7 +3638,7 @@ spec:
 		Pipelines:    ps,
 		ConfigMaps:   cms,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
@@ -3690,6 +3702,7 @@ func TestReconcileWithWhenExpressionsWithTaskResultsAndParams(t *testing.T) {
 }
 
 func runTestReconcileWithWhenExpressionsWithTaskResultsAndParams(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
@@ -3781,7 +3794,7 @@ status:
 		TaskRuns:     trs,
 		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -3971,7 +3984,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -4142,7 +4155,7 @@ status:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -4260,7 +4273,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
@@ -4373,7 +4386,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
@@ -4506,7 +4519,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run", []string{}, false)
@@ -4648,7 +4661,7 @@ status:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
@@ -4736,7 +4749,7 @@ spec:
 		PipelineRuns: prs,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-different-service-accs", []string{}, false)
@@ -4802,6 +4815,7 @@ func TestReconcileWithFinallyResults(t *testing.T) {
 }
 
 func runTestReconcileWithFinallyResults(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
@@ -4915,7 +4929,7 @@ spec:
 		Runs:         rs,
 		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-finally-results", []string{}, false)
 
@@ -5184,6 +5198,7 @@ func TestReconcileWithPipelineResults(t *testing.T) {
 }
 
 func runTestReconcileWithPipelineResults(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
@@ -5271,7 +5286,7 @@ spec:
 		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipeline-run-results", []string{}, false)
 
@@ -5505,6 +5520,7 @@ func TestReconcileWithPipelineResults_OnFailedPipelineRun(t *testing.T) {
 }
 
 func runTestReconcileWithPipelineResultsOnFailedPipelineRun(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
@@ -5619,7 +5635,7 @@ status:
 		TaskRuns:     trs,
 		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, _ := prt.reconcileRun("foo", "test-failed-pr-with-task-results", []string{}, false)
@@ -5790,6 +5806,7 @@ func TestReconcileOutOfSyncPipelineRun(t *testing.T) {
 }
 
 func runTestReconcileOutOfSyncPipelineRun(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	ctx := context.Background()
 
 	prOutOfSyncName := "test-pipeline-run-out-of-sync"
@@ -5904,7 +5921,7 @@ status:
 		Runs:         runs,
 		ConfigMaps:   cms,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", prOutOfSync.Name, []string{}, false)
@@ -6071,6 +6088,7 @@ func TestUpdatePipelineRunStatusFromInformer(t *testing.T) {
 }
 
 func runTestUpdatePipelineRunStatusFromInformer(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 
 	pr := parse.MustParseV1beta1PipelineRun(t, `
@@ -6100,7 +6118,7 @@ spec:
 		PipelineRuns: []*v1beta1.PipelineRun{pr},
 		ConfigMaps:   cms,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -6521,7 +6539,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 				Tasks:        tt.ts,
 				TaskRuns:     tt.trs,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			reconciledRun, clients := prt.reconcileRun("foo", tt.pipelineRunName, []string{}, false)
@@ -6610,6 +6628,7 @@ func getPipeline(p string, spec v1beta1.PipelineSpec) []*v1beta1.Pipeline {
 }
 
 func getTaskRun(t *testing.T, tr, pr, p, tl string, status corev1.ConditionStatus) *v1beta1.TaskRun {
+	t.Helper()
 	return createHelloWorldTaskRunWithStatusTaskLabel(t, tr, "foo", pr, p, "", tl,
 		apis.Condition{
 			Type:   apis.ConditionSucceeded,
@@ -6695,7 +6714,7 @@ spec:
 		ConfigMaps:              cms,
 		ExpectedCloudEventCount: len(wantEvents),
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipelinerun", wantEvents, false)
@@ -6745,6 +6764,7 @@ func TestReconcilePipeline_TaskSpecMetadata(t *testing.T) {
 }
 
 func runTestReconcilePipelineTaskSpecMetadata(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 
 	prs := []*v1beta1.PipelineRun{
@@ -6790,7 +6810,7 @@ spec:
 		Pipelines:    ps,
 		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", []string{}, false)
@@ -6907,7 +6927,7 @@ status:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
@@ -7085,7 +7105,7 @@ status:
 		Tasks:        ts,
 		TaskRuns:     trs,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-final-task-results", []string{}, false)
@@ -7148,7 +7168,7 @@ spec:
 
 // newPipelineRunTest returns PipelineRunTest with a new PipelineRun controller created with specified state through data
 // This PipelineRunTest can be reused for multiple PipelineRuns by calling reconcileRun for each pipelineRun
-func newPipelineRunTest(data test.Data, t *testing.T) *PipelineRunTest {
+func newPipelineRunTest(t *testing.T, data test.Data) *PipelineRunTest {
 	t.Helper()
 	testAssets, cancel := getPipelineRunController(t, data)
 	return &PipelineRunTest{
@@ -7225,6 +7245,7 @@ func TestReconcile_RemotePipelineRef(t *testing.T) {
 }
 
 func runTestReconcileRemotePipelineRef(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 
 	ctx := context.Background()
@@ -7287,7 +7308,7 @@ metadata:
 		ConfigMaps: cms,
 	}
 
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -7356,6 +7377,7 @@ func TestReconcile_OptionalWorkspacesOmitted(t *testing.T) {
 }
 
 func runTestReconcileOptionalWorkspacesOmitted(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 
 	ctx := context.Background()
@@ -7394,7 +7416,7 @@ spec:
 		ConfigMaps: []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
 
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run-success", nil, false)
@@ -7507,7 +7529,7 @@ spec:
 		}},
 	}
 
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	run1, _ := prt.reconcileRun("foo", "pipelinerun-param-invalid-result-variable", nil, true)
@@ -7559,7 +7581,7 @@ spec:
 		}},
 	}
 
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string(nil)
@@ -7634,7 +7656,7 @@ spec:
 		}},
 	}
 
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string(nil)
@@ -7693,7 +7715,7 @@ spec:
 		}},
 	}
 
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string(nil)
@@ -7755,7 +7777,7 @@ spec:
 		}},
 	}
 
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string(nil)
@@ -7882,6 +7904,7 @@ func createHelloWorldTaskRunWithStatus(
 	trName, ns, prName, pName, podName string,
 	condition apis.Condition,
 ) *v1beta1.TaskRun {
+	t.Helper()
 	p := createHelloWorldTaskRun(t, trName, ns, prName, pName)
 	p.Status = v1beta1.TaskRunStatus{
 		Status: duckv1.Status{
@@ -7899,6 +7922,7 @@ func createHelloWorldTaskRunWithStatusTaskLabel(
 	trName, ns, prName, pName, podName, taskLabel string,
 	condition apis.Condition,
 ) *v1beta1.TaskRun {
+	t.Helper()
 	p := createHelloWorldTaskRunWithStatus(t, trName, ns, prName, pName, podName, condition)
 	p.Labels[pipeline.PipelineTaskLabelKey] = taskLabel
 
@@ -7906,6 +7930,7 @@ func createHelloWorldTaskRunWithStatusTaskLabel(
 }
 
 func createHelloWorldTaskRun(t *testing.T, trName, ns, prName, pName string) *v1beta1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -7921,6 +7946,7 @@ spec:
 }
 
 func createCancelledPipelineRun(t *testing.T, prName string, specStatus v1beta1.PipelineRunSpecStatus) *v1beta1.PipelineRun {
+	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -8040,24 +8066,28 @@ func filterChildRefsForKind(childRefs []v1beta1.ChildStatusReference, kind strin
 }
 
 func mustParseTaskRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.TaskRun {
+	t.Helper()
 	tr := parse.MustParseV1beta1TaskRun(t, asYAML)
 	tr.ObjectMeta = objectMeta
 	return tr
 }
 
 func mustParseCustomRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1beta1.CustomRun {
+	t.Helper()
 	r := parse.MustParseCustomRun(t, asYAML)
 	r.ObjectMeta = objectMeta
 	return r
 }
 
 func mustParseRunWithObjectMeta(t *testing.T, objectMeta metav1.ObjectMeta, asYAML string) *v1alpha1.Run {
+	t.Helper()
 	r := parse.MustParseRun(t, asYAML)
 	r.ObjectMeta = objectMeta
 	return r
 }
 
 func helloWorldPipelineWithRunAfter(t *testing.T) *v1beta1.Pipeline {
+	t.Helper()
 	return parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
@@ -8322,7 +8352,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
@@ -8393,7 +8423,7 @@ spec:
 		Pipelines:    ps,
 		Tasks:        ts,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	_, clients := prt.reconcileRun("foo", prName, []string{}, false)
@@ -8893,7 +8923,7 @@ spec:
 			if tt.tr != nil {
 				d.TaskRuns = []*v1beta1.TaskRun{tt.tr}
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
@@ -9501,7 +9531,7 @@ spec:
 			if tt.tr != nil {
 				d.TaskRuns = []*v1beta1.TaskRun{tt.tr}
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
@@ -9963,7 +9993,7 @@ status:
 				PipelineRuns: tt.prs,
 				ConfigMaps:   cms,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
@@ -10495,7 +10525,7 @@ spec:
 			if tt.tr != nil {
 				d.TaskRuns = []*v1beta1.TaskRun{tt.tr}
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			_, clients := prt.reconcileRun("foo", "pr", []string{}, false)
@@ -10566,6 +10596,7 @@ func TestReconcile_SetDefaults(t *testing.T) {
 }
 
 func runTestReconcileWithoutDefaults(t *testing.T, embeddedStatus string) {
+	t.Helper()
 	names.TestingSeed()
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
 metadata:
@@ -10638,7 +10669,7 @@ spec:
 		ClusterTasks: clusterTasks,
 		ConfigMaps:   []*corev1.ConfigMap{withEmbeddedStatus(newFeatureFlagsConfigMap(), embeddedStatus)},
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	wantEvents := []string{
@@ -10811,7 +10842,7 @@ spec:
 				PipelineRuns: []*v1beta1.PipelineRun{tc.pipelineRun},
 				Pipelines:    []*v1beta1.Pipeline{tc.pipeline},
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			reconciledRun, clients := prt.reconcileRun("default", tc.pipelineRun.Name, []string{}, false)
@@ -10896,7 +10927,7 @@ spec:
 				Tasks:        ts,
 				ConfigMaps:   cms,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			pr, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
@@ -10989,7 +11020,7 @@ spec:
 		ConfigMaps:           cms,
 		VerificationPolicies: vps,
 	}
-	prt := newPipelineRunTest(d, t)
+	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
 	reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, false)
@@ -11108,7 +11139,7 @@ spec:
 				ConfigMaps:           cms,
 				VerificationPolicies: vps,
 			}
-			prt := newPipelineRunTest(d, t)
+			prt := newPipelineRunTest(t, d)
 			defer prt.Cancel()
 
 			reconciledRun, _ := prt.reconcileRun("foo", "test-pipelinerun", []string{}, true)

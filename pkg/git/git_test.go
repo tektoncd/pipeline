@@ -30,6 +30,7 @@ import (
 const fileMode = 0755 // rwxr-xr-x
 
 func withTemporaryGitConfig(t *testing.T) {
+	t.Helper()
 	gitConfigDir := t.TempDir()
 	key := "GIT_CONFIG_GLOBAL"
 	t.Setenv(key, filepath.Join(gitConfigDir, "config"))
@@ -173,7 +174,7 @@ func TestValidateGitAuth(t *testing.T) {
 			}
 
 			validateGitAuth(logger, credsDir, tt.url)
-			checkLogMessage(tt.logMessage, log, 0, t)
+			checkLogMessage(t, tt.logMessage, log, 0)
 		})
 	}
 }
@@ -379,13 +380,14 @@ func TestFetch(t *testing.T) {
 			if tt.spec.Submodules {
 				logLine = 1
 			}
-			checkLogMessage(tt.logMessage, log, logLine, t)
+			checkLogMessage(t, tt.logMessage, log, logLine)
 		})
 	}
 }
 
 // Create a temporary Git dir locally for testing against instead of using a potentially flaky remote URL.
 func createTempGit(t *testing.T, logger *zap.SugaredLogger, gitDir string, submodPath string) {
+	t.Helper()
 	if _, err := run(logger, "", "init", gitDir); err != nil {
 		t.Fatal(err)
 	}
@@ -417,15 +419,17 @@ func createTempGit(t *testing.T, logger *zap.SugaredLogger, gitDir string, submo
 	}
 }
 
-func checkLogMessage(logMessage string, log *observer.ObservedLogs, logLine int, t *testing.T) {
-	if logMessage != "" {
-		allLogLines := log.All()
-		if len(allLogLines) == 0 {
-			t.Fatal("We didn't receive any logging")
-		}
-		gotmsg := allLogLines[logLine].Message
-		if !strings.Contains(gotmsg, logMessage) {
-			t.Errorf("log message: '%s'\n should contain: '%s'", logMessage, gotmsg)
-		}
+func checkLogMessage(t *testing.T, logMessage string, log *observer.ObservedLogs, logLine int) {
+	t.Helper()
+	if logMessage == "" {
+		return
+	}
+	allLogLines := log.All()
+	if len(allLogLines) == 0 {
+		t.Fatal("We didn't receive any logging")
+	}
+	gotmsg := allLogLines[logLine].Message
+	if !strings.Contains(gotmsg, logMessage) {
+		t.Errorf("log message: '%s'\n should contain: '%s'", logMessage, gotmsg)
 	}
 }

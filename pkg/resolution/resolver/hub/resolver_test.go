@@ -82,7 +82,7 @@ func TestValidateParams(t *testing.T) {
 
 			err := resolver.ValidateParams(contextWithConfig(), toParams(params))
 			if tc.expectedErr != nil {
-				checkExpectedErr(tc.expectedErr, err, t)
+				checkExpectedErr(t, tc.expectedErr, err)
 			} else if err != nil {
 				t.Fatalf("unexpected error validating params: %v", err)
 			}
@@ -215,7 +215,7 @@ func TestResolveVersion(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resVer, err := resolveVersion(tc.version, tc.hubType)
 			if tc.expectedErr != nil {
-				checkExpectedErr(tc.expectedErr, err, t)
+				checkExpectedErr(t, tc.expectedErr, err)
 			} else {
 				if err != nil {
 					t.Fatalf("unexpected error resolving, %v", err)
@@ -402,7 +402,7 @@ func TestResolve(t *testing.T) {
 
 			output, err := resolver.Resolve(contextWithConfig(), toParams(params))
 			if tc.expectedErr != nil {
-				checkExpectedErr(tc.expectedErr, err, t)
+				checkExpectedErr(t, tc.expectedErr, err)
 			} else {
 				if err != nil {
 					t.Fatalf("unexpected error resolving: %v", err)
@@ -443,7 +443,8 @@ func contextWithConfig() context.Context {
 	return framework.InjectResolverConfigToContext(context.Background(), config)
 }
 
-func checkExpectedErr(expectedErr, actualErr error, t *testing.T) {
+func checkExpectedErr(t *testing.T, expectedErr, actualErr error) {
+	t.Helper()
 	if actualErr == nil {
 		t.Fatalf("expected err '%v' but didn't get one", expectedErr)
 	}

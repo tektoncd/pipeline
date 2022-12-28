@@ -310,6 +310,7 @@ func verifyConfigFileWithExpectedConfig(t *testing.T, fileName string, expectedC
 }
 
 func verifyConfigFileWithExpectedError(t *testing.T, fileName string) {
+	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)
 	if _, err := config.NewDefaultsFromConfigMap(cm); err == nil {
 		t.Errorf("NewDefaultsFromConfigMap(actual) was expected to return an error")

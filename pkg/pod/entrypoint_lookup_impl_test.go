@@ -182,6 +182,7 @@ func TestGetImageWithImagePullSecrets(t *testing.T) {
 }
 
 func mustRandomImage(t *testing.T) v1.Image {
+	t.Helper()
 	img, err := random.Image(10, 10)
 	if err != nil {
 		t.Fatal(err)

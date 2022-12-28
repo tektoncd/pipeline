@@ -58,6 +58,7 @@ type updateStatusTaskRunsData struct {
 }
 
 func getUpdateStatusTaskRunsData(t *testing.T) updateStatusTaskRunsData {
+	t.Helper()
 	prTask1Yaml := `
 pipelineTaskName: task-1
 status: {}
@@ -446,6 +447,7 @@ type updateStatusChildRefsData struct {
 }
 
 func getUpdateStatusChildRefsData(t *testing.T) updateStatusChildRefsData {
+	t.Helper()
 	prTask1Yaml := `
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
@@ -1229,6 +1231,7 @@ func prStatusFromInputs(embeddedStatus string, status duckv1.Status, taskRuns ma
 }
 
 func getTestTaskRunsAndRuns(t *testing.T) ([]*v1beta1.TaskRun, []*v1beta1.TaskRun, []*v1beta1.TaskRun, []v1beta1.RunObject, []v1beta1.RunObject, []v1beta1.RunObject) {
+	t.Helper()
 	allTaskRuns := []*v1beta1.TaskRun{
 		parse.MustParseV1beta1TaskRun(t, `
 metadata:
@@ -1311,6 +1314,7 @@ metadata:
 }
 
 func mustParsePipelineRunTaskRunStatus(t *testing.T, yamlStr string) *v1beta1.PipelineRunTaskRunStatus {
+	t.Helper()
 	var output v1beta1.PipelineRunTaskRunStatus
 	if err := yaml.Unmarshal([]byte(yamlStr), &output); err != nil {
 		t.Fatalf("parsing task run status %s: %v", yamlStr, err)
@@ -1319,6 +1323,7 @@ func mustParsePipelineRunTaskRunStatus(t *testing.T, yamlStr string) *v1beta1.Pi
 }
 
 func mustParseChildStatusReference(t *testing.T, yamlStr string) v1beta1.ChildStatusReference {
+	t.Helper()
 	var output v1beta1.ChildStatusReference
 	if err := yaml.Unmarshal([]byte(yamlStr), &output); err != nil {
 		t.Fatalf("parsing task run status %s: %v", yamlStr, err)

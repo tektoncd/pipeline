@@ -134,6 +134,7 @@ func TestKanikoTaskRun(t *testing.T) {
 }
 
 func getGitResource(t *testing.T) *v1alpha1.PipelineResource {
+	t.Helper()
 	return parse.MustParsePipelineResource(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -148,6 +149,7 @@ spec:
 }
 
 func getImageResource(t *testing.T, repo string) *v1alpha1.PipelineResource {
+	t.Helper()
 	return parse.MustParsePipelineResource(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -160,6 +162,7 @@ spec:
 }
 
 func getTask(t *testing.T, repo, namespace string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -191,6 +194,7 @@ spec:
 }
 
 func getTaskRun(t *testing.T, namespace, task, git, image string) *v1beta1.TaskRun {
+	t.Helper()
 	return parse.MustParseV1beta1TaskRun(t, fmt.Sprintf(`
 metadata:
   name: %s

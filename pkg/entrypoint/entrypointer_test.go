@@ -688,6 +688,7 @@ func (f *fakeResultsWriter) Run(ctx context.Context, args ...string) error {
 }
 
 func createTmpDir(t *testing.T, name string) string {
+	t.Helper()
 	tmpDir, err := os.MkdirTemp("", name)
 	if err != nil {
 		t.Fatalf("unexpected error creating temporary dir: %v", err)

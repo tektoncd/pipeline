@@ -35,9 +35,7 @@ import (
 	"knative.dev/pkg/test/helpers"
 )
 
-var (
-	clusterRoleBindings [1]*rbacv1.ClusterRoleBinding
-)
+var clusterRoleBindings [1]*rbacv1.ClusterRoleBinding
 
 // TestHelmDeployPipelineRun is an integration test that will verify a pipeline build an image
 // and then using helm to deploy it
@@ -47,7 +45,7 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	c, namespace := setup(ctx, t)
-	setupClusterBindingForHelm(ctx, c, t, namespace)
+	setupClusterBindingForHelm(ctx, t, c, namespace)
 
 	var (
 		sourceResourceName        = helpers.ObjectNameForTest(t)
@@ -104,11 +102,12 @@ func TestHelmDeployPipelineRun(t *testing.T) {
 	}
 
 	// cleanup task to remove helm releases from cluster and cluster role bindings, will not fail the test if it fails, just log
-	knativetest.CleanupOnInterrupt(func() { helmCleanup(ctx, c, t, namespace) }, t.Logf)
-	defer helmCleanup(ctx, c, t, namespace)
+	knativetest.CleanupOnInterrupt(func() { helmCleanup(ctx, t, c, namespace) }, t.Logf)
+	defer helmCleanup(ctx, t, c, namespace)
 }
 
 func getGoHelloworldGitResource(t *testing.T, sourceResourceName string) *v1alpha1.PipelineResource {
+	t.Helper()
 	return parse.MustParsePipelineResource(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -121,6 +120,7 @@ spec:
 }
 
 func getHelmImageResource(t *testing.T, dockerRepo, sourceImageName string) *v1alpha1.PipelineResource {
+	t.Helper()
 	imageName := fmt.Sprintf("%s/%s", dockerRepo, names.SimpleNameGenerator.RestrictLengthWithRandomSuffix(sourceImageName))
 
 	return parse.MustParsePipelineResource(t, fmt.Sprintf(`
@@ -135,6 +135,7 @@ spec:
 }
 
 func getCreateImageTask(t *testing.T, namespace, createImageTaskName string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -157,6 +158,7 @@ spec:
 }
 
 func getHelmDeployTask(t *testing.T, namespace, helmDeployTaskName string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -199,6 +201,7 @@ spec:
 }
 
 func getCheckServiceTask(t *testing.T, namespace, checkServiceTaskName string) *v1beta1.Task {
+	t.Helper()
 	return parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -215,6 +218,7 @@ spec:
 }
 
 func getHelmDeployPipeline(t *testing.T, namespace, createImageTaskName, helmDeployTaskName, checkServiceTaskName, helmDeployPipelineName string) *v1beta1.Pipeline {
+	t.Helper()
 	return parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -264,6 +268,7 @@ spec:
 }
 
 func getHelmDeployPipelineRun(t *testing.T, namespace, sourceResourceName, sourceImageName, helmDeployPipelineRunName, helmDeployPipelineName string) *v1beta1.PipelineRun {
+	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -284,7 +289,8 @@ spec:
 `, helmDeployPipelineRunName, namespace, helmDeployPipelineName, sourceResourceName, sourceImageName))
 }
 
-func setupClusterBindingForHelm(ctx context.Context, c *clients, t *testing.T, namespace string) {
+func setupClusterBindingForHelm(ctx context.Context, t *testing.T, c *clients, namespace string) {
+	t.Helper()
 	clusterRoleBindings[0] = &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: names.SimpleNameGenerator.RestrictLengthWithRandomSuffix("default-tiller"),
@@ -309,10 +315,11 @@ func setupClusterBindingForHelm(ctx context.Context, c *clients, t *testing.T, n
 	}
 }
 
-func helmCleanup(ctx context.Context, c *clients, t *testing.T, namespace string) {
+func helmCleanup(ctx context.Context, t *testing.T, c *clients, namespace string) {
+	t.Helper()
 	t.Logf("Cleaning up helm from cluster...")
 
-	removeAllHelmReleases(ctx, c, t, namespace)
+	removeAllHelmReleases(ctx, t, c, namespace)
 
 	for _, crb := range clusterRoleBindings {
 		t.Logf("Deleting Cluster Role binding %s for helm", crb.Name)
@@ -322,7 +329,8 @@ func helmCleanup(ctx context.Context, c *clients, t *testing.T, namespace string
 	}
 }
 
-func removeAllHelmReleases(ctx context.Context, c *clients, t *testing.T, namespace string) {
+func removeAllHelmReleases(ctx context.Context, t *testing.T, c *clients, namespace string) {
+	t.Helper()
 	helmRemoveAllTaskName := "helm-remove-all-task"
 	helmRemoveAllTask := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
