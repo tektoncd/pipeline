@@ -16,6 +16,8 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+  - bodyclose
+  - decorder
   - depguard
   - dupword
   - errcheck
@@ -28,6 +30,7 @@ linters:
   - govet
   - misspell
   - revive
+  - typecheck
   - unconvert
   - unused
   - usestdlibvars
