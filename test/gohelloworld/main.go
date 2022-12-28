@@ -31,6 +31,7 @@ func main() {
 	log.Print("Hello world sample started.")
 
 	http.HandleFunc("/", handler)
+	// #nosec G114 -- see https://github.com/securego/gosec#available-rules
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		panic(err)
 	}

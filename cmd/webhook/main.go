@@ -242,7 +242,7 @@ func main() {
 	go func() {
 		// start the web server on port and accept requests
 		log.Printf("Readiness and health check server listening on port %s", port)
-		log.Fatal(http.ListenAndServe(":"+port, mux))
+		log.Fatal(http.ListenAndServe(":"+port, mux)) // #nosec G114 -- see https://github.com/securego/gosec#available-rules
 	}()
 
 	sharedmain.MainWithContext(ctx, serviceName,
