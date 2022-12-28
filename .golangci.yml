@@ -16,6 +16,8 @@ linters-settings:
 linters:
   disable-all: true
   enable:
+  - bodyclose
+  - decorder
   - depguard
   - errcheck
   - gocritic
@@ -27,6 +29,7 @@ linters:
   - govet
   - misspell
   - revive
+  - typecheck
   - unconvert
   - unused
   - whitespace
