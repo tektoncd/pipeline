@@ -84,6 +84,8 @@ You must install these tools:
    generate code and update dependencies. On MacOS the default bash is too old,
    you can use [Homebrew](https://brew.sh) to install a later version.
 
+1. [`go-licenses`](https://github.com/google/go-licenses) is used in e2e tests.
+
 1. (Optional)
    [`golangci-lint`](https://golangci-lint.run/usage/install/#local-installation)
    is run against every PR. You may want to install and [run this tool
