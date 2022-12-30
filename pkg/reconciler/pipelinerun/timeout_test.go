@@ -42,14 +42,14 @@ func TestTimeoutPipelineRun(t *testing.T) {
 		wantErr               bool
 	}{{
 		name:           "no-resolved-taskrun",
-		embeddedStatus: config.DefaultEmbeddedStatus,
+		embeddedStatus: config.FullEmbeddedStatus,
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-timedout"},
 			Spec:       v1beta1.PipelineRunSpec{},
 		},
 	}, {
 		name:           "one-taskrun",
-		embeddedStatus: config.DefaultEmbeddedStatus,
+		embeddedStatus: config.FullEmbeddedStatus,
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-timedout"},
 			Spec:       v1beta1.PipelineRunSpec{},
@@ -64,7 +64,7 @@ func TestTimeoutPipelineRun(t *testing.T) {
 		},
 	}, {
 		name:           "multiple-taskruns",
-		embeddedStatus: config.DefaultEmbeddedStatus,
+		embeddedStatus: config.FullEmbeddedStatus,
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-timedout"},
 			Spec:       v1beta1.PipelineRunSpec{},
@@ -81,7 +81,7 @@ func TestTimeoutPipelineRun(t *testing.T) {
 		},
 	}, {
 		name:           "multiple-runs",
-		embeddedStatus: config.DefaultEmbeddedStatus,
+		embeddedStatus: config.FullEmbeddedStatus,
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-timedout"},
 			Spec:       v1beta1.PipelineRunSpec{},
@@ -98,7 +98,7 @@ func TestTimeoutPipelineRun(t *testing.T) {
 		},
 	}, {
 		name:                  "multiple-runs-beta-custom-tasks",
-		embeddedStatus:        config.DefaultEmbeddedStatus,
+		embeddedStatus:        config.FullEmbeddedStatus,
 		useV1Beta1CustomTasks: true,
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-timedout"},

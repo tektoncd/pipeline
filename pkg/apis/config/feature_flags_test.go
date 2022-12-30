@@ -138,7 +138,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
-				EmbeddedStatus:                   "full",
+				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				EnableSpire:                      true,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
@@ -152,7 +152,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
-				EmbeddedStatus:                   "full",
+				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
