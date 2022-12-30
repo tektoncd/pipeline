@@ -77,7 +77,7 @@ const (
 	// DefaultSendCloudEventsForRuns is the default value for "send-cloudevents-for-runs".
 	DefaultSendCloudEventsForRuns = false
 	// DefaultEmbeddedStatus is the default value for "embedded-status".
-	DefaultEmbeddedStatus = FullEmbeddedStatus
+	DefaultEmbeddedStatus = MinimalEmbeddedStatus
 	// DefaultEnableSpire is the default value for "enable-spire".
 	DefaultEnableSpire = false
 	// DefaultResourceVerificationMode is the default value for "resource-verification-mode".

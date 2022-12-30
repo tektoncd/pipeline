@@ -1392,17 +1392,18 @@ Your `PipelineRun`'s `status` field can contain the following fields:
 
 ### Configuring usage of `TaskRun` and `Run` embedded statuses
 
-Currently, the default behavior is for the statuses of `TaskRun`s and `Run`s within this `PipelineRun`
-to be embedded in the `status.taskRuns` and `status.runs` fields. This will change in the future to
-instead default to `status.childReferences` being populated with references to the `TaskRun`s and
+Currently, the default behavior is to pupulate `status.childReferences` with references to the `TaskRun`s and
 `Run`s, which can be used to look up their statuses.
 
 This behavior can be controlled by changing the `embedded-status` feature flag in the `feature-flags`
 config map. See [`install.md`](./install.md#customizing-the-pipelines-controller-behavior) for more
 information on feature flags. The possible values for `embedded-status` are:
-- `full` - The current default behavior of populating `status.taskRuns` and `status.runs`, without populating `status.childReferences`.
-- `minimal` - Just populate `status.childReferences`, not `status.taskRuns` or `status.runs`.
+- `minimal` - The current default behavior, populate `status.childReferences`, not `status.taskRuns` or `status.runs`.
+- `full` - Populating `status.taskRuns` and `status.runs`, without populating `status.childReferences`.
 - `both` - Populate `status.childReferences` as well as `status.taskRuns` and `status.runs`.
+
+*Note that after the `PipelineRunStatus` migration as planned in [TEP-100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md#2-deprecate-and-remove-full-embedded-status),
+[the `full` and `both` `embedded-status` options will be removed](https://github.com/tektoncd/pipeline/blob/main/docs/deprecations.md).
 
 ### Monitoring execution status
 
