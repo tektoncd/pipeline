@@ -2877,7 +2877,7 @@
           }
         },
         "cloudEvents": {
-          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+          "description": "Deprecated. CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
           "type": "array",
           "items": {
             "default": {},
@@ -2976,7 +2976,7 @@
       ],
       "properties": {
         "cloudEvents": {
-          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+          "description": "Deprecated. CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
           "type": "array",
           "items": {
             "default": {},
