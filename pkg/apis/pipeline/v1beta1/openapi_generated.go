@@ -5003,7 +5003,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatus(ref common.ReferenceCallback
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+							Description: "Deprecated. CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -5165,7 +5165,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunStatusFields(ref common.ReferenceCa
 							},
 						},
 						SchemaProps: spec.SchemaProps{
-							Description: "CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+							Description: "Deprecated. CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{

@@ -251,6 +251,7 @@ type TaskRunStatusFields struct {
 	// +listType=atomic
 	Steps []StepState `json:"steps,omitempty"`
 
+	// Deprecated.
 	// CloudEvents describe the state of each cloud event requested via a
 	// CloudEventResource.
 	// +optional

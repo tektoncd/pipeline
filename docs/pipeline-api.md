@@ -13403,7 +13403,8 @@ Kubernetes meta/v1.Time
 </td>
 <td>
 <em>(Optional)</em>
-<p>CloudEvents describe the state of each cloud event requested via a
+<p>Deprecated.
+CloudEvents describe the state of each cloud event requested via a
 CloudEventResource.</p>
 </td>
 </tr>
