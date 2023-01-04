@@ -47,6 +47,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
+	trtesting "github.com/tektoncd/pipeline/pkg/trustedresources/testing"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -5222,7 +5223,7 @@ spec:
     results:
       - name: result1
     steps:
-    - script: echo foo >> $(results.result1.path)  
+    - script: echo foo >> $(results.result1.path)
       image: myimage
       name: mycontainer
 status:
@@ -5230,7 +5231,7 @@ status:
     results:
       - name: result1
     steps:
-    - script: echo foo >> $(results.result1.path)  
+    - script: echo foo >> $(results.result1.path)
       image: myimage
       name: mycontainer
 `)
@@ -5589,8 +5590,8 @@ status:
   podName: the-pod
 `)
 
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, tr.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signer, _, vps := trtesting.SetupMatchAllVerificationPolicies(t, tr.Namespace)
+	signedTask, err := trtesting.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -5654,8 +5655,8 @@ status:
   podName: the-pod
 `)
 
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, tr.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signer, _, vps := trtesting.SetupMatchAllVerificationPolicies(t, tr.Namespace)
+	signedTask, err := trtesting.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}

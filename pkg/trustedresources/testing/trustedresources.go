@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package test
+package testing
 
 import (
 	"bytes"
@@ -356,10 +356,12 @@ func GetSignedTask(unsigned *v1beta1.Task, signer signature.Signer, name string)
 	return signedTask, nil
 }
 
-func getPass(confirm bool) ([]byte, error) {
+// GetPass returns the password
+func GetPass(confirm bool) ([]byte, error) {
 	read := read(confirm)
 	return read()
 }
+
 func readPasswordFn(confirm bool) func() ([]byte, error) {
 	pw, ok := os.LookupEnv("PRIVATE_PASSWORD")
 	if ok {

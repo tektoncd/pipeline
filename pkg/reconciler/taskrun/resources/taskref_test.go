@@ -34,6 +34,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
+	trtesting "github.com/tektoncd/pipeline/pkg/trustedresources/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
@@ -692,10 +693,10 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 	ctx := context.Background()
 
-	signer, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
+	signer, k8sclient, vps := trtesting.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
 	unsignedTaskBytes, err := json.Marshal(unsignedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
@@ -704,7 +705,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
+	signedTask, err := trtesting.GetSignedTask(unsignedTask, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -771,7 +772,7 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
+			ctx = trtesting.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1beta1.TaskRunSpec{
@@ -800,10 +801,10 @@ func TestGetVerifiedTaskFunc_Success(t *testing.T) {
 
 func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	ctx := context.Background()
-	signer, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
+	signer, k8sclient, vps := trtesting.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
 	unsignedTaskBytes, err := json.Marshal(unsignedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
@@ -812,7 +813,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	resolvedUnsigned := test.NewResolvedResource(unsignedTaskBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
+	signedTask, err := trtesting.GetSignedTask(unsignedTask, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -850,7 +851,7 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
+			ctx = trtesting.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
 			tr := &v1beta1.TaskRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1beta1.TaskRunSpec{
@@ -879,10 +880,10 @@ func TestGetVerifiedTaskFunc_VerifyError(t *testing.T) {
 
 func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
-	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
+	_, k8sclient, vps := trtesting.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 	tektonclient := fake.NewSimpleClientset()
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
 	unsignedTaskBytes, err := json.Marshal(unsignedTask)
 	if err != nil {
 		t.Fatal("fail to marshal task", err)
@@ -940,7 +941,7 @@ func TestGetVerifiedTaskFunc_GetFuncError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
+			ctx = trtesting.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
 			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 			featureflags := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{

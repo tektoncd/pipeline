@@ -29,8 +29,8 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	trtesting "github.com/tektoncd/pipeline/pkg/trustedresources/testing"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
-	test "github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"go.uber.org/zap/zaptest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,8 +47,8 @@ func TestVerifyInterface_Task_Success(t *testing.T) {
 		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
-	unsignedTask := test.GetUnsignedTask("test-task")
-	signedTask, err := test.GetSignedTask(unsignedTask, sv, "signed")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
+	signedTask, err := trtesting.GetSignedTask(unsignedTask, sv, "signed")
 	if err != nil {
 		t.Fatalf("Failed to get signed task %v", err)
 	}
@@ -75,9 +75,9 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 		t.Fatalf("failed to get signerverifier %v", err)
 	}
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedTask(unsignedTask, sv, "signed")
+	signedTask, err := trtesting.GetSignedTask(unsignedTask, sv, "signed")
 	if err != nil {
 		t.Fatalf("Failed to get signed task %v", err)
 	}
@@ -127,13 +127,13 @@ func TestVerifyInterface_Task_Error(t *testing.T) {
 func TestVerifyTask_Configmap_Success(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
-	signer, keypath := test.GetSignerFromFile(ctx, t)
+	signer, keypath := trtesting.GetSignerFromFile(ctx, t)
 
-	ctx = test.SetupTrustedResourceKeyConfig(ctx, keypath, config.EnforceResourceVerificationMode)
+	ctx = trtesting.SetupTrustedResourceKeyConfig(ctx, keypath, config.EnforceResourceVerificationMode)
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
+	signedTask, err := trtesting.GetSignedTask(unsignedTask, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -147,11 +147,11 @@ func TestVerifyTask_Configmap_Success(t *testing.T) {
 func TestVerifyTask_Configmap_Error(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
 
-	signer, keypath := test.GetSignerFromFile(ctx, t)
+	signer, keypath := trtesting.GetSignerFromFile(ctx, t)
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedTask(unsignedTask, signer, "signed")
+	signedTask, err := trtesting.GetSignedTask(unsignedTask, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -184,7 +184,7 @@ func TestVerifyTask_Configmap_Error(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceKeyConfig(ctx, tc.keypath, config.EnforceResourceVerificationMode)
+			ctx = trtesting.SetupTrustedResourceKeyConfig(ctx, tc.keypath, config.EnforceResourceVerificationMode)
 			err := VerifyTask(ctx, tc.task, nil, "", []*v1alpha1.VerificationPolicy{})
 			if !errors.Is(err, tc.expectedError) {
 				t.Errorf("VerifyTask got: %v, want: %v", err, tc.expectedError)
@@ -195,17 +195,17 @@ func TestVerifyTask_Configmap_Error(t *testing.T) {
 
 func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-	ctx = test.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
-	signer256, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	ctx = trtesting.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
+	signer256, _, k8sclient, vps := trtesting.SetupVerificationPolicies(t)
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedTask(unsignedTask, signer256, "signed")
+	signedTask, err := trtesting.GetSignedTask(unsignedTask, signer256, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
 
-	signer384, _, pub, err := test.GenerateKeys(elliptic.P384(), crypto.SHA384)
+	signer384, _, pub, err := trtesting.GenerateKeys(elliptic.P384(), crypto.SHA384)
 	if err != nil {
 		t.Fatalf("failed to generate keys %v", err)
 	}
@@ -236,7 +236,7 @@ func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
 	}
 	vps = append(vps, sha384Vp)
 
-	signedTask384, err := test.GetSignedTask(unsignedTask, signer384, "signed384")
+	signedTask384, err := trtesting.GetSignedTask(unsignedTask, signer384, "signed384")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -272,12 +272,12 @@ func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
 
 func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-	ctx = test.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
-	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	ctx = trtesting.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
+	sv, _, k8sclient, vps := trtesting.SetupVerificationPolicies(t)
 
-	unsignedTask := test.GetUnsignedTask("test-task")
+	unsignedTask := trtesting.GetUnsignedTask("test-task")
 
-	signedTask, err := test.GetSignedTask(unsignedTask, sv, "signed")
+	signedTask, err := trtesting.GetSignedTask(unsignedTask, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -364,12 +364,12 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 
 func TestVerifyPipeline_Success(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-	ctx = test.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
-	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	ctx = trtesting.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
+	sv, _, k8sclient, vps := trtesting.SetupVerificationPolicies(t)
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := trtesting.GetUnsignedPipeline("test-pipeline")
 
-	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, sv, "signed")
+	signedPipeline, err := trtesting.GetSignedPipeline(unsignedPipeline, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -399,12 +399,12 @@ func TestVerifyPipeline_Success(t *testing.T) {
 
 func TestVerifyPipeline_Error(t *testing.T) {
 	ctx := logging.WithLogger(context.Background(), zaptest.NewLogger(t).Sugar())
-	ctx = test.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
-	sv, _, k8sclient, vps := test.SetupVerificationPolicies(t)
+	ctx = trtesting.SetupTrustedResourceConfig(ctx, config.EnforceResourceVerificationMode)
+	sv, _, k8sclient, vps := trtesting.SetupVerificationPolicies(t)
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := trtesting.GetUnsignedPipeline("test-pipeline")
 
-	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, sv, "signed")
+	signedPipeline, err := trtesting.GetSignedPipeline(unsignedPipeline, sv, "signed")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
@@ -435,7 +435,7 @@ func TestVerifyPipeline_Error(t *testing.T) {
 }
 
 func TestPrepareObjectMeta(t *testing.T) {
-	unsigned := test.GetUnsignedTask("test-task").ObjectMeta
+	unsigned := trtesting.GetUnsignedTask("test-task").ObjectMeta
 
 	signed := unsigned.DeepCopy()
 	signed.Annotations = map[string]string{SignatureAnnotation: "tY805zV53PtwDarK3VD6dQPx5MbIgctNcg/oSle+MG0="}

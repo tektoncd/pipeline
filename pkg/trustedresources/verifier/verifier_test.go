@@ -29,7 +29,7 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	"github.com/tektoncd/pipeline/test"
+	trtesting "github.com/tektoncd/pipeline/pkg/trustedresources/testing"
 	"github.com/tektoncd/pipeline/test/diff"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,8 +42,8 @@ const (
 
 func TestFromConfigMap_Success(t *testing.T) {
 	ctx := context.Background()
-	keys, keypath := test.GetKeysFromFile(ctx, t)
-	ctx = test.SetupTrustedResourceKeyConfig(ctx, keypath, config.EnforceResourceVerificationMode)
+	keys, keypath := trtesting.GetKeysFromFile(ctx, t)
+	ctx = trtesting.SetupTrustedResourceKeyConfig(ctx, keypath, config.EnforceResourceVerificationMode)
 	v, err := FromConfigMap(ctx, fakek8s.NewSimpleClientset())
 	checkVerifier(t, keys, v[0])
 	if err != nil {
@@ -67,7 +67,7 @@ func TestFromConfigMap_Error(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := test.SetupTrustedResourceKeyConfig(context.Background(), tc.keyPath, config.EnforceResourceVerificationMode)
+			ctx := trtesting.SetupTrustedResourceKeyConfig(context.Background(), tc.keyPath, config.EnforceResourceVerificationMode)
 			_, err := FromConfigMap(ctx, fakek8s.NewSimpleClientset())
 			if !errors.Is(err, tc.expectedError) {
 				t.Errorf("FromConfigMap got: %v, want: %v", err, tc.expectedError)
@@ -78,10 +78,10 @@ func TestFromConfigMap_Error(t *testing.T) {
 
 func TestFromPolicy_Success(t *testing.T) {
 	ctx := context.Background()
-	_, key256, k8sclient, vps := test.SetupVerificationPolicies(t)
+	_, key256, k8sclient, vps := trtesting.SetupVerificationPolicies(t)
 	keyInDataVp, keyInSecretVp := vps[0], vps[1]
 
-	_, key384, pub, err := test.GenerateKeys(elliptic.P384(), crypto.SHA256)
+	_, key384, pub, err := trtesting.GenerateKeys(elliptic.P384(), crypto.SHA256)
 	if err != nil {
 		t.Fatalf("failed to generate keys %v", err)
 	}
@@ -224,9 +224,9 @@ func TestFromPolicy_Error(t *testing.T) {
 
 func TestFromKeyRef_Success(t *testing.T) {
 	ctx := context.Background()
-	fileKey, keypath := test.GetKeysFromFile(ctx, t)
+	fileKey, keypath := trtesting.GetKeysFromFile(ctx, t)
 
-	_, secretKey, pub, err := test.GenerateKeys(elliptic.P256(), crypto.SHA256)
+	_, secretKey, pub, err := trtesting.GenerateKeys(elliptic.P256(), crypto.SHA256)
 	if err != nil {
 		t.Fatalf("failed to generate keys: %v", err)
 	}
@@ -266,7 +266,7 @@ func TestFromKeyRef_Success(t *testing.T) {
 
 func TestFromKeyRef_Error(t *testing.T) {
 	ctx := context.Background()
-	_, keypath := test.GetKeysFromFile(ctx, t)
+	_, keypath := trtesting.GetKeysFromFile(ctx, t)
 	tcs := []struct {
 		name          string
 		keyref        string
@@ -299,7 +299,7 @@ func TestFromKeyRef_Error(t *testing.T) {
 }
 
 func TestFromSecret_Success(t *testing.T) {
-	_, keys, pub, err := test.GenerateKeys(elliptic.P256(), crypto.SHA256)
+	_, keys, pub, err := trtesting.GenerateKeys(elliptic.P256(), crypto.SHA256)
 	if err != nil {
 		t.Fatalf("failed to generate keys: %v", err)
 	}
@@ -384,7 +384,7 @@ func TestFromSecret_Error(t *testing.T) {
 }
 
 func TestFromData_Error(t *testing.T) {
-	_, _, pub, err := test.GenerateKeys(elliptic.P256(), crypto.SHA256)
+	_, _, pub, err := trtesting.GenerateKeys(elliptic.P256(), crypto.SHA256)
 	if err != nil {
 		t.Fatalf("failed to generate keys %v", err)
 	}

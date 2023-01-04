@@ -44,6 +44,7 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	trtesting "github.com/tektoncd/pipeline/pkg/trustedresources/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
@@ -10993,12 +10994,12 @@ spec:
          value: bar
 `)
 
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, prs.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signer, _, vps := trtesting.SetupMatchAllVerificationPolicies(t, prs.Namespace)
+	signedTask, err := trtesting.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := trtesting.GetSignedPipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -11067,12 +11068,12 @@ spec:
          value: bar
 `)
 
-	signer, _, vps := test.SetupMatchAllVerificationPolicies(t, prs.Namespace)
-	signedTask, err := test.GetSignedTask(ts, signer, "test-task")
+	signer, _, vps := trtesting.SetupMatchAllVerificationPolicies(t, prs.Namespace)
+	signedTask, err := trtesting.GetSignedTask(ts, signer, "test-task")
 	if err != nil {
 		t.Fatal("fail to sign task", err)
 	}
-	signedPipeline, err := test.GetSignedPipeline(ps, signer, "test-pipeline")
+	signedPipeline, err := trtesting.GetSignedPipeline(ps, signer, "test-pipeline")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/pod"
+	trtesting "github.com/tektoncd/pipeline/pkg/trustedresources/testing"
 	"github.com/tektoncd/pipeline/test/parse"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,7 +78,7 @@ spec:
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
 
-	signedTask, err := GetSignedTask(task, signer, "signedtask")
+	signedTask, err := trtesting.GetSignedTask(task, signer, "signedtask")
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
@@ -97,7 +98,7 @@ spec:
       kind: Task
 `, helpers.ObjectNameForTest(t), namespace, signedTask.Name))
 
-	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
+	signedPipeline, err := trtesting.GetSignedPipeline(pipeline, signer, "signedpipeline")
 	if err != nil {
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
@@ -157,7 +158,7 @@ spec:
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
 
-	signedTask, err := GetSignedTask(task, signer, "signedtask")
+	signedTask, err := trtesting.GetSignedTask(task, signer, "signedtask")
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
@@ -179,7 +180,7 @@ spec:
       kind: Task
 `, helpers.ObjectNameForTest(t), namespace, signedTask.Name))
 
-	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
+	signedPipeline, err := trtesting.GetSignedPipeline(pipeline, signer, "signedpipeline")
 	if err != nil {
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
@@ -260,7 +261,7 @@ spec:
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
 
-	signedTask, err := GetSignedTask(task, signer, "signedtask")
+	signedTask, err := trtesting.GetSignedTask(task, signer, "signedtask")
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
@@ -280,7 +281,7 @@ spec:
       kind: Task
 `, helpers.ObjectNameForTest(t), namespace, signedTask.Name))
 
-	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
+	signedPipeline, err := trtesting.GetSignedPipeline(pipeline, signer, "signedpipeline")
 	if err != nil {
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
@@ -358,7 +359,7 @@ spec:
     args: ['-c', 'echo hello']
 `, helpers.ObjectNameForTest(t), namespace, fqImageName))
 
-	signedTask, err := GetSignedTask(task, signer, "signedtask")
+	signedTask, err := trtesting.GetSignedTask(task, signer, "signedtask")
 	if err != nil {
 		t.Errorf("error getting signed task: %v", err)
 	}
@@ -380,7 +381,7 @@ spec:
       kind: Task
 `, helpers.ObjectNameForTest(t), namespace, signedTask.Name))
 
-	signedPipeline, err := GetSignedPipeline(pipeline, signer, "signedpipeline")
+	signedPipeline, err := trtesting.GetSignedPipeline(pipeline, signer, "signedpipeline")
 	if err != nil {
 		t.Errorf("error getting signed pipeline: %v", err)
 	}
@@ -439,7 +440,7 @@ func setSecretAndConfig(ctx context.Context, t *testing.T, client kubernetes.Int
 		t.Fatal(err)
 	}
 
-	signer, err := signature.LoadSignerFromPEMFile(privKey, crypto.SHA256, getPass)
+	signer, err := signature.LoadSignerFromPEMFile(privKey, crypto.SHA256, trtesting.GetPass)
 	if err != nil {
 		t.Errorf("error getting signer from key file: %v", err)
 	}

@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
+	trtesting "github.com/tektoncd/pipeline/pkg/trustedresources/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
@@ -444,9 +445,9 @@ func TestGetPipelineFunc_RemoteResolutionInvalidData(t *testing.T) {
 func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
-	signer, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
+	signer, k8sclient, vps := trtesting.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := trtesting.GetUnsignedPipeline("test-pipeline")
 	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
@@ -455,7 +456,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
-	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed")
+	signedPipeline, err := trtesting.GetSignedPipeline(unsignedPipeline, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -575,7 +576,7 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
+			ctx = trtesting.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
 			fn := resources.GetVerifiedPipelineFunc(ctx, k8sclient, tektonclient, tc.requester, &tc.pipelinerun, vps)
 
 			resolvedPipeline, source, err := fn(ctx, pipelineRef.Name)
@@ -595,9 +596,9 @@ func TestGetVerifiedPipelineFunc_Success(t *testing.T) {
 func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
-	signer, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
+	signer, k8sclient, vps := trtesting.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := trtesting.GetUnsignedPipeline("test-pipeline")
 	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
@@ -606,7 +607,7 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 	resolvedUnsigned := test.NewResolvedResource(unsignedPipelineBytes, nil, sampleConfigSource.DeepCopy(), nil)
 	requesterUnsigned := test.NewRequester(resolvedUnsigned, nil)
 
-	signedPipeline, err := test.GetSignedPipeline(unsignedPipeline, signer, "signed")
+	signedPipeline, err := trtesting.GetSignedPipeline(unsignedPipeline, signer, "signed")
 	if err != nil {
 		t.Fatal("fail to sign pipeline", err)
 	}
@@ -645,7 +646,7 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
+			ctx = trtesting.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
 			pr := &v1beta1.PipelineRun{
 				ObjectMeta: metav1.ObjectMeta{Namespace: "trusted-resources"},
 				Spec: v1beta1.PipelineRunSpec{
@@ -672,9 +673,9 @@ func TestGetVerifiedPipelineFunc_VerifyError(t *testing.T) {
 func TestGetVerifiedPipelineFunc_GetFuncError(t *testing.T) {
 	ctx := context.Background()
 	tektonclient := fake.NewSimpleClientset()
-	_, k8sclient, vps := test.SetupMatchAllVerificationPolicies(t, "trusted-resources")
+	_, k8sclient, vps := trtesting.SetupMatchAllVerificationPolicies(t, "trusted-resources")
 
-	unsignedPipeline := test.GetUnsignedPipeline("test-pipeline")
+	unsignedPipeline := trtesting.GetUnsignedPipeline("test-pipeline")
 	unsignedPipelineBytes, err := json.Marshal(unsignedPipeline)
 	if err != nil {
 		t.Fatal("fail to marshal pipeline", err)
@@ -732,7 +733,7 @@ func TestGetVerifiedPipelineFunc_GetFuncError(t *testing.T) {
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx = test.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
+			ctx = trtesting.SetupTrustedResourceConfig(ctx, tc.resourceVerificationMode)
 			store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
 			featureflags := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
