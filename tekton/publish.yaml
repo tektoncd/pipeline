@@ -128,7 +128,8 @@ spec:
       set -ex
 
       # Use the generated `.ko.yaml`
-      KO_CONFIG_PATH=/workspace/.ko.yaml
+      export KO_CONFIG_PATH=/workspace
+      cat ${KO_CONFIG_PATH}/.ko.yaml
 
       # Setup docker-auth
       DOCKER_CONFIG=~/.docker
