@@ -170,6 +170,10 @@ $(BIN)/golangci-lint: ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
 golangci-lint: | $(GOLANGCILINT) ; $(info $(M) running golangci-lint…) @ ## Run golangci-lint
 	$Q $(GOLANGCILINT) run --modules-download-mode=vendor --max-issues-per-linter=0 --max-same-issues=0 --deadline 5m
 
+.PHONY: golangci-lint-check
+golangci-lint-check: | $(GOLANGCILINT) ; $(info $(M) Testing if golint has been done…) @ ## Run golangci-lint for build tests CI job
+	$Q $(GOLANGCILINT) run -j 1 --color=never
+
 GOIMPORTS = $(BIN)/goimports
 $(BIN)/goimports: PACKAGE=golang.org/x/tools/cmd/goimports
 
