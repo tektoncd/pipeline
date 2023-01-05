@@ -92,7 +92,7 @@ func TestTimeoutPipelineRun(t *testing.T) {
 				},
 			}},
 		},
-		runs: []*v1alpha1.Run{
+		customRuns: []*v1beta1.CustomRun{
 			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
 			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
 		},

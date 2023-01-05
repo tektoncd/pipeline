@@ -91,7 +91,7 @@ const (
 	// DefaultMaxResultSize is the default value in bytes for the size of a result
 	DefaultMaxResultSize = 4096
 	// DefaultCustomTaskVersion is the default value for "custom-task-version"
-	DefaultCustomTaskVersion = CustomTaskVersionAlpha
+	DefaultCustomTaskVersion = CustomTaskVersionBeta
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"

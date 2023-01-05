@@ -123,7 +123,7 @@ func TestCancelPipelineRun(t *testing.T) {
 				},
 			}},
 		},
-		runs: []*v1alpha1.Run{
+		customRuns: []*v1beta1.CustomRun{
 			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
 			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
 		},
@@ -142,7 +142,7 @@ func TestCancelPipelineRun(t *testing.T) {
 				},
 			}},
 		},
-		runs: []*v1alpha1.Run{
+		customRuns: []*v1beta1.CustomRun{
 			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
 		},
 	}, {
@@ -477,9 +477,9 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 					"r1": {PipelineTaskName: "run-1"},
 				},
 			}},
-			expectedTRNames:  nil,
-			expectedRunNames: []string{"r1"},
-			hasError:         false,
+			expectedTRNames:        nil,
+			expectedCustomRunNames: []string{"r1"},
+			hasError:               false,
 		}, {
 			name:           "taskrun and run, default embedded",
 			embeddedStatus: config.DefaultEmbeddedStatus,
@@ -491,9 +491,9 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 					"r1": {PipelineTaskName: "run-1"},
 				},
 			}},
-			expectedTRNames:  []string{"t1"},
-			expectedRunNames: []string{"r1"},
-			hasError:         false,
+			expectedTRNames:        []string{"t1"},
+			expectedCustomRunNames: []string{"r1"},
+			hasError:               false,
 		}, {
 			name:           "taskrun and run, default embedded, just want taskrun",
 			embeddedStatus: config.DefaultEmbeddedStatus,
