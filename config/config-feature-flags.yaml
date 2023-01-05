@@ -95,5 +95,5 @@ data:
   embedded-status: "full"
   # Setting this flag will determine the version for custom tasks created by PipelineRuns.
   # Acceptable values are "v1beta1" and "v1alpha1".
-  # The default is "v1alpha1".
-  custom-task-version: "v1alpha1"
+  # The default is "v1beta1".
+  custom-task-version: "v1beta1"
