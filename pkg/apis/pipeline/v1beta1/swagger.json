@@ -1231,6 +1231,14 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "spanContext": {
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
           "$ref": "#/definitions/v1.Time"
@@ -1297,6 +1305,14 @@
             "$ref": "#/definitions/v1beta1.SkippedTask"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "spanContext": {
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
         },
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
@@ -2940,6 +2956,14 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "spanContext": {
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
           "$ref": "#/definitions/v1.Time"
@@ -3023,6 +3047,14 @@
             "$ref": "#/definitions/v1beta1.SidecarState"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "spanContext": {
+          "description": "SpanContext contains tracing span context fields",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
         },
         "startTime": {
           "description": "StartTime is the time the build is actually started.",
