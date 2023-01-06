@@ -17,7 +17,7 @@ limitations under the License.
 package resolution
 
 import (
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,5 +25,5 @@ import (
 type ResolvedObjectMeta struct {
 	*metav1.ObjectMeta `json:",omitempty"`
 	// ConfigSource identifies where the spec came from.
-	ConfigSource *v1beta1.ConfigSource `json:",omitempty"`
+	ConfigSource *v1.ConfigSource `json:",omitempty"`
 }

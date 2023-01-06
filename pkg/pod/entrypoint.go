@@ -28,7 +28,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"gomodules.xyz/jsonpatch/v2"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -114,7 +114,7 @@ var (
 // command, we must have fetched the image's ENTRYPOINT before calling this
 // method, using entrypoint_lookup.go.
 // Additionally, Step timeouts are added as entrypoint flag.
-func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1beta1.TaskSpec, breakpointConfig *v1beta1.TaskRunDebug, waitForReadyAnnotation bool) ([]corev1.Container, error) {
+func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Container, taskSpec *v1.TaskSpec, breakpointConfig *v1.TaskRunDebug, waitForReadyAnnotation bool) ([]corev1.Container, error) {
 	if len(steps) == 0 {
 		return nil, errors.New("No steps specified")
 	}
@@ -143,9 +143,9 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 		if taskSpec != nil {
 			if taskSpec.Steps != nil && len(taskSpec.Steps) >= i+1 {
 				if taskSpec.Steps[i].OnError != "" {
-					if taskSpec.Steps[i].OnError != v1beta1.Continue && taskSpec.Steps[i].OnError != v1beta1.StopAndFail {
+					if taskSpec.Steps[i].OnError != v1.Continue && taskSpec.Steps[i].OnError != v1.StopAndFail {
 						return nil, fmt.Errorf("task step onError must be either \"%s\" or \"%s\" but it is set to an invalid value \"%s\"",
-							v1beta1.Continue, v1beta1.StopAndFail, taskSpec.Steps[i].OnError)
+							v1.Continue, v1.StopAndFail, taskSpec.Steps[i].OnError)
 					}
 					argsForEntrypoint = append(argsForEntrypoint, "-on_error", string(taskSpec.Steps[i].OnError))
 				}
@@ -194,14 +194,14 @@ func orderContainers(commonExtraEntrypointArgs []string, steps []corev1.Containe
 	return steps, nil
 }
 
-func resultArgument(steps []corev1.Container, results []v1beta1.TaskResult) []string {
+func resultArgument(steps []corev1.Container, results []v1.TaskResult) []string {
 	if len(results) == 0 {
 		return nil
 	}
 	return []string{"-results", collectResultsName(results)}
 }
 
-func collectResultsName(results []v1beta1.TaskResult) string {
+func collectResultsName(results []v1.TaskResult) string {
 	var resultNames []string
 	for _, r := range results {
 		resultNames = append(resultNames, r.Name)
@@ -283,7 +283,7 @@ func StopSidecars(ctx context.Context, nopImage string, kubeclient kubernetes.In
 
 // IsSidecarStatusRunning determines if any SidecarStatus on a TaskRun
 // is still running.
-func IsSidecarStatusRunning(tr *v1beta1.TaskRun) bool {
+func IsSidecarStatusRunning(tr *v1.TaskRun) bool {
 	for _, sidecar := range tr.Status.Sidecars {
 		if sidecar.Terminated == nil {
 			return true

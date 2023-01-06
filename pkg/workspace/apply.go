@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/names"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
@@ -47,7 +47,7 @@ func (nvm nameVolumeMap) setVolumeSource(workspaceName string, volumeName string
 // wb and the value is a newly-created Volume to use. If the same Volume is bound twice, the
 // resulting volumes will both have the same name to prevent the same Volume from being attached
 // to a pod twice. The names of the returned volumes will be a short random string starting "ws-".
-func CreateVolumes(wb []v1beta1.WorkspaceBinding) map[string]corev1.Volume {
+func CreateVolumes(wb []v1.WorkspaceBinding) map[string]corev1.Volume {
 	pvcs := map[string]corev1.Volume{}
 	v := make(nameVolumeMap)
 	for _, w := range wb {
@@ -82,7 +82,7 @@ func CreateVolumes(wb []v1beta1.WorkspaceBinding) map[string]corev1.Volume {
 	return v
 }
 
-func getDeclaredWorkspace(name string, w []v1beta1.WorkspaceDeclaration) (*v1beta1.WorkspaceDeclaration, error) {
+func getDeclaredWorkspace(name string, w []v1.WorkspaceDeclaration) (*v1.WorkspaceDeclaration, error) {
 	for _, workspace := range w {
 		if workspace.Name == name {
 			return &workspace, nil
@@ -95,7 +95,7 @@ func getDeclaredWorkspace(name string, w []v1beta1.WorkspaceDeclaration) (*v1bet
 // Apply will update the StepTemplate, Sidecars and Volumes declaration in ts so that the workspaces
 // specified through wb combined with the declared workspaces in ts will be available for
 // all Step and Sidecar containers in the resulting pod.
-func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBinding, v map[string]corev1.Volume) (*v1beta1.TaskSpec, error) {
+func Apply(ctx context.Context, ts v1.TaskSpec, wb []v1.WorkspaceBinding, v map[string]corev1.Volume) (*v1.TaskSpec, error) {
 	// If there are no bound workspaces, we don't need to do anything
 	if len(wb) == 0 {
 		return &ts, nil
@@ -105,7 +105,7 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 
 	// Initialize StepTemplate if it hasn't been already
 	if ts.StepTemplate == nil {
-		ts.StepTemplate = &v1beta1.StepTemplate{}
+		ts.StepTemplate = &v1.StepTemplate{}
 	}
 
 	isolatedWorkspaces := sets.NewString()
@@ -136,7 +136,7 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 				}
 			}
 			if addWorkspace {
-				ts.Workspaces = append(ts.Workspaces, v1beta1.WorkspaceDeclaration{Name: wb[i].Name})
+				ts.Workspaces = append(ts.Workspaces, v1.WorkspaceDeclaration{Name: wb[i].Name})
 			}
 		}
 		w, err := getDeclaredWorkspace(wb[i].Name, ts.Workspaces)
@@ -175,7 +175,7 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 
 // mountAsSharedWorkspace takes a volumeMount and adds it to all the steps and sidecars in
 // a TaskSpec.
-func mountAsSharedWorkspace(ts v1beta1.TaskSpec, volumeMount corev1.VolumeMount) {
+func mountAsSharedWorkspace(ts v1.TaskSpec, volumeMount corev1.VolumeMount) {
 	ts.StepTemplate.VolumeMounts = append(ts.StepTemplate.VolumeMounts, volumeMount)
 
 	for i := range ts.Sidecars {
@@ -185,7 +185,7 @@ func mountAsSharedWorkspace(ts v1beta1.TaskSpec, volumeMount corev1.VolumeMount)
 
 // mountAsIsolatedWorkspace takes a volumeMount and adds it only to the steps and sidecars
 // that have requested access to it.
-func mountAsIsolatedWorkspace(ts v1beta1.TaskSpec, workspaceName string, volumeMount corev1.VolumeMount) {
+func mountAsIsolatedWorkspace(ts v1.TaskSpec, workspaceName string, volumeMount corev1.VolumeMount) {
 	for i := range ts.Steps {
 		step := &ts.Steps[i]
 		for _, workspaceUsage := range step.Workspaces {
@@ -216,7 +216,7 @@ func mountAsIsolatedWorkspace(ts v1beta1.TaskSpec, workspaceName string, volumeM
 
 // AddSidecarVolumeMount is a helper to add a volumeMount to the sidecar unless its
 // MountPath would conflict with another of the sidecar's existing volume mounts.
-func AddSidecarVolumeMount(sidecar *v1beta1.Sidecar, volumeMount corev1.VolumeMount) {
+func AddSidecarVolumeMount(sidecar *v1.Sidecar, volumeMount corev1.VolumeMount) {
 	for j := range sidecar.VolumeMounts {
 		if sidecar.VolumeMounts[j].MountPath == volumeMount.MountPath {
 			return
@@ -225,7 +225,7 @@ func AddSidecarVolumeMount(sidecar *v1beta1.Sidecar, volumeMount corev1.VolumeMo
 	sidecar.VolumeMounts = append(sidecar.VolumeMounts, volumeMount)
 }
 
-func findWorkspaceSubstitutionLocationsInSidecars(sidecars []v1beta1.Sidecar) sets.String {
+func findWorkspaceSubstitutionLocationsInSidecars(sidecars []v1.Sidecar) sets.String {
 	locationsToCheck := sets.NewString()
 	for _, sidecar := range sidecars {
 		locationsToCheck.Insert(sidecar.Script)
@@ -241,7 +241,7 @@ func findWorkspaceSubstitutionLocationsInSidecars(sidecars []v1beta1.Sidecar) se
 	return locationsToCheck
 }
 
-func findWorkspaceSubstitutionLocationsInSteps(steps []v1beta1.Step) sets.String {
+func findWorkspaceSubstitutionLocationsInSteps(steps []v1.Step) sets.String {
 	locationsToCheck := sets.NewString()
 	for _, step := range steps {
 		locationsToCheck.Insert(step.Script)
@@ -257,7 +257,7 @@ func findWorkspaceSubstitutionLocationsInSteps(steps []v1beta1.Step) sets.String
 	return locationsToCheck
 }
 
-func findWorkspaceSubstitutionLocationsInStepTemplate(stepTemplate *v1beta1.StepTemplate) sets.String {
+func findWorkspaceSubstitutionLocationsInStepTemplate(stepTemplate *v1.StepTemplate) sets.String {
 	locationsToCheck := sets.NewString()
 
 	if stepTemplate != nil {
@@ -272,7 +272,7 @@ func findWorkspaceSubstitutionLocationsInStepTemplate(stepTemplate *v1beta1.Step
 }
 
 // FindWorkspacesUsedByTask returns a set of all the workspaces that the TaskSpec uses.
-func FindWorkspacesUsedByTask(ts v1beta1.TaskSpec) (sets.String, error) {
+func FindWorkspacesUsedByTask(ts v1.TaskSpec) (sets.String, error) {
 	locationsToCheck := sets.NewString()
 	locationsToCheck.Insert(findWorkspaceSubstitutionLocationsInSteps(ts.Steps).List()...)
 	locationsToCheck.Insert(findWorkspaceSubstitutionLocationsInSidecars(ts.Sidecars).List()...)
