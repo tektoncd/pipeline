@@ -76,7 +76,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 			metrics:                  pipelinerunmetrics.Get(ctx),
 			pvcHandler:               volumeclaim.NewPVCHandler(kubeclientset, logger),
 			resolutionRequester:      resolution.NewCRDRequester(resolutionclient.Get(ctx), resolutionInformer.Lister()),
-			tracerProvider:      tracerProvider,
+			tracerProvider:           tracerProvider,
 		}
 		impl := pipelinerunreconciler.NewImpl(ctx, c, func(impl *controller.Impl) controller.Options {
 			return controller.Options{

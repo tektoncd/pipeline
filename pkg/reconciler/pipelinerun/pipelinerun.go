@@ -152,7 +152,7 @@ type Reconciler struct {
 	metrics                  *pipelinerunmetrics.Recorder
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
-	tracerProvider      trace.TracerProvider
+	tracerProvider           trace.TracerProvider
 }
 
 var (
