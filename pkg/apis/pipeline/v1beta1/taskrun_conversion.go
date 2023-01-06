@@ -416,3 +416,25 @@ func deserializeTaskRunResourcesResult(meta *metav1.ObjectMeta, status *TaskRunS
 	}
 	return nil
 }
+
+// RetrieveCloudEventsFromV1TaskRun retrieves the CloudEvents from v1 TaskRun annotations and
+// returns the deserialized CloudEvents for the respective reconciler logics in v1beta1
+func RetrieveCloudEventsFromV1TaskRun(tr v1.TaskRun) ([]CloudEventDelivery, error) {
+	cloudEvents := []CloudEventDelivery{}
+	err := version.DeserializeFromMetadata(&tr.ObjectMeta, &cloudEvents, cloudEventsAnnotationKey)
+	if err != nil {
+		return nil, err
+	}
+	return cloudEvents, nil
+}
+
+// RetrieveResourcesFromV1TaskRun retrieves the TaskRun Resources from v1 TaskRun annotations and
+// returns the deserialized Resources for the respective reconciler logics in v1beta1
+func RetrieveResourcesFromV1TaskRun(tr v1.TaskRun) (TaskRunResources, error) {
+	resources := &TaskRunResources{}
+	err := version.DeserializeFromMetadata(&tr.ObjectMeta, resources, resourcesAnnotationKey)
+	if err != nil {
+		return *resources, err
+	}
+	return *resources, nil
+}

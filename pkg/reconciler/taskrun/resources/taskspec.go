@@ -21,27 +21,28 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetTask is a function used to retrieve Tasks.
-type GetTask func(context.Context, string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error)
+type GetTask func(context.Context, string) (v1.Task, *v1.ConfigSource, error)
 
 // GetTaskRun is a function used to retrieve TaskRuns
-type GetTaskRun func(string) (*v1beta1.TaskRun, error)
+type GetTaskRun func(string) (*v1.TaskRun, error)
 
+// TODO: can we just remove ClusterTask?
 // GetClusterTask is a function that will retrieve the Task from name and namespace.
-type GetClusterTask func(name string) (v1beta1.TaskObject, error)
+type GetClusterTask func(name string) (v1.Task, error)
 
 // GetTaskData will retrieve the Task metadata and Spec associated with the
 // provided TaskRun. This can come from a reference Task or from the TaskRun's
 // metadata and embedded TaskSpec.
-func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask) (*resolutionutil.ResolvedObjectMeta, *v1beta1.TaskSpec, error) {
+func GetTaskData(ctx context.Context, taskRun *v1.TaskRun, getTask GetTask) (*resolutionutil.ResolvedObjectMeta, *v1.TaskSpec, error) {
 	taskMeta := metav1.ObjectMeta{}
-	var configSource *v1beta1.ConfigSource
-	taskSpec := v1beta1.TaskSpec{}
+	var configSource *v1.ConfigSource
+	taskSpec := v1.TaskSpec{}
 	switch {
 	case taskRun.Spec.TaskRef != nil && taskRun.Spec.TaskRef.Name != "":
 		// Get related task for taskrun
@@ -49,8 +50,8 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error when listing tasks for taskRun %s: %w", taskRun.Name, err)
 		}
-		taskMeta = t.TaskMetadata()
-		taskSpec = t.TaskSpec()
+		taskMeta = t.ObjectMeta
+		taskSpec = t.Spec
 		configSource = source
 	case taskRun.Spec.TaskSpec != nil:
 		taskMeta = taskRun.ObjectMeta
@@ -65,8 +66,8 @@ func GetTaskData(ctx context.Context, taskRun *v1beta1.TaskRun, getTask GetTask)
 		case task == nil:
 			return nil, nil, errors.New("resolution of remote resource completed successfully but no task was returned")
 		default:
-			taskMeta = task.TaskMetadata()
-			taskSpec = task.TaskSpec()
+			taskMeta = task.ObjectMeta
+			taskSpec = task.Spec
 		}
 		configSource = source
 	default:

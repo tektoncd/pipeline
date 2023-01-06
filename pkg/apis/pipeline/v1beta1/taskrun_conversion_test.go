@@ -529,29 +529,30 @@ func TestTaskRunConvertTo(t *testing.T) {
 		name: "empty param string",
 		in: &v1beta1.TaskRun{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
+				Name:      "taskrun-1",
+				Namespace: "ns",
 			},
 			Spec: v1beta1.TaskRunSpec{
-				Retries: 1,
-				Params: []v1beta1.Param{{
-					Name: "param-task-0",
-					Value: v1beta1.ParamValue{
-						StringVal: "param-value-string",
-					},
-				}, {
-					Name: "param-task-1",
-					Value: v1beta1.ParamValue{
-						ArrayVal: []string{"param-value-string"},
-						Type:     "array",
-					},
-				}},
-				TaskSpec: &v1beta1.TaskSpec{
-					Params: []v1beta1.ParamSpec{{
-						Name: "param-name",
-					}, {
-						Name: "param-array",
-						Type: "array",
+				TaskRef: &v1beta1.TaskRef{
+					Name: "task-1",
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				Status: duckv1.Status{
+					Conditions: duckv1.Conditions{apis.Condition{
+						Type:   apis.ConditionSucceeded,
+						Status: corev1.ConditionTrue,
+					}},
+				},
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					StartTime:      &metav1.Time{Time: time.Now()},
+					CompletionTime: &metav1.Time{Time: time.Now().Add(1 * time.Minute)},
+					CloudEvents: []v1beta1.CloudEventDelivery{{
+						Target: "http://event_target",
+						Status: v1beta1.CloudEventDeliveryState{
+							Condition:  v1beta1.CloudEventConditionSent,
+							RetryCount: 1,
+						},
 					}},
 				},
 			},
@@ -560,6 +561,9 @@ func TestTaskRunConvertTo(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
 				Namespace: "bar",
+				Annotations: map[string]string{
+					"tekton.dev/v1beta1CloudEvents": `[{"target":"http://event_target","status":{"condition":"Sent","message":"","retryCount":1}}]`,
+				},
 			},
 			Spec: v1.TaskRunSpec{
 				Retries: 1,
