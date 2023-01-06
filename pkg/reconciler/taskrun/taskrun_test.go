@@ -52,6 +52,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
+	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -447,7 +448,7 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock, trace.NewNoopTracerProvider())(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
@@ -2877,6 +2878,7 @@ spec:
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		tracerProvider:    trace.NewNoopTracerProvider(),
 	}
 
 	rtr := &resources.ResolvedTaskResources{
@@ -2986,6 +2988,7 @@ spec:
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		tracerProvider:    trace.NewNoopTracerProvider(),
 	}
 
 	rtr := &resources.ResolvedTaskResources{
@@ -3039,6 +3042,7 @@ status:
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		tracerProvider:    trace.NewNoopTracerProvider(),
 	}
 
 	testcases := []struct {
@@ -4108,6 +4112,7 @@ status:
 				metrics:           nil, // Not used
 				entrypointCache:   nil, // Not used
 				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+				tracerProvider:    trace.NewNoopTracerProvider(),
 			}
 
 			err := c.failTaskRun(testAssets.Ctx, tc.taskRun, tc.reason, tc.message)
