@@ -107,10 +107,10 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	logger := logging.FromContext(ctx)
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 	ctx = initTracing(ctx, c.tracerProvider, tr)
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "TaskRun:ReconcileKind")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
 	defer span.End()
 
-	span.SetAttributes(attribute.String("task", tr.Name), attribute.String("namespace", tr.Namespace))
+	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
 
 	// By this time, params and workspaces should not be propagated for embedded tasks so we cannot
 	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
@@ -236,7 +236,7 @@ func (c *Reconciler) checkPodFailed(tr *v1beta1.TaskRun) (bool, v1beta1.TaskRunR
 }
 
 func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition) {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "durationAndCountMetrics")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "durationAndCountMetrics")
 	defer span.End()
 	logger := logging.FromContext(ctx)
 	if tr.IsDone() {
@@ -250,7 +250,7 @@ func (c *Reconciler) durationAndCountMetrics(ctx context.Context, tr *v1beta1.Ta
 }
 
 func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) error {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "stopSidecars")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "stopSidecars")
 	defer span.End()
 	logger := logging.FromContext(ctx)
 	// do not continue without knowing the associated pod
@@ -297,7 +297,7 @@ func (c *Reconciler) stopSidecars(ctx context.Context, tr *v1beta1.TaskRun) erro
 }
 
 func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1beta1.TaskRun, beforeCondition *apis.Condition, previousError error) error {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "finishReconcileUpdateEmitEvents")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "finishReconcileUpdateEmitEvents")
 	defer span.End()
 	logger := logging.FromContext(ctx)
 
@@ -331,7 +331,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // them in the TaskRun.Status so we don't need to re-run `prepare` at every
 // reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
 func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskSpec, *resources.ResolvedTaskResources, error) {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "prepare")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()
 	logger := logging.FromContext(ctx)
 	tr.SetDefaults(ctx)
@@ -461,7 +461,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
 func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) error {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "reconcile")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
 
 	logger := logging.FromContext(ctx)
@@ -569,7 +569,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 }
 
 func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr *v1beta1.TaskRun, taskSpec *v1beta1.TaskSpec) error {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "updateTaskRunWithDefaultWorkspaces")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateTaskRunWithDefaultWorkspaces")
 	defer span.End()
 	configMap := config.FromContextOrDefaults(ctx)
 	defaults := configMap.Defaults
@@ -606,7 +606,7 @@ func (c *Reconciler) updateTaskRunWithDefaultWorkspaces(ctx context.Context, tr 
 }
 
 func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "updateLabelsAndAnnotations")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "updateLabelsAndAnnotations")
 	defer span.End()
 	// Ensure the TaskRun is properly decorated with the version of the Tekton controller processing it.
 	if tr.Annotations == nil {
@@ -667,7 +667,7 @@ func (c *Reconciler) handlePodCreationError(tr *v1beta1.TaskRun, err error) erro
 // failTaskRun function may return an error in case the pod could not be deleted
 // failTaskRun may update the local TaskRun status, but it won't push the updates to etcd
 func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reason v1beta1.TaskRunReason, message string) error {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "failTaskRun")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "failTaskRun")
 	defer span.End()
 	logger := logging.FromContext(ctx)
 
@@ -723,7 +723,7 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
 func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources, workspaceVolumes map[string]corev1.Volume) (*corev1.Pod, error) {
-	ctx, span := c.tracerProvider.Tracer(Tracer).Start(ctx, "createPod")
+	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
 	defer span.End()
 	logger := logging.FromContext(ctx)
 	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)

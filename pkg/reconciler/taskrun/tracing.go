@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	// Tracer is the name of the tracer
-	Tracer = "TaskRunReconciler"
+	// TracerName is the name of the tracer
+	TracerName = "TaskRunReconciler"
 	// SpanContextAnnotation is the name of the Annotation used for propogating SpanContext
 	SpanContextAnnotation = "tekton.dev/taskrunSpanContext"
 )
@@ -50,7 +50,7 @@ func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v
 	// if spanContext is not present in the CR, create new parent trace and
 	// add the marshalled spancontext to the annotations
 	if _, e := trAnnotations[SpanContextAnnotation]; !e {
-		ctxWithTrace, span := tracerProvider.Tracer(Tracer).Start(ctx, "TaskRun:Reconciler")
+		ctxWithTrace, span := tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:Reconciler")
 		defer span.End()
 		span.SetAttributes(attribute.String("task", tr.Name), attribute.String("namespace", tr.Namespace))
 
