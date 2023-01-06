@@ -92,7 +92,7 @@ type Reconciler struct {
 	metrics                  *taskrunmetrics.Recorder
 	pvcHandler               volumeclaim.PvcHandler
 	resolutionRequester      resolution.Requester
-	tracerProvider      trace.TracerProvider
+	tracerProvider           trace.TracerProvider
 }
 
 // Check that our Reconciler implements taskrunreconciler.Interface
