@@ -761,6 +761,7 @@ github.com/sigstore/sigstore/pkg/signature
 github.com/sigstore/sigstore/pkg/signature/kms
 github.com/sigstore/sigstore/pkg/signature/kms/aws
 github.com/sigstore/sigstore/pkg/signature/kms/azure
+github.com/sigstore/sigstore/pkg/signature/kms/fake
 github.com/sigstore/sigstore/pkg/signature/kms/gcp
 github.com/sigstore/sigstore/pkg/signature/kms/hashivault
 github.com/sigstore/sigstore/pkg/signature/options

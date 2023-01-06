@@ -27,6 +27,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sigstore/sigstore/pkg/signature"
+	fakekms "github.com/sigstore/sigstore/pkg/signature/kms/fake"
+	gcpkms "github.com/sigstore/sigstore/pkg/signature/kms/gcp"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/test"
@@ -81,6 +83,30 @@ func TestFromPolicy_Success(t *testing.T) {
 	_, key256, k8sclient, vps := test.SetupVerificationPolicies(t)
 	keyInDataVp, keyInSecretVp := vps[0], vps[1]
 
+	keyInKMSVp := &v1alpha1.VerificationPolicy{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "VerificationPolicy",
+			APIVersion: "v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "keyInKMSVp",
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.VerificationPolicySpec{
+			Resources: []v1alpha1.ResourcePattern{},
+			Authorities: []v1alpha1.Authority{
+				{
+					Name: "kms",
+					Key: &v1alpha1.KeyRef{
+						KMS:           "fakekms://key",
+						HashAlgorithm: "sha256",
+					},
+				},
+			},
+		},
+	}
+	ctx = context.WithValue(context.TODO(), fakekms.KmsCtxKey{}, key256)
+
 	_, key384, pub, err := test.GenerateKeys(elliptic.P384(), crypto.SHA256)
 	if err != nil {
 		t.Fatalf("failed to generate keys %v", err)
@@ -120,6 +146,10 @@ func TestFromPolicy_Success(t *testing.T) {
 	}, {
 		name:   "key in secret",
 		policy: keyInSecretVp,
+		key:    key256,
+	}, {
+		name:   "key in kms",
+		policy: keyInKMSVp,
 		key:    key256,
 	}, {
 		name:   "key with sha384",
@@ -211,6 +241,20 @@ func TestFromPolicy_Error(t *testing.T) {
 			},
 		},
 		expectedError: ErrorSecretNotFound,
+	}, {
+		name: "from kms error",
+		policy: &v1alpha1.VerificationPolicy{
+			Spec: v1alpha1.VerificationPolicySpec{
+				Authorities: []v1alpha1.Authority{
+					{
+						Key: &v1alpha1.KeyRef{
+							KMS: "gcpkms://wrongurl",
+						},
+					},
+				},
+			},
+		},
+		expectedError: gcpkms.ValidReference("gcpkms://wrongurl"),
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {

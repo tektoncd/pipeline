@@ -11,9 +11,6 @@ Trusted Resources is a feature which can be used to sign Tekton Resources and ve
 
 Verification failure will mark corresponding taskrun/pipelinerun as Failed status and stop the execution.
 
-**Note:** KMS is not currently supported and will be supported in the following work.
-
-
 ## Instructions
 
 ### Sign Resources
@@ -157,7 +154,11 @@ spec:
 To learn more about regex syntax please refer to [syntax](https://pkg.go.dev/regexp/syntax).
 To learn more about `ConfigSource` please refer to resolvers doc for more context. e.g. [gitresolver](./git-resolver.md)
 
- `key` is used to store the public key, note that secretRef and data cannot be configured at the same time.
+ `key` is used to store the public key, `key` can be configured with `secretRef`, `data`, `kms` note that only 1 of these 3 fields can be configured.
+
+  * `secretRef`: refers to secret in cluster to store the public key.
+  * `data`: contains the inline data of the pubic key in "PEM-encoded byte slice" format.
+  * `kms`: refers to the uri of the public key, it should follow the format defined in [sigstore](https://docs.sigstore.dev/cosign/kms_support).
 
 `hashAlgorithm` is the algorithm for the public key, by default is `sha256`. It also supports `SHA224`, `SHA384`, `SHA512`.
 

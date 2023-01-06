@@ -26,6 +26,9 @@ import (
 
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
+	"github.com/sigstore/sigstore/pkg/signature/kms"
+
+	// TODO(#5976): consider move these registration to cmd/controller/main.go
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"        // imported to execute init function to register aws kms
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"      // imported to execute init function to register azure kms
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/gcp"        // imported to execute init function to register gcp kms
@@ -72,21 +75,28 @@ func FromPolicy(ctx context.Context, k8s kubernetes.Interface, policy *v1alpha1.
 		if err != nil {
 			return nil, fmt.Errorf("authority %q contains an invalid hash algorithm: %w", a.Name, err)
 		}
-		if a.Key.Data == "" && a.Key.SecretRef == nil {
-			return nil, ErrorEmptyKey
-		}
-		if a.Key.Data != "" {
+
+		switch {
+		case a.Key.Data != "":
 			v, err := fromData([]byte(a.Key.Data), algorithm)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get verifier from data: %w", err)
 			}
 			verifiers = append(verifiers, v)
-		} else if a.Key.SecretRef != nil {
+		case a.Key.SecretRef != nil:
 			v, err := fromSecret(ctx, fmt.Sprintf("%s%s/%s", keyReference, a.Key.SecretRef.Namespace, a.Key.SecretRef.Name), algorithm, k8s)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get verifier from secret: %w", err)
 			}
 			verifiers = append(verifiers, v)
+		case a.Key.KMS != "":
+			v, err := kms.Get(ctx, a.Key.KMS, algorithm)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get verifier from kms: %w", err)
+			}
+			verifiers = append(verifiers, v)
+		default:
+			return nil, ErrorEmptyKey
 		}
 	}
 	if len(verifiers) == 0 {
