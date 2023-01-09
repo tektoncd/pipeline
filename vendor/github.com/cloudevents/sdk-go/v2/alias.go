@@ -21,7 +21,7 @@ import (
 
 // Client
 
-type ClientOption client.Option
+type ClientOption = client.Option
 type Client = client.Client
 
 // Event
@@ -42,7 +42,7 @@ type URIRef = types.URIRef
 
 // HTTP Protocol
 
-type HTTPOption http.Option
+type HTTPOption = http.Option
 
 type HTTPProtocol = http.Protocol
 
