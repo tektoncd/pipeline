@@ -41,7 +41,7 @@ const (
 
 // VerifyTask verifies the signature and public key against task.
 // source is from ConfigSource.URI, which will be used to match policy patterns. k8s is used to fetch secret from cluster
-func VerifyTask(ctx context.Context, taskObj v1beta1.TaskObject, k8s kubernetes.Interface, source string, policies []*v1alpha1.VerificationPolicy) error {
+func VerifyTask(ctx context.Context, taskObj v1beta1.Task, k8s kubernetes.Interface, source string, policies []*v1alpha1.VerificationPolicy) error {
 	tm, signature, err := prepareObjectMeta(taskObj.TaskMetadata())
 	if err != nil {
 		return err

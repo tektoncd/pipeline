@@ -138,7 +138,7 @@ func TestVerifyTask_Configmap_Success(t *testing.T) {
 		t.Fatal("fail to sign task", err)
 	}
 
-	err = VerifyTask(ctx, signedTask, nil, "", []*v1alpha1.VerificationPolicy{})
+	err = VerifyTask(ctx, *signedTask, nil, "", []*v1alpha1.VerificationPolicy{})
 	if err != nil {
 		t.Errorf("VerifyTask() get err %v", err)
 	}
@@ -161,7 +161,7 @@ func TestVerifyTask_Configmap_Error(t *testing.T) {
 
 	tcs := []struct {
 		name          string
-		task          v1beta1.TaskObject
+		task          *v1beta1.Task
 		keypath       string
 		expectedError error
 	}{{
@@ -185,7 +185,7 @@ func TestVerifyTask_Configmap_Error(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx = test.SetupTrustedResourceKeyConfig(ctx, tc.keypath, config.EnforceResourceVerificationMode)
-			err := VerifyTask(ctx, tc.task, nil, "", []*v1alpha1.VerificationPolicy{})
+			err := VerifyTask(ctx, *tc.task, nil, "", []*v1alpha1.VerificationPolicy{})
 			if !errors.Is(err, tc.expectedError) {
 				t.Errorf("VerifyTask got: %v, want: %v", err, tc.expectedError)
 			}
@@ -243,7 +243,7 @@ func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
 
 	tcs := []struct {
 		name   string
-		task   v1beta1.TaskObject
+		task   *v1beta1.Task
 		source string
 		signer signature.SignerVerifier
 	}{{
@@ -262,7 +262,7 @@ func TestVerifyTask_VerificationPolicy_Success(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := VerifyTask(ctx, tc.task, k8sclient, tc.source, vps)
+			err := VerifyTask(ctx, *tc.task, k8sclient, tc.source, vps)
 			if err != nil {
 				t.Fatalf("VerifyTask() get err %v", err)
 			}
@@ -287,31 +287,31 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 
 	tcs := []struct {
 		name               string
-		task               v1beta1.TaskObject
+		task               v1beta1.Task
 		source             string
 		verificationPolicy []*v1alpha1.VerificationPolicy
 		expectedError      error
 	}{{
 		name:               "modified Task fails verification",
-		task:               tamperedTask,
+		task:               *tamperedTask,
 		source:             "git+https://github.com/tektoncd/catalog.git",
 		verificationPolicy: vps,
 		expectedError:      ErrorResourceVerificationFailed,
 	}, {
 		name:               "task not matching pattern fails verification",
-		task:               signedTask,
+		task:               *signedTask,
 		source:             "wrong source",
 		verificationPolicy: vps,
 		expectedError:      ErrorNoMatchedPolicies,
 	}, {
 		name:               "verification fails with empty policy",
-		task:               tamperedTask,
+		task:               *tamperedTask,
 		source:             "git+https://github.com/tektoncd/catalog.git",
 		verificationPolicy: []*v1alpha1.VerificationPolicy{},
 		expectedError:      ErrorEmptyVerificationConfig,
 	}, {
 		name:   "Verification fails with regex error",
-		task:   signedTask,
+		task:   *signedTask,
 		source: "git+https://github.com/tektoncd/catalog.git",
 		verificationPolicy: []*v1alpha1.VerificationPolicy{
 			{
@@ -328,7 +328,7 @@ func TestVerifyTask_VerificationPolicy_Error(t *testing.T) {
 		expectedError: ErrorRegexMatch,
 	}, {
 		name:   "Verification fails with error from policy",
-		task:   signedTask,
+		task:   *signedTask,
 		source: "git+https://github.com/tektoncd/catalog.git",
 		verificationPolicy: []*v1alpha1.VerificationPolicy{
 			{
