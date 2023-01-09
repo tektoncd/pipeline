@@ -162,16 +162,10 @@ type Class string
 
 // Has returns true if the passed in error was wrapped by this class.
 func (c *Class) Has(err error) bool {
-	for {
+	return IsFunc(err, func(err error) bool {
 		errt, ok := err.(*errorT)
-		if !ok {
-			return false
-		}
-		if errt.class == c {
-			return true
-		}
-		err = errt.err
-	}
+		return ok && errt.class == c
+	})
 }
 
 // New constructs an error with the format string that will be contained by
@@ -240,6 +234,9 @@ var ( // ensure *errorT implements the helper interfaces.
 	_ Causer = (*errorT)(nil)
 	_ error  = (*errorT)(nil)
 )
+
+// Stack returns the pcs for the stack trace associated with the error.
+func (e *errorT) Stack() []uintptr { return e.pcs }
 
 // errorT implements the error interface.
 func (e *errorT) Error() string {
