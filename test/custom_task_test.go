@@ -1173,7 +1173,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 
 func setUpCustomTask(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
-	c, ns := setup(ctx, t, requireAnyGate(neededFeatureFlags))
+	c, ns := setup(ctx, t, fn...)
 	// Note that this may not work if we run e2e tests in parallel since this feature flag forces custom tasks to be
 	// created as v1alpha1.Run with this value. i.e. Don't add t.Parallel() for this test.
 	configMapData := map[string]string{
@@ -1184,14 +1184,12 @@ func setUpCustomTask(ctx context.Context, t *testing.T, fn ...func(context.Conte
 		t.Fatal(err)
 	}
 
-	// Sleep 5s to
-
 	return c, ns
 }
 
 func setUpV1Beta1CustomTask(ctx context.Context, t *testing.T, fn ...func(context.Context, *testing.T, *clients, string)) (*clients, string) {
 	t.Helper()
-	c, ns := setup(ctx, t, requireAnyGate(neededFeatureFlags))
+	c, ns := setup(ctx, t, fn...)
 	// Note that this may not work if we run e2e tests in parallel since this feature flag forces custom tasks to be
 	// created as v1beta1.CustomRuns i.e. Don't add t.Parallel() for this test.
 	configMapData := map[string]string{
