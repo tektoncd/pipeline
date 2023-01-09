@@ -466,9 +466,6 @@ not running.
 and use Workspaces to mount credentials from Secrets instead.
 The default is `false`. For more information, see the [associated issue](https://github.com/tektoncd/pipeline/issues/3399).
 
-- `enable-custom-tasks`: set this flag to `"false"` to disable the
-use of custom tasks in pipelines.
-
 - `enable-api-fields`: set this flag to "stable" to allow only the
 most stable features to be used. Set it to "alpha" to allow [alpha
 features](#alpha-features) to be used.
@@ -517,7 +514,6 @@ Features currently in "alpha" are:
 | Feature                                                                                               | Proposal                                                                                                                        | Release                                                              | Individual Flag             |
 |:------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|:----------------------------|
 | [Bundles ](./pipelineruns.md#tekton-bundles)                                                          | [TEP-0005](https://github.com/tektoncd/community/blob/main/teps/0005-tekton-oci-bundles.md)                                | [v0.18.0](https://github.com/tektoncd/pipeline/releases/tag/v0.18.0) | `enable-tekton-oci-bundles` |
-| [`Runs` and `Custom Tasks`](./runs.md)                                                                | [TEP-0002](https://github.com/tektoncd/community/blob/main/teps/0002-custom-tasks.md)                                      | [v0.19.0](https://github.com/tektoncd/pipeline/releases/tag/v0.19.0) | `enable-custom-tasks`       |
 | [Isolated `Step` & `Sidecar` `Workspaces`](./workspaces.md#isolated-workspaces)                       | [TEP-0029](https://github.com/tektoncd/community/blob/main/teps/0029-step-workspaces.md)                                   | [v0.24.0](https://github.com/tektoncd/pipeline/releases/tag/v0.24.0) |                             |
 | [Hermetic Execution Mode](./hermetic.md)                                                              | [TEP-0025](https://github.com/tektoncd/community/blob/main/teps/0025-hermekton.md)                                         | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                             |
 | [Propagated `Parameters`](./taskruns.md#propagated-parameters)                                        | [TEP-0107](https://github.com/tektoncd/community/blob/main/teps/0107-propagating-parameters.md)                            | [v0.36.0](https://github.com/tektoncd/pipeline/releases/tag/v0.36.0) |                             |

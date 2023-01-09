@@ -5,6 +5,5 @@ metadata:
   namespace: tekton-pipelines
 data:
   enable-tekton-oci-bundles: "false"
-  enable-custom-tasks: "false"
   enable-spire: "false"
   enable-api-fields: "alpha"

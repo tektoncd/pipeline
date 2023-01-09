@@ -632,8 +632,7 @@ func isCustomTask(ctx context.Context, rpt ResolvedPipelineTask) bool {
 		rpt.PipelineTask.TaskRef.Kind != ""
 	isTaskSpecCustomTask := rpt.PipelineTask.TaskSpec != nil && rpt.PipelineTask.TaskSpec.APIVersion != "" &&
 		rpt.PipelineTask.TaskSpec.Kind != ""
-	cfg := config.FromContextOrDefaults(ctx)
-	return cfg.FeatureFlags.EnableCustomTasks && !invalidSpec && (isTaskRefCustomTask || isTaskSpecCustomTask)
+	return !invalidSpec && (isTaskRefCustomTask || isTaskSpecCustomTask)
 }
 
 // ResolvePipelineTask retrieves a single Task's instance using the getTask to fetch
