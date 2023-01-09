@@ -25,7 +25,8 @@ type JWTSource struct {
 }
 
 // NewJWTSource creates a new JWTSource. It blocks until the initial update
-// has been received from the Workload API.
+// has been received from the Workload API. The source should be closed when
+// no longer in use to free underlying resources.
 func NewJWTSource(ctx context.Context, options ...JWTSourceOption) (_ *JWTSource, err error) {
 	config := &jwtSourceConfig{}
 	for _, option := range options {

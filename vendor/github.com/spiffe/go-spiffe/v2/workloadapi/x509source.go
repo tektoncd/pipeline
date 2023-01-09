@@ -27,7 +27,8 @@ type X509Source struct {
 }
 
 // NewX509Source creates a new X509Source. It blocks until the initial update
-// has been received from the Workload API.
+// has been received from the Workload API. The source should be closed when
+// no longer in use to free underlying resources.
 func NewX509Source(ctx context.Context, options ...X509SourceOption) (_ *X509Source, err error) {
 	config := &x509SourceConfig{}
 	for _, option := range options {

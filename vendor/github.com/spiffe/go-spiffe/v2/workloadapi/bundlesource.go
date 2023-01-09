@@ -28,7 +28,8 @@ type BundleSource struct {
 }
 
 // NewBundleSource creates a new BundleSource. It blocks until the initial
-// update has been received from the Workload API.
+// update has been received from the Workload API. The source should be closed
+// when no longer in use to free underlying resources.
 func NewBundleSource(ctx context.Context, options ...BundleSourceOption) (_ *BundleSource, err error) {
 	config := &bundleSourceConfig{}
 	for _, option := range options {

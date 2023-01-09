@@ -29,7 +29,8 @@ type Client struct {
 	config   clientConfig
 }
 
-// New dials the Workload API and returns a client.
+// New dials the Workload API and returns a client. The client should be closed
+// when no longer in use to free underlying resources.
 func New(ctx context.Context, options ...ClientOption) (*Client, error) {
 	c := &Client{
 		config: defaultClientConfig(),

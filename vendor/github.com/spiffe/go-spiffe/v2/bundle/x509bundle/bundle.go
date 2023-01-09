@@ -127,7 +127,7 @@ func (b *Bundle) RemoveX509Authority(x509Authority *x509.Certificate) {
 
 	for i, r := range b.x509Authorities {
 		if r.Equal(x509Authority) {
-			//remove element from slice
+			// remove element from slice
 			b.x509Authorities = append(b.x509Authorities[:i], b.x509Authorities[i+1:]...)
 			return
 		}
