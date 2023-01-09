@@ -32,9 +32,6 @@ type GetTask func(context.Context, string) (v1beta1.TaskObject, *v1beta1.ConfigS
 // GetTaskRun is a function used to retrieve TaskRuns
 type GetTaskRun func(string) (*v1beta1.TaskRun, error)
 
-// GetClusterTask is a function that will retrieve the Task from name and namespace.
-type GetClusterTask func(name string) (v1beta1.TaskObject, error)
-
 // GetTaskData will retrieve the Task metadata and Spec associated with the
 // provided TaskRun. This can come from a reference Task or from the TaskRun's
 // metadata and embedded TaskSpec.
