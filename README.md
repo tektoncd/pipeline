@@ -63,7 +63,7 @@ deprecated and the earliest date they'll be removed._
 ### v1alpha1 to v1beta1
 
 In the move from v1alpha1 to v1beta1 several spec fields and Tekton
-CRDs were updated or removed .
+CRDs were updated or removed.
 
 For users migrating their Tasks and Pipelines from v1alpha1 to v1beta1, check
 out [the spec changes and migration paths](./docs/migrating-v1alpha1-to-v1beta1.md).
