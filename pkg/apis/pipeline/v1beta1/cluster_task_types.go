@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"github.com/tektoncd/pipeline/pkg/apis/objectInterface"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -65,7 +66,7 @@ func (t *ClusterTask) TaskMetadata() metav1.ObjectMeta {
 }
 
 // Copy returns a DeepCopy of the ClusterTask
-func (t *ClusterTask) Copy() TaskObject {
+func (t *ClusterTask) Copy() objectInterface.TaskObject {
 	return t.DeepCopy()
 }
 

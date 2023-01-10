@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/objectInterface"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 
@@ -76,7 +77,7 @@ func (p *Pipeline) PipelineSpec() PipelineSpec {
 }
 
 // Copy returns a deep copy of the Pipeline, implementing PipelineObject
-func (p *Pipeline) Copy() PipelineObject {
+func (p *Pipeline) Copy() objectInterface.PipelineObject {
 	return p.DeepCopy()
 }
 

@@ -9248,7 +9248,7 @@ optional: false - the resource is considered required (default/equivalent of not
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1beta1.PipelineObject">PipelineObject
+<h3 id="tekton.dev/objectInterface.PipelineObject">PipelineObject
 </h3>
 <div>
 <p>PipelineObject is implemented by Pipeline and ClusterPipeline</p>

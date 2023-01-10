@@ -21,13 +21,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/objectInterface"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // GetPipeline is a function used to retrieve Pipelines.
-type GetPipeline func(context.Context, string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error)
+type GetPipeline func(context.Context, string) (objectInterface.PipelineObject, *v1beta1.ConfigSource, error)
 
 // GetPipelineData will retrieve the Pipeline metadata and Spec associated with the
 // provided PipelineRun. This can come from a reference Pipeline or from the PipelineRun's

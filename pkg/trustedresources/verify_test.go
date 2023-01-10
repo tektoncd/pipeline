@@ -27,6 +27,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/objectInterface"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
@@ -376,7 +377,7 @@ func TestVerifyPipeline_Success(t *testing.T) {
 
 	tcs := []struct {
 		name     string
-		pipeline v1beta1.PipelineObject
+		pipeline objectInterface.PipelineObject
 		source   string
 	}{{
 		name:     "Signed git source Task Passes Verification",
@@ -413,7 +414,7 @@ func TestVerifyPipeline_Error(t *testing.T) {
 
 	tcs := []struct {
 		name     string
-		pipeline v1beta1.PipelineObject
+		pipeline objectInterface.PipelineObject
 		source   string
 	}{{
 		name:     "Tampered Task Fails Verification with tampered content",

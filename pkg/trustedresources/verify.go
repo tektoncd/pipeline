@@ -27,6 +27,7 @@ import (
 	"regexp"
 
 	"github.com/sigstore/sigstore/pkg/signature"
+	"github.com/tektoncd/pipeline/pkg/apis/objectInterface"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/trustedresources/verifier"
@@ -59,7 +60,7 @@ func VerifyTask(ctx context.Context, taskObj v1beta1.Task, k8s kubernetes.Interf
 
 // VerifyPipeline verifies the signature and public key against pipeline.
 // source is from ConfigSource.URI, which will be used to match policy patterns, k8s is used to fetch secret from cluster
-func VerifyPipeline(ctx context.Context, pipelineObj v1beta1.PipelineObject, k8s kubernetes.Interface, source string, policies []*v1alpha1.VerificationPolicy) error {
+func VerifyPipeline(ctx context.Context, pipelineObj objectInterface.PipelineObject, k8s kubernetes.Interface, source string, policies []*v1alpha1.VerificationPolicy) error {
 	pm, signature, err := prepareObjectMeta(pipelineObj.PipelineMetadata())
 	if err != nil {
 		return err

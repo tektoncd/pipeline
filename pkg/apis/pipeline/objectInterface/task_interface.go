@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Tekton Authors
+Copyright 2023 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,17 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package objectInterface
 
 import (
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
-// PipelineObject is implemented by Pipeline and ClusterPipeline
-type PipelineObject interface {
+// TaskObject is implemented by Task and ClusterTask
+type TaskObject interface {
 	apis.Defaultable
-	PipelineMetadata() metav1.ObjectMeta
-	PipelineSpec() PipelineSpec
-	Copy() PipelineObject
+	TaskMetadata() metav1.ObjectMeta
+	TaskSpec() v1.TaskSpec
+	Copy() TaskObject
 }
