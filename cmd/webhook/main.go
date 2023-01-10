@@ -21,6 +21,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	defaultconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
@@ -74,73 +75,81 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	resolutionv1beta1.SchemeGroupVersion.WithKind("ResolutionRequest"): &resolutionv1beta1.ResolutionRequest{},
 }
 
-func newDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	// Decorate contexts with the current state of the config.
-	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	store.WatchConfigs(cmw)
+func newDefaultingAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		// Decorate contexts with the current state of the config.
+		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+		store.WatchConfigs(cmw)
+		return defaulting.NewAdmissionController(ctx,
 
-	return defaulting.NewAdmissionController(ctx,
+			// Name of the resource webhook, it is the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
+			// default is "webhook.pipeline.tekton.dev"
+			name,
 
-		// Name of the resource webhook.
-		"webhook.pipeline.tekton.dev",
+			// The path on which to serve the webhook.
+			"/defaulting",
 
-		// The path on which to serve the webhook.
-		"/defaulting",
+			// The resources to validate and default.
+			types,
 
-		// The resources to validate and default.
-		types,
+			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
+			func(ctx context.Context) context.Context {
+				return store.ToContext(ctx)
+			},
 
-		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
-		func(ctx context.Context) context.Context {
-			return store.ToContext(ctx)
-		},
-
-		// Whether to disallow unknown fields.
-		true,
-	)
+			// Whether to disallow unknown fields.
+			true,
+		)
+	}
 }
 
-func newValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	// Decorate contexts with the current state of the config.
-	store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
-	store.WatchConfigs(cmw)
-	return validation.NewAdmissionController(ctx,
+func newValidationAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		// Decorate contexts with the current state of the config.
+		store := defaultconfig.NewStore(logging.FromContext(ctx).Named("config-store"))
+		store.WatchConfigs(cmw)
+		return validation.NewAdmissionController(ctx,
 
-		// Name of the resource webhook.
-		"validation.webhook.pipeline.tekton.dev",
+			// Name of the validation webhook, it is based on the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
+			// default is "validation.webhook.pipeline.tekton.dev"
+			strings.Join([]string{"validation", name}, "."),
 
-		// The path on which to serve the webhook.
-		"/resource-validation",
+			// The path on which to serve the webhook.
+			"/resource-validation",
 
-		// The resources to validate and default.
-		types,
+			// The resources to validate and default.
+			types,
 
-		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
-		func(ctx context.Context) context.Context {
-			return store.ToContext(ctx)
-		},
+			// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
+			func(ctx context.Context) context.Context {
+				return store.ToContext(ctx)
+			},
 
-		// Whether to disallow unknown fields.
-		true,
-	)
+			// Whether to disallow unknown fields.
+			true,
+		)
+	}
 }
 
-func newConfigValidationController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	return configmaps.NewAdmissionController(ctx,
+func newConfigValidationController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
+	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+		return configmaps.NewAdmissionController(ctx,
 
-		// Name of the configmap webhook.
-		"config.webhook.pipeline.tekton.dev",
+			// Name of the configmap webhook, it is based on the value of the environment variable WEBHOOK_ADMISSION_CONTROLLER_NAME
+			// default is "config.webhook.pipeline.tekton.dev"
+			strings.Join([]string{"config", name}, "."),
 
-		// The path on which to serve the webhook.
-		"/config-validation",
+			// The path on which to serve the webhook.
+			"/config-validation",
 
-		// The configmaps to validate.
-		configmap.Constructors{
-			logging.ConfigMapName():               logging.NewConfigFromConfigMap,
-			defaultconfig.GetDefaultsConfigName(): defaultconfig.NewDefaultsFromConfigMap,
-			pkgleaderelection.ConfigMapName():     pkgleaderelection.NewConfigFromConfigMap,
-		},
-	)
+			// The configmaps to validate.
+			configmap.Constructors{
+				logging.ConfigMapName():               logging.NewConfigFromConfigMap,
+				defaultconfig.GetDefaultsConfigName(): defaultconfig.NewDefaultsFromConfigMap,
+				pkgleaderelection.ConfigMapName():     pkgleaderelection.NewConfigFromConfigMap,
+			},
+		)
+	}
 }
 
 func newConversionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -218,6 +227,11 @@ func main() {
 		secretName = "webhook-certs" // #nosec
 	}
 
+	webhookName := os.Getenv("WEBHOOK_ADMISSION_CONTROLLER_NAME")
+	if webhookName == "" {
+		webhookName = "webhook.pipeline.tekton.dev"
+	}
+
 	// Scope informers to the webhook's namespace instead of cluster-wide
 	ctx := injection.WithNamespaceScope(signals.NewContext(), system.Namespace())
 
@@ -247,9 +261,9 @@ func main() {
 
 	sharedmain.MainWithContext(ctx, serviceName,
 		certificates.NewController,
-		newDefaultingAdmissionController,
-		newValidationAdmissionController,
-		newConfigValidationController,
+		newDefaultingAdmissionController(webhookName),
+		newValidationAdmissionController(webhookName),
+		newConfigValidationController(webhookName),
 		newConversionController,
 	)
 }
