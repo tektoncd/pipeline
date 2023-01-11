@@ -110,9 +110,10 @@ func SetupZipkinTracingFromConfigTracingOrFail(ctx context.Context, t testing.TB
 }
 
 // SetupZipkinTracing sets up zipkin tracing which involves:
-// 1. Setting up port-forwarding from localhost to zipkin pod on the cluster
-//    (pid of the process doing Port-Forward is stored in a global variable).
-// 2. Enable AlwaysSample config for tracing for the SpoofingClient.
+//  1. Setting up port-forwarding from localhost to zipkin pod on the cluster
+//     (pid of the process doing Port-Forward is stored in a global variable).
+//  2. Enable AlwaysSample config for tracing for the SpoofingClient.
+//
 // The zipkin deployment must have the label app=zipkin
 func SetupZipkinTracing(ctx context.Context, kubeClientset kubernetes.Interface, logf logging.FormatLogger, zipkinRemotePort int, zipkinNamespace string) (err error) {
 	setupOnce.Do(func() {
@@ -152,13 +153,13 @@ func SetupZipkinTracingOrFail(ctx context.Context, t testing.TB, kubeClientset k
 // CleanupZipkinTracingSetup cleans up the Zipkin tracing setup on the machine. This involves killing the process performing port-forward.
 // This should be called exactly once in TestMain. Likely in the form:
 //
-// func TestMain(m *testing.M) {
-//     os.Exit(func() int {
-//       // Any setup required for the tests.
-//       defer zipkin.CleanupZipkinTracingSetup(logger)
-//       return m.Run()
-//     }())
-// }
+//	func TestMain(m *testing.M) {
+//	    os.Exit(func() int {
+//	      // Any setup required for the tests.
+//	      defer zipkin.CleanupZipkinTracingSetup(logger)
+//	      return m.Run()
+//	    }())
+//	}
 func CleanupZipkinTracingSetup(logf logging.FormatLogger) {
 	teardownOnce.Do(func() {
 		// Because CleanupZipkinTracingSetup only runs once, make sure that now that it has been
