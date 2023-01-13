@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
@@ -25,6 +26,10 @@ import (
 func SetupFakeContext(t *testing.T) (context.Context, []controller.Informer) {
 	t.Helper()
 	ctx, _, informer := setupFakeContextWithLabelKey(t)
+
+	cfg := config.FromContextOrDefaults(context.Background())
+	ctx = config.ToContext(ctx, cfg)
+
 	return WithLogger(ctx, t), informer
 }
 

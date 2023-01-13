@@ -31,3 +31,4 @@ data:
   resource-verification-mode: "enforce"
   enable-provenance-in-status: "true"
   custom-task-version: "v1beta1"
+  enable-logging-credentials-filter: "true"

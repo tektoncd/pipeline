@@ -94,3 +94,10 @@ data:
   # Acceptable values are "v1beta1" and "v1alpha1".
   # The default is "v1beta1".
   custom-task-version: "v1beta1"
+  # Setting this flag to "true" will enable filtering credentials from the log output
+  # of pipeline runs. This will redact all secret data attached to the pod.
+  # For a detailed description of what that means see the docs section about credential
+  # filtering at https://github.com/tektoncd/pipeline/blob/main/docs/logs.md.
+  # This is an experimental feature and thus should still be considered
+  # an alpha feature.
+  enable-logging-credentials-filter: "false"

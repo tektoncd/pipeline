@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/credentials/filter"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/pkg/names"
 	corev1 "k8s.io/api/core/v1"
@@ -123,6 +124,19 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	defaultForbiddenEnv := config.FromContextOrDefaults(ctx).Defaults.DefaultForbiddenEnv
 	alphaAPIEnabled := featureFlags.EnableAPIFields == config.AlphaAPIFields
 	sidecarLogsResultsEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.ResultExtractionMethod == config.ResultExtractionMethodSidecarLogs
+
+	// add environment variables to toggle features in entrypoint during task run
+	cfg := config.FromContext(ctx)
+	if cfg.FeatureFlags.EnableLoggingCredentialsFilter {
+		implicitEnvVars = append(implicitEnvVars, corev1.EnvVar{
+			Name:  config.EnvEnableLoggingCredentialsFilter,
+			Value: "true",
+		})
+
+		transformers = append(transformers, func(pod *corev1.Pod) (*corev1.Pod, error) {
+			return pod, filter.ApplySecretLocationsToPod(pod)
+		})
+	}
 
 	// Add our implicit volumes first, so they can be overridden by the user if they prefer.
 	volumes = append(volumes, implicitVolumes...)

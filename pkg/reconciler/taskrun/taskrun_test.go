@@ -38,6 +38,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
+	credentialsfilter "github.com/tektoncd/pipeline/pkg/credentials/filter"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -2276,7 +2277,12 @@ func makePod(taskRun *v1beta1.TaskRun, task *v1beta1.Task) (*corev1.Pod, error) 
 		KubeClient:      kubeclient,
 		EntrypointCache: entrypointCache,
 	}
-	return builder.Build(context.Background(), taskRun, task.Spec)
+
+	cfg := config.FromContextOrDefaults(context.Background())
+	cfg.FeatureFlags.EnableLoggingCredentialsFilter = true
+	ctx := config.ToContext(context.Background(), cfg)
+
+	return builder.Build(ctx, taskRun, task.Spec)
 }
 
 func TestReconcilePodUpdateStatus(t *testing.T) {
@@ -5014,6 +5020,203 @@ func Test_validateTaskSpecRequestResources_InvalidResources(t *testing.T) {
 				t.Fatalf("Expected to see error when validating invalid TaskSpec resources but saw none")
 			}
 		})
+	}
+}
+
+func TestCreatePod_FeatureFlagVarsAreSet(t *testing.T) {
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun
+  namespace: foo
+spec:
+  taskRef:
+    apiVersion: a1
+    name: test-task
+`)
+	task := parse.MustParseV1beta1Task(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  steps:
+    - name: foo
+      image: ubuntu
+`)
+
+	pod, err := makePod(taskRun, task)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, container := range pod.Spec.Containers {
+		var featureFlagVar corev1.EnvVar
+		for _, envVar := range container.Env {
+			if envVar.Name == config.EnvEnableLoggingCredentialsFilter {
+				featureFlagVar = envVar
+				break
+			}
+		}
+
+		if featureFlagVar.Name != config.EnvEnableLoggingCredentialsFilter {
+			t.Errorf("Could not find environment variable %s for container %s", config.EnvEnableLoggingCredentialsFilter, container.Name)
+		}
+		if featureFlagVar.Value != "true" {
+			t.Errorf("Expected value of true for variable %s in container %s, but was %s", config.EnvEnableLoggingCredentialsFilter, container.Name, featureFlagVar.Value)
+		}
+	}
+}
+
+func TestCreatePod_ExtractedSecretsAppliedToPodAnnotations(t *testing.T) {
+	taskRun := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun
+  namespace: foo
+spec:
+  taskRef:
+    apiVersion: a1
+    name: test-task
+  workspaces:
+  - name: workspace-k8s-secret
+    secret:
+      secretName: secret-in-workspace
+  - name: workspace-projected-k8s-secret
+    projected:
+      sources:
+      - secret:
+          name: my-secret
+  - name: workspace-csi-secret
+    csi:
+      driver: secrets-store.csi.k8s.io
+      readOnly: true
+      volumeAttributes:
+        secretProviderClass: "vault-database"
+`)
+	task := parse.MustParseV1beta1Task(t, `
+metadata:
+  name: test-task
+  namespace: foo
+spec:
+  stepTemplate:
+    env:
+    - name: SECRET_ENV
+      valueFrom:
+        secretKeyRef:
+          key: secretKey
+          name: k8s-secret
+    volumeMounts:
+    - name: secret-volume-csi
+      mountPath: /mnt/secret-volume-csi
+    - name: secret-volume-classic
+      mountPath: /mnt/secret-volume-classic
+  workspaces:
+  - name: workspace-k8s-secret
+  - name: workspace-projected-k8s-secret
+  - name: workspace-csi-secret
+
+  steps:
+    - name: foo
+      image: ubuntu
+  volumes:
+    - name: secret-volume-csi
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: secret-provider-class
+    - name: secret-volume-classic
+      secret:
+        secretName: k8s-secret-2
+`)
+
+	d := test.Data{
+		TaskRuns: []*v1beta1.TaskRun{taskRun},
+		Tasks:    []*v1beta1.Task{task},
+	}
+
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+
+	cfg := config.FromContextOrDefaults(context.Background())
+	cfg.FeatureFlags.EnableLoggingCredentialsFilter = true
+	ctx := config.ToContext(testAssets.Ctx, cfg)
+
+	entrypointCache, err := podconvert.NewEntrypointCache(testAssets.Clients.Kube)
+	if err != nil {
+		t.Fatalf("create entrypointcache threw error %v", err)
+	}
+
+	// Use the test assets to create a *Reconciler directly for focused testing.
+	r := &Reconciler{
+		KubeClientSet:     testAssets.Clients.Kube,
+		PipelineClientSet: testAssets.Clients.Pipeline,
+		Clock:             testClock,
+		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
+		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
+		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
+		cloudEventClient:  testAssets.Clients.CloudEvents,
+		metrics:           nil,             // Not used
+		entrypointCache:   entrypointCache, // Not used
+		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+	}
+
+	rtr := &resources.ResolvedTaskResources{
+		TaskName: "test-task",
+		Kind:     "Task",
+		TaskSpec: &task.Spec,
+	}
+
+	workspaceVolumes := workspace.CreateVolumes(taskRun.Spec.Workspaces)
+	taskSpec, err := applyParamsContextsResultsAndWorkspaces(ctx, taskRun, rtr, workspaceVolumes)
+	if err != nil {
+		t.Fatalf("update task spec threw error %v", err)
+	}
+
+	pod, err := r.createPod(ctx, taskSpec, taskRun, rtr, workspaceVolumes)
+
+	if err != nil {
+		t.Fatalf("create pod threw error %v", err)
+	}
+
+	for _, container := range pod.Spec.Containers {
+		annotationName := credentialsfilter.SecretLocationsAnnotationPrefix + container.Name
+		secretAnnotation, ok := pod.Annotations[annotationName]
+		if !ok {
+			t.Errorf("Could not find annotation %s for container %s in pod", annotationName, container.Name)
+		}
+
+		secretLocations, err := credentialsfilter.ParseSecretLocations(secretAnnotation)
+		if err != nil {
+			t.Fatalf("could not parse secret locations: %v\n%s", err, secretAnnotation)
+		}
+
+		if len(secretLocations.EnvironmentVariables) != 1 && secretLocations.EnvironmentVariables[0] != "SECRET_ENV" {
+			t.Errorf("Expected SECRET_ENV environment variable in secret locations, but could not find it: %s", secretAnnotation)
+		}
+
+		if len(secretLocations.Files) != 5 {
+			t.Fatalf("Expected 5 secret volume mounts but got this list %v", secretLocations.Files)
+		}
+
+		if secretLocations.Files[0] != "/mnt/secret-volume-csi" {
+			t.Errorf("Expected /mnt/secret-volume-csi file in secret locations, but could not find it: %s", secretAnnotation)
+		}
+
+		if secretLocations.Files[1] != "/mnt/secret-volume-classic" {
+			t.Errorf("Expected /mnt/secret-volume-classic file in secret locations, but could not find it: %s", secretAnnotation)
+		}
+
+		if secretLocations.Files[2] != "/workspace/workspace-k8s-secret" {
+			t.Errorf("Expected /workspace/workspace-k8s-secret file in secret locations, but could not find it: %s", secretAnnotation)
+		}
+
+		if secretLocations.Files[3] != "/workspace/workspace-projected-k8s-secret" {
+			t.Errorf("Expected /workspace/workspace-projected-k8s-secret file in secret locations, but could not find it: %s", secretAnnotation)
+		}
+
+		if secretLocations.Files[4] != "/workspace/workspace-csi-secret" {
+			t.Errorf("Expected /workspace/workspace-csi-secret file in secret locations, but could not find it: %s", secretAnnotation)
+		}
 	}
 }
 

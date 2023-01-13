@@ -30,6 +30,8 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/credentials/filter"
 	"github.com/tektoncd/pipeline/pkg/entrypoint"
 	"github.com/tektoncd/pipeline/pkg/pod"
 )
@@ -82,30 +84,70 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	signal.Notify(rr.signals)
 	defer signal.Reset()
 
+	var err error
+
+	// determine std or file output
+	writeStdoutToFile := rr.stdoutPath != ""
+	writeStderrToFile := rr.stderrPath != ""
+	var stdoutWriter io.WriteCloser = os.Stdout
+	if writeStdoutToFile {
+		stdoutWriter, err = getFileWriter(rr.stdoutPath)
+		if err != nil {
+			return err
+		}
+	}
+	var stderrWriter io.WriteCloser = os.Stderr
+	if writeStderrToFile {
+		stderrWriter, err = getFileWriter(rr.stderrPath)
+		if err != nil {
+			return err
+		}
+	}
+
+	// created filtered writers if credential filtering is active
+	isCredentialsFilterActive := os.Getenv(config.EnvEnableLoggingCredentialsFilter) == "true"
+	if isCredentialsFilterActive {
+		secretLocations, err := filter.NewSecretLocationsFromFile()
+		if err != nil {
+			return err
+		}
+
+		detectedSecrets, err := filter.DetectSecretsFromLocations(secretLocations)
+		if err != nil {
+			return err
+		}
+
+		stdoutWriter = filter.NewFilteredCredentialsWriter(detectedSecrets, stdoutWriter)
+		defer stdoutWriter.Close()
+		stderrWriter = filter.NewFilteredCredentialsWriter(detectedSecrets, stderrWriter)
+		defer stderrWriter.Close()
+	}
+
 	cmd := exec.CommandContext(ctx, name, args...)
 
 	// Build a list of tee readers that we'll read from after the command is
 	// started. If we are not configured to tee stdout/stderr this will be
 	// empty and contents will not be copied.
 	var readers []*namedReader
-	if rr.stdoutPath != "" {
-		stdout, err := newTeeReader(cmd.StdoutPipe, rr.stdoutPath)
+	if writeStdoutToFile {
+		stdout, err := newTeeReader(cmd.StdoutPipe, rr.stdoutPath, stdoutWriter)
 		if err != nil {
 			return err
 		}
 		readers = append(readers, stdout)
 	} else {
 		// This needs to be set in an else since StdoutPipe will fail if cmd.Stdout is already set.
-		cmd.Stdout = os.Stdout
+		cmd.Stdout = stdoutWriter
 	}
-	if rr.stderrPath != "" {
-		stderr, err := newTeeReader(cmd.StderrPipe, rr.stderrPath)
+	if writeStderrToFile {
+		stderr, err := newTeeReader(cmd.StderrPipe, rr.stderrPath, stderrWriter)
 		if err != nil {
 			return err
 		}
 		readers = append(readers, stderr)
 	} else {
-		cmd.Stderr = os.Stderr
+		// This needs to be set in an else since StdoutPipe will fail if cmd.Stdout is already set.
+		cmd.Stderr = stderrWriter
 	}
 
 	// dedicated PID group used to forward signals to
@@ -161,19 +203,25 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	return nil
 }
 
-// newTeeReader creates a new Reader that copies data from the given pipe function
-// (i.e. cmd.StdoutPipe, cmd.StderrPipe) into a file specified by path.
-// The file is opened with os.O_WRONLY|os.O_CREATE|os.O_APPEND, and will not
-// override any existing content in the path. This means that the same file can
-// be used for multiple streams if desired.
-// The behavior of the Reader is the same as io.TeeReader - reads from the pipe
-// will be written to the file.
-func newTeeReader(pipe func() (io.ReadCloser, error), path string) (*namedReader, error) {
+// newTeeReader creates an io.TeeReader that copies data from the given pipe function
+// (i.e. cmd.StdoutPipe, cmd.StderrPipe) into the given writer.
+func newTeeReader(pipe func() (io.ReadCloser, error), name string, writer io.WriteCloser) (*namedReader, error) {
 	in, err := pipe()
 	if err != nil {
 		return nil, fmt.Errorf("error creating pipe: %w", err)
 	}
 
+	return &namedReader{
+		name:   name,
+		Reader: io.TeeReader(in, writer),
+	}, nil
+}
+
+// getFileWriter creates a Writer for the given file path.
+// The file is opened with os.O_WRONLY|os.O_CREATE|os.O_APPEND, and will not
+// override any existing content in the path. This means that the same file can
+// be used for multiple streams if desired.
+func getFileWriter(path string) (io.WriteCloser, error) {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return nil, fmt.Errorf("error creating parent directory: %w", err)
 	}
@@ -182,10 +230,7 @@ func newTeeReader(pipe func() (io.ReadCloser, error), path string) (*namedReader
 		return nil, fmt.Errorf("error opening %s: %w", path, err)
 	}
 
-	return &namedReader{
-		name:   path,
-		Reader: io.TeeReader(in, f),
-	}, nil
+	return f, nil
 }
 
 // namedReader is just a helper struct that lets us give a reader a name for

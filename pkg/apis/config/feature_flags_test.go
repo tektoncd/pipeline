@@ -72,6 +72,7 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				ResultExtractionMethod:           "termination-message",
 				MaxResultSize:                    4096,
 				CustomTaskVersion:                "v1beta1",
+				EnableLoggingCredentialsFilter:   true,
 			},
 			fileName: "feature-flags-all-flags-set",
 		},

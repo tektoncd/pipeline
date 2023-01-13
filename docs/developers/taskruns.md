@@ -93,8 +93,10 @@ Here is an example of a directory layout for a simple Task with 2 script steps:
 |-- downward
 |   |-- ..2021_09_16_18_31_06.270542700
 |   |   `-- ready
+|   |   `-- secret-locations.json
 |   |-- ..data -> ..2021_09_16_18_31_06.270542700
 |   `-- ready -> ..data/ready
+|   `-- secret-locations.json -> ..data/secret-locations.json
 |-- home
 |-- results
 |-- run

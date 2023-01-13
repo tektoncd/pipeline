@@ -1,44 +1,8 @@
-<!--
----
-linkTitle: "Logs"
-weight: 1100
----
--->
-# Execution Logs
-
-Tekton stores execution logs for [`TaskRuns`](taskruns.md) and [`PipelineRuns`](pipelineruns.md) within
-the Pod holding the containers that run the `Steps` for your `TaskRun` or `PipelineRun`.
-
-You can get execution logs using one of the following methods:
-
-- Get the logs [directly from the Pod](https://kubernetes.io/docs/reference/kubectl/cheatsheet/#interacting-with-running-pods).
-  For example, you can use the `kubectl` as follows:
-
-  ```bash
-  # Get the Pod name from the TaskRun instance.
-  kubectl get taskruns -o yaml | grep podName
-
-  # Or, get the Pod name from the PipelineRun.
-  kubectl get pipelineruns -o yaml | grep podName
-
-  # Get the logs for all containers in the Pod.
-  kubectl logs $POD_NAME --all-containers
-
-  # Or, get the logs for a specific container in the Pod.
-  kubectl logs $POD_NAME -c $CONTAINER_NAME
-  kubectl logs $POD_NAME -c step-run-kubectl
-  ```
-
-- Get the logs using Tekton's [`tkn` CLI](https://github.com/tektoncd/cli).
-
-- Get the logs using [Tekton Dashboard](https://github.com/tektoncd/dashboard).
-
-- Configure an external service to consume and display the logs. For example, [ElasticSearch, Beats, and Kibana](https://github.com/mgreau/tekton-pipelines-elastic-tutorials).
-
-
-# Logs Credential Filter
+# Logs Credential Filter (TEP-0125)
 
 Often it is the case that secret values will sneak into the ouput logs of your pipelines. You can either handle this manually by avoiding to print them in the output or use the feature for filtering secret values from the output log. To enable this feature set the `enable-logging-credentials-filter` value in the `feature-flags` config map to `"true"` (see [Customizing the Pipelines Controller behavior](install.md#customizing-the-pipelines-controller-behavior)).
+
+The tekton controller looks for secret refs in volumes and env and also for CSI volumes referencing secrets in the definition of the pipeline pod. It saves the information in form of the names of environment variables and paths to files with secrets. The pod can then read those values and redact them.
 
 This design does not transmit actual secrets and the pod does not need access to the API sever to retrieve them. It tells the pipeline pod only the places where it can find secrets attached to it. And those are the secrets that will be redacted. Because only those can be used in the corresponding pipeline step.
 
@@ -47,6 +11,19 @@ The credential filter will redact values contained in those secrets from the out
 ## Secret Detection Logic
 
 While creating the pod for the pipeline step, the controller will try to detect all secrets attached to the pod. Usually secrets are attached to the pod either by setting environment variables or mounting files into it. These detected secret locations are then transmitted to the pipeline pod for credential filtering.
+
+### Secret Locations
+
+The secret locations detected by the controller are transmitted to the entrypoint as environment variable in json format with the following format:
+
+```json
+{
+  "environmentVariables": ["ENV1", "ENV2"],
+  "files": ["/path/to/secre1", "/path/to/secret2"]
+}
+```
+
+The entrypoint can then read the environment variables and file contents and redact them from the output log stream.
 
 ### Secrets stored in Environment Variables
 
@@ -76,15 +53,6 @@ volumes:
 
 ```yaml
 volumes:
-- name: secret-volume-projected
-  projected:
-    sources:
-    - secret:
-        name: my-k8s-secret
-```
-
-```yaml
-volumes:
 - name: secret-volume-csi
   csi:
     driver: secrets-store.csi.k8s.io
@@ -94,16 +62,3 @@ volumes:
 ```
 
 Currently classic secret volumes and csi secret volumes with the driver `secrets-store.csi.k8s.io` are supported. In both cases the volume directories or items in that volume will be added to the detected secret locations.
-
-### Secrets mounted through workspaces
-
-Workspaces are creating the same volume and volume mount structure as the syntax above. Therefore they are supported in the same way.
-
-For example the secret from the following workspace will also be redacted:
-
-```yaml
-workspaces:
-  - name: my-secret-workspace
-    secret:
-      secretName: my-k8s-secret
-```

@@ -9,16 +9,16 @@ weight: 100
 
 This guide explains how to install Tekton Pipelines. It covers the following topics:
 
-- [Before you begin](#before-you-begin)
-- [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
+- [Installing Tekton Pipelines](#installing-tekton-pipelines)
+  - [Before you begin](#before-you-begin)
+  - [Installing Tekton Pipelines on Kubernetes](#installing-tekton-pipelines-on-kubernetes)
     - [Installing Tekton Pipelines on OpenShift](#installing-tekton-pipelines-on-openshift)
-- [Configuring PipelineResource storage](#configuring-pipelineresource-storage)
+  - [Configuring PipelineResource storage](#configuring-pipelineresource-storage)
     - [Configuring a persistent volume](#configuring-a-persistent-volume)
     - [Configuring a cloud storage bucket](#configuring-a-cloud-storage-bucket)
         - [Example configuration for an S3 bucket](#example-configuration-for-an-s3-bucket)
         - [Example configuration for a GCS bucket](#example-configuration-for-a-gcs-bucket)
 - [Configuring CloudEvents notifications](#configuring-cloudevents-notifications)
-- [Installing and configuring remote Task and Pipeline resolution](#installing-and-configuring-remote-task-and-pipeline-resolution)
 - [Configuring self-signed cert for private registry](#configuring-self-signed-cert-for-private-registry)
 - [Customizing basic execution parameters](#customizing-basic-execution-parameters)
     - [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
@@ -488,6 +488,7 @@ features](#alpha-features) to be used.
   `Runs`. This may be needed if you are using legacy Custom Tasks that listen for `*v1alpha1.Run`
   instead of `*v1beta1.CustomRun`. For more information, see [Runs](runs.md) and [CustomRuns](customruns.md).
   Flag defaults to "v1beta1".
+- `enable-logging-credentials-filter`: set this flag to "true" to enable filtering credentials from the log output of pipeline runs. This will redact all secrets attached to the pod from the output stream. See the section about [Logs Credential Filter](logs.md) for more details.
 
 For example:
 

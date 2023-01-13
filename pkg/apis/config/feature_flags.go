@@ -90,6 +90,8 @@ const (
 	DefaultMaxResultSize = 4096
 	// DefaultCustomTaskVersion is the default value for "custom-task-version"
 	DefaultCustomTaskVersion = CustomTaskVersionBeta
+	// DefaultEnableLoggingCredentialsFilter is the default value for "enable-logging-credentials-filter".
+	DefaultEnableLoggingCredentialsFilter = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -100,12 +102,18 @@ const (
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
 	embeddedStatus                      = "embedded-status"
+	enableLoggingCredentialsFilter      = "enable-logging-credentials-filter"
 	enableSpire                         = "enable-spire"
 	verificationMode                    = "resource-verification-mode"
 	enableProvenanceInStatus            = "enable-provenance-in-status"
 	resultExtractionMethod              = "results-from"
 	maxResultSize                       = "max-result-size"
 	customTaskVersion                   = "custom-task-version"
+
+	// EnvEnableLoggingCredentialsFilter is the name of the environment variable that is set on the step containers
+	// when feature enable-logging-credentials-filter is enabled.
+	// #nosec G101 -- Its just the name of an environment variable that will carry credentials
+	EnvEnableLoggingCredentialsFilter = "TEKTON_FEATURE_ENABLE_LOGGING_CREDENTIALS_FILTER"
 )
 
 // FeatureFlags holds the features configurations
@@ -121,6 +129,7 @@ type FeatureFlags struct {
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
 	EmbeddedStatus                   string
+	EnableLoggingCredentialsFilter   bool
 	EnableSpire                      bool
 	ResourceVerificationMode         string
 	EnableProvenanceInStatus         bool
@@ -191,6 +200,9 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setCustomTaskVersion(cfgMap, DefaultCustomTaskVersion, &tc.CustomTaskVersion); err != nil {
+		return nil, err
+	}
+	if err := setFeature(enableLoggingCredentialsFilter, DefaultEnableLoggingCredentialsFilter, &tc.EnableLoggingCredentialsFilter); err != nil {
 		return nil, err
 	}
 

@@ -20,3 +20,4 @@ channel for training and tutorials on Tekton!
 - How specific features are implemented:
   - [PipelineResources (deprecated)](./pipelineresources.md)
   - [Results](./results-lifecycle.md)
+  - [Credential Filtering](./credential-filtering.md)

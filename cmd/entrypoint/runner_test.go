@@ -10,6 +10,9 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/credentials/filter"
 )
 
 // TestRealRunnerSignalForwarding will artificially put an interrupt signal (SIGINT) in the rr.signals chan.
@@ -131,5 +134,43 @@ func TestRealRunnerTimeout(t *testing.T) {
 		}
 	} else {
 		t.Fatalf("step didn't timeout")
+	}
+}
+
+// TestRealRunnerCredentialsFilter tests whether the credentials filter is correctly applied.
+func TestRealRunnerCredentialsFilter(t *testing.T) {
+	rr := realRunner{
+		stdoutPath: "stdoutfile",
+	}
+	defer os.Remove("stdoutfile")
+	os.Setenv(config.EnvEnableLoggingCredentialsFilter, "true")
+	defer os.Unsetenv(config.EnvEnableLoggingCredentialsFilter)
+	os.Setenv("SECRET", "supersecret")
+	defer os.Unsetenv(config.EnvEnableLoggingCredentialsFilter)
+
+	secretLocations := filter.SecretLocations{
+		EnvironmentVariables: []string{"SECRET"},
+	}
+
+	cleanup, err := filter.WriteSecretLocationsToFile(&secretLocations)
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("could not write secret locations to file: %v", err)
+	}
+
+	err = rr.Run(context.Background(), "echo", "this writes a supersecret value to stdout")
+	if err != nil {
+		t.Fatalf("runner returned unexpected error: %v", err)
+	}
+
+	bytes, err := os.ReadFile("stdoutfile")
+	if err != nil {
+		t.Fatalf("could not read output stream from file: %v", err)
+	}
+
+	stdoutContent := strings.TrimRight(string(bytes), " \n")
+	expectedStdout := "this writes a [REDACTED:SECRET] value to stdout"
+	if stdoutContent != expectedStdout {
+		t.Errorf("expected stdout '%s' but got '%s'", expectedStdout, stdoutContent)
 	}
 }
