@@ -150,7 +150,6 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1beta1.TaskSpec{
 				Params:       tt.fields.Params,
-				Resources:    tt.fields.Resources,
 				Steps:        tt.fields.Steps,
 				StepTemplate: tt.fields.StepTemplate,
 				Workspaces:   tt.fields.Workspaces,
@@ -530,7 +529,6 @@ func TestTaskSpecValidate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1beta1.TaskSpec{
 				Params:       tt.fields.Params,
-				Resources:    tt.fields.Resources,
 				Steps:        tt.fields.Steps,
 				StepTemplate: tt.fields.StepTemplate,
 				Workspaces:   tt.fields.Workspaces,
@@ -1391,7 +1389,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1beta1.TaskSpec{
 				Params:       tt.fields.Params,
-				Resources:    tt.fields.Resources,
 				Steps:        tt.fields.Steps,
 				Volumes:      tt.fields.Volumes,
 				StepTemplate: tt.fields.StepTemplate,
