@@ -42,8 +42,6 @@ type TaskRunSpec struct {
 	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 	// +optional
-	Resources *TaskRunResources `json:"resources,omitempty"`
-	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
@@ -115,23 +113,6 @@ type TaskRunDebug struct {
 	Breakpoint []string `json:"breakpoint,omitempty"`
 }
 
-// TaskRunInputs holds the input values that this task was invoked with.
-type TaskRunInputs struct {
-	// +optional
-	// +listType=atomic
-	Resources []TaskResourceBinding `json:"resources,omitempty"`
-	// +optional
-	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
-}
-
-// TaskRunOutputs holds the output values that this task was invoked with.
-type TaskRunOutputs struct {
-	// +optional
-	// +listType=atomic
-	Resources []TaskResourceBinding `json:"resources,omitempty"`
-}
-
 var taskRunCondSet = apis.NewBatchConditionSet()
 
 // TaskRunStatus defines the observed state of TaskRun
@@ -156,8 +137,7 @@ func (t TaskRunConditionType) String() string {
 }
 
 // TaskRunReason is an enum used to store all TaskRun reason for
-// the Succeeded condition that are controlled by the TaskRun itself. Failure
-// reasons that emerge from underlying resources are not included here
+// the Succeeded condition that are controlled by the TaskRun itself.
 type TaskRunReason string
 
 const (
@@ -262,12 +242,6 @@ type TaskRunStatusFields struct {
 	// +optional
 	// +listType=atomic
 	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
-
-	// Results from Resources built during the TaskRun. currently includes
-	// the digest of build container images
-	// +optional
-	// +listType=atomic
-	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
 
 	// TaskRunResults are the list of results written out by the task's containers
 	// +optional
@@ -400,8 +374,8 @@ type CloudEventDeliveryState struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // TaskRun represents a single execution of a Task. TaskRuns are how the steps
-// specified in a Task are executed; they specify the parameters and resources
-// used to run the steps in a Task.
+// specified in a Task are executed; they specify the parameters used to run
+// the steps in a Task.
 //
 // +k8s:openapi-gen=true
 type TaskRun struct {
