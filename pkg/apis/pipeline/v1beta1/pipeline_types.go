@@ -91,10 +91,6 @@ type PipelineSpec struct {
 	// used to populate a UI.
 	// +optional
 	Description string `json:"description,omitempty"`
-	// Resources declares the names and types of the resources given to the
-	// Pipeline's tasks as inputs and outputs.
-	// +listType=atomic
-	Resources []PipelineDeclaredResource `json:"resources,omitempty"`
 	// Tasks declares the graph of Tasks that execute when this Pipeline is run.
 	// +listType=atomic
 	Tasks []PipelineTask `json:"tasks,omitempty"`
@@ -202,11 +198,6 @@ type PipelineTask struct {
 	// +listType=atomic
 	RunAfter []string `json:"runAfter,omitempty"`
 
-	// Resources declares the resources given to this task as inputs and
-	// outputs.
-	// +optional
-	Resources *PipelineTaskResources `json:"resources,omitempty"`
-
 	// Parameters declares parameters passed to this task.
 	// +optional
 	// +listType=atomic
@@ -255,11 +246,6 @@ func (pt PipelineTask) validateCustomTask() (errs *apis.FieldError) {
 	}
 	if pt.TaskSpec != nil && pt.TaskSpec.APIVersion == "" {
 		errs = errs.Also(apis.ErrInvalidValue("custom task spec must specify apiVersion", "taskSpec.apiVersion"))
-	}
-
-	// TODO(#3133): Support these features if possible.
-	if pt.Resources != nil {
-		errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support PipelineResources", "resources"))
 	}
 	return errs
 }
@@ -484,15 +470,6 @@ func (pt PipelineTask) Deps() []string {
 	// hold the list of dependencies in a set to avoid duplicates
 	deps := sets.NewString()
 
-	// add any new dependents from a resource/workspace
-	if pt.Resources != nil {
-		for _, rd := range pt.Resources.Inputs {
-			for _, f := range rd.From {
-				deps.Insert(f)
-			}
-		}
-	}
-
 	// add any new dependents from result references - resource dependency
 	for _, ref := range PipelineTaskResultRefs(&pt) {
 		deps.Insert(ref.PipelineTask)
@@ -561,61 +538,6 @@ func (l PipelineTaskList) Validate(ctx context.Context, taskNames sets.String, p
 type PipelineTaskParam struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
-}
-
-// PipelineDeclaredResource is used by a Pipeline to declare the types of the
-// PipelineResources that it will required to run and names which can be used to
-// refer to these PipelineResources in PipelineTaskResourceBindings.
-type PipelineDeclaredResource struct {
-	// Name is the name that will be used by the Pipeline to refer to this resource.
-	// It does not directly correspond to the name of any PipelineResources Task
-	// inputs or outputs, and it does not correspond to the actual names of the
-	// PipelineResources that will be bound in the PipelineRun.
-	Name string `json:"name"`
-	// Type is the type of the PipelineResource.
-	Type PipelineResourceType `json:"type"`
-	// Optional declares the resource as optional.
-	// optional: true - the resource is considered optional
-	// optional: false - the resource is considered required (default/equivalent of not specifying it)
-	Optional bool `json:"optional,omitempty"`
-}
-
-// PipelineTaskResources allows a Pipeline to declare how its DeclaredPipelineResources
-// should be provided to a Task as its inputs and outputs.
-type PipelineTaskResources struct {
-	// Inputs holds the mapping from the PipelineResources declared in
-	// DeclaredPipelineResources to the input PipelineResources required by the Task.
-	// +listType=atomic
-	Inputs []PipelineTaskInputResource `json:"inputs,omitempty"`
-	// Outputs holds the mapping from the PipelineResources declared in
-	// DeclaredPipelineResources to the input PipelineResources required by the Task.
-	// +listType=atomic
-	Outputs []PipelineTaskOutputResource `json:"outputs,omitempty"`
-}
-
-// PipelineTaskInputResource maps the name of a declared PipelineResource input
-// dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources
-// that should be used. This input may come from a previous task.
-type PipelineTaskInputResource struct {
-	// Name is the name of the PipelineResource as declared by the Task.
-	Name string `json:"name"`
-	// Resource is the name of the DeclaredPipelineResource to use.
-	Resource string `json:"resource"`
-	// From is the list of PipelineTask names that the resource has to come from.
-	// (Implies an ordering in the execution graph.)
-	// +optional
-	// +listType=atomic
-	From []string `json:"from,omitempty"`
-}
-
-// PipelineTaskOutputResource maps the name of a declared PipelineResource output
-// dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources
-// that should be used.
-type PipelineTaskOutputResource struct {
-	// Name is the name of the PipelineResource as declared by the Task.
-	Name string `json:"name"`
-	// Resource is the name of the DeclaredPipelineResource to use.
-	Resource string `json:"resource"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

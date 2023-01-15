@@ -170,17 +170,6 @@ func TestPipelineTask_ValidateCustomTask(t *testing.T) {
 			Message: `invalid value: custom task ref must specify apiVersion`,
 			Paths:   []string{"taskRef.apiVersion"},
 		},
-	}, {
-		name: "custom task doesn't support pipeline resources",
-		task: PipelineTask{
-			Name:      "foo",
-			Resources: &PipelineTaskResources{},
-			TaskRef:   &TaskRef{APIVersion: "example.dev/v0", Kind: "Example"},
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: custom tasks do not support PipelineResources`,
-			Paths:   []string{"resources"},
-		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -425,23 +414,6 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 			"task-2": {"task-1"},
 		},
 	}, {
-		name: "valid pipeline with resource deps - Inputs",
-		tasks: []PipelineTask{{
-			Name: "task-1",
-		}, {
-			Name: "task-2",
-		}, {
-			Name: "task-3",
-			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					From: []string{"task-1", "task-2"},
-				}},
-			}},
-		},
-		expectedDeps: map[string][]string{
-			"task-3": {"task-1", "task-2"},
-		},
-	}, {
 		name: "valid pipeline with Task Results deps",
 		tasks: []PipelineTask{{
 			Name: "task-1",
@@ -500,11 +472,6 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-3",
 			RunAfter: []string{"task-1"},
-			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					From: []string{"task-1", "task-2"},
-				}},
-			},
 		}, {
 			Name:     "task-4",
 			RunAfter: []string{"task-1"},
@@ -538,7 +505,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}},
 		expectedDeps: map[string][]string{
 			"task-2": {"task-1"},
-			"task-3": {"task-1", "task-2"},
+			"task-3": {"task-1"},
 			"task-4": {"task-1", "task-3"},
 			"task-5": {"task-1", "task-4"},
 			"task-6": {"task-1", "task-2", "task-5"},
@@ -552,19 +519,9 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-3",
 			RunAfter: []string{"task-1"},
-			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					From: []string{"task-1", "task-2"},
-				}},
-			},
 		}, {
 			Name:     "task-4",
 			RunAfter: []string{"task-1", "task-3"},
-			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					From: []string{"task-1", "task-2"},
-				}},
-			},
 			Params: []Param{{
 				Value: ParamValue{
 					Type:      "string",
@@ -578,11 +535,6 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-5",
 			RunAfter: []string{"task-1", "task-2", "task-3", "task-4"},
-			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					From: []string{"task-1", "task-2"},
-				}},
-			},
 			Params: []Param{{
 				Value: ParamValue{
 					Type:      "string",
@@ -601,11 +553,6 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 		}, {
 			Name:     "task-6",
 			RunAfter: []string{"task-1", "task-2", "task-3", "task-4", "task-5"},
-			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					From: []string{"task-1", "task-2"},
-				}},
-			},
 			Params: []Param{{
 				Value: ParamValue{
 					Type:      "string",
@@ -629,17 +576,11 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 							"$(tasks.task-2.results.result)",
 							"$(tasks.task-5.results.result)",
 						},
-					}}},
+					}},
+				},
 			},
 		}, {
 			Name: "task-7",
-			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					From: []string{"task-1", "task-1"},
-				}},
-			},
-		}, {
-			Name: "task-8",
 			WhenExpressions: WhenExpressions{{
 				Input:    "$(tasks.task-3.results.result1)",
 				Operator: "in",
@@ -650,7 +591,7 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 				Values:   []string{"foo"},
 			}},
 		}, {
-			Name: "task-9",
+			Name: "task-8",
 			Params: []Param{{
 				Value: ParamValue{
 					Type:      "string",
@@ -662,19 +603,18 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 				}},
 			},
 		}, {
-			Name:     "task-10",
+			Name:     "task-9",
 			RunAfter: []string{"task-1", "task-1", "task-1", "task-1"},
 		}},
 		expectedDeps: map[string][]string{
-			"task-2":  {"task-1"},
-			"task-3":  {"task-1", "task-2"},
-			"task-4":  {"task-1", "task-2", "task-3"},
-			"task-5":  {"task-1", "task-2", "task-3", "task-4"},
-			"task-6":  {"task-1", "task-2", "task-3", "task-4", "task-5"},
-			"task-7":  {"task-1"},
-			"task-8":  {"task-3"},
-			"task-9":  {"task-4"},
-			"task-10": {"task-1"},
+			"task-2": {"task-1"},
+			"task-3": {"task-1"},
+			"task-4": {"task-1", "task-2", "task-3"},
+			"task-5": {"task-1", "task-2", "task-3", "task-4"},
+			"task-6": {"task-1", "task-2", "task-3", "task-4", "task-5"},
+			"task-7": {"task-3"},
+			"task-8": {"task-4"},
+			"task-9": {"task-1"},
 		},
 	}}
 	for _, tc := range pipelines {
