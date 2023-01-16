@@ -34,69 +34,6 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		want *apis.FieldError
 	}{
 		{
-			name: "cluster with invalid url",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "name", Value: "test_cluster_resource",
-					}, {
-						Name: "url", Value: "10.10.10",
-					}, {
-						Name: "cadata", Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-					}, {
-						Name: "username", Value: "admin",
-					}, {
-						Name: "token", Value: "my-token",
-					}, {
-						Name: "clientKeyData", Value: "Y2xpZW50LWtleS1kYXRh",
-					}, {
-						Name: "clientCertificateData", Value: "Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=",
-					}},
-				},
-			},
-			want: apis.ErrInvalidValue("10.10.10", "URL"),
-		},
-		{
-			name: "cluster with missing auth",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "name", Value: "test_cluster_resource",
-					}, {
-						Name: "url", Value: "http://10.10.10.10",
-					}},
-				},
-			},
-			want: apis.ErrMissingField("username or CAData  or token param or clientKeyData or ClientCertificateData"),
-		}, {
-			name: "cluster with missing cadata",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "url", Value: "http://10.10.10.10",
-					}, {
-						Name: "Name", Value: "admin",
-					}, {
-						Name: "username", Value: "admin",
-					}, {
-						Name: "token", Value: "my-token",
-					}},
-				},
-			},
-			want: apis.ErrMissingField("CAData param"),
-		}, {
 			name: "storage with no type",
 			res: &v1alpha1.PipelineResource{
 				ObjectMeta: metav1.ObjectMeta{
@@ -199,59 +136,11 @@ func TestResourceValidation_Invalid(t *testing.T) {
 	}
 }
 
-func TestClusterResourceValidation_Valid(t *testing.T) {
+func TestResourceValidation_Valid(t *testing.T) {
 	tests := []struct {
 		name string
 		res  *v1alpha1.PipelineResource
 	}{
-		{
-			name: "success validate",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "name", Value: "test_cluster_resource",
-					}, {
-						Name: "url", Value: "http://10.10.10.10",
-					}, {
-						Name: "cadata", Value: "bXktY2x1c3Rlci1jZXJ0Cg",
-					}, {
-						Name: "username", Value: "admin",
-					}, {
-						Name: "token", Value: "my-token",
-					}, {
-						Name: "clientKeyData", Value: "Y2xpZW50LWtleS1kYXRh",
-					}, {
-						Name: "clientCertificateData", Value: "Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=",
-					}},
-				},
-			},
-		},
-		{
-			name: "specify insecure without cadata",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeCluster,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "name", Value: "test_cluster_resource",
-					}, {
-						Name: "url", Value: "http://10.10.10.10",
-					}, {
-						Name: "username", Value: "admin",
-					}, {
-						Name: "token", Value: "my-token",
-					}, {
-						Name: "insecure", Value: "true",
-					}},
-				},
-			},
-		},
 		{
 			name: "specify pullrequest with no secrets",
 			res: &v1alpha1.PipelineResource{

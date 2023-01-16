@@ -60,7 +60,6 @@ func (i Images) Validate() error {
 		{i.SidecarLogResultsImage, "sidecarlogresults-image"},
 		{i.NopImage, "nop-image"},
 		{i.GitImage, "git-image"},
-		{i.KubeconfigWriterImage, "kubeconfig-writer-image"},
 		{i.ShellImage, "shell-image"},
 		{i.ShellImageWin, "shell-image-win"},
 		{i.GsutilImage, "gsutil-image"},

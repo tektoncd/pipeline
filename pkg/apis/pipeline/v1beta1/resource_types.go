@@ -46,9 +46,6 @@ const (
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
 	PipelineResourceTypeImage PipelineResourceType = resource.PipelineResourceTypeImage
 
-	// PipelineResourceTypeCluster indicates that this source is a k8s cluster Image.
-	PipelineResourceTypeCluster PipelineResourceType = resource.PipelineResourceTypeCluster
-
 	// PipelineResourceTypePullRequest indicates that this source is a SCM Pull Request.
 	PipelineResourceTypePullRequest PipelineResourceType = resource.PipelineResourceTypePullRequest
 )

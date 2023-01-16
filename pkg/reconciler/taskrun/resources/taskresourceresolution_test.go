@@ -41,13 +41,6 @@ func TestResolveTaskRun(t *testing.T) {
 				Name: "k8s-cluster",
 			},
 		},
-	}, {
-		PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-			Name: "clusterspecToUse",
-			ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
-				Type: resourcev1alpha1.PipelineResourceTypeCluster,
-			},
-		},
 	}}
 
 	outputs := []v1beta1.TaskResourceBinding{{
@@ -117,7 +110,7 @@ func TestResolveTaskRun(t *testing.T) {
 		t.Errorf("Task not resolved, expected task's spec to be used but spec was: %v", rtr.TaskSpec)
 	}
 
-	if len(rtr.Inputs) == 3 {
+	if len(rtr.Inputs) == 2 {
 		r, ok := rtr.Inputs["repoToBuildFrom"]
 		if !ok {
 			t.Errorf("Expected value present in map for `repoToBuildFrom' but it was missing")
@@ -129,12 +122,6 @@ func TestResolveTaskRun(t *testing.T) {
 			t.Errorf("Expected value present in map for `clusterToUse' but it was missing")
 		} else if r.Name != "k8s-cluster" {
 			t.Errorf("Expected to use resource `k8s-cluster` for `clusterToUse` but used %s", r.Name)
-		}
-		r, ok = rtr.Inputs["clusterspecToUse"]
-		if !ok {
-			t.Errorf("Expected value present in map for `clusterspecToUse' but it was missing")
-		} else if r.Spec.Type != resourcev1alpha1.PipelineResourceTypeCluster {
-			t.Errorf("Expected to use resource to be of type `cluster` for `clusterspecToUse` but got %s", r.Spec.Type)
 		}
 	} else {
 		t.Errorf("Expected 2 resolved inputs but instead had: %v", rtr.Inputs)
