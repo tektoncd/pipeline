@@ -22,7 +22,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/git"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/pullrequest"
@@ -38,8 +37,6 @@ func FromType(name string, r *resourcev1alpha1.PipelineResource, images pipeline
 		return git.NewResource(name, images.GitImage, r)
 	case resourcev1alpha1.PipelineResourceTypeImage:
 		return image.NewResource(name, r)
-	case resourcev1alpha1.PipelineResourceTypeCluster:
-		return cluster.NewResource(name, images.KubeconfigWriterImage, images.ShellImage, r)
 	case resourcev1alpha1.PipelineResourceTypeStorage:
 		return storage.NewResource(name, images, r)
 	case resourcev1alpha1.PipelineResourceTypePullRequest:
