@@ -728,8 +728,8 @@ github.com/jcmturner/gokrb5/v8 v8.4.2/go.mod h1:sb+Xq/fTY5yktf/VxLsE3wlfPqQjp0aW
 github.com/jcmturner/rpc/v2 v2.0.3/go.mod h1:VUJYCIDm3PVOEHw8sgt091/20OJjskO/YJki3ELg/Hc=
 github.com/jellydator/ttlcache/v2 v2.11.1 h1:AZGME43Eh2Vv3giG6GeqeLeFXxwxn1/qHItqWZl6U64=
 github.com/jellydator/ttlcache/v2 v2.11.1/go.mod h1:RtE5Snf0/57e+2cLWFYWCCsLas2Hy3c5Z4n14XmSvTI=
-github.com/jenkins-x/go-scm v1.12.3 h1:9l0IeFnDrmgTsbgUAE1wgzcqdrpYIRWCAlIRm+1LBoI=
-github.com/jenkins-x/go-scm v1.12.3/go.mod h1:GyT1710F6sTolj1Aiq5tmWxIzAWMp5rnMUQIYAdmw68=
+github.com/jenkins-x/go-scm v1.12.4 h1:JSS8ww0OwO30e2WceVaVIKNsMKdHou4VKow2oRCnWs4=
+github.com/jenkins-x/go-scm v1.12.4/go.mod h1:GyT1710F6sTolj1Aiq5tmWxIzAWMp5rnMUQIYAdmw68=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
 github.com/jhump/protoreflect v1.14.0 h1:MBbQK392K3u8NTLbKOCIi3XdI+y+c6yt5oMq0X3xviw=

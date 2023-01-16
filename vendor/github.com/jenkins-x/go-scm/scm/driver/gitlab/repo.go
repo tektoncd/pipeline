@@ -352,9 +352,7 @@ func (s *repositoryService) CreateHook(ctx context.Context, repo string, input *
 	if input.Secret != "" {
 		params.Set("token", input.Secret)
 	}
-	if input.SkipVerify {
-		params.Set("enable_ssl_verification", "true")
-	}
+	params.Set("enable_ssl_verification", strconv.FormatBool(input.SkipVerify))
 	hasStarEvents := false
 	for _, event := range input.NativeEvents {
 		if event == "*" {
@@ -394,9 +392,7 @@ func (s *repositoryService) UpdateHook(ctx context.Context, repo string, input *
 	if input.Secret != "" {
 		params.Set("token", input.Secret)
 	}
-	if input.SkipVerify {
-		params.Set("enable_ssl_verification", "true")
-	}
+	params.Set("enable_ssl_verification", strconv.FormatBool(input.SkipVerify))
 	hasStarEvents := false
 	for _, event := range input.NativeEvents {
 		if event == "*" {

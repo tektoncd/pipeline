@@ -591,7 +591,7 @@ github.com/jbenet/go-context/io
 # github.com/jellydator/ttlcache/v2 v2.11.1
 ## explicit; go 1.15
 github.com/jellydator/ttlcache/v2
-# github.com/jenkins-x/go-scm v1.12.3
+# github.com/jenkins-x/go-scm v1.12.4
 ## explicit; go 1.19
 github.com/jenkins-x/go-scm/pkg/hmac
 github.com/jenkins-x/go-scm/scm
