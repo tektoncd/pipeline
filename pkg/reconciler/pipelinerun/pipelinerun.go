@@ -1331,20 +1331,32 @@ func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr
 
 func updatePipelineRunStatusFromChildObjects(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, taskRuns []*v1beta1.TaskRun, runObjects []v1beta1.RunObject) error {
 	cfg := config.FromContextOrDefaults(ctx)
-	fullEmbedded := cfg.FeatureFlags.EmbeddedStatus == config.FullEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus
-	minimalEmbedded := cfg.FeatureFlags.EmbeddedStatus == config.MinimalEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus
 
-	if minimalEmbedded {
-		updatePipelineRunStatusFromChildRefs(logger, pr, taskRuns, runObjects)
-	}
-	if fullEmbedded {
+	switch cfg.FeatureFlags.EmbeddedStatus {
+	case config.FullEmbeddedStatus:
+		// Clear any ChildReferences that are present.
+		// This can occur if the value of "embedded-status" was modified during PipelineRun execution.
+		pr.Status.ChildReferences = nil
 		updatePipelineRunStatusFromTaskRuns(logger, pr, taskRuns)
 		updatePipelineRunStatusFromCustomRunsOrRuns(logger, pr, runObjects)
+	case config.BothEmbeddedStatus:
+		updatePipelineRunStatusFromTaskRuns(logger, pr, taskRuns)
+		updatePipelineRunStatusFromCustomRunsOrRuns(logger, pr, runObjects)
+		updatePipelineRunStatusFromChildRefs(logger, pr, taskRuns, runObjects)
+	default:
+		// Clear any TaskRuns and Runs present in the status.
+		// This can occur if the value of "embedded-status" was modified during PipelineRun execution.
+		pr.Status.Runs = nil
+		pr.Status.TaskRuns = nil
+		updatePipelineRunStatusFromChildRefs(logger, pr, taskRuns, runObjects)
 	}
 
 	return validateChildObjectsInPipelineRunStatus(ctx, pr.Status)
 }
 
+// TODO: https://github.com/tektoncd/pipeline/issues/5999 integration tests for changing
+// feature flags could help prevent validation errors when the feature-flag is being switched.
+// In such case, the error could keep the pipelineRun run indefinitely.
 func validateChildObjectsInPipelineRunStatus(ctx context.Context, prs v1beta1.PipelineRunStatus) error {
 	cfg := config.FromContextOrDefaults(ctx)
 
