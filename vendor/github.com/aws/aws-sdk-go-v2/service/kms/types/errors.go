@@ -12,6 +12,8 @@ import (
 type AlreadyExistsException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -24,7 +26,12 @@ func (e *AlreadyExistsException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *AlreadyExistsException) ErrorCode() string             { return "AlreadyExistsException" }
+func (e *AlreadyExistsException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "AlreadyExistsException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *AlreadyExistsException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the specified CloudHSM cluster is already
@@ -38,6 +45,8 @@ func (e *AlreadyExistsException) ErrorFault() smithy.ErrorFault { return smithy.
 type CloudHsmClusterInUseException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -50,7 +59,12 @@ func (e *CloudHsmClusterInUseException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *CloudHsmClusterInUseException) ErrorCode() string             { return "CloudHsmClusterInUseException" }
+func (e *CloudHsmClusterInUseException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "CloudHsmClusterInUseException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *CloudHsmClusterInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the associated CloudHSM cluster did not meet
@@ -93,6 +107,8 @@ func (e *CloudHsmClusterInUseException) ErrorFault() smithy.ErrorFault { return 
 type CloudHsmClusterInvalidConfigurationException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -106,7 +122,10 @@ func (e *CloudHsmClusterInvalidConfigurationException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterInvalidConfigurationException) ErrorCode() string {
-	return "CloudHsmClusterInvalidConfigurationException"
+	if e.ErrorCodeOverride == nil {
+		return "CloudHsmClusterInvalidConfigurationException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *CloudHsmClusterInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -119,6 +138,8 @@ func (e *CloudHsmClusterInvalidConfigurationException) ErrorFault() smithy.Error
 // the CloudHSM User Guide.
 type CloudHsmClusterNotActiveException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -133,7 +154,10 @@ func (e *CloudHsmClusterNotActiveException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterNotActiveException) ErrorCode() string {
-	return "CloudHsmClusterNotActiveException"
+	if e.ErrorCodeOverride == nil {
+		return "CloudHsmClusterNotActiveException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *CloudHsmClusterNotActiveException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
@@ -141,6 +165,8 @@ func (e *CloudHsmClusterNotActiveException) ErrorFault() smithy.ErrorFault { ret
 // specified cluster ID. Retry the request with a different cluster ID.
 type CloudHsmClusterNotFoundException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -155,7 +181,10 @@ func (e *CloudHsmClusterNotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterNotFoundException) ErrorCode() string {
-	return "CloudHsmClusterNotFoundException"
+	if e.ErrorCodeOverride == nil {
+		return "CloudHsmClusterNotFoundException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *CloudHsmClusterNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
@@ -172,6 +201,8 @@ func (e *CloudHsmClusterNotFoundException) ErrorFault() smithy.ErrorFault { retu
 type CloudHsmClusterNotRelatedException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -185,7 +216,10 @@ func (e *CloudHsmClusterNotRelatedException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CloudHsmClusterNotRelatedException) ErrorCode() string {
-	return "CloudHsmClusterNotRelatedException"
+	if e.ErrorCodeOverride == nil {
+		return "CloudHsmClusterNotRelatedException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *CloudHsmClusterNotRelatedException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -197,6 +231,8 @@ func (e *CloudHsmClusterNotRelatedException) ErrorFault() smithy.ErrorFault {
 // custom key store.
 type CustomKeyStoreHasCMKsException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -210,7 +246,12 @@ func (e *CustomKeyStoreHasCMKsException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *CustomKeyStoreHasCMKsException) ErrorCode() string             { return "CustomKeyStoreHasCMKsException" }
+func (e *CustomKeyStoreHasCMKsException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "CustomKeyStoreHasCMKsException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *CustomKeyStoreHasCMKsException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because of the ConnectionState of the custom key store.
@@ -244,6 +285,8 @@ func (e *CustomKeyStoreHasCMKsException) ErrorFault() smithy.ErrorFault { return
 type CustomKeyStoreInvalidStateException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -257,7 +300,10 @@ func (e *CustomKeyStoreInvalidStateException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CustomKeyStoreInvalidStateException) ErrorCode() string {
-	return "CustomKeyStoreInvalidStateException"
+	if e.ErrorCodeOverride == nil {
+		return "CustomKeyStoreInvalidStateException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *CustomKeyStoreInvalidStateException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -268,6 +314,8 @@ func (e *CustomKeyStoreInvalidStateException) ErrorFault() smithy.ErrorFault {
 // store name that is unique in the account.
 type CustomKeyStoreNameInUseException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -282,7 +330,10 @@ func (e *CustomKeyStoreNameInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CustomKeyStoreNameInUseException) ErrorCode() string {
-	return "CustomKeyStoreNameInUseException"
+	if e.ErrorCodeOverride == nil {
+		return "CustomKeyStoreNameInUseException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *CustomKeyStoreNameInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
@@ -290,6 +341,8 @@ func (e *CustomKeyStoreNameInUseException) ErrorFault() smithy.ErrorFault { retu
 // specified key store name or ID.
 type CustomKeyStoreNotFoundException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -304,7 +357,10 @@ func (e *CustomKeyStoreNotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *CustomKeyStoreNotFoundException) ErrorCode() string {
-	return "CustomKeyStoreNotFoundException"
+	if e.ErrorCodeOverride == nil {
+		return "CustomKeyStoreNotFoundException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *CustomKeyStoreNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
@@ -312,6 +368,8 @@ func (e *CustomKeyStoreNotFoundException) ErrorFault() smithy.ErrorFault { retur
 // request.
 type DependencyTimeoutException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -325,12 +383,19 @@ func (e *DependencyTimeoutException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *DependencyTimeoutException) ErrorCode() string             { return "DependencyTimeoutException" }
+func (e *DependencyTimeoutException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "DependencyTimeoutException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *DependencyTimeoutException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
 
 // The request was rejected because the specified KMS key is not enabled.
 type DisabledException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -344,7 +409,12 @@ func (e *DisabledException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *DisabledException) ErrorCode() string             { return "DisabledException" }
+func (e *DisabledException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "DisabledException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *DisabledException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the specified import token is expired. Use
@@ -352,6 +422,8 @@ func (e *DisabledException) ErrorFault() smithy.ErrorFault { return smithy.Fault
 // public key to encrypt the key material, and then try the request again.
 type ExpiredImportTokenException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -365,7 +437,12 @@ func (e *ExpiredImportTokenException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *ExpiredImportTokenException) ErrorCode() string             { return "ExpiredImportTokenException" }
+func (e *ExpiredImportTokenException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "ExpiredImportTokenException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *ExpiredImportTokenException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the specified KMS key cannot decrypt the data.
@@ -373,6 +450,8 @@ func (e *ExpiredImportTokenException) ErrorFault() smithy.ErrorFault { return sm
 // identify the same KMS key that was used to encrypt the ciphertext.
 type IncorrectKeyException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -386,7 +465,12 @@ func (e *IncorrectKeyException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *IncorrectKeyException) ErrorCode() string             { return "IncorrectKeyException" }
+func (e *IncorrectKeyException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "IncorrectKeyException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *IncorrectKeyException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the key material in the request is, expired,
@@ -394,6 +478,8 @@ func (e *IncorrectKeyException) ErrorFault() smithy.ErrorFault { return smithy.F
 // KMS key.
 type IncorrectKeyMaterialException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -407,7 +493,12 @@ func (e *IncorrectKeyMaterialException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *IncorrectKeyMaterialException) ErrorCode() string             { return "IncorrectKeyMaterialException" }
+func (e *IncorrectKeyMaterialException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "IncorrectKeyMaterialException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *IncorrectKeyMaterialException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the trust anchor certificate in the request to
@@ -417,6 +508,8 @@ func (e *IncorrectKeyMaterialException) ErrorFault() smithy.ErrorFault { return 
 // you create the trust anchor certificate and save it in the customerCA.crt file.
 type IncorrectTrustAnchorException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -430,12 +523,19 @@ func (e *IncorrectTrustAnchorException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *IncorrectTrustAnchorException) ErrorCode() string             { return "IncorrectTrustAnchorException" }
+func (e *IncorrectTrustAnchorException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "IncorrectTrustAnchorException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *IncorrectTrustAnchorException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the specified alias name is not valid.
 type InvalidAliasNameException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -449,13 +549,20 @@ func (e *InvalidAliasNameException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidAliasNameException) ErrorCode() string             { return "InvalidAliasNameException" }
+func (e *InvalidAliasNameException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "InvalidAliasNameException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidAliasNameException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because a specified ARN, or an ARN in a key policy, is
 // not valid.
 type InvalidArnException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -469,7 +576,12 @@ func (e *InvalidArnException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidArnException) ErrorCode() string             { return "InvalidArnException" }
+func (e *InvalidArnException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "InvalidArnException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidArnException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // From the Decrypt or ReEncrypt operation, the request was rejected because the
@@ -479,6 +591,8 @@ func (e *InvalidArnException) ErrorFault() smithy.ErrorFault { return smithy.Fau
 // KMS could not decrypt the encrypted (wrapped) key material.
 type InvalidCiphertextException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -492,12 +606,19 @@ func (e *InvalidCiphertextException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidCiphertextException) ErrorCode() string             { return "InvalidCiphertextException" }
+func (e *InvalidCiphertextException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "InvalidCiphertextException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidCiphertextException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the specified GrantId is not valid.
 type InvalidGrantIdException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -511,12 +632,19 @@ func (e *InvalidGrantIdException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidGrantIdException) ErrorCode() string             { return "InvalidGrantIdException" }
+func (e *InvalidGrantIdException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "InvalidGrantIdException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidGrantIdException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the specified grant token is not valid.
 type InvalidGrantTokenException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -530,13 +658,20 @@ func (e *InvalidGrantTokenException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidGrantTokenException) ErrorCode() string             { return "InvalidGrantTokenException" }
+func (e *InvalidGrantTokenException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "InvalidGrantTokenException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidGrantTokenException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the provided import token is invalid or is
 // associated with a different KMS key.
 type InvalidImportTokenException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -550,7 +685,12 @@ func (e *InvalidImportTokenException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidImportTokenException) ErrorCode() string             { return "InvalidImportTokenException" }
+func (e *InvalidImportTokenException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "InvalidImportTokenException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidImportTokenException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected for one of the following reasons:
@@ -572,6 +712,8 @@ func (e *InvalidImportTokenException) ErrorFault() smithy.ErrorFault { return sm
 type InvalidKeyUsageException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -584,13 +726,20 @@ func (e *InvalidKeyUsageException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidKeyUsageException) ErrorCode() string             { return "InvalidKeyUsageException" }
+func (e *InvalidKeyUsageException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "InvalidKeyUsageException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidKeyUsageException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the marker that specifies where pagination
 // should next begin is not valid.
 type InvalidMarkerException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -604,13 +753,20 @@ func (e *InvalidMarkerException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *InvalidMarkerException) ErrorCode() string             { return "InvalidMarkerException" }
+func (e *InvalidMarkerException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "InvalidMarkerException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *InvalidMarkerException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the specified KMS key was not available. You
 // can retry the request.
 type KeyUnavailableException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -624,13 +780,20 @@ func (e *KeyUnavailableException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *KeyUnavailableException) ErrorCode() string             { return "KeyUnavailableException" }
+func (e *KeyUnavailableException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "KeyUnavailableException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *KeyUnavailableException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
 
 // The request was rejected because an internal exception occurred. The request can
 // be retried.
 type KMSInternalException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -644,7 +807,12 @@ func (e *KMSInternalException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *KMSInternalException) ErrorCode() string             { return "KMSInternalException" }
+func (e *KMSInternalException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "KMSInternalException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *KMSInternalException) ErrorFault() smithy.ErrorFault { return smithy.FaultServer }
 
 // The request was rejected because the HMAC verification failed. HMAC verification
@@ -652,6 +820,8 @@ func (e *KMSInternalException) ErrorFault() smithy.ErrorFault { return smithy.Fa
 // MAC algorithm does not match the HMAC specified in the request.
 type KMSInvalidMacException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -665,7 +835,12 @@ func (e *KMSInvalidMacException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *KMSInvalidMacException) ErrorCode() string             { return "KMSInvalidMacException" }
+func (e *KMSInvalidMacException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "KMSInvalidMacException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *KMSInvalidMacException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the signature verification failed. Signature
@@ -673,6 +848,8 @@ func (e *KMSInvalidMacException) ErrorFault() smithy.ErrorFault { return smithy.
 // the specified message with the specified KMS key and signing algorithm.
 type KMSInvalidSignatureException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -686,7 +863,12 @@ func (e *KMSInvalidSignatureException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *KMSInvalidSignatureException) ErrorCode() string             { return "KMSInvalidSignatureException" }
+func (e *KMSInvalidSignatureException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "KMSInvalidSignatureException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *KMSInvalidSignatureException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the state of the specified resource is not
@@ -706,6 +888,8 @@ func (e *KMSInvalidSignatureException) ErrorFault() smithy.ErrorFault { return s
 type KMSInvalidStateException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -718,7 +902,12 @@ func (e *KMSInvalidStateException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *KMSInvalidStateException) ErrorCode() string             { return "KMSInvalidStateException" }
+func (e *KMSInvalidStateException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "KMSInvalidStateException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *KMSInvalidStateException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because a quota was exceeded. For more information, see
@@ -726,6 +915,8 @@ func (e *KMSInvalidStateException) ErrorFault() smithy.ErrorFault { return smith
 // the Key Management Service Developer Guide.
 type LimitExceededException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -739,13 +930,20 @@ func (e *LimitExceededException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *LimitExceededException) ErrorCode() string             { return "LimitExceededException" }
+func (e *LimitExceededException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "LimitExceededException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *LimitExceededException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the specified policy is not syntactically or
 // semantically correct.
 type MalformedPolicyDocumentException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -760,7 +958,10 @@ func (e *MalformedPolicyDocumentException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *MalformedPolicyDocumentException) ErrorCode() string {
-	return "MalformedPolicyDocumentException"
+	if e.ErrorCodeOverride == nil {
+		return "MalformedPolicyDocumentException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *MalformedPolicyDocumentException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
@@ -768,6 +969,8 @@ func (e *MalformedPolicyDocumentException) ErrorFault() smithy.ErrorFault { retu
 // found.
 type NotFoundException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -781,12 +984,19 @@ func (e *NotFoundException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *NotFoundException) ErrorCode() string             { return "NotFoundException" }
+func (e *NotFoundException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "NotFoundException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *NotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because one or more tags are not valid.
 type TagException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -800,13 +1010,20 @@ func (e *TagException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *TagException) ErrorCode() string             { return "TagException" }
+func (e *TagException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "TagException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *TagException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because a specified parameter is not supported or a
 // specified resource is not valid for this operation.
 type UnsupportedOperationException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -820,7 +1037,12 @@ func (e *UnsupportedOperationException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *UnsupportedOperationException) ErrorCode() string             { return "UnsupportedOperationException" }
+func (e *UnsupportedOperationException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "UnsupportedOperationException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *UnsupportedOperationException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the (XksKeyId) is already associated with a KMS
@@ -828,6 +1050,8 @@ func (e *UnsupportedOperationException) ErrorFault() smithy.ErrorFault { return 
 // associated with a different external key.
 type XksKeyAlreadyInUseException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -841,7 +1065,12 @@ func (e *XksKeyAlreadyInUseException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *XksKeyAlreadyInUseException) ErrorCode() string             { return "XksKeyAlreadyInUseException" }
+func (e *XksKeyAlreadyInUseException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "XksKeyAlreadyInUseException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *XksKeyAlreadyInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the external key specified by the XksKeyId
@@ -850,6 +1079,8 @@ func (e *XksKeyAlreadyInUseException) ErrorFault() smithy.ErrorFault { return sm
 // encryption and decryption.
 type XksKeyInvalidConfigurationException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -864,7 +1095,10 @@ func (e *XksKeyInvalidConfigurationException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksKeyInvalidConfigurationException) ErrorCode() string {
-	return "XksKeyInvalidConfigurationException"
+	if e.ErrorCodeOverride == nil {
+		return "XksKeyInvalidConfigurationException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksKeyInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -880,6 +1114,8 @@ func (e *XksKeyInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 type XksKeyNotFoundException struct {
 	Message *string
 
+	ErrorCodeOverride *string
+
 	noSmithyDocumentSerde
 }
 
@@ -892,7 +1128,12 @@ func (e *XksKeyNotFoundException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *XksKeyNotFoundException) ErrorCode() string             { return "XksKeyNotFoundException" }
+func (e *XksKeyNotFoundException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "XksKeyNotFoundException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *XksKeyNotFoundException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The request was rejected because the proxy credentials failed to authenticate to
@@ -902,6 +1143,8 @@ func (e *XksKeyNotFoundException) ErrorFault() smithy.ErrorFault { return smithy
 // proxy.
 type XksProxyIncorrectAuthenticationCredentialException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -916,7 +1159,10 @@ func (e *XksProxyIncorrectAuthenticationCredentialException) ErrorMessage() stri
 	return *e.Message
 }
 func (e *XksProxyIncorrectAuthenticationCredentialException) ErrorCode() string {
-	return "XksProxyIncorrectAuthenticationCredentialException"
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyIncorrectAuthenticationCredentialException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksProxyIncorrectAuthenticationCredentialException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -927,6 +1173,8 @@ func (e *XksProxyIncorrectAuthenticationCredentialException) ErrorFault() smithy
 // see the exception message.
 type XksProxyInvalidConfigurationException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -941,7 +1189,10 @@ func (e *XksProxyInvalidConfigurationException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyInvalidConfigurationException) ErrorCode() string {
-	return "XksProxyInvalidConfigurationException"
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyInvalidConfigurationException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksProxyInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -953,6 +1204,8 @@ func (e *XksProxyInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 // proxy vendor.
 type XksProxyInvalidResponseException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -967,7 +1220,10 @@ func (e *XksProxyInvalidResponseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyInvalidResponseException) ErrorCode() string {
-	return "XksProxyInvalidResponseException"
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyInvalidResponseException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksProxyInvalidResponseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
@@ -977,6 +1233,8 @@ func (e *XksProxyInvalidResponseException) ErrorFault() smithy.ErrorFault { retu
 // external key store proxy address.
 type XksProxyUriEndpointInUseException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -991,7 +1249,10 @@ func (e *XksProxyUriEndpointInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyUriEndpointInUseException) ErrorCode() string {
-	return "XksProxyUriEndpointInUseException"
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyUriEndpointInUseException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksProxyUriEndpointInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
@@ -1001,6 +1262,8 @@ func (e *XksProxyUriEndpointInUseException) ErrorFault() smithy.ErrorFault { ret
 // and Region must use a unique external key store proxy API address.
 type XksProxyUriInUseException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -1014,7 +1277,12 @@ func (e *XksProxyUriInUseException) ErrorMessage() string {
 	}
 	return *e.Message
 }
-func (e *XksProxyUriInUseException) ErrorCode() string             { return "XksProxyUriInUseException" }
+func (e *XksProxyUriInUseException) ErrorCode() string {
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyUriInUseException"
+	}
+	return *e.ErrorCodeOverride
+}
 func (e *XksProxyUriInUseException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // KMS was unable to reach the specified XksProxyUriPath. The path must be
@@ -1024,6 +1292,8 @@ func (e *XksProxyUriInUseException) ErrorFault() smithy.ErrorFault { return smit
 // unavailable.
 type XksProxyUriUnreachableException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -1038,7 +1308,10 @@ func (e *XksProxyUriUnreachableException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyUriUnreachableException) ErrorCode() string {
-	return "XksProxyUriUnreachableException"
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyUriUnreachableException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksProxyUriUnreachableException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
@@ -1048,6 +1321,8 @@ func (e *XksProxyUriUnreachableException) ErrorFault() smithy.ErrorFault { retur
 // must use a different Amazon VPC endpoint service.
 type XksProxyVpcEndpointServiceInUseException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -1062,7 +1337,10 @@ func (e *XksProxyVpcEndpointServiceInUseException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyVpcEndpointServiceInUseException) ErrorCode() string {
-	return "XksProxyVpcEndpointServiceInUseException"
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyVpcEndpointServiceInUseException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksProxyVpcEndpointServiceInUseException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -1074,6 +1352,8 @@ func (e *XksProxyVpcEndpointServiceInUseException) ErrorFault() smithy.ErrorFaul
 // service connectivity for an external key store.
 type XksProxyVpcEndpointServiceInvalidConfigurationException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -1088,7 +1368,10 @@ func (e *XksProxyVpcEndpointServiceInvalidConfigurationException) ErrorMessage()
 	return *e.Message
 }
 func (e *XksProxyVpcEndpointServiceInvalidConfigurationException) ErrorCode() string {
-	return "XksProxyVpcEndpointServiceInvalidConfigurationException"
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyVpcEndpointServiceInvalidConfigurationException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksProxyVpcEndpointServiceInvalidConfigurationException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
@@ -1101,6 +1384,8 @@ func (e *XksProxyVpcEndpointServiceInvalidConfigurationException) ErrorFault() s
 // cks.kms.us-east-1.amazonaws.com.
 type XksProxyVpcEndpointServiceNotFoundException struct {
 	Message *string
+
+	ErrorCodeOverride *string
 
 	noSmithyDocumentSerde
 }
@@ -1115,7 +1400,10 @@ func (e *XksProxyVpcEndpointServiceNotFoundException) ErrorMessage() string {
 	return *e.Message
 }
 func (e *XksProxyVpcEndpointServiceNotFoundException) ErrorCode() string {
-	return "XksProxyVpcEndpointServiceNotFoundException"
+	if e.ErrorCodeOverride == nil {
+		return "XksProxyVpcEndpointServiceNotFoundException"
+	}
+	return *e.ErrorCodeOverride
 }
 func (e *XksProxyVpcEndpointServiceNotFoundException) ErrorFault() smithy.ErrorFault {
 	return smithy.FaultClient
