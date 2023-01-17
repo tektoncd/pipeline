@@ -937,6 +937,7 @@ spec:
 	}
 }
 
+// TODO
 func TestReconcile_PipelineSpecTaskSpec(t *testing.T) {
 	// TestReconcile_PipelineSpecTaskSpec runs "Reconcile" on a PipelineRun that has an embedded PipelineSpec that has an embedded TaskSpec.
 	// It verifies that a TaskRun is created, it checks the resulting API actions, status and events.
@@ -1024,7 +1025,6 @@ spec:
 `, config.DefaultServiceAccountValue))
 
 	expectedTaskRun.ObjectMeta = taskRunObjectMeta("test-pipeline-run-success-unit-test-task-spec", "foo", "test-pipeline-run-success", "test-pipeline", "unit-test-task-spec", false)
-	expectedTaskRun.Spec.Resources = &v1beta1.TaskRunResources{}
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
@@ -1040,6 +1040,7 @@ spec:
 	verifyTaskRunStatusesNames(t, embeddedStatus, reconciledRun.Status, "test-pipeline-run-success-unit-test-task-spec")
 }
 
+// TODO
 // TestReconcile_InvalidPipelineRuns runs "Reconcile" on several PipelineRuns that are invalid in different ways.
 // It verifies that reconcile fails, how it fails and which events are triggered.
 func TestReconcile_InvalidPipelineRuns(t *testing.T) {
@@ -1078,16 +1079,6 @@ spec:
         key1: {}
         key2: {}
 `, v1beta1.ParamTypeObject)),
-		parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: a-task-that-needs-a-resource
-  namespace: foo
-spec:
-  resources:
-    inputs:
-      - name: workspace
-        type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit)),
 	}
 
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
@@ -1109,37 +1100,6 @@ spec:
     - name: some-task
       taskRef:
         name: a-task-that-needs-params
-`),
-		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
-metadata:
-  name: a-fine-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: some-task
-      taskRef:
-        name: a-task-that-exists
-      resources:
-        inputs:
-          - name: needed-resource
-            resource: a-resource
-  resources:
-    - name: a-resource
-      type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit)),
-		parse.MustParseV1beta1Pipeline(t, `
-metadata:
-  name: a-pipeline-that-should-be-caught-by-admission-control
-  namespace: foo
-spec:
-  tasks:
-    - name: some-task
-      taskRef:
-        name: a-task-that-exists
-      resources:
-        inputs:
-          - name: needed-resource
-            resource: a-resource
 `),
 		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
@@ -7853,7 +7813,6 @@ func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]
 				}},
 			},
 			ServiceAccountName: config.DefaultServiceAccountValue,
-			Resources:          &v1beta1.TaskRunResources{},
 		},
 	}
 }

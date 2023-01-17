@@ -62,37 +62,17 @@ var (
 
 	pipelineWithTasksWithFrom = v1beta1.Pipeline{
 		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{{
-				Name: "input1",
-				Type: "git",
-			}, {
-				Name: "output",
-				Type: "git",
-			}},
 			Tasks: []v1beta1.PipelineTask{
 				{
 					Name: "task1",
 					TaskRef: &v1beta1.TaskRef{
 						Name: "task",
 					},
-					Resources: &v1beta1.PipelineTaskResources{
-						Outputs: []v1beta1.PipelineTaskOutputResource{{
-							Name:     "foo",
-							Resource: "output",
-						}},
-					},
 				},
 				{
 					Name: "task2",
 					TaskRef: &v1beta1.TaskRef{
 						Name: "task",
-					},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "foo",
-							Resource: "output",
-							From:     []string{"task1"},
-						}},
 					},
 				},
 			},
@@ -329,31 +309,11 @@ func TestInitializeArtifactStorageNoStorageNeeded(t *testing.T) {
 					TaskRef: &v1beta1.TaskRef{
 						Name: "task",
 					},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "input1",
-							Resource: "resource",
-						}},
-						Outputs: []v1beta1.PipelineTaskOutputResource{{
-							Name:     "output",
-							Resource: "resource",
-						}},
-					},
 				},
 				{
 					Name: "task2",
 					TaskRef: &v1beta1.TaskRef{
 						Name: "task",
-					},
-					Resources: &v1beta1.PipelineTaskResources{
-						Inputs: []v1beta1.PipelineTaskInputResource{{
-							Name:     "input1",
-							Resource: "resource",
-						}},
-						Outputs: []v1beta1.PipelineTaskOutputResource{{
-							Name:     "output",
-							Resource: "resource",
-						}},
 					},
 				},
 			},

@@ -31,7 +31,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/artifacts"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -48,7 +47,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
@@ -297,7 +295,7 @@ func (c *Reconciler) resolvePipelineState(
 	tasks []v1beta1.PipelineTask,
 	pipelineMeta *metav1.ObjectMeta,
 	pr *v1beta1.PipelineRun,
-	providedResources map[string]*resourcev1alpha1.PipelineResource) (resources.PipelineRunState, error) {
+) (resources.PipelineRunState, error) {
 	pst := resources.PipelineRunState{}
 	// Resolve each task individually because they each could have a different reference context (remote or local).
 	for _, task := range tasks {
@@ -347,7 +345,7 @@ func (c *Reconciler) resolvePipelineState(
 				return c.taskRunLister.TaskRuns(pr.Namespace).Get(name)
 			},
 			getRunObjectFunc,
-			task, providedResources,
+			task,
 		)
 		if err != nil {
 			if tresources.IsGetTaskErrTransient(err) {
@@ -446,14 +444,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 		return controller.NewPermanentError(err)
 	}
 
-	if err := resources.ValidateResourceBindings(pipelineSpec, pr); err != nil {
-		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonInvalidBindings,
-			"PipelineRun %s/%s doesn't bind Pipeline %s/%s's PipelineResources correctly: %s",
-			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
-		return controller.NewPermanentError(err)
-	}
-	providedResources, err := resources.GetResourcesFromBindings(pr, c.resourceLister.PipelineResources(pr.Namespace).Get)
 	if err != nil {
 		if kerrors.IsNotFound(err) && tknreconciler.IsYoungResource(pr) {
 			// For newly created resources, don't fail immediately.
@@ -538,7 +528,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	if len(pipelineSpec.Finally) > 0 {
 		tasks = append(tasks, pipelineSpec.Finally...)
 	}
-	pipelineRunState, err := c.resolvePipelineState(ctx, tasks, pipelineMeta.ObjectMeta, pr, providedResources)
+	pipelineRunState, err := c.resolvePipelineState(ctx, tasks, pipelineMeta.ObjectMeta, pr)
 	switch {
 	case errors.Is(err, remote.ErrorRequestInProgress):
 		message := fmt.Sprintf("PipelineRun %s/%s awaiting remote resource", pr.Namespace, pr.Name)
@@ -574,17 +564,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 	if pipelineTimeout := pr.PipelineTimeout(ctx); pipelineTimeout != 0 {
 		pipelineRunFacts.TimeoutsState.PipelineTimeout = &pipelineTimeout
-	}
-
-	for _, rpt := range pipelineRunFacts.State {
-		if !rpt.IsCustomTask() {
-			err := taskrun.ValidateResolvedTaskResources(ctx, rpt.PipelineTask.Params, rpt.PipelineTask.Matrix, rpt.ResolvedTaskResources)
-			if err != nil {
-				logger.Errorf("Failed to validate pipelinerun %q with error %v", pr.Name, err)
-				pr.Status.MarkFailed(ReasonFailedValidation, err.Error())
-				return controller.NewPermanentError(err)
-			}
-		}
 	}
 
 	// check if pipeline run is not gracefully cancelled and there are active task runs, which require cancelling
@@ -918,7 +897,6 @@ func (c *Reconciler) createTaskRun(ctx context.Context, taskRunName string, para
 		tr.Annotations[workspace.AnnotationAffinityAssistantName] = getAffinityAssistantName(pipelinePVCWorkspaceName, pr.Name)
 	}
 
-	resources.WrapSteps(&tr.Spec, rpt.PipelineTask, rpt.ResolvedTaskResources.Inputs, rpt.ResolvedTaskResources.Outputs, storageBasePath)
 	logger.Infof("Creating a new TaskRun object %s for pipeline task %s", taskRunName, rpt.PipelineTask.Name)
 	return c.PipelineClientSet.TektonV1beta1().TaskRuns(pr.Namespace).Create(ctx, tr, metav1.CreateOptions{})
 }

@@ -363,10 +363,6 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 
 	inputs := []v1beta1.TaskResourceBinding{}
 	outputs := []v1beta1.TaskResourceBinding{}
-	if tr.Spec.Resources != nil {
-		inputs = tr.Spec.Resources.Inputs
-		outputs = tr.Spec.Resources.Outputs
-	}
 	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, resources.GetTaskKind(tr), inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
 	if err != nil {
 		if k8serrors.IsNotFound(err) && tknreconciler.IsYoungResource(tr) {
@@ -385,12 +381,6 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 
 	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
 		logger.Errorf("TaskRun %s taskSpec request resources are invalid: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
-		return nil, nil, controller.NewPermanentError(err)
-	}
-
-	if err := ValidateResolvedTaskResources(ctx, tr.Spec.Params, &v1beta1.Matrix{}, rtr); err != nil {
-		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
 	}
@@ -720,25 +710,6 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 	outputResources, err := resourceImplBinding(rtr.Outputs, c.Images)
 	if err != nil {
 		logger.Errorf("Failed to initialize output resources: %v", err)
-		return nil, err
-	}
-
-	// Get actual resource
-	err = resources.AddOutputImageDigestExporter(c.Images.ImageDigestExporterImage, tr, ts, c.resourceLister.PipelineResources(tr.Namespace).Get)
-	if err != nil {
-		logger.Errorf("Failed to create a pod for taskrun: %s due to output image resource error %v", tr.Name, err)
-		return nil, err
-	}
-
-	ts, err = resources.AddInputResource(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources)
-	if err != nil {
-		logger.Errorf("Failed to create a pod for taskrun: %s due to input resource error %v", tr.Name, err)
-		return nil, err
-	}
-
-	ts, err = resources.AddOutputResources(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources)
-	if err != nil {
-		logger.Errorf("Failed to create a pod for taskrun: %s due to output resource error %v", tr.Name, err)
 		return nil, err
 	}
 

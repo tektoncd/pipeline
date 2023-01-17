@@ -616,10 +616,6 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
-        "resources": {
-          "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.",
-          "$ref": "#/definitions/v1beta1.TaskResources"
-        },
         "results": {
           "description": "Results are values that this Task can output",
           "type": "array",
@@ -834,30 +830,6 @@
           "description": "Spec holds the desired state of the Pipeline from the client",
           "default": {},
           "$ref": "#/definitions/v1beta1.PipelineSpec"
-        }
-      }
-    },
-    "v1beta1.PipelineDeclaredResource": {
-      "description": "PipelineDeclaredResource is used by a Pipeline to declare the types of the PipelineResources that it will required to run and names which can be used to refer to these PipelineResources in PipelineTaskResourceBindings.",
-      "type": "object",
-      "required": [
-        "name",
-        "type"
-      ],
-      "properties": {
-        "name": {
-          "description": "Name is the name that will be used by the Pipeline to refer to this resource. It does not directly correspond to the name of any PipelineResources Task inputs or outputs, and it does not correspond to the actual names of the PipelineResources that will be bound in the PipelineRun.",
-          "type": "string",
-          "default": ""
-        },
-        "optional": {
-          "description": "Optional declares the resource as optional. optional: true - the resource is considered optional optional: false - the resource is considered required (default/equivalent of not specifying it)",
-          "type": "boolean"
-        },
-        "type": {
-          "description": "Type is the type of the PipelineResource.",
-          "type": "string",
-          "default": ""
         }
       }
     },
@@ -1110,15 +1082,6 @@
           "description": "PodTemplate holds pod specific configuration",
           "$ref": "#/definitions/pod.Template"
         },
-        "resources": {
-          "description": "Resources is a list of bindings specifying which actual instances of PipelineResources to use for the resources the Pipeline has declared it needs.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineResourceBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
         "serviceAccountName": {
           "type": "string"
         },
@@ -1360,15 +1323,6 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
-        "resources": {
-          "description": "Resources declares the names and types of the resources given to the Pipeline's tasks as inputs and outputs.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineDeclaredResource"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
         "results": {
           "description": "Results are values that this pipeline can output once run",
           "type": "array",
@@ -1419,10 +1373,6 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
-        "resources": {
-          "description": "Resources declares the resources given to this task as inputs and outputs.",
-          "$ref": "#/definitions/v1beta1.PipelineTaskResources"
-        },
         "retries": {
           "description": "Retries represents how many times this task should be retried in case of task failure: ConditionSucceeded set to False",
           "type": "integer",
@@ -1468,35 +1418,6 @@
         }
       }
     },
-    "v1beta1.PipelineTaskInputResource": {
-      "description": "PipelineTaskInputResource maps the name of a declared PipelineResource input dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources that should be used. This input may come from a previous task.",
-      "type": "object",
-      "required": [
-        "name",
-        "resource"
-      ],
-      "properties": {
-        "from": {
-          "description": "From is the list of PipelineTask names that the resource has to come from. (Implies an ordering in the execution graph.)",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "name": {
-          "description": "Name is the name of the PipelineResource as declared by the Task.",
-          "type": "string",
-          "default": ""
-        },
-        "resource": {
-          "description": "Resource is the name of the DeclaredPipelineResource to use.",
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
     "v1beta1.PipelineTaskMetadata": {
       "description": "PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask",
       "type": "object",
@@ -1517,26 +1438,6 @@
         }
       }
     },
-    "v1beta1.PipelineTaskOutputResource": {
-      "description": "PipelineTaskOutputResource maps the name of a declared PipelineResource output dependency in a Task to the resource in the Pipeline's DeclaredPipelineResources that should be used.",
-      "type": "object",
-      "required": [
-        "name",
-        "resource"
-      ],
-      "properties": {
-        "name": {
-          "description": "Name is the name of the PipelineResource as declared by the Task.",
-          "type": "string",
-          "default": ""
-        },
-        "resource": {
-          "description": "Resource is the name of the DeclaredPipelineResource to use.",
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
     "v1beta1.PipelineTaskParam": {
       "description": "PipelineTaskParam is used to provide arbitrary string parameters to a Task.",
       "type": "object",
@@ -1552,30 +1453,6 @@
         "value": {
           "type": "string",
           "default": ""
-        }
-      }
-    },
-    "v1beta1.PipelineTaskResources": {
-      "description": "PipelineTaskResources allows a Pipeline to declare how its DeclaredPipelineResources should be provided to a Task as its inputs and outputs.",
-      "type": "object",
-      "properties": {
-        "inputs": {
-          "description": "Inputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineTaskInputResource"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "outputs": {
-          "description": "Outputs holds the mapping from the PipelineResources declared in DeclaredPipelineResources to the input PipelineResources required by the Task.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineTaskOutputResource"
-          },
-          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2607,7 +2484,7 @@
       }
     },
     "v1beta1.TaskRun": {
-      "description": "TaskRun represents a single execution of a Task. TaskRuns are how the steps specified in a Task are executed; they specify the parameters and resources used to run the steps in a Task.",
+      "description": "TaskRun represents a single execution of a Task. TaskRuns are how the steps specified in a Task are executed; they specify the parameters used to run the steps in a Task.",
       "type": "object",
       "properties": {
         "apiVersion": {
@@ -2646,28 +2523,6 @@
         }
       }
     },
-    "v1beta1.TaskRunInputs": {
-      "description": "TaskRunInputs holds the input values that this task was invoked with.",
-      "type": "object",
-      "properties": {
-        "params": {
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "resources": {
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
-        }
-      }
-    },
     "v1beta1.TaskRunList": {
       "description": "TaskRunList contains a list of TaskRun",
       "type": "object",
@@ -2693,20 +2548,6 @@
         "metadata": {
           "default": {},
           "$ref": "#/definitions/v1.ListMeta"
-        }
-      }
-    },
-    "v1beta1.TaskRunOutputs": {
-      "description": "TaskRunOutputs holds the output values that this task was invoked with.",
-      "type": "object",
-      "properties": {
-        "resources": {
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2800,9 +2641,6 @@
         "podTemplate": {
           "description": "PodTemplate holds pod specific configuration",
           "$ref": "#/definitions/pod.Template"
-        },
-        "resources": {
-          "$ref": "#/definitions/v1beta1.TaskRunResources"
         },
         "retries": {
           "description": "Retries represents how many times this TaskRun should be retried in the event of Task failure.",
@@ -2913,15 +2751,6 @@
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
           "$ref": "#/definitions/v1beta1.Provenance"
         },
-        "resourcesResult": {
-          "description": "Results from Resources built during the TaskRun. currently includes the digest of build container images",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineResourceResult"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
         "retriesStatus": {
           "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
           "type": "array",
@@ -2996,15 +2825,6 @@
         "provenance": {
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
           "$ref": "#/definitions/v1beta1.Provenance"
-        },
-        "resourcesResult": {
-          "description": "Results from Resources built during the TaskRun. currently includes the digest of build container images",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineResourceResult"
-          },
-          "x-kubernetes-list-type": "atomic"
         },
         "retriesStatus": {
           "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
@@ -3088,10 +2908,6 @@
             "$ref": "#/definitions/v1beta1.ParamSpec"
           },
           "x-kubernetes-list-type": "atomic"
-        },
-        "resources": {
-          "description": "Resources is a list input and output resource to run the task Resources are represented in TaskRuns as bindings to instances of PipelineResources.",
-          "$ref": "#/definitions/v1beta1.TaskResources"
         },
         "results": {
           "description": "Results are values that this Task can output",

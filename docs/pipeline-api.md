@@ -4569,6 +4569,9 @@ reasons that emerge from underlying resources are not included here</p>
 </tr><tr><td><p>&#34;TaskRunImagePullFailed&#34;</p></td>
 <td><p>TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled</p>
 </td>
+</tr><tr><td><p>&#34;TaskRunResultLargerThanAllowedLimit&#34;</p></td>
+<td><p>TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB</p>
+</td>
 </tr><tr><td><p>&#34;Running&#34;</p></td>
 <td><p>TaskRunReasonRunning is the reason set when the TaskRun is running</p>
 </td>
@@ -6347,15 +6350,17 @@ string
 <td>
 <code>kms</code><br/>
 <em>
-<a href="#tekton.dev/v1alpha1.HashAlgorithm">
-HashAlgorithm
-</a>
+string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
 <p>KMS contains the KMS url of the public key
-Supported formats differ based on the KMS system used.</p>
+Supported formats differ based on the KMS system used.
+One example of a KMS url could be:
+gcpkms://projects/[PROJECT]/locations/[LOCATION]&gt;/keyRings/[KEYRING]/cryptoKeys/[KEY]/cryptoKeyVersions/[KEY_VERSION]
+For more examples please refer <a href="https://docs.sigstore.dev/cosign/kms_support">https://docs.sigstore.dev/cosign/kms_support</a>.
+Note that the KMS is not supported yet.</p>
 </td>
 </tr>
 <tr>
@@ -7142,22 +7147,6 @@ TaskSpec
 <table>
 <tr>
 <td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskResources">
-TaskResources
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources is a list input and output resource to run the task
-Resources are represented in TaskRuns as bindings to instances of
-PipelineResources.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>params</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.ParamSpec">
@@ -7545,20 +7534,6 @@ used to populate a UI.</p>
 </tr>
 <tr>
 <td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineDeclaredResource">
-[]PipelineDeclaredResource
-</a>
-</em>
-</td>
-<td>
-<p>Resources declares the names and types of the resources given to the
-Pipeline&rsquo;s tasks as inputs and outputs.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tasks</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.PipelineTask">
@@ -7720,21 +7695,6 @@ PipelineSpec
 </td>
 <td>
 <em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineResourceBinding">
-[]PipelineResourceBinding
-</a>
-</em>
-</td>
-<td>
-<p>Resources is a list of bindings specifying which actual instances of
-PipelineResources to use for the resources the Pipeline has declared
-it needs.</p>
 </td>
 </tr>
 <tr>
@@ -7933,22 +7893,6 @@ TaskSpec
 <table>
 <tr>
 <td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskResources">
-TaskResources
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources is a list input and output resource to run the task
-Resources are represented in TaskRuns as bindings to instances of
-PipelineResources.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>params</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.ParamSpec">
@@ -8067,8 +8011,8 @@ the steps start and end after the steps complete.</p>
 </h3>
 <div>
 <p>TaskRun represents a single execution of a Task. TaskRuns are how the steps
-specified in a Task are executed; they specify the parameters and resources
-used to run the steps in a Task.</p>
+specified in a Task are executed; they specify the parameters used to run
+the steps in a Task.</p>
 </div>
 <table>
 <thead>
@@ -8143,19 +8087,6 @@ TaskRunDebug
 <em>
 <a href="#tekton.dev/v1beta1.Param">
 []Param
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskRunResources">
-TaskRunResources
 </a>
 </em>
 </td>
@@ -8994,7 +8925,7 @@ The names of the <code>params</code> in the <code>Matrix</code> must match the n
 <h3 id="tekton.dev/v1beta1.Param">Param
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.RunSpec">RunSpec</a>, <a href="#tekton.dev/v1beta1.CustomRunSpec">CustomRunSpec</a>, <a href="#tekton.dev/v1beta1.Matrix">Matrix</a>, <a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>, <a href="#tekton.dev/v1beta1.ResolverRef">ResolverRef</a>, <a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>, <a href="#resolution.tekton.dev/v1beta1.ResolutionRequestSpec">ResolutionRequestSpec</a>)
 </p>
 <div>
 <p>Param declares an ParamValues to use for the parameter called name.</p>
@@ -9190,64 +9121,6 @@ map[string]string
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1beta1.PipelineDeclaredResource">PipelineDeclaredResource
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineSpec">PipelineSpec</a>)
-</p>
-<div>
-<p>PipelineDeclaredResource is used by a Pipeline to declare the types of the
-PipelineResources that it will required to run and names which can be used to
-refer to these PipelineResources in PipelineTaskResourceBindings.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name that will be used by the Pipeline to refer to this resource.
-It does not directly correspond to the name of any PipelineResources Task
-inputs or outputs, and it does not correspond to the actual names of the
-PipelineResources that will be bound in the PipelineRun.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>type</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Type is the type of the PipelineResource.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>optional</code><br/>
-<em>
-bool
-</em>
-</td>
-<td>
-<p>Optional declares the resource as optional.
-optional: true - the resource is considered optional
-optional: false - the resource is considered required (default/equivalent of not specifying it)</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.PipelineObject">PipelineObject
 </h3>
 <div>
@@ -9326,7 +9199,7 @@ feature gate is enabled.</p>
 <h3 id="tekton.dev/v1beta1.PipelineResourceBinding">PipelineResourceBinding
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunSpec">PipelineRunSpec</a>, <a href="#tekton.dev/v1beta1.TaskResourceBinding">TaskResourceBinding</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskResourceBinding">TaskResourceBinding</a>)
 </p>
 <div>
 <p>PipelineResourceBinding connects a reference to an instance of a PipelineResource
@@ -9431,9 +9304,6 @@ string
 </table>
 <h3 id="tekton.dev/v1beta1.PipelineResourceResult">PipelineResourceResult
 </h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunStatusFields">TaskRunStatusFields</a>)
-</p>
 <div>
 <p>PipelineResourceResult used to export the image name and digest as json</p>
 </div>
@@ -9702,21 +9572,6 @@ PipelineSpec
 </td>
 <td>
 <em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineResourceBinding">
-[]PipelineResourceBinding
-</a>
-</em>
-</td>
-<td>
-<p>Resources is a list of bindings specifying which actual instances of
-PipelineResources to use for the resources the Pipeline has declared
-it needs.</p>
 </td>
 </tr>
 <tr>
@@ -10138,20 +9993,6 @@ used to populate a UI.</p>
 </tr>
 <tr>
 <td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineDeclaredResource">
-[]PipelineDeclaredResource
-</a>
-</em>
-</td>
-<td>
-<p>Resources declares the names and types of the resources given to the
-Pipeline&rsquo;s tasks as inputs and outputs.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>tasks</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.PipelineTask">
@@ -10322,21 +10163,6 @@ this Task executes. (Used to force a specific ordering in graph execution.)</p>
 </tr>
 <tr>
 <td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineTaskResources">
-PipelineTaskResources
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources declares the resources given to this task as inputs and
-outputs.</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>params</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.Param">
@@ -10396,61 +10222,6 @@ Refer Go&rsquo;s ParseDuration documentation for expected format: <a href="https
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1beta1.PipelineTaskInputResource">PipelineTaskInputResource
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTaskResources">PipelineTaskResources</a>)
-</p>
-<div>
-<p>PipelineTaskInputResource maps the name of a declared PipelineResource input
-dependency in a Task to the resource in the Pipeline&rsquo;s DeclaredPipelineResources
-that should be used. This input may come from a previous task.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name of the PipelineResource as declared by the Task.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>resource</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Resource is the name of the DeclaredPipelineResource to use.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>from</code><br/>
-<em>
-[]string
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>From is the list of PipelineTask names that the resource has to come from.
-(Implies an ordering in the execution graph.)</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.PipelineTaskMetadata">PipelineTaskMetadata
 </h3>
 <p>
@@ -10491,48 +10262,6 @@ map[string]string
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1beta1.PipelineTaskOutputResource">PipelineTaskOutputResource
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTaskResources">PipelineTaskResources</a>)
-</p>
-<div>
-<p>PipelineTaskOutputResource maps the name of a declared PipelineResource output
-dependency in a Task to the resource in the Pipeline&rsquo;s DeclaredPipelineResources
-that should be used.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>name</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Name is the name of the PipelineResource as declared by the Task.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>resource</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Resource is the name of the DeclaredPipelineResource to use.</p>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.PipelineTaskParam">PipelineTaskParam
 </h3>
 <div>
@@ -10564,53 +10293,6 @@ string
 </em>
 </td>
 <td>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tekton.dev/v1beta1.PipelineTaskResources">PipelineTaskResources
-</h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineTask">PipelineTask</a>)
-</p>
-<div>
-<p>PipelineTaskResources allows a Pipeline to declare how its DeclaredPipelineResources
-should be provided to a Task as its inputs and outputs.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>inputs</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineTaskInputResource">
-[]PipelineTaskInputResource
-</a>
-</em>
-</td>
-<td>
-<p>Inputs holds the mapping from the PipelineResources declared in
-DeclaredPipelineResources to the input PipelineResources required by the Task.</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>outputs</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineTaskOutputResource">
-[]PipelineTaskOutputResource
-</a>
-</em>
-</td>
-<td>
-<p>Outputs holds the mapping from the PipelineResources declared in
-DeclaredPipelineResources to the input PipelineResources required by the Task.</p>
 </td>
 </tr>
 </tbody>
@@ -12632,7 +12314,7 @@ ResourceDeclaration
 <h3 id="tekton.dev/v1beta1.TaskResourceBinding">TaskResourceBinding
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs</a>, <a href="#tekton.dev/v1beta1.TaskRunOutputs">TaskRunOutputs</a>, <a href="#tekton.dev/v1beta1.TaskRunResources">TaskRunResources</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunResources">TaskRunResources</a>)
 </p>
 <div>
 <p>TaskResourceBinding points to the PipelineResource that
@@ -12679,9 +12361,6 @@ The optional Path field corresponds to a path on disk at which the Resource can 
 </table>
 <h3 id="tekton.dev/v1beta1.TaskResources">TaskResources
 </h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskSpec">TaskSpec</a>)
-</p>
 <div>
 <p>TaskResources allows a Pipeline to declare how its DeclaredPipelineResources
 should be provided to a Task as its inputs and outputs.</p>
@@ -12829,87 +12508,14 @@ conditions such as one used in spire results verification</p>
 </tr>
 </tbody>
 </table>
-<h3 id="tekton.dev/v1beta1.TaskRunInputs">TaskRunInputs
-</h3>
-<div>
-<p>TaskRunInputs holds the input values that this task was invoked with.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskResourceBinding">
-[]TaskResourceBinding
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>params</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.Param">
-[]Param
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
-<h3 id="tekton.dev/v1beta1.TaskRunOutputs">TaskRunOutputs
-</h3>
-<div>
-<p>TaskRunOutputs holds the output values that this task was invoked with.</p>
-</div>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskResourceBinding">
-[]TaskResourceBinding
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-</tbody>
-</table>
 <h3 id="tekton.dev/v1beta1.TaskRunReason">TaskRunReason
 (<code>string</code> alias)</h3>
 <div>
 <p>TaskRunReason is an enum used to store all TaskRun reason for
-the Succeeded condition that are controlled by the TaskRun itself. Failure
-reasons that emerge from underlying resources are not included here</p>
+the Succeeded condition that are controlled by the TaskRun itself.</p>
 </div>
 <h3 id="tekton.dev/v1beta1.TaskRunResources">TaskRunResources
 </h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.TaskRunSpec">TaskRunSpec</a>)
-</p>
 <div>
 <p>TaskRunResources allows a TaskRun to declare inputs and outputs TaskResourceBinding</p>
 </div>
@@ -13083,19 +12689,6 @@ TaskRunDebug
 <em>
 <a href="#tekton.dev/v1beta1.Param">
 []Param
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-</td>
-</tr>
-<tr>
-<td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskRunResources">
-TaskRunResources
 </a>
 </em>
 </td>
@@ -13439,21 +13032,6 @@ All TaskRunStatus stored in RetriesStatus will have no date within the RetriesSt
 </tr>
 <tr>
 <td>
-<code>resourcesResult</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineResourceResult">
-[]PipelineResourceResult
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Results from Resources built during the TaskRun. currently includes
-the digest of build container images</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>taskResults</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.TaskRunResult">
@@ -13567,22 +13145,6 @@ Kubernetes core/v1.ResourceRequirements
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>
-<code>resources</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.TaskResources">
-TaskResources
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Resources is a list input and output resource to run the task
-Resources are represented in TaskRuns as bindings to instances of
-PipelineResources.</p>
-</td>
-</tr>
 <tr>
 <td>
 <code>params</code><br/>

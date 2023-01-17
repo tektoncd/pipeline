@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
@@ -78,33 +77,6 @@ func (a *ArtifactStorageNone) StorageBasePath(pr *v1beta1.PipelineRun) string {
 // InitializeArtifactStorage will check if there is there is a
 // bucket configured, create a PVC or return nil if no storage is required.
 func InitializeArtifactStorage(ctx context.Context, images pipeline.Images, pr *v1beta1.PipelineRun, ps *v1beta1.PipelineSpec, c kubernetes.Interface) (ArtifactStorageInterface, error) {
-	// Artifact storage is needed under the following condition:
-	//  Any Task in the pipeline contains an Output resource
-	//  AND that Output resource is one of the AllowedOutputResource types.
-
-	needStorage := false
-	// Build an index of resources used in the pipeline that are an AllowedOutputResource
-	possibleOutputs := sets.NewString()
-	for _, r := range ps.Resources {
-		if _, ok := v1beta1.AllowedOutputResources[r.Type]; ok {
-			possibleOutputs.Insert(r.Name)
-		}
-	}
-
-	// Use that index to see if any of these are used as OutputResources.
-	for _, t := range ps.Tasks {
-		if t.Resources != nil {
-			for _, o := range t.Resources.Outputs {
-				if possibleOutputs.Has(o.Resource) {
-					needStorage = true
-				}
-			}
-		}
-	}
-	if !needStorage {
-		return &ArtifactStorageNone{}, nil
-	}
-
 	if needsPVC(ctx) {
 		pvc, err := createPVC(ctx, pr, c)
 		if err != nil {
@@ -113,7 +85,7 @@ func InitializeArtifactStorage(ctx context.Context, images pipeline.Images, pr *
 		return &storage.ArtifactPVC{Name: pr.Name, PersistentVolumeClaim: pvc, ShellImage: images.ShellImage}, nil
 	}
 
-	return newArtifactBucketFromConfig(ctx, images), nil
+	return &ArtifactStorageNone{}, nil
 }
 
 // CleanupArtifactStorage will delete the PipelineRun's artifact storage PVC if it exists. The PVC is created for using

@@ -671,11 +671,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-foo",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:          "digest",
-					Value:        "sha256:12345",
-					ResourceName: "source-image",
-				}},
 				// We don't actually care about the time, just that it's not nil
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
@@ -705,11 +700,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
@@ -744,11 +734,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-banana",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
@@ -886,11 +871,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-pear",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:        "resultNameOne",
-					Value:      "",
-					ResultType: v1beta1.PipelineResourceResultType,
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultNameThree",
 					Type:  v1beta1.ResultsTypeString,
@@ -925,11 +905,6 @@ func TestMakeTaskRunStatus(t *testing.T) {
 					ContainerName: "step-pear",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:        "resultNameOne",
-					Value:      "",
-					ResultType: v1beta1.PipelineResourceResultType,
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultNameThree",
 					Type:  v1beta1.ResultsTypeString,
@@ -1210,11 +1185,6 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
@@ -1257,11 +1227,6 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeString,
@@ -1304,11 +1269,6 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeArray,
@@ -1351,11 +1311,6 @@ func TestMakeTaskRunStatusAlpha(t *testing.T) {
 					ContainerName: "step-bar",
 				}},
 				Sidecars: []v1beta1.SidecarState{},
-				ResourcesResult: []v1beta1.PipelineResourceResult{{
-					Key:          "digest",
-					Value:        "sha256:1234",
-					ResourceName: "source-image",
-				}},
 				TaskRunResults: []v1beta1.TaskRunResult{{
 					Name:  "resultName",
 					Type:  v1beta1.ResultsTypeObject,

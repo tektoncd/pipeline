@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
-	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"k8s.io/apimachinery/pkg/util/sets"
 
@@ -205,27 +204,6 @@ func findMissingKeys(neededKeys, providedKeys map[string][]string) map[string][]
 	}
 
 	return missings
-}
-
-// ValidateResolvedTaskResources validates task inputs, params and output matches taskrun
-func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, matrix *v1beta1.Matrix, rtr *resources.ResolvedTaskResources) error {
-	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix); err != nil {
-		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
-	}
-	inputs := []v1beta1.TaskResource{}
-	outputs := []v1beta1.TaskResource{}
-	if rtr.TaskSpec.Resources != nil {
-		inputs = rtr.TaskSpec.Resources.Inputs
-		outputs = rtr.TaskSpec.Resources.Outputs
-	}
-	if err := validateResources(inputs, rtr.Inputs); err != nil {
-		return fmt.Errorf("invalid input resources for task %s: %w", rtr.TaskName, err)
-	}
-	if err := validateResources(outputs, rtr.Outputs); err != nil {
-		return fmt.Errorf("invalid output resources for task %s: %w", rtr.TaskName, err)
-	}
-
-	return nil
 }
 
 func validateTaskSpecRequestResources(taskSpec *v1beta1.TaskSpec) error {

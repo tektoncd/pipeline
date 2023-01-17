@@ -175,10 +175,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 		}
 
 		// populate task run CRD with results from sidecar logs
-		taskResults, pipelineResourceResults, _ := filterResultsAndResources(sidecarLogResults, specResults)
+		taskResults, _, _ := filterResultsAndResources(sidecarLogResults, specResults)
 		if tr.IsSuccessful() {
 			trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
-			trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
 		}
 	}
 	// Continue with extraction of termination messages
@@ -202,10 +201,9 @@ func setTaskRunStatusBasedOnStepStatus(ctx context.Context, logger *zap.SugaredL
 					merr = multierror.Append(merr, err)
 				}
 
-				taskResults, pipelineResourceResults, filteredResults := filterResultsAndResources(results, specResults)
+				taskResults, _, filteredResults := filterResultsAndResources(results, specResults)
 				if tr.IsSuccessful() {
 					trs.TaskRunResults = append(trs.TaskRunResults, taskResults...)
-					trs.ResourcesResult = append(trs.ResourcesResult, pipelineResourceResults...)
 				}
 				msg, err = createMessageFromResults(filteredResults)
 				if err != nil {

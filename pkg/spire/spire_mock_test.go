@@ -563,7 +563,6 @@ func testTaskRuns() []*v1beta1.TaskRun {
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
 				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 			Status: v1beta1.TaskRunStatus{
@@ -582,7 +581,6 @@ func testTaskRuns() []*v1beta1.TaskRun {
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
 				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 			Status: v1beta1.TaskRunStatus{
@@ -591,35 +589,6 @@ func testTaskRuns() []*v1beta1.TaskRun {
 						apis.Condition{
 							Type: apis.ConditionSucceeded,
 						},
-					},
-				},
-				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-					Steps: []v1beta1.StepState{{
-						ContainerState: corev1.ContainerState{
-							Terminated: &corev1.ContainerStateTerminated{ExitCode: int32(0)},
-						},
-					}},
-				},
-			},
-		},
-		{
-			ObjectMeta: objectMeta("taskrun-example-with-objmeta-annotations", "foo"),
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
-				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
-				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
-			},
-			Status: v1beta1.TaskRunStatus{
-				Status: duckv1.Status{
-					Conditions: duckv1.Conditions{
-						apis.Condition{
-							Type: apis.ConditionSucceeded,
-						},
-					},
-					Annotations: map[string]string{
-						"annotation1": "a1value",
-						"annotation2": "a2value",
 					},
 				},
 				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
