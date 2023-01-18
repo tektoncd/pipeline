@@ -1451,6 +1451,260 @@ func TestApplyParameters(t *testing.T) {
 			}},
 		},
 	},
+		{
+			name: "tasks with the same parameter name but referencing different values",
+			original: v1beta1.PipelineSpec{
+				Params: []v1beta1.ParamSpec{
+					{
+						Name: "param1",
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "a",
+						},
+						Type: v1beta1.ParamTypeString,
+					},
+				},
+				Tasks: []v1beta1.PipelineTask{
+					{
+						Name: "previous-task-with-result",
+					},
+					{
+						Name: "print-msg",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Params: []v1beta1.ParamSpec{
+									{
+										Name: "param1",
+										Type: v1beta1.ParamTypeString,
+									},
+								},
+							},
+						},
+						Params: []v1beta1.Param{
+							{
+								Name: "param1",
+								Value: v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "$(tasks.previous-task-with-result.results.Output)",
+								},
+							},
+						},
+					},
+					{
+						Name: "print-msg-2",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Params: []v1beta1.ParamSpec{
+									{
+										Name: "param1",
+										Type: v1beta1.ParamTypeString,
+									},
+								},
+							},
+						},
+						Params: []v1beta1.Param{
+							{
+								Name: "param1",
+								Value: v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "$(params.param1)",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: v1beta1.PipelineSpec{
+				Params: []v1beta1.ParamSpec{
+					{
+						Name: "param1",
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "a",
+						},
+						Type: v1beta1.ParamTypeString,
+					},
+				},
+				Tasks: []v1beta1.PipelineTask{
+					{
+						Name: "previous-task-with-result",
+					},
+					{
+						Name: "print-msg",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Params: []v1beta1.ParamSpec{
+									{
+										Name: "param1",
+										Type: v1beta1.ParamTypeString,
+									},
+								},
+							},
+						},
+						Params: []v1beta1.Param{
+							{
+								Name: "param1",
+								Value: v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "$(tasks.previous-task-with-result.results.Output)",
+								},
+							},
+						},
+					},
+					{
+						Name: "print-msg-2",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Params: []v1beta1.ParamSpec{
+									{
+										Name: "param1",
+										Type: v1beta1.ParamTypeString,
+									},
+								},
+							},
+						},
+						Params: []v1beta1.Param{
+							{
+								Name: "param1",
+								Value: v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "a",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "finally tasks with the same parameter name but referencing different values",
+			original: v1beta1.PipelineSpec{
+				Params: []v1beta1.ParamSpec{
+					{
+						Name: "param1",
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "a",
+						},
+						Type: v1beta1.ParamTypeString,
+					},
+				},
+				Tasks: []v1beta1.PipelineTask{
+					{
+						Name: "previous-task-with-result",
+					},
+				},
+				Finally: []v1beta1.PipelineTask{
+					{
+						Name: "print-msg",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Params: []v1beta1.ParamSpec{
+									{
+										Name: "param1",
+										Type: v1beta1.ParamTypeString,
+									},
+								},
+							},
+						},
+						Params: []v1beta1.Param{
+							{
+								Name: "param1",
+								Value: v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "$(tasks.previous-task-with-result.results.Output)",
+								},
+							},
+						},
+					},
+					{
+						Name: "print-msg-2",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Params: []v1beta1.ParamSpec{
+									{
+										Name: "param1",
+										Type: v1beta1.ParamTypeString,
+									},
+								},
+							},
+						},
+						Params: []v1beta1.Param{
+							{
+								Name: "param1",
+								Value: v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "$(params.param1)",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: v1beta1.PipelineSpec{
+				Params: []v1beta1.ParamSpec{
+					{
+						Name: "param1",
+						Default: &v1beta1.ParamValue{
+							Type:      v1beta1.ParamTypeString,
+							StringVal: "a",
+						},
+						Type: v1beta1.ParamTypeString,
+					},
+				},
+				Tasks: []v1beta1.PipelineTask{
+					{
+						Name: "previous-task-with-result",
+					},
+				},
+				Finally: []v1beta1.PipelineTask{
+					{
+						Name: "print-msg",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Params: []v1beta1.ParamSpec{
+									{
+										Name: "param1",
+										Type: v1beta1.ParamTypeString,
+									},
+								},
+							},
+						},
+						Params: []v1beta1.Param{
+							{
+								Name: "param1",
+								Value: v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "$(tasks.previous-task-with-result.results.Output)",
+								},
+							},
+						},
+					},
+					{
+						Name: "print-msg-2",
+						TaskSpec: &v1beta1.EmbeddedTask{
+							TaskSpec: v1beta1.TaskSpec{
+								Params: []v1beta1.ParamSpec{
+									{
+										Name: "param1",
+										Type: v1beta1.ParamTypeString,
+									},
+								},
+							},
+						},
+						Params: []v1beta1.Param{
+							{
+								Name: "param1",
+								Value: v1beta1.ParamValue{
+									Type:      v1beta1.ParamTypeString,
+									StringVal: "a",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	} {
 		tt := tt // capture range variable
 		ctx := context.Background()
