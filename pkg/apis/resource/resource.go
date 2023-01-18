@@ -22,7 +22,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/cluster"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/git"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
@@ -45,8 +44,6 @@ func FromType(name string, r *resourcev1alpha1.PipelineResource, images pipeline
 		return storage.NewResource(name, images, r)
 	case resourcev1alpha1.PipelineResourceTypePullRequest:
 		return pullrequest.NewResource(name, images.PRImage, r)
-	case resourcev1alpha1.PipelineResourceTypeCloudEvent:
-		return cloudevent.NewResource(name, r)
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

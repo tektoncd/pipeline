@@ -51,7 +51,6 @@ For example:
     -   [Cluster Resource](#cluster-resource)
     -   [Storage Resource](#storage-resource)
         -   [GCS Storage Resource](#gcs-storage-resource)
-    -   [Cloud Event Resource](#cloud-event-resource)
 -   [Why Aren't PipelineResources in Beta?](#why-aren-t-pipelineresources-in-beta)
 
 ## Syntax
@@ -924,70 +923,6 @@ service account.
     ```
 
 --------------------------------------------------------------------------------
-
-### Cloud Event Resource
-
-The `cloudevent` resource represents a
-[cloud event](https://github.com/cloudevents/spec) that is sent to a target
-`URI` upon completion of a `TaskRun`. The `cloudevent` resource sends Tekton
-specific events; the body of the event includes the entire `TaskRun` spec plus
-status; the types of events defined for now are:
-
--   dev.tekton.event.task.unknown
--   dev.tekton.event.task.successful
--   dev.tekton.event.task.failed
-
-`cloudevent` resources are useful to notify a third party upon the completion
-and status of a `TaskRun`. In combinations with the
-[Tekton triggers](https://github.com/tektoncd/triggers) project they can be used
-to link `Task/PipelineRuns` asynchronously.
-
-To create a CloudEvent resource using the `PipelineResource` CRD:
-
-```yaml
-apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-metadata:
-  name: event-to-sink
-spec:
-  type: cloudEvent
-  params:
-    - name: targetURI
-      value: http://sink:8080
-```
-
-The content of an event is for example:
-
-```yaml
-Context Attributes,
-  SpecVersion: 0.2
-  Type: dev.tekton.event.task.successful
-  Source: /apis/tekton.dev/v1beta1/namespaces/default/taskruns/pipeline-run-api-16aa55-source-to-image-task-rpndl
-  ID: pipeline-run-api-16aa55-source-to-image-task-rpndl
-  Time: 2019-07-04T11:03:53.058694712Z
-  ContentType: application/json
-Transport Context,
-  URI: /
-  Host: my-sink.default.my-cluster.containers.appdomain.cloud
-  Method: POST
-Data,
-  {
-    "taskRun": {
-      "metadata": {...}
-      "spec": {
-        "inputs": {...}
-        "outputs": {...}
-        "serviceAccount": "default",
-        "taskRef": {
-          "name": "source-to-image",
-          "kind": "Task"
-        },
-        "timeout": "1h0m0s"
-      },
-      "status": {...}
-    }
-  }
-```
 
 ## Why Aren't PipelineResources in Beta?
 
