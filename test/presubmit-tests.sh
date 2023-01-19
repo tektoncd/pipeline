@@ -82,6 +82,10 @@ function post_build_tests() {
   ko_resolve
 }
 
+function unit_tests() {
+  go test -race -v $(go list ./... | grep -v third_party/)
+}
+
 # We use the default build, unit and integration test runners.
 
 main $@

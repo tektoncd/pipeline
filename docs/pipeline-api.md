@@ -4569,6 +4569,9 @@ reasons that emerge from underlying resources are not included here</p>
 </tr><tr><td><p>&#34;TaskRunImagePullFailed&#34;</p></td>
 <td><p>TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled</p>
 </td>
+</tr><tr><td><p>&#34;TaskRunResultLargerThanAllowedLimit&#34;</p></td>
+<td><p>TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB</p>
+</td>
 </tr><tr><td><p>&#34;Running&#34;</p></td>
 <td><p>TaskRunReasonRunning is the reason set when the TaskRun is running</p>
 </td>
@@ -6347,15 +6350,17 @@ string
 <td>
 <code>kms</code><br/>
 <em>
-<a href="#tekton.dev/v1alpha1.HashAlgorithm">
-HashAlgorithm
-</a>
+string
 </em>
 </td>
 <td>
 <em>(Optional)</em>
 <p>KMS contains the KMS url of the public key
-Supported formats differ based on the KMS system used.</p>
+Supported formats differ based on the KMS system used.
+One example of a KMS url could be:
+gcpkms://projects/[PROJECT]/locations/[LOCATION]&gt;/keyRings/[KEYRING]/cryptoKeys/[KEY]/cryptoKeyVersions/[KEY_VERSION]
+For more examples please refer <a href="https://docs.sigstore.dev/cosign/kms_support">https://docs.sigstore.dev/cosign/kms_support</a>.
+Note that the KMS is not supported yet.</p>
 </td>
 </tr>
 <tr>
