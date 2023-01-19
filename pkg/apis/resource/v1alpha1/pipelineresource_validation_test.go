@@ -110,20 +110,6 @@ func TestResourceValidation_Invalid(t *testing.T) {
 				},
 			},
 			want: apis.ErrMissingField("spec.type"),
-		}, {
-			name: "pull request with invalid field name in secrets",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypePullRequest,
-					SecretParams: []v1alpha1.SecretParam{{
-						FieldName: "INVALID_FIELD_NAME",
-					}},
-				},
-			},
-			want: apis.ErrInvalidValue("invalid field name \"INVALID_FIELD_NAME\" in secret parameter. Expected \"authToken\"", "spec.secrets.fieldName"),
 		},
 	}
 	for _, tt := range tests {
@@ -131,32 +117,6 @@ func TestResourceValidation_Invalid(t *testing.T) {
 			err := tt.res.Validate(context.Background())
 			if d := cmp.Diff(tt.want.Error(), err.Error()); d != "" {
 				t.Errorf("Didn't get expected error for %s %s", tt.name, diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
-func TestResourceValidation_Valid(t *testing.T) {
-	tests := []struct {
-		name string
-		res  *v1alpha1.PipelineResource
-	}{
-		{
-			name: "specify pullrequest with no secrets",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypePullRequest,
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.res.Validate(context.Background()); err != nil {
-				t.Errorf("Unexpected PipelineRun.Validate() error = %v", err)
 			}
 		})
 	}

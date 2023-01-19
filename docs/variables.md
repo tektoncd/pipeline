@@ -99,16 +99,6 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `httpsProxy` | The value of the resource's `httpsProxy` parameter. |
 | `noProxy` | The value of the resource's `noProxy` parameter. |
 
-#### Variables for the `PullRequest` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"pullRequest"`.|
-| `url` | The URL of the pull request. |
-| `provider` | Provider value, either `"github"` or `"gitlab"`. |
-| `insecure-skip-tls-verify` | The value of the resource's `insecure-skip-tls-verify` parameter, either `"true"` or `"false"`. |
-
 #### Variables for the `Image` type
 
 | Variable | Description |
