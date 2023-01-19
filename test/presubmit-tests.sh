@@ -83,7 +83,33 @@ function post_build_tests() {
 }
 
 function unit_tests() {
-  go test -race -v $(go list ./... | grep -v third_party/)
+  # Run tests in verbose mode to capture details.
+  # go doesn't like repeating -v, so remove if passed.
+  local args=" $@ "
+  local go_test="go test -race -v $(go list ./... | grep -v third_party/)"
+  # Just run regular go tests if not on Prow.
+  echo "Running tests with '${go_test}'"
+  local report=$(mktemp)
+  ${go_test} | tee ${report}
+  local failed=( ${PIPESTATUS[@]} )
+  [[ ${failed[0]} -eq 0 ]] && failed=${failed[1]} || failed=${failed[0]}
+  echo "Finished run, return code is ${failed}"
+  # Install go-junit-report if necessary.
+  run_go_tool github.com/jstemmer/go-junit-report go-junit-report --help > /dev/null 2>&1
+  local xml="$(mktemp ${ARTIFACTS}/junit_XXXXXXXX).xml"
+  cat "${report}" \
+      | go-junit-report \
+      | sed -e "s#\"github.com/tektoncd/${REPO_NAME}/#\"#g" \
+      > ${xml}
+  echo "XML report written to ${xml}"
+  if (( ! IS_PROW )); then
+    # Keep the suffix, so files are related.
+    local logfile=${xml/junit_/go_test_}
+    logfile=${logfile/.xml/.log}
+    cp ${report} ${logfile}
+    echo "Test log written to ${logfile}"
+  fi
+  return ${failed}
 }
 
 # We use the default build, unit and integration test runners.
