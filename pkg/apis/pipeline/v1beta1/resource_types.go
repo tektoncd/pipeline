@@ -45,9 +45,6 @@ const (
 
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
 	PipelineResourceTypeImage PipelineResourceType = resource.PipelineResourceTypeImage
-
-	// PipelineResourceTypePullRequest indicates that this source is a SCM Pull Request.
-	PipelineResourceTypePullRequest PipelineResourceType = resource.PipelineResourceTypePullRequest
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.

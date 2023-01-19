@@ -24,7 +24,6 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/git"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/pullrequest"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 )
 
@@ -39,8 +38,6 @@ func FromType(name string, r *resourcev1alpha1.PipelineResource, images pipeline
 		return image.NewResource(name, r)
 	case resourcev1alpha1.PipelineResourceTypeStorage:
 		return storage.NewResource(name, images, r)
-	case resourcev1alpha1.PipelineResourceTypePullRequest:
-		return pullrequest.NewResource(name, images.PRImage, r)
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

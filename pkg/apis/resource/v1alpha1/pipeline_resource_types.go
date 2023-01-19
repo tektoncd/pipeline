@@ -43,15 +43,12 @@ const (
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
 	PipelineResourceTypeImage PipelineResourceType = "image"
 
-	// PipelineResourceTypePullRequest indicates that this source is a SCM Pull Request.
-	PipelineResourceTypePullRequest PipelineResourceType = "pullRequest"
-
 	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
 	PipelineResourceTypeGCS PipelineResourceType = "gcs"
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage, PipelineResourceTypePullRequest}
+var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
