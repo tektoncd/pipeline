@@ -1,3 +1,4 @@
 ignore:
 - "pkg/apis/pipeline/v1alpha1/zz_generated.deepcopy.go"
 - "pkg/apis/pipeline/v1beta1/zz_generated.deepcopy.go"
+- "third_party"
