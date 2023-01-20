@@ -115,9 +115,6 @@ func TestInitTracing(t *testing.T) {
 					t.Errorf("invalid trace Id propagated, %s", parentID)
 				}
 			}
-
 		})
-
 	}
-
 }
