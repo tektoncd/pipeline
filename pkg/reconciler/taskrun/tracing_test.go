@@ -120,7 +120,5 @@ func TestInitTracing(t *testing.T) {
 				}
 			}
 		})
-
 	}
-
 }

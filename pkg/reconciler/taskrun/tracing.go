@@ -35,7 +35,7 @@ const (
 	SpanContextAnnotation = "tekton.dev/taskrunSpanContext"
 )
 
-// initialize tracing by creating the root span and injecting the spanContext
+// initialize tracing by creating the root span and injecting the
 // spanContext is propogated through annotations in the CR
 func initTracing(ctx context.Context, tracerProvider trace.TracerProvider, tr *v1beta1.TaskRun) context.Context {
 	logger := logging.FromContext(ctx)
