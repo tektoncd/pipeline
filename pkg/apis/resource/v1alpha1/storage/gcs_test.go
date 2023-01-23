@@ -35,7 +35,6 @@ var images = pipeline.Images{
 	EntrypointImage:          "override-with-entrypoint:latest",
 	NopImage:                 "override-with-nop:latest",
 	GitImage:                 "override-with-git:latest",
-	KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 	ShellImage:               "busybox",
 	GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	PRImage:                  "override-with-pr:latest",
