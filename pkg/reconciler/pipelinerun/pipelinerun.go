@@ -1354,9 +1354,6 @@ func updatePipelineRunStatusFromChildObjects(ctx context.Context, logger *zap.Su
 	return validateChildObjectsInPipelineRunStatus(ctx, pr.Status)
 }
 
-// TODO: https://github.com/tektoncd/pipeline/issues/5999 integration tests for changing
-// feature flags could help prevent validation errors when the feature-flag is being switched.
-// In such case, the error could keep the pipelineRun run indefinitely.
 func validateChildObjectsInPipelineRunStatus(ctx context.Context, prs v1beta1.PipelineRunStatus) error {
 	cfg := config.FromContextOrDefaults(ctx)
 
