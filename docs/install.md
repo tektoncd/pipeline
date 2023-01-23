@@ -420,7 +420,12 @@ file lists the keys you can customize along with their default values.
 ### Customizing the Pipelines Controller behavior
 
 To customize the behavior of the Pipelines Controller, modify the ConfigMap `feature-flags` via
-`kubectl edit configmap feature-flags -n tekton-pipelines`. The flags in this ConfigMap are as follows:
+`kubectl edit configmap feature-flags -n tekton-pipelines`.
+
+**Note:** Changing feature flags may result in undefined behavior for TaskRuns and PipelineRuns
+that are running while the change occurs.
+
+The flags in this ConfigMap are as follows:
 
 - `disable-affinity-assistant` - set this flag to `true` to disable the [Affinity Assistant](./workspaces.md#specifying-workspace-order-in-a-pipeline-and-affinity-assistants)
   that is used to provide Node Affinity for `TaskRun` pods that share workspace volume.
