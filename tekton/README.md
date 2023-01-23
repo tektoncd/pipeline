@@ -208,3 +208,11 @@ The image which we use for this is built from
 
 _[go-containerregistry#383](https://github.com/google/go-containerregistry/issues/383)
 is about publishing a `ko` image, which hopefully we'll be able to move it._
+
+### Removing images
+
+To remove an image, the following dependencies are required to be changed:
+- Migrate the ingetration test cases depending on the image with Tasks following the [migration guide](https://github.com/tektoncd/pipeline/blob/main/docs/pipelineresources.md)
+- Remove the dependencies from `publish.yaml`
+- Update the release note for notice to migrate off the image
+- For images that tekton catalog depends on, please consider extract/remove them accordingly as the images would not be able to updat later.
