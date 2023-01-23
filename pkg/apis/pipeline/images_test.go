@@ -12,7 +12,6 @@ func TestValidate(t *testing.T) {
 		SidecarLogResultsImage:   "set",
 		NopImage:                 "set",
 		GitImage:                 "set",
-		KubeconfigWriterImage:    "set",
 		ShellImage:               "set",
 		ShellImageWin:            "set",
 		GsutilImage:              "set",
@@ -29,7 +28,6 @@ func TestValidate(t *testing.T) {
 		SidecarLogResultsImage:   "set",
 		NopImage:                 "set",
 		GitImage:                 "", // unset!
-		KubeconfigWriterImage:    "set",
 		ShellImage:               "", // unset!
 		ShellImageWin:            "set",
 		GsutilImage:              "set",
