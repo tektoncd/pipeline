@@ -12,7 +12,7 @@ This Resolver responds to type `git`.
 | `repo`       | The repository to find the resource in. Either `url`, or `repo` (with `org`) must be specified, but not both.          | `pipeline`, `test-infra`                                    |
 | `org`        | The organization to find the repository in. Default can be set in [configuration](#configuration).                     | `tektoncd`, `kubernetes`                                    |
 | `revision`   | Git revision to checkout a file from. This can be commit SHA, branch or tag.                                           | `aeb957601cf41c012be462827053a21a420befca` `main` `v0.38.2` |
-| `pathInRepo` | Where to find the file in the repo.                                                                                    | `/task/golang-build/0.3/golang-build.yaml`                  |
+| `pathInRepo` | Where to find the file in the repo.                                                                                    | `task/golang-build/0.3/golang-build.yaml`                  |
 
 ## Requirements
 
@@ -46,6 +46,8 @@ for the name, namespace and defaults that the resolver ships with.
 The `git` resolver has two modes: cloning a repository anonymously, or fetching individual files via an SCM provider's API using an API token.
 
 ### Anonymous Cloning
+
+Anonymous cloning is supported only for public repositories. This mode clones the full git repo.
 
 #### Task Resolution
 
@@ -89,6 +91,16 @@ spec:
 ```
 
 ### Authenticated API
+
+The authenticated API supports private repositories, and fetches only the file at the specified path rather than doing a full clone.
+
+When using the authenticated API, [providers with implementations in `go-scm`](https://github.com/jenkins-x/go-scm/tree/main/scm/driver) can be used.
+Note that not all `go-scm` implementations have been tested with the `git` resolver, but it is known to work with:
+  * github.com and GitHub Enterprise
+  * gitlab.com and self-hosted Gitlab
+  * Gitea
+  * BitBucket Server
+  * BitBucket Cloud
 
 #### Task Resolution
 
@@ -134,17 +146,6 @@ spec:
   - name: name
     value: Ranni
 ```
-
-## What's Supported?
-
-- When using anonymous cloning, only public repositories can be used.
-- When using the authenticated API, [providers with implementations in `go-scm`](https://github.com/jenkins-x/go-scm/tree/main/scm/driver) can be used.
-  Note that not all `go-scm` implementations have been tested with the `git` resolver, but it is known to work with:
-  * github.com and GitHub Enterprise
-  * gitlab.com and self-hosted Gitlab
-  * Gitea
-  * BitBucket Server
-  * BitBucket Cloud
 
 ## `ResolutionRequest` Status
 `ResolutionRequest.Status.Source` field captures the source where the remote resource came from. It includes the 3 subfields: `url`, `digest` and `entrypoint`.
