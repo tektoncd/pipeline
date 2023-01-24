@@ -56,6 +56,8 @@ func getPathFilter(t *testing.T) (pathFilter, error) {
 		f = stablePathFilter
 	case "alpha":
 		f = alphaPathFilter
+	case "beta":
+		f = betaPathFilter
 	}
 	if f == nil {
 		return nil, fmt.Errorf("unable to create path filter from feature gate %q", enabledFeatureGate)
@@ -90,11 +92,17 @@ func getFeatureGate(namespace string) (string, error) {
 // stablePathFilter returns true for any example that should be allowed to run
 // when "enable-api-fields" is "stable".
 func stablePathFilter(p string) bool {
-	return !(strings.Contains(p, "/alpha/") || strings.Contains(p, "/beta/"))
+	return !strings.Contains(p, "/alpha/") && !strings.Contains(p, "/beta/")
 }
 
 // alphaPathFilter returns true for any example that should be allowed to run
 // when "enable-api-fields" is "alpha".
 func alphaPathFilter(p string) bool {
-	return strings.Contains(p, "/alpha/") || strings.Contains(p, "/beta/") || stablePathFilter(p)
+	return true
+}
+
+// betaPathFilter returns true for any example that should be allowed to run
+// when "enable-api-fields" is "beta".
+func betaPathFilter(p string) bool {
+	return !strings.Contains(p, "/alpha/")
 }
