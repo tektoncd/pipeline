@@ -936,14 +936,20 @@ Tasks can emit [`Results`](tasks.md#emitting-results) when they execute. A Pipel
 Sharing `Results` between `Tasks` in a `Pipeline` happens via
 [variable substitution](variables.md#variables-available-in-a-pipeline) - one `Task` emits
 a `Result` and another receives it as a `Parameter` with a variable such as
-`$(tasks.<task-name>.results.<result-name>)`. Array `Results` is supported as alpha feature and
-can be referred as `$(tasks.<task-name>.results.<result-name>[*])`. Array indexing can be rererred
-as `$(tasks.<task-name>.results.<result-name>[i])` where `i` is the index.
-Object `Results` is supported as alpha feature and can be referred as
-`$(tasks.<task-name>.results.<result-name>[*])`, object elements can be referred as
-`$(tasks.<task-name>.results.<result-name>.key)`.
+`$(tasks.<task-name>.results.<result-name>)`. Pipeline support two new types of
+results and parameters: array `[]string` and object `map[string]string`.
+Both are alpha features and can be enabled by setting `enable-api-fields` to `alpha`.
 
-**Note:** Whole Array and Object `Results` cannot be referred in `script` and `args`.
+| Result Type | Parameter Type | Specification                                    | `enable-api-fields` |
+|-------------|----------------|--------------------------------------------------|-------------------|
+| string      | string         | `$(tasks.<task-name>.results.<result-name>)`     | stable            |
+| array       | array          | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha             |
+| array       | string         | `$(tasks.<task-name>.results.<result-name>[i])`  | alpha             |
+| object      | object         | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha             |
+| object      | string         | `$(tasks.<task-name>.results.<result-name>.key)` | alpha             |
+
+**Note:** Whole Array and Object `Results` (using star notation) cannot be referred in `script` and `args`.
+
 **Note:** `Matrix` does not support `object` and `array` results.
 
 When one `Task` receives the `Results` of another, there is a dependency created between those
