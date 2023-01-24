@@ -415,7 +415,7 @@ spec:
           echo "Hello World!"
     workspaces:
     - name: output
-  timeout: 20s
+  timeout: 60s
   workspaces:
     - name: output
       emptyDir: {}
@@ -539,7 +539,7 @@ spec:
     value: 1
     type: string
   serviceAccountName: default
-  timeout: 20s
+  timeout: 60s
   podTemplate:
     securityContext:
       fsGroup: 65532
