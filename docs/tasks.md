@@ -742,8 +742,9 @@ results have a wide variety of potential uses. To highlight just a few examples 
 cloned commit SHA as a result, the [`generate-build-id` Task](https://github.com/tektoncd/catalog/blob/main/task/generate-build-id/0.1/generate-build-id.yaml)
 emits a randomized ID as a result, and the [`kaniko` Task](https://github.com/tektoncd/catalog/tree/main/task/kaniko/0.1)
 emits a container image digest as a result. In each case these results convey information for users to see when
-looking at their TaskRuns and can also be used in a Pipeline to pass data along from one Task to the next. `Task` results are best suited for holding small amounts of data,
-such as commit SHAs, branch names, ephemeral namespaces, and so on.
+looking at their TaskRuns and can also be used in a Pipeline to pass data along from one Task to the next.
+`Task` results are best suited for holding small amounts of data, such as commit SHAs, branch names,
+ephemeral namespaces, and so on.
 
 To define a `Task's` results, use the `results` field.
 In the example below, the `Task` specifies two files in the `results` field:
@@ -776,10 +777,11 @@ spec:
         date | tee $(results.current-date-human-readable.path)
 ```
 
-In this example, [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-task)**
+In this example, [`$(results.name.path)`](https://github.com/tektoncd/pipeline/blob/main/docs/variables.md#variables-available-in-a-task)
 is replaced with the path where Tekton will store the Task's results.
 
 When this Task is executed in a TaskRun, the results will appear in the TaskRun's status:
+
 ```yaml
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
@@ -794,16 +796,33 @@ status:
       value: |
         1579722445
 ```
+
 Tekton does not perform any processing on the contents of results; they are emitted
 verbatim from your Task including any leading or trailing whitespace characters. Make sure to write only the
 precise string you want returned from your `Task` into the result files that your `Task` creates.
 
-The stored results can be used [at the `Task` level](./pipelines.md#configuring-execution-results-at-the-task-level)
-or [at the `Pipeline` level](./pipelines.md#configuring-execution-results-at-the-pipeline-level).
+The stored results can be used [at the `Task` level](./pipelines.md#passing-one-tasks-results-into-the-parameters-or-when-expressions-of-another)
+or [at the `Pipeline` level](./pipelines.md#emitting-results-from-a-pipeline).
 
-**Note:**  The result type currently supports `string` and `array` (`array` is alpha gated feature).
-`array` is currently supported for Task results, not Pipeline results.
-You can write `array` results via JSON escaped format, for example:
+#### Emitting Array `Results`
+
+Tekton Task also supports defining a result of type `array` and `object` in addition to `string`.
+Emitting a task result of type `array` is an `alpha` feature implemented based on the
+[TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md#emitting-array-results).
+You can initialize `array` results from a `task` using JSON escaped string, for example, to assign the following
+list of animals to an array result:
+
+```
+["cat", "dog", "squirrel"]
+```
+
+You will have to initialize the pod termination message as escaped JSON:
+
+```
+[\"cat\", \"dog\", \"squirrel\"]
+```
+
+An example of a task definition producing an array result with such greetings `["hello", "world"]`:
 
 ```yaml
 kind: Task
@@ -825,6 +844,53 @@ spec:
         #!/usr/bin/env bash
         echo -n "[\"hello\",\"world\"]" | tee $(results.array-results.path)
 ```
+
+**Note** that the opening and closing square brackets are mandatory along with an escaped JSON.
+
+Now, similar to the Go zero-valued slices, an array result is considered as uninitialized (i.e. `nil`) if it's set to an empty
+array i.e. `[]`. For example, `echo -n "[]" |  tee $(results.result.path);` is equivalent to `result := []string{}`.
+The result initialized in this way will have zero length. And trying to access this array with a star notation i.e.
+`$(tasks.write-array-results.results.result[*])` or an element of such array i.e. `$(tasks.write-array-results.results.result[0])`
+results in `InvalidTaskResultReference` with `index out of range`.
+
+Depending on your use case, you might have to initialize a result array to the desired length just like using `make()` function in Go.
+`make()` function is used to allocate an array and returns a slice of the specified length i.e.
+`result := make([]string, 5)` results in `["", "", "", "", ""]`, similarly set the array result to following JSON escaped
+expression to allocate an array of size 2:
+
+```
+echo -n "[\"\", \"\"]" | tee $(results.array-results.path) # an array of size 2 with empty string
+echo -n "[\"first-array-element\", \"\"]" | tee $(results.array-results.path) # an array of size 2 with only first element initialized
+echo -n "[\"\", \"second-array-element\"]" | tee $(results.array-results.path) # an array of size 2 with only second element initialized
+echo -n "[\"first-array-element\", \"second-array-element\"]" | tee $(results.array-results.path) # an array of size 2 with both elements initialized
+```
+
+This is also important to maintain the order of the elements in an array. The order in which the task result was
+initialized is the order in which the result is consumed by the dependent tasks. For example, a task is producing
+two array results `images` and `configmaps`. The pipeline author can implement deployment by indexing into each array result:
+
+```yaml
+    - name: deploy-stage-1
+      taskRef:
+        name: deploy
+      params:
+        - name: image
+          value: $(tasks.setup.results.images[0])
+        - name: configmap
+          value: $(tasks.setup.results.configmap[0])
+      ...
+    - name: deploy-stage-2
+      taskRef:
+        name: deploy
+      params:
+        - name: image
+          value: $(tasks.setup.results.images[1])
+        - name: configmap
+          value: $(tasks.setup.results.configmap[1])
+```
+
+As a task author, make sure the task array results are initialized accordingly or set to a zero value in case of no
+`image` or `configmap` to maintain the order.
 
 **Note**: Tekton uses [termination
 messages](https://kubernetes.io/docs/tasks/debug/debug-application/determine-reason-pod-failure/#writing-and-reading-a-termination-message). As
