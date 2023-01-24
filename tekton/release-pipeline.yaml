@@ -107,7 +107,14 @@ spec:
     - name: publish-images
       runAfter: [unit-tests, build]
       taskRef:
-        name: publish-release
+        resolver: git
+        params:
+        - name: url
+          value: https://github.com/tektoncd/pipeline.git
+        - name: revision
+          value: $(params.gitRevision)
+        - name: pathInRepo
+          value: tekton/publish.yaml
       params:
         - name: package
           value: $(params.package)
