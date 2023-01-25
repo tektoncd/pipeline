@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 )
@@ -397,20 +396,14 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-// TODO: Delete when we switch its usage to parse.MustParseCustomRun once that change is in a release.
 // MustParseCustomRun takes YAML and parses it into a *pipelinev1beta1.CustomRun
 func MustParseCustomRun(t *testing.T, yaml string) *pipelinev1beta1.CustomRun {
 	var r pipelinev1beta1.CustomRun
 	yaml = `apiVersion: tekton.dev/v1beta1
 kind: CustomRun
 ` + yaml
-	mustParseYAML(t, yaml, &r)
-	return &r
-}
-
-// TODO: Delete once we switch to parse.MustParseCustomRun
-func mustParseYAML(t *testing.T, yaml string, i runtime.Object) {
-	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, i); err != nil {
-		t.Fatalf("mustParseYAML (%s): %v", yaml, err)
+	if _, _, err := scheme.Codecs.UniversalDeserializer().Decode([]byte(yaml), nil, &r); err != nil {
+		t.Fatalf("MustParseCustomRun (%s): %v", yaml, err)
 	}
+	return &r
 }
