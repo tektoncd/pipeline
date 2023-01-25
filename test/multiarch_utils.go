@@ -84,10 +84,6 @@ func initExcludedTests() sets.String {
 		return sets.NewString(
 			// Git resolver test using local Gitea instance
 			"TestGitResolver_API",
-			// helm test uses unsecure local docker registry to deploy
-			"TestHelmDeployPipelineRun",
-			// examples
-			"TestExamples/v1alpha1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/gcs-resource",
 			"TestExamples/v1beta1/taskruns/creds-init-only-mounts-provided-credentials",
 		)
