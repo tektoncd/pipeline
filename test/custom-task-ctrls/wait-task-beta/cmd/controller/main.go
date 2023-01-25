@@ -19,9 +19,10 @@ package main // import "github.com/tektoncd/pipeline/test/wait-task-beta/cmd/con
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	customruninformer "github.com/tektoncd/pipeline/pkg/client/injection/informers/pipeline/v1beta1/customrun"
 	customrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/customrun"
+	tkncontroller "github.com/tektoncd/pipeline/pkg/controller"
+
 	"github.com/tektoncd/pipeline/test/wait-task-beta/pkg/reconciler"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/clock"
@@ -46,34 +47,9 @@ func newController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 		}
 	})
 
-	apiVersion := "wait.testing.tekton.dev/v1beta1"
-	kind := "Wait"
-
 	customruninformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		// TODO: Replace with the following once tkncontroller.FilterCustomRunRef is merged (fromhttps://github.com/tektoncd/pipeline/pull/5822)
-		//      and released.
-		// FilterFunc: tkncontroller.FilterCustomRunRef("wait.testing.tekton.dev/v1beta1", "Wait"),
-		FilterFunc: func(obj interface{}) bool {
-			r, ok := obj.(*v1beta1.CustomRun)
-			if !ok {
-				// Somehow got informed of a non-Run object.
-				// Ignore.
-				return false
-			}
-			if r == nil || (r.Spec.CustomRef == nil && r.Spec.CustomSpec == nil) {
-				// These are invalid, but just in case they get
-				// created somehow, don't panic.
-				return false
-			}
-			result := false
-			if r.Spec.CustomRef != nil {
-				result = r.Spec.CustomRef.APIVersion == apiVersion && r.Spec.CustomRef.Kind == v1beta1.TaskKind(kind)
-			} else if r.Spec.CustomSpec != nil {
-				result = r.Spec.CustomSpec.APIVersion == apiVersion && r.Spec.CustomSpec.Kind == kind
-			}
-			return result
-		},
-		Handler: controller.HandleAll(impl.Enqueue),
+		FilterFunc: tkncontroller.FilterCustomRunRef("wait.testing.tekton.dev/v1beta1", "Wait"),
+		Handler:    controller.HandleAll(impl.Enqueue),
 	})
 
 	return impl

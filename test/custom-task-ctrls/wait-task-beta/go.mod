@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
 	github.com/google/go-cmp v0.5.9
-	github.com/tektoncd/pipeline v0.42.0
+	github.com/tektoncd/pipeline v0.43.2
 	k8s.io/api v0.25.4
 	k8s.io/apimachinery v0.25.4
 	k8s.io/client-go v0.25.4
