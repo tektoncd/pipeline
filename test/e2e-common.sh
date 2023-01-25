@@ -21,7 +21,7 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 function install_pipeline_crd() {
   echo ">> Deploying Tekton Pipelines"
   local ko_target="$(mktemp)"
-  ko resolve -R -f config/ > "${ko_target}" || fail_test "Pipeline image resolve failed"
+  ko resolve --platform linux/s390x -R -f config/ > "${ko_target}" || fail_test "Pipeline image resolve failed"
   ko resolve -R -f optional_config/ >> "${ko_target}" || fail_test "Pod log access resolve failed"
   cat "${ko_target}" | sed -e 's%"level": "info"%"level": "debug"%' \
       | sed -e 's%loglevel.controller: "info"%loglevel.controller: "debug"%' \
