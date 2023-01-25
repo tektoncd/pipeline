@@ -1,4 +1,4 @@
-piVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1beta1
 kind: CustomRun
 metadata:
   generateName: wait-customrun-
