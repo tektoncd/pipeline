@@ -236,7 +236,7 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 		if p.Tasks[i].TaskRef != nil && p.Tasks[i].TaskRef.Params != nil {
 			p.Tasks[i].TaskRef.Params = replaceParamValues(p.Tasks[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
 		}
-		p.Tasks[i], replacements, arrayReplacements, objectReplacements = propagateParams(p.Tasks[i], replacements, arrayReplacements, objectReplacements)
+		p.Tasks[i] = propagateParams(p.Tasks[i], replacements, arrayReplacements, objectReplacements)
 	}
 
 	for i := range p.Finally {
@@ -251,38 +251,56 @@ func ApplyReplacements(p *v1beta1.PipelineSpec, replacements map[string]string, 
 		if p.Finally[i].TaskRef != nil && p.Finally[i].TaskRef.Params != nil {
 			p.Finally[i].TaskRef.Params = replaceParamValues(p.Finally[i].TaskRef.Params, replacements, arrayReplacements, objectReplacements)
 		}
-		p.Finally[i], replacements, arrayReplacements, objectReplacements = propagateParams(p.Finally[i], replacements, arrayReplacements, objectReplacements)
+		p.Finally[i] = propagateParams(p.Finally[i], replacements, arrayReplacements, objectReplacements)
 	}
 
 	return p
 }
 
-func propagateParams(t v1beta1.PipelineTask, replacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) (v1beta1.PipelineTask, map[string]string, map[string][]string, map[string]map[string]string) {
-	if t.TaskSpec != nil {
-		// check if there are task parameters defined that match the params at pipeline level
-		if len(t.Params) > 0 {
-			for _, par := range t.Params {
-				for _, pattern := range paramPatterns {
-					checkName := fmt.Sprintf(pattern, par.Name)
-					// Scoping. Task Params will replace Pipeline Params
-					if _, ok := replacements[checkName]; ok {
-						replacements[checkName] = par.Value.StringVal
-					}
-					if _, ok := arrayReplacements[checkName]; ok {
-						arrayReplacements[checkName] = par.Value.ArrayVal
-					}
-					if _, ok := objectReplacements[checkName]; ok {
-						objectReplacements[checkName] = par.Value.ObjectVal
-						for k, v := range par.Value.ObjectVal {
-							replacements[fmt.Sprintf(objectIndividualVariablePattern, par.Name, k)] = v
-						}
+// propagateParams returns a Pipeline Task spec that is the same as the input Pipeline Task spec, but with
+// all parameter replacements from `stringReplacements`, `arrayReplacements`, and `objectReplacements` substituted.
+// It does not modify `stringReplacements`, `arrayReplacements`, or `objectReplacements`.
+func propagateParams(t v1beta1.PipelineTask, stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) v1beta1.PipelineTask {
+	if t.TaskSpec == nil {
+		return t
+	}
+	// check if there are task parameters defined that match the params at pipeline level
+	if len(t.Params) > 0 {
+		stringReplacementsDup := make(map[string]string)
+		arrayReplacementsDup := make(map[string][]string)
+		objectReplacementsDup := make(map[string]map[string]string)
+		for k, v := range stringReplacements {
+			stringReplacementsDup[k] = v
+		}
+		for k, v := range arrayReplacements {
+			arrayReplacementsDup[k] = v
+		}
+		for k, v := range objectReplacements {
+			objectReplacementsDup[k] = v
+		}
+		for _, par := range t.Params {
+			for _, pattern := range paramPatterns {
+				checkName := fmt.Sprintf(pattern, par.Name)
+				// Scoping. Task Params will replace Pipeline Params
+				if _, ok := stringReplacementsDup[checkName]; ok {
+					stringReplacementsDup[checkName] = par.Value.StringVal
+				}
+				if _, ok := arrayReplacementsDup[checkName]; ok {
+					arrayReplacementsDup[checkName] = par.Value.ArrayVal
+				}
+				if _, ok := objectReplacementsDup[checkName]; ok {
+					objectReplacementsDup[checkName] = par.Value.ObjectVal
+					for k, v := range par.Value.ObjectVal {
+						stringReplacementsDup[fmt.Sprintf(objectIndividualVariablePattern, par.Name, k)] = v
 					}
 				}
 			}
 		}
-		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, replacements, arrayReplacements)
+		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, stringReplacementsDup, arrayReplacementsDup)
+	} else {
+		t.TaskSpec.TaskSpec = *resources.ApplyReplacements(&t.TaskSpec.TaskSpec, stringReplacements, arrayReplacements)
 	}
-	return t, replacements, arrayReplacements, objectReplacements
+	return t
 }
 
 func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) []v1beta1.Param {

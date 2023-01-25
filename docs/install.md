@@ -717,12 +717,6 @@ which results in:
       }
     },
     {
-      "name": "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
-      "digest": {
-        "sha256": "55963ed3fb6157e5f8dac7a315a794ebe362e46714631f9c79d79d33fe769e4d"
-      }
-    },
-    {
       "name": "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/nop",
       "digest": {
         "sha256": "59b5304bcfdd9834150a2701720cf66e3ebe6d6e4d361ae1612d9430089591f8"
@@ -767,8 +761,6 @@ list of image references with their digest as part of the `args`:
           args: [
             # These images are built on-demand by `ko resolve` and are replaced
             # by image references by digest.
-              "-kubeconfig-writer-image",
-              "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter:v0.28.1@sha256:55963ed3fb6157e5f8dac7a315a794ebe362e46714631f9c79d79d33fe769e4d",
               "-git-image",
               "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.28.1@sha256:83d5ec6addece4aac79898c9631ee669f5fee5a710a2ed1f98a6d40c19fb88f7",
               "-entrypoint-image",
@@ -784,7 +776,6 @@ list of image references with their digest as part of the `args`:
 Similarly, you can verify the rest of the images which were published as part of the Tekton Pipelines release:
 
 ```shell
-gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter
 gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init
 gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/entrypoint
 gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/nop

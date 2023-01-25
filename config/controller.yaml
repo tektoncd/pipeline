@@ -65,7 +65,6 @@ spec:
         args: [
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
-          "-kubeconfig-writer-image", "ko://github.com/tektoncd/pipeline/cmd/kubeconfigwriter",
           "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
           "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
@@ -125,6 +124,13 @@ spec:
           value: /etc/ssl/certs
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
+       # The following variables can be uncommented with correct values to enable Jaeger tracing
+       #- name: OTEL_EXPORTER_JAEGER_ENDPOINT
+       #  value: http://jaeger-collector.jaeger:14268/api/traces
+       #- name: OTEL_EXPORTER_JAEGER_USER
+       #  value: username
+       #- name: OTEL_EXPORTER_JAEGER_PASSWORD
+       #  value: password
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

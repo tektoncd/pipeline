@@ -52,6 +52,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
+	"go.opentelemetry.io/otel/trace"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,7 +90,6 @@ var (
 		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "override-with-nop:latest",
 		GitImage:                 "override-with-git:latest",
-		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
 		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		PRImage:                  "override-with-pr:latest",
@@ -117,8 +117,6 @@ var (
 	ignoreEnvVarOrdering = cmpopts.SortSlices(func(x, y corev1.EnvVar) bool { return x.Name < y.Name })
 	volumeSort           = cmpopts.SortSlices(func(i, j corev1.Volume) bool { return i.Name < j.Name })
 	volumeMountSort      = cmpopts.SortSlices(func(i, j corev1.VolumeMount) bool { return i.Name < j.Name })
-	cloudEventTarget1    = "https://foo"
-	cloudEventTarget2    = "https://bar"
 
 	simpleStep = v1beta1.Step{
 		Name:    "simple-step",
@@ -299,29 +297,6 @@ var (
 		},
 	}
 
-	twoOutputsTask = &v1beta1.Task{
-		ObjectMeta: objectMeta("test-two-output-task", "foo"),
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{simpleStep},
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: cloudEventResource.Name,
-							Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
-						},
-					},
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: anotherCloudEventResource.Name,
-							Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
-						},
-					},
-				},
-			},
-		},
-	}
-
 	gitResource = &resourcev1alpha1.PipelineResource{
 		ObjectMeta: objectMeta("git-resource", "foo"),
 		Spec: resourcev1alpha1.PipelineResourceSpec{
@@ -349,26 +324,6 @@ var (
 			Params: []resourcev1alpha1.ResourceParam{{
 				Name:  "URL",
 				Value: "gcr.io/kristoff/sven",
-			}},
-		},
-	}
-	cloudEventResource = &resourcev1alpha1.PipelineResource{
-		ObjectMeta: objectMeta("cloud-event-resource", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "TargetURI",
-				Value: cloudEventTarget1,
-			}},
-		},
-	}
-	anotherCloudEventResource = &resourcev1alpha1.PipelineResource{
-		ObjectMeta: objectMeta("another-cloud-event-resource", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeCloudEvent,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "TargetURI",
-				Value: cloudEventTarget2,
 			}},
 		},
 	}
@@ -492,7 +447,7 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock, trace.NewNoopTracerProvider())(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
 	}
@@ -2922,6 +2877,7 @@ spec:
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		tracerProvider:    trace.NewNoopTracerProvider(),
 	}
 
 	rtr := &resources.ResolvedTaskResources{
@@ -3031,6 +2987,7 @@ spec:
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		tracerProvider:    trace.NewNoopTracerProvider(),
 	}
 
 	rtr := &resources.ResolvedTaskResources{
@@ -3084,6 +3041,7 @@ status:
 		metrics:           nil, // Not used
 		entrypointCache:   nil, // Not used
 		pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+		tracerProvider:    trace.NewNoopTracerProvider(),
 	}
 
 	testcases := []struct {
@@ -3139,295 +3097,6 @@ status:
 		})
 	}
 }
-
-func TestReconcileCloudEvents(t *testing.T) {
-	taskRunWithNoCEResources := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-no-ce-resources
-  namespace: foo
-spec:
-  taskRef:
-    apiVersion: a1
-    name: test-task
-`)
-	taskRunWithTwoCEResourcesNoInit := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-two-ce-resources-no-init
-  namespace: foo
-spec:
-  resources:
-    outputs:
-    - name: cloud-event-resource
-      resourceRef:
-        name: cloud-event-resource
-    - name: another-cloud-event-resource
-      resourceRef:
-        name: another-cloud-event-resource
-  taskRef:
-    name: test-two-output-task
-`)
-	taskRunWithTwoCEResourcesInit := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-two-ce-resources-init
-  namespace: foo
-spec:
-  resources:
-    outputs:
-    - name: cloud-event-resource
-      resourceRef:
-        name: cloud-event-resource
-    - name: another-cloud-event-resource
-      resourceRef:
-        name: another-cloud-event-resource
-  taskRef:
-    name: test-two-output-task
-status:
-  cloudEvents:
-  - status:
-      condition: Unknown
-    target: https://foo
-  - status:
-      condition: Unknown
-    target: https://bar
-`)
-	taskRunWithCESucceded := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-ce-succeeded
-  namespace: foo
-  selfLink: /task/1234
-spec:
-  resources:
-    outputs:
-    - name: cloud-event-resource
-      resourceRef:
-        name: cloud-event-resource
-    - name: another-cloud-event-resource
-      resourceRef:
-        name: another-cloud-event-resource
-  taskRef:
-    name: test-two-output-task
-status:
-  cloudEvents:
-  - status:
-      condition: Unknown
-    target: https://foo
-  - status:
-      condition: Unknown
-    target: https://bar
-  conditions:
-  - status: "True"
-    type: Succeeded
-`)
-	taskRunWithCEFailed := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-ce-failed
-  namespace: foo
-  selfLink: /task/1234
-spec:
-  resources:
-    outputs:
-    - name: cloud-event-resource
-      resourceRef:
-        name: cloud-event-resource
-    - name: another-cloud-event-resource
-      resourceRef:
-        name: another-cloud-event-resource
-  taskRef:
-    name: test-two-output-task
-status:
-  cloudEvents:
-  - status:
-      condition: Unknown
-    target: https://foo
-  - status:
-      condition: Unknown
-    target: https://bar
-  conditions:
-  - status: "False"
-    type: Succeeded
-`)
-	taskRunWithCESuccededOneAttempt := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-ce-succeeded-one-attempt
-  namespace: foo
-  selfLink: /task/1234
-spec:
-  resources:
-    outputs:
-    - name: cloud-event-resource
-      resourceRef:
-        name: cloud-event-resource
-    - name: another-cloud-event-resource
-      resourceRef:
-        name: another-cloud-event-resource
-  taskRef:
-    name: test-two-output-task
-status:
-  cloudEvents:
-  - status:
-      condition: Unknown
-      retryCount: 1
-    target: https://foo
-  - status:
-      condition: Unknown
-      message: fakemessage
-    target: https://bar
-  conditions:
-  - status: "True"
-    type: Succeeded
-`)
-	taskruns := []*v1beta1.TaskRun{
-		taskRunWithNoCEResources, taskRunWithTwoCEResourcesNoInit,
-		taskRunWithTwoCEResourcesInit, taskRunWithCESucceded, taskRunWithCEFailed,
-		taskRunWithCESuccededOneAttempt,
-	}
-
-	d := test.Data{
-		TaskRuns:          taskruns,
-		Tasks:             []*v1beta1.Task{simpleTask, twoOutputsTask},
-		ClusterTasks:      []*v1beta1.ClusterTask{},
-		PipelineResources: []*resourcev1alpha1.PipelineResource{cloudEventResource, anotherCloudEventResource},
-	}
-	for _, tc := range []struct {
-		name            string
-		taskRun         *v1beta1.TaskRun
-		wantCloudEvents []v1beta1.CloudEventDelivery
-	}{{
-		name:            "no-ce-resources",
-		taskRun:         taskRunWithNoCEResources,
-		wantCloudEvents: taskRunWithNoCEResources.Status.CloudEvents,
-	}, {
-		name:    "ce-resources-no-init",
-		taskRun: taskRunWithTwoCEResourcesNoInit,
-		wantCloudEvents: []v1beta1.CloudEventDelivery{
-			{
-				Target: cloudEventTarget1,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition: v1beta1.CloudEventConditionUnknown,
-				},
-			},
-			{
-				Target: cloudEventTarget2,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition: v1beta1.CloudEventConditionUnknown,
-				},
-			},
-		},
-	}, {
-		name:    "ce-resources-init",
-		taskRun: taskRunWithTwoCEResourcesInit,
-		wantCloudEvents: []v1beta1.CloudEventDelivery{
-			{
-				Target: cloudEventTarget1,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition: v1beta1.CloudEventConditionUnknown,
-				},
-			},
-			{
-				Target: cloudEventTarget2,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition: v1beta1.CloudEventConditionUnknown,
-				},
-			},
-		},
-	}, {
-		name:    "ce-resources-init-task-successful",
-		taskRun: taskRunWithCESucceded,
-		wantCloudEvents: []v1beta1.CloudEventDelivery{
-			{
-				Target: cloudEventTarget1,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition:  v1beta1.CloudEventConditionSent,
-					RetryCount: 1,
-				},
-			},
-			{
-				Target: cloudEventTarget2,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition:  v1beta1.CloudEventConditionSent,
-					RetryCount: 1,
-				},
-			},
-		},
-	}, {
-		name:    "ce-resources-init-task-failed",
-		taskRun: taskRunWithCEFailed,
-		wantCloudEvents: []v1beta1.CloudEventDelivery{
-			{
-				Target: cloudEventTarget1,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition:  v1beta1.CloudEventConditionSent,
-					RetryCount: 1,
-				},
-			},
-			{
-				Target: cloudEventTarget2,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition:  v1beta1.CloudEventConditionSent,
-					RetryCount: 1,
-				},
-			},
-		},
-	}, {
-		name:    "ce-resources-init-task-successful-one-attempt",
-		taskRun: taskRunWithCESuccededOneAttempt,
-		wantCloudEvents: []v1beta1.CloudEventDelivery{
-			{
-				Target: cloudEventTarget1,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition:  v1beta1.CloudEventConditionUnknown,
-					RetryCount: 1,
-				},
-			},
-			{
-				Target: cloudEventTarget2,
-				Status: v1beta1.CloudEventDeliveryState{
-					Condition:  v1beta1.CloudEventConditionSent,
-					RetryCount: 1,
-					Error:      "fakemessage",
-				},
-			},
-		},
-	}} {
-		t.Run(tc.name, func(t *testing.T) {
-			d.ExpectedCloudEventCount = len(tc.wantCloudEvents)
-			testAssets, cancel := getTaskRunController(t, d)
-			defer cancel()
-			c := testAssets.Controller
-			clients := testAssets.Clients
-
-			saName := tc.taskRun.Spec.ServiceAccountName
-			if saName == "" {
-				saName = "default"
-			}
-			if _, err := clients.Kube.CoreV1().ServiceAccounts(tc.taskRun.Namespace).Create(testAssets.Ctx, &corev1.ServiceAccount{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      saName,
-					Namespace: tc.taskRun.Namespace,
-				},
-			}, metav1.CreateOptions{}); err != nil {
-				t.Fatal(err)
-			}
-
-			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
-				// No error is ok.
-			} else if ok, _ := controller.IsRequeueKey(err); !ok {
-				t.Errorf("expected no error. Got error %v", err)
-			}
-
-			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("getting updated taskrun: %v", err)
-			}
-			opts := cloudevent.GetCloudEventDeliveryCompareOptions()
-			t.Log(tr.Status.CloudEvents)
-			if d := cmp.Diff(tc.wantCloudEvents, tr.Status.CloudEvents, opts...); d != "" {
-				t.Errorf("Unexpected status of cloud events %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
 func TestReconcile_Single_SidecarState(t *testing.T) {
 	runningState := corev1.ContainerStateRunning{StartedAt: metav1.Time{Time: now}}
 	taskRun := parse.MustParseV1beta1TaskRun(t, `
@@ -4442,6 +4111,7 @@ status:
 				metrics:           nil, // Not used
 				entrypointCache:   nil, // Not used
 				pvcHandler:        volumeclaim.NewPVCHandler(testAssets.Clients.Kube, testAssets.Logger),
+				tracerProvider:    trace.NewNoopTracerProvider(),
 			}
 
 			err := c.failTaskRun(testAssets.Ctx, tc.taskRun, tc.reason, tc.message)

@@ -39,7 +39,6 @@ var (
 		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "override-with-nop:latest",
 		GitImage:                 "override-with-git:latest",
-		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
 		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		PRImage:                  "override-with-pr:latest",
@@ -84,11 +83,6 @@ var (
 			},
 		},
 	}
-	clusterInputs = []v1beta1.TaskResource{{
-		ResourceDeclaration: v1beta1.ResourceDeclaration{
-			Name: "target-cluster",
-			Type: "cluster",
-		}}}
 	optionalGitInputs = []v1beta1.TaskResource{{
 		ResourceDeclaration: v1beta1.ResourceDeclaration{
 			Name:     "gitspace",
@@ -816,122 +810,6 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 		},
 		taskRun: taskRun,
 		wantErr: true,
-	}, {
-		desc: "cluster resource with plain text",
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: clusterInputs,
-				},
-			},
-		},
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo-run",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: "build-from-repo",
-				},
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "target-cluster",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "cluster3",
-							},
-						},
-					}},
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{
-				{
-					Name:    "kubeconfig-9l9zj",
-					Image:   "override-with-kubeconfig-writer:latest",
-					Command: []string{"/ko-app/kubeconfigwriter"},
-					Args: []string{
-						"-clusterConfig", `{"name":"cluster3","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"namespace1","token":"","Insecure":false,"cadata":"bXktY2EtY2VydAo=","clientKeyData":"Y2xpZW50LWtleS1kYXRh","clientCertificateData":"Y2xpZW50LWNlcnRpZmljYXRlLWRhdGE=","secrets":null}`,
-					},
-					Env: []corev1.EnvVar{
-						{Name: "TEKTON_RESOURCE_NAME", Value: "cluster3"},
-					},
-				},
-			},
-			Resources: &v1beta1.TaskResources{
-				Inputs: clusterInputs,
-			},
-		},
-	}, {
-		desc: "cluster resource with secrets",
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: clusterInputs,
-				},
-			},
-		},
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "build-from-repo-run",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				TaskRef: &v1beta1.TaskRef{
-					Name: "build-from-repo",
-				},
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "target-cluster",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "cluster2",
-							},
-						},
-					}},
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{
-				{
-					Name:    "kubeconfig-9l9zj",
-					Image:   "override-with-kubeconfig-writer:latest",
-					Command: []string{"/ko-app/kubeconfigwriter"},
-					Args: []string{
-						"-clusterConfig", `{"name":"cluster2","type":"cluster","url":"http://10.10.10.10","revision":"","username":"","password":"","namespace":"","token":"","Insecure":false,"cadata":null,"clientKeyData":null,"clientCertificateData":null,"secrets":[{"fieldName":"cadata","secretKey":"cadatakey","secretName":"secret1"}]}`,
-					},
-					Env: []corev1.EnvVar{
-						{Name: "TEKTON_RESOURCE_NAME", Value: "cluster2"},
-						{
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "secret1",
-									},
-									Key: "cadatakey",
-								},
-							},
-							Name: "CADATA",
-						}},
-				},
-			},
-			Resources: &v1beta1.TaskResources{
-				Inputs: clusterInputs,
-			},
-		},
 	}, {
 		desc: "optional git input resource",
 		task: taskWithOptionalGitSources,

@@ -889,6 +889,13 @@ func (in *PipelineRunStatusFields) DeepCopyInto(out *PipelineRunStatusFields) {
 		*out = new(Provenance)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.SpanContext != nil {
+		in, out := &in.SpanContext, &out.SpanContext
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 
@@ -2203,6 +2210,13 @@ func (in *TaskRunStatusFields) DeepCopyInto(out *TaskRunStatusFields) {
 		in, out := &in.Provenance, &out.Provenance
 		*out = new(Provenance)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.SpanContext != nil {
+		in, out := &in.SpanContext, &out.SpanContext
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }

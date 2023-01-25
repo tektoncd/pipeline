@@ -47,6 +47,7 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/names"
 	"github.com/tektoncd/pipeline/test/parse"
+	"go.opentelemetry.io/otel/trace"
 	"gomodules.xyz/jsonpatch/v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -75,7 +76,6 @@ var (
 		EntrypointImage:          "override-with-entrypoint:latest",
 		NopImage:                 "override-with-nop:latest",
 		GitImage:                 "override-with-git:latest",
-		KubeconfigWriterImage:    "override-with-kubeconfig-writer:latest",
 		ShellImage:               "busybox",
 		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
 		PRImage:                  "override-with-pr:latest",
@@ -139,7 +139,7 @@ func initializePipelineRunControllerAssets(t *testing.T, d test.Data, opts pipel
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
-	ctl := NewController(&opts, testClock)(ctx, configMapWatcher)
+	ctl := NewController(&opts, testClock, trace.NewNoopTracerProvider())(ctx, configMapWatcher)
 	if la, ok := ctl.Reconciler.(reconciler.LeaderAware); ok {
 		if err := la.Promote(reconciler.UniversalBucket(), func(reconciler.Bucket, types.NamespacedName) {}); err != nil {
 			t.Fatalf("error promoting reconciler leader: %v", err)
@@ -2159,12 +2159,16 @@ spec:
   status: CancelledRunFinally
 status:
   startTime: "2022-01-01T00:00:00Z"
-  taskRuns:
-    test-pipeline-run-cancelled-run-finally-final-task:
-      pipelineTaskName: final-task-1
-    test-pipeline-run-cancelled-run-finally-hello-world:
-      pipelineTaskName: hello-world-1
-      status:
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: test-pipeline-run-cancelled-run-finally-final-task
+    pipelineTaskName: final-task-1
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: test-pipeline-run-cancelled-run-finally-hello-world
+    pipelineTaskName: hello-world-1
+    status:
         conditions:
         - lastTransitionTime: null
           status: "True"
@@ -2222,8 +2226,8 @@ spec:
 	}
 
 	// There should be 2 task runs, one for already completed "hello-world-1" task and one for the "final-task-1" final task
-	if len(reconciledRun.Status.TaskRuns) != 2 {
-		t.Errorf("Expected PipelineRun status to have 2 task runs, but was %v", len(reconciledRun.Status.TaskRuns))
+	if len(reconciledRun.Status.ChildReferences) != 2 {
+		t.Errorf("Expected PipelineRun status to have 2 child references, but was %v", len(reconciledRun.Status.ChildReferences))
 	}
 
 	actions := clients.Pipeline.Actions()
@@ -2476,26 +2480,26 @@ status:
   startTime: %s`, v1beta1.PipelineRunSpecStatusStoppedRunFinally, now.Format(time.RFC3339))
 
 	testCases := []struct {
-		name                 string
-		pipeline             *v1beta1.Pipeline
-		taskRuns             []*v1beta1.TaskRun
-		initialTaskRunStatus map[string]*v1beta1.PipelineRunTaskRunStatus
-		expectedEvents       []string
-		hasNilCompletionTime bool
-		isFailed             bool
-		trInStatusCount      int
-		skippedTasks         []v1beta1.SkippedTask
+		name                   string
+		pipeline               *v1beta1.Pipeline
+		taskRuns               []*v1beta1.TaskRun
+		initialChildReferences []v1beta1.ChildStatusReference
+		expectedEvents         []string
+		hasNilCompletionTime   bool
+		isFailed               bool
+		childRefInStatusCount  int
+		skippedTasks           []v1beta1.SkippedTask
 	}{
 		{
-			name:                 "stopped PipelineRun",
-			pipeline:             simpleHelloWorldPipeline,
-			taskRuns:             nil,
-			initialTaskRunStatus: nil,
-			expectedEvents:       []string{"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled"},
-			hasNilCompletionTime: false,
-			isFailed:             true,
-			trInStatusCount:      0,
-			skippedTasks:         []v1beta1.SkippedTask{{Name: "hello-world-1", Reason: v1beta1.GracefullyStoppedSkip}},
+			name:                   "stopped PipelineRun",
+			pipeline:               simpleHelloWorldPipeline,
+			taskRuns:               nil,
+			initialChildReferences: nil,
+			expectedEvents:         []string{"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled"},
+			hasNilCompletionTime:   false,
+			isFailed:               true,
+			childRefInStatusCount:  0,
+			skippedTasks:           []v1beta1.SkippedTask{{Name: "hello-world-1", Reason: v1beta1.GracefullyStoppedSkip}},
 		}, {
 			name:     "with running task",
 			pipeline: simpleHelloWorldPipeline,
@@ -2507,17 +2511,19 @@ status:
 				"hello-world",
 				corev1.ConditionUnknown,
 			)},
-			initialTaskRunStatus: map[string]*v1beta1.PipelineRunTaskRunStatus{
-				"test-pipeline-run-stopped-run-finally-hello-world": {
-					PipelineTaskName: "hello-world-1",
-					Status:           &v1beta1.TaskRunStatus{},
+			initialChildReferences: []v1beta1.ChildStatusReference{{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: v1beta1.SchemeGroupVersion.String(),
+					Kind:       "TaskRun",
 				},
-			},
-			expectedEvents:       []string{"Normal Started"},
-			hasNilCompletionTime: true,
-			isFailed:             false,
-			trInStatusCount:      1,
-			skippedTasks:         nil,
+				Name:             "test-pipeline-run-stopped-run-finally-hello-world",
+				PipelineTaskName: "hello-world-1",
+			}},
+			expectedEvents:        []string{"Normal Started"},
+			hasNilCompletionTime:  true,
+			isFailed:              false,
+			childRefInStatusCount: 1,
+			skippedTasks:          nil,
 		}, {
 			name:     "with completed task",
 			pipeline: helloWorldPipelineWithRunAfter(t),
@@ -2529,25 +2535,28 @@ status:
 				"hello-world",
 				corev1.ConditionTrue,
 			)},
-			initialTaskRunStatus: map[string]*v1beta1.PipelineRunTaskRunStatus{
-				"test-pipeline-run-stopped-run-finally-hello-world": {
-					PipelineTaskName: "hello-world-1",
-					Status:           &v1beta1.TaskRunStatus{},
+			initialChildReferences: []v1beta1.ChildStatusReference{{
+				TypeMeta: runtime.TypeMeta{
+					APIVersion: v1beta1.SchemeGroupVersion.String(),
+					Kind:       "TaskRun",
 				},
+				Name:             "test-pipeline-run-stopped-run-finally-hello-world",
+				PipelineTaskName: "hello-world-1",
 			},
-			expectedEvents:       []string{"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled"},
-			hasNilCompletionTime: false,
-			isFailed:             true,
-			trInStatusCount:      1,
-			skippedTasks:         []v1beta1.SkippedTask{{Name: "hello-world-2", Reason: v1beta1.GracefullyStoppedSkip}},
+			},
+			expectedEvents:        []string{"Warning Failed PipelineRun \"test-pipeline-run-stopped-run-finally\" was cancelled"},
+			hasNilCompletionTime:  false,
+			isFailed:              true,
+			childRefInStatusCount: 1,
+			skippedTasks:          []v1beta1.SkippedTask{{Name: "hello-world-2", Reason: v1beta1.GracefullyStoppedSkip}},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			pr := parse.MustParseV1beta1PipelineRun(t, basePRYAML)
-			if tc.initialTaskRunStatus != nil {
-				pr.Status.TaskRuns = tc.initialTaskRunStatus
+			if tc.initialChildReferences != nil {
+				pr.Status.ChildReferences = tc.initialChildReferences
 			}
 			ps := []*v1beta1.Pipeline{tc.pipeline}
 			ts := []*v1beta1.Task{simpleHelloWorldTask}
@@ -2574,8 +2583,8 @@ status:
 				t.Errorf("Expected PipelineRun status to be complete and unknown, but was %v", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
 			}
 
-			if len(reconciledRun.Status.TaskRuns) != tc.trInStatusCount {
-				t.Fatalf("Expected %d TaskRuns in status but got %d", tc.trInStatusCount, len(reconciledRun.Status.TaskRuns))
+			if len(reconciledRun.Status.ChildReferences) != tc.childRefInStatusCount {
+				t.Fatalf("Expected %d ChildRerences in status but got %d", tc.childRefInStatusCount, len(reconciledRun.Status.ChildReferences))
 			}
 
 			if d := cmp.Diff(tc.skippedTasks, reconciledRun.Status.SkippedTasks); d != "" {
@@ -2906,21 +2915,25 @@ spec:
 status:
   finallyStartTime: "2021-12-31T23:44:59Z"
   startTime: "2021-12-31T23:40:00Z"
-  taskRuns:
-    test-pipeline-run-with-timeout-hello-world:
-      pipelineTaskName: task1
-      status:
-        conditions:
-        - lastTransitionTime: null
-          status: "True"
-          type: Succeeded
-    test-pipeline-run-with-timeout-finaltask-1:
-      pipelineTaskName: finaltask-1
-      status:
-        conditions:
-        - lastTransitionTime: null
-          status: "Unknown"
-          type: Succeeded
+  childReferences:
+  - name: test-pipeline-run-with-timeout-hello-world
+    apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    pipelineTaskName: task1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "True"
+        type: Succeeded
+  - name: test-pipeline-run-with-timeout-finaltask-1
+    apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    pipelineTaskName: finaltask-1
+    status:
+      conditions:
+      - lastTransitionTime: null
+        status: "Unknown"
+        type: Succeeded
 `)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 	trs := []*v1beta1.TaskRun{
@@ -3076,9 +3089,11 @@ status:
     status: Unknown
     type: Succeeded
   startTime: "2022-01-01T00:00:00Z"
-  taskRuns:
-    test-pipeline-fails-to-cancelhello-world-1:
-      pipelineTaskName: hello-world-1
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: test-pipeline-fails-to-cancelhello-world-1
+    pipelineTaskName: hello-world-1
 `, tc.specStatus))}
 			ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
@@ -3192,9 +3207,11 @@ status:
     status: Unknown
     type: Succeeded
   startTime: "2021-12-31T22:59:00Z"
-  taskRuns:
-    test-pipeline-fails-to-timeouthello-world-1:
-      pipelineTaskName: hello-world-1
+  childReferences:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    name: test-pipeline-fails-to-timeouthello-world-1
+    pipelineTaskName: hello-world-1
 `)}
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
@@ -5154,14 +5171,14 @@ status:
 	case embeddedStatus == config.BothEmbeddedStatus:
 		expectedPr = expectedPrBothStatus
 	case embeddedStatus == config.DefaultEmbeddedStatus:
-		expectedPr = expectedPrFullStatus
+		expectedPr = expectedPrMinimalStatus
 	case embeddedStatus == config.FullEmbeddedStatus:
 		expectedPr = expectedPrFullStatus
 	case embeddedStatus == config.MinimalEmbeddedStatus:
 		expectedPr = expectedPrMinimalStatus
 	}
 
-	if d := cmp.Diff(expectedPr, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreCompletionTime, ignoreStartTime); d != "" {
+	if d := cmp.Diff(expectedPr, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreCompletionTime, ignoreStartTime, cmpopts.EquateEmpty()); d != "" {
 		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
 	}
 }
@@ -5475,14 +5492,14 @@ status:
 	case embeddedStatus == config.BothEmbeddedStatus:
 		expectedPr = expectedPrBothStatus
 	case embeddedStatus == config.DefaultEmbeddedStatus:
-		expectedPr = expectedPrFullStatus
+		expectedPr = expectedPrMinimalStatus
 	case embeddedStatus == config.FullEmbeddedStatus:
 		expectedPr = expectedPrFullStatus
 	case embeddedStatus == config.MinimalEmbeddedStatus:
 		expectedPr = expectedPrMinimalStatus
 	}
 
-	if d := cmp.Diff(expectedPr, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreCompletionTime, ignoreStartTime); d != "" {
+	if d := cmp.Diff(expectedPr, reconciledRun, ignoreResourceVersion, ignoreLastTransitionTime, ignoreCompletionTime, ignoreStartTime, cmpopts.EquateEmpty()); d != "" {
 		t.Errorf("expected to see pipeline run results created. Diff %s", diff.PrintWantGot(d))
 	}
 }
@@ -6198,6 +6215,7 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 		ts                       []*v1beta1.Task
 		trs                      []*v1beta1.TaskRun
 		expectedTaskRuns         map[string]*v1beta1.PipelineRunTaskRunStatus
+		expectedChildReferences  []v1beta1.ChildStatusReference
 		pipelineRunStatusUnknown bool
 		pipelineRunStatusFalse   bool
 	}{{
@@ -6461,11 +6479,21 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 			),
 		},
 
-		expectedTaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task-run-dag-task-1": getTaskRunStatus("dag-task-1", corev1.ConditionFalse),
-			"task-run-dag-task-2": getTaskRunStatus("dag-task-2", corev1.ConditionUnknown),
-		},
-
+		expectedChildReferences: []v1beta1.ChildStatusReference{{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: v1beta1.SchemeGroupVersion.String(),
+				Kind:       "TaskRun",
+			},
+			Name:             "task-run-dag-task-1",
+			PipelineTaskName: "dag-task-1",
+		}, {
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: v1beta1.SchemeGroupVersion.String(),
+				Kind:       "TaskRun",
+			},
+			Name:             "task-run-dag-task-2",
+			PipelineTaskName: "dag-task-2",
+		}},
 		pipelineRunStatusUnknown: true,
 	}, {
 		// pipeline run should not schedule final tasks until dag tasks are done i.e.
@@ -6519,15 +6547,22 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 			),
 		},
 
-		expectedTaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-			"task-run-dag-task-1": getTaskRunStatus("dag-task-1", corev1.ConditionUnknown),
-		},
+		expectedChildReferences: []v1beta1.ChildStatusReference{{
+			TypeMeta: runtime.TypeMeta{
+				APIVersion: v1beta1.SchemeGroupVersion.String(),
+				Kind:       "TaskRun",
+			},
+			Name:             "task-run-dag-task-1",
+			PipelineTaskName: "dag-task-1",
+		}},
 
 		pipelineRunStatusUnknown: true,
 	}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			withOwnerReference(tt.trs, tt.prs[0].Name)
+
 			d := test.Data{
 				PipelineRuns: tt.prs,
 				Pipelines:    tt.ps,
@@ -6572,11 +6607,17 @@ func TestReconcilePipeline_FinalTasks(t *testing.T) {
 					t.Errorf("Expected PipelineRun status to be failed, but was %v for %s",
 						reconciledRun.Status.GetCondition(apis.ConditionSucceeded), tt.name)
 				}
+				if d := cmp.Diff(reconciledRun.Status.TaskRuns, tt.expectedTaskRuns); d != "" {
+					t.Fatalf("Expected PipelineRunTaskRun status to match TaskRun(s) status, but got a mismatch for %s: %s", tt.name, d)
+				}
 			} else if tt.pipelineRunStatusUnknown {
 				// This PipelineRun should still be running and the status should reflect that
 				if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {
 					t.Errorf("Expected PipelineRun status to be unknown (running), but was %v for %s",
 						reconciledRun.Status.GetCondition(apis.ConditionSucceeded), tt.name)
+				}
+				if d := cmp.Diff(reconciledRun.Status.ChildReferences, tt.expectedChildReferences); d != "" {
+					t.Fatalf("Expected PipelineRunTaskRun status to match TaskRun(s) status, but got a mismatch for %s: %s", tt.name, d)
 				}
 			}
 
@@ -6612,6 +6653,15 @@ func getPipelineRun(pr, p string, status corev1.ConditionStatus, reason string, 
 		pRun.Status.TaskRuns[v] = &v1beta1.PipelineRunTaskRunStatus{PipelineTaskName: k, Status: &v1beta1.TaskRunStatus{}}
 	}
 	return []*v1beta1.PipelineRun{pRun}
+}
+
+// withOwnerReference adds the PipelineRun name to each TaskRun as their OwnerReference
+// TODO: This shall be removed along with the refactor of `getTaskRun` to populate matched
+// OwnerReference with the PipelineRun at https://github.com/tektoncd/pipeline/issues/6008
+func withOwnerReference(trs []*v1beta1.TaskRun, prName string) {
+	for _, tr := range trs {
+		tr.OwnerReferences = []metav1.OwnerReference{{Name: prName}}
+	}
 }
 
 func getPipeline(p string, spec v1beta1.PipelineSpec) []*v1beta1.Pipeline {
@@ -8947,7 +8997,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
-			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime); d != "" {
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -9555,7 +9605,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
-			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime); d != "" {
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -10015,7 +10065,7 @@ status:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
-			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, cmpopts.SortSlices(lessChildReferences)); d != "" {
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, cmpopts.SortSlices(lessChildReferences), cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
 		})
@@ -10549,7 +10599,7 @@ spec:
 			if err != nil {
 				t.Fatalf("Got an error getting reconciled run out of fake client: %s", err)
 			}
-			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime); d != "" {
+			if d := cmp.Diff(tt.expectedPipelineRun, pipelineRun, ignoreResourceVersion, ignoreTypeMeta, ignoreLastTransitionTime, ignoreStartTime, ignoreFinallyStartTime, cmpopts.EquateEmpty()); d != "" {
 				t.Errorf("expected PipelineRun was not created. Diff %s", diff.PrintWantGot(d))
 			}
 		})

@@ -105,6 +105,15 @@ spec:
         # containerPort "https-webhook" to the same value.
         - name: WEBHOOK_PORT
           value: "8443"
+        # if you change WEBHOOK_ADMISSION_CONTROLLER_NAME, you will also need to update
+        # the webhooks.name in 500-webhooks.yaml to include the new names of admission webhooks.
+        # Additionally, you will also need to change the resource names (metadata.name) of
+        # "MutatingWebhookConfiguration" and "ValidatingWebhookConfiguration" in 500-webhooks.yaml
+        # to reflect the change in the name of the admission webhook.
+        # Followed by changing the webhook's Role in 200-clusterrole.yaml to update the "resourceNames" of
+        # "mutatingwebhookconfigurations" and "validatingwebhookconfigurations" resources.
+        - name: WEBHOOK_ADMISSION_CONTROLLER_NAME
+          value: webhook.pipeline.tekton.dev
         - name: WEBHOOK_SERVICE_NAME
           value: tekton-pipelines-webhook
         - name: WEBHOOK_SECRET_NAME
