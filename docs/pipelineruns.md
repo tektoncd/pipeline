@@ -268,7 +268,6 @@ to all `persistentVolumeClaims` generated internally.
 ### Specifying Task-level `ComputeResources`
 
 **([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
-(This feature is under development and not functional yet. Stay tuned!)
 
 Task-level compute resources can be configured in `PipelineRun.TaskRunSpecs.ComputeResources` or `TaskRun.ComputeResources`.
 
