@@ -529,8 +529,23 @@ For example, `foo.Is-Bar_` is a valid parameter name for string or array type, b
 #### Parameter type
 Each declared parameter has a `type` field, which can be set to `string`, `array` or `object` (alpha feature). 
 
-- `object` type
-`object` type is useful in cases where users want to group related parameters. For example, an object parameter called `gitrepo` can contain both the `url` and the `commmit` to group related information. See the [TaskRun example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml) and the [PipelineRun example](../examples/v1beta1/pipelineruns/alpha/pipeline-object-param-and-result.yaml) in which object parameters are used.
+##### `object` type
+
+`object` type is useful in cases where users want to group related parameters. For example, an object parameter called `gitrepo` can contain both the `url` and the `commmit` to group related information:
+
+```yaml
+spec:
+  params:
+    - name: gitrepo
+      type: object
+      properties:
+        url:
+          type: string
+        commit:
+          type: string
+```
+
+Refer to the [TaskRun example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml) and the [PipelineRun example](../examples/v1beta1/pipelineruns/alpha/pipeline-object-param-and-result.yaml) in which `object` parameters are demonstrated.
 
   > NOTE: 
   > - `object` param is an `alpha` feature and gated by the `alpha` feature flag.
@@ -538,10 +553,21 @@ Each declared parameter has a `type` field, which can be set to `string`, `array
   > - When providing value for an `object` param, one may provide values for just a subset of keys in spec's `default`, and provide values for the rest of keys at runtime ([example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml)).
   > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object like [this example](https://github.com/tektoncd/pipeline/blob/55665765e4de35b3a4fb541549ae8cdef0996641/examples/v1beta1/pipelineruns/alpha/pipeline-object-param-and-result.yaml#L64-L65). See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
 
-- `array` type 
-`array` type is useful in cases where the number of compilation flags being supplied to a task varies throughout the `Task's` execution. 
+##### `array` type
 
-- `string` type
+`array` type is useful in cases where the number of compilation flags being supplied to a task varies throughout the `Task's` execution.
+`array` param can be defined by setting `type` to `array`.  Also, `array` params only supports `string` array i.e.
+each array element has to be of type `string`.
+
+```yaml
+spec:
+  params:
+    - name: flags
+      type: array
+```
+
+##### `string` type
+
 If not specified, the `type` field defaults to `string`. When the actual parameter value is supplied, its parsed type is validated against the `type` field.
 
 The following example illustrates the use of `Parameters` in a `Task`. The `Task` declares 3 input parameters named `gitrepo` (of type `object`), `flags`
@@ -1043,6 +1069,37 @@ A valid reference to the `build-args` parameter is isolated and in an eligible f
 - name: build-step
   image: gcr.io/cloud-builders/some-image
   args: ["build", "$(params.build-args[*])", "additionalArg"]
+```
+
+`array` param when referenced in `args` section of the `step` can be utilized in the `script` as command line arguments:
+
+```yaml
+- name: build-step
+  image: gcr.io/cloud-builders/some-image
+  args: ["$(params.flags[*])"]
+  script: |
+    #!/usr/bin/env bash
+    echo "The script received $# flags."
+    echo "The first command line argument is $1."
+```
+
+Indexing into an array to reference an individual array element is supported as an **alpha** feature (`enable-api-fields: alpha`).
+Referencing an individual array element in `args`:
+
+```yaml
+- name: build-step
+  image: gcr.io/cloud-builders/some-image
+  args: ["$(params.flags[0])"]
+```
+
+Referencing an individual array element in `script`:
+
+```yaml
+- name: build-step
+  image: gcr.io/cloud-builders/some-image
+  script: |
+    #!/usr/bin/env bash
+    echo "$(params.flags[0])"
 ```
 
 #### Substituting `Workspace` paths
