@@ -61,7 +61,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -1649,7 +1648,7 @@ func getVerificationPolicies(ctx context.Context, verificationPolicyLister alpha
 	var verificationpolicies []*v1alpha1.VerificationPolicy
 	if config.CheckEnforceResourceVerificationMode(ctx) || config.CheckWarnResourceVerificationMode(ctx) {
 		var err error
-		verificationpolicies, err = verificationPolicyLister.VerificationPolicies(namespace).List(labels.Everything())
+		verificationpolicies, err = verificationPolicyLister.VerificationPolicies(namespace).List(k8slabels.Everything())
 		if err != nil {
 			return nil, fmt.Errorf("failed to list VerificationPolicies: %w", err)
 		}
