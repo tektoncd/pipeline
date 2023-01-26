@@ -25,11 +25,9 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/controller"
-	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
 func TestEmitK8sEventsOnConditions(t *testing.T) {
@@ -138,10 +136,10 @@ func TestEmitK8sEventsOnConditions(t *testing.T) {
 
 	for _, ts := range testcases {
 		tr := &corev1.Pod{}
-		ctx, _ := rtesting.SetupFakeContext(t)
-		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		ctx, _ := SetupFakeContext(t)
+		recorder := controller.GetEventRecorder(ctx).(*FakeRecorder)
 		EmitK8sEvents(ctx, ts.before, ts.after, tr)
-		err := CheckEventsOrdered(t, recorder.Events, ts.name, ts.wantEvents)
+		err := recorder.CheckEventsOrdered(t, recorder.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -187,7 +185,7 @@ func TestEmitK8sEvents(t *testing.T) {
 
 	for _, tc := range testcases {
 		// Setup the context and seed test data
-		ctx, _ := rtesting.SetupFakeContext(t)
+		ctx, _ := SetupFakeContext(t)
 
 		// Setup the config and add it to the context
 		defaults, _ := config.NewDefaultsFromMap(tc.data)
@@ -198,9 +196,9 @@ func TestEmitK8sEvents(t *testing.T) {
 		}
 		ctx = config.ToContext(ctx, cfg)
 
-		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		recorder := controller.GetEventRecorder(ctx).(*FakeRecorder)
 		EmitK8sEvents(ctx, nil, after, object)
-		if err := CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+		if err := recorder.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
 	}
@@ -222,10 +220,10 @@ func TestEmitError(t *testing.T) {
 	}}
 
 	for _, ts := range testcases {
-		fr := record.NewFakeRecorder(1)
+		fr := NewFakeRecorder(1)
 		tr := &corev1.Pod{}
 		EmitError(fr, ts.err, tr)
-		err := CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
+		err := fr.CheckEventsOrdered(t, fr.Events, ts.name, ts.wantEvents)
 		if err != nil {
 			t.Errorf(err.Error())
 		}

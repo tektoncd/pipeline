@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/controller"
@@ -110,8 +109,8 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 			}
 			ceClient := Get(ctx).(FakeClient)
 			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCEvents)
-			recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-			if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+			recorder := controller.GetEventRecorder(ctx).(*k8sevent.FakeRecorder)
+			if err := recorder.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 				t.Fatalf(err.Error())
 			}
 		})
@@ -196,7 +195,7 @@ func TestEmitCloudEvents(t *testing.T) {
 
 	for _, tc := range testcases {
 		// Setup the context and seed test data
-		ctx, _ := rtesting.SetupFakeContext(t)
+		ctx, _ := k8sevent.SetupFakeContext(t)
 		ctx = WithClient(ctx, &FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
 		fakeClient := Get(ctx).(FakeClient)
 
@@ -209,9 +208,9 @@ func TestEmitCloudEvents(t *testing.T) {
 		}
 		ctx = config.ToContext(ctx, cfg)
 
-		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
+		recorder := controller.GetEventRecorder(ctx).(*k8sevent.FakeRecorder)
 		EmitCloudEvents(ctx, object)
-		if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
+		if err := recorder.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
 		fakeClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCloudEvents)
@@ -242,7 +241,7 @@ func TestEmitCloudEventsWhenConditionChange(t *testing.T) {
 	wantCloudEvents := []string{`(?s)dev.tekton.event.pipelinerun.started.v1.*test1`}
 
 	// Setup the context and seed test data
-	ctx, _ := rtesting.SetupFakeContext(t)
+	ctx, _ := k8sevent.SetupFakeContext(t)
 	ctx = WithClient(ctx, &FakeClientBehaviour{SendSuccessfully: true}, len(wantCloudEvents))
 	fakeClient := Get(ctx).(FakeClient)
 

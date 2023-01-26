@@ -78,3 +78,61 @@ func EmitError(c record.EventRecorder, err error, object runtime.Object) {
 		c.Event(object, corev1.EventTypeWarning, EventReasonError, err.Error())
 	}
 }
+
+/*
+// EventRecorder wraps the `Client` interface from github.com/cloudevents/sdk-go/v2/cloudevents
+// and has methods to count the cloud events being sent, those methods are for testing purposes.
+type Recorder interface {
+	record.EventRecorder
+	// AddCount increments the count of events to be sent
+	AddCount()
+	// decreaseCount decrements the count of events to be sent, indicating the event has been sent
+	DecreaseCount()
+}
+
+// CloudClient is a wrapper of CloudEvents client and implements addCount and decreaseCount
+type EventRecorder struct {
+	recorder record.EventRecorder
+}
+
+// addCount does nothing
+func (c EventRecorder) AddCount() {
+}
+
+// decreaseCount does nothing
+func (c EventRecorder) DecreaseCount() {
+}
+
+
+func (c EventRecorder) Event(object runtime.Object, eventtype, reason, message string) {
+	 c.recorder.Event(object, eventtype, reason, message)
+}
+
+func (c EventRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
+	c.recorder.Eventf(object, eventtype, reason, messageFmt, args )
+}
+
+func (c EventRecorder) AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
+	c.recorder.AnnotatedEventf(object, annotations, eventtype, reason, messageFmt, args)
+}
+
+
+// erKey is used to associate record.EventRecorders with contexts.
+type erKey struct{}
+
+// WithEventRecorder attaches the given record.EventRecorder to the provided context
+// in the returned context.
+func WithEventRecorder(ctx context.Context, er record.EventRecorder) context.Context {
+	return context.WithValue(ctx, erKey{}, er)
+}
+
+// GetEventRecorder attempts to look up the record.EventRecorder on a given context.
+// It may return null if none is found.
+func GetEventRecorder(ctx context.Context) Recorder {
+	untyped := ctx.Value(erKey{})
+	if untyped == nil {
+		return nil
+	}
+	return untyped.(Recorder)
+}
+*/

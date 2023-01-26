@@ -49,6 +49,7 @@ import (
 	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
 	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -59,7 +60,6 @@ import (
 	fakekubeclientset "k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	fakekubeclient "knative.dev/pkg/client/injection/kube/client/fake"
 	fakeconfigmapinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/configmap/fake"
 	fakelimitrangeinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/limitrange/fake"
@@ -123,7 +123,7 @@ type Assets struct {
 	Controller *controller.Impl
 	Clients    Clients
 	Informers  Informers
-	Recorder   *record.FakeRecorder
+	Recorder   *k8sevent.FakeRecorder
 	Ctx        context.Context
 }
 

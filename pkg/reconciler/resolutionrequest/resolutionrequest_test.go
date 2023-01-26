@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test"
@@ -33,7 +34,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -80,7 +80,7 @@ func initializeResolutionRequestControllerAssets(t *testing.T, d test.Data) (tes
 		Controller: ctl,
 		Clients:    c,
 		Informers:  informers,
-		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
+		Recorder:   controller.GetEventRecorder(ctx).(*k8sevent.FakeRecorder),
 		Ctx:        ctx,
 	}, cancel
 }

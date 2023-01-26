@@ -28,6 +28,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
 	"github.com/tektoncd/pipeline/test"
@@ -35,7 +36,6 @@ import (
 	"github.com/tektoncd/pipeline/test/names"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -266,7 +266,7 @@ func getResolverFrameworkController(ctx context.Context, t *testing.T, d test.Da
 		Controller: ctl,
 		Clients:    c,
 		Informers:  informers,
-		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
+		Recorder:   controller.GetEventRecorder(ctx).(*k8sevent.FakeRecorder),
 		Ctx:        ctx,
 	}, cancel
 }

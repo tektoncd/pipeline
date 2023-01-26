@@ -30,13 +30,13 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/test"
 	"github.com/tektoncd/pipeline/test/names"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	cminformer "knative.dev/pkg/configmap/informer"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -68,7 +68,7 @@ func initializeRunControllerAssets(t *testing.T, d test.Data) (test.Assets, func
 		Controller: ctl,
 		Clients:    c,
 		Informers:  informers,
-		Recorder:   controller.GetEventRecorder(ctx).(*record.FakeRecorder),
+		Recorder:   controller.GetEventRecorder(ctx).(*k8sevent.FakeRecorder),
 		Ctx:        ctx,
 	}, cancel
 }

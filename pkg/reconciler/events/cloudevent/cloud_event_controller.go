@@ -26,11 +26,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cache"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
-	controller "knative.dev/pkg/controller"
+	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 )
 
@@ -101,8 +102,16 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 	wasIn := make(chan error)
 
 	ceClient.addCount()
+	recorder := controller.GetEventRecorder(ctx)
+	r, isFakerecorder := recorder.(*k8sevent.FakeRecorder)
+	if isFakerecorder {
+		r.AddCount()
+	}
 	go func() {
 		defer ceClient.decreaseCount()
+		if isFakerecorder{
+			defer r.DecreaseCount()
+		}
 		wasIn <- nil
 		logger.Debugf("Sending cloudevent of type %q", event.Type())
 		// In case of Run event, check cache if cloudevent is already sent
@@ -118,12 +127,15 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		}
 		if result := ceClient.Send(cloudevents.ContextWithRetriesExponentialBackoff(ctx, 10*time.Millisecond, 10), *event); !cloudevents.IsACK(result) {
 			logger.Warnf("Failed to send cloudevent: %s", result.Error())
-			recorder := controller.GetEventRecorder(ctx)
 			if recorder == nil {
 				logger.Warnf("No recorder in context, cannot emit error event")
 				return
 			}
-			recorder.Event(object, corev1.EventTypeWarning, "Cloud Event Failure", result.Error())
+			if isFakerecorder{
+				r.Event(object, corev1.EventTypeWarning, "Cloud Event Failure", result.Error())
+			}else{
+				recorder.Event(object, corev1.EventTypeWarning, "Cloud Event Failure", result.Error())
+			}
 		}
 	}()
 
