@@ -178,11 +178,11 @@ so long as the artifact adheres to the [contract](tekton-bundle-contracts.md).
 
 #### Remote Pipelines
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+**([beta feature](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features))**
 
 A `pipelineRef` field may specify a Pipeline in a remote location such as git.
 Support for specific types of remote will depend on the Resolvers your
-cluster's operator has installed. For more information please check the [Tekton resolution repo](https://github.com/tektoncd/resolution). The below example demonstrates
+cluster's operator has installed. For more information including a tutorial, please check [resolution docs](resolution.md). The below example demonstrates
 referencing a Pipeline in git:
 
 ```yaml
@@ -1454,17 +1454,17 @@ taskRuns:
 The following tables shows how to read the overall status of a `PipelineRun`.
 Completion time is set once a `PipelineRun` reaches status `True` or `False`:
 
-`status`|`reason`|`completionTime` is set|Description
-:-------|:-------|:---------------------:|--------------:
-Unknown|Started|No|The `PipelineRun` has just been picked up by the controller.
-Unknown|Running|No|The `PipelineRun` has been validate and started to perform its work.
-Unknown|Cancelled|No|The user requested the PipelineRun to be cancelled. Cancellation has not be done yet.
-True|Succeeded|Yes|The `PipelineRun` completed successfully.
-True|Completed|Yes|The `PipelineRun` completed successfully, one or more Tasks were skipped.
-False|Failed|Yes|The `PipelineRun` failed because one of the `TaskRuns` failed.
-False|\[Error message\]|Yes|The `PipelineRun` failed with a permanent error (usually validation).
-False|Cancelled|Yes|The `PipelineRun` was cancelled successfully.
-False|PipelineRunTimeout|Yes|The `PipelineRun` timed out.
+`status` | `reason`           | `completionTime` is set |                                                                           Description
+:--------|:-------------------|:-----------------------:|-------------------------------------------------------------------------------------:
+Unknown  | Started            |           No            |                          The `PipelineRun` has just been picked up by the controller.
+Unknown  | Running            |           No            |                  The `PipelineRun` has been validate and started to perform its work.
+Unknown  | Cancelled          |           No            | The user requested the PipelineRun to be cancelled. Cancellation has not be done yet.
+True     | Succeeded          |           Yes           |                                             The `PipelineRun` completed successfully.
+True     | Completed          |           Yes           |             The `PipelineRun` completed successfully, one or more Tasks were skipped.
+False    | Failed             |           Yes           |                        The `PipelineRun` failed because one of the `TaskRuns` failed.
+False    | \[Error message\]  |           Yes           |                 The `PipelineRun` failed with a permanent error (usually validation).
+False    | Cancelled          |           Yes           |                                         The `PipelineRun` was cancelled successfully.
+False    | PipelineRunTimeout |           Yes           |                                                          The `PipelineRun` timed out.
 
 When a `PipelineRun` changes status, [events](events.md#pipelineruns) are triggered accordingly.
 

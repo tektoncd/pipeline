@@ -13,6 +13,7 @@ weight: 400
   - [Specifying `Workspaces`](#specifying-workspaces)
   - [Specifying `Parameters`](#specifying-parameters)
   - [Adding `Tasks` to the `Pipeline`](#adding-tasks-to-the-pipeline)
+    - [Specifying Remote Tasks](#specifying-remote-tasks)
     - [Specifying `Resources` in `PipelineTasks`](#specifying-resources-in-pipelinetasks)
     - [Specifying `Parameters` in `PipelineTasks`](#specifying-parameters-in-pipelinetasks)
     - [Specifying `Matrix` in `PipelineTasks`](#specifying-matrix-in-pipelinetasks)
@@ -315,6 +316,29 @@ tasks:
 ```
 
 Note that any `task` specified in `taskSpec` will be the same version as the `Pipeline`.
+
+### Specifying Remote Tasks
+
+**([beta feature](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features))**
+
+A `taskRef` field may specify a Task in a remote location such as git.
+Support for specific types of remote will depend on the Resolvers your
+cluster's operator has installed. For more information including a tutorial, please check [resolution docs](resolution.md). The below example demonstrates referencing a Task in git:
+
+```yaml
+tasks:
+- name: "go-build"
+  taskRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/tektoncd/catalog.git
+    - name: revision
+      # value can use params declared at the pipeline level or a static value like main
+      value: $(params.gitRevision) 
+    - name: pathInRepo
+      value: task/golang-build/0.3/golang-build.yaml
+```
 
 ### Specifying `Resources` in `PipelineTasks`
 
@@ -1778,8 +1802,8 @@ We try to list as many known Custom Tasks as possible here so that users can eas
 
 #### v1beta1.CustomRun
 
-| Custom Task | Description |
-|:---|:--- |
+| Custom Task                      | Description                                                                                                                      |
+|:---------------------------------|:---------------------------------------------------------------------------------------------------------------------------------|
 | [Wait Task Beta][wait-task-beta] | Waits a given amount of time before succeeding, specified by an input parameter named duration. Support `timeout` and `retries`. |
 
 #### v1alpha1.Run

@@ -18,7 +18,7 @@ This guide explains how to install Tekton Pipelines. It covers the following top
         - [Example configuration for an S3 bucket](#example-configuration-for-an-s3-bucket)
         - [Example configuration for a GCS bucket](#example-configuration-for-a-gcs-bucket)
 - [Configuring CloudEvents notifications](#configuring-cloudevents-notifications)
-- [Installing and configuring remote Task and Pipeline resolution](#installing-and-configuring-remote-task-and-pipeline-resolution)
+- [Configuring remote Task and Pipeline resolution](#configuring-built-in-remote-task-and-pipeline-resolution)
 - [Configuring self-signed cert for private registry](#configuring-self-signed-cert-for-private-registry)
 - [Customizing basic execution parameters](#customizing-basic-execution-parameters)
     - [Customizing the Pipelines Controller behavior](#customizing-the-pipelines-controller-behavior)
@@ -272,19 +272,19 @@ data:
 
 ## Configuring built-in remote Task and Pipeline resolution
 
-Three remote resolvers are currently provided as part of the Tekton Pipelines installation.
-By default, these remote resolvers are disabled. Each resolver is enabled by setting
+Four remote resolvers are currently provided as part of the Tekton Pipelines installation.
+By default, these remote resolvers are enabled. Each resolver can be disabled by setting
 the appropriate feature flag in the `resolvers-feature-flags` ConfigMap in the `tekton-pipelines-resolvers`
 namespace:
 
-1. [The `bundles` resolver](./bundle-resolver.md), enabled by setting the `enable-bundles-resolver`
-  feature flag to `true`.
-1. [The `git` resolver](./git-resolver.md), enabled by setting the `enable-git-resolver`
-   feature flag to `true`.
-1. [The `hub` resolver](./hub-resolver.md), enabled by setting the `enable-hub-resolver`
-   feature flag to `true`.
-1. [The `cluster` resolver](./cluster-resolver.md), enabled by setting the `enable-cluster-resolver`
-   feature flag to `true`.
+1. [The `bundles` resolver](./bundle-resolver.md), disabled by setting the `enable-bundles-resolver`
+  feature flag to `false`.
+1. [The `git` resolver](./git-resolver.md), disabled by setting the `enable-git-resolver`
+   feature flag to `false`.
+1. [The `hub` resolver](./hub-resolver.md), disabled by setting the `enable-hub-resolver`
+   feature flag to `false`.
+1. [The `cluster` resolver](./cluster-resolver.md), disabled by setting the `enable-cluster-resolver`
+   feature flag to `false`.
 
 ## Configuring CloudEvents notifications
 
@@ -511,23 +511,23 @@ Alpha features in the following table are still in development and their syntax 
 
 Features currently in "alpha" are:
 
-| Feature                                                                                               | Proposal                                                                                                                        | Release                                                              | Individual Flag             |
-|:------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|:----------------------------|
-| [Bundles ](./pipelineruns.md#tekton-bundles)                                                          | [TEP-0005](https://github.com/tektoncd/community/blob/main/teps/0005-tekton-oci-bundles.md)                                | [v0.18.0](https://github.com/tektoncd/pipeline/releases/tag/v0.18.0) | `enable-tekton-oci-bundles` |
-| [Isolated `Step` & `Sidecar` `Workspaces`](./workspaces.md#isolated-workspaces)                       | [TEP-0029](https://github.com/tektoncd/community/blob/main/teps/0029-step-workspaces.md)                                   | [v0.24.0](https://github.com/tektoncd/pipeline/releases/tag/v0.24.0) |                             |
-| [Hermetic Execution Mode](./hermetic.md)                                                              | [TEP-0025](https://github.com/tektoncd/community/blob/main/teps/0025-hermekton.md)                                         | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                             |
-| [Propagated `Parameters`](./taskruns.md#propagated-parameters)                                        | [TEP-0107](https://github.com/tektoncd/community/blob/main/teps/0107-propagating-parameters.md)                            | [v0.36.0](https://github.com/tektoncd/pipeline/releases/tag/v0.36.0) |                             |
-| [Propagated `Workspaces`](./pipelineruns.md#propagated-workspaces)                                    | [TEP-0111](https://github.com/tektoncd/community/blob/main/teps/0111-propagating-workspaces.md)                      |            v0.40.0                                                          |                             |
-| [Windows Scripts](./tasks.md#windows-scripts)                                                         | [TEP-0057](https://github.com/tektoncd/community/blob/main/teps/0057-windows-support.md)                                   | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                             |
-| [Debug](./debug.md)                                                                                   | [TEP-0042](https://github.com/tektoncd/community/blob/main/teps/0042-taskrun-breakpoint-on-failure.md)                     | [v0.26.0](https://github.com/tektoncd/pipeline/releases/tag/v0.26.0) |                             |
-| [Step and Sidecar Overrides](./taskruns.md#overriding-task-steps-and-sidecars)                        | [TEP-0094](https://github.com/tektoncd/community/blob/main/teps/0094-specifying-resource-requirements-at-runtime.md)       |   [v0.34.0](https://github.com/tektoncd/pipeline/releases/tag/v0.34.0)                                                                   |                             |
-| [Matrix](./matrix.md)                                                                                 | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                                            | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
-| [Embedded Statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses)           | [TEP-0100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md) |   [v0.35.0](https://github.com/tektoncd/pipeline/releases/tag/v0.35.0)     |     `embedded-status`                 |
-| [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration)   | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)                   | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0)  |                             |
-| [Object Params and Results](pipelineruns.md#specifying-parameters)                                    | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
-| [Array Results](pipelineruns.md#specifying-parameters)                                                | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)                                | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                             |
-| [Trusted Resources](./trusted-resources.md)                                                | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                | N/A |     `resource-verification-mode`                        |
-|[`Provenance` field in Status](pipeline-api.md#provenance) |[issue#5550](https://github.com/tektoncd/pipeline/issues/5550)|N/A|`enable-provenance-in-status`|
+| Feature                                                                                             | Proposal                                                                                                                   | Release                                                              | Individual Flag               |
+|:----------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------|:---------------------------------------------------------------------|:------------------------------|
+| [Bundles ](./pipelineruns.md#tekton-bundles)                                                        | [TEP-0005](https://github.com/tektoncd/community/blob/main/teps/0005-tekton-oci-bundles.md)                                | [v0.18.0](https://github.com/tektoncd/pipeline/releases/tag/v0.18.0) | `enable-tekton-oci-bundles`   |
+| [Isolated `Step` & `Sidecar` `Workspaces`](./workspaces.md#isolated-workspaces)                     | [TEP-0029](https://github.com/tektoncd/community/blob/main/teps/0029-step-workspaces.md)                                   | [v0.24.0](https://github.com/tektoncd/pipeline/releases/tag/v0.24.0) |                               |
+| [Hermetic Execution Mode](./hermetic.md)                                                            | [TEP-0025](https://github.com/tektoncd/community/blob/main/teps/0025-hermekton.md)                                         | [v0.25.0](https://github.com/tektoncd/pipeline/releases/tag/v0.25.0) |                               |
+| [Propagated `Parameters`](./taskruns.md#propagated-parameters)                                      | [TEP-0107](https://github.com/tektoncd/community/blob/main/teps/0107-propagating-parameters.md)                            | [v0.36.0](https://github.com/tektoncd/pipeline/releases/tag/v0.36.0) |                               |
+| [Propagated `Workspaces`](./pipelineruns.md#propagated-workspaces)                                  | [TEP-0111](https://github.com/tektoncd/community/blob/main/teps/0111-propagating-workspaces.md)                            | v0.40.0                                                              |                               |
+| [Windows Scripts](./tasks.md#windows-scripts)                                                       | [TEP-0057](https://github.com/tektoncd/community/blob/main/teps/0057-windows-support.md)                                   | [v0.28.0](https://github.com/tektoncd/pipeline/releases/tag/v0.28.0) |                               |
+| [Debug](./debug.md)                                                                                 | [TEP-0042](https://github.com/tektoncd/community/blob/main/teps/0042-taskrun-breakpoint-on-failure.md)                     | [v0.26.0](https://github.com/tektoncd/pipeline/releases/tag/v0.26.0) |                               |
+| [Step and Sidecar Overrides](./taskruns.md#overriding-task-steps-and-sidecars)                      | [TEP-0094](https://github.com/tektoncd/community/blob/main/teps/0094-specifying-resource-requirements-at-runtime.md)       | [v0.34.0](https://github.com/tektoncd/pipeline/releases/tag/v0.34.0) |                               |
+| [Matrix](./matrix.md)                                                                               | [TEP-0090](https://github.com/tektoncd/community/blob/main/teps/0090-matrix.md)                                            | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                               |
+| [Embedded Statuses](pipelineruns.md#configuring-usage-of-taskrun-and-run-embedded-statuses)         | [TEP-0100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md) | [v0.35.0](https://github.com/tektoncd/pipeline/releases/tag/v0.35.0) | `embedded-status`             |
+| [Task-level Resource Requirements](compute-resources.md#task-level-compute-resources-configuration) | [TEP-0104](https://github.com/tektoncd/community/blob/main/teps/0104-tasklevel-resource-requirements.md)                   | [v0.39.0](https://github.com/tektoncd/pipeline/releases/tag/v0.39.0) |                               |
+| [Object Params and Results](pipelineruns.md#specifying-parameters)                                  | [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md)                     | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                               |
+| [Array Results](pipelineruns.md#specifying-parameters)                                              | [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md)                                | [v0.38.0](https://github.com/tektoncd/pipeline/releases/tag/v0.38.0) |                               |
+| [Trusted Resources](./trusted-resources.md)                                                         | [TEP-0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md)                                 | N/A                                                                  | `resource-verification-mode`  |
+| [`Provenance` field in Status](pipeline-api.md#provenance)                                          | [issue#5550](https://github.com/tektoncd/pipeline/issues/5550)                                                             | N/A                                                                  | `enable-provenance-in-status` |
 | [Larger Results via Sidecar Logs](#enabling-larger-results-using-sidecar-logs)                      | [TEP-0127](https://github.com/tektoncd/community/blob/main/teps/0127-larger-results-via-sidecar-logs.md)                   | [v0.43.0](https://github.com/tektoncd/pipeline/releases/tag/v0.43.0) | `results-from`                |
 
 ### Beta Features

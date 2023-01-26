@@ -11,8 +11,8 @@ weight: 300
 - [Overview](#overview)
 - [Configuring a `TaskRun`](#configuring-a-taskrun)
   - [Specifying the target `Task`](#specifying-the-target-task)
-  - [Tekton Bundles](#tekton-bundles)
-  - [Remote Tasks](#remote-tasks)
+    - [Tekton Bundles](#tekton-bundles)
+    - [Remote Tasks](#remote-tasks)
   - [Specifying `Parameters`](#specifying-parameters)
     - [Propagated Parameters](#propagated-parameters)
     - [Propagated Object Parameters](#propagated-object-parameters)
@@ -116,7 +116,7 @@ spec:
           - --destination=gcr.io/my-project/gohelloworld
 ```
 
-### Tekton Bundles
+#### Tekton Bundles
 
 **Note: This is only allowed if `enable-tekton-oci-bundles` is set to
 `"true"` or `enable-api-fields` is set to `"alpha"` in the `feature-flags`
@@ -166,14 +166,13 @@ of the same named `Task` to be run at once.
 the artifact adheres to the [contract](tekton-bundle-contracts.md). Additionally, you may also use the `tkn`
 cli *(coming soon)*.
 
-### Remote Tasks
+#### Remote Tasks
 
-**([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
+**([beta feature](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#beta-features))**
 
 A `taskRef` field may specify a Task in a remote location such as git.
 Support for specific types of remote will depend on the Resolvers your
-cluster's operator has installed. For more information please check the [Tekton resolution repo](https://github.com/tektoncd/resolution). The below example demonstrates
-referencing a Task in git:
+cluster's operator has installed. For more information including a tutorial, please check [resolution docs](resolution.md). The below example demonstrates referencing a Task in git:
 
 ```yaml
 spec:
@@ -778,20 +777,20 @@ steps:
 
 The following tables shows how to read the overall status of a `TaskRun`:
 
-`status`|`reason`|`message`|`completionTime` is set|Description
-:-------|:-------|:--|:---------------------:|--------------:
-Unknown|Started|n/a|No|The TaskRun has just been picked up by the controller.
-Unknown|Pending|n/a|No|The TaskRun is waiting on a Pod in status Pending.
-Unknown|Running|n/a|No|The TaskRun has been validated and started to perform its work.
-Unknown|TaskRunCancelled|n/a|No|The user requested the TaskRun to be cancelled. Cancellation has not been done yet.
-True|Succeeded|n/a|Yes|The TaskRun completed successfully.
-False|Failed|n/a|Yes|The TaskRun failed because one of the steps failed.
-False|\[Error message\]|n/a|No|The TaskRun encountered a non-permanent error, and it's still running. It may ultimately succeed.
-False|\[Error message\]|n/a|Yes|The TaskRun failed with a permanent error (usually validation).
-False|TaskRunCancelled|n/a|Yes|The TaskRun was cancelled successfully.
-False|TaskRunCancelled|TaskRun cancelled as the PipelineRun it belongs to has timed out.|Yes|The TaskRun was cancelled because the PipelineRun timed out.
-False|TaskRunTimeout|n/a|Yes|The TaskRun timed out.
-False|TaskRunImagePullFailed|n/a|Yes|The TaskRun failed due to one of its steps not being able to pull the image.
+`status` | `reason`               | `message`                                                         | `completionTime` is set |                                                                                       Description
+:--------|:-----------------------|:------------------------------------------------------------------|:-----------------------:|-------------------------------------------------------------------------------------------------:
+Unknown  | Started                | n/a                                                               |           No            |                                            The TaskRun has just been picked up by the controller.
+Unknown  | Pending                | n/a                                                               |           No            |                                                The TaskRun is waiting on a Pod in status Pending.
+Unknown  | Running                | n/a                                                               |           No            |                                   The TaskRun has been validated and started to perform its work.
+Unknown  | TaskRunCancelled       | n/a                                                               |           No            |               The user requested the TaskRun to be cancelled. Cancellation has not been done yet.
+True     | Succeeded              | n/a                                                               |           Yes           |                                                               The TaskRun completed successfully.
+False    | Failed                 | n/a                                                               |           Yes           |                                               The TaskRun failed because one of the steps failed.
+False    | \[Error message\]      | n/a                                                               |           No            | The TaskRun encountered a non-permanent error, and it's still running. It may ultimately succeed.
+False    | \[Error message\]      | n/a                                                               |           Yes           |                                   The TaskRun failed with a permanent error (usually validation).
+False    | TaskRunCancelled       | n/a                                                               |           Yes           |                                                           The TaskRun was cancelled successfully.
+False    | TaskRunCancelled       | TaskRun cancelled as the PipelineRun it belongs to has timed out. |           Yes           |                                      The TaskRun was cancelled because the PipelineRun timed out.
+False    | TaskRunTimeout         | n/a                                                               |           Yes           |                                                                            The TaskRun timed out.
+False    | TaskRunImagePullFailed | n/a                                                               |           Yes           |                      The TaskRun failed due to one of its steps not being able to pull the image.
 
 When a `TaskRun` changes status, [events](events.md#taskruns) are triggered accordingly.
 
@@ -804,9 +803,9 @@ the first retry.
 
 Some examples:
 
-| `TaskRun` Name       | `Pod` Name    |
-|----------------------|---------------|
-| task-run             | task-run-pod  |
+| `TaskRun` Name                                                             | `Pod` Name                                                      |
+|----------------------------------------------------------------------------|-----------------------------------------------------------------|
+| task-run                                                                   | task-run-pod                                                    |
 | task-run-0123456789-0123456789-0123456789-0123456789-0123456789-0123456789 | task-run-0123456789-01234560d38957287bb0283c59440df14069f59-pod |
 
 

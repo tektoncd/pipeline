@@ -1,23 +1,18 @@
 # Tekton Pipeline Remote Resolution Docs
 
+Remote Resolution is a Tekton feature that allows users to fetch tasks and pipelines from remote sources outside the cluster. Tekton provides a few built-in resolvers that can fetch from git repositories, OCI registries etc as well as a framework for writing custom resolvers.
+
+Remote Resolution was initially created as a separate project in [TEP-060](https://github.com/tektoncd/community/blob/main/teps/0060-remote-resource-resolution.md) and migrated into the core pipelines project in [#4710](https://github.com/tektoncd/pipeline/issues/4710).
+
 ## Getting Started Tutorial
 
 For new users getting started with Tekton Pipeline remote resolution, check out the
 [resolution-getting-started.md](./resolution-getting-started.md) tutorial.
 
-## Built-in Resolvers
+## Configuring Built-in Resolvers
 
-These resolvers are enabled by setting the appropriate feature flag in the `resolvers-feature-flags` 
-ConfigMap in the `tekton-pipelines-resolvers` namespace.
-
-1. [The `bundles` resolver](./bundle-resolver.md), enabled by setting the `enable-bundles-resolver`
-   feature flag to `true`.
-1. [The `git` resolver](./git-resolver.md), enabled by setting the `enable-git-resolver`
-   feature flag to `true`.
-1. [The `hub` resolver](./hub-resolver.md), enabled by setting the `enable-hub-resolver`
-   feature flag to `true`.
-1. [The `cluster` resolver](./cluster-resolver.md), enabled by setting the `enable-cluster-resolver`
-   feature flag to `true`.
+These resolvers are enabled by setting the appropriate feature flag in the `resolvers-feature-flags`
+ConfigMap in the `tekton-pipelines-resolvers` namespace. See the [section in install.md](install.md#configuring-built-in-remote-task-and-pipeline-resolution) for details.
 
 ## Developer Howto: Writing a Resolver From Scratch
 
