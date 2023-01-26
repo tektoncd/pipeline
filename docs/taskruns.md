@@ -407,7 +407,6 @@ may be overridden by a TaskRun's StepOverrides and SidecarOverrides.
 ### Specifying Task-level `ComputeResources`
 
 **([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
-(This feature is under development and not functional yet. Stay tuned!)
 
 Task-level compute resources can be configured in `TaskRun.ComputeResources`, or `PipelineRun.TaskRunSpecs.ComputeResources`.
 
