@@ -528,7 +528,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	tr.Status.TaskSpec = ts
 
 	if len(tr.Status.TaskSpec.Steps) > 0 {
-		logger.Infof("set taskspec for %s/%s - script: %s", tr.Namespace, tr.Name, tr.Status.TaskSpec.Steps[0].Script)
+		logger.Debugf("set taskspec for %s/%s - script: %s", tr.Namespace, tr.Name, tr.Status.TaskSpec.Steps[0].Script)
 	}
 
 	if pod == nil {
