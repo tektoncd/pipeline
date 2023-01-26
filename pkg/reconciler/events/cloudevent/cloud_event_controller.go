@@ -22,6 +22,7 @@ import (
 	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -78,8 +79,9 @@ func EmitCloudEventsWhenConditionChange(ctx context.Context, beforeCondition *ap
 // it's only used within the events/cloudevents packages.
 func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error {
 	var (
-		o  objectWithCondition
-		ok bool
+		o           objectWithCondition
+		ok          bool
+		cacheClient *lru.Cache
 	)
 	if o, ok = object.(objectWithCondition); !ok {
 		return errors.New("Input object does not satisfy objectWithCondition")
@@ -94,9 +96,11 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		return err
 	}
 	// Events for Runs require a cache of events that have been sent
-	cacheClient := cache.Get(ctx)
 	_, isRun := object.(*v1alpha1.Run)
 	_, isCustomRun := object.(*v1beta1.CustomRun)
+	if isRun || isCustomRun {
+		cacheClient = cache.Get(ctx)
+	}
 
 	wasIn := make(chan error)
 
