@@ -1036,6 +1036,10 @@
         "configSource": {
           "description": "ConfigSource identifies the source where a resource came from.",
           "$ref": "#/definitions/v1.ConfigSource"
+        },
+        "featureFlags": {
+          "description": "FeatureFlags identifies the feature flags that were used during the task/pipeline run",
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.config.FeatureFlags"
         }
       }
     },

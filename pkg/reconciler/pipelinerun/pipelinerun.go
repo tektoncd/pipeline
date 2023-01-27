@@ -1264,11 +1264,14 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1beta1.PipelineRun,
 	// Propagate ConfigSource from remote resolution to PipelineRun Status
 	// This lives outside of the status.spec check to avoid the case where only the spec is available in the first reconcile and source comes in next reconcile.
 	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableProvenanceInStatus && meta != nil && meta.ConfigSource != nil {
+	if cfg.FeatureFlags.EnableProvenanceInStatus {
 		if pr.Status.Provenance == nil {
 			pr.Status.Provenance = &v1beta1.Provenance{}
 		}
-		if pr.Status.Provenance.ConfigSource == nil {
+		// Store FeatureFlags in the Provenance.
+		pr.Status.Provenance.FeatureFlags = cfg.FeatureFlags
+
+		if meta != nil && meta.ConfigSource != nil && pr.Status.Provenance.ConfigSource == nil {
 			pr.Status.Provenance.ConfigSource = meta.ConfigSource
 		}
 	}

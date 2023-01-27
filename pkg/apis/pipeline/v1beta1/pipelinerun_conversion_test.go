@@ -23,6 +23,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -308,6 +309,15 @@ func TestPipelineRunConversion(t *testing.T) {
 						ConfigSource: &v1beta1.ConfigSource{
 							URI:    "test-uri",
 							Digest: map[string]string{"sha256": "digest"},
+						},
+						FeatureFlags: &config.FeatureFlags{
+							RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+							EnableAPIFields:                  config.DefaultEnableAPIFields,
+							AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+							ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+							ResultExtractionMethod:           config.DefaultResultExtractionMethod,
+							MaxResultSize:                    config.DefaultMaxResultSize,
+							CustomTaskVersion:                config.DefaultCustomTaskVersion,
 						},
 					},
 				},

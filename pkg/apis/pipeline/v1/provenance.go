@@ -13,6 +13,8 @@ limitations under the License.
 
 package v1
 
+import "github.com/tektoncd/pipeline/pkg/apis/config"
+
 // Provenance contains some key authenticated metadata about how a software artifact was
 // built (what sources, what inputs/outputs, etc.). For now, it only contains the subfield
 // `ConfigSource` that identifies the source where a build config file came from.
@@ -22,6 +24,9 @@ package v1
 type Provenance struct {
 	// ConfigSource identifies the source where a resource came from.
 	ConfigSource *ConfigSource `json:"configSource,omitempty"`
+
+	// FeatureFlags identifies the feature flags that were used during the task/pipeline run
+	FeatureFlags *config.FeatureFlags `json:"featureFlags,omitempty"`
 }
 
 // ConfigSource identifies the source where a resource came from.

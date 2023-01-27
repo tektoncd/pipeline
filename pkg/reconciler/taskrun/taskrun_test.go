@@ -4159,6 +4159,16 @@ spec:
 			TaskSpec: ts.DeepCopy(),
 			Provenance: &v1beta1.Provenance{
 				ConfigSource: configSource.DeepCopy(),
+				FeatureFlags: &config.FeatureFlags{
+					RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
+					EnableAPIFields:                  config.DefaultEnableAPIFields,
+					AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
+					ResourceVerificationMode:         config.DefaultResourceVerificationMode,
+					EnableProvenanceInStatus:         true,
+					ResultExtractionMethod:           config.DefaultResultExtractionMethod,
+					MaxResultSize:                    config.DefaultMaxResultSize,
+					CustomTaskVersion:                config.DefaultCustomTaskVersion,
+				},
 			},
 		},
 	}
