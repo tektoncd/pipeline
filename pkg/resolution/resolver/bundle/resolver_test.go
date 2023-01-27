@@ -283,6 +283,7 @@ func TestResolve(t *testing.T) {
 		name               string
 		args               *params
 		imageName          string
+		kindInBundle       string
 		expectedStatus     *v1beta1.ResolutionRequestStatus
 		expectedErrMessage string
 	}{
@@ -293,6 +294,16 @@ func TestResolve(t *testing.T) {
 				name:   "example-task",
 				kind:   "task",
 			},
+			imageName:      "single-task",
+			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
+		}, {
+			name: "single task: param kind is capitalized, but kind in bundle is not",
+			args: &params{
+				bundle: fmt.Sprintf("%s@%s:%s", testImages["single-task"].uri, testImages["single-task"].algo, testImages["single-task"].hex),
+				name:   "example-task",
+				kind:   "Task",
+			},
+			kindInBundle:   "task",
 			imageName:      "single-task",
 			expectedStatus: internal.CreateResolutionRequestStatusWithData(taskAsYAML),
 		}, {
@@ -419,9 +430,12 @@ func TestResolve(t *testing.T) {
 						expectedStatus.Annotations = make(map[string]string)
 					}
 
-					if tc.args.kind != "" {
+					switch {
+					case tc.kindInBundle != "":
+						expectedStatus.Annotations[ResolverAnnotationKind] = tc.kindInBundle
+					case tc.args.kind != "":
 						expectedStatus.Annotations[ResolverAnnotationKind] = tc.args.kind
-					} else {
+					default:
 						expectedStatus.Annotations[ResolverAnnotationKind] = "task"
 					}
 
