@@ -20,14 +20,14 @@ import (
 	"regexp"
 	"testing"
 	"time"
+
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // CheckEventsOrdered checks that the events received via the given chan are the same as wantEvents,
 // in the same order.
 func CheckEventsOrdered(t *testing.T, eventChan chan string, testName string, wantEvents []string) error {
 	t.Helper()
-	// Sleep 50ms to make sure events have delivered
-	time.Sleep(50 * time.Millisecond)
 	err := eventsFromChannel(eventChan, wantEvents)
 	if err != nil {
 		return fmt.Errorf("error in test %s: %v", testName, err)
@@ -44,18 +44,15 @@ func eventsFromChannel(c chan string, wantEvents []string) error {
 	// We only hit the timeout in case of failure of the test, so the actual value
 	// of the timeout is not so relevant, it's only used when tests are going to fail.
 	// on the channel forever if fewer than expected events are received
-	timer := time.NewTimer(10 * time.Millisecond)
+	timer := time.After(wait.ForeverTestTimeout)
 	foundEvents := []string{}
-	for ii := 0; ii < len(wantEvents)+1; ii++ {
+	for ii := 0; ii < len(wantEvents); ii++ {
 		// We loop over all the events that we expect. Once they are all received
 		// we exit the loop. If we never receive enough events, the timeout takes us
 		// out of the loop.
 		select {
 		case event := <-c:
 			foundEvents = append(foundEvents, event)
-			if ii > len(wantEvents)-1 {
-				return fmt.Errorf("received event \"%s\" but not more expected", event)
-			}
 			wantEvent := wantEvents[ii]
 			matching, err := regexp.MatchString(wantEvent, event)
 			if err == nil {
@@ -65,12 +62,17 @@ func eventsFromChannel(c chan string, wantEvents []string) error {
 			} else {
 				return fmt.Errorf("something went wrong matching the event: %s", err)
 			}
-		case <-timer.C:
-			if len(foundEvents) != len(wantEvents) {
-				return fmt.Errorf("received %d events but %d expected. Found events: %#v", len(foundEvents), len(wantEvents), foundEvents)
-			}
+		case <-timer:
+			return fmt.Errorf("received %d events but %d expected. Found events: %#v", len(foundEvents), len(wantEvents), foundEvents)
+		}
+	}
+	// Check if there are extra events in the channel, return error if found.
+	for {
+		select {
+		case event := <-c:
+			return fmt.Errorf("Unexpected event: %q", event)
+		default:
 			return nil
 		}
 	}
-	return nil
 }
