@@ -20,15 +20,25 @@ import (
 )
 
 func (p Provenance) convertTo(ctx context.Context, sink *v1.Provenance) {
-	new := v1.ConfigSource{}
-	p.ConfigSource.convertTo(ctx, &new)
-	sink.ConfigSource = &new
+	if p.ConfigSource != nil {
+		new := v1.ConfigSource{}
+		p.ConfigSource.convertTo(ctx, &new)
+		sink.ConfigSource = &new
+	}
+	if p.FeatureFlags != nil {
+		sink.FeatureFlags = p.FeatureFlags
+	}
 }
 
 func (p *Provenance) convertFrom(ctx context.Context, source v1.Provenance) {
-	new := ConfigSource{}
-	new.convertFrom(ctx, *source.ConfigSource)
-	p.ConfigSource = &new
+	if source.ConfigSource != nil {
+		new := ConfigSource{}
+		new.convertFrom(ctx, *source.ConfigSource)
+		p.ConfigSource = &new
+	}
+	if source.FeatureFlags != nil {
+		p.FeatureFlags = source.FeatureFlags
+	}
 }
 
 func (cs ConfigSource) convertTo(ctx context.Context, sink *v1.ConfigSource) {

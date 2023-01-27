@@ -2072,11 +2072,17 @@ func schema_pkg_apis_pipeline_v1_Provenance(ref common.ReferenceCallback) common
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ConfigSource"),
 						},
 					},
+					"featureFlags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FeatureFlags identifies the feature flags that were used during the task/pipeline run",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ConfigSource"},
+			"github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ConfigSource"},
 	}
 }
 
