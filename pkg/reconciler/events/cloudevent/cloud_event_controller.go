@@ -84,12 +84,12 @@ func SendCloudEventWithRetries(ctx context.Context, object runtime.Object) error
 		cacheClient *lru.Cache
 	)
 	if o, ok = object.(objectWithCondition); !ok {
-		return errors.New("Input object does not satisfy objectWithCondition")
+		return errors.New("input object does not satisfy objectWithCondition")
 	}
 	logger := logging.FromContext(ctx)
 	ceClient := Get(ctx)
 	if ceClient == nil {
-		return errors.New("No cloud events client found in the context")
+		return errors.New("no cloud events client found in the context")
 	}
 	event, err := eventForObjectWithCondition(o)
 	if err != nil {

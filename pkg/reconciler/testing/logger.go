@@ -33,7 +33,7 @@ func SetupFakeCloudClientContext(ctx context.Context, expectedEventCount int) co
 	cloudEventClientBehaviour := cloudevent.FakeClientBehaviour{
 		SendSuccessfully: true,
 	}
-	return cloudevent.WithClient(ctx, &cloudEventClientBehaviour, expectedEventCount)
+	return cloudevent.WithFakeClient(ctx, &cloudEventClientBehaviour, expectedEventCount)
 }
 
 // SetupDefaultContext sets up the Context and the default filtered informers for the tests.
