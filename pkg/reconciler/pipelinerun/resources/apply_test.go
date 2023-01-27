@@ -2331,6 +2331,38 @@ func TestApplyTaskResults_MinimalExpression(t *testing.T) {
 			},
 		}},
 	}, {
+		name: "Test array result substitution on minimal variable substitution expression - matrix",
+		resolvedResultRefs: ResolvedResultRefs{{
+			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
+			ResultReference: v1beta1.ResultRef{
+				PipelineTask: "aTask",
+				Result:       "aResult",
+			},
+			FromTaskRun: "aTaskRun",
+		}},
+		targets: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues(`$(tasks.aTask.results.aResult[*])`),
+					}}},
+			},
+		}},
+		want: PipelineRunState{{
+			PipelineTask: &v1beta1.PipelineTask{
+				Name:    "bTask",
+				TaskRef: &v1beta1.TaskRef{Name: "bTask"},
+				Matrix: &v1beta1.Matrix{
+					Params: []v1beta1.Param{{
+						Name:  "bParam",
+						Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),
+					}}},
+			},
+		}},
+	}, {
 		name: "Test array result substitution on minimal variable substitution expression - when expressions",
 		resolvedResultRefs: ResolvedResultRefs{{
 			Value: *v1beta1.NewStructuredValues("arrayResultValueOne", "arrayResultValueTwo"),

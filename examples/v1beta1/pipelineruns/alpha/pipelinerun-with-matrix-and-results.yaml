@@ -39,16 +39,13 @@ spec:
       - name: get-browsers
         taskSpec:
           results:
-            - name: one
-            - name: two
-            - name: three
+            - name: browsers
           steps:
             - name: echo
               image: alpine
               script: |
-                printf chrome | tee /tekton/results/one
-                printf safari | tee /tekton/results/two
-                printf firefox | tee /tekton/results/three
+                #!/usr/bin/env bash
+                echo -n "[\"chrome\",\"safari\",\"firefox\"]" | tee $(results.browsers.path)
       - name: platforms-and-browsers-dag
         matrix:
           params:
@@ -58,8 +55,6 @@ spec:
                 - $(tasks.get-platforms.results.two)
                 - $(tasks.get-platforms.results.three)
             - name: browser
-              value:
-                - $(tasks.get-browsers.results.one)
-                - $(tasks.get-browsers.results.two)
+              value: $(tasks.get-browsers.results.browsers[*])
         taskRef:
           name: platform-browsers

@@ -322,7 +322,7 @@ func validatePipelineParametersVariablesInMatrixParameters(matrix []Param, prefi
 func validateParametersInTaskMatrix(matrix *Matrix) (errs *apis.FieldError) {
 	if matrix != nil {
 		for _, param := range matrix.Params {
-			if param.Value.Type != ParamTypeArray {
+			if param.Value.Type == ParamTypeObject || (param.Value.Type == ParamTypeString && !fullArrayVariableSubstitutionRegex.MatchString(param.Value.StringVal)) {
 				errs = errs.Also(apis.ErrInvalidValue("parameters of type array only are allowed in matrix", "").ViaFieldKey("matrix", param.Name))
 			}
 		}

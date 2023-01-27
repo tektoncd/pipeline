@@ -46,6 +46,8 @@ const (
 	// TODO(#2462) use one regex across all substitutions
 	// variableSubstitutionFormat matches format like $result.resultname, $result.resultname[int] and $result.resultname[*]
 	variableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)`
+	// fullArrayVariableSubstitutionFormat matches the array replacement format $result.resultname[*]
+	fullArrayVariableSubstitutionFormat = `\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[\*\])\)`
 	// exactVariableSubstitutionFormat matches strings that only contain a single reference to result or param variables, but nothing else
 	// i.e. `$(result.resultname)` is a match, but `foo $(result.resultname)` is not.
 	exactVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
@@ -57,6 +59,7 @@ const (
 
 // VariableSubstitutionRegex is a regex to find all result matching substitutions
 var VariableSubstitutionRegex = regexp.MustCompile(variableSubstitutionFormat)
+var fullArrayVariableSubstitutionRegex = regexp.MustCompile(fullArrayVariableSubstitutionFormat)
 var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
 

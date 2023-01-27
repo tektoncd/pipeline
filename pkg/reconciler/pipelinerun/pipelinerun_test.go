@@ -9032,20 +9032,18 @@ spec:
    - name: platform-1
    - name: platform-2
    - name: platform-3
-   - name: browser-1
-   - name: browser-2
-   - name: browser-3
+   - name: browsers
+     type: array
    - name: version
   steps:
     - name: echo
       image: alpine
       script: |
+        #!/usr/bin/env bash
         printf linux | tee /tekton/results/platform-1
         printf mac | tee /tekton/results/platform-2
         printf windows | tee /tekton/results/platform-3
-        printf chrome | tee /tekton/results/browser-1
-        printf safari | tee /tekton/results/browser-2
-        printf firefox | tee /tekton/results/browser-3
+        echo -n "[\"chrome\",\"safari\",\"firefox\"]" | tee $(results.browsers.path)
         printf v0.33.0 | tee /tekton/results/version
 `)
 
@@ -9254,10 +9252,7 @@ spec:
               - $(tasks.pt-with-result.results.platform-2)
               - $(tasks.pt-with-result.results.platform-3)
           - name: browser
-            value:
-              - $(tasks.pt-with-result.results.browser-1)
-              - $(tasks.pt-with-result.results.browser-2)
-              - $(tasks.pt-with-result.results.browser-3)
+            value: $(tasks.pt-with-result.results.browsers[*])
       params:
         - name: version
           value: $(tasks.pt-with-result.results.version)
@@ -9285,12 +9280,8 @@ status:
     value: mac
   - name: platform-3
     value: windows
-  - name: browser-1
-    value: chrome
-  - name: browser-2
-    value: safari
-  - name: browser-3
-    value: firefox
+  - name: browsers
+    value: chrome,safari,firefox
   - name: version
     value: v0.33.0
 `),
@@ -9307,6 +9298,9 @@ spec:
     name: p-dag
 status:
   pipelineSpec:
+    params:
+      - name: browsers
+        type: array
     tasks:
     - name: pt-with-result
       params:
@@ -9331,10 +9325,7 @@ status:
               - $(tasks.pt-with-result.results.platform-2)
               - $(tasks.pt-with-result.results.platform-3)
           - name: browser
-            value:
-              - $(tasks.pt-with-result.results.browser-1)
-              - $(tasks.pt-with-result.results.browser-2)
-              - $(tasks.pt-with-result.results.browser-3)
+            value: $(tasks.pt-with-result.results.browsers[*])
       params:
         - name: version
           value: $(tasks.pt-with-result.results.version)
@@ -9563,6 +9554,12 @@ metadata:
   name: pr
   namespace: foo
 spec:
+  params:
+    - name: browsers
+      value:
+        - chrome
+        - safari
+        - firefox
   serviceAccountName: test-sa
   pipelineRef:
     name: %s

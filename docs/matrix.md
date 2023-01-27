@@ -166,27 +166,8 @@ Consuming `Results` from previous `TaskRuns` or `Runs` in a `Matrix`, which woul
 `TaskRuns` or `Runs` from the fanned out `PipelineTask`, is supported. Producing `Results` in from a
 `PipelineTask` with a `Matrix` is not yet supported - see [further details](#results-from-fanned-out-pipelinetasks).
 
-`Matrix` supports Results of type String that are passed in individually:
-
-```yaml
-tasks:
-...
-- name: task-4
-  taskRef:
-    name: task-4
-  matrix:
-    params:
-    - name: values
-      value:
-      - (tasks.task-1.results.foo) # string
-      - (tasks.task-2.results.bar) # string
-      - (tasks.task-3.results.rad) # string
-```
-
-For further information, see the example in [`PipelineRun` with `Matrix` and `Results`][pr-with-matrix-and-results].
-
-When we support `Results` of type Array at the `Pipeline` level, we will support passing Results into the `Matrix`.
-> Note: Results of type Array are not yet supported in the Pipeline level.
+`Matrix` supports Results of type String that are passed in individually, and of type Array, either individual
+values by index or the entire array:
 
 ```yaml
 tasks:
@@ -197,8 +178,15 @@ tasks:
   matrix:
     params:
     - name: values
-      value: (tasks.task-4.results.foo) # array
+      value:
+      - $(tasks.task-1.results.foo) # string
+      - $(tasks.task-2.results.bar) # string
+      - $(tasks.task-3.results.rad[0]) # array index
+    - name: otherValues
+      value: $(tasks.task-4.results.someArray[*])
 ```
+
+For further information, see the example in [`PipelineRun` with `Matrix` and `Results`][pr-with-matrix-and-results].
 
 #### Results from fanned out PipelineTasks
 

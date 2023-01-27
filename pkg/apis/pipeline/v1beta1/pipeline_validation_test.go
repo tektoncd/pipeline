@@ -3396,7 +3396,7 @@ func Test_validateMatrix(t *testing.T) {
 			}},
 		}},
 	}, {
-		name: "parameters in matrix are strings",
+		name: "parameters in matrix are strings or full array parameters",
 		tasks: PipelineTaskList{{
 			Name:    "a-task",
 			TaskRef: &TaskRef{Name: "a-task"},
@@ -3413,10 +3413,17 @@ func Test_validateMatrix(t *testing.T) {
 				Params: []Param{{
 					Name: "baz", Value: ParamValue{Type: ParamTypeString, StringVal: "baz"},
 				}}},
+		}, {
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "faz", Value: ParamValue{Type: ParamTypeString, StringVal: "$(params.apple[1])"},
+				}}},
 		}},
 		wantErrs: &apis.FieldError{
 			Message: "invalid value: parameters of type array only are allowed in matrix",
-			Paths:   []string{"[0].matrix[foo]", "[0].matrix[bar]", "[1].matrix[baz]"},
+			Paths:   []string{"[0].matrix[foo]", "[0].matrix[bar]", "[1].matrix[baz]", "[2].matrix[faz]"},
 		},
 	}, {
 		name: "parameters in matrix are arrays",
@@ -3445,6 +3452,13 @@ func Test_validateMatrix(t *testing.T) {
 			Matrix: &Matrix{
 				Params: []Param{{
 					Name: "b-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.b-result)"}},
+				}}},
+		}, {
+			Name:    "c-task",
+			TaskRef: &TaskRef{Name: "c-task"},
+			Matrix: &Matrix{
+				Params: []Param{{
+					Name: "c-param", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"$(tasks.bar-task.results.c-result[*])"}},
 				}}},
 		}},
 	}}

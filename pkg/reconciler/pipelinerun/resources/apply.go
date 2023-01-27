@@ -178,7 +178,7 @@ func ApplyTaskResults(targets PipelineRunState, resolvedResultRefs ResolvedResul
 			pipelineTask := resolvedPipelineRunTask.PipelineTask.DeepCopy()
 			pipelineTask.Params = replaceParamValues(pipelineTask.Params, stringReplacements, arrayReplacements, objectReplacements)
 			if pipelineTask.IsMatrixed() {
-				pipelineTask.Matrix.Params = replaceParamValues(pipelineTask.Matrix.Params, stringReplacements, nil, nil)
+				pipelineTask.Matrix.Params = replaceParamValues(pipelineTask.Matrix.Params, stringReplacements, arrayReplacements, nil)
 			}
 			pipelineTask.WhenExpressions = pipelineTask.WhenExpressions.ReplaceWhenExpressionsVariables(stringReplacements, arrayReplacements)
 			if pipelineTask.TaskRef != nil && pipelineTask.TaskRef.Params != nil {
