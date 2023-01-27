@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cloudevent
+package cloudevent_test
 
 import (
 	"context"
@@ -24,10 +24,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
 	"github.com/tektoncd/pipeline/test/diff"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -45,13 +47,13 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		clientBehaviour FakeClientBehaviour
-		object          objectWithCondition
+		clientBehaviour cloudevent.FakeClientBehaviour
+		object          runtime.Object
 		wantCEvents     []string
 		wantEvents      []string
 	}{{
 		name: "test-send-cloud-event-taskrun",
-		clientBehaviour: FakeClientBehaviour{
+		clientBehaviour: cloudevent.FakeClientBehaviour{
 			SendSuccessfully: true,
 		},
 		object: &v1beta1.TaskRun{
@@ -64,7 +66,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		wantEvents:  []string{},
 	}, {
 		name: "test-send-cloud-event-pipelinerun",
-		clientBehaviour: FakeClientBehaviour{
+		clientBehaviour: cloudevent.FakeClientBehaviour{
 			SendSuccessfully: true,
 		},
 		object: &v1beta1.PipelineRun{
@@ -77,7 +79,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		wantEvents:  []string{},
 	}, {
 		name: "test-send-cloud-event-failed",
-		clientBehaviour: FakeClientBehaviour{
+		clientBehaviour: cloudevent.FakeClientBehaviour{
 			SendSuccessfully: false,
 		},
 		object: &v1beta1.PipelineRun{
@@ -87,7 +89,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		wantEvents:  []string{"Warning Cloud Event Failure"},
 	}, {
 		name: "test-send-cloud-event-run",
-		clientBehaviour: FakeClientBehaviour{
+		clientBehaviour: cloudevent.FakeClientBehaviour{
 			SendSuccessfully: true,
 		},
 		object:      &v1alpha1.Run{},
@@ -95,7 +97,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 		wantEvents:  []string{},
 	}, {
 		name: "test-send-cloud-event-customrun",
-		clientBehaviour: FakeClientBehaviour{
+		clientBehaviour: cloudevent.FakeClientBehaviour{
 			SendSuccessfully: true,
 		},
 		object:      &v1beta1.CustomRun{},
@@ -105,10 +107,10 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := setupFakeContext(t, tc.clientBehaviour, true, len(tc.wantCEvents))
-			if err := SendCloudEventWithRetries(ctx, tc.object); err != nil {
+			if err := cloudevent.SendCloudEventWithRetries(ctx, tc.object); err != nil {
 				t.Fatalf("Unexpected error sending cloud events: %v", err)
 			}
-			ceClient := Get(ctx).(FakeClient)
+			ceClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 			ceClient.CheckCloudEventsUnordered(t, tc.name, tc.wantCEvents)
 			recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
 			if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
@@ -121,7 +123,7 @@ func TestSendCloudEventWithRetries(t *testing.T) {
 func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 	tests := []struct {
 		name       string
-		object     objectWithCondition
+		object     runtime.Object
 		wantCEvent string
 		wantEvent  string
 	}{{
@@ -141,12 +143,12 @@ func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 	}}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := setupFakeContext(t, FakeClientBehaviour{
+			ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{
 				SendSuccessfully: true,
 			}, true, 1)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			err := SendCloudEventWithRetries(ctx, tc.object)
+			err := cloudevent.SendCloudEventWithRetries(ctx, tc.object)
 			if err == nil {
 				t.Fatalf("Expected an error sending cloud events for invalid object, got none")
 			}
@@ -155,12 +157,12 @@ func TestSendCloudEventWithRetriesInvalid(t *testing.T) {
 }
 
 func TestSendCloudEventWithRetriesNoClient(t *testing.T) {
-	ctx := setupFakeContext(t, FakeClientBehaviour{}, false, 0)
-	err := SendCloudEventWithRetries(ctx, &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{}})
+	ctx := setupFakeContext(t, cloudevent.FakeClientBehaviour{}, false, 0)
+	err := cloudevent.SendCloudEventWithRetries(ctx, &v1beta1.TaskRun{Status: v1beta1.TaskRunStatus{}})
 	if err == nil {
 		t.Fatalf("Expected an error sending cloud events with no client in the context, got none")
 	}
-	if d := cmp.Diff("No cloud events client found in the context", err.Error()); d != "" {
+	if d := cmp.Diff("no cloud events client found in the context", err.Error()); d != "" {
 		t.Fatalf("Unexpected error message %s", diff.PrintWantGot(d))
 	}
 }
@@ -197,8 +199,8 @@ func TestEmitCloudEvents(t *testing.T) {
 	for _, tc := range testcases {
 		// Setup the context and seed test data
 		ctx, _ := rtesting.SetupFakeContext(t)
-		ctx = WithClient(ctx, &FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
-		fakeClient := Get(ctx).(FakeClient)
+		ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
+		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
 		// Setup the config and add it to the context
 		defaults, _ := config.NewDefaultsFromMap(tc.data)
@@ -210,7 +212,7 @@ func TestEmitCloudEvents(t *testing.T) {
 		ctx = config.ToContext(ctx, cfg)
 
 		recorder := controller.GetEventRecorder(ctx).(*record.FakeRecorder)
-		EmitCloudEvents(ctx, object)
+		cloudevent.EmitCloudEvents(ctx, object)
 		if err := k8sevent.CheckEventsOrdered(t, recorder.Events, tc.name, tc.wantEvents); err != nil {
 			t.Fatalf(err.Error())
 		}
@@ -243,8 +245,8 @@ func TestEmitCloudEventsWhenConditionChange(t *testing.T) {
 
 	// Setup the context and seed test data
 	ctx, _ := rtesting.SetupFakeContext(t)
-	ctx = WithClient(ctx, &FakeClientBehaviour{SendSuccessfully: true}, len(wantCloudEvents))
-	fakeClient := Get(ctx).(FakeClient)
+	ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(wantCloudEvents))
+	fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
 	// Setup the config and add it to the context
 	defaults, _ := config.NewDefaultsFromMap(data)
@@ -255,15 +257,15 @@ func TestEmitCloudEventsWhenConditionChange(t *testing.T) {
 	}
 	ctx = config.ToContext(ctx, cfg)
 
-	EmitCloudEventsWhenConditionChange(ctx, nil, after, object)
+	cloudevent.EmitCloudEventsWhenConditionChange(ctx, nil, after, object)
 	fakeClient.CheckCloudEventsUnordered(t, "with sink", wantCloudEvents)
 }
 
-func setupFakeContext(t *testing.T, behaviour FakeClientBehaviour, withClient bool, expectedEventCount int) context.Context {
+func setupFakeContext(t *testing.T, behaviour cloudevent.FakeClientBehaviour, withClient bool, expectedEventCount int) context.Context {
 	t.Helper()
 	ctx, _ := rtesting.SetupFakeContext(t)
 	if withClient {
-		ctx = WithClient(ctx, &behaviour, expectedEventCount)
+		ctx = cloudevent.WithFakeClient(ctx, &behaviour, expectedEventCount)
 	}
 	return ctx
 }

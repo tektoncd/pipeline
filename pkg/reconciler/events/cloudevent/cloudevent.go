@@ -146,7 +146,7 @@ func eventForObjectWithCondition(runObject objectWithCondition) (*cloudevents.Ev
 		return nil, err
 	}
 	if eventType == nil {
-		return nil, errors.New("No matching event type found")
+		return nil, errors.New("no matching event type found")
 	}
 	event.SetType(eventType.String())
 
@@ -154,46 +154,6 @@ func eventForObjectWithCondition(runObject objectWithCondition) (*cloudevents.Ev
 		return nil, err
 	}
 	return &event, nil
-}
-
-// eventForTaskRun will create a new event based on a TaskRun,
-// or return an error if not possible.
-func eventForTaskRun(taskRun *v1beta1.TaskRun) (*cloudevents.Event, error) {
-	// Check if the TaskRun is defined
-	if taskRun == nil {
-		return nil, errors.New("Cannot send an event for an empty TaskRun")
-	}
-	return eventForObjectWithCondition(taskRun)
-}
-
-// eventForPipelineRun will create a new event based on a PipelineRun,
-// or return an error if not possible.
-func eventForPipelineRun(pipelineRun *v1beta1.PipelineRun) (*cloudevents.Event, error) {
-	// Check if the TaskRun is defined
-	if pipelineRun == nil {
-		return nil, errors.New("Cannot send an event for an empty PipelineRun")
-	}
-	return eventForObjectWithCondition(pipelineRun)
-}
-
-// eventForRun will create a new event based on a Run, or return an error if
-// not possible.
-func eventForRun(run *v1alpha1.Run) (*cloudevents.Event, error) {
-	// Check if the Run is defined
-	if run == nil {
-		return nil, errors.New("Cannot send an event for an empty Run")
-	}
-	return eventForObjectWithCondition(run)
-}
-
-// eventForCustomRun will create a new event based on a CustomRun, or return an error if
-// not possible.
-func eventForCustomRun(customRun *v1beta1.CustomRun) (*cloudevents.Event, error) {
-	// Check if the CustomRun is defined
-	if customRun == nil {
-		return nil, errors.New("Cannot send an event for an empty CustomRun")
-	}
-	return eventForObjectWithCondition(customRun)
 }
 
 func getEventType(runObject objectWithCondition) (*TektonEventType, error) {

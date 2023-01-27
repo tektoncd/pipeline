@@ -33,11 +33,11 @@ type FakeClientBehaviour struct {
 }
 
 // FakeClient is a fake CloudEvent client for unit testing
-// Holding  pointer to the behaviour allows to change the behaviour of a client
+// Holding a pointer to the behaviour allows to change the behaviour of a client
 type FakeClient struct {
 	behaviour *FakeClientBehaviour
 	// Modelled after k8s.io/client-go fake recorder
-	Events chan string
+	events chan string
 	// waitGroup is used to block until all events have been sent
 	waitGroup *sync.WaitGroup
 }
@@ -47,7 +47,7 @@ func newFakeClient(behaviour *FakeClientBehaviour, expectedEventCount int) CECli
 	return FakeClient{
 		behaviour: behaviour,
 		// set buffersize to length of want events to make sure no extra events are sent
-		Events:    make(chan string, expectedEventCount),
+		events:    make(chan string, expectedEventCount),
 		waitGroup: &sync.WaitGroup{},
 	}
 }
@@ -58,25 +58,25 @@ var _ cloudevents.Client = (*FakeClient)(nil)
 func (c FakeClient) Send(ctx context.Context, event cloudevents.Event) protocol.Result {
 	if c.behaviour.SendSuccessfully {
 		// This is to prevent extra events are sent. We don't read events from channel before we call CheckCloudEventsUnordered
-		if len(c.Events) < cap(c.Events) {
-			c.Events <- event.String()
+		if len(c.events) < cap(c.events) {
+			c.events <- event.String()
 			return nil
 		}
-		return fmt.Errorf("Channel is full of size:%v, but extra event wants to be sent:%v", cap(c.Events), event)
+		return fmt.Errorf("channel is full of size:%v, but extra event wants to be sent:%v", cap(c.events), event)
 	}
-	return fmt.Errorf("Had to fail. Event ID: %s", event.ID())
+	return fmt.Errorf("had to fail. Event ID: %s", event.ID())
 }
 
 // Request fakes the Request method from cloudevents.Client
 func (c FakeClient) Request(ctx context.Context, event cloudevents.Event) (*cloudevents.Event, protocol.Result) {
 	if c.behaviour.SendSuccessfully {
-		if len(c.Events) < cap(c.Events) {
-			c.Events <- fmt.Sprintf("%v", event.String())
+		if len(c.events) < cap(c.events) {
+			c.events <- fmt.Sprintf("%v", event.String())
 			return &event, nil
 		}
-		return nil, fmt.Errorf("Channel is full of size:%v, but extra event wants to be sent:%v", cap(c.Events), event)
+		return nil, fmt.Errorf("channel is full of size:%v, but extra event wants to be sent:%v", cap(c.events), event)
 	}
-	return nil, fmt.Errorf("Had to fail. Event ID: %s", event.ID())
+	return nil, fmt.Errorf("had to fail. Event ID: %s", event.ID())
 }
 
 // StartReceiver fakes StartReceiver method from cloudevents.Client
@@ -94,8 +94,8 @@ func (c FakeClient) decreaseCount() {
 	c.waitGroup.Done()
 }
 
-// WithClient adds to the context a fake client with the desired behaviour and expectedEventCount
-func WithClient(ctx context.Context, behaviour *FakeClientBehaviour, expectedEventCount int) context.Context {
+// WithFakeClient adds to the context a fake client with the desired behaviour and expectedEventCount
+func WithFakeClient(ctx context.Context, behaviour *FakeClientBehaviour, expectedEventCount int) context.Context {
 	return context.WithValue(ctx, ceKey{}, newFakeClient(behaviour, expectedEventCount))
 }
 
@@ -106,12 +106,13 @@ func (c *FakeClient) CheckCloudEventsUnordered(t *testing.T, testName string, wa
 	t.Helper()
 	c.waitGroup.Wait()
 	expected := append([]string{}, wantEvents...)
-	channelEvents := len(c.Events)
+	channelEvents := len(c.events)
 
 	// extra events are prevented in FakeClient's Send function.
 	// fewer events are detected because we collect all events from channel and compare with wantEvents
+
 	for eventCount := 0; eventCount < channelEvents; eventCount++ {
-		event := <-c.Events
+		event := <-c.events
 		if len(expected) == 0 {
 			t.Errorf("extra event received: %q", event)
 		}

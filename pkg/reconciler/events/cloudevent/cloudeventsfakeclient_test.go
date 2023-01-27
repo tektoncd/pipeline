@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package cloudevent
+package cloudevent_test
 
 import (
 	"testing"
 
 	"github.com/cloudevents/sdk-go/v2/event"
+	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	rtesting "knative.dev/pkg/reconciler/testing"
 )
 
@@ -40,8 +41,8 @@ func TestSend_Success(t *testing.T) {
 
 	// Setup the context and seed test event
 	ctx, _ := rtesting.SetupFakeContext(t)
-	ctx = WithClient(ctx, &FakeClientBehaviour{SendSuccessfully: true}, len(wantEvents))
-	fakeClient := Get(ctx).(FakeClient)
+	ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(wantEvents))
+	fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
 	for _, e := range sendEvents {
 		err := fakeClient.Send(ctx, e)
@@ -61,9 +62,8 @@ func TestSend_Error(t *testing.T) {
 
 	// Setup the context and seed test event
 	ctx, _ := rtesting.SetupFakeContext(t)
-	ctx = WithClient(ctx, &FakeClientBehaviour{SendSuccessfully: true}, 0)
-	fakeClient := Get(ctx).(FakeClient)
-
+	ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true} /* expectedEventCount= */, 0)
+	fakeClient := cloudevent.Get(ctx)
 	// the channel size is 0 so no more events can be sent
 	err := fakeClient.Send(ctx, sendEvent)
 	if err == nil {

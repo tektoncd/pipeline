@@ -76,7 +76,7 @@ func TestEmit(t *testing.T) {
 	for _, tc := range testcases {
 		// Setup the context and seed test data
 		ctx, _ := rtesting.SetupFakeContext(t)
-		ctx = cloudevent.WithClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
+		ctx = cloudevent.WithFakeClient(ctx, &cloudevent.FakeClientBehaviour{SendSuccessfully: true}, len(tc.wantCloudEvents))
 		fakeClient := cloudevent.Get(ctx).(cloudevent.FakeClient)
 
 		// Setup the config and add it to the context
