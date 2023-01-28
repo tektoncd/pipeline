@@ -9,3 +9,30 @@ updates:
     - "dependencies"
     - "release-note-none"
     - "kind/misc"
+  - package-ecosystem: "gomod"
+    directory: "/tools"
+    schedule:
+      interval: "daily"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"
+  - package-ecosystem: "gomod"
+    directory: "/test/custom-task-ctrls/wait-task-alpha"
+    schedule:
+      interval: "daily"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"
+  - package-ecosystem: "gomod"
+    directory: "/test/custom-task-ctrls/wait-task-beta"
+    schedule:
+      interval: "daily"
+    labels:
+    - "ok-to-test"
+    - "dependencies"
+    - "release-note-none"
+    - "kind/misc"
