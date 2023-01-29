@@ -19,7 +19,7 @@ package testing
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -32,7 +32,7 @@ import (
 func ConfigMapFromTestFile(t *testing.T, name string) *corev1.ConfigMap {
 	t.Helper()
 
-	b, err := ioutil.ReadFile(fmt.Sprintf("testdata/%s.yaml", name))
+	b, err := os.ReadFile(fmt.Sprintf("testdata/%s.yaml", name))
 	if err != nil {
 		t.Fatalf("ReadFile() = %v", err)
 	}
