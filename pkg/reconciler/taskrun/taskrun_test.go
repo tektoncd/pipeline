@@ -1877,31 +1877,23 @@ spec:
   taskRef:
     name: test-results-task
 status:
-  taskResults:
-  - name: aResult
-    type: string
-    value: aResultValue
   conditions:
   - reason: ToBeRetried
     status: Unknown
     type: Succeeded
-    message: "missmatched Types for these results, map[aResult:[array]]"
+    message: "mismatched types:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
   sideCars:
   retriesStatus:
   - conditions:
     - reason: TaskRunValidationFailed
       status: "False"
       type: "Succeeded"
-      message: "missmatched Types for these results, map[aResult:[array]]"
+      message: "mismatched types:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\""
     startTime: "2021-12-31T23:59:59Z"
     completionTime: "2022-01-01T00:00:00Z"
     podName: "test-taskrun-results-type-mismatched-pod"
-    taskResults:
-    - name: aResult
-      type: string
-      value: aResultValue
 `)
-		reconciliatonError = fmt.Errorf("1 error occurred:\n\t* missmatched Types for these results, map[aResult:[array]]")
+		reconciliatonError = fmt.Errorf("1 error occurred:\n\t* mismatched types:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\"")
 		toBeRetriedTaskRun = parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-to-be-retried
@@ -4894,7 +4886,7 @@ spec:
     results:
       - name: result1
     steps:
-    - script: echo foo >> $(results.result1.path)  
+    - script: echo foo >> $(results.result1.path)
       image: myimage
       name: mycontainer
 status:
@@ -4902,7 +4894,7 @@ status:
     results:
       - name: result1
     steps:
-    - script: echo foo >> $(results.result1.path)  
+    - script: echo foo >> $(results.result1.path)
       image: myimage
       name: mycontainer
 `)
@@ -5084,6 +5076,9 @@ status:
     - name: aResult
       type: string
       value: aResultValue
+    - name: objectResult
+      type: string
+      value: objectResultValue
 `)
 
 	taskRunResultsObjectMissKey := parse.MustParseV1beta1TaskRun(t, `
@@ -5098,8 +5093,8 @@ status:
     - name: aResult
       type: array
       value:
-       - 1
-       - 2
+       - "1"
+       - "2"
     - name: objectResult
       type: object
       value:
@@ -5125,16 +5120,28 @@ status:
 		taskRun          *v1beta1.TaskRun
 		wantFailedReason string
 		expectedError    error
+		expectedResults  []v1beta1.TaskRunResult
 	}{{
 		name:             "taskrun results type mismatched",
 		taskRun:          taskRunResultsTypeMismatched,
 		wantFailedReason: podconvert.ReasonFailedValidation,
-		expectedError:    fmt.Errorf("1 error occurred:\n\t* missmatched Types for these results, map[aResult:[array]]"),
+		expectedError:    fmt.Errorf("1 error occurred:\n\t* mismatched types:  \"aResult\": task result is expected to be \"array\" type but was initialized to a different type \"string\", \"objectResult\": task result is expected to be \"object\" type but was initialized to a different type \"string\""),
+		expectedResults:  nil,
 	}, {
 		name:             "taskrun results object miss key",
 		taskRun:          taskRunResultsObjectMissKey,
 		wantFailedReason: podconvert.ReasonFailedValidation,
 		expectedError:    fmt.Errorf("1 error occurred:\n\t* missing keys for these results which are required in TaskResult's properties map[objectResult:[commit]]"),
+		expectedResults: []v1beta1.TaskRunResult{
+			{
+				Name:  "aResult",
+				Type:  "array",
+				Value: *v1beta1.NewArrayOrString("1", "2"),
+			}, {
+				Name:  "objectResult",
+				Type:  "object",
+				Value: *v1beta1.NewObject(map[string]string{"url": "abc"}),
+			}},
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets, cancel := getTaskRunController(t, d)
@@ -5148,6 +5155,9 @@ status:
 			tr, err := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
 			if err != nil {
 				t.Fatalf("getting updated taskrun: %v", err)
+			}
+			if d := cmp.Diff(tr.Status.TaskRunResults, tc.expectedResults); d != "" {
+				t.Errorf("got unexpected results %s", diff.PrintWantGot(d))
 			}
 			condition := tr.Status.GetCondition(apis.ConditionSucceeded)
 			if condition.Type != apis.ConditionSucceeded || condition.Status != corev1.ConditionFalse || condition.Reason != tc.wantFailedReason {
