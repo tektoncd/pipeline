@@ -421,9 +421,9 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 	// Propagating workspaces allows users to skip declarations
 	// In order to validate the workspace bindings we create declarations based on
 	// the workspaces provided in the task run spec. This logic is hidden behind the
-	// alpha feature gate since propagating workspaces is behind that feature gate.
+	// alpha/beta feature gate since propagating workspaces is behind the beta feature gate.
 	// In addition, we only allow this feature for embedded taskSpec.
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields && tr.Spec.TaskSpec != nil {
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != config.StableAPIFields && tr.Spec.TaskSpec != nil {
 		for _, ws := range tr.Spec.Workspaces {
 			wspaceDeclaration := v1beta1.WorkspaceDeclaration{Name: ws.Name}
 			workspaceDeclarations = append(workspaceDeclarations, wspaceDeclaration)
@@ -832,7 +832,7 @@ func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1beta1.Ta
 	ts = resources.ApplyStepExitCodePath(ts)
 
 	// Apply workspace resource substitution
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != config.StableAPIFields {
 		// propagate workspaces from taskrun to task.
 		twn := []string{}
 		for _, tw := range ts.Workspaces {

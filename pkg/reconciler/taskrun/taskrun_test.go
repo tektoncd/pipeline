@@ -2780,29 +2780,31 @@ spec:
   - emptyDir: {}
     name: tr-workspace
 `)
-	d := test.Data{
-		TaskRuns: []*v1beta1.TaskRun{taskRun},
-	}
-	d.ConfigMaps = []*corev1.ConfigMap{{
-		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
-		Data: map[string]string{
-			"enable-api-fields": config.AlphaAPIFields,
-		},
-	}}
-	testAssets, cancel := getTaskRunController(t, d)
-	defer cancel()
-	createServiceAccount(t, testAssets, "default", taskRun.Namespace)
-	c := testAssets.Controller
-	if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
-		t.Fatalf("Could not reconcile the taskrun: %v", err)
-	}
-	getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
+	for _, apiField := range []string{config.BetaAPIFields, config.AlphaAPIFields} {
+		d := test.Data{
+			TaskRuns: []*v1beta1.TaskRun{taskRun},
+		}
+		d.ConfigMaps = []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+			Data: map[string]string{
+				"enable-api-fields": apiField,
+			},
+		}}
+		testAssets, cancel := getTaskRunController(t, d)
+		defer cancel()
+		createServiceAccount(t, testAssets, "default", taskRun.Namespace)
+		c := testAssets.Controller
+		if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(taskRun)); err == nil {
+			t.Fatalf("Could not reconcile the taskrun: %v", err)
+		}
+		getTaskRun, _ := testAssets.Clients.Pipeline.TektonV1beta1().TaskRuns(taskRun.Namespace).Get(testAssets.Ctx, taskRun.Name, metav1.GetOptions{})
 
-	want := []v1beta1.WorkspaceDeclaration{{
-		Name: "tr-workspace",
-	}}
-	if c := cmp.Diff(want, getTaskRun.Status.TaskSpec.Workspaces); c != "" {
-		t.Errorf("TestPropagatedWorkspaces errored with: %s", diff.PrintWantGot(c))
+		want := []v1beta1.WorkspaceDeclaration{{
+			Name: "tr-workspace",
+		}}
+		if c := cmp.Diff(want, getTaskRun.Status.TaskSpec.Workspaces); c != "" {
+			t.Errorf("TestPropagatedWorkspaces errored with: %s", diff.PrintWantGot(c))
+		}
 	}
 }
 

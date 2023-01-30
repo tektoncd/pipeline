@@ -704,8 +704,9 @@ func TestApply_PropagatedWorkspacesFromWorkspaceBindingToDeclarations(t *testing
 		ts               v1beta1.TaskSpec
 		workspaces       []v1beta1.WorkspaceBinding
 		expectedTaskSpec v1beta1.TaskSpec
+		apiField         string
 	}{{
-		name: "propagate workspaces",
+		name: "propagate workspaces alpha enabled",
 		ts: v1beta1.TaskSpec{
 			Workspaces: []v1beta1.WorkspaceDeclaration{{
 				Name: "workspace1",
@@ -739,11 +740,48 @@ func TestApply_PropagatedWorkspacesFromWorkspaceBindingToDeclarations(t *testing
 				VolumeMounts: []v1.VolumeMount{{Name: "ws-9l9zj", MountPath: "/workspace/workspace2"}},
 			},
 		},
+		apiField: config.AlphaAPIFields,
+	}, {
+		name: "propagate workspaces beta enabled",
+		ts: v1beta1.TaskSpec{
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name: "workspace1",
+			}},
+		},
+		workspaces: []v1beta1.WorkspaceBinding{{
+			Name: "workspace2",
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: "mypvc",
+			},
+		}},
+		expectedTaskSpec: v1beta1.TaskSpec{
+			Volumes: []corev1.Volume{{
+				Name: "ws-mz4c7",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "mypvc",
+					},
+				},
+			}},
+			Workspaces: []v1beta1.WorkspaceDeclaration{{
+				Name:      "workspace1",
+				MountPath: "",
+				ReadOnly:  false,
+			}, {
+				Name:      "workspace2",
+				MountPath: "",
+				ReadOnly:  false,
+			}},
+			StepTemplate: &v1beta1.StepTemplate{
+				VolumeMounts: []v1.VolumeMount{{Name: "ws-mz4c7", MountPath: "/workspace/workspace2"}},
+			},
+		},
+		apiField: config.BetaAPIFields,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := config.ToContext(context.Background(), &config.Config{
 				FeatureFlags: &config.FeatureFlags{
-					EnableAPIFields: "alpha",
+					EnableAPIFields: tc.apiField,
 				},
 			})
 			vols := workspace.CreateVolumes(tc.workspaces)

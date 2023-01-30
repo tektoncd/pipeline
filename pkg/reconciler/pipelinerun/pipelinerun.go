@@ -1102,7 +1102,7 @@ func getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *res
 		pipelineRunWorkspaces[binding.Name] = binding
 	}
 
-	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+	if config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != config.StableAPIFields {
 		// Propagate required workspaces from pipelineRun to the pipelineTasks
 		if rpt.PipelineTask.TaskSpec != nil {
 			var err error
