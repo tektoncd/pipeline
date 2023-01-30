@@ -110,9 +110,9 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 
 	isolatedWorkspaces := sets.NewString()
 
-	alphaAPIEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == config.AlphaAPIFields
+	alphaOrBetaEnabled := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields != config.StableAPIFields
 
-	if alphaAPIEnabled {
+	if alphaOrBetaEnabled {
 		for _, step := range ts.Steps {
 			for _, workspaceUsage := range step.Workspaces {
 				isolatedWorkspaces.Insert(workspaceUsage.Name)
@@ -126,7 +126,7 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 	}
 
 	for i := range wb {
-		if alphaAPIEnabled {
+		if alphaOrBetaEnabled {
 			// Propagate missing Workspaces
 			addWorkspace := true
 			for _, ws := range ts.Workspaces {
@@ -153,7 +153,7 @@ func Apply(ctx context.Context, ts v1beta1.TaskSpec, wb []v1beta1.WorkspaceBindi
 			ReadOnly:  w.ReadOnly,
 		}
 
-		if alphaAPIEnabled {
+		if alphaOrBetaEnabled {
 			if isolatedWorkspaces.Has(w.Name) {
 				mountAsIsolatedWorkspace(ts, w.Name, volumeMount)
 			} else {
