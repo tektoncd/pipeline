@@ -9,11 +9,12 @@ spec:
   params:
     - name: platform
     - name: browser
+    - name: url
   steps:
     - name: echo
       image: alpine
       script: |
-        echo "$(params.platform) and $(params.browser)"
+        echo "Visit $(params.url) on $(params.platform) using $(params.browser)."
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -26,40 +27,45 @@ spec:
       - name: get-platforms
         taskSpec:
           results:
-            - name: one
-            - name: two
-            - name: three
+            - name: platforms
+              type: array
           steps:
-            - name: echo
-              image: alpine
+            - name: produce-a-list-of-platforms
+              image: bash:latest
               script: |
-                printf linux | tee /tekton/results/one
-                printf mac | tee /tekton/results/two
-                printf windows | tee /tekton/results/three
-      - name: get-browsers
+                #!/usr/bin/env bash
+                echo -n "[\"linux\",\"mac\",\"windows\"]" | tee $(results.platforms.path)
+      - name: get-browsers-and-url
         taskSpec:
           results:
-            - name: one
-            - name: two
-            - name: three
+            - name: browsers
+              type: array
+            - name: url
           steps:
-            - name: echo
-              image: alpine
+            - name: produce-a-list-of-browsers
+              image: bash:latest
               script: |
-                printf chrome | tee /tekton/results/one
-                printf safari | tee /tekton/results/two
-                printf firefox | tee /tekton/results/three
+                #!/usr/bin/env bash
+                echo -n "[\"chrome\",\"safari\",\"firefox\"]" | tee $(results.browsers.path)
+            - name: produce-url
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                echo -n "myfavoritesitedotcom" | tee $(results.url.path)
       - name: platforms-and-browsers-dag
         matrix:
           params:
             - name: platform
               value:
-                - $(tasks.get-platforms.results.one)
-                - $(tasks.get-platforms.results.two)
-                - $(tasks.get-platforms.results.three)
+                - $(tasks.get-platforms.results.platforms[0])
+                - $(tasks.get-platforms.results.platforms[1])
+                - $(tasks.get-platforms.results.platforms[2])
             - name: browser
               value:
-                - $(tasks.get-browsers.results.one)
-                - $(tasks.get-browsers.results.two)
+                - $(tasks.get-browsers-and-url.results.browsers[0])
+                - $(tasks.get-browsers-and-url.results.browsers[2])
+            - name: url
+              value:
+                - $(tasks.get-browsers-and-url.results.url)
         taskRef:
           name: platform-browsers
