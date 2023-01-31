@@ -1,0 +1,107 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pipelinerun-with-when-expressions-using-array-results-
+spec:
+  pipelineSpec:
+    params:
+      - name: images
+        type: array
+        description: The list of images
+    tasks:
+      - name: task1
+        taskSpec:
+          results:
+            # a list of images in array-result-1
+            - name: array-results-1
+              type: array
+              description: The array results
+          steps:
+            - name: write-array
+              image: bash:latest
+              script: |
+                #!/usr/bin/env bash
+                image1="abc.dev/notsofamousimage/image"
+                image2="ubuntu"
+                image3="xyz.dev/awesomeness/awesomeness"
+                echo -n "[\"$image1\", \"$image2\", \"$image3\"]" | tee $(results.array-results-1.path)
+      - name: task2
+        when:
+          # indexing into array results in input
+          - input: "$(tasks.task1.results.array-results-1[1])"
+            operator: in
+            values: ["ubuntu"]
+        taskSpec:
+          steps:
+            - name: say-hi
+              image: bash:latest
+              script: |
+                echo "hi"
+      - name: task3
+        when:
+          # indexing into array results in values
+          - input: "ubuntu"
+            operator: in
+            values: ["$(tasks.task1.results.array-results-1[1])"]
+          # indexing into array results in input and values
+          - input: "$(tasks.task1.results.array-results-1[2])"
+            operator: in
+            values: ["$(tasks.task1.results.array-results-1[2])"]
+        taskSpec:
+          steps:
+            - name: say-hello
+              image: bash:latest
+              script: |
+                echo "hello"
+      - name: task4
+        when:
+          # indexing into array results in input and using start notation in values
+          - input: "$(tasks.task1.results.array-results-1[1])"
+            operator: in
+            values: ["$(tasks.task1.results.array-results-1[*])"]
+        taskSpec:
+          steps:
+            - name: say-hi
+              image: bash:latest
+              script: |
+                echo "hi"
+      - name: task5
+        when:
+          # indexing into array result in input along with array param
+          - input: "$(tasks.task1.results.array-results-1[1])"
+            operator: notin
+            values: ["$(params.images[*])"]
+        taskSpec:
+          steps:
+            - name: do-not-execute
+              image: bash:latest
+              script: |
+                exit 1
+    finally:
+      - name: validate-tasks
+        taskSpec:
+          steps:
+            - name: validate-tasks-section
+              image: bash:latest
+              script: |
+                if [[ $(context.task2.status) != "Succeeded" ]]; then
+                  echo "task2 should have been succeeded but instead has status - $(context.task2.status)"
+                  exit 1
+                fi
+                if [[ $(context.task3.status) != "Succeeded" ]]; then
+                  echo "task3 should have been succeeded but instead has status - $(context.task3.status)"
+                  exit 1
+                fi
+                if [[ $(context.task4.status) != "Succeeded" ]]; then
+                  echo "task3 should have been succeeded but instead has status - $(context.task4.status)"
+                  exit 1
+                fi
+                if [[ $(context.task5.status) != "None" ]]; then
+                  echo "task3 should have been succeeded but instead has status - $(context.task5.status)"
+                  exit 1
+                fi
+  params:
+    - name: images
+      value:
+        - ubuntu
+        - alpine
