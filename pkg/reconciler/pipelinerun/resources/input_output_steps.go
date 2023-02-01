@@ -24,7 +24,7 @@ import (
 )
 
 // GetOutputSteps will add the correct `path` to the output resources for pt
-func GetOutputSteps(outputs map[string]*resourcev1alpha1.PipelineResource, taskName, storageBasePath string) []v1beta1.TaskResourceBinding {
+func GetOutputSteps(outputs map[string]*resourcev1alpha1.PipelineResource, taskName string) []v1beta1.TaskResourceBinding {
 	var taskOutputResources []v1beta1.TaskResourceBinding
 
 	for name, outputResource := range outputs {
@@ -32,7 +32,7 @@ func GetOutputSteps(outputs map[string]*resourcev1alpha1.PipelineResource, taskN
 			PipelineResourceBinding: v1beta1.PipelineResourceBinding{
 				Name: name,
 			},
-			Paths: []string{filepath.Join(storageBasePath, taskName, name)},
+			Paths: []string{filepath.Join(taskName, name)},
 		}
 		// SelfLink is being checked there to determine if this PipelineResource is an instance that
 		// exists in the cluster (in which case Kubernetes will populate this field) or is specified by Spec
@@ -55,7 +55,7 @@ func GetOutputSteps(outputs map[string]*resourcev1alpha1.PipelineResource, taskN
 
 // GetInputSteps will add the correct `path` to the input resources for pt. If the resources are provided by
 // a previous task, the correct `path` will be used so that the resource provided by that task will be used.
-func GetInputSteps(inputs map[string]*resourcev1alpha1.PipelineResource, inputResources []v1beta1.PipelineTaskInputResource, storageBasePath string) []v1beta1.TaskResourceBinding {
+func GetInputSteps(inputs map[string]*resourcev1alpha1.PipelineResource, inputResources []v1beta1.PipelineTaskInputResource) []v1beta1.TaskResourceBinding {
 	var taskInputResources []v1beta1.TaskResourceBinding
 
 	for name, inputResource := range inputs {
@@ -79,26 +79,13 @@ func GetInputSteps(inputs map[string]*resourcev1alpha1.PipelineResource, inputRe
 			}
 		}
 
-		// Determine if the value is meant to come `from` a previous Task - if so, add the path to the pvc
-		// that contains the data as the `path` the resulting TaskRun should get the data from.
-		var stepSourceNames []string
-		for _, pipelineTaskInput := range inputResources {
-			if pipelineTaskInput.Name == name {
-				for _, constr := range pipelineTaskInput.From {
-					stepSourceNames = append(stepSourceNames, filepath.Join(storageBasePath, constr, name))
-				}
-			}
-		}
-		if len(stepSourceNames) > 0 {
-			taskInputResource.Paths = append(taskInputResource.Paths, stepSourceNames...)
-		}
 		taskInputResources = append(taskInputResources, taskInputResource)
 	}
 	return taskInputResources
 }
 
 // WrapSteps will add the correct `paths` to all of the inputs and outputs for pt
-func WrapSteps(tr *v1beta1.TaskRunSpec, pt *v1beta1.PipelineTask, inputs, outputs map[string]*resourcev1alpha1.PipelineResource, storageBasePath string) {
+func WrapSteps(tr *v1beta1.TaskRunSpec, pt *v1beta1.PipelineTask, inputs, outputs map[string]*resourcev1alpha1.PipelineResource) {
 	if pt == nil {
 		return
 	}
@@ -107,9 +94,9 @@ func WrapSteps(tr *v1beta1.TaskRunSpec, pt *v1beta1.PipelineTask, inputs, output
 	}
 	if pt.Resources != nil {
 		// Add presteps to setup updated input
-		tr.Resources.Inputs = append(tr.Resources.Inputs, GetInputSteps(inputs, pt.Resources.Inputs, storageBasePath)...)
+		tr.Resources.Inputs = append(tr.Resources.Inputs, GetInputSteps(inputs, pt.Resources.Inputs)...)
 	}
 
 	// Add poststeps to setup outputs
-	tr.Resources.Outputs = append(tr.Resources.Outputs, GetOutputSteps(outputs, pt.Name, storageBasePath)...)
+	tr.Resources.Outputs = append(tr.Resources.Outputs, GetOutputSteps(outputs, pt.Name)...)
 }

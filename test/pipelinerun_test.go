@@ -30,7 +30,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -382,22 +381,6 @@ spec:
 				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
 			}
 
-			// Wait for up to 10 minutes and restart every second to check if
-			// the PersistentVolumeClaims has the DeletionTimestamp
-			if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
-				// Check to make sure the PipelineRun's artifact storage PVC has been "deleted" at the end of the run.
-				pvc, errWait := c.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, artifacts.GetPVCName(pipelineRun), metav1.GetOptions{})
-				if errWait != nil && !errors.IsNotFound(errWait) {
-					return true, fmt.Errorf("error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, errWait)
-				}
-				// If we are not found then we are okay since it got cleaned up
-				if errors.IsNotFound(errWait) {
-					return true, nil
-				}
-				return pvc.DeletionTimestamp != nil, nil
-			}); err != nil {
-				t.Fatalf("Error while waiting for the PVC to be set as deleted: %s: %s: %s", artifacts.GetPVCName(pipelineRun), err, prName)
-			}
 			t.Logf("Successfully finished test %q", td.name)
 		})
 	}
