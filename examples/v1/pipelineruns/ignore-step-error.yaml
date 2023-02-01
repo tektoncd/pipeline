@@ -55,7 +55,6 @@ spec:
             - image: alpine
               name: verify-a-task-result
               script: |
-                ls /tekton/results/
                 if [ $(params.task1-result) == 123 ]; then
                     echo "Yay! the task result matches which was initialized in the previous task while ignoring the step error"
                 else

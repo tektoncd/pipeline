@@ -186,7 +186,7 @@ spec:
     workingDir: $(workspaces.source.path)
     image: stedolan/jq
     script: |
-      cat $(params.CONTEXT)/image-digested | jq '.[0].value' -rj | tee /tekton/results/IMAGE_DIGEST
+      cat $(params.CONTEXT)/image-digested | jq '.[0].value' -rj | tee $(results.IMAGE_DIGEST.path)
 ---
 # This task deploys with kubectl apply -f <filename>
 apiVersion: tekton.dev/v1

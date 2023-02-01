@@ -56,9 +56,9 @@ spec:
               image: alpine
               script: |
                 if test -f $(workspaces.source.path)/$(params.path); then
-                  printf yes | tee /tekton/results/exists
+                  printf yes | tee $(results.exists.path)
                 else
-                  printf no | tee /tekton/results/exists
+                  printf no | tee $(results.exists.path)
                 fi
       - name: echo-file-exists # when expression using task result, evaluates to true
         when:
