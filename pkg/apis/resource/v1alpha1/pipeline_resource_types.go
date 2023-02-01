@@ -27,28 +27,16 @@ type PipelineResourceType = string
 
 var (
 	// AllowedOutputResources are the resource types that can be used as outputs
-	AllowedOutputResources = map[PipelineResourceType]bool{
-		PipelineResourceTypeStorage: true,
-		PipelineResourceTypeGit:     true,
-	}
+	AllowedOutputResources = map[PipelineResourceType]bool{}
 )
 
 const (
-	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
-	PipelineResourceTypeGit PipelineResourceType = "git"
-
-	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
-	PipelineResourceTypeStorage PipelineResourceType = "storage"
-
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
 	PipelineResourceTypeImage PipelineResourceType = "image"
-
-	// PipelineResourceTypeGCS is the subtype for the GCSResources, which is backed by a GCS blob/directory.
-	PipelineResourceTypeGCS PipelineResourceType = "gcs"
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage}
+var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeImage}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

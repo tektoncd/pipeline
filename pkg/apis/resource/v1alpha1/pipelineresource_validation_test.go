@@ -32,119 +32,31 @@ func TestResourceValidation_Invalid(t *testing.T) {
 		name string
 		res  *v1alpha1.PipelineResource
 		want *apis.FieldError
-	}{
-		{
-			name: "storage with no type",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeStorage,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "no-type-param", Value: "something",
-					}},
-				},
+	}{{
+		name: "invalid resource type",
+		res: &v1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
 			},
-			want: apis.ErrMissingField("spec.params.type"),
-		}, {
-			name: "storage with unimplemented type",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeStorage,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "type", Value: "not-implemented-yet",
-					}},
-				},
+			Spec: v1alpha1.PipelineResourceSpec{
+				Type: "not-supported",
 			},
-			want: apis.ErrInvalidValue("not-implemented-yet", "spec.params.type"),
-		}, {
-			name: "storage with gcs type with no location param",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeStorage,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "type", Value: "gcs",
-					}},
-				},
-			},
-			want: apis.ErrMissingField("spec.params.location"),
-		}, {
-			name: "storage with gcs type with empty location param",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: v1alpha1.PipelineResourceTypeStorage,
-					Params: []v1alpha1.ResourceParam{{
-						Name: "type", Value: "gcs",
-					}, {
-						Name: "location", Value: "",
-					}},
-				},
-			},
-			want: apis.ErrMissingField("spec.params.location"),
-		}, {
-			name: "invalid resource type",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-				Spec: v1alpha1.PipelineResourceSpec{
-					Type: "not-supported",
-				},
-			},
-			want: apis.ErrInvalidValue("spec.type", "not-supported"),
-		}, {
-			name: "missing spec",
-			res: &v1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "temp",
-				},
-			},
-			want: apis.ErrMissingField("spec.type"),
 		},
-	}
+		want: apis.ErrInvalidValue("spec.type", "not-supported"),
+	}, {
+		name: "missing spec",
+		res: &v1alpha1.PipelineResource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "temp",
+			},
+		},
+		want: apis.ErrMissingField("spec.type"),
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.res.Validate(context.Background())
 			if d := cmp.Diff(tt.want.Error(), err.Error()); d != "" {
 				t.Errorf("Didn't get expected error for %s %s", tt.name, diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
-func TestAllowedGCSStorageType(t *testing.T) {
-	tests := []struct {
-		name        string
-		storageType string
-		want        bool
-	}{
-		{name: "storage with gcs type",
-			storageType: "gcs",
-			want:        true,
-		},
-		{name: "storage with incorrent type",
-			storageType: "t",
-			want:        false,
-		},
-		{name: "storage with empty type",
-			storageType: "",
-			want:        false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if v1alpha1.AllowedStorageType(tt.storageType) != tt.want {
-				t.Errorf("PipleineResource.allowedStorageType should return %t, got %t for %s", tt.want, !tt.want, tt.storageType)
 			}
 		})
 	}

@@ -36,7 +36,7 @@ import (
 var validResource = v1beta1.TaskResource{
 	ResourceDeclaration: v1beta1.ResourceDeclaration{
 		Name: "validsource",
-		Type: "git",
+		Type: "image",
 	},
 }
 

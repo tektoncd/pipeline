@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -43,28 +42,6 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 	if equality.Semantic.DeepEqual(rs, &PipelineResourceSpec{}) {
 		return apis.ErrMissingField("spec.type")
 	}
-	if rs.Type == PipelineResourceTypeStorage {
-		foundTypeParam := false
-		var location string
-		for _, param := range rs.Params {
-			switch {
-			case strings.EqualFold(param.Name, "type"):
-				if !AllowedStorageType(param.Value) {
-					return apis.ErrInvalidValue(param.Value, "spec.params.type")
-				}
-				foundTypeParam = true
-			case strings.EqualFold(param.Name, "Location"):
-				location = param.Value
-			}
-		}
-
-		if !foundTypeParam {
-			return apis.ErrMissingField("spec.params.type")
-		}
-		if location == "" {
-			return apis.ErrMissingField("spec.params.location")
-		}
-	}
 
 	for _, allowedType := range AllResourceTypes {
 		if allowedType == rs.Type {
@@ -73,9 +50,4 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 	}
 
 	return apis.ErrInvalidValue("spec.type", rs.Type)
-}
-
-// AllowedStorageType returns true if the provided string can be used as a storage type, and false otherwise
-func AllowedStorageType(gotType string) bool {
-	return gotType == PipelineResourceTypeGCS
 }

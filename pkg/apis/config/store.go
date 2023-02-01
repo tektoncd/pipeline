@@ -30,8 +30,6 @@ type cfgKey struct{}
 type Config struct {
 	Defaults         *Defaults
 	FeatureFlags     *FeatureFlags
-	ArtifactBucket   *ArtifactBucket
-	ArtifactPVC      *ArtifactPVC
 	Metrics          *Metrics
 	TrustedResources *TrustedResources
 	SpireConfig      *sc.SpireConfig
@@ -54,8 +52,6 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	}
 	defaults, _ := NewDefaultsFromMap(map[string]string{})
 	featureFlags, _ := NewFeatureFlagsFromMap(map[string]string{})
-	artifactBucket, _ := NewArtifactBucketFromMap(map[string]string{})
-	artifactPVC, _ := NewArtifactPVCFromMap(map[string]string{})
 	metrics, _ := newMetricsFromMap(map[string]string{})
 	trustedresources, _ := NewTrustedResourcesConfigFromMap(map[string]string{})
 	spireconfig, _ := NewSpireConfigFromMap(map[string]string{})
@@ -63,8 +59,6 @@ func FromContextOrDefaults(ctx context.Context) *Config {
 	return &Config{
 		Defaults:         defaults,
 		FeatureFlags:     featureFlags,
-		ArtifactBucket:   artifactBucket,
-		ArtifactPVC:      artifactPVC,
 		Metrics:          metrics,
 		TrustedResources: trustedresources,
 		SpireConfig:      spireconfig,
@@ -92,8 +86,6 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 			configmap.Constructors{
 				GetDefaultsConfigName():         NewDefaultsFromConfigMap,
 				GetFeatureFlagsConfigName():     NewFeatureFlagsFromConfigMap,
-				GetArtifactBucketConfigName():   NewArtifactBucketFromConfigMap,
-				GetArtifactPVCConfigName():      NewArtifactPVCFromConfigMap,
 				GetMetricsConfigName():          NewMetricsFromConfigMap,
 				GetTrustedResourcesConfigName(): NewTrustedResourcesConfigFromConfigMap,
 				GetSpireConfigName():            NewSpireConfigFromConfigMap,
@@ -120,15 +112,6 @@ func (s *Store) Load() *Config {
 	if featureFlags == nil {
 		featureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
 	}
-	artifactBucket := s.UntypedLoad(GetArtifactBucketConfigName())
-	if artifactBucket == nil {
-		artifactBucket, _ = NewArtifactBucketFromMap(map[string]string{})
-	}
-	artifactPVC := s.UntypedLoad(GetArtifactPVCConfigName())
-	if artifactPVC == nil {
-		artifactPVC, _ = NewArtifactPVCFromMap(map[string]string{})
-	}
-
 	metrics := s.UntypedLoad(GetMetricsConfigName())
 	if metrics == nil {
 		metrics, _ = newMetricsFromMap(map[string]string{})
@@ -145,8 +128,6 @@ func (s *Store) Load() *Config {
 	return &Config{
 		Defaults:         defaults.(*Defaults).DeepCopy(),
 		FeatureFlags:     featureFlags.(*FeatureFlags).DeepCopy(),
-		ArtifactBucket:   artifactBucket.(*ArtifactBucket).DeepCopy(),
-		ArtifactPVC:      artifactPVC.(*ArtifactPVC).DeepCopy(),
 		Metrics:          metrics.(*Metrics).DeepCopy(),
 		TrustedResources: trustedresources.(*TrustedResources).DeepCopy(),
 		SpireConfig:      spireconfig.(*sc.SpireConfig).DeepCopy(),

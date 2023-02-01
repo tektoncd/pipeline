@@ -70,7 +70,6 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/ptr"
 
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
@@ -185,35 +184,6 @@ var (
 		},
 	}
 
-	outputTask = &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-output-task"},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{simpleStep},
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: gitResource.Name,
-							Type: resourcev1alpha1.PipelineResourceTypeGit,
-						},
-					},
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: anotherGitResource.Name,
-							Type: resourcev1alpha1.PipelineResourceTypeGit,
-						},
-					},
-				},
-				Outputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: gitResource.Name,
-						Type: resourcev1alpha1.PipelineResourceTypeGit,
-					},
-				}},
-			},
-		},
-	}
-
 	saTask = &v1beta1.Task{
 		ObjectMeta: objectMeta("test-with-sa", "foo"),
 		Spec: v1beta1.TaskSpec{
@@ -247,20 +217,6 @@ var (
 					Name: "configmapname",
 					Type: v1beta1.ParamTypeString,
 				},
-			},
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "workspace",
-						Type: resourcev1alpha1.PipelineResourceTypeGit,
-					},
-				}},
-				Outputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "myimage",
-						Type: resourcev1alpha1.PipelineResourceTypeImage,
-					},
-				}},
 			},
 			Steps: []v1beta1.Step{
 				{
@@ -296,26 +252,6 @@ var (
 		},
 	}
 
-	gitResource = &resourcev1alpha1.PipelineResource{
-		ObjectMeta: objectMeta("git-resource", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "https://foo.git",
-			}},
-		},
-	}
-	anotherGitResource = &resourcev1alpha1.PipelineResource{
-		ObjectMeta: objectMeta("another-git-resource", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "https://foobar.git",
-			}},
-		},
-	}
 	imageResource = &resourcev1alpha1.PipelineResource{
 		ObjectMeta: objectMeta("image-resource", "foo"),
 		Spec: resourcev1alpha1.PipelineResourceSpec{
@@ -374,10 +310,6 @@ var (
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
-	}
-
-	gitResourceSecurityContext = &corev1.SecurityContext{
-		RunAsUser: ptr.Int64(0),
 	}
 )
 
@@ -697,60 +629,6 @@ spec:
     apiVersion: a1
     name: test-with-sa
 `)
-	taskRunSubstitution := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-substitution
-  namespace: foo
-spec:
-  params:
-  - name: myarg
-    value: foo
-  - name: myarghasdefault
-    value: bar
-  - name: configmapname
-    value: configbar
-  resources:
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: git-resource
-    outputs:
-    - name: myimage
-      resourceRef:
-        name: image-resource
-  taskRef:
-    apiVersion: a1
-    name: test-task-with-substitution
-`)
-	taskRunInputOutput := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-input-output
-  namespace: foo
-  ownerReferences:
-  - kind: PipelineRun
-    name: test
-spec:
-  resources:
-    inputs:
-    - name: git-resource
-      paths:
-      - source-folder
-      resourceRef:
-        name: git-resource
-    - name: another-git-resource
-      paths:
-      - source-folder
-      resourceRef:
-        name: another-git-resource
-    outputs:
-    - name: git-resource
-      paths:
-      - output-folder
-      resourceRef:
-        name: git-resource
-  taskRef:
-    name: test-output-task
-`)
 	taskRunWithTaskSpec := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-taskspec
@@ -759,54 +637,17 @@ spec:
   params:
   - name: myarg
     value: foo
-  resources:
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: git-resource
   taskSpec:
     params:
     - default: mydefault
       name: myarg
       type: string
-    resources:
-      inputs:
-      - name: workspace
-        type: git
     steps:
     - args:
-      - --my-arg=$(inputs.params.myarg)
       command:
       - /mycmd
       image: myimage
       name: mycontainer
-`)
-
-	taskRunWithResourceSpecAndTaskSpec := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-with-resource-spec
-  namespace: foo
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      resourceSpec:
-        params:
-        - name: URL
-          value: github.com/foo/bar.git
-        - name: revision
-          value: rel-can
-        type: git
-  taskSpec:
-    resources:
-      inputs:
-      - name: workspace
-        type: git
-    steps:
-    - command:
-      - /mycmd
-      image: ubuntu
-      name: mystep
 `)
 
 	taskRunWithClusterTask := parse.MustParseV1beta1TaskRun(t, `
@@ -892,17 +733,16 @@ spec:
 
 	taskruns := []*v1beta1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
-		taskRunSubstitution, taskRunInputOutput,
-		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
+		taskRunWithTaskSpec, taskRunWithClusterTask,
 		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
 		taskRunWithCredentialsVariable, taskRunBundle,
 	}
 
 	d := test.Data{
 		TaskRuns:          taskruns,
-		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask, outputTask},
+		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask},
 		ClusterTasks:      []*v1beta1.ClusterTask{clustertask},
-		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{imageResource},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -934,71 +774,6 @@ spec:
 			cmd:   "/mycmd",
 		}}),
 	}, {
-		name:    "params",
-		taskRun: taskRunSubstitution,
-		wantEvents: []string{
-			"Normal Started ",
-			"Normal Running Not all Steps",
-		},
-		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
-			Name: "volume-configmap",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "configbar",
-					},
-				},
-			},
-		}}, []stepForExpectedPod{
-			{
-				name:  "create-dir-myimage-mssqb",
-				image: "busybox",
-				cmd:   "mkdir",
-				args:  []string{"-p", "/workspace/output/myimage"},
-			},
-			{
-				name:  "git-source-workspace-mz4c7",
-				image: "override-with-git:latest",
-				cmd:   "/ko-app/git-init",
-				args: []string{"-url", "https://foo.git",
-					"-path", "/workspace/workspace"},
-				envVars: map[string]string{
-					"TEKTON_RESOURCE_NAME": "workspace",
-					"HOME":                 "/tekton/home",
-				},
-				workingDir:      workspaceDir,
-				securityContext: gitResourceSecurityContext,
-			},
-			{
-				name:  "mycontainer",
-				image: "myimage",
-				cmd:   "/mycmd",
-				args: []string{
-					"--my-arg=foo",
-					"--my-arg-with-default=bar",
-					"--my-arg-with-default2=thedefault",
-					"--my-additional-arg=gcr.io/kristoff/sven",
-					"--my-taskname-arg=test-task-with-substitution",
-					"--my-taskrun-arg=test-taskrun-substitution",
-				},
-			},
-			{
-				name:  "myothercontainer",
-				image: "myotherimage",
-				cmd:   "/mycmd",
-				args:  []string{"--my-other-arg=https://foo.git"},
-			},
-			{
-				name:  "image-digest-exporter-9l9zj",
-				image: "override-with-imagedigest-exporter-image:latest",
-				cmd:   "/ko-app/imagedigestexporter",
-				args: []string{
-					"-images",
-					"[{\"name\":\"myimage\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/myimage\"}]",
-				},
-			},
-		}),
-	}, {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
 		wantEvents: []string{
@@ -1007,25 +782,9 @@ spec:
 		},
 		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
 			{
-				name:  "git-source-workspace-9l9zj",
-				image: "override-with-git:latest",
-				cmd:   "/ko-app/git-init",
-				args: []string{"-url", "https://foo.git",
-					"-path", "/workspace/workspace"},
-				envVars: map[string]string{
-					"TEKTON_RESOURCE_NAME": "workspace",
-					"HOME":                 "/tekton/home",
-				},
-				workingDir:      workspaceDir,
-				securityContext: gitResourceSecurityContext,
-			},
-			{
 				name:  "mycontainer",
 				image: "myimage",
 				cmd:   "/mycmd",
-				args: []string{
-					"--my-arg=foo",
-				},
 			},
 		}),
 	}, {
@@ -1040,35 +799,6 @@ spec:
 			image: "foo",
 			cmd:   "/mycmd",
 		}}),
-	}, {
-		name:    "taskrun-with-resource-spec-task-spec",
-		taskRun: taskRunWithResourceSpecAndTaskSpec,
-		wantEvents: []string{
-			"Normal Started ",
-			"Normal Running Not all Steps",
-		},
-		wantPod: expectedPod("test-taskrun-with-resource-spec-pod", "", "test-taskrun-with-resource-spec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
-			{
-				name:  "git-source-workspace-9l9zj",
-				image: "override-with-git:latest",
-				cmd:   "/ko-app/git-init",
-				args: []string{"-url", "github.com/foo/bar.git",
-					"-path", "/workspace/workspace",
-					"-revision", "rel-can",
-				},
-				envVars: map[string]string{
-					"TEKTON_RESOURCE_NAME": "workspace",
-					"HOME":                 "/tekton/home",
-				},
-				workingDir:      workspaceDir,
-				securityContext: gitResourceSecurityContext,
-			},
-			{
-				name:  "mystep",
-				image: "ubuntu",
-				cmd:   "/mycmd",
-			},
-		}),
 	}, {
 		name:    "taskrun-with-pod",
 		taskRun: taskRunWithPod,
@@ -1214,9 +944,9 @@ spec:
 	d := test.Data{
 		ConfigMaps:        cms,
 		TaskRuns:          taskruns,
-		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask, outputTask},
+		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask},
 		ClusterTasks:      []*v1beta1.ClusterTask{clustertask},
-		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource, imageResource},
+		PipelineResources: []*resourcev1alpha1.PipelineResource{imageResource},
 	}
 	for _, tc := range []struct {
 		name       string

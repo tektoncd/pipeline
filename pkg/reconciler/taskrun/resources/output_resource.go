@@ -23,14 +23,21 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"k8s.io/client-go/kubernetes"
 )
 
 var (
 	outputDir = "/workspace/output/"
 )
+
+func getBoundResource(resourceName string, boundResources []v1beta1.TaskResourceBinding) (*v1beta1.TaskResourceBinding, error) {
+	for _, br := range boundResources {
+		if br.Name == resourceName {
+			return &br, nil
+		}
+	}
+	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
+}
 
 // AddOutputResources reads the output resources and adds the corresponding container steps
 // This function also reads the inputs to check if resources are redeclared in inputs and has any custom
@@ -60,11 +67,6 @@ func AddOutputResources(
 	}
 
 	taskSpec = taskSpec.DeepCopy()
-
-	pvcName := taskRun.GetPipelineRunPVCName()
-	as := artifacts.GetArtifactStorage(ctx, images, pvcName, kubeclient)
-
-	needsPvc := false
 	for _, output := range taskSpec.Resources.Outputs {
 		if taskRun.Spec.Resources == nil {
 			if output.Optional {
@@ -93,18 +95,9 @@ func AddOutputResources(
 			sourcePath = output.TargetPath
 		}
 
-		// Add containers to mkdir each output directory. This should run before the build steps themselves.
-		mkdirSteps := []v1beta1.Step{storage.CreateDirStep(images.ShellImage, boundResource.Name, sourcePath)}
-		taskSpec.Steps = append(mkdirSteps, taskSpec.Steps...)
-
 		if v1beta1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
 			var newSteps []v1beta1.Step
-			for _, dPath := range boundResource.Paths {
-				newSteps = append(newSteps, as.GetCopyToStorageFromSteps(resource.GetName(), sourcePath, dPath)...)
-				needsPvc = true
-			}
 			taskSpec.Steps = append(taskSpec.Steps, newSteps...)
-			taskSpec.Volumes = appendNewSecretsVolumes(taskSpec.Volumes, as.GetSecretsVolumes()...)
 		}
 
 		// Allow the resource to mutate the task.
@@ -114,22 +107,6 @@ func AddOutputResources(
 		}
 		if err := v1beta1.ApplyTaskModifier(taskSpec, modifier); err != nil {
 			return nil, fmt.Errorf("Unabled to apply Resource %s: %w", boundResource.Name, err)
-		}
-	}
-	// Attach the PVC that will be used for `from` copying.
-	if as.GetType() == pipeline.ArtifactStoragePVCType {
-		if pvcName == "" {
-			return taskSpec, nil
-		}
-
-		// attach pvc volume only if it is not already attached
-		for _, buildVol := range taskSpec.Volumes {
-			if buildVol.Name == pvcName {
-				return taskSpec, nil
-			}
-		}
-		if needsPvc {
-			taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
 		}
 	}
 	return taskSpec, nil

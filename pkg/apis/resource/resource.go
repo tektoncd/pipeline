@@ -22,22 +22,15 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/git"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 )
 
 // FromType returns an instance of the correct PipelineResource object type which can be
 // used to add input and output containers as well as volumes to a TaskRun's pod in order to realize
 // a PipelineResource in a pod.
 func FromType(name string, r *resourcev1alpha1.PipelineResource, images pipeline.Images) (pipelinev1beta1.PipelineResourceInterface, error) {
-	switch r.Spec.Type {
-	case resourcev1alpha1.PipelineResourceTypeGit:
-		return git.NewResource(name, images.GitImage, r)
-	case resourcev1alpha1.PipelineResourceTypeImage:
+	if r.Spec.Type == resourcev1alpha1.PipelineResourceTypeImage {
 		return image.NewResource(name, r)
-	case resourcev1alpha1.PipelineResourceTypeStorage:
-		return storage.NewResource(name, images, r)
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

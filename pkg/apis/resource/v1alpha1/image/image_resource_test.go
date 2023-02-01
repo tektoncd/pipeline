@@ -34,7 +34,7 @@ func TestNewImageResource_Invalid(t *testing.T) {
 			Name: "test-resource",
 		},
 		Spec: v1alpha1.PipelineResourceSpec{
-			Type: v1alpha1.PipelineResourceTypeGit,
+			Type: "invalid type",
 		},
 	}
 

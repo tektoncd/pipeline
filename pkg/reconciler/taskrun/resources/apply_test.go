@@ -516,21 +516,6 @@ var (
 		},
 	}
 
-	gcsTaskSpec = &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
-			Name:  "foobar",
-			Image: "someImage",
-			Args:  []string{"$(outputs.resources.bucket.path)"},
-		}},
-		Resources: &v1beta1.TaskResources{
-			Outputs: []v1beta1.TaskResource{{
-				ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "bucket",
-				},
-			}},
-		},
-	}
-
 	arrayParamTaskSpec = &v1beta1.TaskSpec{
 		Steps: []v1beta1.Step{{
 			Name:  "simple-image",
@@ -708,27 +693,9 @@ var (
 		},
 	}
 
-	inputs = map[string]v1beta1.PipelineResourceInterface{
-		"workspace": gitResource,
-	}
-
 	outputs = map[string]v1beta1.PipelineResourceInterface{
 		"imageToUse": imageResource,
-		"bucket":     gcsResource,
 	}
-
-	gitResource, _ = resource.FromType("git-resource", &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "git-resource",
-		},
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "https://git-repo",
-			}},
-		},
-	}, images)
 
 	imageResource, _ = resource.FromType("image-resource", &resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
@@ -739,22 +706,6 @@ var (
 			Params: []resourcev1alpha1.ResourceParam{{
 				Name:  "URL",
 				Value: "gcr.io/hans/sandwiches",
-			}},
-		},
-	}, images)
-
-	gcsResource, _ = resource.FromType("gcs-resource", &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "gcs-resource",
-		},
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeStorage,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "type",
-				Value: "gcs",
-			}, {
-				Name:  "location",
-				Value: "theCloud?",
 			}},
 		},
 	}, images)
@@ -1104,19 +1055,6 @@ func TestApplyResources(t *testing.T) {
 			spec.Steps[9].Image = "/workspace/foo/builtImage"
 		}),
 	}, {
-		name: "input resource specified",
-		ts:   simpleTaskSpec,
-		r:    inputs,
-		rStr: "inputs",
-		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
-			spec.Steps[1].WorkingDir = "/workspace/workspace"
-			spec.Steps[1].Args = []string{"https://git-repo"}
-			spec.Steps[4].WorkingDir = "/workspace/workspace"
-			spec.Steps[4].Args = []string{"https://git-repo"}
-			spec.Steps[8].Image = "/foo/builtImage"
-			spec.Steps[9].Image = "/workspace/foo/builtImage"
-		}),
-	}, {
 		name: "output resource specified",
 		ts:   simpleTaskSpec,
 		r:    outputs,
@@ -1128,14 +1066,6 @@ func TestApplyResources(t *testing.T) {
 			spec.Steps[5].Args = []string{"gcr.io/hans/sandwiches"}
 			spec.Steps[8].Image = "/foo/builtImage"
 			spec.Steps[9].Image = "/workspace/foo/builtImage"
-		}),
-	}, {
-		name: "output resource specified with path replacement",
-		ts:   gcsTaskSpec,
-		r:    outputs,
-		rStr: "outputs",
-		want: applyMutation(gcsTaskSpec, func(spec *v1beta1.TaskSpec) {
-			spec.Steps[0].Args = []string{"/workspace/output/bucket"}
 		}),
 	}}
 	for _, tt := range tests {

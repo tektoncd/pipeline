@@ -35,7 +35,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
@@ -216,16 +215,6 @@ spec:
     value: somethingmorefun
   pipelineRef:
     name: test-pipeline
-  resources:
-  - name: git-repo
-    resourceRef:
-      name: some-repo
-  - name: best-image
-    resourceSpec:
-      params:
-      - name: url
-        value: gcr.io/sven
-      type: image
   serviceAccountName: test-sa
 `)}
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
@@ -242,37 +231,21 @@ spec:
     type: string
   - name: bar
     type: string
-  resources:
-  - name: git-repo
-    type: git
-  - name: best-image
-    type: image
   tasks:
-  - name: unit-test-3
+  - name: unit-test-2
     params:
     - name: foo
       value: somethingfun
     - name: bar
       value: $(params.bar)
-    - name: templatedparam
-      value: $(inputs.workspace.$(params.rev-param))
     - name: contextRunParam
       value: $(context.pipelineRun.name)
     - name: contextPipelineParam
       value: $(context.pipeline.name)
     - name: contextRetriesParam
       value: $(context.pipelineTask.retries)
-    resources:
-      inputs:
-      - name: workspace
-        resource: git-repo
-      outputs:
-      - name: image-to-use
-        resource: best-image
-      - name: workspace
-        resource: git-repo
     runAfter:
-    - unit-test-2
+    - unit-test-1
     taskRef:
       name: unit-test-task
   - name: unit-test-1
@@ -281,56 +254,25 @@ spec:
       value: somethingfun
     - name: bar
       value: $(params.bar)
-    - name: templatedparam
-      value: $(inputs.workspace.$(params.rev-param))
     - name: contextRunParam
       value: $(context.pipelineRun.name)
     - name: contextPipelineParam
       value: $(context.pipeline.name)
     - name: contextRetriesParam
       value: $(context.pipelineTask.retries)
-    resources:
-      inputs:
-      - name: workspace
-        resource: git-repo
-      outputs:
-      - name: image-to-use
-        resource: best-image
-      - name: workspace
-        resource: git-repo
     retries: 5
     taskRef:
       name: unit-test-task
-  - name: unit-test-2
-    resources:
-      inputs:
-      - from:
-        - unit-test-1
-        name: workspace
-        resource: git-repo
-    taskRef:
-      name: unit-test-followup-task
   - name: unit-test-cluster-task
     params:
     - name: foo
       value: somethingfun
     - name: bar
       value: $(params.bar)
-    - name: templatedparam
-      value: $(inputs.workspace.$(params.rev-param))
     - name: contextRunParam
       value: $(context.pipelineRun.name)
     - name: contextPipelineParam
       value: $(context.pipeline.name)
-    resources:
-      inputs:
-      - name: workspace
-        resource: git-repo
-      outputs:
-      - name: image-to-use
-        resource: best-image
-      - name: workspace
-        resource: git-repo
     taskRef:
       kind: ClusterTask
       name: unit-test-cluster-task
@@ -346,35 +288,13 @@ spec:
     type: string
   - name: bar
     type: string
-  - name: templatedparam
-    type: string
   - name: contextRunParam
     type: string
   - name: contextPipelineParam
     type: string
   - name: contextRetriesParam
     type: string
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-    outputs:
-    - name: image-to-use
-      type: image
-    - name: workspace
-      type: git
-`),
-		parse.MustParseV1beta1Task(t, `
-metadata:
-  name: unit-test-followup-task
-  namespace: foo
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-`),
-	}
+`)}
 	clusterTasks := []*v1beta1.ClusterTask{
 		parse.MustParseClusterTask(t, `
 metadata:
@@ -385,55 +305,18 @@ spec:
     type: string
   - name: bar
     type: string
-  - name: templatedparam
-    type: string
   - name: contextRunParam
     type: string
   - name: contextPipelineParam
     type: string
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-    outputs:
-    - name: image-to-use
-      type: image
-    - name: workspace
-      type: git
-`),
-		parse.MustParseClusterTask(t, `
-metadata:
-  name: unit-test-followup-task
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-`),
-	}
-	rs := []*resourcev1alpha1.PipelineResource{parse.MustParsePipelineResource(t, `
-metadata:
-  name: some-repo
-  namespace: foo
-spec:
-  params:
-  - name: url
-    value: https://github.com/kristoff/reindeer
-  type: git
 `)}
 
-	// When PipelineResources are created in the cluster, Kubernetes will add a SelfLink. We
-	// are using this to differentiate between Resources that we are referencing by Spec or by Ref
-	// after we have resolved them.
-	rs[0].SelfLink = "some/link"
-
 	d := test.Data{
-		PipelineRuns:      prs,
-		Pipelines:         ps,
-		Tasks:             ts,
-		ClusterTasks:      clusterTasks,
-		PipelineResources: rs,
-		ConfigMaps:        []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		ClusterTasks: clusterTasks,
+		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -456,8 +339,6 @@ spec:
     value: somethingfun
   - name: bar
     value: somethingmorefun
-  - name: templatedparam
-    value: $(inputs.workspace.revision)
   - name: contextRunParam
     value: test-pipeline-run-success
   - name: contextPipelineParam
@@ -465,27 +346,7 @@ spec:
   - name: contextRetriesParam
     value: "5"
   retries: 5
-  resources:
-    inputs:
-    - name: workspace
-      resourceRef:
-        apiVersion: tekton.dev/v1alpha1
-        name: some-repo
-    outputs:
-    - name: image-to-use
-      paths:
-      - /pvc/unit-test-1/image-to-use
-      resourceSpec:
-        params:
-        - name: url
-          value: gcr.io/sven
-        type: image
-    - name: workspace
-      paths:
-      - /pvc/unit-test-1/workspace
-      resourceRef:
-        apiVersion: tekton.dev/v1alpha1
-        name: some-repo
+  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: unit-test-task
@@ -508,9 +369,6 @@ spec:
 
 	verifyTaskRunStatusesCount(t, reconciledRun.Status, 2)
 	verifyTaskRunStatusesNames(t, reconciledRun.Status, tr1Name, tr2Name)
-
-	// A PVC should have been created to deal with output -> input linking
-	ensurePVCCreated(prt.TestAssets.Ctx, t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
 }
 
 // TestReconcile_CustomTask runs "Reconcile" on a PipelineRun with one Custom
@@ -983,16 +841,6 @@ spec:
         key1: {}
         key2: {}
 `, v1beta1.ParamTypeObject)),
-		parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: a-task-that-needs-a-resource
-  namespace: foo
-spec:
-  resources:
-    inputs:
-      - name: workspace
-        type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit)),
 	}
 
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
@@ -1015,23 +863,6 @@ spec:
       taskRef:
         name: a-task-that-needs-params
 `),
-		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
-metadata:
-  name: a-fine-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: some-task
-      taskRef:
-        name: a-task-that-exists
-      resources:
-        inputs:
-          - name: needed-resource
-            resource: a-resource
-  resources:
-    - name: a-resource
-      type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit)),
 		parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: a-pipeline-that-should-be-caught-by-admission-control
@@ -1041,10 +872,6 @@ spec:
     - name: some-task
       taskRef:
         name: a-task-that-exists
-      resources:
-        inputs:
-          - name: needed-resource
-            resource: a-resource
 `),
 		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
@@ -1134,58 +961,6 @@ spec:
 			"Warning Failed invalid input params for task a-task-that-needs-params: missing values",
 		},
 	}, {
-		name: "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-resources-not-bound
-  namespace: foo
-spec:
-  pipelineRef:
-    name: a-fine-pipeline
-`),
-		reason:         ReasonInvalidBindings,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-resources-not-bound doesn't bind Pipeline",
-		},
-	}, {
-		name: "invalid-pipeline-run-missing-resource-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-resources-dont-exist
-  namespace: foo
-spec:
-  pipelineRef:
-    name: a-fine-pipeline
-  resources:
-    - name: a-resource
-      resourceRef:
-        name: missing-resource
-`),
-		reason:         ReasonCouldntGetResource,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-resources-dont-exist can't be Run; it tries to bind Resources",
-		},
-	}, {
-		name: "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-resources-not-declared
-  namespace: foo
-spec:
-  pipelineRef:
-    name: a-pipeline-that-should-be-caught-by-admission-control
-`),
-		reason:         ReasonFailedValidation,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed Pipeline foo/a-pipeline-that-should-be-caught-by-admission-control can't be Run; it has an invalid spec",
-		},
-	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
 		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
@@ -1223,28 +998,6 @@ spec:
 		wantEvents: []string{
 			"Normal Started",
 			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: PipelineRun missing object keys for parameters",
-		},
-	}, {
-		name: "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: embedded-pipeline-resources-not-bound
-  namespace: foo
-spec:
-  pipelineSpec:
-    tasks:
-      - name: some-task
-        taskRef:
-          name: a-task-that-needs-a-resource
-    resources:
-      - name: workspace
-        type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit)),
-		reason:         ReasonInvalidBindings,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed PipelineRun foo/embedded-pipeline-resources-not-bound doesn't bind Pipeline",
 		},
 	}, {
 		name: "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
