@@ -17,12 +17,12 @@ spec:
         image: bash:latest
         script: |
           #!/usr/bin/env bash
-          cat /dev/urandom | head -c 2500 | base64 | tee /tekton/results/result1 #about 1 K result
-          cat /dev/urandom | head -c 2500 | base64 | tee /tekton/results/result2 #about 4 K result
+          cat /dev/urandom | head -c 2500 | base64 | tee $(results.result1.path) #about 1 K result
+          cat /dev/urandom | head -c 2500 | base64 | tee $(results.result2.path) #about 4 K result
       - name: step2
         image: bash:latest
         script: |
           #!/usr/bin/env bash
-          cat /dev/urandom | head -c 2500 | base64 | tee /tekton/results/result3 #about 1 K result
-          cat /dev/urandom | head -c 2500 | base64 | tee /tekton/results/result4 #about 4 K result
-          cat /dev/urandom | head -c 2500 | base64 | tee /tekton/results/result5 #about 4 K result
+          cat /dev/urandom | head -c 2500 | base64 | tee $(results.result3.path) #about 1 K result
+          cat /dev/urandom | head -c 2500 | base64 | tee $(results.result4.path) #about 4 K result
+          cat /dev/urandom | head -c 2500 | base64 | tee $(results.result5.path) #about 4 K result

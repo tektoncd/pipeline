@@ -16,9 +16,9 @@ spec:
         image: bash:latest
         script: |
           #!/usr/bin/env bash
-          date +%s | tee /tekton/results/current-date-unix-timestamp
+          date +%s | tee $(results.current-date-unix-timestamp.path)
       - name: print-date-human-readable
         image: bash:latest
         script: |
           #!/usr/bin/env bash
-          date | tee /tekton/results/current-date-human-readable
+          date | tee $(results.current-date-human-readable.path)
