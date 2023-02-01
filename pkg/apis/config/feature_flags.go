@@ -33,15 +33,6 @@ const (
 	AlphaAPIFields = "alpha"
 	// BetaAPIFields is the value used for "enable-api-fields" when beta APIs should be usable as well.
 	BetaAPIFields = "beta"
-	// FullEmbeddedStatus is the value used for "embedded-status" when the full statuses of TaskRuns and Runs should be
-	// embedded in PipelineRunStatusFields, but ChildReferences should not be used.
-	FullEmbeddedStatus = "full"
-	// BothEmbeddedStatus is the value used for "embedded-status" when full embedded statuses of TaskRuns and Runs as
-	// well as ChildReferences should be used in PipelineRunStatusFields.
-	BothEmbeddedStatus = "both"
-	// MinimalEmbeddedStatus is the value used for "embedded-status" when only ChildReferences should be used in
-	// PipelineRunStatusFields.
-	MinimalEmbeddedStatus = "minimal"
 	// EnforceResourceVerificationMode is the value used for "resource-verification-mode" when verification is applied and fail the
 	// TaskRun or PipelineRun when verification fails
 	EnforceResourceVerificationMode = "enforce"
@@ -76,8 +67,6 @@ const (
 	DefaultEnableAPIFields = StableAPIFields
 	// DefaultSendCloudEventsForRuns is the default value for "send-cloudevents-for-runs".
 	DefaultSendCloudEventsForRuns = false
-	// DefaultEmbeddedStatus is the default value for "embedded-status".
-	DefaultEmbeddedStatus = MinimalEmbeddedStatus
 	// EnforceNonfalsifiabilityWithSpire is the value used for  "enable-nonfalsifiability" when SPIRE is used to enable non-falsifiability.
 	EnforceNonfalsifiabilityWithSpire = "spire"
 	// EnforceNonfalsifiabilityNone is the value used for  "enable-nonfalsifiability" when non-falsifiability is not enabled.
@@ -103,7 +92,6 @@ const (
 	enableTektonOCIBundles              = "enable-tekton-oci-bundles"
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
-	embeddedStatus                      = "embedded-status"
 	enforceNonfalsifiability            = "enforce-nonfalsifiability"
 	verificationMode                    = "resource-verification-mode"
 	enableProvenanceInStatus            = "enable-provenance-in-status"
@@ -124,7 +112,6 @@ type FeatureFlags struct {
 	EnableAPIFields                  string
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
-	EmbeddedStatus                   string
 	EnforceNonfalsifiability         string
 	ResourceVerificationMode         string
 	EnableProvenanceInStatus         bool
@@ -195,9 +182,6 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(sendCloudEventsForRuns, DefaultSendCloudEventsForRuns, &tc.SendCloudEventsForRuns); err != nil {
 		return nil, err
 	}
-	if err := setEmbeddedStatus(cfgMap, DefaultEmbeddedStatus, &tc.EmbeddedStatus); err != nil {
-		return nil, err
-	}
 	if err := setResourceVerificationMode(cfgMap, DefaultResourceVerificationMode, &tc.ResourceVerificationMode); err != nil {
 		return nil, err
 	}
@@ -253,22 +237,6 @@ func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature 
 		*feature = value
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enableAPIFields, value)
-	}
-	return nil
-}
-
-// setEmbeddedStatus sets the "embedded-status" flag based on the content of a given map.
-// If the feature gate is invalid or missing then an error is returned.
-func setEmbeddedStatus(cfgMap map[string]string, defaultValue string, feature *string) error {
-	value := defaultValue
-	if cfg, ok := cfgMap[embeddedStatus]; ok {
-		value = strings.ToLower(cfg)
-	}
-	switch value {
-	case FullEmbeddedStatus, BothEmbeddedStatus, MinimalEmbeddedStatus:
-		*feature = value
-	default:
-		return fmt.Errorf("invalid value for feature flag %q: %q", embeddedStatus, value)
 	}
 	return nil
 }

@@ -57,16 +57,6 @@ const (
 )
 
 var (
-	// We need this to be set because the way cancellation/timeout works, the full embedded status may not be updated
-	// in the PipelineRun's status for the cancelled CustomRun/Run before the PipelineRun itself finishes reconciling,
-	// so testing against "full" embedded status is inherently flaky. We currently only run these tests in
-	// pull-tekton-pipeline-alpha-integration-tests, which has the needed feature flag(s) set for custom tasks to be
-	// enabled, but that job also as "embedded-status" set to "minimal", so the flakiness never shows up in CI.
-	// Therefore, there's no point in even having logic in these tests for full embedded status cases, because we never
-	// exercise these tests in CI in that scenario.
-	requiredEmbeddedStatusGate = map[string]string{
-		"embedded-status": "minimal",
-	}
 	filterTypeMeta          = cmpopts.IgnoreFields(metav1.TypeMeta{}, "Kind", "APIVersion")
 	filterObjectMeta        = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion", "UID", "CreationTimestamp", "Generation", "ManagedFields")
 	filterCondition         = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time", "Message")
@@ -79,7 +69,7 @@ func TestCustomTask(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setUpCustomTask(ctx, t, requireAllGates(requiredEmbeddedStatusGate))
+	c, namespace := setUpCustomTask(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
@@ -283,7 +273,7 @@ func TestPipelineRunCustomTaskTimeout(t *testing.T) {
 	// cancel the context after we have waited a suitable buffer beyond the given deadline.
 	ctx, cancel := context.WithTimeout(context.Background(), timeout+2*time.Minute)
 	defer cancel()
-	c, namespace := setUpCustomTask(ctx, t, requireAllGates(requiredEmbeddedStatusGate))
+	c, namespace := setUpCustomTask(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(context.Background(), t, c, namespace) }, t.Logf)
 	defer tearDown(context.Background(), t, c, namespace)
 
@@ -435,7 +425,7 @@ func TestWaitCustomTask_Run(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setUpCustomTask(ctx, t, requireAllGates(requiredEmbeddedStatusGate))
+	c, namespace := setUpCustomTask(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
@@ -599,7 +589,7 @@ func TestWaitCustomTask_PipelineRun(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setUpCustomTask(ctx, t, requireAllGates(requiredEmbeddedStatusGate))
+	c, namespace := setUpCustomTask(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
@@ -887,7 +877,7 @@ func TestWaitCustomTask_V1Beta1_PipelineRun(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	c, namespace := setUpV1Beta1CustomTask(ctx, t, requireAllGates(requiredEmbeddedStatusGate))
+	c, namespace := setUpV1Beta1CustomTask(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDownV1Beta1CustomTask(ctx, t, c, namespace) }, t.Logf)
 	defer tearDownV1Beta1CustomTask(ctx, t, c, namespace)
 

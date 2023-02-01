@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -191,44 +190,25 @@ func cancelPipelineTaskRunsForTaskNames(ctx context.Context, logger *zap.Sugared
 	return errs
 }
 
-// getChildObjectsFromPRStatusForTaskNames returns taskruns, customruns, and runs in the PipelineRunStatus's ChildReferences or TaskRuns/Runs,
-// based on the value of the embedded status flag and the given set of PipelineTask names. If that set is empty, all are returned.
+// getChildObjectsFromPRStatusForTaskNames returns taskruns, customruns, and runs in the PipelineRunStatus's ChildReferences,
+// based on the given set of PipelineTask names. If that set is empty, all are returned.
 func getChildObjectsFromPRStatusForTaskNames(ctx context.Context, prs v1beta1.PipelineRunStatus, taskNames sets.String) ([]string, []string, []string, error) {
-	cfg := config.FromContextOrDefaults(ctx)
-
 	var trNames []string
 	var customRunNames []string
 	var runNames []string
 	unknownChildKinds := make(map[string]string)
 
-	if cfg.FeatureFlags.EmbeddedStatus != config.FullEmbeddedStatus {
-		for _, cr := range prs.ChildReferences {
-			if taskNames.Len() == 0 || taskNames.Has(cr.PipelineTaskName) {
-				switch cr.Kind {
-				case pipeline.TaskRunControllerName:
-					trNames = append(trNames, cr.Name)
-				case pipeline.RunControllerName:
-					runNames = append(runNames, cr.Name)
-				case pipeline.CustomRunControllerName:
-					customRunNames = append(customRunNames, cr.Name)
-				default:
-					unknownChildKinds[cr.Name] = cr.Kind
-				}
-			}
-		}
-	} else {
-		for trName, trs := range prs.TaskRuns {
-			if taskNames.Len() == 0 || taskNames.Has(trs.PipelineTaskName) {
-				trNames = append(trNames, trName)
-			}
-		}
-		for runName, runStatus := range prs.Runs {
-			if taskNames.Len() == 0 || taskNames.Has(runStatus.PipelineTaskName) {
-				if cfg.FeatureFlags.CustomTaskVersion == config.CustomTaskVersionAlpha {
-					runNames = append(runNames, runName)
-				} else {
-					customRunNames = append(customRunNames, runName)
-				}
+	for _, cr := range prs.ChildReferences {
+		if taskNames.Len() == 0 || taskNames.Has(cr.PipelineTaskName) {
+			switch cr.Kind {
+			case pipeline.TaskRunControllerName:
+				trNames = append(trNames, cr.Name)
+			case pipeline.RunControllerName:
+				runNames = append(runNames, cr.Name)
+			case pipeline.CustomRunControllerName:
+				customRunNames = append(customRunNames, cr.Name)
+			default:
+				unknownChildKinds[cr.Name] = cr.Kind
 			}
 		}
 	}

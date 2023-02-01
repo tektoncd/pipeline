@@ -3335,7 +3335,6 @@ func TestMatrixIncompatibleAPIVersions(t *testing.T) {
 				ps := tt.spec
 				featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
 					"enable-api-fields": version,
-					"embedded-status":   "minimal",
 				})
 				defaults := &config.Defaults{
 					DefaultMaxMatrixCombinationsCount: 4,
@@ -3452,7 +3451,6 @@ func Test_validateMatrix(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
 				"enable-api-fields": "alpha",
-				"embedded-status":   "minimal",
 			})
 			defaults := &config.Defaults{
 				DefaultMaxMatrixCombinationsCount: 4,

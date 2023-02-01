@@ -40,15 +40,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var (
-	valuesForEmbeddedStatus = []string{
-		config.DefaultEmbeddedStatus,
-		config.FullEmbeddedStatus,
-		config.BothEmbeddedStatus,
-		config.MinimalEmbeddedStatus,
-	}
-)
-
 type updateStatusTaskRunsData struct {
 	noTaskRuns     map[string]*v1beta1.PipelineRunTaskRunStatus
 	missingTaskRun map[string]*v1beta1.PipelineRunTaskRunStatus
@@ -935,111 +926,60 @@ pipelineTaskName: task-6
 	}
 
 	for _, tc := range tcs {
-		for _, embeddedVal := range valuesForEmbeddedStatus {
-			t.Run(fmt.Sprintf("%s with %s embedded status", tc.prName, embeddedVal), func(t *testing.T) {
-				ctx := context.Background()
-				cfg := config.NewStore(logtesting.TestLogger(t))
-				cfg.OnConfigChanged(&corev1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-					Data: map[string]string{
-						embeddedStatusFeatureFlag: embeddedVal,
-					},
-				})
-				ctx = cfg.ToContext(ctx)
-				logger := logtesting.TestLogger(t)
+		t.Run(tc.prName, func(t *testing.T) {
+			ctx := context.Background()
+			cfg := config.NewStore(logtesting.TestLogger(t))
 
-				pr := &v1beta1.PipelineRun{
-					ObjectMeta: metav1.ObjectMeta{Name: tc.prName, UID: prUID},
-					Status:     tc.prStatus(),
+			ctx = cfg.ToContext(ctx)
+			logger := logtesting.TestLogger(t)
+
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: tc.prName, UID: prUID},
+				Status:     tc.prStatus(),
+			}
+
+			if err := updatePipelineRunStatusFromChildObjects(ctx, logger, pr, tc.trs, tc.runs); err != nil {
+				t.Fatalf("received an unexpected error: %v", err)
+			}
+
+			actualPrStatus := pr.Status
+
+			actualChildRefs := actualPrStatus.ChildReferences
+			if len(actualChildRefs) != 0 {
+				var fixedChildRefs []v1beta1.ChildStatusReference
+				re := regexp.MustCompile(`^[a-z\-]*?-(task|run)-[0-9]`)
+				for _, cr := range actualChildRefs {
+					cr.Name = fmt.Sprintf("%s-xxyyy", re.FindString(cr.Name))
+					fixedChildRefs = append(fixedChildRefs, cr)
 				}
+				actualPrStatus.ChildReferences = fixedChildRefs
+			}
 
-				if err := updatePipelineRunStatusFromChildObjects(ctx, logger, pr, tc.trs, tc.runs); err != nil {
-					t.Fatalf("received an unexpected error: %v", err)
-				}
+			expectedPRStatus := prStatusFromInputs(prRunningStatus, tc.expectedStatusTRs, tc.expectedStatusRuns, tc.expectedStatusCRs)
 
-				actualPrStatus := pr.Status
-
-				// The TaskRun keys for recovered taskruns will contain a new random key, appended to the
-				// base name that we expect. Replace the random part so we can diff the whole structure
-				actualTaskRuns := actualPrStatus.PipelineRunStatusFields.TaskRuns
-				if actualTaskRuns != nil {
-					fixedTaskRuns := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-					re := regexp.MustCompile(`^[a-z\-]*?-task-[0-9]`)
-					for k, v := range actualTaskRuns {
-						newK := re.FindString(k)
-						fixedTaskRuns[newK+"-xxyyy"] = v
-					}
-					actualPrStatus.PipelineRunStatusFields.TaskRuns = fixedTaskRuns
-				}
-
-				actualChildRefs := actualPrStatus.ChildReferences
-				if len(actualChildRefs) != 0 {
-					var fixedChildRefs []v1beta1.ChildStatusReference
-					re := regexp.MustCompile(`^[a-z\-]*?-(task|run)-[0-9]`)
-					for _, cr := range actualChildRefs {
-						cr.Name = fmt.Sprintf("%s-xxyyy", re.FindString(cr.Name))
-						fixedChildRefs = append(fixedChildRefs, cr)
-					}
-					actualPrStatus.ChildReferences = fixedChildRefs
-				}
-
-				expectedPRStatus := prStatusFromInputs(embeddedVal, prRunningStatus, tc.expectedStatusTRs, tc.expectedStatusRuns, tc.expectedStatusCRs)
-
-				if d := cmp.Diff(expectedPRStatus, actualPrStatus, cmpopts.SortSlices(lessChildReferences)); d != "" {
-					t.Errorf("expected the PipelineRun status to match %#v. Diff %s", expectedPRStatus, diff.PrintWantGot(d))
-				}
-			})
-		}
+			if d := cmp.Diff(expectedPRStatus, actualPrStatus, cmpopts.SortSlices(lessChildReferences)); d != "" {
+				t.Errorf("expected the PipelineRun status to match %#v. Diff %s", expectedPRStatus, diff.PrintWantGot(d))
+			}
+		})
 	}
 }
 
 func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 	testCases := []struct {
 		name            string
-		embeddedStatus  string
 		prStatus        v1beta1.PipelineRunStatus
 		expectedErrStrs []string
 	}{
 		{
-			name:           "empty everything",
-			embeddedStatus: config.DefaultEmbeddedStatus,
+			name: "empty everything",
 			prStatus: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{},
 			},
 			expectedErrStrs: nil,
 		}, {
-			name:           "error with full embedded",
-			embeddedStatus: config.FullEmbeddedStatus,
+			name: "error ChildObjects",
 			prStatus: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-						"t1": {
-							PipelineTaskName: "task-1",
-						},
-					},
-					ChildReferences: []v1beta1.ChildStatusReference{{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
-						Name:             "t1",
-						PipelineTaskName: "task-1",
-					}},
-				},
-			},
-			expectedErrStrs: []string{"expected no ChildReferences"},
-		}, {
-			name:           "error with minimal embedded",
-			embeddedStatus: config.MinimalEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-						"t1": {
-							PipelineTaskName: "task-1",
-						},
-					},
-					Runs: map[string]*v1beta1.PipelineRunRunStatus{
-						"r1": {
-							PipelineTaskName: "run-1",
-						},
-					},
 					ChildReferences: []v1beta1.ChildStatusReference{
 						{
 							TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
@@ -1058,100 +998,12 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 				},
 			},
 			expectedErrStrs: []string{
-				"expected no TaskRun statuses",
-				"expected no Run statuses",
 				"child with name u1 has unknown kind UnknownKind",
 			},
 		}, {
-			name:           "error with both embedded",
-			embeddedStatus: config.BothEmbeddedStatus,
+			name: "valid ChildObjects",
 			prStatus: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-						"t2": {
-							PipelineTaskName: "task-2",
-						},
-					},
-					Runs: map[string]*v1beta1.PipelineRunRunStatus{
-						"r1": {
-							PipelineTaskName: "run-2",
-						},
-					},
-					ChildReferences: []v1beta1.ChildStatusReference{
-						{
-							TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
-							Name:             "t1",
-							PipelineTaskName: "task-1",
-						}, {
-							TypeMeta:         runtime.TypeMeta{Kind: "Run"},
-							Name:             "r1",
-							PipelineTaskName: "run-1",
-						}, {
-							TypeMeta:         runtime.TypeMeta{Kind: "UnknownKind"},
-							Name:             "u1",
-							PipelineTaskName: "unknown-1",
-						},
-					},
-				},
-			},
-			expectedErrStrs: []string{
-				"expected the same number",
-				"TaskRun with name t1 found in ChildReferences only",
-				"Run with name r1 has PipelineTask name run-1 in ChildReferences and run-2 in Runs",
-				"child with name u1 has unknown kind UnknownKind",
-			},
-		}, {
-			name:           "valid with full embedded",
-			embeddedStatus: config.FullEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-						"t1": {
-							PipelineTaskName: "task-1",
-						},
-					},
-					Runs: map[string]*v1beta1.PipelineRunRunStatus{
-						"r1": {
-							PipelineTaskName: "run-1",
-						},
-					},
-				},
-			},
-			expectedErrStrs: nil,
-		}, {
-			name:           "valid with minimal embedded",
-			embeddedStatus: config.MinimalEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					ChildReferences: []v1beta1.ChildStatusReference{
-						{
-							TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
-							Name:             "t1",
-							PipelineTaskName: "task-1",
-						}, {
-							TypeMeta:         runtime.TypeMeta{Kind: "Run"},
-							Name:             "r1",
-							PipelineTaskName: "run-1",
-						},
-					},
-				},
-			},
-			expectedErrStrs: nil,
-		}, {
-			name:           "valid with both embedded",
-			embeddedStatus: config.BothEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-						"t1": {
-							PipelineTaskName: "task-1",
-						},
-					},
-					Runs: map[string]*v1beta1.PipelineRunRunStatus{
-						"r1": {
-							PipelineTaskName: "run-1",
-						},
-					},
 					ChildReferences: []v1beta1.ChildStatusReference{
 						{
 							TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
@@ -1175,9 +1027,6 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 			cfg := config.NewStore(logtesting.TestLogger(t))
 			cfg.OnConfigChanged(&corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName()},
-				Data: map[string]string{
-					embeddedStatusFeatureFlag: tc.embeddedStatus,
-				},
 			})
 			ctx = cfg.ToContext(ctx)
 
@@ -1202,30 +1051,13 @@ func TestValidateChildObjectsInPipelineRunStatus(t *testing.T) {
 	}
 }
 
-func prStatusFromInputs(embeddedStatus string, status duckv1.Status, taskRuns map[string]*v1beta1.PipelineRunTaskRunStatus, runs map[string]*v1beta1.PipelineRunRunStatus, childRefs []v1beta1.ChildStatusReference) v1beta1.PipelineRunStatus {
+func prStatusFromInputs(status duckv1.Status, taskRuns map[string]*v1beta1.PipelineRunTaskRunStatus, runs map[string]*v1beta1.PipelineRunRunStatus, childRefs []v1beta1.ChildStatusReference) v1beta1.PipelineRunStatus {
 	prs := v1beta1.PipelineRunStatus{
 		Status:                  status,
 		PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{},
 	}
-	if shouldHaveFullEmbeddedStatus(embeddedStatus) {
-		for k, v := range taskRuns {
-			if prs.TaskRuns == nil {
-				prs.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-			}
-			trStatus := *v
-			prs.TaskRuns[k] = &trStatus
-		}
-		for k, v := range runs {
-			if prs.Runs == nil {
-				prs.Runs = make(map[string]*v1beta1.PipelineRunRunStatus)
-			}
-			runStatus := *v
-			prs.Runs[k] = &runStatus
-		}
-	}
-	if shouldHaveMinimalEmbeddedStatus(embeddedStatus) {
-		prs.ChildReferences = append(prs.ChildReferences, childRefs...)
-	}
+
+	prs.ChildReferences = append(prs.ChildReferences, childRefs...)
 
 	return prs
 }

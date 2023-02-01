@@ -26,7 +26,6 @@ data:
   enable-custom-tasks: "true"
   enable-api-fields: "alpha"
   send-cloudevents-for-runs: "true"
-  embedded-status: "both"
   enforce-nonfalsifiability: "spire"
   resource-verification-mode: "enforce"
   enable-provenance-in-status: "true"

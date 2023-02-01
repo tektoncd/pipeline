@@ -47,7 +47,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTektonOCIBundles:   config.DefaultEnableTektonOciBundles,
 				EnableAPIFields:          config.DefaultEnableAPIFields,
 				SendCloudEventsForRuns:   config.DefaultSendCloudEventsForRuns,
-				EmbeddedStatus:           config.DefaultEmbeddedStatus,
 				ResourceVerificationMode: config.DefaultResourceVerificationMode,
 				EnableProvenanceInStatus: config.DefaultEnableProvenanceInStatus,
 				ResultExtractionMethod:   config.DefaultResultExtractionMethod,
@@ -65,7 +64,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				EnableTektonOCIBundles:           true,
 				EnableAPIFields:                  "alpha",
 				SendCloudEventsForRuns:           true,
-				EmbeddedStatus:                   "both",
 				EnforceNonfalsifiability:         "spire",
 				ResourceVerificationMode:         "enforce",
 				EnableProvenanceInStatus:         true,
@@ -88,7 +86,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
-				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
@@ -107,7 +104,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
-				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
@@ -126,7 +122,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
 				RequireGitSSHSecretKnownHosts:    config.DefaultRequireGitSSHSecretKnownHosts,
 				SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
-				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				ResultExtractionMethod:           config.DefaultResultExtractionMethod,
 				MaxResultSize:                    config.DefaultMaxResultSize,
@@ -137,7 +132,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "alpha",
-				EmbeddedStatus:                   "minimal",
 				EnforceNonfalsifiability:         "spire",
 				EnableTektonOCIBundles:           true,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
@@ -152,7 +146,6 @@ func TestNewFeatureFlagsFromConfigMap(t *testing.T) {
 		{
 			expectedConfig: &config.FeatureFlags{
 				EnableAPIFields:                  "stable",
-				EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 				ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 				RunningInEnvWithInjectedSidecars: config.DefaultRunningInEnvWithInjectedSidecars,
 				AwaitSidecarReadiness:            config.DefaultAwaitSidecarReadiness,
@@ -184,7 +177,6 @@ func TestNewFeatureFlagsFromEmptyConfigMap(t *testing.T) {
 		EnableTektonOCIBundles:           config.DefaultEnableTektonOciBundles,
 		EnableAPIFields:                  config.DefaultEnableAPIFields,
 		SendCloudEventsForRuns:           config.DefaultSendCloudEventsForRuns,
-		EmbeddedStatus:                   config.DefaultEmbeddedStatus,
 		EnforceNonfalsifiability:         config.DefaultEnforceNonfalsifiability,
 		ResourceVerificationMode:         config.DefaultResourceVerificationMode,
 		EnableProvenanceInStatus:         config.DefaultEnableProvenanceInStatus,
@@ -229,8 +221,6 @@ func TestNewFeatureFlagsConfigMapErrors(t *testing.T) {
 		fileName: "feature-flags-invalid-boolean",
 	}, {
 		fileName: "feature-flags-invalid-enable-api-fields",
-	}, {
-		fileName: "feature-flags-invalid-embedded-status",
 	}, {
 		fileName: "feature-flags-invalid-resource-verification-mode",
 	}, {

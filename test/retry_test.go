@@ -25,8 +25,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-
 	"github.com/tektoncd/pipeline/test/parse"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,8 +44,6 @@ func TestTaskRunRetry(t *testing.T) {
 	c, namespace := setup(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
-
-	embeddedStatus := GetEmbeddedStatus(ctx, t, c.KubeClient)
 
 	// Create a PipelineRun with a single TaskRun that can only fail,
 	// configured to retry 5 times.
@@ -80,34 +76,21 @@ spec:
 		t.Fatalf("Failed to get PipelineRun %q: %v", pipelineRunName, err)
 	}
 
-	if embeddedStatus == config.FullEmbeddedStatus || embeddedStatus == config.BothEmbeddedStatus {
-		// PipelineRunStatus should have 1 TaskRun status, and it should be failed.
-		if len(pr.Status.TaskRuns) != 1 {
-			t.Errorf("Got %d TaskRun statuses, wanted %d", len(pr.Status.TaskRuns), numRetries)
-		}
-		for taskRunName, trs := range pr.Status.TaskRuns {
-			if !isFailed(t, taskRunName, trs.Status.Conditions) {
-				t.Errorf("TaskRun status %q is not failed", taskRunName)
-			}
-		}
+	// PipelineRunStatus should have 1 child reference, and the TaskRun it refers to should be failed.
+	if len(pr.Status.ChildReferences) != 1 {
+		t.Fatalf("Got %d child references, wanted %d", len(pr.Status.ChildReferences), numRetries)
 	}
-	if embeddedStatus == config.MinimalEmbeddedStatus || embeddedStatus == config.BothEmbeddedStatus {
-		// PipelineRunStatus should have 1 child reference, and the TaskRun it refers to should be failed.
-		if len(pr.Status.ChildReferences) != 1 {
-			t.Fatalf("Got %d child references, wanted %d", len(pr.Status.ChildReferences), numRetries)
-		}
-		if pr.Status.ChildReferences[0].Kind != "TaskRun" {
-			t.Errorf("Got a child reference of kind %s, but expected TaskRun", pr.Status.ChildReferences[0].Kind)
-		}
-		taskRunName := pr.Status.ChildReferences[0].Name
+	if pr.Status.ChildReferences[0].Kind != "TaskRun" {
+		t.Errorf("Got a child reference of kind %s, but expected TaskRun", pr.Status.ChildReferences[0].Kind)
+	}
+	taskRunName := pr.Status.ChildReferences[0].Name
 
-		tr, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("Failed to get TaskRun %q: %v", taskRunName, err)
-		}
-		if !isFailed(t, taskRunName, tr.Status.Conditions) {
-			t.Errorf("TaskRun status %q is not failed", taskRunName)
-		}
+	trByName, err := c.V1beta1TaskRunClient.Get(ctx, taskRunName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get TaskRun %q: %v", taskRunName, err)
+	}
+	if !isFailed(t, taskRunName, trByName.Status.Conditions) {
+		t.Errorf("TaskRun status %q is not failed", taskRunName)
 	}
 
 	// There should only be one TaskRun created.

@@ -18,11 +18,9 @@ package test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/parse"
@@ -31,25 +29,12 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	duckv1 "knative.dev/pkg/apis/duck/v1"
 	knativetest "knative.dev/pkg/test"
 	"knative.dev/pkg/test/helpers"
 )
 
 var (
-	ReleaseAnnotation     = "pipeline.tekton.dev/release"
-	TaskRunsAnnotationKey = "tekton.dev/v1beta1TaskRuns"
-	RunsAnnotationKey     = "tekton.dev/v1beta1Runs"
-
-	// embedded-status is required for testing pipelineRunStatus
-	fullEmbeddedGate = map[string]string{
-		"embedded-status": "full",
-	}
-
-	// json value in the Annotation map is ignored due to incomparable generated fields
-	ignoreJSONAnnotationValue = func(k, v interface{}) bool {
-		return k == TaskRunsAnnotationKey || k == RunsAnnotationKey
-	}
+	ReleaseAnnotation = "pipeline.tekton.dev/release"
 
 	// release Annotation is ignored when populated by TaskRuns
 	ignoreReleaseAnnotation = func(k string, v string) bool {
@@ -57,7 +42,6 @@ var (
 	}
 
 	filterLabels                   = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "Labels")
-	filterPodGenreatedName         = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "PodName")
 	filterV1TaskRunStatus          = cmpopts.IgnoreFields(v1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1PipelineRunStatus      = cmpopts.IgnoreFields(v1.PipelineRunStatusFields{}, "StartTime", "CompletionTime")
 	filterV1beta1TaskRunStatus     = cmpopts.IgnoreFields(v1beta1.TaskRunStatusFields{}, "StartTime", "CompletionTime")
@@ -65,15 +49,13 @@ var (
 	filterContainerStateTerminated = cmpopts.IgnoreFields(corev1.ContainerStateTerminated{}, "StartedAt", "FinishedAt", "ContainerID", "Message")
 	filterV1StepState              = cmpopts.IgnoreFields(v1.StepState{}, "Name", "ImageID", "Container")
 	filterV1beta1StepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "Name", "ImageID", "ContainerName")
-	filterJSONAnnotationsStrings   = cmpopts.IgnoreMapEntries(ignoreJSONAnnotationValue)
 	filterReleaseAnnotation        = cmpopts.IgnoreMapEntries(ignoreReleaseAnnotation)
 
-	filterMetadata                       = []cmp.Option{filterTypeMeta, filterObjectMeta}
-	filterV1TaskRunFields                = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterReleaseAnnotation, filterV1TaskRunStatus, filterContainerStateTerminated, filterV1StepState}
-	filterV1beta1TaskRunFields           = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterV1beta1TaskRunStatus, filterCondition, filterReleaseAnnotation, filterContainerStateTerminated, filterV1beta1StepState}
-	filterV1PipelineRunFields            = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1PipelineRunStatus, filterJSONAnnotationsStrings}
-	filterV1beta1PipelineRunFields       = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1beta1PipelineRunStatus, filterV1beta1TaskRunStatus, filterV1beta1StepState, filterContainerStateTerminated}
-	filterTaskRunStatusAnnotationsFields = []cmp.Option{filterV1beta1TaskRunStatus, filterCondition, filterContainerStateTerminated, filterV1beta1StepState, filterPodGenreatedName}
+	filterMetadata                 = []cmp.Option{filterTypeMeta, filterObjectMeta}
+	filterV1TaskRunFields          = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterReleaseAnnotation, filterV1TaskRunStatus, filterContainerStateTerminated, filterV1StepState}
+	filterV1beta1TaskRunFields     = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterV1beta1TaskRunStatus, filterCondition, filterReleaseAnnotation, filterContainerStateTerminated, filterV1beta1StepState}
+	filterV1PipelineRunFields      = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1PipelineRunStatus}
+	filterV1beta1PipelineRunFields = []cmp.Option{filterTypeMeta, filterObjectMeta, filterLabels, filterCondition, filterV1beta1PipelineRunStatus, filterV1beta1TaskRunStatus, filterV1beta1StepState, filterContainerStateTerminated}
 
 	v1beta1TaskYaml = `
 metadata:
@@ -662,30 +644,11 @@ status:
         - name: "fetch-and-write-secure"
           image: "ubuntu"
           script: "echo hello"
-  taskRuns:
-    %s-fetch-secure-data:
+  childReferences:
+    - name: %s-fetch-secure-data
       pipelineTaskName: fetch-secure-data
-      status:
-        conditions:
-        - reason: Succeeded
-          status: "True"
-          type: Succeeded
-        podName: %s-fetch-secure-data-pod
-        steps:
-        - container: step-fetch-and-write-secure
-          imageID: docker.io/library/ubuntu@sha256:4b1d0c4a2d2aaf63b37111f34eb9fa89fa1bf53dd6e4ca954d47caebca4005c2
-          name: fetch-and-write-secure
-          terminated:
-            containerID: containerd://07b57fc6fd515e6d1d0de27149c60be9149697207aedc130dd0d284fce6df3fd
-            exitCode: 0
-            finishedAt: "2022-12-07T15:56:32Z"
-            reason: Completed
-            startedAt: "2022-12-07T15:56:32Z"
-        taskSpec:
-          steps:
-          - name: "fetch-and-write-secure"
-            image: "ubuntu"
-            script: "echo hello"
+      apiVersion: tekton.dev/v1beta1
+      kind: TaskRun
 `
 
 	v1PipelineRunYaml = `
@@ -722,7 +685,6 @@ metadata:
   namespace: %s
   annotations: {
     tekton.dev/v1beta1Resources: '[{"name":"pipeline-git","resourceSpec":{"type":"git","params":[{"name":"revision","value":"main"},{"name":"url","value":"https://github.com/tektoncd/pipeline"}]}}]',
-    tekton.dev/v1beta1TaskRuns: '{"%s-fetch-secure-data":{"pipelineTaskName":"fetch-secure-data","status":{"conditions":[{"type":"Succeeded","status":"True","reason":"Succeeded","message":"All Steps have completed executing"}],"podName":"%s-fetch-secure-data-pod","steps":[{"terminated":{"exitCode":0,"reason":"Completed","containerID":"containerd://978666d35ed0e20f370227a0a4c3048ef6ec59a3ad5a2f5d83a3210099a9108f"},"name":"fetch-and-write-secure","container":"step-fetch-and-write-secure","imageID":"docker.io/library/ubuntu@sha256:4b1d0c4a2d2aaf63b37111f34eb9fa89fa1bf53dd6e4ca954d47caebca4005c2"}],"taskSpec":{"steps":[{"name":"fetch-and-write-secure","image":"ubuntu","resources":{},"script":"echo hello"}]}}}}',
   }
 spec:
   params:
@@ -761,36 +723,11 @@ status:
           image: "ubuntu"
           script: "echo hello"
   childReferences:
-    - typeMeta:
+    - apiVersion: tekton.dev/v1beta1
       kind: TaskRun
-      apiVersion: tekton.dev/v1beta1
       name: %s-fetch-secure-data
       pipelineTaskName: fetch-secure-data
 `
-
-	taskRunsKey      = "%s-fetch-secure-data"
-	trStatusExpected = &v1beta1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "fetch-secure-data",
-		Status: &v1beta1.TaskRunStatus{
-			Status: duckv1.Status{
-				Conditions: duckv1.Conditions{{
-					Status: "True",
-					Type:   "Succeeded",
-					Reason: "Succeeded",
-				}},
-			},
-			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
-				PodName: "-fetch-secure-data-pod",
-				Steps: []v1beta1.StepState{{
-					Name:           "fetch-and-write-secure",
-					ContainerState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{Reason: "Completed"}},
-				}},
-				TaskSpec: &v1beta1.TaskSpec{
-					Steps: []v1beta1.Step{{Name: "fetch-and-write-secure", Image: "ubuntu", Script: "echo hello"}},
-				},
-			},
-		},
-	}
 )
 
 // TestTaskCRDConversion first creates a v1beta1 Task CRD using v1beta1Clients and
@@ -955,18 +892,17 @@ func TestPipelineCRDConversion(t *testing.T) {
 // correctly executed by the webhook. And then it creates the v1 PipelineRun CRD using v1Clients
 // and requests it by v1beta1Clients to compare with v1beta1.
 func TestPipelineRunCRDConversion(t *testing.T) {
-	ctx := withFullEmbeddedStatus(context.Background())
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	t.Parallel()
-	c, namespace := setup(ctx, t, requireAnyGate(fullEmbeddedGate))
+	c, namespace := setup(ctx, t)
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
 
 	v1beta1ToV1PipelineRunName := helpers.ObjectNameForTest(t)
 	v1beta1PipelineRun := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunYaml, v1beta1ToV1PipelineRunName, namespace))
-	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName, v1beta1ToV1PipelineRunName, v1beta1ToV1PipelineRunName))
+	v1PipelineRunExpected := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunExpectedYaml, v1beta1ToV1PipelineRunName, namespace, v1beta1ToV1PipelineRunName))
 
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, v1beta1PipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1beta1 PipelineRun: %s", err)
@@ -985,15 +921,9 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 		t.Fatalf("-want, +got: %v", d)
 	}
 
-	// Annotations is Map[string]string which cannot be compared by fields so it first ignored
-	// in comparing the v1 converted PipelineRun above and then validated
-	if err := validatePipelineRunTaskRunStatusAnnotations(v1beta1ToV1PipelineRunName, v1PipelineRunGot.ObjectMeta.Annotations); err != nil {
-		t.Fatalf("Failed validating `status.taskRuns`: %s", err)
-	}
-
 	v1ToV1beta1PRName := helpers.ObjectNameForTest(t)
 	v1PipelineRun := parse.MustParseV1PipelineRun(t, fmt.Sprintf(v1PipelineRunYaml, v1ToV1beta1PRName, namespace))
-	v1beta1PipelineRunExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYaml, v1ToV1beta1PRName, namespace, v1ToV1beta1PRName, v1ToV1beta1PRName))
+	v1beta1PipelineRunExpected := parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(v1beta1PipelineRunExpectedYaml, v1ToV1beta1PRName, namespace, v1ToV1beta1PRName))
 
 	if _, err := c.V1PipelineRunClient.Create(ctx, v1PipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create v1 PipelineRun: %s", err)
@@ -1011,32 +941,4 @@ func TestPipelineRunCRDConversion(t *testing.T) {
 	if d := cmp.Diff(v1beta1PipelineRunExpected, v1beta1PipelineRunGot, filterV1beta1PipelineRunFields...); d != "" {
 		t.Fatalf("-want, +got: %v", d)
 	}
-}
-
-func withFullEmbeddedStatus(ctx context.Context) context.Context {
-	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
-		"embedded-status": config.FullEmbeddedStatus,
-	})
-	cfg := &config.Config{FeatureFlags: featureFlags}
-	return config.ToContext(context.Background(), cfg)
-}
-
-// validatePipelineRunTaskRunStatusAnnotations validates the `status.taskRun` in Annotations by converting
-// the json string into a struct and compare the valid status fields
-func validatePipelineRunTaskRunStatusAnnotations(pipelineRunName string, annotations map[string]string) error {
-	taskRuns := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-	if taskRunStr, ok := annotations[TaskRunsAnnotationKey]; ok {
-		if err := json.Unmarshal([]byte(taskRunStr), &taskRuns); err != nil {
-			return fmt.Errorf("Error deserializing key %s from Annotations for PipelineRunTaskRunStatus: %s", TaskRunsAnnotationKey, err)
-		}
-	}
-	if trStatusGot, ok := taskRuns[fmt.Sprintf(taskRunsKey, pipelineRunName)]; ok {
-		if !ok {
-			return fmt.Errorf("Cannot get PipelineRunTaskRunStatus")
-		}
-		if d := cmp.Diff(trStatusExpected, trStatusGot, filterTaskRunStatusAnnotationsFields...); d != "" {
-			return fmt.Errorf("-want, +got: %v", d)
-		}
-	}
-	return nil
 }

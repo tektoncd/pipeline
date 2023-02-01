@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,15 +27,6 @@ import (
 )
 
 var _ apis.Convertible = (*PipelineRun)(nil)
-
-const (
-	// taskRunsAnnotationKey is used to restore PipelineRunStatus.Status.TaskRuns when converting
-	// down from v1 to v1beta1 as `status.taskRuns` is deprecated in v1 PipelineRunStatus.
-	taskRunsAnnotationKey = "tekton.dev/v1beta1TaskRuns"
-	// runsAnnotationKey is used to restore PipelineRunStatus.Status.Run when converting
-	// down from v1 to v1beta1 as `status.runs` is deprecated in v1 PipelineRunStatus.
-	runsAnnotationKey = "tekton.dev/v1beta1Runs"
-)
 
 // ConvertTo implements apis.Convertible
 func (pr *PipelineRun) ConvertTo(ctx context.Context, to apis.Convertible) error {
@@ -47,12 +37,6 @@ func (pr *PipelineRun) ConvertTo(ctx context.Context, to apis.Convertible) error
 	case *v1.PipelineRun:
 		sink.ObjectMeta = pr.ObjectMeta
 		if err := serializePipelineRunResources(&sink.ObjectMeta, &pr.Spec); err != nil {
-			return err
-		}
-		if err := serializePipelineRunStatusTaskRuns(&sink.ObjectMeta, &pr.Status); err != nil {
-			return err
-		}
-		if err := serializePipelineRunStatusRuns(&sink.ObjectMeta, &pr.Status); err != nil {
 			return err
 		}
 		if err := pr.Status.convertTo(ctx, &sink.Status); err != nil {
@@ -118,15 +102,7 @@ func (pr *PipelineRun) ConvertFrom(ctx context.Context, from apis.Convertible) e
 		if err := deserializePipelineRunResources(&pr.ObjectMeta, &pr.Spec); err != nil {
 			return err
 		}
-		taskRuns, err := deserializePipelineRunStatusTaskRuns(&pr.ObjectMeta)
-		if err != nil {
-			return err
-		}
-		runs, err := deserializePipelineRunStatusRuns(&pr.ObjectMeta)
-		if err != nil {
-			return err
-		}
-		if err := pr.Status.convertFrom(ctx, &source.Status, taskRuns, runs); err != nil {
+		if err := pr.Status.convertFrom(ctx, &source.Status); err != nil {
 			return err
 		}
 		return pr.Spec.ConvertFrom(ctx, &source.Spec)
@@ -273,21 +249,10 @@ func (prs *PipelineRunStatus) convertTo(ctx context.Context, sink *v1.PipelineRu
 		prs.Provenance.convertTo(ctx, &new)
 		sink.Provenance = &new
 	}
-
-	// If embedded-status is set to "both", both ChildReferences and TaskRuns/Runs
-	// will be populated. In this case, use the value from ChildReferences.
-	if sink.ChildReferences == nil {
-		if prs.TaskRuns != nil {
-			sink.ChildReferences = append(sink.ChildReferences, convertTaskRunsToChildReference(ctx, prs.TaskRuns)...)
-		}
-		if prs.Runs != nil {
-			sink.ChildReferences = append(sink.ChildReferences, convertRunsToChildReference(ctx, prs.Runs)...)
-		}
-	}
 	return nil
 }
 
-func (prs *PipelineRunStatus) convertFrom(ctx context.Context, source *v1.PipelineRunStatus, taskRuns map[string]*PipelineRunTaskRunStatus, runs map[string]*PipelineRunRunStatus) error {
+func (prs *PipelineRunStatus) convertFrom(ctx context.Context, source *v1.PipelineRunStatus) error {
 	prs.Status = source.Status
 	prs.StartTime = source.StartTime
 	prs.CompletionTime = source.CompletionTime
@@ -311,18 +276,11 @@ func (prs *PipelineRunStatus) convertFrom(ctx context.Context, source *v1.Pipeli
 		new.convertFrom(ctx, st)
 		prs.SkippedTasks = append(prs.SkippedTasks, new)
 	}
-	embeddedStatus := config.FromContextOrDefaults(ctx).FeatureFlags.EmbeddedStatus
-	if embeddedStatus == config.BothEmbeddedStatus || embeddedStatus == config.MinimalEmbeddedStatus {
-		prs.ChildReferences = nil
-		for _, cr := range source.ChildReferences {
-			new := ChildStatusReference{}
-			new.convertFrom(ctx, cr)
-			prs.ChildReferences = append(prs.ChildReferences, new)
-		}
-	}
-	if embeddedStatus == config.BothEmbeddedStatus || embeddedStatus == config.FullEmbeddedStatus {
-		prs.TaskRuns = taskRuns
-		prs.Runs = runs
+	prs.ChildReferences = nil
+	for _, cr := range source.ChildReferences {
+		new := ChildStatusReference{}
+		new.convertFrom(ctx, cr)
+		prs.ChildReferences = append(prs.ChildReferences, new)
 	}
 
 	prs.FinallyStartTime = source.FinallyStartTime
@@ -411,79 +369,4 @@ func deserializePipelineRunResources(meta *metav1.ObjectMeta, spec *PipelineRunS
 		spec.Resources = resources
 	}
 	return nil
-}
-
-// convertTaskRunsToChildReference handles the deprecated `status.taskRuns` field PipelineRunTaskRunStatus.
-func convertTaskRunsToChildReference(ctx context.Context, taskRuns map[string]*PipelineRunTaskRunStatus) []v1.ChildStatusReference {
-	csrs := []v1.ChildStatusReference{}
-	for name, status := range taskRuns {
-		csr := v1.ChildStatusReference{}
-		// The apiVersion is defaulted to 'v1beta1' all taskRuns are populated by v1beta1
-		// PipelineRunStatus reconcilers when `embedded-status` is `Full` or `Both`.
-		csr.TypeMeta.APIVersion = "tekton.dev/v1beta1"
-		csr.TypeMeta.Kind = "TaskRun"
-		csr.Name = name
-		csr.PipelineTaskName = status.PipelineTaskName
-		csr.WhenExpressions = nil
-		for _, we := range status.WhenExpressions {
-			new := v1.WhenExpression{}
-			we.convertTo(ctx, &new)
-			csr.WhenExpressions = append(csr.WhenExpressions, new)
-		}
-		csrs = append(csrs, csr)
-	}
-	return csrs
-}
-
-// convertRunsToChildReference handles the deprecated `status.runs` field PipelineRunRunStatus.
-func convertRunsToChildReference(ctx context.Context, runs map[string]*PipelineRunRunStatus) []v1.ChildStatusReference {
-	csrs := []v1.ChildStatusReference{}
-	for name, status := range runs {
-		csr := v1.ChildStatusReference{}
-		// The apiViersion is set to 'v1alpha1' as Run is only in `v1alpha1`.
-		csr.TypeMeta.APIVersion = "tekton.dev/v1alpha1"
-		csr.TypeMeta.Kind = "Run"
-		csr.Name = name
-		csr.PipelineTaskName = status.PipelineTaskName
-		csr.WhenExpressions = nil
-		for _, we := range status.WhenExpressions {
-			new := v1.WhenExpression{}
-			we.convertTo(ctx, &new)
-			csr.WhenExpressions = append(csr.WhenExpressions, new)
-		}
-		csrs = append(csrs, csr)
-	}
-	return csrs
-}
-
-func serializePipelineRunStatusTaskRuns(meta *metav1.ObjectMeta, status *PipelineRunStatus) error {
-	if status.TaskRuns == nil {
-		return nil
-	}
-	return version.SerializeToMetadata(meta, status.TaskRuns, taskRunsAnnotationKey)
-}
-
-func deserializePipelineRunStatusTaskRuns(meta *metav1.ObjectMeta) (map[string]*PipelineRunTaskRunStatus, error) {
-	taskRuns := make(map[string]*PipelineRunTaskRunStatus)
-	err := version.DeserializeFromMetadata(meta, &taskRuns, taskRunsAnnotationKey)
-	if err != nil {
-		return nil, err
-	}
-	return taskRuns, nil
-}
-
-func serializePipelineRunStatusRuns(meta *metav1.ObjectMeta, status *PipelineRunStatus) error {
-	if status.Runs == nil {
-		return nil
-	}
-	return version.SerializeToMetadata(meta, status.Runs, runsAnnotationKey)
-}
-
-func deserializePipelineRunStatusRuns(meta *metav1.ObjectMeta) (map[string]*PipelineRunRunStatus, error) {
-	runs := make(map[string]*PipelineRunRunStatus)
-	err := version.DeserializeFromMetadata(meta, &runs, runsAnnotationKey)
-	if err != nil {
-		return nil, err
-	}
-	return runs, nil
 }
