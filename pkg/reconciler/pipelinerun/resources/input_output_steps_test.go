@@ -122,7 +122,7 @@ func TestGetOutputSteps(t *testing.T) {
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			postTasks := resources.GetOutputSteps(tc.outputs, tc.pipelineTaskName, pvcDir)
+			postTasks := resources.GetOutputSteps(tc.outputs, tc.pipelineTaskName)
 			if d := cmp.Diff(tc.expectedtaskOuputResources, postTasks, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
 				t.Errorf("error comparing post steps %s", diff.PrintWantGot(d))
 			}
@@ -263,7 +263,7 @@ func TestGetInputSteps(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask.Resources.Inputs, pvcDir)
+			taskInputResources := resources.GetInputSteps(tc.inputs, tc.pipelineTask.Resources.Inputs)
 			if d := cmp.Diff(tc.expectedtaskInputResources, taskInputResources, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
 				t.Errorf("error comparing task resource inputs %s", diff.PrintWantGot(d))
 			}
@@ -309,7 +309,7 @@ func TestWrapSteps(t *testing.T) {
 	}
 
 	taskRunSpec := &v1beta1.TaskRunSpec{}
-	resources.WrapSteps(taskRunSpec, pt, inputs, outputs, pvcDir)
+	resources.WrapSteps(taskRunSpec, pt, inputs, outputs)
 
 	expectedtaskInputResources := []v1beta1.TaskResourceBinding{{
 		PipelineResourceBinding: v1beta1.PipelineResourceBinding{

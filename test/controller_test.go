@@ -142,14 +142,6 @@ func TestEnsureConfigurationConfigMapsExist(t *testing.T) {
 		Data:       map[string]string{},
 	})
 	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.Namespace()},
-		Data:       map[string]string{},
-	})
-	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.Namespace()},
-		Data:       map[string]string{},
-	})
-	expected.ConfigMaps = append(expected.ConfigMaps, &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{Name: config.GetMetricsConfigName(), Namespace: system.Namespace()},
 		Data:       map[string]string{},
 	})

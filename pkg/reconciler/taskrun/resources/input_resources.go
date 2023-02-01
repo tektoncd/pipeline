@@ -23,9 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -60,13 +57,11 @@ func AddInputResource(
 
 	pvcName := taskRun.GetPipelineRunPVCName()
 	mountPVC := false
-	mountSecrets := false
 
 	prNameFromLabel := taskRun.Labels[pipeline.PipelineRunLabelKey]
 	if prNameFromLabel == "" {
 		prNameFromLabel = pvcName
 	}
-	as := artifacts.GetArtifactStorage(ctx, images, prNameFromLabel, kubeclient)
 
 	// Iterate in reverse through the list, each element prepends but we want the first one to remain first.
 	for i := len(taskSpec.Resources.Inputs) - 1; i >= 0; i-- {
@@ -90,48 +85,21 @@ func AddInputResource(
 		if !ok || resource == nil {
 			return nil, fmt.Errorf("failed to Get Pipeline Resource for task %s with boundResource %v", taskName, boundResource)
 		}
-		var copyStepsFromPrevTasks []v1beta1.Step
+
 		dPath := destinationPath(input.Name, input.TargetPath)
-		// if taskrun is fetching resource from previous task then execute copy step instead of fetching new copy
-		// to the desired destination directory, as long as the resource exports output to be copied
-		if v1beta1.AllowedOutputResources[resource.GetType()] && taskRun.HasPipelineRunOwnerReference() {
-			for _, path := range boundResource.Paths {
-				cpSteps := as.GetCopyFromStorageToSteps(boundResource.Name, path, dPath)
-				if as.GetType() == pipeline.ArtifactStoragePVCType {
-					mountPVC = true
-					for _, s := range cpSteps {
-						s.VolumeMounts = []corev1.VolumeMount{storage.GetPvcMount(pvcName)}
-						copyStepsFromPrevTasks = append(copyStepsFromPrevTasks,
-							storage.CreateDirStep(images.ShellImage, boundResource.Name, dPath),
-							s)
-					}
-				} else {
-					// bucket
-					copyStepsFromPrevTasks = append(copyStepsFromPrevTasks, cpSteps...)
-				}
-			}
+		// Allow the resource to mutate the task.
+		modifier, err := resource.GetInputTaskModifier(taskSpec, dPath)
+		if err != nil {
+			return nil, err
 		}
-		// source is copied from previous task so skip fetching download container definition
-		if len(copyStepsFromPrevTasks) > 0 {
-			taskSpec.Steps = append(copyStepsFromPrevTasks, taskSpec.Steps...)
-			mountSecrets = true
-		} else {
-			// Allow the resource to mutate the task.
-			modifier, err := resource.GetInputTaskModifier(taskSpec, dPath)
-			if err != nil {
-				return nil, err
-			}
-			if err := v1beta1.ApplyTaskModifier(taskSpec, modifier); err != nil {
-				return nil, fmt.Errorf("unabled to apply Resource %s: %w", boundResource.Name, err)
-			}
+		if err := v1beta1.ApplyTaskModifier(taskSpec, modifier); err != nil {
+			return nil, fmt.Errorf("unabled to apply Resource %s: %w", boundResource.Name, err)
 		}
+
 	}
 
 	if mountPVC {
 		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
-	}
-	if mountSecrets {
-		taskSpec.Volumes = appendNewSecretsVolumes(taskSpec.Volumes, as.GetSecretsVolumes()...)
 	}
 	return taskSpec, nil
 }
