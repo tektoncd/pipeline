@@ -27,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// GetTaskRunStatusForPipelineTask takes a minimal embedded status child reference and returns the actual TaskRunStatus
+// GetTaskRunStatusForPipelineTask takes a child reference and returns the actual TaskRunStatus
 // for the PipelineTask. It returns an error if the child reference's kind isn't TaskRun.
 func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1beta1.ChildStatusReference) (*v1beta1.TaskRunStatus, error) {
 	if childRef.Kind != "TaskRun" {
@@ -45,7 +45,7 @@ func GetTaskRunStatusForPipelineTask(ctx context.Context, client versioned.Inter
 	return &tr.Status, nil
 }
 
-// GetRunStatusForPipelineTask takes a minimal embedded status child reference and returns the actual CustomRunStatus for the
+// GetRunStatusForPipelineTask takes a child reference and returns the actual CustomRunStatus for the
 // PipelineTask. It returns an error if the child reference's kind isn't CustomRun.
 func GetRunStatusForPipelineTask(ctx context.Context, client versioned.Interface, ns string, childRef v1beta1.ChildStatusReference) (*v1beta1.CustomRunStatus, error) {
 	var runStatus *v1beta1.CustomRunStatus
@@ -77,9 +77,9 @@ func GetRunStatusForPipelineTask(ctx context.Context, client versioned.Interface
 	return runStatus, nil
 }
 
-// GetFullPipelineTaskStatuses returns populated TaskRun and Run status maps for a PipelineRun from its ChildReferences.
-// If the PipelineRun has no ChildReferences, its .Status.TaskRuns and .Status.Runs will be returned instead.
-func GetFullPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns string, pr *v1beta1.PipelineRun) (map[string]*v1beta1.PipelineRunTaskRunStatus,
+// GetPipelineTaskStatuses returns populated TaskRun and Run status maps for a PipelineRun from its ChildReferences.
+// If the PipelineRun has no ChildReferences, nothing will be populated.
+func GetPipelineTaskStatuses(ctx context.Context, client versioned.Interface, ns string, pr *v1beta1.PipelineRun) (map[string]*v1beta1.PipelineRunTaskRunStatus,
 	map[string]*v1beta1.PipelineRunRunStatus, error) {
 	// If the PipelineRun is nil, just return
 	if pr == nil {
@@ -87,8 +87,8 @@ func GetFullPipelineTaskStatuses(ctx context.Context, client versioned.Interface
 	}
 
 	// If there are no child references or either TaskRuns or Runs is non-zero, return the existing TaskRuns and Runs maps
-	if len(pr.Status.ChildReferences) == 0 || len(pr.Status.TaskRuns) > 0 || len(pr.Status.Runs) > 0 {
-		return pr.Status.TaskRuns, pr.Status.Runs, nil
+	if len(pr.Status.ChildReferences) == 0 {
+		return nil, nil, nil
 	}
 
 	trStatuses := make(map[string]*v1beta1.PipelineRunTaskRunStatus)

@@ -213,14 +213,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 			logger.Errorf("Failed to delete StatefulSet for PipelineRun %s: %v", pr.Name, err)
 			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
 		}
-		if err := c.updateTaskRunsStatusDirectly(pr); err != nil {
-			logger.Errorf("Failed to update TaskRun status for PipelineRun %s: %v", pr.Name, err)
-			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
-		}
-		if err := c.updateRunsStatusDirectly(pr); err != nil {
-			logger.Errorf("Failed to update Run status for PipelineRun %s: %v", pr.Name, err)
-			return c.finishReconcileUpdateEmitEvents(ctx, pr, before, err)
-		}
 		return c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil)
 	}
 
@@ -398,7 +390,6 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	defer span.End()
 	defer c.durationAndCountMetrics(ctx, pr, beforeCondition)
 	logger := logging.FromContext(ctx)
-	cfg := config.FromContextOrDefaults(ctx)
 	pr.SetDefaults(ctx)
 
 	// When pipeline run is pending, return to avoid creating the task
@@ -724,14 +715,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	after = pr.Status.GetCondition(apis.ConditionSucceeded)
 	pr.Status.StartTime = pipelineRunFacts.State.AdjustStartTime(pr.Status.StartTime)
 
-	if cfg.FeatureFlags.EmbeddedStatus == config.FullEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus {
-		pr.Status.TaskRuns = pipelineRunFacts.State.GetTaskRunsStatus(pr)
-		pr.Status.Runs = pipelineRunFacts.State.GetRunsStatus(pr)
-	}
-
-	if cfg.FeatureFlags.EmbeddedStatus == config.MinimalEmbeddedStatus || cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus {
-		pr.Status.ChildReferences = pipelineRunFacts.State.GetChildReferences()
-	}
+	pr.Status.ChildReferences = pipelineRunFacts.State.GetChildReferences()
 
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
 	if after.Status == corev1.ConditionTrue || after.Status == corev1.ConditionFalse {
@@ -841,41 +825,6 @@ func (c *Reconciler) setFinallyStartedTimeIfNeeded(pr *v1beta1.PipelineRun, fact
 	if facts.TimeoutsState.FinallyStartTime == nil {
 		facts.TimeoutsState.FinallyStartTime = &pr.Status.FinallyStartTime.Time
 	}
-}
-
-// updateTaskRunsStatusDirectly is used with "full" or "both" set as the value for the "embedded-status" feature flag.
-// When the "full" and "both" options are removed, updateTaskRunsStatusDirectly can be removed.
-func (c *Reconciler) updateTaskRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
-	for taskRunName := range pr.Status.TaskRuns {
-		prtrs := pr.Status.TaskRuns[taskRunName]
-		tr, err := c.taskRunLister.TaskRuns(pr.Namespace).Get(taskRunName)
-		if err != nil {
-			// If the TaskRun isn't found, it just means it won't be run
-			if !kerrors.IsNotFound(err) {
-				return fmt.Errorf("error retrieving TaskRun %s: %w", taskRunName, err)
-			}
-		} else {
-			prtrs.Status = &tr.Status
-		}
-	}
-	return nil
-}
-
-// updateRunsStatusDirectly is used with "full" or "both" set as the value for the "embedded-status" feature flag.
-// When the "full" and "both" options are removed, updateRunsStatusDirectly can be removed.
-func (c *Reconciler) updateRunsStatusDirectly(pr *v1beta1.PipelineRun) error {
-	for runName := range pr.Status.Runs {
-		prRunStatus := pr.Status.Runs[runName]
-		run, err := c.customRunLister.CustomRuns(pr.Namespace).Get(runName)
-		if err != nil {
-			if !kerrors.IsNotFound(err) {
-				return fmt.Errorf("error retrieving Run %s: %w", runName, err)
-			}
-		} else {
-			prRunStatus.Status = &run.Status
-		}
-	}
-	return nil
 }
 
 func (c *Reconciler) createTaskRuns(ctx context.Context, rpt *resources.ResolvedPipelineTask, pr *v1beta1.PipelineRun, storageBasePath string) ([]*v1beta1.TaskRun, error) {
@@ -1368,91 +1317,26 @@ func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr
 }
 
 func updatePipelineRunStatusFromChildObjects(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, taskRuns []*v1beta1.TaskRun, runObjects []v1beta1.RunObject) error {
-	cfg := config.FromContextOrDefaults(ctx)
-
-	switch cfg.FeatureFlags.EmbeddedStatus {
-	case config.FullEmbeddedStatus:
-		// Clear any ChildReferences that are present.
-		// This can occur if the value of "embedded-status" was modified during PipelineRun execution.
-		pr.Status.ChildReferences = nil
-		updatePipelineRunStatusFromTaskRuns(logger, pr, taskRuns)
-		updatePipelineRunStatusFromCustomRunsOrRuns(logger, pr, runObjects)
-	case config.BothEmbeddedStatus:
-		updatePipelineRunStatusFromTaskRuns(logger, pr, taskRuns)
-		updatePipelineRunStatusFromCustomRunsOrRuns(logger, pr, runObjects)
-		updatePipelineRunStatusFromChildRefs(logger, pr, taskRuns, runObjects)
-	default:
-		// Clear any TaskRuns and Runs present in the status.
-		// This can occur if the value of "embedded-status" was modified during PipelineRun execution.
-		pr.Status.Runs = nil
-		pr.Status.TaskRuns = nil
-		updatePipelineRunStatusFromChildRefs(logger, pr, taskRuns, runObjects)
-	}
+	// Clear any TaskRuns and Runs present in the status.
+	// This can occur if the value of "embedded-status" flag was modified during PipelineRun execution prior to its removal.
+	// TODO: https://github.com/tektoncd/pipeline/issues/6090 cleanup the checks for `status.taskruns` and
+	// `status.runs` and refactor the helper functions to be combined
+	pr.Status.Runs = nil
+	pr.Status.TaskRuns = nil
+	updatePipelineRunStatusFromChildRefs(logger, pr, taskRuns, runObjects)
 
 	return validateChildObjectsInPipelineRunStatus(ctx, pr.Status)
 }
 
 func validateChildObjectsInPipelineRunStatus(ctx context.Context, prs v1beta1.PipelineRunStatus) error {
-	cfg := config.FromContextOrDefaults(ctx)
-
 	var err error
 
-	// Verify that we don't populate child references for "full"
-	if cfg.FeatureFlags.EmbeddedStatus == config.FullEmbeddedStatus && len(prs.ChildReferences) > 0 {
-		return fmt.Errorf("expected no ChildReferences with embedded-status=full, but found %d", len(prs.ChildReferences))
-	}
-
-	// Verify that we don't populate TaskRun statuses for "minimal"
-	if cfg.FeatureFlags.EmbeddedStatus == config.MinimalEmbeddedStatus {
-		// Verify that we don't populate TaskRun statuses for "minimal"
-		if len(prs.TaskRuns) > 0 {
-			err = multierror.Append(err, fmt.Errorf("expected no TaskRun statuses with embedded-status=minimal, but found %d", len(prs.TaskRuns)))
-		}
-		// Verify that we don't populate Run statuses for "minimal"
-		if len(prs.Runs) > 0 {
-			err = multierror.Append(err, fmt.Errorf("expected no Run statuses with embedded-status=minimal, but found %d", len(prs.Runs)))
-		}
-		for _, cr := range prs.ChildReferences {
-			switch cr.Kind {
-			case "TaskRun", "Run", "CustomRun":
-				continue
-			default:
-				err = multierror.Append(err, fmt.Errorf("child with name %s has unknown kind %s", cr.Name, cr.Kind))
-			}
-		}
-	}
-
-	// Verify that the TaskRun and Run statuses match the ChildReferences for "both"
-	if cfg.FeatureFlags.EmbeddedStatus == config.BothEmbeddedStatus {
-		if len(prs.ChildReferences) != len(prs.TaskRuns)+len(prs.Runs) {
-			err = multierror.Append(err, fmt.Errorf("expected the same number of ChildReferences as the number of combined TaskRun and Run statuses (%d), but found %d",
-				len(prs.TaskRuns)+len(prs.Runs),
-				len(prs.ChildReferences)))
-		}
-
-		for _, cr := range prs.ChildReferences {
-			switch cr.Kind {
-			case "TaskRun":
-				tr, ok := prs.TaskRuns[cr.Name]
-				if !ok {
-					err = multierror.Append(err, fmt.Errorf("embedded-status is 'both', and child TaskRun with name %s found in ChildReferences only", cr.Name))
-				} else if cr.PipelineTaskName != tr.PipelineTaskName {
-					err = multierror.Append(err,
-						fmt.Errorf("child TaskRun with name %s has PipelineTask name %s in ChildReferences and %s in TaskRuns",
-							cr.Name, cr.PipelineTaskName, tr.PipelineTaskName))
-				}
-			case "Run", "CustomRun":
-				r, ok := prs.Runs[cr.Name]
-				if !ok {
-					err = multierror.Append(err, fmt.Errorf("embedded-status is 'both', and child Run with name %s found in ChildReferences only", cr.Name))
-				} else if cr.PipelineTaskName != r.PipelineTaskName {
-					err = multierror.Append(err,
-						fmt.Errorf("child Run with name %s has PipelineTask name %s in ChildReferences and %s in Runs",
-							cr.Name, cr.PipelineTaskName, r.PipelineTaskName))
-				}
-			default:
-				err = multierror.Append(err, fmt.Errorf("child with name %s has unknown kind %s", cr.Name, cr.Kind))
-			}
+	for _, cr := range prs.ChildReferences {
+		switch cr.Kind {
+		case "TaskRun", "Run", "CustomRun":
+			continue
+		default:
+			err = multierror.Append(err, fmt.Errorf("child with name %s has unknown kind %s", cr.Name, cr.Kind))
 		}
 	}
 

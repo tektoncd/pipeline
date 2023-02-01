@@ -23,8 +23,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
-	cfgtesting "github.com/tektoncd/pipeline/pkg/apis/config/testing"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -321,7 +319,7 @@ func TestPipelineRunConversion(t *testing.T) {
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				ctx := cfgtesting.SetEmbeddedStatus(context.Background(), t, config.MinimalEmbeddedStatus)
+				ctx := context.Background()
 				if err := test.in.ConvertTo(ctx, ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
 					return
@@ -458,35 +456,15 @@ func TestPipelineRunConversionFromDeprecated(t *testing.T) {
 	}
 }
 
-func TestPipelineRunConversionEmbeddedStatusRoundTrip(t *testing.T) {
+func TestPipelineRunConversionRoundTrip(t *testing.T) {
 	taskRuns["tr-0"] = trs
 	runs["r-0"] = rrs
 
 	tests := []struct {
-		name           string
-		in             *v1beta1.PipelineRun
-		embeddedStatus string
+		name string
+		in   *v1beta1.PipelineRun
 	}{{
-		name: "full embedded-status with child taskruns",
-		in: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					TaskRuns: taskRuns,
-				},
-			},
-		},
-		embeddedStatus: config.FullEmbeddedStatus,
-	}, {
-		name: "full embedded-status with child runs",
+		name: "childReferences",
 		in: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
@@ -499,58 +477,17 @@ func TestPipelineRunConversionEmbeddedStatusRoundTrip(t *testing.T) {
 			},
 			Status: v1beta1.PipelineRunStatus{
 				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					Runs: runs,
+					ChildReferences: append(childRefRuns, childRefTaskRuns...),
 				},
 			},
 		},
-		embeddedStatus: config.FullEmbeddedStatus,
-	}, {
-		name: "both embedded-status: runs, taskRuns and childReferences",
-		in: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "test-runs",
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					TaskRuns:        taskRuns,
-					Runs:            runs,
-					ChildReferences: childRefRuns,
-				},
-			},
-		},
-		embeddedStatus: config.BothEmbeddedStatus,
-	}, {
-		name: "minimal embedded-status: childReferences",
-		in: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "test-runs",
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					ChildReferences: childRefRuns,
-				},
-			},
-		},
-		embeddedStatus: config.MinimalEmbeddedStatus,
 	}}
 	for _, test := range tests {
 		versions := []apis.Convertible{&v1.PipelineRun{}}
 		for _, version := range versions {
 			t.Run(test.name, func(t *testing.T) {
 				ver := version
-				ctx := cfgtesting.SetEmbeddedStatus(context.Background(), t, test.embeddedStatus)
+				ctx := context.Background()
 
 				if err := test.in.ConvertTo(ctx, ver); err != nil {
 					t.Errorf("ConvertTo() = %v", err)
@@ -562,7 +499,7 @@ func TestPipelineRunConversionEmbeddedStatusRoundTrip(t *testing.T) {
 					t.Errorf("ConvertFrom() = %v", err)
 				}
 				t.Logf("ConvertFrom() = %#v", got)
-				if d := cmp.Diff(test.in, got, cmpopts.EquateEmpty()); d != "" {
+				if d := cmp.Diff(test.in, got, cmpopts.EquateEmpty(), cmpopts.SortSlices(lessChildReferences)); d != "" {
 					t.Errorf("roundtrip %s", diff.PrintWantGot(d))
 				}
 			})
@@ -570,224 +507,6 @@ func TestPipelineRunConversionEmbeddedStatusRoundTrip(t *testing.T) {
 	}
 }
 
-func TestPipelineRunConversionEmbeddedStatusConvertTo(t *testing.T) {
-	taskRuns["tr-0"] = trs
-	runs["r-0"] = rrs
-	tests := []struct {
-		name           string
-		in             *v1beta1.PipelineRun
-		want           *v1.PipelineRun
-		embeddedStatus string
-	}{{
-		name: "v1beta1 to v1",
-		in: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					ChildReferences: append(childRefTaskRuns, childRefRuns...),
-					TaskRuns:        taskRuns,
-					Runs:            runs,
-				},
-			},
-		},
-		want: &v1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-				Annotations: map[string]string{
-					"tekton.dev/v1beta1Runs":     `{"r-0":{"pipelineTaskName":"ptn-0","status":{"results":[{"name":"foo","value":"bar"}],"extraFields":null},"whenExpressions":[{"input":"default-value-0","operator":"in","values":["val-0","val-1"]}]}}`,
-					"tekton.dev/v1beta1TaskRuns": `{"tr-0":{"pipelineTaskName":"ptn","status":{"podName":"pod-name","steps":[{"running":{"startedAt":null},"name":"running-step","container":"step-running-step"}],"cloudEvents":[{"target":"http//sink1","status":{"condition":"Unknown","message":"","retryCount":0}},{"target":"http//sink2","status":{"condition":"Unknown","message":"","retryCount":0}}],"retriesStatus":[{"conditions":[{"type":"Succeeded","status":"False","lastTransitionTime":null}],"podName":""}],"resourcesResult":[{"key":"digest","value":"sha256:1234","resourceName":"source-image"}],"sidecars":[{"terminated":{"exitCode":1,"reason":"Error","message":"Error","startedAt":null,"finishedAt":null},"name":"error","container":"sidecar-error","imageID":"image-id"}]},"whenExpressions":[{"input":"default-value","operator":"in","values":["val"]}]}}`,
-				},
-			},
-			Spec: v1.PipelineRunSpec{
-				PipelineRef: &v1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1.PipelineRunStatus{
-				PipelineRunStatusFields: v1.PipelineRunStatusFields{
-					ChildReferences: []v1.ChildStatusReference{{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1beta1"},
-						Name:             "tr-0",
-						PipelineTaskName: "ptn",
-						WhenExpressions:  []v1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
-					}, {TypeMeta: runtime.TypeMeta{Kind: "Run", APIVersion: "tekton.dev/v1alpha1"},
-						Name:             "r-0",
-						PipelineTaskName: "ptn-0",
-						WhenExpressions:  []v1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
-					}},
-				},
-			},
-		},
-	}}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			v1PipelineRun := &v1.PipelineRun{}
-			ctx := cfgtesting.SetEmbeddedStatus(context.Background(), t, config.FullEmbeddedStatus)
-			if err := test.in.ConvertTo(ctx, v1PipelineRun); err != nil {
-				t.Errorf("ConvertTo() = %v", err)
-			}
-			t.Logf("ConvertTo() = %#v", v1PipelineRun)
-			if d := cmp.Diff(test.want, v1PipelineRun); d != "" {
-				t.Errorf("v1beta1 ConvertTo v1 %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
-func TestPipelineRunConversionEmbeddedStatusConvertFrom(t *testing.T) {
-	taskRuns["tr-0"] = trs
-	runs["r-0"] = rrs
-	childRefs := []v1.ChildStatusReference{{
-		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun", APIVersion: "tekton.dev/v1beta1"},
-		Name:             "tr-0",
-		PipelineTaskName: "ptn",
-		WhenExpressions:  []v1.WhenExpression{{Input: "default-value", Operator: "in", Values: []string{"val"}}},
-	}, {TypeMeta: runtime.TypeMeta{Kind: "Run", APIVersion: "tekton.dev/v1alpha1"},
-		Name:             "r-0",
-		PipelineTaskName: "ptn-0",
-		WhenExpressions:  []v1.WhenExpression{{Input: "default-value-0", Operator: "in", Values: []string{"val-0", "val-1"}}},
-	}}
-	annotations := map[string]string{
-		"tekton.dev/v1beta1Runs":     `{"r-0":{"pipelineTaskName":"ptn-0","status":{"results":[{"name":"foo","value":"bar"}],"extraFields":null},"whenExpressions":[{"input":"default-value-0","operator":"in","values":["val-0","val-1"]}]}}`,
-		"tekton.dev/v1beta1TaskRuns": `{"tr-0":{"pipelineTaskName":"ptn","status":{"podName":"pod-name","steps":[{"running":{"startedAt":null},"name":"running-step","container":"step-running-step"}],"cloudEvents":[{"target":"http//sink1","status":{"condition":"Unknown","message":"","retryCount":0}},{"target":"http//sink2","status":{"condition":"Unknown","message":"","retryCount":0}}],"retriesStatus":[{"conditions":[{"type":"Succeeded","status":"False","lastTransitionTime":null}],"podName":""}],"resourcesResult":[{"key":"digest","value":"sha256:1234","resourceName":"source-image"}],"sidecars":[{"terminated":{"exitCode":1,"reason":"Error","message":"Error","startedAt":null,"finishedAt":null},"name":"error","container":"sidecar-error","imageID":"image-id"}]},"whenExpressions":[{"input":"default-value","operator":"in","values":["val"]}]}}`,
-	}
-
-	tests := []struct {
-		name           string
-		in             *v1.PipelineRun
-		want           *v1beta1.PipelineRun
-		embeddedStatus string
-	}{{
-		name: "both",
-		in: &v1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        "foo",
-				Namespace:   "bar",
-				Annotations: annotations,
-			},
-			Spec: v1.PipelineRunSpec{
-				PipelineRef: &v1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1.PipelineRunStatus{
-				PipelineRunStatusFields: v1.PipelineRunStatusFields{
-					ChildReferences: childRefs,
-				},
-			},
-		},
-		want: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					ChildReferences: append(childRefTaskRuns, childRefRuns...),
-					TaskRuns:        taskRuns,
-					Runs:            runs,
-				},
-			},
-		},
-		embeddedStatus: config.BothEmbeddedStatus,
-	}, {
-		name: "minimal",
-		in: &v1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1.PipelineRunSpec{
-				PipelineRef: &v1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1.PipelineRunStatus{
-				PipelineRunStatusFields: v1.PipelineRunStatusFields{
-					ChildReferences: childRefs,
-				},
-			},
-		},
-		want: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					ChildReferences: append(childRefTaskRuns, childRefRuns...),
-				},
-			},
-		},
-		embeddedStatus: config.MinimalEmbeddedStatus,
-	}, {
-		name: "full",
-		in: &v1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        "foo",
-				Namespace:   "bar",
-				Annotations: annotations,
-			},
-			Spec: v1.PipelineRunSpec{
-				PipelineRef: &v1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1.PipelineRunStatus{
-				PipelineRunStatusFields: v1.PipelineRunStatusFields{
-					ChildReferences: childRefs,
-				},
-			},
-		},
-		want: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "foo",
-				Namespace: "bar",
-			},
-			Spec: v1beta1.PipelineRunSpec{
-				PipelineRef: &v1beta1.PipelineRef{
-					Name: "test",
-				},
-			},
-			Status: v1beta1.PipelineRunStatus{
-				PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-					TaskRuns: taskRuns,
-					Runs:     runs,
-				},
-			},
-		},
-		embeddedStatus: config.FullEmbeddedStatus,
-	}}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			v1beta1PipelineRun := &v1beta1.PipelineRun{}
-			ctx := cfgtesting.SetEmbeddedStatus(context.Background(), t, test.embeddedStatus)
-			if err := v1beta1PipelineRun.ConvertFrom(ctx, test.in.DeepCopy()); err != nil {
-				t.Errorf("ConvertFrom() = %v", err)
-			}
-			t.Logf("ConvertFrom() = %#v", v1beta1PipelineRun)
-			if d := cmp.Diff(test.want, v1beta1PipelineRun, cmpopts.EquateEmpty()); d != "" {
-				t.Errorf("v1beta1 ConvertFrom v1 %s", diff.PrintWantGot(d))
-			}
-		})
-	}
+func lessChildReferences(i, j v1beta1.ChildStatusReference) bool {
+	return i.Name < j.Name
 }

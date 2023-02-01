@@ -27,7 +27,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
 	"github.com/tektoncd/pipeline/test/parse"
@@ -41,9 +40,6 @@ import (
 var (
 	provenanceFeatureFlags = requireAllGates(map[string]string{
 		"enable-provenance-in-status": "true",
-	})
-	embeddedStatusFlag = requireAllGates(map[string]string{
-		"embedded-status": "full",
 	})
 )
 
@@ -127,14 +123,12 @@ spec:
 // about the remote task i.e. configsource info .
 func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	ctx := context.Background()
-	c, namespace := setup(ctx, t, clusterFeatureFlags, provenanceFeatureFlags, embeddedStatusFlag)
+	c, namespace := setup(ctx, t, clusterFeatureFlags, provenanceFeatureFlags)
 
 	t.Parallel()
 
 	knativetest.CleanupOnInterrupt(func() { tearDown(ctx, t, c, namespace) }, t.Logf)
 	defer tearDown(ctx, t, c, namespace)
-
-	embeddedStatusValue := GetEmbeddedStatus(ctx, t, c.KubeClient)
 
 	// example task
 	taskName := helpers.ObjectNameForTest(t)
@@ -195,25 +189,13 @@ func TestProvenanceFieldInPipelineRunTaskRunStatus(t *testing.T) {
 	// Get the TaskRun name.
 	var taskRunName string
 
-	if embeddedStatusValue != config.MinimalEmbeddedStatus {
-		if len(pr.Status.TaskRuns) != 1 {
-			t.Fatalf("PipelineRun had unexpected .status.taskRuns; got %d, want 1", len(pr.Status.TaskRuns))
-		}
-		for k := range pr.Status.TaskRuns {
-			taskRunName = k
-			break
+	for _, cr := range pr.Status.ChildReferences {
+		if cr.Kind == "TaskRun" {
+			taskRunName = cr.Name
 		}
 	}
-
-	if embeddedStatusValue != config.FullEmbeddedStatus {
-		for _, cr := range pr.Status.ChildReferences {
-			if cr.Kind == "TaskRun" {
-				taskRunName = cr.Name
-			}
-		}
-		if taskRunName == "" {
-			t.Fatal("PipelineRun does not have expected TaskRun in .status.childReferences")
-		}
+	if taskRunName == "" {
+		t.Fatal("PipelineRun does not have expected TaskRun in .status.childReferences")
 	}
 
 	t.Logf("Waiting for TaskRun %s in namespace %s to complete", taskRunName, namespace)

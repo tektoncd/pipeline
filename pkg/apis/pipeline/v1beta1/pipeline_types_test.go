@@ -777,10 +777,9 @@ func TestPipelineTaskList_Validate(t *testing.T) {
 
 func TestPipelineTask_validateMatrix(t *testing.T) {
 	tests := []struct {
-		name           string
-		pt             *PipelineTask
-		embeddedStatus string
-		wantErrs       *apis.FieldError
+		name     string
+		pt       *PipelineTask
+		wantErrs *apis.FieldError
 	}{{
 		name: "parameter duplicated in matrix and params",
 		pt: &PipelineTask{
@@ -867,45 +866,11 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox"}},
 				}}},
 		},
-	}, {
-		name: "pipeline has a matrix but embedded status is full",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}, {
-					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
-				}}},
-		},
-		embeddedStatus: config.FullEmbeddedStatus,
-		wantErrs: &apis.FieldError{
-			Message: "matrix requires \"embedded-status\" feature gate to be \"minimal\" but it is \"full\"",
-		},
-	}, {
-		name: "pipeline has a matrix but embedded status is both",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}, {
-					Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}},
-				}}},
-		},
-		embeddedStatus: config.BothEmbeddedStatus,
-		wantErrs: &apis.FieldError{
-			Message: "matrix requires \"embedded-status\" feature gate to be \"minimal\" but it is \"both\"",
-		},
 	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.embeddedStatus == "" {
-				tt.embeddedStatus = config.MinimalEmbeddedStatus
-			}
 			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
 				"enable-api-fields": "alpha",
-				"embedded-status":   tt.embeddedStatus,
 			})
 			defaults := &config.Defaults{
 				DefaultMaxMatrixCombinationsCount: 4,

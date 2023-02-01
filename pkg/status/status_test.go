@@ -234,7 +234,7 @@ status:
 	}
 }
 
-func TestGetFullPipelineTaskStatuses(t *testing.T) {
+func TestGetPipelineTaskStatuses(t *testing.T) {
 	tr1 := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: pr-task-1
@@ -295,7 +295,7 @@ status:
 			expectedErr:         nil,
 		},
 		{
-			name: "minimal embedded",
+			name: "taskruns runs and customruns",
 			originalPR: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
   name: pr
@@ -306,187 +306,6 @@ status:
     kind: TaskRun
     name: pr-task-1
     pipelineTaskName: task-1
-  - apiVersion: tekton.dev/v1beta1
-    kind: CustomRun
-    name: pr-run-1
-    pipelineTaskName: run-1
-  - apiVersion: tekton.dev/v1alpha1
-    kind: Run
-    name: pr-run-2
-    pipelineTaskName: run-2
-  conditions:
-  - message: Not all Tasks in the Pipeline have finished executing
-    reason: Running
-    status: Unknown
-    type: Succeeded
-`),
-			taskRuns: []*v1beta1.TaskRun{tr1},
-			runs:     []v1beta1.RunObject{customRun1, run2},
-			expectedTRStatuses: mustParseTaskRunStatusMap(t, `
-pr-task-1:
-  pipelineTaskName: task-1
-  status:
-    conditions:
-    - status: "True"
-      type: Succeeded
-    taskResults:
-    - name: aResult
-      value: aResultValue
-`),
-			expectedRunStatuses: mustParseRunStatusMap(t, `
-pr-run-1:
-  pipelineTaskName: run-1
-  status:
-    conditions:
-    - status: "True"
-      type: Succeeded
-    results:
-    - name: foo
-      value: oof
-    - name: bar
-      value: rab
-pr-run-2:
-  pipelineTaskName: run-2
-  status:
-    conditions:
-    - status: "True"
-      type: Succeeded
-    results:
-    - name: foo
-      value: oof
-    - name: bar
-      value: rab
-`),
-			expectedErr: nil,
-		}, {
-			name: "full embedded",
-			originalPR: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pr
-spec: {}
-status:
-  taskRuns:
-    pr-task-1:
-      pipelineTaskName: task-1
-      status:
-        conditions:
-        - status: "True"
-          type: Succeeded
-        taskResults:
-        - name: aResult
-          value: aResultValue
-  runs:
-    pr-run-1:
-      pipelineTaskName: run-1
-      status:
-        conditions:
-        - status: "True"
-          type: Succeeded
-        results:
-        - name: foo
-          value: oof
-        - name: bar
-          value: rab
-    pr-run-2:
-      pipelineTaskName: run-2
-      status:
-        conditions:
-        - status: "True"
-          type: Succeeded
-        results:
-        - name: foo
-          value: oof
-        - name: bar
-          value: rab
-  conditions:
-  - message: Not all Tasks in the Pipeline have finished executing
-    reason: Running
-    status: Unknown
-    type: Succeeded
-`),
-			taskRuns: []*v1beta1.TaskRun{tr1},
-			runs:     []v1beta1.RunObject{customRun1, run2},
-			expectedTRStatuses: mustParseTaskRunStatusMap(t, `
-pr-task-1:
-  pipelineTaskName: task-1
-  status:
-    conditions:
-    - status: "True"
-      type: Succeeded
-    taskResults:
-    - name: aResult
-      value: aResultValue
-`),
-			expectedRunStatuses: mustParseRunStatusMap(t, `
-pr-run-1:
-  pipelineTaskName: run-1
-  status:
-    conditions:
-    - status: "True"
-      type: Succeeded
-    results:
-    - name: foo
-      value: oof
-    - name: bar
-      value: rab
-pr-run-2:
-  pipelineTaskName: run-2
-  status:
-    conditions:
-    - status: "True"
-      type: Succeeded
-    results:
-    - name: foo
-      value: oof
-    - name: bar
-      value: rab
-`),
-			expectedErr: nil,
-		}, {
-			name: "both embedded",
-			originalPR: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pr
-spec: {}
-status:
-  taskRuns:
-    pr-task-1:
-      pipelineTaskName: task-1
-      status:
-        conditions:
-        - status: "True"
-          type: Succeeded
-        taskResults:
-        - name: aResult
-          value: aResultValue
-  runs:
-    pr-run-1:
-      pipelineTaskName: run-1
-      status:
-        conditions:
-        - status: "True"
-          type: Succeeded
-        results:
-        - name: foo
-          value: oof
-        - name: bar
-          value: rab
-    pr-run-2:
-      pipelineTaskName: run-2
-      status:
-        conditions:
-        - status: "True"
-          type: Succeeded
-        results:
-        - name: foo
-          value: oof
-        - name: bar
-          value: rab
-  childReferences:
-  - apiVersion: tekton.dev/v1beta1
-    kind: TaskRun
-    name: pr-task-2
-    pipelineTaskName: task-2
   - apiVersion: tekton.dev/v1beta1
     kind: CustomRun
     name: pr-run-1
@@ -606,7 +425,7 @@ pr-run-1:
 
 			clients, _ := test.SeedTestData(t, ctx, d)
 
-			trStatuses, runStatuses, err := GetFullPipelineTaskStatuses(ctx, clients.Pipeline, "", tc.originalPR)
+			trStatuses, runStatuses, err := GetPipelineTaskStatuses(ctx, clients.Pipeline, "", tc.originalPR)
 
 			if tc.expectedErr != nil {
 				if err == nil {

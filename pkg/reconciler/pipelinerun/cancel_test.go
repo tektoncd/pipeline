@@ -38,16 +38,15 @@ import (
 
 func TestCancelPipelineRun(t *testing.T) {
 	testCases := []struct {
-		name           string
-		embeddedStatus string
-		pipelineRun    *v1beta1.PipelineRun
-		taskRuns       []*v1beta1.TaskRun
-		runs           []*v1alpha1.Run
-		customRuns     []*v1beta1.CustomRun
-		wantErr        bool
+		name string
+
+		pipelineRun *v1beta1.PipelineRun
+		taskRuns    []*v1beta1.TaskRun
+		runs        []*v1alpha1.Run
+		customRuns  []*v1beta1.CustomRun
+		wantErr     bool
 	}{{
-		name:           "no-resolved-taskrun-with-full",
-		embeddedStatus: config.FullEmbeddedStatus,
+		name: "no-resolved-taskrun",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
@@ -55,53 +54,62 @@ func TestCancelPipelineRun(t *testing.T) {
 			},
 		},
 	}, {
-		name:           "one-taskrun-with-full",
-		embeddedStatus: config.FullEmbeddedStatus,
+		name: "one-taskrun",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
 				Status: v1beta1.PipelineRunSpecStatusCancelled,
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
+				ChildReferences: []v1beta1.ChildStatusReference{{
+					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					Name:             "t1",
+					PipelineTaskName: "task-1",
+				}},
 			}},
 		},
 		taskRuns: []*v1beta1.TaskRun{
 			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
 		},
 	}, {
-		name:           "multiple-taskruns-one-missing-with-full",
-		embeddedStatus: config.FullEmbeddedStatus,
+		name: "multiple-taskruns-one-missing",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
 				Status: v1beta1.PipelineRunSpecStatusCancelled,
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-					"t2": {PipelineTaskName: "task-2"},
-				},
+				ChildReferences: []v1beta1.ChildStatusReference{{
+					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					Name:             "t1",
+					PipelineTaskName: "task-1",
+				}, {
+					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					Name:             "t2",
+					PipelineTaskName: "task-2",
+				}},
 			}},
 		},
 		taskRuns: []*v1beta1.TaskRun{
 			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
 		},
 	}, {
-		name:           "multiple-taskruns-with-full",
-		embeddedStatus: config.FullEmbeddedStatus,
+		name: "multiple-taskruns",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
 				Status: v1beta1.PipelineRunSpecStatusCancelled,
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-					"t2": {PipelineTaskName: "task-2"},
-				},
+				ChildReferences: []v1beta1.ChildStatusReference{{
+					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					Name:             "t1",
+					PipelineTaskName: "task-1",
+				}, {
+					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+					Name:             "t2",
+					PipelineTaskName: "task-2",
+				}},
 			}},
 		},
 		taskRuns: []*v1beta1.TaskRun{
@@ -109,18 +117,22 @@ func TestCancelPipelineRun(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
 		},
 	}, {
-		name:           "multiple-runs-with-full",
-		embeddedStatus: config.FullEmbeddedStatus,
+		name: "multiple-runs",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
 				Status: v1beta1.PipelineRunSpecStatusCancelled,
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				Runs: map[string]*v1beta1.PipelineRunRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-					"t2": {PipelineTaskName: "task-2"},
-				},
+				ChildReferences: []v1beta1.ChildStatusReference{{
+					TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
+					Name:             "t1",
+					PipelineTaskName: "task-1",
+				}, {
+					TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
+					Name:             "t2",
+					PipelineTaskName: "task-2",
+				}},
 			}},
 		},
 		customRuns: []*v1beta1.CustomRun{
@@ -128,26 +140,29 @@ func TestCancelPipelineRun(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
 		},
 	}, {
-		name:           "multiple-runs-one-missing-with-full",
-		embeddedStatus: config.FullEmbeddedStatus,
+		name: "multiple-runs-one-missing",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
 				Status: v1beta1.PipelineRunSpecStatusCancelled,
 			},
 			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				Runs: map[string]*v1beta1.PipelineRunRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-					"t2": {PipelineTaskName: "task-2"},
-				},
+				ChildReferences: []v1beta1.ChildStatusReference{{
+					TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
+					Name:             "t1",
+					PipelineTaskName: "task-1",
+				}, {
+					TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
+					Name:             "t2",
+					PipelineTaskName: "task-2",
+				}},
 			}},
 		},
 		customRuns: []*v1beta1.CustomRun{
 			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
 		},
 	}, {
-		name:           "child-references-with-both",
-		embeddedStatus: config.BothEmbeddedStatus,
+		name: "multiple-taskruns-and-runs",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
@@ -187,88 +202,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "r2"}},
 		},
 	}, {
-		name:           "child-references-with-both-some-missing",
-		embeddedStatus: config.BothEmbeddedStatus,
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
-			Spec: v1beta1.PipelineRunSpec{
-				Status: v1beta1.PipelineRunSpecStatusCancelled,
-			},
-			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				ChildReferences: []v1beta1.ChildStatusReference{
-					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
-						Name:             "t1",
-						PipelineTaskName: "task-1",
-					},
-					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
-						Name:             "t2",
-						PipelineTaskName: "task-2",
-					},
-					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.RunControllerName},
-						Name:             "r1",
-						PipelineTaskName: "run-1",
-					},
-					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.RunControllerName},
-						Name:             "r2",
-						PipelineTaskName: "run-2",
-					},
-				},
-			}},
-		},
-		taskRuns: []*v1beta1.TaskRun{
-			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
-		},
-		runs: []*v1alpha1.Run{
-			{ObjectMeta: metav1.ObjectMeta{Name: "r2"}},
-		},
-	}, {
-		name:           "child-references-with-minimal",
-		embeddedStatus: config.DefaultEmbeddedStatus,
-		pipelineRun: &v1beta1.PipelineRun{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
-			Spec: v1beta1.PipelineRunSpec{
-				Status: v1beta1.PipelineRunSpecStatusCancelled,
-			},
-			Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				ChildReferences: []v1beta1.ChildStatusReference{
-					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
-						Name:             "t1",
-						PipelineTaskName: "task-1",
-					},
-					{
-						TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
-						Name:             "t2",
-						PipelineTaskName: "task-2",
-					},
-					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.RunControllerName},
-						Name:             "r1",
-						PipelineTaskName: "run-1",
-					},
-					{
-						TypeMeta:         runtime.TypeMeta{Kind: pipeline.RunControllerName},
-						Name:             "r2",
-						PipelineTaskName: "run-2",
-					},
-				},
-			}},
-		},
-		taskRuns: []*v1beta1.TaskRun{
-			{ObjectMeta: metav1.ObjectMeta{Name: "t1"}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "t2"}},
-		},
-		runs: []*v1alpha1.Run{
-			{ObjectMeta: metav1.ObjectMeta{Name: "r1"}},
-			{ObjectMeta: metav1.ObjectMeta{Name: "r2"}},
-		},
-	}, {
-		name:           "child-references-with-minimal-some-missing",
-		embeddedStatus: config.DefaultEmbeddedStatus,
+		name: "child-references-some-missing",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
@@ -306,8 +240,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "r1"}},
 		},
 	}, {
-		name:           "child-references-with-customruns",
-		embeddedStatus: config.MinimalEmbeddedStatus,
+		name: "child-references-with-customruns",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
@@ -347,8 +280,7 @@ func TestCancelPipelineRun(t *testing.T) {
 			{ObjectMeta: metav1.ObjectMeta{Name: "cr2"}},
 		},
 	}, {
-		name:           "unknown-kind-on-child-references",
-		embeddedStatus: config.MinimalEmbeddedStatus,
+		name: "unknown-kind-on-child-references",
 		pipelineRun: &v1beta1.PipelineRun{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run-cancelled"},
 			Spec: v1beta1.PipelineRunSpec{
@@ -375,7 +307,6 @@ func TestCancelPipelineRun(t *testing.T) {
 			}
 			ctx, _ := ttesting.SetupFakeContext(t)
 			cfg := config.NewStore(logtesting.TestLogger(t))
-			cfg.OnConfigChanged(withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus))
 			ctx = cfg.ToContext(ctx)
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
@@ -448,7 +379,6 @@ func TestCancelPipelineRun(t *testing.T) {
 func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 	testCases := []struct {
 		name                   string
-		embeddedStatus         string
 		useV1Beta1CustomTask   bool
 		prStatus               v1beta1.PipelineRunStatus
 		taskNames              sets.String
@@ -458,83 +388,8 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 		hasError               bool
 	}{
 		{
-			name:           "single taskrun, full embedded",
-			embeddedStatus: config.FullEmbeddedStatus,
+			name: "runs",
 			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
-			}},
-			expectedTRNames:        []string{"t1"},
-			expectedRunNames:       nil,
-			expectedCustomRunNames: nil,
-			hasError:               false,
-		}, {
-			name:           "single run, full embedded",
-			embeddedStatus: config.FullEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				Runs: map[string]*v1beta1.PipelineRunRunStatus{
-					"r1": {PipelineTaskName: "run-1"},
-				},
-			}},
-			expectedTRNames:        nil,
-			expectedCustomRunNames: []string{"r1"},
-			hasError:               false,
-		}, {
-			name:           "taskrun and run, full embedded",
-			embeddedStatus: config.FullEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
-				Runs: map[string]*v1beta1.PipelineRunRunStatus{
-					"r1": {PipelineTaskName: "run-1"},
-				},
-			}},
-			expectedTRNames:        []string{"t1"},
-			expectedCustomRunNames: []string{"r1"},
-			hasError:               false,
-		}, {
-			name:           "taskrun and run, full embedded, just want taskrun",
-			embeddedStatus: config.FullEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
-				Runs: map[string]*v1beta1.PipelineRunRunStatus{
-					"r1": {PipelineTaskName: "run-1"},
-				},
-			}},
-			taskNames:        sets.NewString("task-1"),
-			expectedTRNames:  []string{"t1"},
-			expectedRunNames: nil,
-			hasError:         false,
-		}, {
-			name:           "full embedded",
-			embeddedStatus: config.FullEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
-				ChildReferences: []v1beta1.ChildStatusReference{{
-					TypeMeta: runtime.TypeMeta{
-						APIVersion: v1alpha1.SchemeGroupVersion.String(),
-						Kind:       pipeline.RunControllerName,
-					},
-					Name:             "r1",
-					PipelineTaskName: "run-1",
-				}},
-			}},
-			expectedTRNames:  []string{"t1"},
-			expectedRunNames: nil,
-			hasError:         false,
-		}, {
-			name:           "both embedded",
-			embeddedStatus: config.BothEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
 				ChildReferences: []v1beta1.ChildStatusReference{{
 					TypeMeta: runtime.TypeMeta{
 						APIVersion: v1alpha1.SchemeGroupVersion.String(),
@@ -548,57 +403,7 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 			expectedRunNames: []string{"r1"},
 			hasError:         false,
 		}, {
-			name:           "default minimal embedded",
-			embeddedStatus: config.MinimalEmbeddedStatus,
-			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
-				ChildReferences: []v1beta1.ChildStatusReference{{
-					TypeMeta: runtime.TypeMeta{
-						APIVersion: v1alpha1.SchemeGroupVersion.String(),
-						Kind:       pipeline.RunControllerName,
-					},
-					Name:             "r1",
-					PipelineTaskName: "run-1",
-				}},
-			}},
-			expectedTRNames:  nil,
-			expectedRunNames: []string{"r1"},
-			hasError:         false,
-		}, {
-			name:                 "full embedded with beta custom tasks",
-			embeddedStatus:       config.FullEmbeddedStatus,
-			useV1Beta1CustomTask: true,
-			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				Runs: map[string]*v1beta1.PipelineRunRunStatus{
-					"r1": {PipelineTaskName: "run-1"},
-				},
-			}},
-			expectedCustomRunNames: []string{"r1"},
-			hasError:               false,
-		}, {
-			name:                 "both embedded with beta custom tasks",
-			embeddedStatus:       config.BothEmbeddedStatus,
-			useV1Beta1CustomTask: true,
-			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
-				ChildReferences: []v1beta1.ChildStatusReference{{
-					TypeMeta: runtime.TypeMeta{
-						APIVersion: v1beta1.SchemeGroupVersion.String(),
-						Kind:       pipeline.CustomRunControllerName,
-					},
-					Name:             "r1",
-					PipelineTaskName: "run-1",
-				}},
-			}},
-			expectedCustomRunNames: []string{"r1"},
-			hasError:               false,
-		}, {
-			name:                 "minimal embedded with beta custom tasks",
-			embeddedStatus:       config.MinimalEmbeddedStatus,
+			name:                 "beta custom tasks",
 			useV1Beta1CustomTask: true,
 			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{{
@@ -613,8 +418,7 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 			expectedCustomRunNames: []string{"r1"},
 			hasError:               false,
 		}, {
-			name:           "unknown kind",
-			embeddedStatus: config.MinimalEmbeddedStatus,
+			name: "unknown kind",
 			prStatus: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
 				ChildReferences: []v1beta1.ChildStatusReference{{
 					TypeMeta: runtime.TypeMeta{
@@ -636,7 +440,7 @@ func TestGetChildObjectsFromPRStatusForTaskNames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, _ := ttesting.SetupFakeContext(t)
 			cfg := config.NewStore(logtesting.TestLogger(t))
-			cm := withEmbeddedStatus(newFeatureFlagsConfigMap(), tc.embeddedStatus)
+			cm := newFeatureFlagsConfigMap()
 			if tc.useV1Beta1CustomTask {
 				cm = withCustomTaskVersion(cm, config.CustomTaskVersionBeta)
 			}

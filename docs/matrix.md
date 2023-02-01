@@ -33,7 +33,6 @@ Documentation for specifying `Matrix` in a `Pipeline`:
 
 > :seedling: **`Matrix` is an [alpha](install.md#alpha-features) feature.**
 > The `enable-api-fields` feature flag must be set to `"alpha"` to specify `Matrix` in a `PipelineTask`.
-> The `embedded-status` feature flag must be set to `"minimal"` to specify `Matrix` in a `PipelineTask`.
 
 ## Configuring a Matrix
 

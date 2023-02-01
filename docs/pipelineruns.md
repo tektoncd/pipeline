@@ -32,8 +32,7 @@ weight: 500
     - [Specifying <code>LimitRange</code> values](#specifying-limitrange-values)
     - [Configuring a failure timeout](#configuring-a-failure-timeout)
   - [<code>PipelineRun</code> status](#pipelinerun-status)
-    - [The <code>status</code> field](#the-status-field) 
-    - [Configuring usage of <code>TaskRun</code> and <code>Run</code> embedded statuses](#configuring-usage-of-taskrun-and-run-embedded-statuses)
+    - [The <code>status</code> field](#the-status-field)
     - [Monitoring execution status](#monitoring-execution-status)
   - [Cancelling a <code>PipelineRun</code>](#cancelling-a-pipelinerun)
   - [Gracefully cancelling a <code>PipelineRun</code>](#gracefully-cancelling-a-pipelinerun)
@@ -1388,21 +1387,6 @@ Your `PipelineRun`'s `status` field can contain the following fields:
   - `provenance` - Metadata about resources used in the PipelineRun such as the source from where a remote pipeline definition was fetched.
   - `finallyStartTime`- The time at which the PipelineRun's `finally` Tasks, if any, began
   executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
-
-### Configuring usage of `TaskRun` and `Run` embedded statuses
-
-Currently, the default behavior is to pupulate `status.childReferences` with references to the `TaskRun`s and
-`Run`s, which can be used to look up their statuses.
-
-This behavior can be controlled by changing the `embedded-status` feature flag in the `feature-flags`
-config map. See [`install.md`](./install.md#customizing-the-pipelines-controller-behavior) for more
-information on feature flags. The possible values for `embedded-status` are:
-- `minimal` - The current default behavior, populate `status.childReferences`, not `status.taskRuns` or `status.runs`.
-- `full` - Populating `status.taskRuns` and `status.runs`, without populating `status.childReferences`.
-- `both` - Populate `status.childReferences` as well as `status.taskRuns` and `status.runs`.
-
-*Note that after the `PipelineRunStatus` migration as planned in [TEP-100](https://github.com/tektoncd/community/blob/main/teps/0100-embedded-taskruns-and-runs-status-in-pipelineruns.md#2-deprecate-and-remove-full-embedded-status),
-[the `full` and `both` `embedded-status` options will be removed](https://github.com/tektoncd/pipeline/blob/main/docs/deprecations.md).
 
 ### Monitoring execution status
 
