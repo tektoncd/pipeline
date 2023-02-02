@@ -149,10 +149,13 @@ func TestValidateParams_Failure(t *testing.T) {
 func TestGetResolutionTimeoutDefault(t *testing.T) {
 	resolver := Resolver{}
 	defaultTimeout := 30 * time.Minute
+	
 	timeout := resolver.GetResolutionTimeout(context.Background(), defaultTimeout)
 	if timeout != defaultTimeout {
 		t.Fatalf("expected default timeout to be returned")
 	}
+
+
 }
 
 func TestGetResolutionTimeoutCustom(t *testing.T) {

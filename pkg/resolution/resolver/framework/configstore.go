@@ -104,6 +104,7 @@ func InjectResolverConfigToContext(ctx context.Context, conf map[string]string) 
 func GetResolverConfigFromContext(ctx context.Context) map[string]string {
 	conf := map[string]string{}
 	storedConfig := ctx.Value(resolverConfigKey)
+
 	if resolverConfig, ok := storedConfig.(map[string]string); ok {
 		conf = resolverConfig
 	}

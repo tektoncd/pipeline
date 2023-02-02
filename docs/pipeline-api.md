@@ -304,6 +304,22 @@ resource being requested. For example: repo URL, commit SHA,
 path to file, the kind of authentication to leverage, etc.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Timeout is the maximum time the resolver should spend on a particular
+request before aborting. This will generally be the same as the default-resolution-time-minutes
+value in the defaults configmap.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -356,6 +372,22 @@ ResolutionRequest CRD.</p>
 the resolver to help it figure out how to resolve the
 resource being requested. For example: repo URL, commit SHA,
 path to file, the kind of authentication to leverage, etc.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>timeout</code><br/>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Timeout is the maximum time the resolver should spend on a particular
+request before aborting. This will generally be the same as the default-resolution-time-minutes
+value in the defaults configmap.</p>
 </td>
 </tr>
 </tbody>

@@ -41,6 +41,10 @@ data:
     # minutes to use for TaskRun and PipelineRun, if none is specified.
     default-timeout-minutes: "60"  # 60 minutes
 
+    # default-resolution-timeout-minutes contains the default number of
+    # minutes to use for the maximum resolution duration.
+    default-resolution-timeout-minutes: "2" # 2 minutes
+
     # default-service-account contains the default service account name
     # to use for TaskRun and PipelineRun, if none is specified.
     default-service-account: "default"

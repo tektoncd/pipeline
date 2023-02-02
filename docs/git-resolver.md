@@ -38,8 +38,7 @@ for the name, namespace and defaults that the resolver ships with.
 
 | Option Name                  | Description                                                                                                                                                   | Example Values                                                   |
 |------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| `default-revision`           | The default git revision to use if none is specified                                                                                                          | `main`                                                           |
-| `fetch-timeout`              | The maximum time any single git clone resolution may take. **Note**: a global maximum timeout of 1 minute is currently enforced on _all_ resolution requests. | `1m`, `2s`, `700ms`                                              |
+| `default-revision`           | The default git revision to use if none is specified                                                                                                          | `main`                                                           |                                            |
 | `default-url`                | The default git repository URL to use for anonymous cloning if none is specified.                                                                             | `https://github.com/tektoncd/catalog.git`                        |
 | `scm-type`                   | The SCM provider type. Required if using the authenticated API with `org` and `repo`.                                                                         | `github`, `gitlab`, `gitea`, `bitbucketcloud`, `bitbucketserver` |
 | `server-url`                 | The SCM provider's base URL for use with the authenticated API. Not needed if using github.com, gitlab.com, or BitBucket Cloud                                | `api.internal-github.com`                                        |
@@ -157,8 +156,8 @@ spec:
 ## `ResolutionRequest` Status
 `ResolutionRequest.Status.Source` field captures the source where the remote resource came from. It includes the 3 subfields: `url`, `digest` and `entrypoint`.
 - `url`
-  - If users choose to use anonymous cloning, the url is just user-provided value for the `url` param in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field). 
-  - If scm api is used, it would be the clone URL of the repo fetched from scm repository service in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field). 
+  - If users choose to use anonymous cloning, the url is just user-provided value for the `url` param in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field).
+  - If scm api is used, it would be the clone URL of the repo fetched from scm repository service in the [SPDX download format](https://spdx.github.io/spdx-spec/package-information/#77-package-download-location-field).
 - `digest`
   - The algorithm name is fixed "sha1", but subject to be changed to "sha256" once Git eventually uses SHA256 at some point later. See https://git-scm.com/docs/hash-function-transition for more details.
   - The value is the actual commit sha at the moment of resolving the resource even if a user provides a tag/branch name for the param `revision`.
@@ -188,7 +187,7 @@ spec:
 apiVersion: resolution.tekton.dev/v1alpha1
 kind: ResolutionRequest
 metadata:
-  ... 
+  ...
 spec:
   params:
     pathInRepo: pipeline.yaml

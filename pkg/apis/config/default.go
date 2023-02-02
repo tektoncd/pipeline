@@ -32,8 +32,10 @@ import (
 )
 
 const (
-	// DefaultTimeoutMinutes is used when no timeout is specified.
+	// DefaultTimeoutMinutes is used when no timeout is specified for the PipelineRun or TaskRun.
 	DefaultTimeoutMinutes = 60
+	// DefaultResolutionTimeoutMinutes is used to specify the max duration for the remote resolution
+	DefaultResolutionTimeoutMinutes = 2
 	// NoTimeoutDuration is used when a pipeline or task should never time out.
 	NoTimeoutDuration = 0 * time.Minute
 	// DefaultServiceAccountValue is the SA used when one is not specified.
@@ -46,6 +48,7 @@ const (
 	DefaultMaxMatrixCombinationsCount = 256
 
 	defaultTimeoutMinutesKey             = "default-timeout-minutes"
+	defaultResolutionTimeoutMinutesKey   = "default-resolution-timeout-minutes"
 	defaultServiceAccountKey             = "default-service-account"
 	defaultManagedByLabelValueKey        = "default-managed-by-label-value"
 	defaultPodTemplateKey                = "default-pod-template"
@@ -68,6 +71,7 @@ type Defaults struct {
 	DefaultTaskRunWorkspaceBinding    string
 	DefaultMaxMatrixCombinationsCount int
 	DefaultForbiddenEnv               []string
+	DefaultResolutionTimeoutMinutes   int
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -90,6 +94,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 	}
 
 	return other.DefaultTimeoutMinutes == cfg.DefaultTimeoutMinutes &&
+		other.DefaultResolutionTimeoutMinutes == cfg.DefaultResolutionTimeoutMinutes &&
 		other.DefaultServiceAccount == cfg.DefaultServiceAccount &&
 		other.DefaultManagedByLabelValue == cfg.DefaultManagedByLabelValue &&
 		other.DefaultPodTemplate.Equals(cfg.DefaultPodTemplate) &&
@@ -104,6 +109,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 	tc := Defaults{
 		DefaultTimeoutMinutes:             DefaultTimeoutMinutes,
+		DefaultResolutionTimeoutMinutes:   DefaultResolutionTimeoutMinutes,
 		DefaultServiceAccount:             DefaultServiceAccountValue,
 		DefaultManagedByLabelValue:        DefaultManagedByLabelValue,
 		DefaultCloudEventsSink:            DefaultCloudEventSinkValue,
@@ -116,6 +122,14 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			return nil, fmt.Errorf("failed parsing tracing config %q", defaultTimeoutMinutesKey)
 		}
 		tc.DefaultTimeoutMinutes = int(timeout)
+	}
+
+	if DefaultResolutionTimeoutMinutes, ok := cfgMap[defaultResolutionTimeoutMinutesKey]; ok {
+		timeout, err := strconv.ParseInt(DefaultResolutionTimeoutMinutes, 10, 0)
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing tracing config %q", defaultResolutionTimeoutMinutesKey)
+		}
+		tc.DefaultResolutionTimeoutMinutes = int(timeout)
 	}
 
 	if defaultServiceAccount, ok := cfgMap[defaultServiceAccountKey]; ok {

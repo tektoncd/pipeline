@@ -60,14 +60,6 @@ type Reconciler struct {
 
 var _ reconciler.LeaderAware = &Reconciler{}
 
-// defaultMaximumResolutionDuration is the maximum amount of time
-// resolution may take.
-
-// defaultMaximumResolutionDuration is the max time that a call to
-// Resolve() may take. It can be overridden by a resolver implementing
-// the framework.TimedResolution interface.
-const defaultMaximumResolutionDuration = time.Minute
-
 // Reconcile receives the string key of a ResolutionRequest object, looks
 // it up, checks it for common errors, and then delegates
 // resolver-specific functionality to the reconciler's embedded
@@ -106,15 +98,22 @@ func (r *Reconciler) resolve(ctx context.Context, key string, rr *v1beta1.Resolu
 	errChan := make(chan error)
 	resourceChan := make(chan ResolvedResource)
 
-	timeoutDuration := defaultMaximumResolutionDuration
+	timeoutMetaDuration := rr.Spec.Timeout
+	var timeout time.Duration
+	if timeoutMetaDuration == nil {
+		// 2 minutes if the default timeout
+		timeout = 2 * time.Minute
+	} else {
+		timeout = timeoutMetaDuration.Duration
+	}
 	if timed, ok := r.resolver.(TimedResolution); ok {
-		timeoutDuration = timed.GetResolutionTimeout(ctx, defaultMaximumResolutionDuration)
+		timeout = timed.GetResolutionTimeout(ctx, timeout)
 	}
 
 	// A new context is created for resolution so that timeouts can
 	// be enforced without affecting other uses of ctx (e.g. sending
 	// Updates to ResolutionRequest objects).
-	resolutionCtx, cancelFn := context.WithTimeout(ctx, timeoutDuration)
+	resolutionCtx, cancelFn := context.WithTimeout(ctx, timeout)
 	defer cancelFn()
 
 	go func() {

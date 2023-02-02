@@ -19,6 +19,7 @@ metadata:
   namespace: tekton-pipelines
 data:
   default-timeout-minutes: "50"
+  default-resolution-timeout-minutes: "20"
   default-service-account: "tekton"
   default-pod-template: |
     nodeSelector:

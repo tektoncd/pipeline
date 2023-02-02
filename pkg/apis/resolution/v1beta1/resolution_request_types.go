@@ -64,6 +64,10 @@ type ResolutionRequestSpec struct {
 	// +optional
 	// +listType=atomic
 	Params []pipelinev1beta1.Param `json:"params,omitempty"`
+	// Timeout is the maximum time the resolver should spend on a particular
+	// request before aborting. This will generally be the same as the
+	// default-resolution-time-minutes value in the defaults configmap.
+	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
 // ResolutionRequestStatus are all the fields in a ResolutionRequest's

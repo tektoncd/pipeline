@@ -22,8 +22,6 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  # The maximum amount of time a single anonymous cloning resolution may take.
-  fetch-timeout: "1m"
   # The git url to fetch the remote resource from when using anonymous cloning.
   default-url: "https://github.com/tektoncd/catalog.git"
   # The git revision to fetch the remote resource from with either anonymous cloning or the authenticated API.

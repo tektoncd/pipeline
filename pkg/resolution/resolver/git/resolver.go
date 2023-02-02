@@ -279,10 +279,14 @@ func (r *Resolver) GetConfigName(context.Context) string {
 var _ framework.TimedResolution = &Resolver{}
 
 // GetResolutionTimeout returns a time.Duration for the amount of time a
-// single git fetch may take. This can be configured with the
-// fetch-timeout field in the git-resolver-config configmap.
+// single git fetch may take. Prior to being deprecated, the defaultTimeout
+// was mapped to the "fetch-timeout" field in the git-resolver-config configmap.
+// Currently, this is defaulted to 0 since there is now a global
+// "DefaultRemoteResolutionTimeoutMinutes" field to configure the timeout for all
+// remote resolution requests including the "git" resolver
 func (r *Resolver) GetResolutionTimeout(ctx context.Context, defaultTimeout time.Duration) time.Duration {
 	conf := framework.GetResolverConfigFromContext(ctx)
+
 	if timeoutString, ok := conf[defaultTimeoutKey]; ok {
 		timeout, err := time.ParseDuration(timeoutString)
 		if err == nil {

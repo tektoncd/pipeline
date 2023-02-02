@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
 	rrreconciler "github.com/tektoncd/pipeline/pkg/client/resolution/injection/reconciler/resolution/v1beta1/resolutionrequest"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
@@ -38,10 +39,6 @@ type Reconciler struct {
 
 var _ rrreconciler.Interface = (*Reconciler)(nil)
 
-// TODO(sbwsg): This should be exposed via ConfigMap using a config
-// store similarly to Tekton Pipelines'.
-const defaultMaximumResolutionDuration = 1 * time.Minute
-
 // ReconcileKind processes updates to ResolutionRequests, sets status
 // fields on it, and returns any errors experienced along the way.
 func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1beta1.ResolutionRequest) reconciler.Event {
@@ -57,14 +54,19 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, rr *v1beta1.ResolutionRe
 		rr.Status.InitializeConditions()
 	}
 
+	// Global timeout for remote resolutions
+	// TODO turn into a getDefaultResolutionTimeoutFunction
+	
+	timeout := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultResolutionTimeoutMinutes) * time.Minute
+fmt.Println(timeout)
 	switch {
 	case rr.Status.Data != "":
 		rr.Status.MarkSucceeded()
-	case requestDuration(rr) > defaultMaximumResolutionDuration:
-		rr.Status.MarkFailed(resolutioncommon.ReasonResolutionTimedOut, timeoutMessage())
+	case requestDuration(rr) > timeout:
+		rr.Status.MarkFailed(resolutioncommon.ReasonResolutionTimedOut, timeoutMessage(timeout))
 	default:
 		rr.Status.MarkInProgress(resolutioncommon.MessageWaitingForResolver)
-		return controller.NewRequeueAfter(defaultMaximumResolutionDuration - requestDuration(rr))
+		return controller.NewRequeueAfter(timeout - requestDuration(rr))
 	}
 
 	return nil
@@ -77,6 +79,6 @@ func requestDuration(rr *v1beta1.ResolutionRequest) time.Duration {
 	return time.Now().UTC().Sub(creationTime)
 }
 
-func timeoutMessage() string {
-	return fmt.Sprintf("resolution took longer than global timeout of %s", defaultMaximumResolutionDuration)
+func timeoutMessage(timeout time.Duration) string {
+	return fmt.Sprintf("resolution took longer than timeout of %s", timeout)
 }

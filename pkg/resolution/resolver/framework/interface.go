@@ -76,7 +76,7 @@ type ConfigWatcher interface {
 // there is a global timeout that the core ResolutionRequest reconciler
 // enforces on _all_ requests. This prevents zombie requests (such as
 // those with a misconfigured `type`) sticking around in perpetuity.
-// Second there are resolver-specific timeouts that default to 1 minute.
+// Second there are resolver-specific timeouts that default to 2 minutes.
 //
 // A resolver implemeting the TimedResolution interface sets the maximum
 // duration of any single request to this resolver.

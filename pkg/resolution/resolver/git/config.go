@@ -18,9 +18,8 @@ package git
 
 const (
 	// defaultTimeoutKey is the configuration field name for controlling
-	// the maximum duration of a resolution request for a file from git.
+	// the maximum duration of a resolution request for a file from git
 	defaultTimeoutKey = "fetch-timeout"
-
 	// defaultURLKey is the configuration field name for controlling
 	// the git url to fetch the remote resource from.
 	defaultURLKey = "default-url"
