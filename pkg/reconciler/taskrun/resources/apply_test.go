@@ -1011,7 +1011,7 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 	})
 	ctx := context.Background()
 	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.AlphaAPIFields
+	cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
 	ctx = config.ToContext(ctx, cfg)
 	got := resources.ApplyParameters(ctx, simpleTaskSpecArrayIndexing, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {

@@ -943,17 +943,19 @@ Sharing `Results` between `Tasks` in a `Pipeline` happens via
 a `Result` and another receives it as a `Parameter` with a variable such as
 `$(tasks.<task-name>.results.<result-name>)`. Pipeline support two new types of
 results and parameters: array `[]string` and object `map[string]string`.
-Both are alpha features and can be enabled by setting `enable-api-fields` to `alpha`.
+Array result is a beta feature and can be enabled by setting `enable-api-fields` to `beta`
+and is also supported with `enable-api-fields` set to `alpha`.
+Object result is an alpha feature and can be enabled by setting `enable-api-fields` to `alpha`.
 
 | Result Type | Parameter Type | Specification                                    | `enable-api-fields` |
-|-------------|----------------|--------------------------------------------------|-------------------|
-| string      | string         | `$(tasks.<task-name>.results.<result-name>)`     | stable            |
-| array       | array          | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha             |
-| array       | string         | `$(tasks.<task-name>.results.<result-name>[i])`  | alpha             |
-| object      | object         | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha             |
-| object      | string         | `$(tasks.<task-name>.results.<result-name>.key)` | alpha             |
+|-------------|----------------|--------------------------------------------------|---------------------|
+| string      | string         | `$(tasks.<task-name>.results.<result-name>)`     | stable              |
+| array       | array          | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha or beta       |
+| array       | string         | `$(tasks.<task-name>.results.<result-name>[i])`  | alpha or beta       |
+| object      | object         | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha               |
+| object      | string         | `$(tasks.<task-name>.results.<result-name>.key)` | alpha               |
 
-**Note:** Whole Array and Object `Results` (using star notation) cannot be referred in `script` and `args`.
+**Note:** Whole Array and Object `Results` (using star notation) cannot be referred in `script`.
 
 **Note:** `Matrix` does not support `object` and `array` results.
 
@@ -1040,7 +1042,8 @@ results:
 
 For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-results.yaml).
 
-Array and object results is supported as alpha feature, see [`Array Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/alpha/pipeline-emitting-results.yaml).
+Object result is supported as alpha feature and array result is a beta feature,
+see [`Array and Object Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/alpha/pipeline-emitting-results.yaml).
 
 ```yaml
     results:

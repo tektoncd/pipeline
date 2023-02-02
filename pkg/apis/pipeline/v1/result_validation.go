@@ -33,21 +33,23 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if !resultNameFormatRegex.MatchString(tr.Name) {
 		return apis.ErrInvalidKeyName(tr.Name, "name", fmt.Sprintf("Name must consist of alphanumeric characters, '-', '_', and must start and end with an alphanumeric character (e.g. 'MyName',  or 'my-name',  or 'my_name', regex used for validation is '%s')", ResultNameFormat))
 	}
-	// Array and Object are alpha features
-	if tr.Type == ResultsTypeArray || tr.Type == ResultsTypeObject {
+
+	switch {
+	// Object are alpha features
+	case tr.Type == ResultsTypeObject:
 		errs := validateObjectResult(tr)
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "results type", config.AlphaAPIFields))
 		return errs
-	}
-
+	// Array results is a beta feature - check if the feature flag is set to "beta" or "alpha"
+	case tr.Type == ResultsTypeArray:
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "results type", config.BetaAPIFields))
+		return errs
 	// Resources created before the result. Type was introduced may not have Type set
 	// and should be considered valid
-	if tr.Type == "" {
+	case tr.Type == "":
 		return nil
-	}
-
-	// By default the result type is string
-	if tr.Type != ResultsTypeString {
+	// By default, the result type is string
+	case tr.Type != ResultsTypeString:
 		return apis.ErrInvalidValue(tr.Type, "type", "type must be string")
 	}
 

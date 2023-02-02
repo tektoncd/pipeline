@@ -59,6 +59,15 @@ func TestResultsValidate(t *testing.T) {
 
 		apiFields: "alpha",
 	}, {
+		name: "valid result type array",
+		Result: v1beta1.TaskResult{
+			Name:        "MY-RESULT",
+			Type:        v1beta1.ResultsTypeArray,
+			Description: "my great result",
+		},
+
+		apiFields: config.BetaAPIFields,
+	}, {
 		name: "valid result type object",
 		Result: v1beta1.TaskResult{
 			Name:        "MY-RESULT",
@@ -73,6 +82,9 @@ func TestResultsValidate(t *testing.T) {
 			ctx := context.Background()
 			if tt.apiFields == "alpha" {
 				ctx = config.EnableAlphaAPIFields(ctx)
+			}
+			if tt.apiFields == config.BetaAPIFields {
+				ctx = config.EnableBetaAPIFields(ctx)
 			}
 			if err := tt.Result.Validate(ctx); err != nil {
 				t.Errorf("TaskSpec.Validate() = %v", err)
@@ -122,7 +134,7 @@ func TestResultsValidateError(t *testing.T) {
 		},
 		apiFields: "stable",
 		expectedError: apis.FieldError{
-			Message: "results type requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"",
+			Message: "results type requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"",
 		},
 	}, {
 		name: "invalid object result type in stable",

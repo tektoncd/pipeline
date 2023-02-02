@@ -56,7 +56,6 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
 	objectReplacements := map[string]map[string]string{}
-	cfg := config.FromContextOrDefaults(ctx)
 
 	// Set all the default stringReplacements
 	for _, p := range p.Params {
@@ -64,8 +63,8 @@ func ApplyParameters(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.P
 			switch p.Default.Type {
 			case v1beta1.ParamTypeArray:
 				for _, pattern := range paramPatterns {
-					// array indexing for param is alpha feature
-					if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+					// array indexing for param is beta feature - the feature flag can be either set to alpha or beta
+					if config.CheckAlphaOrBetaAPIFields(ctx) {
 						for i := 0; i < len(p.Default.ArrayVal); i++ {
 							stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Default.ArrayVal[i]
 						}
@@ -108,14 +107,13 @@ func paramsFromPipelineRun(ctx context.Context, pr *v1beta1.PipelineRun) (map[st
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
 	objectReplacements := map[string]map[string]string{}
-	cfg := config.FromContextOrDefaults(ctx)
 
 	for _, p := range pr.Spec.Params {
 		switch p.Value.Type {
 		case v1beta1.ParamTypeArray:
 			for _, pattern := range paramPatterns {
-				// array indexing for param is alpha feature
-				if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+				// array indexing for param is beta feature - the feature flag can be either set to alpha ot beta
+				if config.CheckAlphaOrBetaAPIFields(ctx) {
 					for i := 0; i < len(p.Value.ArrayVal); i++ {
 						stringReplacements[fmt.Sprintf(pattern+"[%d]", p.Name, i)] = p.Value.ArrayVal[i]
 					}
