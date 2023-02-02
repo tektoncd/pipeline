@@ -89,10 +89,9 @@ func ValidateObjectParamRequiredKeys(pipelineParameters []v1beta1.ParamSpec, pip
 	return nil
 }
 
-// ValidateParamArrayIndex validate if the array indexing param reference  target is existent
+// ValidateParamArrayIndex validate if the array indexing param reference target is existent
 func ValidateParamArrayIndex(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
+	if !config.CheckAlphaOrBetaAPIFields(ctx) {
 		return nil
 	}
 

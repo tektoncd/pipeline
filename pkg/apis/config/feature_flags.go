@@ -323,6 +323,11 @@ func EnableBetaAPIFields(ctx context.Context) context.Context {
 	return setEnableAPIFields(ctx, BetaAPIFields)
 }
 
+// EnableStableAPIFields enables stable features in an existing context (for use in testing)
+func EnableStableAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, StableAPIFields)
+}
+
 // CheckEnforceResourceVerificationMode returns true if the ResourceVerificationMode is EnforceResourceVerificationMode
 // else returns false
 func CheckEnforceResourceVerificationMode(ctx context.Context) bool {
@@ -335,6 +340,12 @@ func CheckEnforceResourceVerificationMode(ctx context.Context) bool {
 func CheckWarnResourceVerificationMode(ctx context.Context) bool {
 	cfg := FromContextOrDefaults(ctx)
 	return cfg.FeatureFlags.ResourceVerificationMode == WarnResourceVerificationMode
+}
+
+// CheckAlphaOrBetaAPIFields return true if the enable-api-fields is either set to alpha or set to beta
+func CheckAlphaOrBetaAPIFields(ctx context.Context) bool {
+	cfg := FromContextOrDefaults(ctx)
+	return cfg.FeatureFlags.EnableAPIFields == AlphaAPIFields || cfg.FeatureFlags.EnableAPIFields == BetaAPIFields
 }
 
 func setEnableAPIFields(ctx context.Context, want string) context.Context {

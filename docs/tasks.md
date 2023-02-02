@@ -834,7 +834,7 @@ or [at the `Pipeline` level](./pipelines.md#emitting-results-from-a-pipeline).
 #### Emitting Array `Results`
 
 Tekton Task also supports defining a result of type `array` and `object` in addition to `string`.
-Emitting a task result of type `array` is an `alpha` feature implemented based on the
+Emitting a task result of type `array` is a `beta` feature implemented based on the
 [TEP-0076](https://github.com/tektoncd/community/blob/main/teps/0076-array-result-types.md#emitting-array-results).
 You can initialize `array` results from a `task` using JSON escaped string, for example, to assign the following
 list of animals to an array result:
