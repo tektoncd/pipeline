@@ -870,12 +870,69 @@ func TestValidateResult(t *testing.T) {
 			},
 		},
 		wantErr: true,
+	}, {
+		name: "invalid taskrun spec results types with other valid types",
+		tr: &v1beta1.TaskRun{
+			Spec: v1beta1.TaskRunSpec{
+				TaskSpec: &v1beta1.TaskSpec{
+					Results: []v1beta1.TaskResult{
+						{
+							Name: "string-result",
+							Type: v1beta1.ResultsTypeString,
+						},
+						{
+							Name: "array-result-1",
+							Type: v1beta1.ResultsTypeArray,
+						}, {
+							Name: "array-result-2",
+							Type: v1beta1.ResultsTypeArray,
+						},
+						{
+							Name:       "object-result",
+							Type:       v1beta1.ResultsTypeObject,
+							Properties: map[string]v1beta1.PropertySpec{"hello": {Type: "string"}},
+						},
+					},
+				},
+			},
+			Status: v1beta1.TaskRunStatus{
+				TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+					TaskRunResults: []v1beta1.TaskRunResult{
+						{
+							Name:  "string-result",
+							Type:  v1beta1.ResultsTypeString,
+							Value: *v1beta1.NewStructuredValues("hello"),
+						},
+						{
+							Name:  "array-result-1",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						}, {
+							Name:  "array-result-2",
+							Type:  v1beta1.ResultsTypeString,
+							Value: *v1beta1.NewStructuredValues(""),
+						},
+						{
+							Name:  "object-result",
+							Type:  v1beta1.ResultsTypeObject,
+							Value: *v1beta1.NewObject(map[string]string{"hello": "world"}),
+						},
+					},
+				},
+			},
+		},
+		rtr: &v1beta1.TaskSpec{
+			Results: []v1beta1.TaskResult{},
+		},
+		wantErr: true,
 	}}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			err := validateTaskRunResults(tc.tr, tc.rtr)
-			if (err != nil) != tc.wantErr {
-				t.Errorf("expected err: %t, but got err %s", tc.wantErr, err)
+			if err == nil && tc.wantErr {
+				t.Errorf("expected err: %t, but got different err: %s", tc.wantErr, err)
+			} else if err != nil && !tc.wantErr {
+				t.Errorf("did not expect any err, but got err: %s", err)
 			}
 		})
 	}
