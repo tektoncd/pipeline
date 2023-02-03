@@ -9612,9 +9612,6 @@ ParamValue
 </table>
 <h3 id="tekton.dev/v1beta1.PipelineRunRunStatus">PipelineRunRunStatus
 </h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
-</p>
 <div>
 <p>PipelineRunRunStatus contains the name of the PipelineTask for this CustomRun or Run and the CustomRun or Run&rsquo;s Status</p>
 </div>
@@ -9942,36 +9939,6 @@ Kubernetes meta/v1.Time
 </tr>
 <tr>
 <td>
-<code>taskRuns</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineRunTaskRunStatus">
-map[string]*github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunTaskRunStatus
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Deprecated - use ChildReferences instead.
-map of PipelineRunTaskRunStatus with the taskRun name as the key</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>runs</code><br/>
-<em>
-<a href="#tekton.dev/v1beta1.PipelineRunRunStatus">
-map[string]*github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.PipelineRunRunStatus
-</a>
-</em>
-</td>
-<td>
-<em>(Optional)</em>
-<p>Deprecated - use ChildReferences instead.
-map of PipelineRunRunStatus with the run name as the key</p>
-</td>
-</tr>
-<tr>
-<td>
 <code>pipelineResults</code><br/>
 <em>
 <a href="#tekton.dev/v1beta1.PipelineRunResult">
@@ -10068,9 +10035,6 @@ map[string]string
 </table>
 <h3 id="tekton.dev/v1beta1.PipelineRunTaskRunStatus">PipelineRunTaskRunStatus
 </h3>
-<p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.PipelineRunStatusFields">PipelineRunStatusFields</a>)
-</p>
 <div>
 <p>PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun&rsquo;s Status</p>
 </div>

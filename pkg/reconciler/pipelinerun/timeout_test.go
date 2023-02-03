@@ -56,9 +56,6 @@ func TestTimeoutPipelineRun(t *testing.T) {
 					Name:             "t1",
 					PipelineTaskName: "task-1",
 				}},
-				TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-				},
 			}},
 		},
 		taskRuns: []*v1beta1.TaskRun{
@@ -100,10 +97,6 @@ func TestTimeoutPipelineRun(t *testing.T) {
 					Name:             "t2",
 					PipelineTaskName: "task-2",
 				}},
-				Runs: map[string]*v1beta1.PipelineRunRunStatus{
-					"t1": {PipelineTaskName: "task-1"},
-					"t2": {PipelineTaskName: "task-2"},
-				},
 			}},
 		},
 		customRuns: []*v1beta1.CustomRun{

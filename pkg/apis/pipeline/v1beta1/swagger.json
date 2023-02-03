@@ -1215,13 +1215,6 @@
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
           "$ref": "#/definitions/v1beta1.Provenance"
         },
-        "runs": {
-          "description": "Deprecated - use ChildReferences instead. map of PipelineRunRunStatus with the run name as the key",
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v1beta1.PipelineRunRunStatus"
-          }
-        },
         "skippedTasks": {
           "description": "list of tasks that were skipped due to when expressions evaluating to false",
           "type": "array",
@@ -1242,13 +1235,6 @@
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
           "$ref": "#/definitions/v1.Time"
-        },
-        "taskRuns": {
-          "description": "Deprecated - use ChildReferences instead. map of PipelineRunTaskRunStatus with the taskRun name as the key",
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v1beta1.PipelineRunTaskRunStatus"
-          }
         }
       }
     },
@@ -1290,13 +1276,6 @@
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
           "$ref": "#/definitions/v1beta1.Provenance"
         },
-        "runs": {
-          "description": "Deprecated - use ChildReferences instead. map of PipelineRunRunStatus with the run name as the key",
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v1beta1.PipelineRunRunStatus"
-          }
-        },
         "skippedTasks": {
           "description": "list of tasks that were skipped due to when expressions evaluating to false",
           "type": "array",
@@ -1317,13 +1296,6 @@
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
           "$ref": "#/definitions/v1.Time"
-        },
-        "taskRuns": {
-          "description": "Deprecated - use ChildReferences instead. map of PipelineRunTaskRunStatus with the taskRun name as the key",
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/v1beta1.PipelineRunTaskRunStatus"
-          }
         }
       }
     },

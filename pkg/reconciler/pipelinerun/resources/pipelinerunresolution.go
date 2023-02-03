@@ -665,7 +665,7 @@ func ResolvePipelineTask(
 			}
 		}
 	case rpt.IsCustomTask():
-		rpt.RunObjectName = getRunName(pipelineRun.Status.Runs, pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
+		rpt.RunObjectName = getRunName(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
 		run, err := getRun(rpt.RunObjectName)
 		if err != nil && !kerrors.IsNotFound(err) {
 			return nil, fmt.Errorf("error retrieving RunObject %s: %w", rpt.RunObjectName, err)
@@ -681,7 +681,7 @@ func ResolvePipelineTask(
 			}
 		}
 	default:
-		rpt.TaskRunName = GetTaskRunName(pipelineRun.Status.TaskRuns, pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
+		rpt.TaskRunName = GetTaskRunName(pipelineRun.Status.ChildReferences, pipelineTask.Name, pipelineRun.Name)
 		if err := rpt.resolvePipelineRunTaskWithTaskRun(ctx, rpt.TaskRunName, getTask, getTaskRun, pipelineTask, providedResources); err != nil {
 			return nil, err
 		}
@@ -786,19 +786,12 @@ func resolveTask(
 }
 
 // GetTaskRunName should return a unique name for a `TaskRun` if one has not already been defined, and the existing one otherwise.
-func GetTaskRunName(taskRunsStatus map[string]*v1beta1.PipelineRunTaskRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
+func GetTaskRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
 		if cr.Kind == pipeline.TaskRunControllerName && cr.PipelineTaskName == ptName {
 			return cr.Name
 		}
 	}
-
-	for k, v := range taskRunsStatus {
-		if v.PipelineTaskName == ptName {
-			return k
-		}
-	}
-
 	return kmeta.ChildName(prName, fmt.Sprintf("-%s", ptName))
 }
 
@@ -831,18 +824,12 @@ func getNewTaskRunNames(ptName, prName string, combinationCount int) []string {
 
 // getRunName should return a unique name for a `Run` if one has not already
 // been defined, and the existing one otherwise.
-func getRunName(runsStatus map[string]*v1beta1.PipelineRunRunStatus, childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
+func getRunName(childRefs []v1beta1.ChildStatusReference, ptName, prName string) string {
 	for _, cr := range childRefs {
 		if cr.PipelineTaskName == ptName {
 			if cr.Kind == pipeline.CustomRunControllerName || cr.Kind == pipeline.RunControllerName {
 				return cr.Name
 			}
-		}
-	}
-
-	for k, v := range runsStatus {
-		if v.PipelineTaskName == ptName {
-			return k
 		}
 	}
 

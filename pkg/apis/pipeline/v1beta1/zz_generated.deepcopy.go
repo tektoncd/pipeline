@@ -824,36 +824,6 @@ func (in *PipelineRunStatusFields) DeepCopyInto(out *PipelineRunStatusFields) {
 		in, out := &in.CompletionTime, &out.CompletionTime
 		*out = (*in).DeepCopy()
 	}
-	if in.TaskRuns != nil {
-		in, out := &in.TaskRuns, &out.TaskRuns
-		*out = make(map[string]*PipelineRunTaskRunStatus, len(*in))
-		for key, val := range *in {
-			var outVal *PipelineRunTaskRunStatus
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(PipelineRunTaskRunStatus)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
-		}
-	}
-	if in.Runs != nil {
-		in, out := &in.Runs, &out.Runs
-		*out = make(map[string]*PipelineRunRunStatus, len(*in))
-		for key, val := range *in {
-			var outVal *PipelineRunRunStatus
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(PipelineRunRunStatus)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
-		}
-	}
 	if in.PipelineResults != nil {
 		in, out := &in.PipelineResults, &out.PipelineResults
 		*out = make([]PipelineRunResult, len(*in))
