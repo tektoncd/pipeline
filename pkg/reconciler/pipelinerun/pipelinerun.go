@@ -310,7 +310,7 @@ func (c *Reconciler) resolvePipelineState(
 	for _, task := range tasks {
 		// We need the TaskRun name to ensure that we don't perform an additional remote resolution request for a PipelineTask
 		// in the TaskRun reconciler.
-		trName := resources.GetTaskRunName(pr.Status.TaskRuns, pr.Status.ChildReferences, task.Name, pr.Name)
+		trName := resources.GetTaskRunName(pr.Status.ChildReferences, task.Name, pr.Name)
 
 		vp, err := getVerificationPolicies(ctx, c.verificationPolicyLister, pr.Namespace)
 		if err != nil {
@@ -1320,12 +1320,6 @@ func (c *Reconciler) updatePipelineRunStatusFromInformer(ctx context.Context, pr
 }
 
 func updatePipelineRunStatusFromChildObjects(ctx context.Context, logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, taskRuns []*v1beta1.TaskRun, runObjects []v1beta1.RunObject) error {
-	// Clear any TaskRuns and Runs present in the status.
-	// This can occur if the value of "embedded-status" flag was modified during PipelineRun execution prior to its removal.
-	// TODO: https://github.com/tektoncd/pipeline/issues/6090 cleanup the checks for `status.taskruns` and
-	// `status.runs` and refactor the helper functions to be combined
-	pr.Status.Runs = nil
-	pr.Status.TaskRuns = nil
 	updatePipelineRunStatusFromChildRefs(logger, pr, taskRuns, runObjects)
 
 	return validateChildObjectsInPipelineRunStatus(ctx, pr.Status)
@@ -1396,64 +1390,6 @@ func filterRunsForPipelineRunStatus(logger *zap.SugaredLogger, pr *v1beta1.Pipel
 	}
 
 	return names, taskLabels, gvks, statuses
-}
-
-// updatePipelineRunStatusFromTaskRuns takes a PipelineRun and a list of TaskRuns within that PipelineRun, and updates
-// the PipelineRun's .Status.TaskRuns.
-func updatePipelineRunStatusFromTaskRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun) {
-	// If no TaskRun was found, nothing to be done. We never remove taskruns from the status
-	if len(trs) == 0 {
-		return
-	}
-
-	if pr.Status.TaskRuns == nil {
-		pr.Status.TaskRuns = make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-	}
-
-	taskRuns := filterTaskRunsForPipelineRunStatus(logger, pr, trs)
-
-	// Loop over all the TaskRuns associated to Tasks
-	for _, taskrun := range taskRuns {
-		lbls := taskrun.GetLabels()
-		pipelineTaskName := lbls[pipeline.PipelineTaskLabelKey]
-
-		if _, ok := pr.Status.TaskRuns[taskrun.Name]; !ok {
-			// This taskrun was missing from the status.
-			// Add it without conditions, which are handled in the next loop
-			logger.Infof("Found a TaskRun %s that was missing from the PipelineRun status", taskrun.Name)
-			pr.Status.TaskRuns[taskrun.Name] = &v1beta1.PipelineRunTaskRunStatus{
-				PipelineTaskName: pipelineTaskName,
-				Status:           &taskrun.Status,
-			}
-		}
-	}
-}
-
-func updatePipelineRunStatusFromCustomRunsOrRuns(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, runObjects []v1beta1.RunObject) {
-	// If no RunObject was found, nothing to be done. We never remove runs from the status
-	if len(runObjects) == 0 {
-		return
-	}
-	if pr.Status.Runs == nil {
-		pr.Status.Runs = make(map[string]*v1beta1.PipelineRunRunStatus)
-	}
-
-	// Get the names, their task label values, and their status objects for all CustomRuns or Runs associated with the PipelineRun
-	names, taskLabels, _, statuses := filterRunsForPipelineRunStatus(logger, pr, runObjects)
-
-	// Loop over all the elements and populate the status map
-	for idx := range names {
-		name := names[idx]
-		taskLabel := taskLabels[idx]
-		crStatus := statuses[idx]
-		if _, ok := pr.Status.Runs[name]; !ok {
-			// This run was missing from the status.
-			pr.Status.Runs[name] = &v1beta1.PipelineRunRunStatus{
-				PipelineTaskName: taskLabel,
-				Status:           crStatus,
-			}
-		}
-	}
 }
 
 func updatePipelineRunStatusFromChildRefs(logger *zap.SugaredLogger, pr *v1beta1.PipelineRun, trs []*v1beta1.TaskRun, runObjects []v1beta1.RunObject) {

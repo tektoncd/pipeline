@@ -403,31 +403,13 @@ status:
     type: Succeeded
   pipelineSpec:
     ...
-  taskRuns:
-    pr-echo-szzs9-echo-hello:
-      pipelineTaskName: echo-hello
-      status:
-        ...
-        taskSpec:
-          steps:
-          - image: ubuntu
-            name: echo
-            resources: {}
-            script: |
-              #!/usr/bin/env bash
-              echo "Hello World!"
-    pr-echo-szzs9-echo-bye:
-      pipelineTaskName: echo-bye
-      status:
-        ...
-        taskSpec:
-          steps:
-          - image: ubuntu
-            name: echo
-            resources: {}
-            script: |
-              #!/usr/bin/env bash
-              echo "Bye World!"
+  childReferences:
+  - name: pr-echo-szzs9-echo-hello
+    pipelineTaskName: echo-hello
+    kind: TaskRun
+  - name: pr-echo-szzs9-echo-bye
+    pipelineTaskName: echo-bye
+    kind: TaskRun
 ```
 
 ##### Scope and Precedence
@@ -483,25 +465,11 @@ status:
       status: "True"
       type: Succeeded
   ...
-  taskRuns:
-    pr-echo-szzs9-echo-hello:
-      pipelineTaskName: echo-hello
-      status:
-        conditions:
-          - lastTransitionTime: "2022-04-07T12:34:57Z"
-            message: All Steps have completed executing
-            reason: Succeeded
-            status: "True"
-            type: Succeeded
-        taskSpec:
-          steps:
-            - image: ubuntu
-              name: echo
-              resources: {}
-              script: |
-                #!/usr/bin/env bash
-                echo "Sasa World!"
-          ...
+  childReferences:
+  - name: pr-echo-szzs9-echo-hello
+    pipelineTaskName: echo-hello
+    kind: TaskRun
+  ...
 ```
 
 ##### Default Values
@@ -555,25 +523,11 @@ status:
       status: "True"
       type: Succeeded
   ...
-  taskRuns:
-    pr-echo-szzs9-echo-hello:
-      pipelineTaskName: echo-hello
-      status:
-        conditions:
-          - lastTransitionTime: "2022-04-07T12:34:57Z"
-            message: All Steps have completed executing
-            reason: Succeeded
-            status: "True"
-            type: Succeeded
-        taskSpec:
-          steps:
-            - image: ubuntu
-              name: echo
-              resources: {}
-              script: |
-                #!/usr/bin/env bash
-                echo "Hello World!"
-          ...
+  childReferences:
+  - name: pr-echo-szzs9-echo-hello
+    pipelineTaskName: echo-hello
+    kind: TaskRun
+  ...
 ```
 
 ##### Referenced Resources
@@ -766,21 +720,10 @@ status:
           name: write-result
           resources: {}
   startTime: "2022-09-08T17:21:57Z"
-  taskRuns:
-    pipelinerun-object-param-resultpxp59-task1:
-      pipelineTaskName: task1
-      status:
-        completionTime: "2022-09-08T17:22:01Z"
-        conditions:
-        - lastTransitionTime: "2022-09-08T17:22:01Z"
-          message: All Steps have completed executing
-          reason: Succeeded
-          status: "True"
-          type: Succeeded
-        podName: pipelinerun-object-param-resultpxp59-task1-pod
-        startTime: "2022-09-08T17:21:57Z"
-        steps:
-        - container: step-write-result
+  childReferences:
+  - name: pipelinerun-object-param-resultpxp59-task1
+    pipelineTaskName: task1
+    kind: TaskRun
           ...
 	taskSpec:
           steps:
@@ -1054,32 +997,13 @@ status:
     type: Succeeded
   pipelineSpec:
     ...
-  taskRuns:
-    recipe-time-lslt9-fetch-secure-data:
-      pipelineTaskName: fetch-secure-data
-      status:
-        ...
-        taskSpec:
-          steps:
-          - image: ubuntu
-            name: fetch-and-write-secure
-            resources: {}
-            script: |
-              echo hi >> cat /workspace/shared-data/recipe.txt
-          workspaces:
-          - name: shared-data
-    recipe-time-lslt9-print-the-recipe:
-      pipelineTaskName: print-the-recipe
-      status:
-        ...
-        taskSpec:
-          steps:
-          - image: ubuntu
-            name: print-secrets
-            resources: {}
-            script: cat /workspace/shared-data/recipe.txt
-          workspaces:
-          - name: shared-data
+  childReferences:
+  - name: recipe-time-lslt9-fetch-secure-data
+    pipelineTaskName: fetch-secure-data
+    kind: TaskRun
+  - name: recipe-time-lslt9-print-the-recipe
+    pipelineTaskName: print-the-recipe
+    kind: TaskRun
 ```
 
 ##### Workspace Referenced Resources
@@ -1155,26 +1079,10 @@ status:
     type: Succeeded
   pipelineSpec:
     ...
-  taskRuns:
-    recipe-time-v5scg-fetch-the-recipe:
-      pipelineTaskName: fetch-the-recipe
-      status:
-        completionTime: "2022-06-02T19:02:58Z"
-        conditions:
-        - lastTransitionTime: "2022-06-02T19:02:58Z"
-          message: |
-            "step-fetch-and-write" exited with code 1 (image: "docker.io/library/ubuntu@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"); for logs run: kubectl -n default logs recipe-time-v5scg-fetch-the-recipe-pod -c step-fetch-and-write
-          reason: Failed
-          status: "False"
-          type: Succeeded
-        ...
-        taskSpec:
-          steps:
-          - image: ubuntu
-            name: fetch-and-write
-            resources: {}
-            script: | # See below: Replacements do not happen.
-      	      echo hi >> $(workspaces.shared-data.path)/recipe.txt
+  childReferences:
+  - name: recipe-time-v5scg-fetch-the-recipe
+    pipelineTaskName: fetch-the-recipe
+    kind: TaskRun
 ```
 
 #### Referenced TaskRuns within Embedded PipelineRuns
@@ -1253,32 +1161,13 @@ status:
     type: Succeeded
   pipelineSpec:
     ...
-  taskRuns:
-    recipe-time-pj6l7-fetch-the-recipe:
-      pipelineTaskName: fetch-the-recipe
-      status:
-        ...
-        taskSpec:
-          steps:
-          - image: ubuntu
-            name: fetch-and-write
-            resources: {}
-            script: |
-              echo /workspace/shared-data
-          workspaces:
-          - name: shared-data
-    recipe-time-pj6l7-print-the-recipe:
-      pipelineTaskName: print-the-recipe
-      status:
-       ...
-        taskSpec:
-          steps:
-          - image: ubuntu
-            name: print-secrets
-            resources: {}
-            script: cat /workspace/shared-data/recipe.txt
-          workspaces:
-          - name: shared-data
+  childReferences:
+  - name: recipe-time-pj6l7-fetch-the-recipe
+    pipelineTaskName: fetch-the-recipe
+    kind: TaskRun
+  - name: recipe-time-pj6l7-print-the-recipe
+    pipelineTaskName: print-the-recipe
+    kind: TaskRun
 ```
 
 ### Specifying `LimitRange` values
@@ -1376,8 +1265,6 @@ Your `PipelineRun`'s `status` field can contain the following fields:
   - `completionTime` - The time at which the `PipelineRun` finished executing, in [RFC3339](https://tools.ietf.org/html/rfc3339) format.
   - [`pipelineSpec`](pipelines.md#configuring-a-pipeline) - The exact `PipelineSpec` used when starting the `PipelineRun`.
 - Optional:
-  - `taskRuns` - A map of `TaskRun` names to detailed information about the status of that `TaskRun`. This is deprecated and will be removed in favor of using `childReferences`.
-  - `runs` - A map of custom task `Run` names to detailed information about the status of that `Run`. This is deprecated and will be removed in favor of using `childReferences`.
   - [`pipelineResults`](pipelines.md#emitting-results-from-a-pipeline) - Results emitted by this `PipelineRun`.
   - `skippedTasks` - A list of `Task`s which were skipped when running this `PipelineRun` due to [when expressions](pipelines.md#guard-task-execution-using-when-expressions), including the when expressions applying to the skipped task.
   - `childReferences` - A list of references to each `TaskRun` or `Run` in this `PipelineRun`, which can be used to look up the status of the underlying `TaskRun` or `Run`. Each entry contains the following:
@@ -1406,33 +1293,10 @@ conditions:
     status: "True"
     type: Succeeded
 startTime: "2020-05-04T02:00:11Z"
-taskRuns:
-  triggers-release-nightly-frwmw-build:
-    pipelineTaskName: build
-    status:
-      completionTime: "2020-05-04T02:10:49Z"
-      conditions:
-        - lastTransitionTime: "2020-05-04T02:10:49Z"
-          message: All Steps have completed executing
-          reason: Succeeded
-          status: "True"
-          type: Succeeded
-      podName: triggers-release-nightly-frwmw-build-pod
-      resourcesResult:
-        - key: commit
-          resourceName: git-source-triggers-frwmw
-          value: 9ab5a1234166a89db352afa28f499d596ebb48db
-      startTime: "2020-05-04T02:05:07Z"
-      steps:
-        - container: step-build
-          imageID: docker-pullable://golang@sha256:a90f2671330831830e229c3554ce118009681ef88af659cd98bfafd13d5594f9
-          name: build
-          terminated:
-            containerID: docker://6b6471f501f59dbb7849f5cdde200f4eeb64302b862a27af68821a7fb2c25860
-            exitCode: 0
-            finishedAt: "2020-05-04T02:10:45Z"
-            reason: Completed
-            startedAt: "2020-05-04T02:06:24Z"
+childReferences:
+- name: triggers-release-nightly-frwmw-build
+  pipelineTaskName: build
+  kind: TaskRun
   ```
 
 The following tables shows how to read the overall status of a `PipelineRun`.
@@ -1477,16 +1341,10 @@ Skipped Tasks:
     Operator:  notin
     Values:
       foo
-Task Runs:
-  pipelinerun-to-skip-task-run-this-task:
-    Pipeline Task Name:  run-this-task
-    Status:
-      ...
-    When Expressions:
-      Input:     foo
-      Operator:  in
-      Values:
-        foo
+ChildReferences:
+- Name: pipelinerun-to-skip-task-run-this-task
+  Pipeline Task Name:  run-this-task
+  Kind: TaskRun
 ```
 
 The name of the `TaskRuns` and `Runs` owned by a `PipelineRun`  are univocally associated to the owning resource.

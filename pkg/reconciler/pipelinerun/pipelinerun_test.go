@@ -1445,8 +1445,18 @@ func TestReconcileOnCompletedPipelineRun(t *testing.T) {
 	// and that does not have the latest status from TaskRuns yet. It checks that the TaskRun status is updated
 	// in the PipelineRun status, that the completion status is not altered, that not error is returned and
 	// a successful event is triggered
-	taskRunName := "test-pipeline-run-completed-hello-world"
+	taskRunName := "test-pipeline-run-completed-hello-world-task-run"
+	runName := "test-pipeline-run-completed-hello-world-run"
 	pipelineRunName := "test-pipeline-run-completed"
+	rs := []*v1alpha1.Run{parse.MustParseRun(t, fmt.Sprintf(`
+metadata:
+  name: %s
+spec: {}
+status:
+  conditions:
+  - status: "False"
+  type: Succeeded
+`, runName))}
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
@@ -1463,9 +1473,13 @@ status:
     status: "True"
     type: Succeeded
   childReferences:
-    - name: test-pipeline-run-completed-hello-world
+    - name: test-pipeline-run-completed-hello-world-task-run
       pipelineTaskName: hello-world-1
       kind: TaskRun
+      apiVersion: tekton.dev/v1beta1
+    - name: test-pipeline-run-completed-hello-world-run
+      pipelineTaskName: hello-world-1
+      kind: Run
       apiVersion: tekton.dev/v1beta1
 `, pipelineRunName))}
 	ps := []*v1beta1.Pipeline{simpleHelloWorldPipeline}
@@ -1482,6 +1496,13 @@ status:
 			Kind:       "TaskRun",
 		},
 		Name:             taskRunName,
+		PipelineTaskName: "hello-world-1",
+	}, {
+		TypeMeta: runtime.TypeMeta{
+			APIVersion: v1beta1.SchemeGroupVersion.String(),
+			Kind:       "Run",
+		},
+		Name:             runName,
 		PipelineTaskName: "hello-world-1",
 	}}
 
@@ -1500,6 +1521,7 @@ status:
 		Pipelines:    ps,
 		Tasks:        ts,
 		TaskRuns:     trs,
+		Runs:         rs,
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -1770,13 +1792,11 @@ status:
     status: Unknown
     type: Succeeded
   startTime: "2021-12-31T00:00:00Z"
-  runs:
-    test-pipeline-run-custom-task-hello-world-1:
-      pipelineTaskName: hello-world-1
-      status:
-        conditions:
-        - status: Unknown
-          type: Succeeded
+  childReferences:
+  - name: test-pipeline-run-custom-task-hello-world-1
+    pipelineTaskName: hello-world-1
+    kind: CustomRun
+    apiVersion: example.dev/v0
 `)}
 			prs[0].Spec.Timeout = tc.timeout
 			prs[0].Spec.Timeouts = tc.timeouts
@@ -2167,12 +2187,11 @@ status:
     status: Unknown
     reason: Running
     message: "running..."
-  taskRuns:
-    %s%s:
-      pipelineTaskName: %s
-      status: {}
-      startTime: %s
-`, prName, v1beta1.PipelineRunSpecStatusCancelledRunFinally, ptName, prName, ptName, now.Format(time.RFC3339))),
+  childReferences:
+  - name: %s%s
+    pipelineTaskName: %s
+    kind: TaskRun
+`, prName, v1beta1.PipelineRunSpecStatusCancelledRunFinally, ptName, prName, ptName)),
 	}
 
 	trs := []*v1beta1.TaskRun{
@@ -2489,14 +2508,10 @@ spec:
     pipeline: 12h0m0s
 status:
   startTime: "2021-12-31T00:00:00Z"
-  taskRuns:
-    test-pipeline-run-with-timeout-hello-world-1:
-      pipelineTaskName: hello-world-1
-      status:
-        conditions:
-        - lastTransitionTime: null
-          status: "Unknown"
-          type: Succeeded
+  childReferences:
+  - name: test-pipeline-run-with-timeout-hello-world-1
+    pipelineTaskName: hello-world-1
+    kind: TaskRun
 `)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
@@ -2582,14 +2597,10 @@ spec:
     tasks: 2m
 status:
   startTime: "2021-12-31T23:55:00Z"
-  taskRuns:
-    test-pipeline-run-with-timeout-hello-world-1:
-      pipelineTaskName: hello-world-1
-      status:
-        conditions:
-        - lastTransitionTime: null
-          status: "Unknown"
-          type: Succeeded
+  childReferences:
+  - name: test-pipeline-run-with-timeout-hello-world-1
+    pipelineTaskName: hello-world-1
+    kind: TaskRun
 `)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
@@ -4668,7 +4679,6 @@ spec:
   pipelineRef:
     name: test-pipeline
 status:
-  runs: {}
   pipelineSpec:
     results:
     - description: pipeline result
@@ -4702,7 +4712,6 @@ status:
     value: aResultValue
   - name: custom-result
     value: bResultValue
-  taskRuns: {}
   childReferences:
   - apiVersion: tekton.dev/v1beta1
     kind: TaskRun
@@ -4827,7 +4836,6 @@ spec:
   pipelineRef:
     name: test-pipeline
 status:
-  runs: {}
   pipelineSpec:
     results:
     - description: pipeline result
@@ -4856,7 +4864,6 @@ status:
     value: aResultValue
   - name: custom-result
     value: bResultValue
-  taskRuns: {}
   childReferences:
   - apiVersion: tekton.dev/v1beta1
     kind: CustomRun
@@ -5982,7 +5989,6 @@ func getPipelineRun(pr, p string, status corev1.ConditionStatus, reason string, 
 					},
 				},
 			},
-			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{TaskRuns: map[string]*v1beta1.PipelineRunTaskRunStatus{}},
 		},
 	}
 	for k, v := range tr {
@@ -7998,8 +8004,6 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 	}, {
 		name:     "p-finally",
@@ -8155,8 +8159,6 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 	}}
 	for _, tt := range tests {
@@ -8595,8 +8597,6 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 	}, {
 		name:     "p-finally",
@@ -8763,8 +8763,6 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 	}}
 	for _, tt := range tests {
@@ -8944,8 +8942,6 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-1
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 		},
 		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
@@ -8990,8 +8986,6 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-1
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 		expectedTaskRuns: []*v1beta1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
@@ -9138,8 +9132,6 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-1
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 		},
 		expectedPipelineRun: parse.MustParseV1beta1PipelineRun(t, `
@@ -9184,8 +9176,6 @@ status:
     kind: TaskRun
     name: pr-platforms-and-browsers-1
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 		expectedTaskRuns: []*v1beta1.TaskRun{
 			mustParseTaskRunWithObjectMeta(t,
@@ -9599,8 +9589,6 @@ status:
     kind: CustomRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 	}, {
 		name:     "p-finally",
@@ -9757,8 +9745,6 @@ status:
     kind: CustomRun
     name: pr-platforms-and-browsers-8
     pipelineTaskName: platforms-and-browsers
-  taskRuns: {}
-  runs: {}
 `),
 	}}
 	for _, tt := range tests {

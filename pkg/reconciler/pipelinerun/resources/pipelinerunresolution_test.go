@@ -2381,11 +2381,6 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 		},
 	}
 	providedResources := map[string]*resourcev1alpha1.PipelineResource{"git-resource": r}
-	taskrunStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{}
-	taskrunStatus["pipelinerun-mytask-with-a-really-long-name-to-trigger-tru"] = &v1beta1.PipelineRunTaskRunStatus{
-		PipelineTaskName: "mytask-with-a-really-long-name-to-trigger-truncation",
-		Status:           &v1beta1.TaskRunStatus{},
-	}
 
 	pr := v1beta1.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -2393,7 +2388,11 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 		},
 		Status: v1beta1.PipelineRunStatus{
 			PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
-				TaskRuns: taskrunStatus,
+				ChildReferences: []v1beta1.ChildStatusReference{{
+					Name:             "pipelinerun-mytask-with-a-really-long-name-to-trigger-tru",
+					PipelineTaskName: "mytask-with-a-really-long-name-to-trigger-truncation",
+					TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
+				}},
 			},
 		},
 	}
@@ -2426,7 +2425,6 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 		t.Fatalf("Expected to get current pipeline state %v, but actual differed %s", expectedTask, diff.PrintWantGot(d))
 	}
 }
-
 func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 	names.TestingSeed()
 	p := &v1beta1.Pipeline{
@@ -3372,11 +3370,7 @@ func TestResolvedPipelineRunTask_IsFinalTask(t *testing.T) {
 
 func TestGetTaskRunName(t *testing.T) {
 	prName := "pipeline-run"
-	taskRunsStatus := map[string]*v1beta1.PipelineRunTaskRunStatus{
-		"taskrun-for-task1": {
-			PipelineTaskName: "task1",
-		},
-	}
+
 	childRefs := []v1beta1.ChildStatusReference{{
 		TypeMeta:         runtime.TypeMeta{Kind: "TaskRun"},
 		Name:             "taskrun-for-task1",
@@ -3416,11 +3410,7 @@ func TestGetTaskRunName(t *testing.T) {
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			trNameFromTRStatus := GetTaskRunName(taskRunsStatus, nil, tc.ptName, testPrName)
-			if d := cmp.Diff(tc.wantTrName, trNameFromTRStatus); d != "" {
-				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
-			}
-			trNameFromChildRefs := GetTaskRunName(nil, childRefs, tc.ptName, testPrName)
+			trNameFromChildRefs := GetTaskRunName(childRefs, tc.ptName, testPrName)
 			if d := cmp.Diff(tc.wantTrName, trNameFromChildRefs); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
 			}
@@ -3556,11 +3546,6 @@ func TestGetNamesOfRuns(t *testing.T) {
 
 func TestGetRunName(t *testing.T) {
 	prName := "pipeline-run"
-	runsStatus := map[string]*v1beta1.PipelineRunRunStatus{
-		"run-for-task1": {
-			PipelineTaskName: "task1",
-		},
-	}
 	childRefs := []v1beta1.ChildStatusReference{{
 		TypeMeta:         runtime.TypeMeta{Kind: "CustomRun"},
 		Name:             "run-for-task1",
@@ -3600,15 +3585,11 @@ func TestGetRunName(t *testing.T) {
 			if tc.prName != "" {
 				testPrName = tc.prName
 			}
-			rnFromRunsStatus := getRunName(runsStatus, nil, tc.ptName, testPrName)
-			if d := cmp.Diff(tc.wantTrName, rnFromRunsStatus); d != "" {
-				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
-			}
-			rnFromChildRefs := getRunName(nil, childRefs, tc.ptName, testPrName)
+			rnFromChildRefs := getRunName(childRefs, tc.ptName, testPrName)
 			if d := cmp.Diff(tc.wantTrName, rnFromChildRefs); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
 			}
-			rnFromBoth := getRunName(runsStatus, childRefs, tc.ptName, testPrName)
+			rnFromBoth := getRunName(childRefs, tc.ptName, testPrName)
 			if d := cmp.Diff(tc.wantTrName, rnFromBoth); d != "" {
 				t.Errorf("GetTaskRunName: %s", diff.PrintWantGot(d))
 			}

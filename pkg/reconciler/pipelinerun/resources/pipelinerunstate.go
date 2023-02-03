@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -150,44 +149,6 @@ func (state PipelineRunState) AdjustStartTime(unadjustedStartTime *metav1.Time) 
 	return adjustedStartTime.DeepCopy()
 }
 
-// GetTaskRunsStatus returns a map of taskrun name and the taskrun
-// ignore a nil taskrun in pipelineRunState, otherwise, capture taskrun object from PipelineRun Status
-// update taskrun status based on the pipelineRunState before returning it in the map
-func (state PipelineRunState) GetTaskRunsStatus(pr *v1beta1.PipelineRun) map[string]*v1beta1.PipelineRunTaskRunStatus {
-	status := make(map[string]*v1beta1.PipelineRunTaskRunStatus)
-	for _, rpt := range state {
-		if rpt.IsCustomTask() {
-			continue
-		}
-
-		if rpt.TaskRun == nil {
-			continue
-		}
-
-		status[rpt.TaskRunName] = rpt.getTaskRunStatus(rpt.TaskRun, pr)
-	}
-	return status
-}
-
-func (t *ResolvedPipelineTask) getTaskRunStatus(tr *v1beta1.TaskRun, pr *v1beta1.PipelineRun) *v1beta1.PipelineRunTaskRunStatus {
-	var prtrs *v1beta1.PipelineRunTaskRunStatus
-	if tr != nil {
-		prtrs = pr.Status.TaskRuns[tr.Name]
-	}
-	if prtrs == nil {
-		prtrs = &v1beta1.PipelineRunTaskRunStatus{
-			PipelineTaskName: t.PipelineTask.Name,
-			WhenExpressions:  t.PipelineTask.WhenExpressions,
-		}
-	}
-
-	if tr != nil {
-		prtrs.Status = &tr.Status
-	}
-
-	return prtrs
-}
-
 // GetTaskRunsResults returns a map of all successfully completed TaskRuns in the state, with the pipeline task name as
 // the key and the results from the corresponding TaskRun as the value. It only includes tasks which have completed successfully.
 func (state PipelineRunState) GetTaskRunsResults() map[string][]v1beta1.TaskRunResult {
@@ -204,42 +165,6 @@ func (state PipelineRunState) GetTaskRunsResults() map[string][]v1beta1.TaskRunR
 		}
 	}
 	return results
-}
-
-// GetRunsStatus returns a map of run name and the run.
-// Ignore a nil run in pipelineRunState, otherwise, capture run object from PipelineRun Status.
-// Update run status based on the pipelineRunState before returning it in the map.
-func (state PipelineRunState) GetRunsStatus(pr *v1beta1.PipelineRun) map[string]*v1beta1.PipelineRunRunStatus {
-	status := map[string]*v1beta1.PipelineRunRunStatus{}
-	for _, rpt := range state {
-		if !rpt.IsCustomTask() {
-			continue
-		}
-
-		if rpt.RunObject == nil {
-			continue
-		}
-
-		prrs := pr.Status.Runs[rpt.RunObjectName]
-
-		if prrs == nil {
-			prrs = &v1beta1.PipelineRunRunStatus{
-				PipelineTaskName: rpt.PipelineTask.Name,
-				WhenExpressions:  rpt.PipelineTask.WhenExpressions,
-			}
-		}
-		prrs.Status = &v1beta1.CustomRunStatus{}
-		switch r := rpt.RunObject.(type) {
-		case *v1beta1.CustomRun:
-			prrs.Status = &r.Status
-		case *v1alpha1.Run:
-			crs := runv1beta1.FromRunStatus(r.Status)
-			prrs.Status = &crs
-		}
-
-		status[rpt.RunObjectName] = prrs
-	}
-	return status
 }
 
 // GetRunsResults returns a map of all successfully completed Runs in the state, with the pipeline task name as the key
