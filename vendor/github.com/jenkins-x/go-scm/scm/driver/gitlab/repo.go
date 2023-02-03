@@ -347,39 +347,7 @@ func (s *repositoryService) ListStatus(ctx context.Context, repo, ref string, op
 }
 
 func (s *repositoryService) CreateHook(ctx context.Context, repo string, input *scm.HookInput) (*scm.Hook, *scm.Response, error) {
-	params := url.Values{}
-	params.Set("url", input.Target)
-	if input.Secret != "" {
-		params.Set("token", input.Secret)
-	}
-	if input.SkipVerify {
-		params.Set("enable_ssl_verification", "true")
-	}
-	hasStarEvents := false
-	for _, event := range input.NativeEvents {
-		if event == "*" {
-			hasStarEvents = true
-		}
-	}
-	if input.Events.Issue || hasStarEvents {
-		params.Set("issues_events", "true")
-	}
-	if input.Events.IssueComment ||
-		input.Events.PullRequestComment || hasStarEvents {
-		params.Set("note_events", "true")
-	}
-	if input.Events.PullRequest || hasStarEvents {
-		params.Set("merge_requests_events", "true")
-	}
-	if input.Events.Push || input.Events.Branch || hasStarEvents {
-		params.Set("push_events", "true")
-	}
-	if input.Events.Tag || hasStarEvents {
-		params.Set("tag_push_events", "true")
-	}
-	if input.Events.Release || hasStarEvents {
-		params.Set("releases_events", "true")
-	}
+	params := convertHookInputToGenericParam(input)
 
 	path := fmt.Sprintf("api/v4/projects/%s/hooks?%s", encode(repo), params.Encode())
 	out := new(hook)
@@ -388,15 +356,22 @@ func (s *repositoryService) CreateHook(ctx context.Context, repo string, input *
 }
 
 func (s *repositoryService) UpdateHook(ctx context.Context, repo string, input *scm.HookInput) (*scm.Hook, *scm.Response, error) {
-	params := url.Values{}
+	params := convertHookInputToGenericParam(input)
 	hookID := input.Name
+
+	path := fmt.Sprintf("api/v4/projects/%s/hooks/%s?%s", encode(repo), hookID, params.Encode())
+	out := new(hook)
+	res, err := s.client.do(ctx, "PUT", path, nil, out)
+	return convertHook(out), res, err
+}
+
+func convertHookInputToGenericParam(input *scm.HookInput) url.Values {
+	params := url.Values{}
 	params.Set("url", input.Target)
 	if input.Secret != "" {
 		params.Set("token", input.Secret)
 	}
-	if input.SkipVerify {
-		params.Set("enable_ssl_verification", "true")
-	}
+	params.Set("enable_ssl_verification", strconv.FormatBool(!input.SkipVerify))
 	hasStarEvents := false
 	for _, event := range input.NativeEvents {
 		if event == "*" {
@@ -429,11 +404,7 @@ func (s *repositoryService) UpdateHook(ctx context.Context, repo string, input *
 	} else {
 		params.Set("tag_push_events", "false")
 	}
-
-	path := fmt.Sprintf("api/v4/projects/%s/hooks/%s?%s", encode(repo), hookID, params.Encode())
-	out := new(hook)
-	res, err := s.client.do(ctx, "PUT", path, nil, out)
-	return convertHook(out), res, err
+	return params
 }
 
 func (s *repositoryService) CreateStatus(ctx context.Context, repo, ref string, input *scm.StatusInput) (*scm.Status, *scm.Response, error) {
