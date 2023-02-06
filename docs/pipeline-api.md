@@ -6636,6 +6636,200 @@ Then the ResourcesPattern should be valid regex. E.g. If using gitresolver, and 
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1alpha1.Queue">Queue
+</h3>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.QueueSpec">
+QueueSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>pipelineConcurrency</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>PipelineConcurrency limits the number of pipeline concurrency allowed by the current queue</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>strategy</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.QueueStatus">
+QueueStatus
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.QueueSpec">QueueSpec
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Queue">Queue</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>pipelineConcurrency</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>PipelineConcurrency limits the number of pipeline concurrency allowed by the current queue</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>strategy</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.QueueStatus">QueueStatus
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.Queue">Queue</a>)
+</p>
+<div>
+<p>QueueStatus are all the fields in a queue&rsquo;s status subresource.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>QueueStatusFields</code><br/>
+<em>
+<a href="#tekton.dev/v1alpha1.QueueStatusFields">
+QueueStatusFields
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>QueueStatusFields</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.QueueStatusFields">QueueStatusFields
+</h3>
+<p>
+(<em>Appears on:</em><a href="#tekton.dev/v1alpha1.QueueStatus">QueueStatus</a>)
+</p>
+<div>
+<p>QueueStatusFields are the queue-specific fields
+for the status subresource.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>runningPipelines</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>pipelineConcurrency</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tekton.dev/v1alpha1.Strategy">Strategy
+(<code>string</code> alias)</h3>
+<div>
+</div>
 <h3 id="tekton.dev/v1alpha1.PipelineResourceSpec">PipelineResourceSpec
 </h3>
 <p>

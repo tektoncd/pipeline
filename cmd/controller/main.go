@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/customrun"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun"
+	"github.com/tektoncd/pipeline/pkg/reconciler/queue"
 	"github.com/tektoncd/pipeline/pkg/reconciler/resolutionrequest"
 	"github.com/tektoncd/pipeline/pkg/reconciler/run"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
@@ -139,6 +140,7 @@ func main() {
 		run.NewController(),
 		resolutionrequest.NewController(clock.RealClock{}),
 		customrun.NewController(),
+		queue.NewController(),
 	)
 
 	// Cleanly shutdown and flush telemetry when the application exits.

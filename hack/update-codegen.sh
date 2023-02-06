@@ -50,6 +50,11 @@ bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" 
   github.com/tektoncd/pipeline/pkg/client/resolution github.com/tektoncd/pipeline/pkg/apis \
   "resolution:v1alpha1,v1beta1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
+# This generates deepcopy,client,informer and lister for the queue package (v1alpha1)
+bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" \
+  github.com/tektoncd/pipeline/pkg/client/queue github.com/tektoncd/pipeline/pkg/apis \
+  "queue:v1alpha1" \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
 # Depends on generate-groups.sh to install bin/deepcopy-gen
 ${PREFIX}/deepcopy-gen \
@@ -82,6 +87,11 @@ ${PREFIX}/deepcopy-gen \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
 -i github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1
 
+${PREFIX}/deepcopy-gen \
+  -O zz_generated.deepcopy \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
+-i github.com/tektoncd/pipeline/pkg/apis/queue/v1alpha1
+
 # Knative Injection
 # This generates the knative injection packages for the resource package (v1alpha1).
 # This is separate from the pipeline package for the same reason as client and all (see above).
@@ -99,6 +109,12 @@ GOFLAGS="${OLDGOFLAGS}"
 bash ${REPO_ROOT_DIR}/hack/generate-knative.sh "injection" \
   github.com/tektoncd/pipeline/pkg/client/resolution github.com/tektoncd/pipeline/pkg/apis \
   "resolution:v1alpha1,v1beta1" \
+  --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
+GOFLAGS="${OLDGOFLAGS}"
+# This generates the knative inject packages for the queue package (v1alpha1).
+bash ${REPO_ROOT_DIR}/hack/generate-knative.sh "injection" \
+  github.com/tektoncd/pipeline/pkg/client/queue github.com/tektoncd/pipeline/pkg/apis \
+  "queue:v1alpha1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 GOFLAGS="${OLDGOFLAGS}"
 

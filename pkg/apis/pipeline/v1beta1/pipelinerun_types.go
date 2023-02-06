@@ -35,6 +35,10 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
+var (
+	BinQueueLabel = "bind__queue"
+)
+
 // +genclient
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -95,6 +99,10 @@ func (pr *PipelineRun) IsGracefullyCancelled() bool {
 // IsGracefullyStopped returns true if the PipelineRun's spec status is set to StoppedRunFinally state
 func (pr *PipelineRun) IsGracefullyStopped() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusStoppedRunFinally
+}
+
+func (pr *PipelineRun) IsProcessing() bool {
+	return !pr.IsDone() && !pr.IsCancelled() && !pr.IsGracefullyCancelled() && !pr.IsGracefullyStopped()
 }
 
 // PipelineTimeout returns the applicable timeout for the PipelineRun
@@ -271,6 +279,13 @@ type TimeoutFields struct {
 	Tasks *metav1.Duration `json:"tasks,omitempty"`
 	// Finally sets the maximum allowed duration of this pipeline's finally
 	Finally *metav1.Duration `json:"finally,omitempty"`
+}
+
+func (pr *PipelineRun) GetBindQueueName() string {
+	if pr.Labels == nil {
+		return ""
+	}
+	return pr.Labels[BinQueueLabel]
 }
 
 // PipelineRunSpecStatus defines the pipelinerun spec status the user can provide

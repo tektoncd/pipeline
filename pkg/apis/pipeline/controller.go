@@ -39,4 +39,7 @@ const (
 
 	// CustomRunControllerName holds the name of the CustomRun controller
 	CustomRunControllerName = "CustomRun"
+
+	// QueueControllerName holds the name of the Queue controller
+	QueueControllerName = "Queue"
 )

@@ -48,6 +48,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	rprp "github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/pipelinespec"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipelinerun/resources"
+	"github.com/tektoncd/pipeline/pkg/reconciler/queue/queuemanager/manager"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
 	tresources "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
@@ -172,6 +173,17 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	span.SetAttributes(
 		attribute.String("pipelinerun", pr.Name), attribute.String("namespace", pr.Namespace),
 	)
+
+	cfg := config.FromContextOrDefaults(ctx)
+	if cfg.FeatureFlags.EnableAPIFields == config.AlphaAPIFields {
+		// add pipeline run to queue if bound
+		manager.PutPipelineIntoQueue(ctx, pr)
+		defer func() {
+			if pr.IsDone() || pr.IsCancelled() {
+				manager.PopOutPipelineFromQueue(pr)
+			}
+		}()
+	}
 
 	// Read the initial condition
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)

@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Queue
+metadata:
+  name: concurrency-queue
+spec:
+  pipelineConcurrency: 2
+  strategy: Cancel
+
+---
+# Create three or more pipelineruns, and you can see that the pipelinerun that was run first
+# is canceled until the number of concurrency in the binding queue is the same
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: run-with-queue-
+  labels:
+    # used to bind queue
+    bind__queue: concurrency-queue
+spec:
+  pipelineSpec:
+    tasks:
+      - name: task1
+        taskSpec:
+          steps:
+            - image: busybox
+              script: |
+                echo "hello"
+                sleep 100
+                echo "goodbye"

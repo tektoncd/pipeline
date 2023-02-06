@@ -28,6 +28,7 @@ import (
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	queuev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/queue/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
@@ -73,6 +74,10 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	resolutionv1alpha1.SchemeGroupVersion.WithKind("ResolutionRequest"): &resolutionv1alpha1.ResolutionRequest{},
 	// v1beta1
 	resolutionv1beta1.SchemeGroupVersion.WithKind("ResolutionRequest"): &resolutionv1beta1.ResolutionRequest{},
+
+	// queue
+	// v1alpha1
+	queuev1alpha1.SchemeGroupVersion.WithKind("Queue"): &queuev1alpha1.Queue{},
 }
 
 func newDefaultingAdmissionController(name string) func(context.Context, configmap.Watcher) *controller.Impl {
