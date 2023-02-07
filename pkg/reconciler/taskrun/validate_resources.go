@@ -307,7 +307,7 @@ func validateTaskRunResults(tr *v1beta1.TaskRun, resolvedTaskSpec *v1beta1.TaskS
 			s = append(s, fmt.Sprintf(" \"%v\": %v", k, v))
 		}
 		sort.Strings(s)
-		return fmt.Errorf("mismatched types: %v", strings.Join(s, ","))
+		return fmt.Errorf("Provided results don't match declared results; may be invalid JSON or missing result declaration: %v", strings.Join(s, ","))
 	}
 
 	// When get the results, for object value need to check if they have missing keys.
