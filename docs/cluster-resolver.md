@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "Cluster Resolver"
+weight: 310
+---
+-->
+
 # Cluster Resolver
 
 ## Resolver Type

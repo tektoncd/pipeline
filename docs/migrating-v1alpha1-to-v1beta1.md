@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Migrating from Tekton v1alpha1"
-weight: 4000
+weight: 102
 ---
 -->
 

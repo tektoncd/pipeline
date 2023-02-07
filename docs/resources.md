@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "PipelineResources"
-weight: 2000
+weight: 208
 ---
 -->
+
 # PipelineResources
 
 > :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**

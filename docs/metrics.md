@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "Pipeline Metrics"
-weight: 1200
+weight: 304
 ---
 -->
+
 # Pipeline Controller Metrics
 
 The following pipeline metrics are available at `controller-service` on port `9090`.

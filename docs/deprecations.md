@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Deprecations"
-weight: 5000
+weight: 107
 ---
 -->
 

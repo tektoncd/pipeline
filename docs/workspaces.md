@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "Workspaces"
-weight: 600
+weight: 405
 ---
 -->
+
 # Workspaces
 
 - [Overview](#overview)

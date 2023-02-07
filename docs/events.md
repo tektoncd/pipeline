@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "Events"
-weight: 700
+weight: 302
 ---
 -->
+
 # Events in Tekton
 
 Tekton's controllers emits [Kubernetes events](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#event-v1-core)
