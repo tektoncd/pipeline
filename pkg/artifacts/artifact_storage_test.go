@@ -43,7 +43,6 @@ var (
 		GitImage:                 "override-with-git:latest",
 		ShellImage:               "busybox",
 		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
 	pipelinerun = &v1beta1.PipelineRun{

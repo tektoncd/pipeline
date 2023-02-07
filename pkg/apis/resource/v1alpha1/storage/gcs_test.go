@@ -37,7 +37,6 @@ var images = pipeline.Images{
 	GitImage:                 "override-with-git:latest",
 	ShellImage:               "busybox",
 	GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-	PRImage:                  "override-with-pr:latest",
 	ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 }
 

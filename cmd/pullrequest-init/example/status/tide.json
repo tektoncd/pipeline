@@ -1,6 +1,0 @@
-{
-  "State": "pending",
-  "Label": "tide",
-  "Desc": "Not mergeable. Needs lgtm label.",
-  "Target": "https://prow.tekton.dev/tide"
-}
