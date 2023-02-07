@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "Hermetic"
-weight: 1650
+weight: 410
 ---
 -->
+
 # Hermetic Execution Mode
 A Hermetic Build is a release engineering best practice for increasing the reliability and consistency of software builds.
 They are self-contained, and do not depend on anything outside of the build environment.

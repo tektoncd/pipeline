@@ -1,7 +1,7 @@
 <!--
 ---
 linkTitle: "Tekton Controller Performance Configuration"
-weight: 1600
+weight: 105
 ---
 -->
 

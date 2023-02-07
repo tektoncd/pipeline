@@ -1,4 +1,11 @@
-## Replacing `PipelineResources` with `Tasks`
+<!--
+---
+linkTitle: "Replacing PipelineResources with Tasks"
+weight: 207
+---
+-->
+
+## Replacing PipelineResources with Tasks
 
 `PipelineResources` remained in alpha while the other resource kinds were promoted to beta.
 Since then, **`PipelineResources` have been deprecated**. We encourage users to use `Tasks` and other replacement 

@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "Bundles Resolver"
+weight: 308
+---
+-->
+
 # Bundles Resolver
 
 ## Resolver Type

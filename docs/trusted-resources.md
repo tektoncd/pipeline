@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "Trusted Resources"
+weight: 312
+---
+-->
+
 # Trusted Resources
 
 - [Overview](#overview)

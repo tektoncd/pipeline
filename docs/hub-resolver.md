@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "Hub Resolver"
+weight: 311
+---
+-->
+
 # Hub Resolver
 
 Use resolver type `hub`.

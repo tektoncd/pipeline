@@ -1,4 +1,12 @@
-# Getting Started
+<!--
+---
+linkTitle: "Get started with Resolvers"
+weight: 103
+---
+-->
+
+
+# Getting Started with Resolvers
 
 ## Introduction
 

@@ -1,7 +1,7 @@
 <!--
 ---
-linkTitle: "LimitRange"
-weight: 300
+linkTitle: "Compute Resources Limits"
+weight: 408
 ---
 -->
 

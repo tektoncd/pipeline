@@ -1,7 +1,7 @@
 <!--
 ---
 title: "Install Tekton Pipelines"
-linkTitle: "Tekton Pipelines"
+linkTitle: "Install Tekton Pipelines"
 weight: 101
 description: >
   Install Tekton Pipelines on your cluster

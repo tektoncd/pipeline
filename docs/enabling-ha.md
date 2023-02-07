@@ -1,7 +1,7 @@
 <!--
 ---
-linkTitle: "HA Support"
-weight: 1500
+linkTitle: "High Availability Support"
+weight: 106
 ---
 -->
 

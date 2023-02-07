@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "Labels and Annotations"
-weight: 1300
+weight: 305
 ---
 -->
+
 # Labels and Annotations
 
 Tekton allows you to use custom [Kubernetes Labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)

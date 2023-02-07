@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "Logs"
-weight: 1100
+weight: 303
 ---
 -->
+
 # Execution Logs
 
 Tekton stores execution logs for [`TaskRuns`](taskruns.md) and [`PipelineRuns`](pipelineruns.md) within

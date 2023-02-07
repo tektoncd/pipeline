@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "Git Resolver"
+weight: 309
+---
+-->
+
 # Simple Git Resolver
 
 ## Resolver Type

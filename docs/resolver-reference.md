@@ -1,3 +1,10 @@
+<!--
+---
+linkTitle: "Resolver Reference"
+weight: 101
+---
+-->
+
 # Resolver Reference
 
 Writing a resolver is made easier with the

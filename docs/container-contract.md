@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "Container Contract"
-weight: 1700
+weight: 401
 ---
 -->
+
 # Container Contract
 
 Each container image that executes a `Step` in a [`Task`](tasks.md) must

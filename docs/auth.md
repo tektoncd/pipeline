@@ -1,9 +1,10 @@
 <!--
 ---
 linkTitle: "Authentication"
-weight: 1000
+weight: 301
 ---
 -->
+
 # Authentication at Run Time
 
 This document describes how Tekton handles authentication when executing
