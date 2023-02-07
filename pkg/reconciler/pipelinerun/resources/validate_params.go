@@ -20,11 +20,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
-	"github.com/tektoncd/pipeline/pkg/substitution"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -91,39 +89,51 @@ func ValidateObjectParamRequiredKeys(pipelineParameters []v1beta1.ParamSpec, pip
 
 // ValidateParamArrayIndex validate if the array indexing param reference target is existent
 func ValidateParamArrayIndex(ctx context.Context, p *v1beta1.PipelineSpec, pr *v1beta1.PipelineRun) error {
-	if !config.CheckAlphaOrBetaAPIFields(ctx) {
-		return nil
-	}
-
 	arrayParams := extractParamIndexes(p.Params, pr.Spec.Params)
 
 	outofBoundParams := sets.String{}
 
 	// collect all the references
 	for i := range p.Tasks {
-		findInvalidParamArrayReferences(p.Tasks[i].Params, arrayParams, &outofBoundParams)
+		if err := findInvalidParamArrayReferences(ctx, p.Tasks[i].Params, arrayParams, &outofBoundParams); err != nil {
+			return err
+		}
 		if p.Tasks[i].IsMatrixed() {
-			findInvalidParamArrayReferences(p.Tasks[i].Matrix.Params, arrayParams, &outofBoundParams)
+			if err := findInvalidParamArrayReferences(ctx, p.Tasks[i].Matrix.Params, arrayParams, &outofBoundParams); err != nil {
+				return err
+			}
 		}
 		for j := range p.Tasks[i].Workspaces {
-			findInvalidParamArrayReference(p.Tasks[i].Workspaces[j].SubPath, arrayParams, &outofBoundParams)
+			if err := taskrun.FindInvalidParamArrayReference(ctx, p.Tasks[i].Workspaces[j].SubPath, arrayParams, &outofBoundParams); err != nil {
+				return err
+			}
 		}
 		for _, wes := range p.Tasks[i].WhenExpressions {
-			findInvalidParamArrayReference(wes.Input, arrayParams, &outofBoundParams)
+			if err := taskrun.FindInvalidParamArrayReference(ctx, wes.Input, arrayParams, &outofBoundParams); err != nil {
+				return err
+			}
 			for _, v := range wes.Values {
-				findInvalidParamArrayReference(v, arrayParams, &outofBoundParams)
+				if err := taskrun.FindInvalidParamArrayReference(ctx, v, arrayParams, &outofBoundParams); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
 	for i := range p.Finally {
-		findInvalidParamArrayReferences(p.Finally[i].Params, arrayParams, &outofBoundParams)
+		if err := findInvalidParamArrayReferences(ctx, p.Finally[i].Params, arrayParams, &outofBoundParams); err != nil {
+			return err
+		}
 		if p.Finally[i].IsMatrixed() {
-			findInvalidParamArrayReferences(p.Finally[i].Matrix.Params, arrayParams, &outofBoundParams)
+			if err := findInvalidParamArrayReferences(ctx, p.Finally[i].Matrix.Params, arrayParams, &outofBoundParams); err != nil {
+				return err
+			}
 		}
 		for _, wes := range p.Finally[i].WhenExpressions {
 			for _, v := range wes.Values {
-				findInvalidParamArrayReference(v, arrayParams, &outofBoundParams)
+				if err := taskrun.FindInvalidParamArrayReference(ctx, v, arrayParams, &outofBoundParams); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -170,28 +180,22 @@ func extractParamIndexes(defaults []v1beta1.ParamSpec, params []v1beta1.Param) m
 	return arrayParams
 }
 
-func findInvalidParamArrayReferences(params []v1beta1.Param, arrayParams map[string]int, outofBoundParams *sets.String) {
+// findInvalidParamArrayReferences validates all the params' array indexing references and check if they are valid
+func findInvalidParamArrayReferences(ctx context.Context, params []v1beta1.Param, arrayParams map[string]int, outofBoundParams *sets.String) error {
 	for i := range params {
-		findInvalidParamArrayReference(params[i].Value.StringVal, arrayParams, outofBoundParams)
+		if err := taskrun.FindInvalidParamArrayReference(ctx, params[i].Value.StringVal, arrayParams, outofBoundParams); err != nil {
+			return err
+		}
 		for _, v := range params[i].Value.ArrayVal {
-			findInvalidParamArrayReference(v, arrayParams, outofBoundParams)
+			if err := taskrun.FindInvalidParamArrayReference(ctx, v, arrayParams, outofBoundParams); err != nil {
+				return err
+			}
 		}
 		for _, v := range params[i].Value.ObjectVal {
-			findInvalidParamArrayReference(v, arrayParams, outofBoundParams)
-		}
-	}
-}
-
-func findInvalidParamArrayReference(paramReference string, arrayParams map[string]int, outofBoundParams *sets.String) {
-	list := substitution.ExtractParamsExpressions(paramReference)
-	for _, val := range list {
-		indexString := substitution.ExtractIndexString(paramReference)
-		idx, _ := substitution.ExtractIndex(indexString)
-		v := substitution.TrimArrayIndex(val)
-		if paramLength, ok := arrayParams[v]; ok {
-			if idx >= paramLength {
-				outofBoundParams.Insert(val)
+			if err := taskrun.FindInvalidParamArrayReference(ctx, v, arrayParams, outofBoundParams); err != nil {
+				return err
 			}
 		}
 	}
+	return nil
 }

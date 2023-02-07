@@ -506,15 +506,12 @@ func TestValidateParamArrayIndex_valid(t *testing.T) {
 }
 
 func TestValidateParamArrayIndex_invalid(t *testing.T) {
-	ctx := context.Background()
-	cfg := config.FromContextOrDefaults(ctx)
-	cfg.FeatureFlags.EnableAPIFields = config.BetaAPIFields
-	ctx = config.ToContext(ctx, cfg)
 	for _, tt := range []struct {
-		name     string
-		original v1beta1.PipelineSpec
-		params   []v1beta1.Param
-		expected error
+		name      string
+		original  v1beta1.PipelineSpec
+		params    []v1beta1.Param
+		apifields string
+		expected  error
 	}{{
 		name: "single parameter reference out of bound",
 		original: v1beta1.PipelineSpec{
@@ -698,11 +695,38 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 		},
 		params:   []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
 		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[3])]"),
+	}, {
+		name: "alpha gate not enabled",
+		original: v1beta1.PipelineSpec{
+			Params: []v1beta1.ParamSpec{
+				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
+				{Name: "second-param", Type: v1beta1.ParamTypeArray},
+			},
+			Tasks: []v1beta1.PipelineTask{{
+				Params: []v1beta1.Param{
+					{Name: "first-task-first-param", Value: *v1beta1.NewStructuredValues("$(params.first-param[2])")},
+					{Name: "first-task-second-param", Value: *v1beta1.NewStructuredValues("static value")},
+				},
+				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{
+					{
+						Name:      "first-workspace",
+						Workspace: "first-workspace",
+						SubPath:   "$(params.second-param[3])",
+					},
+				},
+			}},
+		},
+		params:    []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
+		apifields: "stable",
+		expected:  fmt.Errorf(`indexing into array param %s requires "enable-api-fields" feature gate to be "alpha" or "beta"`, "$(params.first-param[2])"),
 	},
 	} {
 		tt := tt // capture range variable
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+			ctx := context.Background()
+			if tt.apifields != "stable" {
+				ctx = config.ToContext(ctx, &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "beta"}})
+			}
 			run := &v1beta1.PipelineRun{
 				Spec: v1beta1.PipelineRunSpec{
 					Params: tt.params,

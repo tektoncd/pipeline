@@ -952,6 +952,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		name          string
 		params        []v1beta1.Param
 		taskspec      *v1beta1.TaskSpec
+		apifields     string
 		expectedError error
 	}{{
 		name: "steps reference invalid",
@@ -1120,11 +1121,32 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			},
 		},
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
+	}, {
+		name: "alpha gate not enabled",
+		params: []v1beta1.Param{{
+			Name:  "array-params",
+			Value: *v1beta1.NewStructuredValues("bar", "foo"),
+		}},
+		taskspec: &v1beta1.TaskSpec{
+			Params: []v1beta1.ParamSpec{{
+				Name:    "array-params",
+				Default: v1beta1.NewStructuredValues("bar", "foo"),
+			}},
+			Sidecars: []v1beta1.Sidecar{{
+				Script: "$(params.array-params[3])",
+			},
+			},
+		},
+		apifields:     config.StableAPIFields,
+		expectedError: fmt.Errorf(`indexing into array param %s requires "enable-api-fields" feature gate to be "alpha" or "beta"`, "$(params.array-params[3])"),
 	},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := config.ToContext(context.Background(), &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
+			ctx := context.Background()
+			if tc.apifields != config.StableAPIFields {
+				ctx = config.ToContext(ctx, &config.Config{FeatureFlags: &config.FeatureFlags{EnableAPIFields: "alpha"}})
+			}
 			err := validateParamArrayIndex(ctx, tc.params, tc.taskspec)
 			if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
 				t.Errorf("validateParamArrayIndex() errors diff %s", diff.PrintWantGot(d))
