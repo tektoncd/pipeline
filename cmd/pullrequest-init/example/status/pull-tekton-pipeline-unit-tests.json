@@ -1,6 +1,0 @@
-{
-  "State": "pending",
-  "Label": "pull-tekton-pipeline-unit-tests",
-  "Desc": "Job triggered.",
-  "Target": "https://tekton-releases.appspot.com/build/tekton-prow/pr-logs/pull/tektoncd_pipeline/995/pull-tekton-pipeline-unit-tests/1146102490727452673/"
-}

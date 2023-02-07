@@ -15,7 +15,6 @@ func TestValidate(t *testing.T) {
 		ShellImage:               "set",
 		ShellImageWin:            "set",
 		GsutilImage:              "set",
-		PRImage:                  "set",
 		ImageDigestExporterImage: "set",
 		WorkingDirInitImage:      "set",
 	}
@@ -31,10 +30,9 @@ func TestValidate(t *testing.T) {
 		ShellImage:               "", // unset!
 		ShellImageWin:            "set",
 		GsutilImage:              "set",
-		PRImage:                  "", // unset!
 		ImageDigestExporterImage: "set",
 	}
-	wantErr := "found unset image flags: [git-image pr-image shell-image workingdirinit-image]"
+	wantErr := "found unset image flags: [git-image shell-image workingdirinit-image]"
 	if err := invalid.Validate(); err == nil {
 		t.Error("invalid Images expected error, got nil")
 	} else if err.Error() != wantErr {

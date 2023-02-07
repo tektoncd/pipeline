@@ -92,7 +92,6 @@ var (
 		GitImage:                 "override-with-git:latest",
 		ShellImage:               "busybox",
 		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-		PRImage:                  "override-with-pr:latest",
 		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
 	}
 	now                      = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
