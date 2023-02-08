@@ -22,7 +22,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/git"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 )
@@ -32,8 +31,6 @@ import (
 // a PipelineResource in a pod.
 func FromType(name string, r *resourcev1alpha1.PipelineResource, images pipeline.Images) (pipelinev1beta1.PipelineResourceInterface, error) {
 	switch r.Spec.Type {
-	case resourcev1alpha1.PipelineResourceTypeGit:
-		return git.NewResource(name, images.GitImage, r)
 	case resourcev1alpha1.PipelineResourceTypeImage:
 		return image.NewResource(name, r)
 	case resourcev1alpha1.PipelineResourceTypeStorage:

@@ -660,7 +660,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		name: "invalid pipeline with pipeline task having reference to resources which does not exist",
 		ps: &PipelineSpec{
 			Resources: []PipelineDeclaredResource{{
-				Name: "great-resource", Type: PipelineResourceTypeGit,
+				Name: "great-resource", Type: "invalid type",
 			}, {
 				Name: "wonderful-resource", Type: PipelineResourceTypeImage,
 			}},
@@ -693,7 +693,7 @@ func TestPipelineSpec_Validate_Failure(t *testing.T) {
 		name: "invalid pipeline spec - from referring to a pipeline task which does not exist",
 		ps: &PipelineSpec{
 			Resources: []PipelineDeclaredResource{{
-				Name: "great-resource", Type: PipelineResourceTypeGit,
+				Name: "great-resource", Type: PipelineResourceTypeImage,
 			}},
 			Tasks: []PipelineTask{{
 				Name: "baz", TaskRef: &TaskRef{Name: "baz-task"},
@@ -953,17 +953,12 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 	}{{
 		name: "valid resource declarations and usage",
 		resources: []PipelineDeclaredResource{{
-			Name: "great-resource", Type: PipelineResourceTypeGit,
-		}, {
 			Name: "wonderful-resource", Type: PipelineResourceTypeImage,
 		}},
 		tasks: []PipelineTask{{
 			Name:    "bar",
 			TaskRef: &TaskRef{Name: "bar-task"},
 			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					Name: "some-workspace", Resource: "great-resource",
-				}},
 				Outputs: []PipelineTaskOutputResource{{
 					Name: "some-imagee", Resource: "wonderful-resource",
 				}},
@@ -980,11 +975,7 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 	}, {
 		name: "valid resource declarations with extra resources, not used in any pipeline task",
 		resources: []PipelineDeclaredResource{{
-			Name: "great-resource", Type: PipelineResourceTypeGit,
-		}, {
 			Name: "awesome-resource", Type: PipelineResourceTypeImage,
-		}, {
-			Name: "yet-another-great-resource", Type: PipelineResourceTypeGit,
 		}, {
 			Name: "yet-another-awesome-resource", Type: PipelineResourceTypeImage,
 		}},
@@ -992,9 +983,6 @@ func TestValidateDeclaredResources_Success(t *testing.T) {
 			Name:    "foo",
 			TaskRef: &TaskRef{Name: "foo-task"},
 			Resources: &PipelineTaskResources{
-				Inputs: []PipelineTaskInputResource{{
-					Name: "the-resource", Resource: "great-resource",
-				}},
 				Outputs: []PipelineTaskOutputResource{{
 					Name: "the-awesome-resource", Resource: "awesome-resource",
 				}},
@@ -1020,9 +1008,9 @@ func TestValidateDeclaredResources_Failure(t *testing.T) {
 	}{{
 		name: "duplicate resource declaration - resource declarations must be unique",
 		resources: []PipelineDeclaredResource{{
-			Name: "duplicate-resource", Type: PipelineResourceTypeGit,
+			Name: "duplicate-resource", Type: PipelineResourceTypeImage,
 		}, {
-			Name: "duplicate-resource", Type: PipelineResourceTypeGit,
+			Name: "duplicate-resource", Type: PipelineResourceTypeImage,
 		}},
 		tasks: []PipelineTask{{
 			Name:    "foo",
@@ -1040,7 +1028,7 @@ func TestValidateDeclaredResources_Failure(t *testing.T) {
 	}, {
 		name: "output resource is missing from resource declarations",
 		resources: []PipelineDeclaredResource{{
-			Name: "great-resource", Type: PipelineResourceTypeGit,
+			Name: "great-resource", Type: PipelineResourceTypeImage,
 		}},
 		tasks: []PipelineTask{{
 			Name:    "foo",
@@ -1061,7 +1049,7 @@ func TestValidateDeclaredResources_Failure(t *testing.T) {
 	}, {
 		name: "input resource is missing from resource declarations",
 		resources: []PipelineDeclaredResource{{
-			Name: "great-resource", Type: PipelineResourceTypeGit,
+			Name: "great-resource", Type: PipelineResourceTypeImage,
 		}},
 		tasks: []PipelineTask{{
 			Name:    "foo",
@@ -2378,7 +2366,7 @@ func TestValidatePipelineWithFinalTasks_Success(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "pipeline"},
 			Spec: PipelineSpec{
 				Resources: []PipelineDeclaredResource{{
-					Name: "great-resource", Type: PipelineResourceTypeGit,
+					Name: "great-resource", Type: PipelineResourceTypeImage,
 				}, {
 					Name: "wonderful-resource", Type: PipelineResourceTypeImage,
 				}},

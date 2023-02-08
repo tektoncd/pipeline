@@ -33,13 +33,6 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var validResource = v1beta1.TaskResource{
-	ResourceDeclaration: v1beta1.ResourceDeclaration{
-		Name: "validsource",
-		Type: "git",
-	},
-}
-
 var invalidResource = v1beta1.TaskResource{
 	ResourceDeclaration: v1beta1.ResourceDeclaration{
 		Name: "invalidsource",
@@ -186,22 +179,6 @@ func TestTaskSpecValidate(t *testing.T) {
 			}, {
 				Image: "myotherimage",
 			}},
-		},
-	}, {
-		name: "valid input resources",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{validResource},
-			},
-			Steps: validSteps,
-		},
-	}, {
-		name: "valid output resources",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{validResource},
-			},
-			Steps: validSteps,
 		},
 	}, {
 		name: "valid params type implied",
@@ -592,31 +569,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 			Paths:   []string{"resources.inputs[0].invalidsource.type"},
 		},
 	}, {
-		name: "one invalid input resource",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{validResource, invalidResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: what`,
-			Paths:   []string{"resources.inputs[1].invalidsource.type"},
-		},
-	}, {
-		name: "duplicated inputs resources",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs:  []v1beta1.TaskResource{validResource, validResource},
-				Outputs: []v1beta1.TaskResource{validResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `expected exactly one, got both`,
-			Paths:   []string{"resources.inputs.name"},
-		},
-	}, {
 		name: "invalid output resource",
 		fields: fields{
 			Resources: &v1beta1.TaskResources{
@@ -627,31 +579,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `invalid value: what`,
 			Paths:   []string{"resources.outputs[0].invalidsource.type"},
-		},
-	}, {
-		name: "one invalid output resource",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{validResource, invalidResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: what`,
-			Paths:   []string{"resources.outputs[1].invalidsource.type"},
-		},
-	}, {
-		name: "duplicated outputs resources",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs:  []v1beta1.TaskResource{validResource},
-				Outputs: []v1beta1.TaskResource{validResource, validResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `expected exactly one, got both`,
-			Paths:   []string{"resources.outputs.name"},
 		},
 	}, {
 		name: "invalid param name format",

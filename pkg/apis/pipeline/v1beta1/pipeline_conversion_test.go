@@ -187,11 +187,11 @@ func TestPipelineConversionFromDeprecated(t *testing.T) {
 				Resources: []v1beta1.PipelineDeclaredResource{
 					{
 						Name:     "1st pipeline resource",
-						Type:     v1beta1.PipelineResourceTypeGit,
+						Type:     v1beta1.PipelineResourceTypeImage,
 						Optional: true,
 					}, {
 						Name:     "2nd pipeline resource",
-						Type:     v1beta1.PipelineResourceTypeGit,
+						Type:     v1beta1.PipelineResourceTypeImage,
 						Optional: false,
 					},
 				},
@@ -205,11 +205,11 @@ func TestPipelineConversionFromDeprecated(t *testing.T) {
 				Resources: []v1beta1.PipelineDeclaredResource{
 					{
 						Name:     "1st pipeline resource",
-						Type:     v1beta1.PipelineResourceTypeGit,
+						Type:     v1beta1.PipelineResourceTypeImage,
 						Optional: true,
 					}, {
 						Name:     "2nd pipeline resource",
-						Type:     v1beta1.PipelineResourceTypeGit,
+						Type:     v1beta1.PipelineResourceTypeImage,
 						Optional: false,
 					},
 				},

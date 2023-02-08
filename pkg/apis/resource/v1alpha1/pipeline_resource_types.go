@@ -29,14 +29,10 @@ var (
 	// AllowedOutputResources are the resource types that can be used as outputs
 	AllowedOutputResources = map[PipelineResourceType]bool{
 		PipelineResourceTypeStorage: true,
-		PipelineResourceTypeGit:     true,
 	}
 )
 
 const (
-	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
-	PipelineResourceTypeGit PipelineResourceType = "git"
-
 	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
 	PipelineResourceTypeStorage PipelineResourceType = "storage"
 
@@ -48,7 +44,7 @@ const (
 )
 
 // AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeGit, PipelineResourceTypeStorage, PipelineResourceTypeImage}
+var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeStorage, PipelineResourceTypeImage}
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -708,27 +708,10 @@ var (
 		},
 	}
 
-	inputs = map[string]v1beta1.PipelineResourceInterface{
-		"workspace": gitResource,
-	}
-
 	outputs = map[string]v1beta1.PipelineResourceInterface{
 		"imageToUse": imageResource,
 		"bucket":     gcsResource,
 	}
-
-	gitResource, _ = resource.FromType("git-resource", &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "git-resource",
-		},
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "https://git-repo",
-			}},
-		},
-	}, images)
 
 	imageResource, _ = resource.FromType("image-resource", &resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
@@ -1100,19 +1083,6 @@ func TestApplyResources(t *testing.T) {
 		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
 			spec.Steps[4].WorkingDir = "/workspace/workspace"
-			spec.Steps[8].Image = "/foo/builtImage"
-			spec.Steps[9].Image = "/workspace/foo/builtImage"
-		}),
-	}, {
-		name: "input resource specified",
-		ts:   simpleTaskSpec,
-		r:    inputs,
-		rStr: "inputs",
-		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
-			spec.Steps[1].WorkingDir = "/workspace/workspace"
-			spec.Steps[1].Args = []string{"https://git-repo"}
-			spec.Steps[4].WorkingDir = "/workspace/workspace"
-			spec.Steps[4].Args = []string{"https://git-repo"}
 			spec.Steps[8].Image = "/foo/builtImage"
 			spec.Steps[9].Image = "/workspace/foo/builtImage"
 		}),

@@ -1019,7 +1019,7 @@ func TestResources_Invalidate(t *testing.T) {
 						Name: "testresource",
 					},
 					ResourceSpec: &resource.PipelineResourceSpec{
-						Type: v1beta1.PipelineResourceTypeGit,
+						Type: v1beta1.PipelineResourceTypeImage,
 					},
 					Name: "resource-dup",
 				},
@@ -1078,7 +1078,7 @@ func TestResources_Invalidate(t *testing.T) {
 						Name: "testresource",
 					},
 					ResourceSpec: &resource.PipelineResourceSpec{
-						Type: v1beta1.PipelineResourceTypeGit,
+						Type: v1beta1.PipelineResourceTypeImage,
 					},
 					Name: "resource-dup",
 				},

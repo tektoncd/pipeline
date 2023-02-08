@@ -2584,7 +2584,7 @@ spec:
     inputs:
       - name: workspace
         type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit))
+`, resourcev1alpha1.PipelineResourceTypeImage))
 
 	taskrun := parse.MustParseV1beta1TaskRun(t, `
 metadata:

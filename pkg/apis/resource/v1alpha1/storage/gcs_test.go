@@ -51,7 +51,7 @@ func TestInvalidNewStorageResource(t *testing.T) {
 				Name: "gcs-resource",
 			},
 			Spec: resourcev1alpha1.PipelineResourceSpec{
-				Type: resourcev1alpha1.PipelineResourceTypeGit,
+				Type: resourcev1alpha1.PipelineResourceTypeGCS,
 			},
 		},
 	}, {

@@ -241,11 +241,6 @@ var v1alpha1Runs = []v1alpha1.Run{{
 	Spec: v1alpha1.RunSpec{},
 }}
 
-var gitDeclaredResource = v1beta1.PipelineDeclaredResource{
-	Name: "git-resource",
-	Type: resourcev1alpha1.PipelineResourceTypeGit,
-}
-
 var gitSweetResourceBinding = v1beta1.PipelineResourceBinding{
 	Name:        "git-resource",
 	ResourceRef: &v1beta1.PipelineResourceRef{Name: "sweet-resource"},
@@ -1969,7 +1964,7 @@ func TestResolvePipelineRun(t *testing.T) {
 	p := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelines"},
 		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{gitDeclaredResource},
+			Resources: []v1beta1.PipelineDeclaredResource{},
 			Tasks: []v1beta1.PipelineTask{
 				{
 					Name:    "mytask1",
@@ -2018,7 +2013,7 @@ func TestResolvePipelineRun(t *testing.T) {
 			Name: "someresource",
 		},
 		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
+			Type: resourcev1alpha1.PipelineResourceTypeImage,
 		},
 	}
 	providedResources := map[string]*resourcev1alpha1.PipelineResource{"git-resource": r}
@@ -2356,7 +2351,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 	p := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelines"},
 		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{gitDeclaredResource},
+			Resources: []v1beta1.PipelineDeclaredResource{},
 			Tasks: []v1beta1.PipelineTask{{
 				Name: "mytask-with-a-really-long-name-to-trigger-truncation",
 				TaskRef: &v1beta1.TaskRef{
@@ -2377,7 +2372,7 @@ func TestResolvePipelineRun_withExistingTaskRuns(t *testing.T) {
 			Name: "someresource",
 		},
 		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
+			Type: resourcev1alpha1.PipelineResourceTypeImage,
 		},
 	}
 	providedResources := map[string]*resourcev1alpha1.PipelineResource{"git-resource": r}
@@ -2456,7 +2451,7 @@ func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 			Name: "someresource",
 		},
 		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
+			Type: resourcev1alpha1.PipelineResourceTypeImage,
 		},
 	}
 	providedResources := map[string]*resourcev1alpha1.PipelineResource{"git-resource": r}
@@ -2496,32 +2491,11 @@ func TestResolvedPipelineRun_PipelineTaskHasOptionalResources(t *testing.T) {
 	}
 }
 
-func TestValidateResourceBindings(t *testing.T) {
-	p := &v1beta1.Pipeline{
-		ObjectMeta: metav1.ObjectMeta{Name: "pipelines"},
-		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{gitDeclaredResource},
-		},
-	}
-	pr := &v1beta1.PipelineRun{
-		ObjectMeta: metav1.ObjectMeta{Name: "pipelinerun"},
-		Spec: v1beta1.PipelineRunSpec{
-			PipelineRef: &v1beta1.PipelineRef{Name: "pipeline"},
-			Resources:   []v1beta1.PipelineResourceBinding{gitSweetResourceBinding},
-		},
-	}
-	err := ValidateResourceBindings(&p.Spec, pr)
-	if err != nil {
-		t.Fatalf("didn't expect error getting resources from bindings but got: %v", err)
-	}
-}
-
 func TestValidateResourceBindings_Missing(t *testing.T) {
 	p := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelines"},
 		Spec: v1beta1.PipelineSpec{
 			Resources: []v1beta1.PipelineDeclaredResource{
-				gitDeclaredResource,
 				{
 					Name: "image-resource",
 					Type: resourcev1alpha1.PipelineResourceTypeImage,
@@ -2546,7 +2520,7 @@ func TestGetResourcesFromBindings_Extra(t *testing.T) {
 	p := &v1beta1.Pipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: "pipelines"},
 		Spec: v1beta1.PipelineSpec{
-			Resources: []v1beta1.PipelineDeclaredResource{gitDeclaredResource},
+			Resources: []v1beta1.PipelineDeclaredResource{},
 		},
 	}
 	pr := &v1beta1.PipelineRun{

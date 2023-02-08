@@ -84,21 +84,6 @@ of variables. This section lists the variables exposed by each type. You can acc
 variable via `resources.inputs.<resourceName>.<variableName>` or
 `resources.outputs.<resourceName>.<variableName>`.
 
-#### Variables for the `Git` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"git"`. |
-| `url` | The URL of the Git repository. |
-| `revision` | The revision to check out. |
-| `refspec` | The value of the resource's `refspec` parameter. |
-| `depth` | The integer value of the resource's `depth` parameter. |
-| `sslVerify` | The value of the resource's `sslVerify` parameter, either `"true"` or `"false"`. |
-| `httpProxy` | The value of the resource's `httpProxy` parameter. |
-| `httpsProxy` | The value of the resource's `httpsProxy` parameter. |
-| `noProxy` | The value of the resource's `noProxy` parameter. |
-
 #### Variables for the `Image` type
 
 | Variable | Description |
