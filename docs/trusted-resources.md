@@ -63,10 +63,11 @@ kubectl patch configmap feature-flags -n tekton-pipelines -p='{"data":{"resource
 ```
 
 
-#### Config key at configmap (will be deprecated)
-Multiple keys reference should be separated by comma. If the resource can pass any key in the list, it will pass the verification.
+#### Config key at configmap (Deprecated)
 
-**Note:** key configuration in configmap will be deprecated, the issue [#5852](https://github.com/tektoncd/pipeline/issues/5852) will track the deprecation.
+**Note:** key configuration in configmap is deprecated, the issue [#5852](https://github.com/tektoncd/pipeline/issues/5852) will track the deprecation. Please use [VerificationPolicy](#config-key-at-verificationpolicy) instead.
+
+Multiple keys reference should be separated by comma. If the resource can pass any key in the list, it will pass the verification.
 
 We currently hardcode SHA256 as hashfunc for loading public keys as verifiers.
 
