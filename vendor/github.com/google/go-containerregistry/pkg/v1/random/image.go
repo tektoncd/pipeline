@@ -22,7 +22,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	mrand "math/rand"
 	"time"
 
@@ -47,7 +46,7 @@ func (ul *uncompressedLayer) DiffID() (v1.Hash, error) {
 
 // Uncompressed implements partial.UncompressedLayer
 func (ul *uncompressedLayer) Uncompressed() (io.ReadCloser, error) {
-	return ioutil.NopCloser(bytes.NewBuffer(ul.content)), nil
+	return io.NopCloser(bytes.NewBuffer(ul.content)), nil
 }
 
 // MediaType returns the media type of the layer
