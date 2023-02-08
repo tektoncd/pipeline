@@ -315,12 +315,12 @@ func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, erro
 
 // EnableAlphaAPIFields enables alpha features in an existing context (for use in testing)
 func EnableAlphaAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, "alpha")
+	return setEnableAPIFields(ctx, AlphaAPIFields)
 }
 
 // EnableBetaAPIFields enables beta features in an existing context (for use in testing)
 func EnableBetaAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, "beta")
+	return setEnableAPIFields(ctx, BetaAPIFields)
 }
 
 // CheckEnforceResourceVerificationMode returns true if the ResourceVerificationMode is EnforceResourceVerificationMode
