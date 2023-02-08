@@ -99,6 +99,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(ValidateResourcesVariables(ctx, ts.Steps, ts.Resources))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
+	errs = errs.Also(validateTaskResultsVariables(ctx, ts.Steps, ts.Results))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
 	return errs
 }
@@ -406,6 +407,18 @@ func validateTaskContextVariables(ctx context.Context, steps []Step) *apis.Field
 	)
 	errs := validateVariables(ctx, steps, "context\\.taskRun", taskRunContextNames)
 	return errs.Also(validateVariables(ctx, steps, "context\\.task", taskContextNames))
+}
+
+// validateTaskResultsVariables validates if the results referenced in step script are defined in task results
+func validateTaskResultsVariables(ctx context.Context, steps []Step, results []TaskResult) (errs *apis.FieldError) {
+	resultsNames := sets.NewString()
+	for _, r := range results {
+		resultsNames.Insert(r.Name)
+	}
+	for idx, step := range steps {
+		errs = errs.Also(validateTaskVariable(step.Script, "results", resultsNames).ViaField("script").ViaFieldIndex("steps", idx))
+	}
+	return errs
 }
 
 // ValidateResourcesVariables validates all variables within a TaskResources against a slice of Steps
