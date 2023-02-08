@@ -3058,7 +3058,7 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 							Value: v1.ParamValue{Type: v1.ParamTypeArray, ArrayVal: []string{"qux", "baz"}},
 						}}},
 				},
-				TaskRuns: []*v1.TaskRun{nil, nil, nil, nil},
+				TaskRuns: []*v1.TaskRun{},
 			}},
 			childRefs: nil,
 		},
@@ -3259,10 +3259,127 @@ func TestPipelineRunState_GetChildReferences(t *testing.T) {
 				}},
 			}},
 		},
+		{
+			name: "whenexpressions-reference-task-results",
+			state: PipelineRunState{
+				{
+					TaskRunNames: []string{"task-generate-results"},
+					PipelineTask: &v1.PipelineTask{
+						Name: "task1",
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "task-generate-results",
+							},
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{Conditions: []apis.Condition{{
+									Type:   apis.ConditionSucceeded,
+									Status: corev1.ConditionTrue,
+								}}},
+								TaskRunStatusFields: v1.TaskRunStatusFields{
+									Results: []v1.TaskRunResult{
+										{
+											Name: "string-result",
+											Value: v1.ResultValue{
+												StringVal: "value1",
+												Type:      v1.ParamTypeString,
+											},
+										},
+										{
+											Name: "array-result",
+											Value: v1.ResultValue{
+												ArrayVal: []string{
+													"array-value1",
+													"array-value2",
+												},
+												Type: v1.ParamTypeArray,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					TaskRunNames: []string{"task-reference-previous-result"},
+					PipelineTask: &v1.PipelineTask{
+						Name: "task2",
+						When: []v1.WhenExpression{
+							{
+								Input:    "$(tasks.task1.results.string-result)",
+								Operator: selection.In,
+								Values:   []string{"value1"},
+							},
+							{
+								Input:    "$(tasks.task1.results.array-result[1])",
+								Operator: selection.In,
+								Values:   []string{"array-value2"},
+							},
+						},
+					},
+					TaskRuns: []*v1.TaskRun{
+						{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "task-reference-previous-result",
+							},
+							Status: v1.TaskRunStatus{
+								Status: duckv1.Status{Conditions: []apis.Condition{{
+									Type:   apis.ConditionSucceeded,
+									Status: corev1.ConditionFalse,
+								}}},
+							},
+						},
+					},
+				},
+			},
+			childRefs: []v1.ChildStatusReference{
+				{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "tekton.dev/v1",
+						Kind:       "TaskRun",
+					},
+					Name:             "task-generate-results",
+					PipelineTaskName: "task1",
+				},
+				{
+					TypeMeta: runtime.TypeMeta{
+						APIVersion: "tekton.dev/v1",
+						Kind:       "TaskRun",
+					},
+					Name:             "task-reference-previous-result",
+					PipelineTaskName: "task2",
+					WhenExpressions: []v1.WhenExpression{
+						{
+							Input:    "value1",
+							Operator: selection.In,
+							Values:   []string{"value1"},
+						},
+						{
+							Input:    "array-value2",
+							Operator: selection.In,
+							Values:   []string{"array-value2"},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			childRefs := tc.state.GetChildReferences()
+			d, err := dagFromState(tc.state)
+			if err != nil {
+				t.Fatalf("Unexpected error while building DAG for state %v: %v", tc.state, err)
+			}
+			childRefs := (&PipelineRunFacts{
+				State:           tc.state,
+				TasksGraph:      d,
+				FinalTasksGraph: &dag.Graph{},
+				TimeoutsState: PipelineRunTimeoutsState{
+					Clock: testClock,
+				},
+			}).GetChildReferences()
 			if d := cmp.Diff(tc.childRefs, childRefs); d != "" {
 				t.Errorf("Didn't get expected child references for %s: %s", tc.name, diff.PrintWantGot(d))
 			}

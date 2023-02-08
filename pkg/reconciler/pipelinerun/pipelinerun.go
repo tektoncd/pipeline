@@ -700,7 +700,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1.PipelineRun, getPipel
 	after = pr.Status.GetCondition(apis.ConditionSucceeded)
 	pr.Status.StartTime = pipelineRunFacts.State.AdjustStartTime(pr.Status.StartTime)
 
-	pr.Status.ChildReferences = pipelineRunFacts.State.GetChildReferences()
+	pr.Status.ChildReferences = pipelineRunFacts.GetChildReferences()
 
 	pr.Status.SkippedTasks = pipelineRunFacts.GetSkippedTasks()
 	if after.Status == corev1.ConditionTrue || after.Status == corev1.ConditionFalse {

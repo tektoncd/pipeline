@@ -188,10 +188,18 @@ func (state PipelineRunState) GetRunsResults() map[string][]v1beta1.CustomRunRes
 
 // GetChildReferences returns a slice of references, including version, kind, name, and pipeline task name, for all
 // TaskRuns and Runs in the state.
-func (state PipelineRunState) GetChildReferences() []v1.ChildStatusReference {
+func (facts *PipelineRunFacts) GetChildReferences() []v1.ChildStatusReference {
 	var childRefs []v1.ChildStatusReference
 
-	for _, rpt := range state {
+	for _, rpt := range facts.State {
+		// try to replace the parameters of the reference result of whenexpression in the taskrun that has ended
+		if rpt.isDone(facts) {
+			resolvedResultRefs, _, err := ResolveResultRefs(facts.State, PipelineRunState{rpt})
+			if err == nil {
+				ApplyTaskResults(facts.State, resolvedResultRefs)
+			}
+		}
+
 		switch {
 		case len(rpt.TaskRuns) != 0:
 			for _, taskRun := range rpt.TaskRuns {
