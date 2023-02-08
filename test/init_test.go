@@ -309,6 +309,15 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
+	v1beta1CustomRuns, err := cs.V1beta1CustomRunClient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not get v1beta1 customruns: %v", err)
+	}
+	for _, i := range v1beta1CustomRuns.Items {
+		i.SetManagedFields(nil)
+		printOrAdd(i)
+	}
+
 	pods, err := cs.KubeClient.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get pods: %w", err)
