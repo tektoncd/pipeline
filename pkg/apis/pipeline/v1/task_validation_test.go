@@ -289,6 +289,18 @@ func TestTaskSpecValidate(t *testing.T) {
 			}},
 		},
 	}, {
+		name: "valid results path variable in script",
+		fields: fields{
+			Steps: []v1.Step{{
+				Name:  "step-name",
+				Image: "my-image",
+				Script: `
+				#!/usr/bin/env bash
+				date | tee $(results.a-result.path)`,
+			}},
+			Results: []v1.TaskResult{{Name: "a-result"}},
+		},
+	}, {
 		name: "valid path variable for legacy credential helper (aka creds-init)",
 		fields: fields{
 			Steps: []v1.Step{{
@@ -540,6 +552,22 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `missing field(s)`,
 			Paths:   []string{"steps"},
+		},
+	}, {
+		name: "step script refers to nonexistent result",
+		fields: fields{
+			Steps: []v1.Step{{
+				Name:  "step-name",
+				Image: "my-image",
+				Script: `
+				#!/usr/bin/env bash
+				date | tee $(results.non-exist.path)`,
+			}},
+			Results: []v1.TaskResult{{Name: "a-result"}},
+		},
+		expectedError: apis.FieldError{
+			Message: `non-existent variable in "\n\t\t\t\t#!/usr/bin/env bash\n\t\t\t\tdate | tee $(results.non-exist.path)"`,
+			Paths:   []string{"steps[0].script"},
 		},
 	}, {
 		name: "invalid param name format",
