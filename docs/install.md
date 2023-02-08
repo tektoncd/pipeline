@@ -22,6 +22,7 @@ This guide explains how to install Tekton Pipelines.
 ## Prerequisites
 
 -   A [Kubernetes cluster][k8s] running version 1.23 or later.
+-   If you are running on `macOS`, make sure Docker is running
 -   [Kubectl][].
 -   Grant `cluster-admin` privileges to the current user. See the [Kubernetes
     role-based access control (RBAC) docs][rbac] for more information.
@@ -123,3 +124,33 @@ under the [Apache 2.0 License][apache2l].
 [cca4]: https://creativecommons.org/licenses/by/4.0/
 [apache2l]: https://www.apache.org/licenses/LICENSE-2.0
 [post-install]: ./additional-configs.md
+
+## Troubleshooting
+
+1. If `kind create cluster` fails to create cluster with below message. Please check if `Docker` is running on the machine.
+
+  ```
+    $ kind create cluster
+    ERROR: failed to create cluster: failed to list nodes: command "docker ps -a --filter label=io.x-k8s.kind.cluster=kind --format '{{.Names}}'" failed with error: exit status 1
+    Command Output: Cannot connect to the Docker daemon at unix:///Users/USER/.docker/run/docker.sock. Is the docker daemon running?
+    Ms-MacBook-Pro:~$ docker ps
+    Cannot connect to the Docker daemon at unix:///Users/USER/.docker/run/docker.sock. Is the docker daemon running?
+  ```
+  After starting docker
+
+  ```
+  Ms-MacBook-Pro:~$ kind create cluster
+  Creating cluster "kind" ...
+  ✓ Ensuring node image (kindest/node:v1.25.3) 🖼 
+  ✓ Preparing nodes 📦  
+  ✓ Writing configuration 📜 
+  ✓ Starting control-plane 🕹️ 
+  ✓ Installing CNI 🔌 
+  ✓ Installing StorageClass 💾 
+  Set kubectl context to "kind-kind"
+  You can now use your cluster with:
+
+  kubectl cluster-info --context kind-kind
+
+  Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+  ```
