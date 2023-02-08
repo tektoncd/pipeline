@@ -1,4 +1,4 @@
-// Copyright 2018 Google LLC All Rights Reserved.
+// Copyright 2022 Google LLC All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,26 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package layout
+// Package compression abstracts over gzip and zstd.
+package compression
 
-import (
-	"io"
-	"os"
+// Compression is an enumeration of the supported compression algorithms
+type Compression string
 
-	v1 "github.com/google/go-containerregistry/pkg/v1"
+// The collection of known MediaType values.
+const (
+	None Compression = "none"
+	GZip Compression = "gzip"
+	ZStd Compression = "zstd"
 )
-
-// Blob returns a blob with the given hash from the Path.
-func (l Path) Blob(h v1.Hash) (io.ReadCloser, error) {
-	return os.Open(l.blobPath(h))
-}
-
-// Bytes is a convenience function to return a blob from the Path as
-// a byte slice.
-func (l Path) Bytes(h v1.Hash) ([]byte, error) {
-	return os.ReadFile(l.blobPath(h))
-}
-
-func (l Path) blobPath(h v1.Hash) string {
-	return l.path("blobs", h.Algorithm, h.Hex)
-}

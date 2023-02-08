@@ -79,6 +79,7 @@ func New(opts ...Option) http.Handler {
 		blobs: blobs{
 			blobHandler: &memHandler{m: map[string][]byte{}},
 			uploads:     map[string][]byte{},
+			log:         log.New(os.Stderr, "", log.LstdFlags),
 		},
 		manifests: manifests{
 			manifests: map[string]map[string]manifest{},
@@ -100,5 +101,6 @@ func Logger(l *log.Logger) Option {
 	return func(r *registry) {
 		r.log = l
 		r.manifests.log = l
+		r.blobs.log = l
 	}
 }

@@ -1,4 +1,4 @@
-// Copyright 2020 Google LLC All Rights Reserved.
+// Copyright 2022 Google LLC All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,36 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package gzip provides helper functions for interacting with gzipped streams.
-package gzip
+// Package zstd provides helper functions for interacting with zstd streams.
+package zstd
 
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"io"
 
 	"github.com/google/go-containerregistry/internal/and"
+	"github.com/klauspost/compress/zstd"
 )
 
-// MagicHeader is the start of gzip files.
-var MagicHeader = []byte{'\x1f', '\x8b'}
+// MagicHeader is the start of zstd files.
+var MagicHeader = []byte{'\x28', '\xb5', '\x2f', '\xfd'}
 
 // ReadCloser reads uncompressed input data from the io.ReadCloser and
 // returns an io.ReadCloser from which compressed data may be read.
-// This uses gzip.BestSpeed for the compression level.
+// This uses zstd level 1 for the compression.
 func ReadCloser(r io.ReadCloser) io.ReadCloser {
-	return ReadCloserLevel(r, gzip.BestSpeed)
+	return ReadCloserLevel(r, 1)
 }
 
 // ReadCloserLevel reads uncompressed input data from the io.ReadCloser and
 // returns an io.ReadCloser from which compressed data may be read.
-// Refer to compress/gzip for the level:
-// https://golang.org/pkg/compress/gzip/#pkg-constants
 func ReadCloserLevel(r io.ReadCloser, level int) io.ReadCloser {
 	pr, pw := io.Pipe()
 
-	// For highly compressible layers, gzip.Writer will output a very small
+	// For highly compressible layers, zstd.Writer will output a very small
 	// number of bytes per Write(). This is normally fine, but when pushing
 	// to a registry, we want to ensure that we're taking full advantage of
 	// the available bandwidth instead of sending tons of tiny writes over
@@ -51,21 +49,21 @@ func ReadCloserLevel(r io.ReadCloser, level int) io.ReadCloser {
 
 	// Returns err so we can pw.CloseWithError(err)
 	go func() error {
-		// TODO(go1.14): Just defer {pw,gw,r}.Close like you'd expect.
+		// TODO(go1.14): Just defer {pw,zw,r}.Close like you'd expect.
 		// Context: https://golang.org/issue/24283
-		gw, err := gzip.NewWriterLevel(bw, level)
+		zw, err := zstd.NewWriter(bw, zstd.WithEncoderLevel(zstd.EncoderLevelFromZstd(level)))
 		if err != nil {
 			return pw.CloseWithError(err)
 		}
 
-		if _, err := io.Copy(gw, r); err != nil {
+		if _, err := io.Copy(zw, r); err != nil {
 			defer r.Close()
-			defer gw.Close()
+			defer zw.Close()
 			return pw.CloseWithError(err)
 		}
 
-		// Close gzip writer to Flush it and write gzip trailers.
-		if err := gw.Close(); err != nil {
+		// Close zstd writer to Flush it and write zstd trailers.
+		if err := zw.Close(); err != nil {
 			return pw.CloseWithError(err)
 		}
 
@@ -87,7 +85,7 @@ func ReadCloserLevel(r io.ReadCloser, level int) io.ReadCloser {
 // UnzipReadCloser reads compressed input data from the io.ReadCloser and
 // returns an io.ReadCloser from which uncompressed data may be read.
 func UnzipReadCloser(r io.ReadCloser) (io.ReadCloser, error) {
-	gr, err := gzip.NewReader(r)
+	gr, err := zstd.NewReader(r)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +104,7 @@ func UnzipReadCloser(r io.ReadCloser) (io.ReadCloser, error) {
 
 // Is detects whether the input stream is compressed.
 func Is(r io.Reader) (bool, error) {
-	magicHeader := make([]byte, 2)
+	magicHeader := make([]byte, 4)
 	n, err := r.Read(magicHeader)
 	if n == 0 && err == io.EOF {
 		return false, nil
