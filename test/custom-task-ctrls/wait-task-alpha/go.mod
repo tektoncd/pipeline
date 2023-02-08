@@ -3,7 +3,7 @@ module github.com/tektoncd/pipeline/test/custom-task-ctrls/wait-task-alpha
 go 1.18
 
 require (
-	github.com/google/go-cmp v0.5.8
+	github.com/google/go-cmp v0.5.9
 	github.com/tektoncd/pipeline v0.39.0
 	k8s.io/api v0.23.9
 	k8s.io/apimachinery v0.23.9
