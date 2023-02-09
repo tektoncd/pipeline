@@ -88,6 +88,9 @@ spec:
   pipelineRef:
     name: clone-cleanup-workspace
   serviceAccountName: 'default'
+  podTemplate:
+    securityContext:
+      fsGroup: 65532 # Make volumes accessible by non-root user for git-clone catalog task
   workspaces:
     - name: git-source
       volumeClaimTemplate:
