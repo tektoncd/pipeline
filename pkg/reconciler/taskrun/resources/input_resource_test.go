@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
@@ -58,28 +59,6 @@ var (
 			Name: "git-duplicate-space",
 			Type: "git",
 		}},
-	}
-	gcsInputs = []v1beta1.TaskResource{{
-		ResourceDeclaration: v1beta1.ResourceDeclaration{
-			Name:       "workspace",
-			Type:       "gcs",
-			TargetPath: "gcs-dir",
-		}}}
-	multipleGcsInputs = []v1beta1.TaskResource{
-		{
-			ResourceDeclaration: v1beta1.ResourceDeclaration{
-				Name:       "workspace",
-				Type:       "gcs",
-				TargetPath: "gcs-dir",
-			},
-		},
-		{
-			ResourceDeclaration: v1beta1.ResourceDeclaration{
-				Name:       "workspace2",
-				Type:       "gcs",
-				TargetPath: "gcs-dir",
-			},
-		},
 	}
 	optionalGitInputs = []v1beta1.TaskResource{{
 		ResourceDeclaration: v1beta1.ResourceDeclaration{
@@ -294,17 +273,6 @@ func TestAddInputResourceToTask(t *testing.T) {
 		Spec: v1beta1.TaskSpec{
 			Resources: &v1beta1.TaskResources{
 				Inputs: multipleGitInputs,
-			},
-		},
-	}
-	taskWithTargetPath := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "task-with-targetpath",
-			Namespace: "marshmallow",
-		},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: gcsInputs,
 			},
 		},
 	}
@@ -557,55 +525,6 @@ func TestAddInputResourceToTask(t *testing.T) {
 			},
 		},
 	}, {
-		desc: "git resource as input from previous task",
-		task: task,
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-from-git",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "the-git",
-							},
-							Name: "gitspace",
-						},
-						Paths: []string{"prev-task-path"},
-					}},
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Name:    "create-dir-gitspace-mz4c7",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/gitspace"},
-			}, {
-				Name:         "source-copy-gitspace-9l9zj",
-				Image:        "busybox",
-				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gitspace"},
-				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-				Env:          []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "gitspace"}},
-			}},
-			Volumes: []corev1.Volume{{
-				Name: "pipelinerun-pvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
-				},
-			}},
-			Resources: &v1beta1.TaskResources{
-				Inputs: gitInputs,
-			},
-		},
-	}, {
 		desc: "simple with sslVerify false",
 		task: task,
 		taskRun: &v1beta1.TaskRun{
@@ -645,104 +564,6 @@ func TestAddInputResourceToTask(t *testing.T) {
 			}},
 			Resources: &v1beta1.TaskResources{
 				Inputs: gitInputs,
-			},
-		},
-	}, {
-		desc: "storage resource as input with target path",
-		task: taskWithTargetPath,
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-from-gcs",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "storage1",
-							},
-							Name: "workspace",
-						},
-					}},
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Name:    "create-dir-storage1-9l9zj",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
-			}, {
-				Script: `#!/usr/bin/env bash
-if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
-  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
-  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
-fi
-gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
-`,
-				Name:  "fetch-storage1-mz4c7",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				Env: []corev1.EnvVar{{
-					Name:  "HOME",
-					Value: pipeline.HomeDir,
-				}},
-			}},
-			Resources: &v1beta1.TaskResources{
-				Inputs: gcsInputs,
-			},
-		},
-	}, {
-		desc: "storage resource as input from previous task",
-		task: taskWithTargetPath,
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-from-gcs",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "storage1",
-							},
-							Name: "workspace",
-						},
-						Paths: []string{"prev-task-path"},
-					}},
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Name:    "create-dir-workspace-mz4c7",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/gcs-dir"},
-			}, {
-				Name:         "source-copy-workspace-9l9zj",
-				Image:        "busybox",
-				Command:      []string{"cp", "-r", "prev-task-path/.", "/workspace/gcs-dir"},
-				VolumeMounts: []corev1.VolumeMount{{MountPath: "/pvc", Name: "pipelinerun-pvc"}},
-				Env: []corev1.EnvVar{{
-					Name:  "TEKTON_RESOURCE_NAME",
-					Value: "workspace",
-				}},
-			}},
-			Volumes: []corev1.Volume{{
-				Name: "pipelinerun-pvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: "pipelinerun-pvc"},
-				},
-			}},
-			Resources: &v1beta1.TaskResources{
-				Inputs: gcsInputs,
 			},
 		},
 	}, {
@@ -860,241 +681,9 @@ gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-dir
 				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
 			}
 			if got != nil {
-				if d := cmp.Diff(got, c.want); d != "" {
+				if d := cmp.Diff(c.want, got, cmpopts.EquateEmpty()); d != "" {
 					t.Errorf("Diff:\n%s", diff.PrintWantGot(d))
 				}
-			}
-		})
-	}
-}
-
-func TestStorageInputResource(t *testing.T) {
-	gcsStorageInputs := []v1beta1.TaskResource{{
-		ResourceDeclaration: v1beta1.ResourceDeclaration{
-			Name: "gcs-input-resource",
-			Type: "storage",
-		}},
-	}
-	optionalStorageInputs := []v1beta1.TaskResource{{
-		ResourceDeclaration: v1beta1.ResourceDeclaration{
-			Name:     "gcs-input-resource",
-			Type:     "storage",
-			Optional: true,
-		}},
-	}
-
-	for _, c := range []struct {
-		desc    string
-		task    *v1beta1.Task
-		taskRun *v1beta1.TaskRun
-		wantErr bool
-		want    *v1beta1.TaskSpec
-	}{{
-		desc: "inputs with no resource spec and resource ref",
-		task: &v1beta1.Task{
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "gcs-input-resource",
-							Type: "storage",
-						}}},
-				},
-			},
-		},
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-storage-run",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "gcs-input-resource",
-						},
-					}},
-				},
-			},
-		},
-		wantErr: true,
-	}, {
-		desc: "inputs with resource spec and no resource ref",
-		task: &v1beta1.Task{
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: gcsStorageInputs,
-				},
-			},
-		},
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-storage-run",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "gcs-input-resource",
-							ResourceSpec: &resourcev1alpha1.PipelineResourceSpec{
-								Type: resourcev1alpha1.PipelineResourceTypeStorage,
-								Params: []resourcev1alpha1.ResourceParam{{
-									Name:  "Location",
-									Value: "gs://fake-bucket/rules.zip",
-								}, {
-									Name:  "Type",
-									Value: "gcs",
-								}},
-							},
-						},
-					}},
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Name:    "create-dir-gcs-input-resource-9l9zj",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/gcs-input-resource"},
-			}, {
-				Script: `#!/usr/bin/env bash
-if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
-  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
-  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
-fi
-gsutil cp gs://fake-bucket/rules.zip /workspace/gcs-input-resource
-`,
-				Name:  "fetch-gcs-input-resource-mz4c7",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				Env:   []corev1.EnvVar{{Name: "HOME", Value: pipeline.HomeDir}},
-			}},
-			Resources: &v1beta1.TaskResources{
-				Inputs: gcsStorageInputs,
-			},
-		},
-	}, {
-		desc: "no inputs",
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-storage",
-				Namespace: "marshmallow",
-			},
-		},
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-storage-run",
-				Namespace: "marshmallow",
-			},
-		},
-		wantErr: false,
-		want:    &v1beta1.TaskSpec{},
-	}, {
-		desc: "storage resource as input",
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-storage",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: gcsStorageInputs,
-				},
-			},
-		},
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-storage-run",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "gcs-input-resource",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "storage-gcs-keys",
-							},
-						},
-					}},
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Name:    "create-dir-storage-gcs-keys-9l9zj",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/gcs-input-resource"},
-			}, {
-				Script: `#!/usr/bin/env bash
-if [[ "${GOOGLE_APPLICATION_CREDENTIALS}" != "" ]]; then
-  echo GOOGLE_APPLICATION_CREDENTIALS is set, activating Service Account...
-  gcloud auth activate-service-account --key-file=${GOOGLE_APPLICATION_CREDENTIALS}
-fi
-gsutil rsync -d -r gs://fake-bucket/rules.zip /workspace/gcs-input-resource
-`,
-				Name:  "fetch-storage-gcs-keys-mz4c7",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				VolumeMounts: []corev1.VolumeMount{
-					{Name: "volume-storage-gcs-keys-secret-name", MountPath: "/var/secret/secret-name"},
-				},
-				Env: []corev1.EnvVar{
-					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/secret-name/key.json"},
-					{Name: "HOME", Value: pipeline.HomeDir},
-				},
-			}},
-			Resources: &v1beta1.TaskResources{
-				Inputs: gcsStorageInputs,
-			},
-			Volumes: []corev1.Volume{{
-				Name:         "volume-storage-gcs-keys-secret-name",
-				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name"}},
-			}, {
-				Name:         "volume-storage-gcs-keys-secret-name2",
-				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: "secret-name2"}},
-			}},
-		},
-	}, {
-		desc: "optional inputs with no resource spec and no resource ref",
-		task: &v1beta1.Task{
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: optionalStorageInputs,
-				},
-			},
-		},
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "get-storage-run-with-optional-inputs",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Params: nil,
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: nil,
-				},
-			},
-		},
-		wantErr: false,
-		want: &v1beta1.TaskSpec{
-			Steps: nil,
-			Resources: &v1beta1.TaskResources{
-				Inputs: optionalStorageInputs,
-			},
-		},
-	}} {
-		t.Run(c.desc, func(t *testing.T) {
-			names.TestingSeed()
-			setUp()
-			fakekubeclient := fakek8s.NewSimpleClientset()
-			got, err := AddInputResource(context.Background(), fakekubeclient, images, c.task.Name, &c.task.Spec, c.taskRun, mockResolveTaskResources(c.taskRun))
-			if (err != nil) != c.wantErr {
-				t.Errorf("Test: %q; AddInputResource() error = %v, WantErr %v", c.desc, err, c.wantErr)
-			}
-			if d := cmp.Diff(c.want, got); d != "" {
-				t.Errorf("Didn't get expected Task spec %s", diff.PrintWantGot(d))
 			}
 		})
 	}

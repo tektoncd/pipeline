@@ -24,7 +24,6 @@ import (
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/git"
 	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/image"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1/storage"
 )
 
 // FromType returns an instance of the correct PipelineResource object type which can be
@@ -36,8 +35,6 @@ func FromType(name string, r *resourcev1alpha1.PipelineResource, images pipeline
 		return git.NewResource(name, images.GitImage, r)
 	case resourcev1alpha1.PipelineResourceTypeImage:
 		return image.NewResource(name, r)
-	case resourcev1alpha1.PipelineResourceTypeStorage:
-		return storage.NewResource(name, images, r)
 	}
 	return nil, fmt.Errorf("%s is an invalid or unimplemented PipelineResource", r.Spec.Type)
 }

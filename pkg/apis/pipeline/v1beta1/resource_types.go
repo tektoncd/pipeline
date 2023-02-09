@@ -40,9 +40,6 @@ const (
 	// PipelineResourceTypeGit indicates that this source is a GitHub repo.
 	PipelineResourceTypeGit PipelineResourceType = resource.PipelineResourceTypeGit
 
-	// PipelineResourceTypeStorage indicates that this source is a storage blob resource.
-	PipelineResourceTypeStorage PipelineResourceType = resource.PipelineResourceTypeStorage
-
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
 	PipelineResourceTypeImage PipelineResourceType = resource.PipelineResourceTypeImage
 )

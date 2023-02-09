@@ -56,7 +56,6 @@ func AddInputResource(
 	taskSpec = taskSpec.DeepCopy()
 
 	pvcName := taskRun.GetPipelineRunPVCName()
-	mountPVC := false
 
 	prNameFromLabel := taskRun.Labels[pipeline.PipelineRunLabelKey]
 	if prNameFromLabel == "" {
@@ -87,6 +86,7 @@ func AddInputResource(
 		}
 
 		dPath := destinationPath(input.Name, input.TargetPath)
+
 		// Allow the resource to mutate the task.
 		modifier, err := resource.GetInputTaskModifier(taskSpec, dPath)
 		if err != nil {
@@ -95,12 +95,8 @@ func AddInputResource(
 		if err := v1beta1.ApplyTaskModifier(taskSpec, modifier); err != nil {
 			return nil, fmt.Errorf("unabled to apply Resource %s: %w", boundResource.Name, err)
 		}
-
 	}
 
-	if mountPVC {
-		taskSpec.Volumes = append(taskSpec.Volumes, GetPVCVolume(pvcName))
-	}
 	return taskSpec, nil
 }
 

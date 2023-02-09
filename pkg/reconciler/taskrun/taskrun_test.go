@@ -697,60 +697,6 @@ spec:
     apiVersion: a1
     name: test-with-sa
 `)
-	taskRunSubstitution := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-substitution
-  namespace: foo
-spec:
-  params:
-  - name: myarg
-    value: foo
-  - name: myarghasdefault
-    value: bar
-  - name: configmapname
-    value: configbar
-  resources:
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: git-resource
-    outputs:
-    - name: myimage
-      resourceRef:
-        name: image-resource
-  taskRef:
-    apiVersion: a1
-    name: test-task-with-substitution
-`)
-	taskRunInputOutput := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-input-output
-  namespace: foo
-  ownerReferences:
-  - kind: PipelineRun
-    name: test
-spec:
-  resources:
-    inputs:
-    - name: git-resource
-      paths:
-      - source-folder
-      resourceRef:
-        name: git-resource
-    - name: another-git-resource
-      paths:
-      - source-folder
-      resourceRef:
-        name: another-git-resource
-    outputs:
-    - name: git-resource
-      paths:
-      - output-folder
-      resourceRef:
-        name: git-resource
-  taskRef:
-    name: test-output-task
-`)
 	taskRunWithTaskSpec := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-taskspec
@@ -892,7 +838,6 @@ spec:
 
 	taskruns := []*v1beta1.TaskRun{
 		taskRunSuccess, taskRunWithSaSuccess,
-		taskRunSubstitution, taskRunInputOutput,
 		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
 		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
 		taskRunWithCredentialsVariable, taskRunBundle,
@@ -933,71 +878,6 @@ spec:
 			name:  "sa-step",
 			cmd:   "/mycmd",
 		}}),
-	}, {
-		name:    "params",
-		taskRun: taskRunSubstitution,
-		wantEvents: []string{
-			"Normal Started ",
-			"Normal Running Not all Steps",
-		},
-		wantPod: expectedPod("test-taskrun-substitution-pod", "test-task-with-substitution", "test-taskrun-substitution", "foo", config.DefaultServiceAccountValue, false, []corev1.Volume{{
-			Name: "volume-configmap",
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: "configbar",
-					},
-				},
-			},
-		}}, []stepForExpectedPod{
-			{
-				name:  "create-dir-myimage-mssqb",
-				image: "busybox",
-				cmd:   "mkdir",
-				args:  []string{"-p", "/workspace/output/myimage"},
-			},
-			{
-				name:  "git-source-workspace-mz4c7",
-				image: "override-with-git:latest",
-				cmd:   "/ko-app/git-init",
-				args: []string{"-url", "https://foo.git",
-					"-path", "/workspace/workspace"},
-				envVars: map[string]string{
-					"TEKTON_RESOURCE_NAME": "workspace",
-					"HOME":                 "/tekton/home",
-				},
-				workingDir:      workspaceDir,
-				securityContext: gitResourceSecurityContext,
-			},
-			{
-				name:  "mycontainer",
-				image: "myimage",
-				cmd:   "/mycmd",
-				args: []string{
-					"--my-arg=foo",
-					"--my-arg-with-default=bar",
-					"--my-arg-with-default2=thedefault",
-					"--my-additional-arg=gcr.io/kristoff/sven",
-					"--my-taskname-arg=test-task-with-substitution",
-					"--my-taskrun-arg=test-taskrun-substitution",
-				},
-			},
-			{
-				name:  "myothercontainer",
-				image: "myotherimage",
-				cmd:   "/mycmd",
-				args:  []string{"--my-other-arg=https://foo.git"},
-			},
-			{
-				name:  "image-digest-exporter-9l9zj",
-				image: "override-with-imagedigest-exporter-image:latest",
-				cmd:   "/ko-app/imagedigestexporter",
-				args: []string{
-					"-images",
-					"[{\"name\":\"myimage\",\"type\":\"image\",\"url\":\"gcr.io/kristoff/sven\",\"digest\":\"\",\"OutputImageDir\":\"/workspace/output/myimage\"}]",
-				},
-			},
-		}),
 	}, {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,

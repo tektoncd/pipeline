@@ -563,10 +563,6 @@ status:
     name: git-source-skaffold
     terminated:
       reason: Completed
-  - container: step-echo
-    name: step-echo
-    terminated:
-      reason: Completed
 `
 
 	v1beta1PipelineRunYaml = `

@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/apis/resource"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
@@ -30,7 +29,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakek8s "k8s.io/client-go/kubernetes/fake"
-	"knative.dev/pkg/ptr"
 )
 
 var (
@@ -161,7 +159,6 @@ func TestValidOutputResources(t *testing.T) {
 		desc        string
 		task        *v1beta1.Task
 		taskRun     *v1beta1.TaskRun
-		wantSteps   []v1beta1.Step
 		wantVolumes []corev1.Volume
 	}{{
 		name: "git resource in input and output",
@@ -217,45 +214,6 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}, {
-			Name:  "source-mkdir-source-git-mz4c7",
-			Image: "busybox",
-			SecurityContext: &corev1.SecurityContext{
-				RunAsUser: ptr.Int64(0),
-			},
-			Command: []string{"mkdir", "-p", "pipeline-task-name"},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "pipelinerun-pvc",
-				MountPath: "/pvc",
-			}},
-		}, {
-			Name:  "source-copy-source-git-mssqb",
-			Image: "busybox",
-			SecurityContext: &corev1.SecurityContext{
-				RunAsUser: ptr.Int64(0),
-			},
-			Command: []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-name"},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "pipelinerun-pvc",
-				MountPath: "/pvc",
-			}},
-			Env: []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-git"}},
-		}},
-		wantVolumes: []corev1.Volume{
-			{
-				Name: "pipelinerun-pvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "pipelinerun-pvc",
-						ReadOnly:  false,
-					},
-				},
-			},
-		},
 	}, {
 		name: "git resource in output only",
 		desc: "git resource declared as output with pipelinerun owner reference",
@@ -297,92 +255,6 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}, {
-			Name:  "source-mkdir-source-git-mz4c7",
-			Image: "busybox",
-			SecurityContext: &corev1.SecurityContext{
-				RunAsUser: ptr.Int64(0),
-			},
-			Command: []string{"mkdir", "-p", "pipeline-task-name"},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "pipelinerun-pvc",
-				MountPath: "/pvc",
-			}},
-		}, {
-			Name:  "source-copy-source-git-mssqb",
-			Image: "busybox",
-			SecurityContext: &corev1.SecurityContext{
-				RunAsUser: ptr.Int64(0),
-			},
-			Command: []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-name"},
-			VolumeMounts: []corev1.VolumeMount{{
-				Name:      "pipelinerun-pvc",
-				MountPath: "/pvc",
-			}},
-			Env: []corev1.EnvVar{{Name: "TEKTON_RESOURCE_NAME", Value: "source-git"}},
-		}},
-		wantVolumes: []corev1.Volume{
-			{
-				Name: "pipelinerun-pvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "pipelinerun-pvc",
-						ReadOnly:  false,
-					},
-				},
-			},
-		},
-	}, {
-		name: "image resource in output with pipelinerun with owner",
-		desc: "image resource declared as output with pipelinerun owner reference should not generate any steps",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
-							},
-						},
-						Paths: []string{"pipeline-task-name"},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}},
-		wantVolumes: nil,
 	}, {
 		name: "git resource in output",
 		desc: "git resource declared in output without pipelinerun owner reference",
@@ -419,347 +291,6 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}},
-	}, {
-		name: "storage resource as both input and output",
-		desc: "storage resource defined in both input and output with parents pipelinerun reference",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun-parent",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Inputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-gcs",
-							},
-						},
-					}},
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-gcs",
-							},
-						},
-						Paths: []string{"pipeline-task-path"},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Inputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name:       "source-workspace",
-							Type:       "storage",
-							TargetPath: "faraway-disk",
-						}}},
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{
-			{
-				Name:    "create-dir-source-workspace-9l9zj",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-			},
-			{
-				Name:  "source-mkdir-source-gcs-mz4c7",
-				Image: "busybox",
-				SecurityContext: &corev1.SecurityContext{
-					RunAsUser: ptr.Int64(0),
-				},
-				Command:      []string{"mkdir", "-p", "pipeline-task-path"},
-				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
-			},
-			{
-				Name:  "source-copy-source-gcs-mssqb",
-				Image: "busybox",
-				SecurityContext: &corev1.SecurityContext{
-					RunAsUser: ptr.Int64(0),
-				},
-				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
-				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-parent-pvc", MountPath: "/pvc"}},
-				Env: []corev1.EnvVar{
-					{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"},
-				},
-			},
-			{
-				Name:  "upload-source-gcs-78c5n",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name:      "volume-source-gcs-sname",
-					MountPath: "/var/secret/sname",
-				}},
-				Command: []string{"gsutil"},
-				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
-				Env: []corev1.EnvVar{
-					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json"},
-					{Name: "HOME", Value: pipeline.HomeDir},
-				},
-			},
-		},
-
-		wantVolumes: []corev1.Volume{{
-			Name: "volume-source-gcs-sname",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
-			},
-		},
-			{
-				Name: "pipelinerun-parent-pvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "pipelinerun-parent-pvc",
-						ReadOnly:  false,
-					},
-				},
-			},
-		},
-	}, {
-		name: "storage resource as output",
-		desc: "storage resource defined only in output with pipeline ownder reference",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-gcs",
-							},
-						},
-						Paths: []string{"pipeline-task-path"},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{
-			{
-				Name:    "create-dir-source-workspace-9l9zj",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-			},
-			{
-				Name:  "source-mkdir-source-gcs-mz4c7",
-				Image: "busybox",
-				SecurityContext: &corev1.SecurityContext{
-					RunAsUser: ptr.Int64(0),
-				},
-				Command:      []string{"mkdir", "-p", "pipeline-task-path"},
-				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
-			},
-			{
-				Name:  "source-copy-source-gcs-mssqb",
-				Image: "busybox",
-				SecurityContext: &corev1.SecurityContext{
-					RunAsUser: ptr.Int64(0),
-				},
-				Command:      []string{"cp", "-r", "/workspace/output/source-workspace/.", "pipeline-task-path"},
-				VolumeMounts: []corev1.VolumeMount{{Name: "pipelinerun-pvc", MountPath: "/pvc"}},
-				Env: []corev1.EnvVar{
-					{Name: "TEKTON_RESOURCE_NAME", Value: "source-gcs"},
-				},
-			},
-			{
-				Name:  "upload-source-gcs-78c5n",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-				}},
-				Env: []corev1.EnvVar{
-					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json"},
-					{Name: "HOME", Value: pipeline.HomeDir},
-				},
-				Command: []string{"gsutil"},
-				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
-			},
-		},
-		wantVolumes: []corev1.Volume{{
-			Name: "volume-source-gcs-sname",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
-			},
-		},
-			{
-				Name: "pipelinerun-pvc",
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: "pipelinerun-pvc",
-					},
-				},
-			},
-		},
-	}, {
-		name: "storage resource as output with no owner",
-		desc: "storage resource defined only in output without pipelinerun reference",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-gcs",
-							},
-						},
-						Paths: []string{"pipeline-task-path"},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{
-			{
-				Name:    "create-dir-source-workspace-9l9zj",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-			},
-			{
-				Name:  "upload-source-gcs-mz4c7",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-				}},
-				Env: []corev1.EnvVar{
-					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json"},
-					{Name: "HOME", Value: pipeline.HomeDir},
-				},
-				Command: []string{"gsutil"},
-				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
-			},
-		},
-		wantVolumes: []corev1.Volume{{
-			Name: "volume-source-gcs-sname",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
-			},
-		}},
-	}, {
-		name: "storage resource as output with matching build volumes",
-		desc: "storage resource defined only in output without pipelinerun reference",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-gcs",
-							},
-						},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "storage",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{
-			{
-				Name:    "create-dir-source-workspace-9l9zj",
-				Image:   "busybox",
-				Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-			},
-			{
-				Name:  "upload-source-gcs-mz4c7",
-				Image: "gcr.io/google.com/cloudsdktool/cloud-sdk",
-				VolumeMounts: []corev1.VolumeMount{{
-					Name: "volume-source-gcs-sname", MountPath: "/var/secret/sname",
-				}},
-				Env: []corev1.EnvVar{
-					{Name: "GOOGLE_APPLICATION_CREDENTIALS", Value: "/var/secret/sname/key.json"},
-					{Name: "HOME", Value: pipeline.HomeDir},
-				},
-				Command: []string{"gsutil"},
-				Args:    []string{"rsync", "-d", "-r", "/workspace/output/source-workspace", "gs://some-bucket"},
-			},
-		},
-		wantVolumes: []corev1.Volume{{
-			Name: "volume-source-gcs-sname",
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: "sname"},
-			},
-		}},
 	}, {
 		name: "image resource as output",
 		desc: "image resource defined only in output",
@@ -800,97 +331,6 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}},
-	}, {
-		name: "Resource with TargetPath as output",
-		desc: "Resource with TargetPath defined only in output",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
-							},
-						},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name:       "source-workspace",
-							Type:       "image",
-							TargetPath: "/workspace",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace"},
-		}},
-	}, {
-		desc: "image output resource with no steps",
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-output-steps",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-image",
-							},
-						},
-					}},
-				},
-			},
-		},
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "image",
-						}}},
-				},
-			},
-		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}},
 	}, {
 		desc: "multiple image output resource with no steps",
 		taskRun: &v1beta1.TaskRun{
@@ -937,15 +377,6 @@ func TestValidOutputResources(t *testing.T) {
 				},
 			},
 		},
-		wantSteps: []v1beta1.Step{{
-			Name:    "create-dir-source-workspace-1-mz4c7",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace-1"},
-		}, {
-			Name:    "create-dir-source-workspace-9l9zj",
-			Image:   "busybox",
-			Command: []string{"mkdir", "-p", "/workspace/output/source-workspace"},
-		}},
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			names.TestingSeed()
@@ -957,9 +388,6 @@ func TestValidOutputResources(t *testing.T) {
 			}
 
 			if got != nil {
-				if d := cmp.Diff(c.wantSteps, got.Steps); d != "" {
-					t.Fatalf("post build steps mismatch %s", diff.PrintWantGot(d))
-				}
 				if d := cmp.Diff(c.wantVolumes, got.Volumes); d != "" {
 					t.Fatalf("post build steps volumes mismatch %s", diff.PrintWantGot(d))
 				}
@@ -991,47 +419,6 @@ func TestInvalidOutputResources(t *testing.T) {
 					Kind: "PipelineRun",
 					Name: "pipelinerun",
 				}},
-			},
-		},
-		wantErr: false,
-	}, {
-		desc: "no outputs defined in task but defined in taskrun",
-		task: &v1beta1.Task{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "task1",
-				Namespace: "marshmallow",
-			},
-			Spec: v1beta1.TaskSpec{
-				Resources: &v1beta1.TaskResources{
-					Outputs: []v1beta1.TaskResource{{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: "source-workspace",
-							Type: "git",
-						}}},
-				},
-			},
-		},
-		taskRun: &v1beta1.TaskRun{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-taskrun-run-only-output-step",
-				Namespace: "marshmallow",
-				OwnerReferences: []metav1.OwnerReference{{
-					Kind: "PipelineRun",
-					Name: "pipelinerun",
-				}},
-			},
-			Spec: v1beta1.TaskRunSpec{
-				Resources: &v1beta1.TaskRunResources{
-					Outputs: []v1beta1.TaskResourceBinding{{
-						PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-							Name: "source-workspace",
-							ResourceRef: &v1beta1.PipelineResourceRef{
-								Name: "source-gcs",
-							},
-						},
-						Paths: []string{"test-path"},
-					}},
-				},
 			},
 		},
 		wantErr: false,
@@ -1165,29 +552,6 @@ func TestInvalidOutputResources(t *testing.T) {
 			}
 		})
 	}
-}
-
-func resolveInputResources(taskRun *v1beta1.TaskRun) map[string]v1beta1.PipelineResourceInterface {
-	resolved := make(map[string]v1beta1.PipelineResourceInterface)
-	if taskRun.Spec.Resources == nil {
-		return resolved
-	}
-	for _, r := range taskRun.Spec.Resources.Inputs {
-		var i v1beta1.PipelineResourceInterface
-		if name := r.ResourceRef.Name; name != "" {
-			i = outputTestResources[name]
-			resolved[r.Name] = i
-		} else if r.ResourceSpec != nil {
-			i, _ = resource.FromType(name, &resourcev1alpha1.PipelineResource{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: r.Name,
-				},
-				Spec: *r.ResourceSpec,
-			}, images)
-			resolved[r.Name] = i
-		}
-	}
-	return resolved
 }
 
 func resolveOutputResources(taskRun *v1beta1.TaskRun) map[string]v1beta1.PipelineResourceInterface {

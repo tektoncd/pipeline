@@ -108,14 +108,6 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `url` | The complete path to the image. |
 | `digest` | The digest of the image. |
 
-#### Variables for the `GCS` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"gcs"`. |
-| `location` | The fully qualified address of the blob storage. |
-
 #### Variables for the `Cluster` type
 
 | Variable | Description |

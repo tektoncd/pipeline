@@ -31,8 +31,6 @@ import (
 func TestStoreLoadWithContext(t *testing.T) {
 	defaultConfig := test.ConfigMapFromTestFile(t, "config-defaults")
 	featuresConfig := test.ConfigMapFromTestFile(t, "feature-flags-all-flags-set")
-	artifactBucketConfig := test.ConfigMapFromTestFile(t, "config-artifact-bucket")
-	artifactPVCConfig := test.ConfigMapFromTestFile(t, "config-artifact-pvc")
 	metricsConfig := test.ConfigMapFromTestFile(t, "config-observability")
 	trustedresourcesConfig := test.ConfigMapFromTestFile(t, "config-trusted-resources")
 	spireConfig := test.ConfigMapFromTestFile(t, "config-spire")
@@ -54,8 +52,6 @@ func TestStoreLoadWithContext(t *testing.T) {
 	store := config.NewStore(logtesting.TestLogger(t))
 	store.OnConfigChanged(defaultConfig)
 	store.OnConfigChanged(featuresConfig)
-	store.OnConfigChanged(artifactBucketConfig)
-	store.OnConfigChanged(artifactPVCConfig)
 	store.OnConfigChanged(metricsConfig)
 	store.OnConfigChanged(trustedresourcesConfig)
 	store.OnConfigChanged(spireConfig)
