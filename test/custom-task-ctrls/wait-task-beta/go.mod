@@ -3,7 +3,7 @@ module github.com/tektoncd/pipeline/test/wait-task-beta
 go 1.15
 
 require (
-	github.com/emicklei/go-restful v2.15.0+incompatible // indirect
+	github.com/emicklei/go-restful v2.16.0+incompatible // indirect
 	github.com/google/go-cmp v0.5.9
 	github.com/tektoncd/pipeline v0.44.0
 	k8s.io/api v0.26.1
