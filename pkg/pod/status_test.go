@@ -1170,6 +1170,50 @@ func TestMakeTaskRunStatus(t *testing.T) {
 				CompletionTime: &metav1.Time{Time: time.Now()},
 			},
 		},
+	}, {
+		desc: "report pod evicted err message when pod was evicted and containers have failure messages",
+		pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "pod",
+				Namespace: "foo",
+			},
+			Spec: corev1.PodSpec{
+				InitContainers: []corev1.Container{{
+					Name: "init-A",
+				}},
+				Containers: []corev1.Container{{
+					Name: "step-A",
+				}},
+			},
+			Status: corev1.PodStatus{
+				Phase:   corev1.PodFailed,
+				Reason:  "Evicted",
+				Message: `Usage of EmptyDir volume "ws-b6dfk" exceeds the limit "10Gi".`,
+				ContainerStatuses: []corev1.ContainerStatus{{
+					Name: "step-A",
+					State: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+						},
+					},
+				},
+				}},
+		},
+		want: v1beta1.TaskRunStatus{
+			Status: statusFailure(v1beta1.TaskRunReasonFailed.String(), "Usage of EmptyDir volume \"ws-b6dfk\" exceeds the limit \"10Gi\"."),
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				Steps: []v1beta1.StepState{{
+					ContainerState: corev1.ContainerState{
+						Terminated: &corev1.ContainerStateTerminated{
+							ExitCode: 137,
+						}},
+					Name:          "A",
+					ContainerName: "step-A",
+				}},
+				Sidecars:       []v1beta1.SidecarState{},
+				CompletionTime: &metav1.Time{Time: time.Now()},
+			},
+		},
 	}} {
 		t.Run(c.desc, func(t *testing.T) {
 			now := metav1.Now()
