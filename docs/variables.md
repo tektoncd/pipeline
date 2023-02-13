@@ -99,16 +99,6 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `httpsProxy` | The value of the resource's `httpsProxy` parameter. |
 | `noProxy` | The value of the resource's `noProxy` parameter. |
 
-#### Variables for the `PullRequest` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"pullRequest"`.|
-| `url` | The URL of the pull request. |
-| `provider` | Provider value, either `"github"` or `"gitlab"`. |
-| `insecure-skip-tls-verify` | The value of the resource's `insecure-skip-tls-verify` parameter, either `"true"` or `"false"`. |
-
 #### Variables for the `Image` type
 
 | Variable | Description |
@@ -125,30 +115,6 @@ variable via `resources.inputs.<resourceName>.<variableName>` or
 | `name` | The name of the resource. |
 | `type` | Type value of `"gcs"`. |
 | `location` | The fully qualified address of the blob storage. |
-
-#### Variables for the `Cluster` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"cluster"`. |
-| `url` | Host URL of the master node. |
-| `username` | The user with access to the cluster. |
-| `password` | The password for the user specified in `username`. |
-| `namespace` | The namespace to target in the cluster. |
-| `token` | The bearer token. |
-| `insecure` | Whether to verify the TLS connection to the server, either `"true"` or `"false"`. |
-| `cadata` | Stringified PEM-encoded bytes from the relevant root certificate bundle. |
-| `clientKeyData` | Stringified PEM-encoded bytes from the client key file for TLS. |
-| `clientCertificateData` | Stringified PEM-encoded bytes from the client certificate file for TLS. |
-
-#### Variables for the `CloudEvent` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"cloudEvent"`. |
-| `target-uri` | The URI to hit with cloud event payloads. |
 
 ## Fields that accept variable substitutions
 
