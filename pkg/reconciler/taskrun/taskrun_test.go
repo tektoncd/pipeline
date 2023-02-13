@@ -45,6 +45,7 @@ import (
 	ttesting "github.com/tektoncd/pipeline/pkg/reconciler/testing"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolutioncommon "github.com/tektoncd/pipeline/pkg/resolution/common"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test"
@@ -65,6 +66,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 	cminformer "knative.dev/pkg/configmap/informer"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
@@ -293,6 +295,7 @@ var (
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
 	}
+	mockSpire = &spire.MockClient{}
 )
 
 const fakeVersion string = "unknown"
@@ -356,10 +359,12 @@ func initializeTaskRunControllerAssets(t *testing.T, d test.Data, opts pipeline.
 	t.Helper()
 	ctx, _ := ttesting.SetupFakeContext(t)
 	ctx = ttesting.SetupFakeCloudClientContext(ctx, d.ExpectedCloudEventCount)
+	ctx = spire.InjectClient(ctx, mockSpire)
 	ctx, cancel := context.WithCancel(ctx)
 	test.EnsureConfigurationConfigMapsExist(&d)
 	c, informers := test.SeedTestData(t, ctx, d)
 	configMapWatcher := cminformer.NewInformedWatcher(c.Kube, system.Namespace())
+
 	ctl := NewController(&opts, testClock, trace.NewNoopTracerProvider())(ctx, configMapWatcher)
 	if err := configMapWatcher.Start(ctx.Done()); err != nil {
 		t.Fatalf("error starting configmap watcher: %v", err)
@@ -426,7 +431,7 @@ spec:
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
@@ -434,7 +439,7 @@ spec:
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			saName := tc.taskRun.Spec.ServiceAccountName
@@ -757,7 +762,7 @@ spec:
 			image: "foo",
 			name:  "simple-step",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "serviceaccount",
 		taskRun: taskRunWithSaSuccess,
@@ -769,7 +774,7 @@ spec:
 			image: "foo",
 			name:  "sa-step",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "params",
 		taskRun: taskRunSubstitution,
@@ -805,7 +810,7 @@ spec:
 				cmd:   "/mycmd",
 				args:  []string{"--my-other-arg=https://foo.git"},
 			},
-		}),
+		}, false),
 	}, {
 		name:    "taskrun-with-taskspec",
 		taskRun: taskRunWithTaskSpec,
@@ -819,7 +824,7 @@ spec:
 				image: "myimage",
 				cmd:   "/mycmd",
 			},
-		}),
+		}, false),
 	}, {
 		name:    "success-with-cluster-task",
 		taskRun: taskRunWithClusterTask,
@@ -831,7 +836,7 @@ spec:
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "taskrun-with-pod",
 		taskRun: taskRunWithPod,
@@ -843,7 +848,7 @@ spec:
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}, {
 		name:    "taskrun-with-credentials-variable-default-tekton-creds",
 		taskRun: taskRunWithCredentialsVariable,
@@ -855,7 +860,7 @@ spec:
 			name:  "mycontainer",
 			image: "myimage",
 			cmd:   "/mycmd /tekton/creds",
-		}}),
+		}}, false),
 	}, {
 		name:    "remote-task",
 		taskRun: taskRunBundle,
@@ -867,7 +872,7 @@ spec:
 			name:  "simple-step",
 			image: "foo",
 			cmd:   "/mycmd",
-		}}),
+		}}, false),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets, cancel := getTaskRunController(t, d)
@@ -929,6 +934,7 @@ spec:
 
 func TestAlphaReconcile(t *testing.T) {
 	names.TestingSeed()
+	readonly := true
 	taskRunWithOutputConfig := parse.MustParseV1beta1TaskRun(t, `
 metadata:
   name: test-taskrun-with-output-config
@@ -971,14 +977,13 @@ spec:
 	cms := []*corev1.ConfigMap{{
 		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
 		Data: map[string]string{
-			"enable-api-fields": config.AlphaAPIFields,
+			"enable-api-fields":         config.AlphaAPIFields,
+			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
 		},
 	}}
 	d := test.Data{
-		ConfigMaps:   cms,
-		TaskRuns:     taskruns,
-		Tasks:        []*v1beta1.Task{simpleTask, saTask, templatedTask},
-		ClusterTasks: []*v1beta1.ClusterTask{clustertask},
+		ConfigMaps: cms,
+		TaskRuns:   taskruns,
 	}
 	for _, tc := range []struct {
 		name       string
@@ -992,12 +997,30 @@ spec:
 			"Normal Started ",
 			"Normal Running Not all Steps",
 		},
-		wantPod: expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{{
-			name:       "mycontainer",
-			image:      "myimage",
-			stdoutPath: "stdout.txt",
-			cmd:        "/mycmd",
-		}}),
+		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "foo", config.DefaultServiceAccountValue, false,
+			[]corev1.Volume{
+				{
+					Name: spire.WorkloadAPI,
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							Driver:   "csi.spiffe.io",
+							ReadOnly: &readonly,
+						},
+					},
+				}}, []stepForExpectedPod{{
+				name:       "mycontainer",
+				image:      "myimage",
+				stdoutPath: "stdout.txt",
+				cmd:        "/mycmd",
+			}}, true),
+			[]corev1.VolumeMount{
+				{
+					Name:      spire.WorkloadAPI,
+					MountPath: spire.VolumeMountPath,
+					ReadOnly:  true,
+				},
+			},
+		),
 	}, {
 		name:    "taskrun-with-output-config-ws",
 		taskRun: taskRunWithOutputConfigAndWorkspace,
@@ -1006,22 +1029,40 @@ spec:
 			"Normal Running Not all Steps",
 		},
 		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-ws-pod", "", "test-taskrun-with-output-config-ws", "foo", config.DefaultServiceAccountValue, false,
-			[]corev1.Volume{{
-				Name: "ws-9l9zj",
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{},
+			[]corev1.Volume{
+				{
+					Name: "ws-9l9zj",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				}, {
+					Name: spire.WorkloadAPI,
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							Driver:   "csi.spiffe.io",
+							ReadOnly: &readonly,
+						},
+					},
 				},
-			}},
+			},
 			[]stepForExpectedPod{{
 				name:       "mycontainer",
 				image:      "myimage",
 				stdoutPath: "stdout.txt",
 				cmd:        "/mycmd",
-			}}),
-			[]corev1.VolumeMount{{
-				Name:      "ws-9l9zj",
-				MountPath: "/workspace/data",
-			}}),
+			}}, true),
+			[]corev1.VolumeMount{
+				{
+					Name:      "ws-9l9zj",
+					MountPath: "/workspace/data",
+				},
+				{
+					Name:      spire.WorkloadAPI,
+					MountPath: spire.VolumeMountPath,
+					ReadOnly:  true,
+				},
+			},
+		),
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			testAssets, cancel := getTaskRunController(t, d)
@@ -1082,10 +1123,184 @@ spec:
 }
 
 func addVolumeMounts(p *corev1.Pod, vms []corev1.VolumeMount) *corev1.Pod {
-	for i, vm := range vms {
-		p.Spec.Containers[i].VolumeMounts = append(p.Spec.Containers[i].VolumeMounts, vm)
+	for i := range p.Spec.Containers {
+		p.Spec.Containers[i].VolumeMounts = append(p.Spec.Containers[i].VolumeMounts, vms...)
 	}
 	return p
+}
+
+func TestSpireFlowReconcile(t *testing.T) {
+	names.TestingSeed()
+	readonly := true
+	taskRunWithOutputConfig := parse.MustParseV1beta1TaskRun(t, `
+metadata:
+  name: test-taskrun-with-output-config
+  namespace: foo
+spec:
+  taskSpec:
+    steps:
+      - command:
+        - /mycmd
+        image: myimage
+        name: mycontainer
+        stdoutConfig:
+          path: stdout.txt
+`)
+	taskruns := []*v1beta1.TaskRun{
+		taskRunWithOutputConfig,
+	}
+
+	cms := []*corev1.ConfigMap{{
+		ObjectMeta: metav1.ObjectMeta{Namespace: system.Namespace(), Name: config.GetFeatureFlagsConfigName()},
+		Data: map[string]string{
+			"enable-api-fields":         config.AlphaAPIFields,
+			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
+		},
+	}}
+	d := test.Data{
+		ConfigMaps: cms,
+		TaskRuns:   taskruns,
+	}
+	for _, tc := range []struct {
+		name       string
+		taskRun    *v1beta1.TaskRun
+		wantPod    *corev1.Pod
+		wantEvents []string
+	}{{
+		name:    "taskrun-with-output-config",
+		taskRun: taskRunWithOutputConfig,
+		wantEvents: []string{
+			"Normal Started ",
+			"Normal Running Not all Steps",
+		},
+		wantPod: addVolumeMounts(expectedPod("test-taskrun-with-output-config-pod", "", "test-taskrun-with-output-config", "foo", config.DefaultServiceAccountValue, false,
+			[]corev1.Volume{
+				{
+					Name: spire.WorkloadAPI,
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							Driver:   "csi.spiffe.io",
+							ReadOnly: &readonly,
+						},
+					},
+				}}, []stepForExpectedPod{{
+				name:       "mycontainer",
+				image:      "myimage",
+				stdoutPath: "stdout.txt",
+				cmd:        "/mycmd",
+			}}, true),
+			[]corev1.VolumeMount{
+				{
+					Name:      spire.WorkloadAPI,
+					MountPath: spire.VolumeMountPath,
+					ReadOnly:  true,
+				},
+			},
+		),
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			testAssets, cancel := getTaskRunController(t, d)
+			defer cancel()
+			c := testAssets.Controller
+			clients := testAssets.Clients
+			saName := tc.taskRun.Spec.ServiceAccountName
+			createServiceAccount(t, testAssets, saName, tc.taskRun.Namespace)
+
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.taskRun)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Errorf("expected no error. Got error %v", err)
+			}
+
+			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.taskRun.Namespace).Get(testAssets.Ctx, tc.taskRun.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("getting updated taskrun: %v", err)
+			}
+
+			if err := spire.CheckStatusInternalAnnotation(tr); err != nil {
+				t.Fatalf("Error %s in checking internal status after first reconcile.", err)
+			}
+
+			if tr.Status.PodName == "" {
+				t.Fatalf("Reconcile didn't set pod name")
+			}
+			pod, err := clients.Kube.CoreV1().Pods(tr.Namespace).Get(testAssets.Ctx, tr.Status.PodName, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Failed to fetch build pod: %v", err)
+			}
+			pod.Status = corev1.PodStatus{
+				Phase: corev1.PodRunning,
+			}
+			if _, err := clients.Kube.CoreV1().Pods(tr.Namespace).UpdateStatus(testAssets.Ctx, pod, metav1.UpdateOptions{}); err != nil {
+				t.Errorf("Unexpected error while updating build: %v", err)
+			}
+			// Before calling Reconcile again, we need to ensure that the informer's
+			// lister cache is update to reflect the result of the previous Reconcile.
+			testAssets.Informers.TaskRun.Informer().GetIndexer().Add(tr)
+
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Fatalf("Unexpected error when Reconcile(): %v", err)
+			}
+
+			tr, err = clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", tr.Name, err)
+			}
+			if err := spire.CheckStatusInternalAnnotation(tr); err != nil {
+				t.Fatalf("Error %s in checking internal status after second reconcile.", err)
+			}
+
+			spireTaskRunEntryID := fmt.Sprintf("/ns/%v/taskrun/%v", tr.Namespace, tr.Name)
+			if _, err := mockSpire.Entries[spireTaskRunEntryID]; !err {
+				t.Fatalf("%s expected to be added as a SPIFFE id.", spireTaskRunEntryID)
+			}
+
+			pod.Status = corev1.PodStatus{
+				Phase: corev1.PodSucceeded,
+			}
+			if _, err := clients.Kube.CoreV1().Pods(tr.Namespace).UpdateStatus(testAssets.Ctx, pod, metav1.UpdateOptions{}); err != nil {
+				t.Errorf("Unexpected error while updating build: %v", err)
+			}
+			testAssets.Informers.TaskRun.Informer().GetIndexer().Add(tr)
+
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tr)); err == nil {
+				t.Error("Wanted a wrapped requeue error, but got nil.")
+			} else if ok, _ := controller.IsRequeueKey(err); !ok {
+				t.Fatalf("Unexpected error when Reconcile(): %v", err)
+			}
+
+			tr, err = clients.Pipeline.TektonV1beta1().TaskRuns(tr.Namespace).Get(testAssets.Ctx, tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", tr.Name, err)
+			}
+			if err := spire.CheckStatusInternalAnnotation(tr); err != nil {
+				t.Fatalf("Error %s in checking internal status after third reconcile.", err)
+			}
+
+			if _, err := mockSpire.Entries[spireTaskRunEntryID]; err {
+				t.Fatalf("SPIFFE id %s expected to be deleted.", spireTaskRunEntryID)
+			}
+
+			if d := cmp.Diff(tc.wantPod.ObjectMeta, pod.ObjectMeta, ignoreRandomPodNameSuffix); d != "" {
+				t.Errorf("Pod metadata doesn't match %s", diff.PrintWantGot(d))
+			}
+
+			pod.Name = tc.wantPod.Name // Ignore pod name differences, the pod name is generated and tested in pod_test.go
+			if d := cmp.Diff(tc.wantPod.Spec, pod.Spec, resourceQuantityCmp, volumeSort, volumeMountSort, ignoreEnvVarOrdering); d != "" {
+				t.Errorf("Pod spec doesn't match %s", diff.PrintWantGot(d))
+			}
+			if d := cmp.Diff(&apis.Condition{
+				Type:    apis.ConditionSucceeded,
+				Status:  corev1.ConditionTrue,
+				Reason:  v1beta1.TaskRunReasonSuccessful.String(),
+				Message: "All Steps have completed executing",
+			}, tr.Status.GetCondition(apis.ConditionSucceeded), ignoreLastTransitionTime); d != "" {
+				t.Errorf("Did not get expected condition %s", diff.PrintWantGot(d))
+			}
+		})
+	}
 }
 
 // TestReconcileWithResolver checks that a TaskRun with a populated Resolver
@@ -4152,6 +4367,126 @@ status:
 	}
 }
 
+func TestReconcileOnTaskRunSign(t *testing.T) {
+	taskSt := &apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionTrue,
+		Reason:  "Build succeeded",
+		Message: "Build succeeded",
+	}
+	taskRunStartedUnsigned := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("taskrun-started-unsigned", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{
+					*taskSt,
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: now.Add(-15 * time.Second)},
+			},
+		},
+	}
+	taskRunUnstarted := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("taskrun-unstarted", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{
+					*taskSt,
+				},
+			},
+		},
+	}
+	taskRunStartedSigned := &v1beta1.TaskRun{
+		ObjectMeta: objectMeta("taskrun-started-signed", "foo"),
+		Spec: v1beta1.TaskRunSpec{
+			TaskRef: &v1beta1.TaskRef{
+				Name: simpleTask.Name,
+			},
+		},
+		Status: v1beta1.TaskRunStatus{
+			Status: duckv1.Status{
+				Conditions: duckv1.Conditions{
+					*taskSt,
+				},
+			},
+			TaskRunStatusFields: v1beta1.TaskRunStatusFields{
+				StartTime: &metav1.Time{Time: now.Add(-15 * time.Second)},
+			},
+		},
+	}
+	if err := mockSpire.AppendStatusInternalAnnotation(context.Background(), taskRunStartedSigned); err != nil {
+		t.Fatal("failed to sign test taskrun")
+	}
+
+	d := test.Data{
+		ConfigMaps: []*corev1.ConfigMap{{
+			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
+			Data: map[string]string{
+				"enable-api-fields":         config.AlphaAPIFields,
+				"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
+			},
+		}},
+
+		TaskRuns: []*v1beta1.TaskRun{
+			taskRunStartedUnsigned, taskRunUnstarted, taskRunStartedSigned,
+		},
+		Tasks: []*v1beta1.Task{simpleTask},
+	}
+	testAssets, cancel := getTaskRunController(t, d)
+	defer cancel()
+	c := testAssets.Controller
+	clients := testAssets.Clients
+
+	testCases := []struct {
+		name       string
+		tr         *v1beta1.TaskRun
+		verifiable bool
+	}{
+		{
+			name:       "sign/verify unstarted taskrun",
+			tr:         taskRunUnstarted,
+			verifiable: true,
+		},
+		{
+			name:       "sign/verify signed started taskrun",
+			tr:         taskRunStartedSigned,
+			verifiable: true,
+		},
+		{
+			name:       "sign/verify unsigned started taskrun should fail",
+			tr:         taskRunStartedUnsigned,
+			verifiable: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tc.tr)); err != nil {
+				t.Fatalf("Unexpected error when reconciling completed TaskRun : %v", err)
+			}
+			newTr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tc.tr.Namespace).Get(testAssets.Ctx, tc.tr.Name, metav1.GetOptions{})
+			if err != nil {
+				t.Fatalf("Expected completed TaskRun %s to exist but instead got error when getting it: %v", tc.tr.Name, err)
+			}
+			verified := mockSpire.CheckSpireVerifiedFlag(newTr)
+			if verified != tc.verifiable {
+				t.Fatalf("expected verifiable: %v, got %v", tc.verifiable, verified)
+			}
+		})
+	}
+}
+
 func Test_validateTaskSpecRequestResources_ValidResources(t *testing.T) {
 	tcs := []struct {
 		name     string
@@ -4364,7 +4699,7 @@ func podVolumeMounts(idx, totalSteps int) []corev1.VolumeMount {
 	return mnts
 }
 
-func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []string, idx int) []string {
+func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []string, idx int, enableSpire bool) []string {
 	args := []string{
 		"-wait_file",
 	}
@@ -4381,6 +4716,9 @@ func podArgs(cmd string, stdoutPath string, stderrPath string, additionalArgs []
 		"-step_metadata_dir",
 		fmt.Sprintf("/tekton/run/%d/status", idx),
 	)
+	if enableSpire {
+		args = append(args, "-enable_spire")
+	}
 	if stdoutPath != "" {
 		args = append(args, "-stdout_path", stdoutPath)
 	}
@@ -4442,11 +4780,24 @@ type stepForExpectedPod struct {
 	stderrPath      string
 }
 
-func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod) *corev1.Pod {
+func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTask bool, extraVolumes []corev1.Volume, steps []stepForExpectedPod, enableSpire bool) *corev1.Pod {
 	stepNames := make([]string, 0, len(steps))
 	for _, s := range steps {
 		stepNames = append(stepNames, fmt.Sprintf("step-%s", s.name))
 	}
+
+	initContainers := []corev1.Container{placeToolsInitContainer(stepNames)}
+	if enableSpire {
+		for i := range initContainers {
+			c := &initContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+				ReadOnly:  true,
+			})
+		}
+	}
+
 	p := &corev1.Pod{
 		ObjectMeta: podObjectMeta(podName, taskName, taskRunName, ns, isClusterTask),
 		Spec: corev1.PodSpec{
@@ -4458,7 +4809,7 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 				binVolume,
 				downwardVolume,
 			},
-			InitContainers:        []corev1.Container{placeToolsInitContainer(stepNames)},
+			InitContainers:        initContainers,
 			RestartPolicy:         corev1.RestartPolicyNever,
 			ActiveDeadlineSeconds: &defaultActiveDeadlineSeconds,
 			ServiceAccountName:    saName,
@@ -4479,7 +4830,7 @@ func expectedPod(podName, taskName, taskRunName, ns, saName string, isClusterTas
 			VolumeMounts:           podVolumeMounts(idx, len(steps)),
 			TerminationMessagePath: "/tekton/termination",
 		}
-		stepContainer.Args = podArgs(s.cmd, s.stdoutPath, s.stderrPath, s.args, idx)
+		stepContainer.Args = podArgs(s.cmd, s.stdoutPath, s.stderrPath, s.args, idx, enableSpire)
 
 		for k, v := range s.envVars {
 			stepContainer.Env = append(stepContainer.Env, corev1.EnvVar{

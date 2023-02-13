@@ -29,6 +29,39 @@ import (
 	"knative.dev/pkg/system"
 )
 
+var spireFeatureGates = map[string]string{
+	"enable-nonfalsifiability": "spire",
+	"enable-api-fields":        "alpha",
+}
+
+func isSpireEnabled(ctx context.Context, t *testing.T, c *clients, namespace string) bool {
+	t.Helper()
+	isSpireEnabled, _ := hasAllFeatureGates(ctx, t, spireFeatureGates, c, namespace)
+	return isSpireEnabled
+}
+
+func hasAllFeatureGates(ctx context.Context, t *testing.T, gates map[string]string, c *clients, namespace string) (bool, string) {
+	t.Helper()
+	featureFlagsCM, err := c.KubeClient.CoreV1().ConfigMaps(system.Namespace()).Get(ctx, config.GetFeatureFlagsConfigName(), metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap `%s`: %s", config.GetFeatureFlagsConfigName(), err)
+	}
+	pairs := []string{}
+	for name, value := range gates {
+		actual, ok := featureFlagsCM.Data[name]
+		if !ok || value != actual {
+			pairs = append(pairs, fmt.Sprintf("%q is %q, want %s", name, actual, value))
+		}
+	}
+	if len(pairs) > 0 {
+		status := fmt.Sprintf(
+			"Some feature flags in namespace %q not matching %s\nExisting feature flag: %#v\n",
+			system.Namespace(), strings.Join(pairs, " and "), featureFlagsCM.Data)
+		return false, status
+	}
+	return true, ""
+}
+
 // requireAnyGate returns a setup func that will skip the current
 // test if none of the feature-flags in the given map match
 // what's in the feature-flags ConfigMap. It will fatally fail

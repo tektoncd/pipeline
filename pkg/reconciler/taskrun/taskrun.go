@@ -45,6 +45,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	_ "github.com/tektoncd/pipeline/pkg/taskrunmetrics/fake" // Make sure the taskrunmetrics are setup
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
@@ -75,6 +76,7 @@ type Reconciler struct {
 	KubeClientSet     kubernetes.Interface
 	PipelineClientSet clientset.Interface
 	Images            pipeline.Images
+	SpireClient       spire.ControllerAPIClient
 	Clock             clock.PassiveClock
 
 	// listers index properties about resources
@@ -103,6 +105,7 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 	ctx = cloudevent.ToContext(ctx, c.cloudEventClient)
 	ctx = initTracing(ctx, c.tracerProvider, tr)
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "TaskRun:ReconcileKind")
+	spireEnabled := config.IsSpireEnabled(ctx)
 	defer span.End()
 
 	span.SetAttributes(attribute.String("taskrun", tr.Name), attribute.String("namespace", tr.Namespace))
@@ -133,6 +136,23 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, tr *v1beta1.TaskRun) pkg
 		// on the event to perform user facing initialisations, such has reset a CI check status
 		afterCondition := tr.Status.GetCondition(apis.ConditionSucceeded)
 		events.Emit(ctx, nil, afterCondition, tr)
+	} else if spireEnabled {
+		// Verify that the TaskRun Status has not been modified.
+		// The TaskRun status is signed only after the first reconcile.
+		// As such skip the verification for the first reconcile.
+		var verified = false
+		if c.SpireClient != nil {
+			if err := c.SpireClient.VerifyStatusInternalAnnotation(ctx, tr, logger); err == nil {
+				verified = true
+			}
+			if !verified {
+				if tr.Status.Annotations == nil {
+					tr.Status.Annotations = map[string]string{}
+				}
+				tr.Status.Annotations[spire.VerifiedAnnotation] = "no"
+			}
+			logger.Infof("taskrun verification status: %t with hash %v \n", verified, tr.Status.Annotations[spire.TaskRunStatusHashAnnotation])
+		}
 	}
 
 	// If the TaskRun is complete, run some post run fixtures when applicable
@@ -294,13 +314,31 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 	// Send k8s events and cloud events (when configured)
 	events.Emit(ctx, beforeCondition, afterCondition, tr)
 
-	_, err := c.updateLabelsAndAnnotations(ctx, tr)
+	var err error
+	spireEnabled := config.IsSpireEnabled(ctx)
+	// Add status internal annotations hash only if it was verified
+	if spireEnabled && c.SpireClient != nil && c.SpireClient.CheckSpireVerifiedFlag(tr) {
+		if err := spire.CheckStatusInternalAnnotation(tr); err != nil {
+			err = c.SpireClient.AppendStatusInternalAnnotation(ctx, tr)
+			if err != nil {
+				logger.Warn("Failed to sign TaskRun internal status hash", zap.Error(err))
+				events.EmitError(controller.GetEventRecorder(ctx), err, tr)
+			} else {
+				logger.Infof("Successfully signed TaskRun internal status with hash: %v",
+					tr.Status.Annotations[spire.TaskRunStatusHashAnnotation])
+			}
+		}
+	}
+
+	merr := multierror.Append(previousError, err).ErrorOrNil()
+
+	_, err = c.updateLabelsAndAnnotations(ctx, tr)
 	if err != nil {
 		logger.Warn("Failed to update TaskRun labels/annotations", zap.Error(err))
 		events.EmitError(controller.GetEventRecorder(ctx), err, tr)
 	}
 
-	merr := multierror.Append(previousError, err).ErrorOrNil()
+	merr = multierror.Append(merr, err).ErrorOrNil()
 	if controller.IsPermanentError(previousError) {
 		return controller.NewPermanentError(merr)
 	}
@@ -433,6 +471,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 
 	// Get the TaskRun's Pod if it should have one. Otherwise, create the Pod.
 	var pod *corev1.Pod
+	spireEnabled := config.IsSpireEnabled(ctx)
 
 	if tr.Status.PodName != "" {
 		pod, err = c.podLister.Pods(tr.Namespace).Get(tr.Status.PodName)
@@ -508,6 +547,16 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	}
 
 	if podconvert.SidecarsReady(pod.Status) {
+		if spireEnabled {
+			// TTL for the entry is in seconds
+			ttl := time.Duration(config.FromContextOrDefaults(ctx).Defaults.DefaultTimeoutMinutes) * time.Minute
+			if err = c.SpireClient.CreateEntries(ctx, tr, pod, ttl); err != nil {
+				logger.Errorf("Failed to create workload SPIFFE entry for taskrun %v: %v", tr.Name, err)
+				return err
+			}
+			logger.Infof("Created SPIFFE workload entry for %v/%v", tr.Namespace, tr.Name)
+		}
+
 		if err := podconvert.UpdateReady(ctx, c.KubeClientSet, *pod); err != nil {
 			return err
 		}
@@ -517,7 +566,7 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	}
 
 	// Convert the Pod's status to the equivalent TaskRun Status.
-	tr.Status, err = podconvert.MakeTaskRunStatus(ctx, logger, *tr, pod, c.KubeClientSet, rtr.TaskSpec)
+	tr.Status, err = podconvert.MakeTaskRunStatus(ctx, logger, *tr, pod, c.KubeClientSet, rtr.TaskSpec, spireEnabled, c.SpireClient)
 	if err != nil {
 		return err
 	}
@@ -525,6 +574,14 @@ func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *re
 	if err := validateTaskRunResults(tr, rtr.TaskSpec); err != nil {
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return err
+	}
+
+	if spireEnabled && tr.IsDone() {
+		if err := c.SpireClient.DeleteEntry(ctx, tr, pod); err != nil {
+			logger.Infof("Failed to remove workload SPIFFE entry for taskrun %v: %v", tr.Name, err)
+			return err
+		}
+		logger.Infof("Deleted SPIFFE workload entry for %v/%v", tr.Namespace, tr.Name)
 	}
 
 	logger.Infof("Successfully reconciled taskrun %s/%s with status: %#v", tr.Name, tr.Namespace, tr.Status.GetCondition(apis.ConditionSucceeded))

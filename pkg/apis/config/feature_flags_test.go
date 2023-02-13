@@ -305,6 +305,28 @@ func TestCheckAlphaOrBetaAPIFields(t *testing.T) {
 	}
 }
 
+func TestIsSpireEnabled(t *testing.T) {
+	ctx := context.Background()
+	if config.IsSpireEnabled(ctx) {
+		t.Errorf("IsSpireEnabled got true but expected to be false")
+	}
+	store := config.NewStore(logging.FromContext(ctx).Named("config-store"))
+	featureflags := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "feature-flags",
+		},
+		Data: map[string]string{
+			"enable-api-fields":         "alpha",
+			"enforce-nonfalsifiability": config.EnforceNonfalsifiabilityWithSpire,
+		},
+	}
+	store.OnConfigChanged(featureflags)
+	ctx = store.ToContext(ctx)
+	if !config.IsSpireEnabled(ctx) {
+		t.Errorf("IsSpireEnabled got false but expected to be true")
+	}
+}
+
 func verifyConfigFileWithExpectedFeatureFlagsConfig(t *testing.T, fileName string, expectedConfig *config.FeatureFlags) {
 	t.Helper()
 	cm := test.ConfigMapFromTestFile(t, fileName)

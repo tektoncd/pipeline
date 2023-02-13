@@ -32,6 +32,7 @@ import (
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	"github.com/tektoncd/pipeline/pkg/taskrunmetrics"
 	"go.opentelemetry.io/otel/trace"
 	"k8s.io/client-go/tools/cache"
@@ -55,7 +56,8 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 		limitrangeInformer := limitrangeinformer.Get(ctx)
 		verificationpolicyInformer := verificationpolicyinformer.Get(ctx)
 		resolutionInformer := resolutioninformer.Get(ctx)
-		configStore := config.NewStore(logger.Named("config-store"), taskrunmetrics.MetricsOnStore(logger))
+		spireControllerAPI := spire.GetControllerAPIClient(ctx)
+		configStore := config.NewStore(logger.Named("config-store"), taskrunmetrics.MetricsOnStore(logger), spire.OnStore(ctx, logger))
 		configStore.WatchConfigs(cmw)
 
 		entrypointCache, err := pod.NewEntrypointCache(kubeclientset)
@@ -67,6 +69,7 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 			KubeClientSet:            kubeclientset,
 			PipelineClientSet:        pipelineclientset,
 			Images:                   opts.Images,
+			SpireClient:              spireControllerAPI,
 			Clock:                    clock,
 			taskRunLister:            taskRunInformer.Lister(),
 			limitrangeLister:         limitrangeInformer.Lister(),

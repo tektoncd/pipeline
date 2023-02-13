@@ -40,6 +40,21 @@ header "Setting up environment"
 install_pipeline_crd
 
 failed=0
+function add_spire() {
+  local gate="$1"
+  if [ "$gate" != "alpha" ] && [ "$gate" != "stable" ] && [ "$gate" != "beta" ] ; then
+    printf "Invalid gate %s\n" ${gate}
+    exit 255
+  fi
+  if [ "$gate" == "alpha" ] ; then
+    DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+    printf "Setting up environment for alpha features"
+    install_spire
+    patch_pipline_spire
+    kubectl apply -n tekton-pipelines -f "$DIR"/testdata/spire/config-spire.yaml
+    failed=0
+  fi
+}
 
 function set_feature_gate() {
   local gate="$1"
@@ -91,6 +106,7 @@ function run_e2e() {
   fi
 }
 
+add_spire "$PIPELINE_FEATURE_GATE"
 set_feature_gate "$PIPELINE_FEATURE_GATE"
 set_result_extraction_method "$RESULTS_FROM"
 run_e2e

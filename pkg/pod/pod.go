@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources/tasklevel"
 	"github.com/tektoncd/pipeline/pkg/names"
+	"github.com/tektoncd/pipeline/pkg/spire"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -132,6 +133,10 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 	// Secrets, along with any arguments needed by Step entrypoints to process
 	// those secrets.
 	commonExtraEntrypointArgs := []string{}
+	// Entrypoint arg to enable or disable spire
+	if config.IsSpireEnabled(ctx) {
+		commonExtraEntrypointArgs = append(commonExtraEntrypointArgs, "-enable_spire")
+	}
 	credEntrypointArgs, credVolumes, credVolumeMounts, err := credsInit(ctx, taskRun.Spec.ServiceAccountName, taskRun.Namespace, b.KubeClient)
 	if err != nil {
 		return nil, err
@@ -320,6 +325,39 @@ func (b *Builder) Build(ctx context.Context, taskRun *v1beta1.TaskRun, taskSpec 
 
 	if err := v1beta1.ValidateVolumes(volumes); err != nil {
 		return nil, err
+	}
+
+	readonly := true
+	if config.IsSpireEnabled(ctx) {
+		// add SPIRE's CSI volume to the explicitly declared use volumes
+		volumes = append(volumes, corev1.Volume{
+			Name: spire.WorkloadAPI,
+			VolumeSource: corev1.VolumeSource{
+				CSI: &corev1.CSIVolumeSource{
+					Driver:   "csi.spiffe.io",
+					ReadOnly: &readonly,
+				},
+			},
+		})
+
+		// mount SPIRE's CSI volume to each Step Container
+		for i := range stepContainers {
+			c := &stepContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+				ReadOnly:  true,
+			})
+		}
+		for i := range initContainers {
+			// mount SPIRE's CSI volume to each Init Container
+			c := &initContainers[i]
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{
+				Name:      spire.WorkloadAPI,
+				MountPath: spire.VolumeMountPath,
+				ReadOnly:  true,
+			})
+		}
 	}
 
 	mergedPodContainers := stepContainers

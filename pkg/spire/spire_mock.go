@@ -37,7 +37,12 @@ func init() {
 }
 
 func withFakeControllerClient(ctx context.Context, cfg *rest.Config) context.Context {
-	return context.WithValue(ctx, controllerKey{}, &spireControllerAPIClient{})
+	return context.WithValue(ctx, controllerKey{}, &MockClient{})
+}
+
+// InjectClient injects MockClient into the given context as SpireControllerApiClient.
+func InjectClient(ctx context.Context, spireMock *MockClient) context.Context {
+	return context.WithValue(ctx, controllerKey{}, spireMock)
 }
 
 // MockClient is a client used for mocking the this package for unit testing
@@ -300,3 +305,6 @@ func (*MockClient) Close() error { return nil }
 
 // SetConfig sets the spire configuration for MockClient
 func (*MockClient) SetConfig(spireconfig.SpireConfig) {}
+
+var _ ControllerAPIClient = (*MockClient)(nil)
+var _ EntrypointerAPIClient = (*MockClient)(nil)

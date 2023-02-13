@@ -92,4 +92,4 @@ spec:
     name: result-test
   params:
   - name: RESULT_STRING_LENGTH
-    value: "3000"
+    value: "2000"

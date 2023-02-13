@@ -27,8 +27,10 @@ import (
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	entryv1 "github.com/spiffe/spire-api-sdk/proto/spire/api/server/entry/v1"
 	spiffetypes "github.com/spiffe/spire-api-sdk/proto/spire/api/types"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	spireconfig "github.com/tektoncd/pipeline/pkg/spire/config"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -45,6 +47,22 @@ func init() {
 // controllerKey is a way to associate the ControllerAPIClient from inside the context.Context
 type controllerKey struct{}
 
+// OnStore stores the changed spire config into the SpireClientApi
+func OnStore(ctx context.Context, logger *zap.SugaredLogger) func(name string, value interface{}) {
+	return func(name string, value interface{}) {
+		if name == config.GetSpireConfigName() {
+			cfg, ok := value.(*spireconfig.SpireConfig)
+			if !ok {
+				logger.Error("Failed to do type assertion for extracting SPIRE config")
+				return
+			}
+			controllerAPIClient := GetControllerAPIClient(ctx)
+			controllerAPIClient.Close()
+			controllerAPIClient.SetConfig(*cfg)
+		}
+	}
+}
+
 // GetControllerAPIClient extracts the ControllerAPIClient from the context.
 func GetControllerAPIClient(ctx context.Context) ControllerAPIClient {
 	untyped := ctx.Value(controllerKey{})
@@ -52,7 +70,7 @@ func GetControllerAPIClient(ctx context.Context) ControllerAPIClient {
 		logging.FromContext(ctx).Errorf("Unable to fetch client from context.")
 		return nil
 	}
-	return untyped.(*spireControllerAPIClient)
+	return untyped.(ControllerAPIClient)
 }
 
 func withControllerClient(ctx context.Context, cfg *rest.Config) context.Context {
@@ -297,18 +315,24 @@ func (sc *spireControllerAPIClient) Close() error {
 		if err != nil {
 			return err
 		}
+		sc.serverConn = nil
 	}
 	if sc.workloadAPI != nil {
 		err = sc.workloadAPI.Close()
 		if err != nil {
 			return err
 		}
+		sc.workloadAPI = nil
 	}
 	if sc.workloadConn != nil {
 		err = sc.workloadConn.Close()
 		if err != nil {
 			return err
 		}
+		sc.workloadConn = nil
 	}
+	sc.entryClient = nil
 	return nil
 }
+
+var _ ControllerAPIClient = (*spireControllerAPIClient)(nil)
