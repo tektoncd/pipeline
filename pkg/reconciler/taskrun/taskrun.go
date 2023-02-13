@@ -744,12 +744,6 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 		return nil, err
 	}
 
-	ts, err = resources.AddOutputResources(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources)
-	if err != nil {
-		logger.Errorf("Failed to create a pod for taskrun: %s due to output resource error %v", tr.Name, err)
-		return nil, err
-	}
-
 	// Apply bound resource substitution from the taskrun.
 	ts = resources.ApplyResources(ts, inputResources, "inputs")
 	ts = resources.ApplyResources(ts, outputResources, "outputs")

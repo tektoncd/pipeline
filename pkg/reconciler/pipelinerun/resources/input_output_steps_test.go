@@ -27,66 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestGetOutputSteps(t *testing.T) {
-	r1 := &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:     "resource1",
-			SelfLink: "/apis/tekton.dev/pipelineresources/resource1",
-		},
-	}
-	r2 := &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:     "resource2",
-			SelfLink: "/apis/tekton.dev/pipelineresources/resource2",
-		},
-	}
-	tcs := []struct {
-		name                       string
-		outputs                    map[string]*resourcev1alpha1.PipelineResource
-		expectedtaskOuputResources []v1beta1.TaskResourceBinding
-		pipelineTaskName           string
-	}{{
-		name:    "single output",
-		outputs: map[string]*resourcev1alpha1.PipelineResource{"test-output": r1},
-		expectedtaskOuputResources: []v1beta1.TaskResourceBinding{{
-			PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-				Name:        "test-output",
-				ResourceRef: &v1beta1.PipelineResourceRef{Name: "resource1"},
-			},
-			Paths: []string{"test-taskname/test-output"},
-		}},
-		pipelineTaskName: "test-taskname",
-	}, {
-		name: "multiple-outputs",
-		outputs: map[string]*resourcev1alpha1.PipelineResource{
-			"test-output":   r1,
-			"test-output-2": r2,
-		},
-		expectedtaskOuputResources: []v1beta1.TaskResourceBinding{{
-			PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-				Name:        "test-output",
-				ResourceRef: &v1beta1.PipelineResourceRef{Name: "resource1"},
-			},
-			Paths: []string{"test-multiple-outputs/test-output"},
-		}, {
-			PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-				Name:        "test-output-2",
-				ResourceRef: &v1beta1.PipelineResourceRef{Name: "resource2"},
-			},
-			Paths: []string{"test-multiple-outputs/test-output-2"},
-		}},
-		pipelineTaskName: "test-multiple-outputs",
-	}}
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			postTasks := resources.GetOutputSteps(tc.outputs, tc.pipelineTaskName)
-			if d := cmp.Diff(tc.expectedtaskOuputResources, postTasks, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
-				t.Errorf("error comparing post steps %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
 func TestGetInputSteps(t *testing.T) {
 	r1 := &resourcev1alpha1.PipelineResource{
 		ObjectMeta: metav1.ObjectMeta{
@@ -202,19 +142,9 @@ func TestWrapSteps(t *testing.T) {
 			Name:        "test-input-2",
 		},
 	}}
-	expectedtaskOuputResources := []v1beta1.TaskResourceBinding{{
-		PipelineResourceBinding: v1beta1.PipelineResourceBinding{
-			ResourceRef: &v1beta1.PipelineResourceRef{Name: "resource1"},
-			Name:        "test-output",
-		},
-		Paths: []string{"test-task/test-output"},
-	}}
 
 	if d := cmp.Diff(taskRunSpec.Resources.Inputs, expectedtaskInputResources, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
 		t.Errorf("error comparing input resources %s", diff.PrintWantGot(d))
-	}
-	if d := cmp.Diff(taskRunSpec.Resources.Outputs, expectedtaskOuputResources, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
-		t.Errorf("error comparing output resources %s", diff.PrintWantGot(d))
 	}
 }
 

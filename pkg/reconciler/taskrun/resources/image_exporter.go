@@ -28,6 +28,19 @@ import (
 
 const imageDigestExporterContainerName = "image-digest-exporter"
 
+var (
+	outputDir = "/workspace/output/"
+)
+
+func getBoundResource(resourceName string, boundResources []v1beta1.TaskResourceBinding) (*v1beta1.TaskResourceBinding, error) {
+	for _, br := range boundResources {
+		if br.Name == resourceName {
+			return &br, nil
+		}
+	}
+	return nil, fmt.Errorf("couldnt find resource named %q in bound resources %v", resourceName, boundResources)
+}
+
 // AddOutputImageDigestExporter add a step to check the index.json for all output images
 func AddOutputImageDigestExporter(
 	imageDigestExporterImage string,

@@ -25,11 +25,6 @@ import (
 // additional metatdata should be provided for it.
 type PipelineResourceType = string
 
-var (
-	// AllowedOutputResources are the resource types that can be used as outputs
-	AllowedOutputResources = map[PipelineResourceType]bool{}
-)
-
 const (
 	// PipelineResourceTypeImage indicates that this source is a docker Image.
 	PipelineResourceTypeImage PipelineResourceType = "image"
