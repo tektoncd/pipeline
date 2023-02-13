@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -313,11 +314,18 @@ func replaceParamValues(params []v1beta1.Param, stringReplacements map[string]st
 // and omitted from the returned slice. A nil slice is returned if no results are passed in or all
 // results are invalid.
 func ApplyTaskResultsToPipelineResults(
+	ctx context.Context,
 	results []v1beta1.PipelineResult,
 	taskRunResults map[string][]v1beta1.TaskRunResult,
-	customTaskResults map[string][]v1beta1.CustomRunResult) ([]v1beta1.PipelineRunResult, error) {
+	customTaskResults map[string][]v1beta1.CustomRunResult,
+	skippedTasks []v1beta1.SkippedTask) ([]v1beta1.PipelineRunResult, error) {
 	var runResults []v1beta1.PipelineRunResult
 	var invalidPipelineResults []string
+	skippedTaskNames := map[string]bool{}
+	for _, t := range skippedTasks {
+		skippedTaskNames[t.Name] = true
+	}
+
 	stringReplacements := map[string]string{}
 	arrayReplacements := map[string][]string{}
 	objectReplacements := map[string]map[string]string{}
@@ -338,6 +346,11 @@ func ApplyTaskResultsToPipelineResults(
 				continue
 			}
 			variableParts := strings.Split(variable, ".")
+			// if the referenced task is skipped, we should also skip the results replacements
+			if _, ok := skippedTaskNames[variableParts[1]]; ok {
+				validPipelineResult = false
+				continue
+			}
 			if (variableParts[0] != v1beta1.ResultTaskPart && variableParts[0] != v1beta1.ResultFinallyPart) || variableParts[2] != v1beta1.ResultResultPart {
 				validPipelineResult = false
 				invalidPipelineResults = append(invalidPipelineResults, pipelineResult.Name)
