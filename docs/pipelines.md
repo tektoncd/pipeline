@@ -1037,6 +1037,7 @@ This will cause an `InvalidTaskResultReference` validation error during `Pipelin
 
 **Note:** Since a `Pipeline Result` can contain references to multiple `Task Results`, if any of those
 `Task Result` references are invalid the entire `Pipeline Result` is not emitted.
+**Note:** If a `PipelineTask` referenced by the `Pipeline Result` was skipped, the `Pipeline Result` will not be emitted and the `PipelineRun` will not fail due to a missing result.
 
 ## Configuring the `Task` execution order
 
@@ -1279,7 +1280,7 @@ results:
     value: $(finally.check-count.results.comment-count-validate)
 finally:
   - name: check-count
-    taskRef: 
+    taskRef:
       name: example-task-name
 ```
 
