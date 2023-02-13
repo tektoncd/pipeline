@@ -1041,6 +1041,7 @@ This will cause an `InvalidTaskResultReference` validation error during `Pipelin
 
 **Note:** Since a `Pipeline Result` can contain references to multiple `Task Results`, if any of those
 `Task Result` references are invalid the entire `Pipeline Result` is not emitted.
+**Note:** If a `PipelineTask` referenced by the `Pipeline Result` was skipped, the `Pipeline Result` will not be emitted and the `PipelineRun` will not fail due to a missing result.
 
 ## Configuring the `Task` execution order
 
@@ -1284,7 +1285,7 @@ results:
     value: $(finally.check-count.results.comment-count-validate)
 finally:
   - name: check-count
-    taskRef: 
+    taskRef:
       name: example-task-name
 ```
 
@@ -1772,7 +1773,7 @@ Consult the documentation of the custom task that you are using to determine whe
 Pipelines do not support the following items with custom tasks:
 * Pipeline Resources
 
-### Known Custom Tasks 
+### Known Custom Tasks
 
 We try to list as many known Custom Tasks as possible here so that users can easily find what they want. Please feel free to share the Custom Task you implemented in this table.
 
@@ -1790,7 +1791,7 @@ We try to list as many known Custom Tasks as possible here so that users can eas
 | [Common Expression Language][cel]| Provides Common Expression Language support in Tekton Pipelines.
 | [Wait][wait]| Waits a given amount of time, specified by a `Parameter` named "duration", before succeeding.
 | [Approvals][approvals]| Pauses the execution of `PipelineRuns` and waits for manual approvals.
-| [Pipelines in Pipelines][pipelines-in-pipelines]| Defines and executes a `Pipeline` in a `Pipeline`. 
+| [Pipelines in Pipelines][pipelines-in-pipelines]| Defines and executes a `Pipeline` in a `Pipeline`.
 | [Task Group][task-group]| Groups `Tasks` together as a `Task`.
 | [Pipeline in a Pod][pipeline-in-pod]| Runs `Pipeline` in a `Pod`.
 
