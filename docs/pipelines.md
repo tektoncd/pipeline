@@ -316,7 +316,7 @@ tasks:
       value: https://github.com/tektoncd/catalog.git
     - name: revision
       # value can use params declared at the pipeline level or a static value like main
-      value: $(params.gitRevision) 
+      value: $(params.gitRevision)
     - name: pathInRepo
       value: task/golang-build/0.3/golang-build.yaml
 ```
@@ -1059,6 +1059,7 @@ This will cause an `InvalidTaskResultReference` validation error during `Pipelin
 
 **Note:** Since a `Pipeline Result` can contain references to multiple `Task Results`, if any of those
 `Task Result` references are invalid the entire `Pipeline Result` is not emitted.
+**Note:** If a `PipelineTask` referenced by the `Pipeline Result` was skipped, the `Pipeline Result` will not be emitted and the `PipelineRun` will not fail due to a missing result.
 
 ## Configuring the `Task` execution order
 
@@ -1302,7 +1303,7 @@ results:
     value: $(finally.check-count.results.comment-count-validate)
 finally:
   - name: check-count
-    taskRef: 
+    taskRef:
       name: example-task-name
 ```
 
@@ -1790,7 +1791,7 @@ Consult the documentation of the custom task that you are using to determine whe
 Pipelines do not support the following items with custom tasks:
 * Pipeline Resources
 
-### Known Custom Tasks 
+### Known Custom Tasks
 
 We try to list as many known Custom Tasks as possible here so that users can easily find what they want. Please feel free to share the Custom Task you implemented in this table.
 

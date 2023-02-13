@@ -3497,7 +3497,7 @@ func TestApplyFinallyResultsToPipelineResults(t *testing.T) {
 		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, _ := ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults)
+			received, _ := ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, nil /* skippedTasks */)
 			if d := cmp.Diff(tc.expected, received); d != "" {
 				t.Errorf(diff.PrintWantGot(d))
 			}
@@ -3511,6 +3511,7 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 		results         []v1beta1.PipelineResult
 		taskResults     map[string][]v1beta1.TaskRunResult
 		runResults      map[string][]v1beta1.CustomRunResult
+		skippedTasks    []v1beta1.SkippedTask
 		expectedResults []v1beta1.PipelineRunResult
 		expectedError   error
 	}{{
@@ -3965,9 +3966,28 @@ func TestApplyTaskResultsToPipelineResults(t *testing.T) {
 			Name:  "pipeline-result-2",
 			Value: *v1beta1.NewStructuredValues("do, rae, mi, rae, do"),
 		}},
+	}, {
+		description: "multiple-results-skipped-and-normal-tasks",
+		results: []v1beta1.PipelineResult{{
+			Name:  "pipeline-result-1",
+			Value: *v1beta1.NewStructuredValues("$(tasks.skippedTask.results.foo)"),
+		}, {
+			Name:  "pipeline-result-2",
+			Value: *v1beta1.NewStructuredValues("$(tasks.skippedTask.results.foo), $(tasks.normaltask.results.baz)"),
+		}},
+		taskResults: map[string][]v1beta1.TaskRunResult{
+			"normaltask": {{
+				Name:  "baz",
+				Value: *v1beta1.NewStructuredValues("rae"),
+			}},
+		},
+		skippedTasks: []v1beta1.SkippedTask{{
+			Name: "skippedTask",
+		}},
+		expectedResults: nil,
 	}} {
 		t.Run(tc.description, func(t *testing.T) {
-			received, err := ApplyTaskResultsToPipelineResults(tc.results, tc.taskResults, tc.runResults)
+			received, err := ApplyTaskResultsToPipelineResults(context.Background(), tc.results, tc.taskResults, tc.runResults, tc.skippedTasks)
 			if tc.expectedError != nil {
 				if d := cmp.Diff(tc.expectedError.Error(), err.Error()); d != "" {
 					t.Errorf("ApplyTaskResultsToPipelineResults() errors diff %s", diff.PrintWantGot(d))
