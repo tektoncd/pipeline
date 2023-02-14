@@ -26,6 +26,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ResolvedTask contains the data that is needed to execute
+// the TaskRun.
+type ResolvedTask struct {
+	TaskName string
+	Kind     v1beta1.TaskKind
+	TaskSpec *v1beta1.TaskSpec
+}
+
 // GetTask is a function used to retrieve Tasks.
 type GetTask func(context.Context, string) (v1beta1.TaskObject, *v1beta1.ConfigSource, error)
 

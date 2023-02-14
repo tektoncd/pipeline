@@ -31,13 +31,10 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	taskrunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/taskrun"
 	alphalisters "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
-	resourcelisters "github.com/tektoncd/pipeline/pkg/client/resource/listers/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/internal/affinityassistant"
 	"github.com/tektoncd/pipeline/pkg/internal/computeresources"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
@@ -83,7 +80,6 @@ type Reconciler struct {
 
 	// listers index properties about resources
 	taskRunLister            listers.TaskRunLister
-	resourceLister           resourcelisters.PipelineResourceLister
 	limitrangeLister         corev1Listers.LimitRangeLister
 	podLister                corev1Listers.PodLister
 	verificationPolicyLister alphalisters.VerificationPolicyLister
@@ -330,7 +326,7 @@ func (c *Reconciler) finishReconcileUpdateEmitEvents(ctx context.Context, tr *v1
 // `prepare` returns spec and resources. In future we might store
 // them in the TaskRun.Status so we don't need to re-run `prepare` at every
 // reconcile (see https://github.com/tektoncd/pipeline/issues/2473).
-func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskSpec, *resources.ResolvedTaskResources, error) {
+func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1.TaskSpec, *resources.ResolvedTask, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "prepare")
 	defer span.End()
 	logger := logging.FromContext(ctx)
@@ -371,26 +367,10 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		}
 	}
 
-	inputs := []v1beta1.TaskResourceBinding{}
-	outputs := []v1beta1.TaskResourceBinding{}
-	if tr.Spec.Resources != nil {
-		inputs = tr.Spec.Resources.Inputs
-		outputs = tr.Spec.Resources.Outputs
-	}
-	rtr, err := resources.ResolveTaskResources(taskSpec, taskMeta.Name, resources.GetTaskKind(tr), inputs, outputs, c.resourceLister.PipelineResources(tr.Namespace).Get)
-	if err != nil {
-		if k8serrors.IsNotFound(err) && tknreconciler.IsYoungResource(tr) {
-			// For newly created resources, don't fail immediately.
-			// Instead return an (non-permanent) error, which will prompt the
-			// controller to requeue the key with backoff.
-			logger.Warnf("References for taskrun %s not found: %v", tr.Name, err)
-			tr.Status.MarkResourceOngoing(podconvert.ReasonFailedResolution,
-				fmt.Sprintf("Unable to resolve dependencies for %q: %v", tr.Name, err))
-			return nil, nil, err
-		}
-		logger.Errorf("Failed to resolve references for taskrun %s: %v", tr.Name, err)
-		tr.Status.MarkResourceFailed(podconvert.ReasonFailedResolution, err)
-		return nil, nil, controller.NewPermanentError(err)
+	rtr := &resources.ResolvedTask{
+		TaskName: taskMeta.Name,
+		TaskSpec: taskSpec,
+		Kind:     resources.GetTaskKind(tr),
 	}
 
 	if err := validateTaskSpecRequestResources(taskSpec); err != nil {
@@ -399,7 +379,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 		return nil, nil, controller.NewPermanentError(err)
 	}
 
-	if err := ValidateResolvedTaskResources(ctx, tr.Spec.Params, &v1beta1.Matrix{}, rtr); err != nil {
+	if err := ValidateResolvedTask(ctx, tr.Spec.Params, &v1beta1.Matrix{}, rtr); err != nil {
 		logger.Errorf("TaskRun %q resources are invalid: %v", tr.Name, err)
 		tr.Status.MarkResourceFailed(podconvert.ReasonFailedValidation, err)
 		return nil, nil, controller.NewPermanentError(err)
@@ -460,7 +440,7 @@ func (c *Reconciler) prepare(ctx context.Context, tr *v1beta1.TaskRun) (*v1beta1
 // It reports errors back to Reconcile, it updates the taskrun status in case of
 // error but it does not sync updates back to etcd. It does not emit events.
 // `reconcile` consumes spec and resources returned by `prepare`
-func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources) error {
+func (c *Reconciler) reconcile(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTask) error {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "reconcile")
 	defer span.End()
 
@@ -722,36 +702,10 @@ func (c *Reconciler) failTaskRun(ctx context.Context, tr *v1beta1.TaskRun, reaso
 
 // createPod creates a Pod based on the Task's configuration, with pvcName as a volumeMount
 // TODO(dibyom): Refactor resource setup/substitution logic to its own function in the resources package
-func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources, workspaceVolumes map[string]corev1.Volume) (*corev1.Pod, error) {
+func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1beta1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*corev1.Pod, error) {
 	ctx, span := c.tracerProvider.Tracer(TracerName).Start(ctx, "createPod")
 	defer span.End()
 	logger := logging.FromContext(ctx)
-	inputResources, err := resourceImplBinding(rtr.Inputs, c.Images)
-	if err != nil {
-		logger.Errorf("Failed to initialize input resources: %v", err)
-		return nil, err
-	}
-	outputResources, err := resourceImplBinding(rtr.Outputs, c.Images)
-	if err != nil {
-		logger.Errorf("Failed to initialize output resources: %v", err)
-		return nil, err
-	}
-
-	ts, err = resources.AddInputResource(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, inputResources)
-	if err != nil {
-		logger.Errorf("Failed to create a pod for taskrun: %s due to input resource error %v", tr.Name, err)
-		return nil, err
-	}
-
-	ts, err = resources.AddOutputResources(ctx, c.KubeClientSet, c.Images, rtr.TaskName, ts, tr, outputResources)
-	if err != nil {
-		logger.Errorf("Failed to create a pod for taskrun: %s due to output resource error %v", tr.Name, err)
-		return nil, err
-	}
-
-	// Apply bound resource substitution from the taskrun.
-	ts = resources.ApplyResources(ts, inputResources, "inputs")
-	ts = resources.ApplyResources(ts, outputResources, "outputs")
 
 	// By this time, params and workspaces should be propagated down so we can
 	// validate that all parameter variables and workspaces used in the TaskSpec are declared by the Task.
@@ -761,6 +715,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 		return nil, validateErr
 	}
 
+	var err error
 	ts, err = workspace.Apply(ctx, *ts, tr.Spec.Workspaces, workspaceVolumes)
 
 	if err != nil {
@@ -806,7 +761,7 @@ func (c *Reconciler) createPod(ctx context.Context, ts *v1beta1.TaskSpec, tr *v1
 }
 
 // applyParamsContextsResultsAndWorkspaces applies paramater, context, results and workspace substitutions to the TaskSpec.
-func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTaskResources, workspaceVolumes map[string]corev1.Volume) (*v1beta1.TaskSpec, error) {
+func applyParamsContextsResultsAndWorkspaces(ctx context.Context, tr *v1beta1.TaskRun, rtr *resources.ResolvedTask, workspaceVolumes map[string]corev1.Volume) (*v1beta1.TaskSpec, error) {
 	ts := rtr.TaskSpec.DeepCopy()
 	var defaults []v1beta1.ParamSpec
 	if len(ts.Params) > 0 {
@@ -856,19 +811,6 @@ func isExceededResourceQuotaError(err error) bool {
 
 func isTaskRunValidationFailed(err error) bool {
 	return err != nil && strings.Contains(err.Error(), "TaskRun validation failed")
-}
-
-// resourceImplBinding maps pipeline resource names to the actual resource type implementations
-func resourceImplBinding(resources map[string]*resourcev1alpha1.PipelineResource, images pipeline.Images) (map[string]v1beta1.PipelineResourceInterface, error) {
-	p := make(map[string]v1beta1.PipelineResourceInterface)
-	for rName, r := range resources {
-		i, err := resource.FromType(rName, r, images)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create resource %s : %v with error: %w", rName, r, err)
-		}
-		p[rName] = i
-	}
-	return p, nil
 }
 
 // updateStoppedSidecarStatus updates SidecarStatus for sidecars that were

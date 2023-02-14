@@ -48,8 +48,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	resolutionversioned "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/clientset/versioned/typed/resolution/v1alpha1"
-	resourceversioned "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/typed/resource/v1alpha1"
 	"k8s.io/client-go/kubernetes"
 	knativetest "knative.dev/pkg/test"
 )
@@ -64,7 +62,6 @@ type clients struct {
 	V1beta1TaskRunClient             v1beta1.TaskRunInterface
 	V1beta1PipelineRunClient         v1beta1.PipelineRunInterface
 	V1beta1CustomRunClient           v1beta1.CustomRunInterface
-	V1alpha1PipelineResourceClient   resourcev1alpha1.PipelineResourceInterface
 	V1alpha1RunClient                v1alpha1.RunInterface
 	V1alpha1ResolutionRequestclient  resolutionv1alpha1.ResolutionRequestInterface
 	V1alpha1VerificationPolicyClient v1alpha1.VerificationPolicyInterface
@@ -97,10 +94,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	if err != nil {
 		t.Fatalf("failed to create pipeline clientset from config file at %s: %s", configPath, err)
 	}
-	rcs, err := resourceversioned.NewForConfig(cfg)
-	if err != nil {
-		t.Fatalf("failed to create pipeline resource clientset from config file at %s: %s", configPath, err)
-	}
 	rrcs, err := resolutionversioned.NewForConfig(cfg)
 	if err != nil {
 		t.Fatalf("failed to create resolution clientset from config file at %s: %s", configPath, err)
@@ -111,7 +104,6 @@ func newClients(t *testing.T, configPath, clusterName, namespace string) *client
 	c.V1beta1TaskRunClient = cs.TektonV1beta1().TaskRuns(namespace)
 	c.V1beta1PipelineRunClient = cs.TektonV1beta1().PipelineRuns(namespace)
 	c.V1beta1CustomRunClient = cs.TektonV1beta1().CustomRuns(namespace)
-	c.V1alpha1PipelineResourceClient = rcs.TektonV1alpha1().PipelineResources(namespace)
 	c.V1alpha1RunClient = cs.TektonV1alpha1().Runs(namespace)
 	c.V1alpha1ResolutionRequestclient = rrcs.ResolutionV1alpha1().ResolutionRequests(namespace)
 	c.V1alpha1VerificationPolicyClient = cs.TektonV1alpha1().VerificationPolicies(namespace)

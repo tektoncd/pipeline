@@ -49,7 +49,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -58,7 +58,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelledBySpec(makeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -67,7 +67,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      makeStarted(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -76,7 +76,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      makeSucceeded(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -85,7 +85,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -94,7 +94,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withRetries(makeToBeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -103,7 +103,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      nil,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -133,7 +133,7 @@ func TestPipelineRunFacts_CheckDAGTasksDoneDone(t *testing.T) {
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeFailed(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -578,7 +578,7 @@ status:
 		PipelineTask: &pts[4], // 2 retries needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -587,7 +587,7 @@ status:
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelledBySpec(makeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -596,7 +596,7 @@ status:
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      makeStarted(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -605,7 +605,7 @@ status:
 		PipelineTask: &pts[4],
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      makeSucceeded(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -614,7 +614,7 @@ status:
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -624,7 +624,7 @@ status:
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     withRunCancelled(withRunRetries(newRun(runs[0]))),
 		CustomTask:    true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -634,7 +634,7 @@ status:
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     withRunCancelledBySpec(withRunRetries(newRun(runs[0]))),
 		CustomTask:    true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -644,7 +644,7 @@ status:
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     makeRunStarted(runs[0]),
 		CustomTask:    true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -654,7 +654,7 @@ status:
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     makeRunSucceeded(runs[0]),
 		CustomTask:    true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -664,7 +664,7 @@ status:
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     withRunCancelled(withRunRetries(newRun(runs[0]))),
 		CustomTask:    true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -674,7 +674,7 @@ status:
 		RunObjectName: "pipelinerun-mytask1",
 		RunObject:     failedV1alpha1Run,
 		CustomTask:    true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -683,7 +683,7 @@ status:
 		PipelineTask: &pts[20], // 2 retries needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeRetried(trs[0]))},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -692,7 +692,7 @@ status:
 		PipelineTask: &pts[20], // 2 retries needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{withCancelledBySpec(makeRetried(trs[0]))},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -701,7 +701,7 @@ status:
 		PipelineTask: &pts[20], // 2 retries needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{makeStarted(trs[0])},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -710,7 +710,7 @@ status:
 		PipelineTask: &pts[20], // 2 retries needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{makeSucceeded(trs[0])},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -719,7 +719,7 @@ status:
 		PipelineTask: &pts[17], // 1 retry needed
 		TaskRunNames: []string{"pipelinerun-mytask1"},
 		TaskRuns:     []*v1beta1.TaskRun{withCancelled(makeRetried(trs[0]))},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -729,7 +729,7 @@ status:
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{withRunCancelled(withRunRetries(newRun(runs[0])))},
 		CustomTask:     true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -739,7 +739,7 @@ status:
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{withRunCancelledBySpec(withRunRetries(newRun(runs[0])))},
 		CustomTask:     true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -749,7 +749,7 @@ status:
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{makeRunStarted(runs[0])},
 		CustomTask:     true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -759,7 +759,7 @@ status:
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{makeRunSucceeded(runs[0])},
 		CustomTask:     true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -769,7 +769,7 @@ status:
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{withRunCancelled(withRunRetries(newRun(runs[0])))},
 		CustomTask:     true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -779,7 +779,7 @@ status:
 		RunObjectNames: []string{"pipelinerun-mytask1"},
 		RunObjects:     []v1beta1.RunObject{failedV1alpha1Run},
 		CustomTask:     true,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -923,7 +923,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
 		TaskRunName: "createdtask",
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}
@@ -942,7 +942,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		},
 		TaskRunName: "runningtask",
 		TaskRun:     newTaskRun(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}
@@ -962,7 +962,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		},
 		TaskRunName: "successfultask",
 		TaskRun:     makeSucceeded(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}
@@ -982,7 +982,7 @@ func TestDAGExecutionQueue(t *testing.T) {
 		},
 		TaskRunName: "failedtask",
 		TaskRun:     makeFailed(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}
@@ -1118,7 +1118,7 @@ func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
 		TaskRunName: "task-1",
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}
@@ -1129,7 +1129,7 @@ func TestDAGExecutionQueueSequentialTasks(t *testing.T) {
 			RunAfter: []string{"task-1"},
 		},
 		TaskRunName: "task-2",
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}
@@ -1410,7 +1410,7 @@ func buildPipelineStateWithLargeDependencyGraph(t *testing.T) PipelineRunState {
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
 		TaskRun: nil,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -1441,7 +1441,7 @@ func buildPipelineStateWithLargeDependencyGraph(t *testing.T) PipelineRunState {
 				TaskRef: &v1beta1.TaskRef{Name: "task"},
 			},
 			TaskRun: nil,
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		},
@@ -1469,7 +1469,7 @@ func buildPipelineStateWithMultipleTaskResults(t *testing.T, includeWhen bool) P
 			TaskRef: &v1beta1.TaskRef{Name: "task"},
 		},
 		TaskRun: nil,
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -1509,7 +1509,7 @@ func buildPipelineStateWithMultipleTaskResults(t *testing.T, includeWhen bool) P
 				WhenExpressions: whenExpressions,
 			},
 			TaskRun: nil,
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		},
@@ -1637,7 +1637,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 		PipelineTask: &pts[3], // 1 retry needed
 		TaskRunName:  "pipelinerun-mytask1",
 		TaskRun:      withCancelled(makeRetried(trs[0])),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -1666,7 +1666,7 @@ func TestGetPipelineConditionStatus(t *testing.T) {
 				}}},
 			},
 		},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}}
@@ -2316,7 +2316,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 			PipelineTask: &pts[9],
 			TaskRunName:  "pr-guard-succeeded-task-not-started",
 			TaskRun:      nil,
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}},
@@ -2330,7 +2330,7 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		state: PipelineRunState{{
 			PipelineTask: &pts[10],
 			TaskRunName:  "pr-guardedtask-skipped",
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}},
@@ -2344,13 +2344,13 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		state: PipelineRunState{{
 			PipelineTask: &pts[0],
 			TaskRun:      makeStarted(trs[0]),
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
 			PipelineTask: &pts[11],
 			TaskRun:      nil,
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}},
@@ -2373,14 +2373,14 @@ func TestPipelineRunFacts_GetPipelineTaskStatus(t *testing.T) {
 		state: PipelineRunState{{
 			PipelineTask: &pts[10],
 			TaskRunName:  "pr-guardedtask-skipped",
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}, {
 			PipelineTask: &pts[0],
 			TaskRunName:  "pipelinerun-mytask1",
 			TaskRun:      makeFailed(trs[0]),
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &task.Spec,
 			},
 		}},
@@ -3344,7 +3344,7 @@ status:
 		},
 		TaskRunName: "failedtask",
 		TaskRun:     makeFailed(trs[0]),
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 	}

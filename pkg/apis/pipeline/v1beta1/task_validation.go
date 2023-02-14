@@ -94,10 +94,8 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
 	errs = errs.Also(validateSidecarNames(ts.Sidecars))
-	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
-	errs = errs.Also(ValidateResourcesVariables(ctx, ts.Steps, ts.Resources))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateTaskResultsVariables(ctx, ts.Steps, ts.Results))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
@@ -419,25 +417,6 @@ func validateTaskResultsVariables(ctx context.Context, steps []Step, results []T
 		errs = errs.Also(validateTaskVariable(step.Script, "results", resultsNames).ViaField("script").ViaFieldIndex("steps", idx))
 	}
 	return errs
-}
-
-// ValidateResourcesVariables validates all variables within a TaskResources against a slice of Steps
-func ValidateResourcesVariables(ctx context.Context, steps []Step, resources *TaskResources) *apis.FieldError {
-	if resources == nil {
-		return nil
-	}
-	resourceNames := sets.NewString()
-	if resources.Inputs != nil {
-		for _, r := range resources.Inputs {
-			resourceNames.Insert(r.Name)
-		}
-	}
-	if resources.Outputs != nil {
-		for _, r := range resources.Outputs {
-			resourceNames.Insert(r.Name)
-		}
-	}
-	return validateVariables(ctx, steps, "resources.(?:inputs|outputs)", resourceNames)
 }
 
 // validateObjectUsage validates the usage of individual attributes of an object param and the usage of the entire object

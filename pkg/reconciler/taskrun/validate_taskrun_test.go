@@ -24,102 +24,10 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 )
 
-func TestValidateResolvedTaskResources_ValidResources(t *testing.T) {
-	ctx := context.Background()
-	task := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "foo",
-		},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{{
-				Image:   "myimage",
-				Command: []string{"mycmd"},
-			}},
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name:     "resource-to-build",
-							Type:     resourcev1alpha1.PipelineResourceTypeGit,
-							Optional: false,
-						},
-					},
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name:     "optional-resource-to-build",
-							Type:     resourcev1alpha1.PipelineResourceTypeGit,
-							Optional: true,
-						},
-					},
-				},
-				Outputs: []v1beta1.TaskResource{
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name:     "resource-to-provide",
-							Type:     resourcev1alpha1.PipelineResourceTypeGit,
-							Optional: false,
-						},
-					},
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name:     "optional-resource-to-provide",
-							Type:     resourcev1alpha1.PipelineResourceTypeGit,
-							Optional: true,
-						},
-					},
-				},
-			},
-		},
-	}
-	rtr := &resources.ResolvedTaskResources{
-		TaskSpec: &task.Spec,
-		Inputs: map[string]*resourcev1alpha1.PipelineResource{
-			"resource-to-build": {
-				ObjectMeta: metav1.ObjectMeta{Name: "example-resource"},
-				Spec: resourcev1alpha1.PipelineResourceSpec{
-					Type: resourcev1alpha1.PipelineResourceTypeGit,
-					Params: []v1beta1.ResourceParam{{
-						Name:  "foo",
-						Value: "bar",
-					}},
-				},
-			},
-			"optional-resource-to-build": {
-				ObjectMeta: metav1.ObjectMeta{Name: "example-resource"},
-				Spec: resourcev1alpha1.PipelineResourceSpec{
-					Type: resourcev1alpha1.PipelineResourceTypeGit,
-					Params: []v1beta1.ResourceParam{{
-						Name:  "foo",
-						Value: "bar",
-					}},
-				},
-			},
-		},
-		Outputs: map[string]*resourcev1alpha1.PipelineResource{
-			"resource-to-provide": {
-				ObjectMeta: metav1.ObjectMeta{Name: "example-image"},
-				Spec: resourcev1alpha1.PipelineResourceSpec{
-					Type: resourcev1alpha1.PipelineResourceTypeGit,
-				},
-			},
-			"optional-resource-to-provide": {
-				ObjectMeta: metav1.ObjectMeta{Name: "example-image"},
-				Spec: resourcev1alpha1.PipelineResourceSpec{
-					Type: resourcev1alpha1.PipelineResourceTypeGit,
-				},
-			},
-		},
-	}
-	if err := ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, &v1beta1.Matrix{}, rtr); err != nil {
-		t.Fatalf("Did not expect to see error when validating valid resolved TaskRun but saw %v", err)
-	}
-}
-
-func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
+func TestValidateResolvedTask_ValidParams(t *testing.T) {
 	ctx := context.Background()
 	task := &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
@@ -170,7 +78,7 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 			},
 		},
 	}
-	rtr := &resources.ResolvedTaskResources{
+	rtr := &resources.ResolvedTask{
 		TaskSpec: &task.Spec,
 	}
 	p := []v1beta1.Param{{
@@ -200,7 +108,7 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 		Name:  "zoo",
 		Value: *v1beta1.NewStructuredValues("a", "b", "c"),
 	}}
-	if err := ValidateResolvedTaskResources(ctx, p, &v1beta1.Matrix{Params: m}, rtr); err != nil {
+	if err := ValidateResolvedTask(ctx, p, &v1beta1.Matrix{Params: m}, rtr); err != nil {
 		t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 	}
 
@@ -214,13 +122,13 @@ func TestValidateResolvedTaskResources_ValidParams(t *testing.T) {
 			Name:  "extraarray",
 			Value: *v1beta1.NewStructuredValues("i", "am", "an", "extra", "array", "param"),
 		}
-		if err := ValidateResolvedTaskResources(ctx, append(p, extra), &v1beta1.Matrix{Params: append(m, extraarray)}, rtr); err != nil {
+		if err := ValidateResolvedTask(ctx, append(p, extra), &v1beta1.Matrix{Params: append(m, extraarray)}, rtr); err != nil {
 			t.Fatalf("Did not expect to see error when validating TaskRun with correct params but saw %v", err)
 		}
 	})
 }
 
-func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
+func TestValidateResolvedTask_InvalidParams(t *testing.T) {
 	ctx := context.Background()
 	task := &v1beta1.Task{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
@@ -266,12 +174,12 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	}
 	tcs := []struct {
 		name   string
-		rtr    *resources.ResolvedTaskResources
+		rtr    *resources.ResolvedTask
 		params []v1beta1.Param
 		matrix *v1beta1.Matrix
 	}{{
 		name: "missing-params",
-		rtr: &resources.ResolvedTaskResources{
+		rtr: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 		params: []v1beta1.Param{{
@@ -286,7 +194,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		},
 	}, {
 		name: "invalid-type-in-params",
-		rtr: &resources.ResolvedTaskResources{
+		rtr: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 		params: []v1beta1.Param{{
@@ -295,7 +203,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 		}},
 	}, {
 		name: "invalid-type-in-matrix",
-		rtr: &resources.ResolvedTaskResources{
+		rtr: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 		matrix: &v1beta1.Matrix{
@@ -305,7 +213,7 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 			}}},
 	}, {
 		name: "missing object param keys",
-		rtr: &resources.ResolvedTaskResources{
+		rtr: &resources.ResolvedTask{
 			TaskSpec: &task.Spec,
 		},
 		params: []v1beta1.Param{{
@@ -330,190 +238,8 @@ func TestValidateResolvedTaskResources_InvalidParams(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateResolvedTaskResources(ctx, tc.params, tc.matrix, tc.rtr); err == nil {
+			if err := ValidateResolvedTask(ctx, tc.params, tc.matrix, tc.rtr); err == nil {
 				t.Errorf("Expected to see error when validating invalid resolved TaskRun with wrong params but saw none")
-			}
-		})
-	}
-}
-
-func TestValidateResolvedTaskResources_InvalidResources(t *testing.T) {
-	ctx := context.Background()
-	r := &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{Name: "git-test-resource"},
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "foo",
-				Value: "bar",
-			}},
-		},
-	}
-	testinput := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "testinput",
-						Type: resourcev1alpha1.PipelineResourceTypeGit,
-					},
-				}},
-			},
-		},
-	}
-	testrequiredgitinput := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name:     "requiredgitinput",
-						Type:     resourcev1alpha1.PipelineResourceTypeGit,
-						Optional: false,
-					},
-				}},
-			},
-		},
-	}
-	testoutput := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "testoutput",
-						Type: resourcev1alpha1.PipelineResourceTypeGit,
-					},
-				}},
-			},
-		},
-	}
-	testrequiredgitoutput := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name:     "requiredgitoutput",
-						Type:     resourcev1alpha1.PipelineResourceTypeGit,
-						Optional: false,
-					},
-				}},
-			},
-		},
-	}
-	testrequiredinputandoutput := &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo"},
-		Spec: v1beta1.TaskSpec{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name:     "requiredgitinput",
-						Type:     resourcev1alpha1.PipelineResourceTypeGit,
-						Optional: false,
-					},
-				}},
-				Outputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name:     "requiredgitoutput",
-						Type:     resourcev1alpha1.PipelineResourceTypeGit,
-						Optional: false,
-					},
-				}},
-			},
-		},
-	}
-	tcs := []struct {
-		name string
-		rtr  *resources.ResolvedTaskResources
-	}{{
-		name: "bad-inputkey",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testinput.Spec,
-			Inputs:   map[string]*resourcev1alpha1.PipelineResource{"wrong-resource-name": r},
-		},
-	}, {
-		name: "bad-outputkey",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testoutput.Spec,
-			Outputs:  map[string]*resourcev1alpha1.PipelineResource{"wrong-resource-name": r},
-		},
-	}, {
-		name: "input-resource-mismatch",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testinput.Spec,
-			Inputs:   map[string]*resourcev1alpha1.PipelineResource{"testimageinput": r},
-		},
-	}, {
-		name: "input-resource-missing",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testinput.Spec,
-		},
-	}, {
-		name: "output-resource-mismatch",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testoutput.Spec,
-			Outputs:  map[string]*resourcev1alpha1.PipelineResource{"testimageoutput": r},
-		},
-	}, {
-		name: "output-resource-missing",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testoutput.Spec,
-		},
-	}, {
-		name: "extra-input-resource",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testinput.Spec,
-			Inputs: map[string]*resourcev1alpha1.PipelineResource{
-				"testinput":      r,
-				"someextrainput": r,
-			},
-		},
-	}, {
-		name: "extra-output-resource",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testoutput.Spec,
-			Outputs: map[string]*resourcev1alpha1.PipelineResource{
-				"testoutput":      r,
-				"someextraoutput": r,
-			},
-		},
-	}, {
-		name: "extra-input-resource-none-required",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testoutput.Spec,
-			Inputs:   map[string]*resourcev1alpha1.PipelineResource{"someextrainput": r},
-			Outputs:  map[string]*resourcev1alpha1.PipelineResource{"testoutput": r},
-		},
-	}, {
-		name: "extra-output-resource-none-required",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testinput.Spec,
-			Inputs:   map[string]*resourcev1alpha1.PipelineResource{"testinput": r},
-			Outputs:  map[string]*resourcev1alpha1.PipelineResource{"someextraoutput": r},
-		},
-	}, {
-		name: "required-input-resource-missing",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testrequiredgitinput.Spec,
-		},
-	}, {
-		name: "required-output-resource-missing",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testrequiredgitoutput.Spec,
-		},
-	}, {
-		name: "required-input-and-output-resource-missing",
-		rtr: &resources.ResolvedTaskResources{
-			TaskSpec: &testrequiredinputandoutput.Spec,
-		},
-	}}
-
-	for _, tc := range tcs {
-		t.Run(tc.name, func(t *testing.T) {
-			if err := ValidateResolvedTaskResources(ctx, []v1beta1.Param{}, &v1beta1.Matrix{Params: []v1beta1.Param{}}, tc.rtr); err == nil {
-				t.Errorf("Expected to see error when validating invalid resolved TaskRun but saw none")
 			}
 		})
 	}

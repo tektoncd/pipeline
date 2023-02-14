@@ -34,20 +34,6 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var validResource = v1beta1.TaskResource{
-	ResourceDeclaration: v1beta1.ResourceDeclaration{
-		Name: "validsource",
-		Type: "git",
-	},
-}
-
-var invalidResource = v1beta1.TaskResource{
-	ResourceDeclaration: v1beta1.ResourceDeclaration{
-		Name: "invalidsource",
-		Type: "what",
-	},
-}
-
 var validSteps = []v1beta1.Step{{
 	Name:  "mystep",
 	Image: "myimage",
@@ -95,7 +81,6 @@ func TestTaskValidate(t *testing.T) {
 func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 	type fields struct {
 		Params       []v1beta1.ParamSpec
-		Resources    *v1beta1.TaskResources
 		Steps        []v1beta1.Step
 		StepTemplate *v1beta1.StepTemplate
 		Workspaces   []v1beta1.WorkspaceDeclaration
@@ -151,7 +136,6 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1beta1.TaskSpec{
 				Params:       tt.fields.Params,
-				Resources:    tt.fields.Resources,
 				Steps:        tt.fields.Steps,
 				StepTemplate: tt.fields.StepTemplate,
 				Workspaces:   tt.fields.Workspaces,
@@ -170,7 +154,6 @@ func TestTaskSpecValidatePropagatedParamsAndWorkspaces(t *testing.T) {
 func TestTaskSpecValidate(t *testing.T) {
 	type fields struct {
 		Params       []v1beta1.ParamSpec
-		Resources    *v1beta1.TaskResources
 		Steps        []v1beta1.Step
 		StepTemplate *v1beta1.StepTemplate
 		Workspaces   []v1beta1.WorkspaceDeclaration
@@ -187,22 +170,6 @@ func TestTaskSpecValidate(t *testing.T) {
 			}, {
 				Image: "myotherimage",
 			}},
-		},
-	}, {
-		name: "valid input resources",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{validResource},
-			},
-			Steps: validSteps,
-		},
-	}, {
-		name: "valid output resources",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{validResource},
-			},
-			Steps: validSteps,
 		},
 	}, {
 		name: "valid params type implied",
@@ -543,7 +510,6 @@ func TestTaskSpecValidate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1beta1.TaskSpec{
 				Params:       tt.fields.Params,
-				Resources:    tt.fields.Resources,
 				Steps:        tt.fields.Steps,
 				StepTemplate: tt.fields.StepTemplate,
 				Workspaces:   tt.fields.Workspaces,
@@ -561,7 +527,6 @@ func TestTaskSpecValidate(t *testing.T) {
 func TestTaskSpecValidateError(t *testing.T) {
 	type fields struct {
 		Params       []v1beta1.ParamSpec
-		Resources    *v1beta1.TaskResources
 		Steps        []v1beta1.Step
 		Volumes      []corev1.Volume
 		StepTemplate *v1beta1.StepTemplate
@@ -591,80 +556,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 		expectedError: apis.FieldError{
 			Message: `missing field(s)`,
 			Paths:   []string{"steps"},
-		},
-	}, {
-		name: "invalid input resource",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{invalidResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: what`,
-			Paths:   []string{"resources.inputs[0].invalidsource.type"},
-		},
-	}, {
-		name: "one invalid input resource",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{validResource, invalidResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: what`,
-			Paths:   []string{"resources.inputs[1].invalidsource.type"},
-		},
-	}, {
-		name: "duplicated inputs resources",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs:  []v1beta1.TaskResource{validResource, validResource},
-				Outputs: []v1beta1.TaskResource{validResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `expected exactly one, got both`,
-			Paths:   []string{"resources.inputs.name"},
-		},
-	}, {
-		name: "invalid output resource",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{invalidResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: what`,
-			Paths:   []string{"resources.outputs[0].invalidsource.type"},
-		},
-	}, {
-		name: "one invalid output resource",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Outputs: []v1beta1.TaskResource{validResource, invalidResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `invalid value: what`,
-			Paths:   []string{"resources.outputs[1].invalidsource.type"},
-		},
-	}, {
-		name: "duplicated outputs resources",
-		fields: fields{
-			Resources: &v1beta1.TaskResources{
-				Inputs:  []v1beta1.TaskResource{validResource},
-				Outputs: []v1beta1.TaskResource{validResource, validResource},
-			},
-			Steps: validSteps,
-		},
-		expectedError: apis.FieldError{
-			Message: `expected exactly one, got both`,
-			Paths:   []string{"resources.outputs.name"},
 		},
 	}, {
 		name: "step script refers to nonexistent result",
@@ -1420,7 +1311,6 @@ func TestTaskSpecValidateError(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := &v1beta1.TaskSpec{
 				Params:       tt.fields.Params,
-				Resources:    tt.fields.Resources,
 				Steps:        tt.fields.Steps,
 				Volumes:      tt.fields.Volumes,
 				StepTemplate: tt.fields.StepTemplate,

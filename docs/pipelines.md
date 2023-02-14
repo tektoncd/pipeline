@@ -132,26 +132,6 @@ A `Pipeline` definition supports the following fields:
 [kubernetes-overview]:
   https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/#required-fields
 
-## Specifying `Resources`
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
-
-A `Pipeline` requires [`PipelineResources`](resources.md) to provide inputs and store outputs
-for the `Tasks` that comprise it. You can declare those in the `resources` field in the `spec`
-section of the `Pipeline` definition. Each entry requires a unique `name` and a `type`. For example:
-
-```yaml
-spec:
-  resources:
-    - name: my-repo
-      type: git
-    - name: my-image
-      type: image
-```
-
 ## Specifying `Workspaces`
 
 `Workspaces` allow you to specify one or more volumes that each `Task` in the `Pipeline`

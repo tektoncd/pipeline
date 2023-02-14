@@ -55,6 +55,7 @@ const (
 	scmRemoteUserPassword = "ab_d1234HIJKL"
 	// Defined in git-resolver/gitea.yaml's "gitea" StatefulSet, in the env for the "configure-gitea" init container
 	scmGiteaAdminPassword = "giteaPassword1234"
+	systemNamespace       = "tekton-pipelines"
 )
 
 var (

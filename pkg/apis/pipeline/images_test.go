@@ -11,10 +11,8 @@ func TestValidate(t *testing.T) {
 		EntrypointImage:        "set",
 		SidecarLogResultsImage: "set",
 		NopImage:               "set",
-		GitImage:               "set",
 		ShellImage:             "set",
 		ShellImageWin:          "set",
-		GsutilImage:            "set",
 		WorkingDirInitImage:    "set",
 	}
 	if err := valid.Validate(); err != nil {
@@ -25,12 +23,10 @@ func TestValidate(t *testing.T) {
 		EntrypointImage:        "set",
 		SidecarLogResultsImage: "set",
 		NopImage:               "set",
-		GitImage:               "", // unset!
 		ShellImage:             "", // unset!
 		ShellImageWin:          "set",
-		GsutilImage:            "set",
 	}
-	wantErr := "found unset image flags: [git-image shell-image workingdirinit-image]"
+	wantErr := "found unset image flags: [shell-image workingdirinit-image]"
 	if err := invalid.Validate(); err == nil {
 		t.Error("invalid Images expected error, got nil")
 	} else if err.Error() != wantErr {

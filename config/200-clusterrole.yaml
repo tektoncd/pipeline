@@ -28,7 +28,7 @@ rules:
     # Controller needs cluster access to all of the CRDs that it is responsible for
     # managing.
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources", "runs", "customruns"]
+    resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "runs", "customruns"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
     resources: ["verificationpolicies"]
@@ -37,7 +37,7 @@ rules:
     resources: ["taskruns/finalizers", "pipelineruns/finalizers", "runs/finalizers", "customruns/finalizers"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
-    resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status", "pipelineruns/status", "pipelineresources/status", "runs/status", "customruns/status", "verificationpolicies/status"]
+    resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status", "pipelineruns/status", "runs/status", "customruns/status", "verificationpolicies/status"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   # resolution.tekton.dev
   - apiGroups: ["resolution.tekton.dev"]
@@ -92,7 +92,6 @@ rules:
       - tasks.tekton.dev
       - clustertasks.tekton.dev
       - taskruns.tekton.dev
-      - pipelineresources.tekton.dev
       - resolutionrequests.resolution.tekton.dev
       - customruns.tekton.dev
       - verificationpolicies.tekton.dev

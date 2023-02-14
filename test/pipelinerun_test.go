@@ -29,14 +29,10 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-	"github.com/tektoncd/pipeline/pkg/artifacts"
 	"github.com/tektoncd/pipeline/test/parse"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	k8sres "k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	knativetest "knative.dev/pkg/test"
@@ -53,15 +49,15 @@ func TestPipelineRunStatusSpec(t *testing.T) {
 	t.Parallel()
 	type tests struct {
 		name                   string
-		testSetup              func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) (map[string]*v1alpha1.PipelineResource, *v1beta1.Pipeline)
+		testSetup              func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) *v1beta1.Pipeline
 		expectedTaskRuns       []string
 		expectedNumberOfEvents int
-		pipelineRunFunc        func(*testing.T, int, string, string, map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun
+		pipelineRunFunc        func(*testing.T, int, string, string) *v1beta1.PipelineRun
 	}
 
 	tds := []tests{{
 		name: "pipeline status spec updated",
-		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, _ int) (map[string]*v1alpha1.PipelineResource, *v1beta1.Pipeline) {
+		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, _ int) *v1beta1.Pipeline {
 			t.Helper()
 			task := parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
@@ -86,7 +82,7 @@ spec:
 				t.Fatalf("Failed to create Pipeline `%s`: %s", p.Name, err)
 			}
 
-			return nil, p
+			return p
 		},
 		expectedTaskRuns: []string{"task1"},
 		// 1 from PipelineRun; 0 from taskrun since it should not be executed due to condition failing
@@ -108,9 +104,9 @@ spec:
 			defer tearDown(ctx, t, c, namespace)
 
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
-			resources, p := td.testSetup(ctx, t, c, namespace, i)
+			p := td.testSetup(ctx, t, c, namespace, i)
 
-			pipelineRun := td.pipelineRunFunc(t, i, namespace, p.Name, resources)
+			pipelineRun := td.pipelineRunFunc(t, i, namespace, p.Name)
 			prName := pipelineRun.Name
 			_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 			if err != nil {
@@ -179,15 +175,15 @@ func TestPipelineRun(t *testing.T) {
 	t.Parallel()
 	type tests struct {
 		name                   string
-		testSetup              func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) (map[string]*v1alpha1.PipelineResource, *v1beta1.Pipeline)
+		testSetup              func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) *v1beta1.Pipeline
 		expectedTaskRuns       []string
 		expectedNumberOfEvents int
-		pipelineRunFunc        func(*testing.T, int, string, string, map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun
+		pipelineRunFunc        func(*testing.T, int, string, string) *v1beta1.PipelineRun
 	}
 
 	tds := []tests{{
 		name: "fan-in and fan-out",
-		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, _ int) (map[string]*v1alpha1.PipelineResource, *v1beta1.Pipeline) {
+		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, _ int) *v1beta1.Pipeline {
 			t.Helper()
 			tasks := getFanInFanOutTasks(t, namespace)
 			for _, task := range tasks {
@@ -196,19 +192,12 @@ func TestPipelineRun(t *testing.T) {
 				}
 			}
 
-			resources := getFanInFanOutGitResources(t)
-			for _, res := range resources {
-				if _, err := c.V1alpha1PipelineResourceClient.Create(ctx, res, metav1.CreateOptions{}); err != nil {
-					t.Fatalf("Failed to create Pipeline Resource `%s`: %s", res.Name, err)
-				}
-			}
-
 			p := getFanInFanOutPipeline(t, namespace, tasks)
 			if _, err := c.V1beta1PipelineClient.Create(ctx, p, metav1.CreateOptions{}); err != nil {
 				t.Fatalf("Failed to create Pipeline `%s`: %s", p.Name, err)
 			}
 
-			return resources, p
+			return p
 		},
 		pipelineRunFunc:  getFanInFanOutPipelineRun,
 		expectedTaskRuns: []string{"create-file-kritis", "create-fan-out-1", "create-fan-out-2", "check-fan-in"},
@@ -216,7 +205,7 @@ func TestPipelineRun(t *testing.T) {
 		expectedNumberOfEvents: 5,
 	}, {
 		name: "service account propagation and pipeline param",
-		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) (map[string]*v1alpha1.PipelineResource, *v1beta1.Pipeline) {
+		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) *v1beta1.Pipeline {
 			t.Helper()
 			t.Skip("build-crd-testing project got removed, the secret-sauce doesn't exist anymore, skipping")
 			if _, err := c.KubeClient.CoreV1().Secrets(namespace).Create(ctx, getPipelineRunSecret(index, namespace), metav1.CreateOptions{}); err != nil {
@@ -251,7 +240,7 @@ spec:
 				t.Fatalf("Failed to create Pipeline `%s`: %s", p.Name, err)
 			}
 
-			return nil, p
+			return p
 		},
 		expectedTaskRuns: []string{task1Name},
 		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
@@ -259,7 +248,7 @@ spec:
 		pipelineRunFunc:        getHelloWorldPipelineRun,
 	}, {
 		name: "pipelinerun succeeds with LimitRange minimum in namespace",
-		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) (map[string]*v1alpha1.PipelineResource, *v1beta1.Pipeline) {
+		testSetup: func(ctx context.Context, t *testing.T, c *clients, namespace string, index int) *v1beta1.Pipeline {
 			t.Helper()
 			t.Skip("build-crd-testing project got removed, the secret-sauce doesn't exist anymore, skipping")
 			if _, err := c.KubeClient.CoreV1().LimitRanges(namespace).Create(ctx, getLimitRange("prlimitrange", namespace, "100m", "99Mi", "100m"), metav1.CreateOptions{}); err != nil {
@@ -299,7 +288,7 @@ spec:
 				t.Fatalf("Failed to create Pipeline `%s`: %s", p.Name, err)
 			}
 
-			return nil, p
+			return p
 		},
 		expectedTaskRuns: []string{task1Name},
 		// 1 from PipelineRun and 1 from Tasks defined in pipelinerun
@@ -321,9 +310,9 @@ spec:
 			defer tearDown(ctx, t, c, namespace)
 
 			t.Logf("Setting up test resources for %q test in namespace %s", td.name, namespace)
-			resources, p := td.testSetup(ctx, t, c, namespace, i)
+			p := td.testSetup(ctx, t, c, namespace, i)
 
-			pipelineRun := td.pipelineRunFunc(t, i, namespace, p.Name, resources)
+			pipelineRun := td.pipelineRunFunc(t, i, namespace, p.Name)
 			prName := pipelineRun.Name
 			_, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{})
 			if err != nil {
@@ -382,22 +371,6 @@ spec:
 				t.Fatalf("Expected %d number of successful events from pipelinerun and taskrun but got %d; list of receieved events : %#v", td.expectedNumberOfEvents, len(events), collectedEvents)
 			}
 
-			// Wait for up to 10 minutes and restart every second to check if
-			// the PersistentVolumeClaims has the DeletionTimestamp
-			if err := wait.PollImmediate(interval, timeout, func() (bool, error) {
-				// Check to make sure the PipelineRun's artifact storage PVC has been "deleted" at the end of the run.
-				pvc, errWait := c.KubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, artifacts.GetPVCName(pipelineRun), metav1.GetOptions{})
-				if errWait != nil && !errors.IsNotFound(errWait) {
-					return true, fmt.Errorf("error looking up PVC %s for PipelineRun %s: %s", artifacts.GetPVCName(pipelineRun), prName, errWait)
-				}
-				// If we are not found then we are okay since it got cleaned up
-				if errors.IsNotFound(errWait) {
-					return true, nil
-				}
-				return pvc.DeletionTimestamp != nil, nil
-			}); err != nil {
-				t.Fatalf("Error while waiting for the PVC to be set as deleted: %s: %s: %s", artifacts.GetPVCName(pipelineRun), err, prName)
-			}
 			t.Logf("Successfully finished test %q", td.name)
 		})
 	}
@@ -612,87 +585,64 @@ metadata:
   name: %s
   namespace: %s
 spec:
-  resources:
-    inputs:
-    - name: workspace
-      targetPath: brandnewspace
-      type: git
-    outputs:
-    - name: workspace
-      type: git
   steps:
-  - args: ['-c', 'echo stuff > $(resources.outputs.workspace.path)/stuff']
-    command: ['/bin/bash']
-    image: ubuntu
+  - image: busybox
     name: write-data-task-0-step-0
-  - args: ['-c', 'echo other > $(resources.outputs.workspace.path)/other']
-    command: ['/bin/bash']
-    image: ubuntu
+    script: echo stuff | tee $(results.result-stuff.path)
+  - image: busybox
     name: write-data-task-0-step-1
+    script: echo other | tee $(results.result-other.path)
+  results:
+    - name: result-stuff
+    - name: result-other
 `, helpers.ObjectNameForTest(t), namespace)),
 		"check-create-files-exists": parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
 spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-    outputs:
-    - name: workspace
-      type: git
+  params:
+  - name: check-stuff
   steps:
-  - args: ['-c', '[[ stuff == $(cat $(inputs.resources.workspace.path)/stuff) ]]']
-    command: ['/bin/bash']
-    image: ubuntu
+  - image: busybox
     name: read-from-task-0
-  - args: ['-c', 'echo something > $(outputs.resources.workspace.path)/something']
-    command: ['/bin/bash']
-    image: ubuntu
+    script: echo $(params.check-stuff)
+  - image: busybox
     name: write-data-task-1
+    script: echo | tee $(results.result-something.path)
+  results:
+  - name: result-something
 `, helpers.ObjectNameForTest(t), namespace)),
 		"check-create-files-exists-2": parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
 spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-    outputs:
-    - name: workspace
-      type: git
+  params:
+  - name: check-other
   steps:
-  - args: ['-c', '[[ other == $(cat $(inputs.resources.workspace.path)/other) ]]']
-    command: ['/bin/bash']
-    image: ubuntu
+  - script: echo $(params.check-other)
+    image: busybox
     name: read-from-task-0
-  - args: ['-c', 'echo else > $(outputs.resources.workspace.path)/else']
-    command: ['/bin/bash']
-    image: ubuntu
+  - image: busybox
     name: write-data-task-1
+    script: echo something | tee $(results.result-else.path)
+  results:
+    - name: result-else
 `, helpers.ObjectNameForTest(t), namespace)),
 		"read-files": parse.MustParseV1beta1Task(t, fmt.Sprintf(`
 metadata:
   name: %s
   namespace: %s
 spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-      targetPath: readingspace
+  params:
+  - name: workspacepath-something
+    value: $(tasks.create-file.results.result-something)
+  - name: workspacepath-else
+    value: $(tasks.create-file.results.result-else)
   steps:
-  - args: ['-c', '[[ something == $(cat $(inputs.resources.workspace.path)/something) ]]']
-    command: ['/bin/bash']
-    image: ubuntu
-    name: read-from-task-0
-  - args: ['-c', '[[ else == $(cat $(inputs.resources.workspace.path)/else) ]]']
-    command: ['/bin/bash']
-    image: ubuntu
-    name: read-from-task-1
+  - image: busybox
+    script: echo params.workspacepath-something
 `, helpers.ObjectNameForTest(t), namespace)),
 	}
 }
@@ -704,72 +654,44 @@ metadata:
   name: %s
   namespace: %s
 spec:
-  resources:
-  - name: git-repo
-    type: git
   tasks:
   - name: create-file-kritis
-    resources:
-      inputs:
-      - name: workspace
-        resource: git-repo
-      outputs:
-      - name: workspace
-        resource: git-repo
     taskRef:
       name: %s
   - name: create-fan-out-1
-    resources:
-      inputs:
-      - from:
-        - create-file-kritis
-        name: workspace
-        resource: git-repo
-      outputs:
-      - name: workspace
-        resource: git-repo
     taskRef:
       name: %s
+    params:
+    - name: check-stuff
+      value: $(tasks.create-file-kritis.results.result-stuff)
   - name: create-fan-out-2
-    resources:
-      inputs:
-      - from:
-        - create-file-kritis
-        name: workspace
-        resource: git-repo
-      outputs:
-      - name: workspace
-        resource: git-repo
     taskRef:
       name: %s
+    params:
+    - name: check-other
+      value: $(tasks.create-file-kritis.results.result-other)
   - name: check-fan-in
-    resources:
-      inputs:
-      - from:
-        - create-fan-out-2
-        - create-fan-out-1
-        name: workspace
-        resource: git-repo
     taskRef:
       name: %s
+    params:
+    - name: workspacepath-something
+      value: $(tasks.create-fan-out-1.results.result-something)
+    - name: workspacepath-else
+      value: $(tasks.create-fan-out-2.results.result-else)
 `, helpers.ObjectNameForTest(t), namespace, tasks["create-file"].Name, tasks["check-create-files-exists"].Name,
 		tasks["check-create-files-exists-2"].Name, tasks["read-files"].Name))
 }
 
-func getFanInFanOutGitResources(t *testing.T) map[string]*v1alpha1.PipelineResource {
+func getFanInFanOutPipelineRun(t *testing.T, _ int, namespace string, pipelineName string) *v1beta1.PipelineRun {
 	t.Helper()
-	return map[string]*v1alpha1.PipelineResource{
-		"kritis-resource-git": parse.MustParsePipelineResource(t, fmt.Sprintf(`
+	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
   name: %s
+  namespace: %s
 spec:
-  type: git
-  params:
-  - name: Url
-    value: https://github.com/grafeas/kritis
-  - name: Revision
-    value: master
-`, helpers.ObjectNameForTest(t)))}
+  pipelineRef:
+    name: %s
+`, helpers.ObjectNameForTest(t), namespace, pipelineName))
 }
 
 func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceAccount {
@@ -782,21 +704,6 @@ func getPipelineRunServiceAccount(suffix int, namespace string) *corev1.ServiceA
 			Name: getName(secretName, suffix),
 		}},
 	}
-}
-func getFanInFanOutPipelineRun(t *testing.T, _ int, namespace string, pipelineName string, resources map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun {
-	t.Helper()
-	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  pipelineRef:
-    name: %s
-  resources:
-  - name: git-repo
-    resourceRef:
-      name: %s
-`, helpers.ObjectNameForTest(t), namespace, pipelineName, resources["kritis-resource-git"].Name))
 }
 
 func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {
@@ -828,7 +735,7 @@ func getPipelineRunSecret(suffix int, namespace string) *corev1.Secret {
 	}
 }
 
-func getUpdatedStatusSpecPipelineRun(t *testing.T, _ int, namespace string, pipelineName string, _ map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun {
+func getUpdatedStatusSpecPipelineRun(t *testing.T, _ int, namespace string, pipelineName string) *v1beta1.PipelineRun {
 	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
@@ -844,7 +751,7 @@ spec:
 	// `, helpers.ObjectNameForTest(t), namespace, pipelineName))
 }
 
-func getHelloWorldPipelineRun(t *testing.T, suffix int, namespace string, pipelineName string, _ map[string]*v1alpha1.PipelineResource) *v1beta1.PipelineRun {
+func getHelloWorldPipelineRun(t *testing.T, suffix int, namespace string, pipelineName string) *v1beta1.PipelineRun {
 	t.Helper()
 	return parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:

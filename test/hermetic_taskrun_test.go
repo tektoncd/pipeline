@@ -95,7 +95,7 @@ spec:
     steps:
     - image: gcr.io/cloud-builders/curl
       name: access-network
-      resources: {}
+      
       script: |-
         #!/bin/bash
         set -ex
@@ -119,7 +119,7 @@ spec:
     steps:
     - image: gcr.io/cloud-builders/curl
       name: curl
-      resources: {}
+      
       script: |-
         #!/bin/bash
         set -ex

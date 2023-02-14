@@ -83,12 +83,6 @@ var (
 		Resource: "pipelineruns",
 	}
 
-	// PipelineResourceResource represents a Tekton PipelineResource
-	PipelineResourceResource = schema.GroupResource{
-		Group:    GroupName,
-		Resource: "pipelineresources",
-	}
-
 	// CustomRunResource represents a Tekton CustomRun
 	CustomRunResource = schema.GroupResource{
 		Group:    GroupName,

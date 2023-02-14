@@ -37,7 +37,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	podconvert "github.com/tektoncd/pipeline/pkg/pod"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
@@ -70,7 +69,6 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmeta"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 	"knative.dev/pkg/system"
 	_ "knative.dev/pkg/system/testing" // Setup system.Namespace()
@@ -87,9 +85,7 @@ var (
 	images                       = pipeline.Images{
 		EntrypointImage: "override-with-entrypoint:latest",
 		NopImage:        "override-with-nop:latest",
-		GitImage:        "override-with-git:latest",
 		ShellImage:      "busybox",
-		GsutilImage:     "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 	now                      = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
 	ignoreLastTransitionTime = cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime.Inner.Time")
@@ -182,35 +178,6 @@ var (
 		},
 	}
 
-	outputTask = &v1beta1.Task{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-output-task"},
-		Spec: v1beta1.TaskSpec{
-			Steps: []v1beta1.Step{simpleStep},
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: gitResource.Name,
-							Type: resourcev1alpha1.PipelineResourceTypeGit,
-						},
-					},
-					{
-						ResourceDeclaration: v1beta1.ResourceDeclaration{
-							Name: anotherGitResource.Name,
-							Type: resourcev1alpha1.PipelineResourceTypeGit,
-						},
-					},
-				},
-				Outputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: gitResource.Name,
-						Type: resourcev1alpha1.PipelineResourceTypeGit,
-					},
-				}},
-			},
-		},
-	}
-
 	saTask = &v1beta1.Task{
 		ObjectMeta: objectMeta("test-with-sa", "foo"),
 		Spec: v1beta1.TaskSpec{
@@ -245,20 +212,6 @@ var (
 					Type: v1beta1.ParamTypeString,
 				},
 			},
-			Resources: &v1beta1.TaskResources{
-				Inputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "workspace",
-						Type: resourcev1alpha1.PipelineResourceTypeGit,
-					},
-				}},
-				Outputs: []v1beta1.TaskResource{{
-					ResourceDeclaration: v1beta1.ResourceDeclaration{
-						Name: "workspace",
-						Type: resourcev1alpha1.PipelineResourceTypeGit,
-					},
-				}},
-			},
 			Steps: []v1beta1.Step{
 				{
 					Image:   "myimage",
@@ -276,7 +229,7 @@ var (
 					Image:   "myotherimage",
 					Name:    "myothercontainer",
 					Command: []string{"/mycmd"},
-					Args:    []string{"--my-other-arg=$(inputs.resources.workspace.url)"},
+					Args:    []string{"--my-other-arg=https://foo.git"},
 				},
 			},
 			Volumes: []corev1.Volume{{
@@ -288,27 +241,6 @@ var (
 						},
 					},
 				},
-			}},
-		},
-	}
-
-	gitResource = &resourcev1alpha1.PipelineResource{
-		ObjectMeta: objectMeta("git-resource", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "https://foo.git",
-			}},
-		},
-	}
-	anotherGitResource = &resourcev1alpha1.PipelineResource{
-		ObjectMeta: objectMeta("another-git-resource", "foo"),
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "https://foobar.git",
 			}},
 		},
 	}
@@ -360,10 +292,6 @@ var (
 		VolumeSource: corev1.VolumeSource{
 			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		},
-	}
-
-	gitResourceSecurityContext = &corev1.SecurityContext{
-		RunAsUser: ptr.Int64(0),
 	}
 )
 
@@ -695,47 +623,9 @@ spec:
     value: bar
   - name: configmapname
     value: configbar
-  resources:
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: git-resource
-    outputs:
-    - name: workspace
-      resourceRef:
-        name: git-resource
   taskRef:
     apiVersion: a1
     name: test-task-with-substitution
-`)
-	taskRunInputOutput := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-input-output
-  namespace: foo
-  ownerReferences:
-  - kind: PipelineRun
-    name: test
-spec:
-  resources:
-    inputs:
-    - name: git-resource
-      paths:
-      - source-folder
-      resourceRef:
-        name: git-resource
-    - name: another-git-resource
-      paths:
-      - source-folder
-      resourceRef:
-        name: another-git-resource
-    outputs:
-    - name: git-resource
-      paths:
-      - output-folder
-      resourceRef:
-        name: git-resource
-  taskRef:
-    name: test-output-task
 `)
 	taskRunWithTaskSpec := parse.MustParseV1beta1TaskRun(t, `
 metadata:
@@ -745,54 +635,17 @@ spec:
   params:
   - name: myarg
     value: foo
-  resources:
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: git-resource
   taskSpec:
     params:
     - default: mydefault
       name: myarg
       type: string
-    resources:
-      inputs:
-      - name: workspace
-        type: git
     steps:
     - args:
-      - --my-arg=$(inputs.params.myarg)
       command:
       - /mycmd
       image: myimage
       name: mycontainer
-`)
-
-	taskRunWithResourceSpecAndTaskSpec := parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-with-resource-spec
-  namespace: foo
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      resourceSpec:
-        params:
-        - name: URL
-          value: github.com/foo/bar.git
-        - name: revision
-          value: rel-can
-        type: git
-  taskSpec:
-    resources:
-      inputs:
-      - name: workspace
-        type: git
-    steps:
-    - command:
-      - /mycmd
-      image: ubuntu
-      name: mystep
 `)
 
 	taskRunWithClusterTask := parse.MustParseV1beta1TaskRun(t, `
@@ -877,18 +730,16 @@ spec:
 `, ref))
 
 	taskruns := []*v1beta1.TaskRun{
-		taskRunSuccess, taskRunWithSaSuccess,
-		taskRunSubstitution, taskRunInputOutput,
-		taskRunWithTaskSpec, taskRunWithClusterTask, taskRunWithResourceSpecAndTaskSpec,
+		taskRunSuccess, taskRunWithSaSuccess, taskRunSubstitution,
+		taskRunWithTaskSpec, taskRunWithClusterTask,
 		taskRunWithLabels, taskRunWithAnnotations, taskRunWithPod,
 		taskRunWithCredentialsVariable, taskRunBundle,
 	}
 
 	d := test.Data{
-		TaskRuns:          taskruns,
-		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask, outputTask},
-		ClusterTasks:      []*v1beta1.ClusterTask{clustertask},
-		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource},
+		TaskRuns:     taskruns,
+		Tasks:        []*v1beta1.Task{simpleTask, saTask, templatedTask},
+		ClusterTasks: []*v1beta1.ClusterTask{clustertask},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -937,25 +788,6 @@ spec:
 			},
 		}}, []stepForExpectedPod{
 			{
-				name:  "create-dir-workspace-mz4c7",
-				image: "busybox",
-				cmd:   "mkdir",
-				args:  []string{"-p", "/workspace/output/workspace"},
-			},
-			{
-				name:  "git-source-workspace-9l9zj",
-				image: "override-with-git:latest",
-				cmd:   "/ko-app/git-init",
-				args: []string{"-url", "https://foo.git",
-					"-path", "/workspace/workspace"},
-				envVars: map[string]string{
-					"TEKTON_RESOURCE_NAME": "workspace",
-					"HOME":                 "/tekton/home",
-				},
-				workingDir:      workspaceDir,
-				securityContext: gitResourceSecurityContext,
-			},
-			{
 				name:  "mycontainer",
 				image: "myimage",
 				cmd:   "/mycmd",
@@ -983,25 +815,9 @@ spec:
 		},
 		wantPod: expectedPod("test-taskrun-with-taskspec-pod", "", "test-taskrun-with-taskspec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
 			{
-				name:  "git-source-workspace-9l9zj",
-				image: "override-with-git:latest",
-				cmd:   "/ko-app/git-init",
-				args: []string{"-url", "https://foo.git",
-					"-path", "/workspace/workspace"},
-				envVars: map[string]string{
-					"TEKTON_RESOURCE_NAME": "workspace",
-					"HOME":                 "/tekton/home",
-				},
-				workingDir:      workspaceDir,
-				securityContext: gitResourceSecurityContext,
-			},
-			{
 				name:  "mycontainer",
 				image: "myimage",
 				cmd:   "/mycmd",
-				args: []string{
-					"--my-arg=foo",
-				},
 			},
 		}),
 	}, {
@@ -1016,35 +832,6 @@ spec:
 			image: "foo",
 			cmd:   "/mycmd",
 		}}),
-	}, {
-		name:    "taskrun-with-resource-spec-task-spec",
-		taskRun: taskRunWithResourceSpecAndTaskSpec,
-		wantEvents: []string{
-			"Normal Started ",
-			"Normal Running Not all Steps",
-		},
-		wantPod: expectedPod("test-taskrun-with-resource-spec-pod", "", "test-taskrun-with-resource-spec", "foo", config.DefaultServiceAccountValue, false, nil, []stepForExpectedPod{
-			{
-				name:  "git-source-workspace-9l9zj",
-				image: "override-with-git:latest",
-				cmd:   "/ko-app/git-init",
-				args: []string{"-url", "github.com/foo/bar.git",
-					"-path", "/workspace/workspace",
-					"-revision", "rel-can",
-				},
-				envVars: map[string]string{
-					"TEKTON_RESOURCE_NAME": "workspace",
-					"HOME":                 "/tekton/home",
-				},
-				workingDir:      workspaceDir,
-				securityContext: gitResourceSecurityContext,
-			},
-			{
-				name:  "mystep",
-				image: "ubuntu",
-				cmd:   "/mycmd",
-			},
-		}),
 	}, {
 		name:    "taskrun-with-pod",
 		taskRun: taskRunWithPod,
@@ -1188,11 +975,10 @@ spec:
 		},
 	}}
 	d := test.Data{
-		ConfigMaps:        cms,
-		TaskRuns:          taskruns,
-		Tasks:             []*v1beta1.Task{simpleTask, saTask, templatedTask, outputTask},
-		ClusterTasks:      []*v1beta1.ClusterTask{clustertask},
-		PipelineResources: []*resourcev1alpha1.PipelineResource{gitResource, anotherGitResource},
+		ConfigMaps:   cms,
+		TaskRuns:     taskruns,
+		Tasks:        []*v1beta1.Task{simpleTask, saTask, templatedTask},
+		ClusterTasks: []*v1beta1.ClusterTask{clustertask},
 	}
 	for _, tc := range []struct {
 		name       string
@@ -2045,10 +1831,9 @@ spec:
     name: test-task
 `)
 	d := test.Data{
-		TaskRuns:          []*v1beta1.TaskRun{tr},
-		Tasks:             []*v1beta1.Task{simpleTask},
-		ClusterTasks:      []*v1beta1.ClusterTask{},
-		PipelineResources: []*resourcev1alpha1.PipelineResource{},
+		TaskRuns:     []*v1beta1.TaskRun{tr},
+		Tasks:        []*v1beta1.Task{simpleTask},
+		ClusterTasks: []*v1beta1.ClusterTask{},
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -2840,7 +2625,6 @@ spec:
 		PipelineClientSet: testAssets.Clients.Pipeline,
 		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
-		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
 		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
@@ -2849,7 +2633,7 @@ spec:
 		tracerProvider:    trace.NewNoopTracerProvider(),
 	}
 
-	rtr := &resources.ResolvedTaskResources{
+	rtr := &resources.ResolvedTask{
 		TaskName: "test-task",
 		Kind:     "Task",
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
@@ -2950,7 +2734,6 @@ spec:
 		PipelineClientSet: testAssets.Clients.Pipeline,
 		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
-		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
 		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
@@ -2959,7 +2742,7 @@ spec:
 		tracerProvider:    trace.NewNoopTracerProvider(),
 	}
 
-	rtr := &resources.ResolvedTaskResources{
+	rtr := &resources.ResolvedTask{
 		TaskName: "test-task",
 		Kind:     "Task",
 		TaskSpec: &v1beta1.TaskSpec{Steps: simpleTask.Spec.Steps, Workspaces: simpleTask.Spec.Workspaces},
@@ -3004,7 +2787,6 @@ status:
 		PipelineClientSet: testAssets.Clients.Pipeline,
 		Clock:             testClock,
 		taskRunLister:     testAssets.Informers.TaskRun.Lister(),
-		resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 		limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
 		cloudEventClient:  testAssets.Clients.CloudEvents,
 		metrics:           nil, // Not used
@@ -3205,10 +2987,9 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:             []*v1beta1.Task{taskWithWorkspace},
-		TaskRuns:          []*v1beta1.TaskRun{taskRun},
-		ClusterTasks:      nil,
-		PipelineResources: nil,
+		Tasks:        []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:     []*v1beta1.TaskRun{taskRun},
+		ClusterTasks: nil,
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -3266,10 +3047,9 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:             []*v1beta1.Task{taskWithWorkspace},
-		TaskRuns:          []*v1beta1.TaskRun{taskRun},
-		ClusterTasks:      nil,
-		PipelineResources: nil,
+		Tasks:        []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:     []*v1beta1.TaskRun{taskRun},
+		ClusterTasks: nil,
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
@@ -3331,10 +3111,9 @@ spec:
     name: test-task-with-workspace
 `)
 	d := test.Data{
-		Tasks:             []*v1beta1.Task{taskWithWorkspace},
-		TaskRuns:          []*v1beta1.TaskRun{taskRun},
-		ClusterTasks:      nil,
-		PipelineResources: nil,
+		Tasks:        []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:     []*v1beta1.TaskRun{taskRun},
+		ClusterTasks: nil,
 	}
 
 	d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
@@ -3439,159 +3218,6 @@ spec:
 	}
 }
 
-func TestReconcileTaskResourceResolutionAndValidation(t *testing.T) {
-	for _, tt := range []struct {
-		desc             string
-		d                test.Data
-		wantFailedReason string
-		wantEvents       []string
-	}{{
-		desc: "Fail ResolveTaskResources",
-		d: test.Data{
-			Tasks: []*v1beta1.Task{parse.MustParseV1beta1Task(t, `
-metadata:
-  name: test-task-missing-resource
-  namespace: foo
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-`)},
-			TaskRuns: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-missing-resource
-  namespace: foo
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      resourceRef:
-        name: git
-  taskRef:
-    apiVersion: a1
-    name: test-task-missing-resource
-`)},
-			ClusterTasks:      nil,
-			PipelineResources: nil,
-		},
-		wantFailedReason: podconvert.ReasonFailedResolution,
-		wantEvents: []string{
-			"Normal Started ",
-			"Warning Failed",        // Event about the TaskRun state changed
-			"Warning InternalError", // Event about the error (generated by the genreconciler)
-		},
-	}, {
-		desc: "Fail ValidateResolvedTaskResources",
-		d: test.Data{
-			Tasks: []*v1beta1.Task{parse.MustParseV1beta1Task(t, `
-metadata:
-  name: test-task-missing-resource
-  namespace: foo
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-`)},
-			TaskRuns: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-missing-resource
-  namespace: foo
-spec:
-  taskRef:
-    apiVersion: a1
-    name: test-task-missing-resource
-`)},
-			ClusterTasks:      nil,
-			PipelineResources: nil,
-		},
-		wantFailedReason: podconvert.ReasonFailedValidation,
-		wantEvents: []string{
-			"Normal Started ",
-			"Warning Failed",        // Event about the TaskRun state changed
-			"Warning InternalError", // Event about the error (generated by the genreconciler)
-		},
-	}, {
-		desc: "Fail ValidateTaskSpecRequestResources",
-		d: test.Data{
-			Tasks: []*v1beta1.Task{parse.MustParseV1beta1Task(t, `
-metadata:
-  name: test-task-invalid-taskspec-resource
-  namespace: foo
-spec:
-  steps:
-  - command:
-    - cmd
-    image: image
-    resources:
-      limits:
-        cpu: "8"
-        memory: 4Gi
-      requests:
-        cpu: "8"
-        memory: 8Gi
-  workspaces:
-  - description: a test task workspace
-    name: ws1
-    readOnly: true
-`)},
-			TaskRuns: []*v1beta1.TaskRun{parse.MustParseV1beta1TaskRun(t, `
-metadata:
-  name: test-taskrun-invalid-taskspec-resource
-  namespace: foo
-spec:
-  taskRef:
-    apiVersion: a1
-    name: test-task-invalid-taskspec-resource
-`)},
-			ClusterTasks:      nil,
-			PipelineResources: nil,
-		},
-		wantFailedReason: podconvert.ReasonFailedValidation,
-		wantEvents: []string{
-			"Normal Started ",
-			"Warning Failed",        // Event about the TaskRun state changed
-			"Warning InternalError", // Event about the error (generated by the genreconciler)
-		},
-	}} {
-		t.Run(tt.desc, func(t *testing.T) {
-			testAssets, cancel := getTaskRunController(t, tt.d)
-			defer cancel()
-			clients := testAssets.Clients
-			c := testAssets.Controller
-
-			reconcileErr := c.Reconciler.Reconcile(testAssets.Ctx, getRunName(tt.d.TaskRuns[0]))
-
-			// When a TaskRun is invalid and can't run, we return a permanent error because
-			// a regular error will tell the Reconciler to keep trying to reconcile; instead we want to stop
-			// and forget about the Run.
-			if reconcileErr == nil {
-				t.Fatalf("Expected to see error when reconciling invalid TaskRun but none")
-			}
-			if !controller.IsPermanentError(reconcileErr) {
-				t.Fatalf("Expected to see a permanent error when reconciling invalid TaskRun, got %s instead", reconcileErr)
-			}
-
-			tr, err := clients.Pipeline.TektonV1beta1().TaskRuns(tt.d.TaskRuns[0].Namespace).Get(testAssets.Ctx, tt.d.TaskRuns[0].Name, metav1.GetOptions{})
-			if err != nil {
-				t.Fatalf("Expected TaskRun %s to exist but instead got error when getting it: %v", tt.d.TaskRuns[0].Name, err)
-			}
-
-			for _, c := range tr.Status.Conditions {
-				if c.Type != apis.ConditionSucceeded || c.Status != corev1.ConditionFalse || c.Reason != tt.wantFailedReason {
-					t.Errorf("Expected TaskRun to \"%s\" but it did not. Final conditions were:\n%#v", tt.wantFailedReason, tr.Status.Conditions)
-				}
-			}
-
-			err = k8sevent.CheckEventsOrdered(t, testAssets.Recorder.Events, tt.desc, tt.wantEvents)
-			if !(err == nil) {
-				t.Errorf(err.Error())
-			}
-		})
-	}
-}
-
 // TestReconcileWithWorkspacesIncompatibleWithAffinityAssistant tests that a TaskRun used with an associated
 // Affinity Assistant is validated and that the validation fails for a TaskRun that is incompatible with
 // Affinity Assistant; e.g. using more than one PVC-backed workspace.
@@ -3629,10 +3255,9 @@ spec:
 `)
 
 	d := test.Data{
-		Tasks:             []*v1beta1.Task{taskWithTwoWorkspaces},
-		TaskRuns:          []*v1beta1.TaskRun{taskRun},
-		ClusterTasks:      nil,
-		PipelineResources: nil,
+		Tasks:        []*v1beta1.Task{taskWithTwoWorkspaces},
+		TaskRuns:     []*v1beta1.TaskRun{taskRun},
+		ClusterTasks: nil,
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -3695,10 +3320,9 @@ spec:
         name: mypvc
 `)
 	d := test.Data{
-		Tasks:             []*v1beta1.Task{taskWithWorkspace},
-		TaskRuns:          []*v1beta1.TaskRun{taskRun},
-		ClusterTasks:      nil,
-		PipelineResources: nil,
+		Tasks:        []*v1beta1.Task{taskWithWorkspace},
+		TaskRuns:     []*v1beta1.TaskRun{taskRun},
+		ClusterTasks: nil,
 	}
 	testAssets, cancel := getTaskRunController(t, d)
 	defer cancel()
@@ -4074,7 +3698,6 @@ status:
 				PipelineClientSet: testAssets.Clients.Pipeline,
 				Clock:             testClock,
 				taskRunLister:     testAssets.Informers.TaskRun.Lister(),
-				resourceLister:    testAssets.Informers.PipelineResource.Lister(),
 				limitrangeLister:  testAssets.Informers.LimitRange.Lister(),
 				cloudEventClient:  testAssets.Clients.CloudEvents,
 				metrics:           nil, // Not used

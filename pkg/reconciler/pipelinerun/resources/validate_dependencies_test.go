@@ -48,7 +48,7 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt1",
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskName: "t",
 				TaskSpec: &v1beta1.TaskSpec{
 					Results: []v1beta1.TaskResult{{
@@ -71,7 +71,7 @@ func TestValidatePipelineTaskResults_ValidStates(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt1",
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskName: "t",
 				TaskSpec: &v1beta1.TaskSpec{
 					Results: []v1beta1.TaskResult{{
@@ -175,7 +175,7 @@ func TestValidatePipelineTaskResults_IncorrectResultName(t *testing.T) {
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "pt1",
 		},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskName: "t",
 			TaskSpec: &v1beta1.TaskSpec{
 				Results: []v1beta1.TaskResult{{
@@ -241,7 +241,7 @@ func TestValidatePipelineTaskResults_MissingTaskSpec(t *testing.T) {
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "pt1",
 		},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskName: "t",
 			TaskSpec: nil,
 		},
@@ -298,7 +298,7 @@ func TestValidatePipelineResults_ValidStates(t *testing.T) {
 			PipelineTask: &v1beta1.PipelineTask{
 				Name: "pt1",
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskName: "t",
 				TaskSpec: &v1beta1.TaskSpec{
 					Results: []v1beta1.TaskResult{{
@@ -345,7 +345,7 @@ func TestValidatePipelineResults_IncorrectResultName(t *testing.T) {
 		PipelineTask: &v1beta1.PipelineTask{
 			Name: "pt1",
 		},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskName: "t",
 			TaskSpec: &v1beta1.TaskSpec{
 				Results: []v1beta1.TaskResult{{
@@ -375,7 +375,7 @@ func TestValidateOptionalWorkspaces_ValidStates(t *testing.T) {
 				Name:       "pt1",
 				Workspaces: nil,
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &v1beta1.TaskSpec{
 					Workspaces: nil,
 				},
@@ -389,7 +389,7 @@ func TestValidateOptionalWorkspaces_ValidStates(t *testing.T) {
 				Name:       "pt1",
 				Workspaces: []v1beta1.WorkspacePipelineTaskBinding{},
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &v1beta1.TaskSpec{
 					Workspaces: []v1beta1.WorkspaceDeclaration{{
 						Name:     "foo",
@@ -412,7 +412,7 @@ func TestValidateOptionalWorkspaces_ValidStates(t *testing.T) {
 					Workspace: "ws1",
 				}},
 			},
-			ResolvedTaskResources: &resources.ResolvedTaskResources{
+			ResolvedTask: &resources.ResolvedTask{
 				TaskSpec: &v1beta1.TaskSpec{
 					Workspaces: []v1beta1.WorkspaceDeclaration{{
 						Name:     "foo",
@@ -445,7 +445,7 @@ func TestValidateOptionalWorkspaces_NonOptionalTaskWorkspace(t *testing.T) {
 				Workspace: "ws1",
 			}},
 		},
-		ResolvedTaskResources: &resources.ResolvedTaskResources{
+		ResolvedTask: &resources.ResolvedTask{
 			TaskSpec: &v1beta1.TaskSpec{
 				Workspaces: []v1beta1.WorkspaceDeclaration{{
 					Name:     "foo",

@@ -55,8 +55,6 @@ For instructions on using variable substitutions see the relevant section of [th
 | `params['<param name>'][i]` | (see above) |
 | `params["<param name>"][i]` | (see above) |
 | `params.<object-param-name>.<individual-key-name>` | Get the value of an individual child of an object param. This is alpha feature, set `enable-api-fields` to `alpha`  to use it. |
-| `resources.inputs.<resourceName>.path` | The path to the input resource's directory. |
-| `resources.outputs.<resourceName>.path` | The path to the output resource's directory. |
 | `results.<resultName>.path` | The path to the file where the `Task` writes its results data. |
 | `results['<resultName>'].path` | (see above) |
 | `results["<resultName>"].path` | (see above) |
@@ -72,41 +70,6 @@ For instructions on using variable substitutions see the relevant section of [th
 | `context.task.retry-count` | The current retry number of this `Task`. |
 | `steps.step-<stepName>.exitCode.path` | The path to the file where a Step's exit code is stored. |
 | `steps.step-unnamed-<stepIndex>.exitCode.path` | The path to the file where a Step's exit code is stored for a step without any name. |
-
-### `PipelineResource` variables available in a `Task`
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
-
-Each supported type of `PipelineResource` specified within a `Task` exposes a unique set
-of variables. This section lists the variables exposed by each type. You can access a
-variable via `resources.inputs.<resourceName>.<variableName>` or
-`resources.outputs.<resourceName>.<variableName>`.
-
-#### Variables for the `Git` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"git"`. |
-| `url` | The URL of the Git repository. |
-| `revision` | The revision to check out. |
-| `refspec` | The value of the resource's `refspec` parameter. |
-| `depth` | The integer value of the resource's `depth` parameter. |
-| `sslVerify` | The value of the resource's `sslVerify` parameter, either `"true"` or `"false"`. |
-| `httpProxy` | The value of the resource's `httpProxy` parameter. |
-| `httpsProxy` | The value of the resource's `httpsProxy` parameter. |
-| `noProxy` | The value of the resource's `noProxy` parameter. |
-
-#### Variables for the `GCS` type
-
-| Variable | Description |
-| -------- | ----------- |
-| `name` | The name of the resource. |
-| `type` | Type value of `"gcs"`. |
-| `location` | The fully qualified address of the blob storage. |
 
 ## Fields that accept variable substitutions
 

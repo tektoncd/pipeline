@@ -198,73 +198,6 @@ spec:
       value: /pipeline/buildpacks/0.1/buildpacks.yaml
 ```
 
-### Specifying `Resources`
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
-
-A `Pipeline` requires [`PipelineResources`](resources.md) to provide inputs and store outputs
-for the `Tasks` that comprise it. You must provision those resources in the `resources` field
-in the `spec` section of the `PipelineRun` definition.
-
-A `Pipeline` may require you to provision a number of different resources. For example:
-
-- When executing a `Pipeline` against a pull request, the triggering
-  system must specify the commit-ish of a `git` resource.
-- When executing a `Pipeline` manually against your own environment, you
-  must provision your GitHub fork using the `git` resource; your image
-  registry using the `image` resource; and your Kubernetes cluster using the
-  `cluster` resource.
-
-You can reference a `PipelineResources` using the `resourceRef` field:
-
-```yaml
-spec:
-  resources:
-    - name: source-repo
-      resourceRef:
-        name: skaffold-git
-    - name: web-image
-      resourceRef:
-        name: skaffold-image-leeroy-web
-    - name: app-image
-      resourceRef:
-        name: skaffold-image-leeroy-app
-```
-
-You can also embed a `PipelineResource` definition in the `PipelineRun` using the `resourceSpec` field:
-
-```yaml
-spec:
-  resources:
-    - name: source-repo
-      resourceSpec:
-        type: git
-        params:
-          - name: revision
-            value: v0.32.0
-          - name: url
-            value: https://github.com/GoogleContainerTools/skaffold
-    - name: web-image
-      resourceSpec:
-        type: image
-        params:
-          - name: url
-            value: gcr.io/christiewilson-catfactory/leeroy-web
-    - name: app-image
-      resourceSpec:
-        type: image
-        params:
-          - name: url
-            value: gcr.io/christiewilson-catfactory/leeroy-app
-```
-
-**Note:** All `persistentVolumeClaims` specified within a `PipelineRun` are bound
-until their respective `Pods` or the entire `PipelineRun` are deleted. This also applies
-to all `persistentVolumeClaims` generated internally.
-
 ### Specifying Task-level `ComputeResources`
 
 **([alpha only](https://github.com/tektoncd/pipeline/blob/main/docs/install.md#alpha-features))**
@@ -690,8 +623,7 @@ spec:
           - --commit=$(params.gitrepo.commit)
           - --branch=$(params.gitrepo.branch)
           image: bash
-          name: write-result
-          resources: {}
+          name: write-result   
 status:
   completionTime: "2022-09-08T17:22:01Z"
   conditions:
@@ -719,7 +651,6 @@ status:
           - --branch=main
           image: bash
           name: write-result
-          resources: {}
   startTime: "2022-09-08T17:21:57Z"
   childReferences:
   - name: pipelinerun-object-param-resultpxp59-task1
@@ -735,7 +666,6 @@ status:
             - --branch=main
             image: bash
             name: write-result
-            resources: {}
 ```
 
 ### Specifying custom `ServiceAccount` credentials

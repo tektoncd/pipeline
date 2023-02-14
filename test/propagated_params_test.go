@@ -44,7 +44,6 @@ var (
 	ignoreConditions        = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
 	ignoreContainerStates   = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
 	ignoreStepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
-	ignoreTaskRunSpec       = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "Resources")
 	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
 	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "ServiceAccountName")
 	// ignoreSAPipelineRunSpec ignores the service account in the PipelineRunSpec as it may differ across platforms
@@ -128,7 +127,6 @@ func TestPropagatedParams(t *testing.T) {
 					ignoreConditions,
 					ignoreContainerStates,
 					ignoreStepState,
-					ignoreTaskRunSpec,
 					ignoreSATaskRunSpec,
 				)
 				if d != "" {
@@ -213,7 +211,6 @@ metadata:
   namespace: %s
 spec:
   timeout: 1h
-  resources:
   taskSpec:
     steps:
       - name: echo
@@ -402,7 +399,6 @@ metadata:
   namespace: %s
 spec:
   timeout: 1h
-  resources:
   taskSpec:
     params:
       - name: HELLO
