@@ -2,12 +2,14 @@ package factory
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 
+	"github.com/jenkins-x/go-scm/scm/driver/azure"
 	"github.com/pkg/errors"
 
 	"github.com/jenkins-x/go-scm/scm"
@@ -90,6 +92,8 @@ func newClient(driver, serverURL string, authOptions *AuthOptions, opts ...Clien
 	var err error
 
 	switch driver {
+	case "azure":
+		client = azure.NewDefault()
 	case "bitbucket", "bitbucketcloud":
 		if serverURL != "" {
 			client, err = bitbucket.New(ensureBBCEndpoint(serverURL))
@@ -133,6 +137,15 @@ func newClient(driver, serverURL string, authOptions *AuthOptions, opts ...Clien
 	}
 	if oauthToken != "" {
 		switch driver {
+		case "azure":
+			client.Client = &http.Client{
+				Transport: &transport.Custom{
+					Before: func(r *http.Request) {
+						encoded := base64.StdEncoding.EncodeToString([]byte(":" + oauthToken))
+						r.Header.Set("Authorization", fmt.Sprintf("Basic %s", encoded))
+					},
+				},
+			}
 		case "gitea":
 			client.Client = &http.Client{
 				Transport: &transport.Authorization{
