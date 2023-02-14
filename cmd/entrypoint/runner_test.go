@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,8 +41,46 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 		stdoutPath: filepath.Join(tmp, "stdout"),
 		stderrPath: filepath.Join(tmp, "subpath/stderr"),
 	}
+
+	// capture the std{out/err} output to verify whether we print log in the std
+	oldStdout := os.Stdout // keep backup of the real stdout
+	outReader, outWriter, _ := os.Pipe()
+	os.Stdout = outWriter
+
+	oldStderr := os.Stderr
+	errReader, errWriter, _ := os.Pipe()
+	os.Stderr = errWriter
+
 	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	outC := make(chan string)
+	errC := make(chan string)
+	// copy the output in a separate goroutine so realRunner command can't block indefinitely
+	go func() {
+		var stdOutBuf bytes.Buffer
+		io.Copy(&stdOutBuf, outReader)
+		outC <- stdOutBuf.String()
+
+		var stdErrBuf bytes.Buffer
+		io.Copy(&stdErrBuf, errReader)
+		errC <- stdErrBuf.String()
+	}()
+	// back to normal state
+	outWriter.Close()
+	errWriter.Close()
+	os.Stdout = oldStdout // restoring the real stdout
+	os.Stderr = oldStderr // restoring the real stderr
+	stdOut := <-outC
+	stdErr := <-errC
+
+	// echo command will auto add \n in end, so we should remove trailing newline
+	if strings.TrimSuffix(stdOut, "\n") != expectedString {
+		t.Fatalf("Unexpected stdout output: %s, wanted stdout output: %s", stdOut, expectedString)
+	}
+	if strings.TrimSuffix(stdErr, "\n") != expectedString {
+		t.Fatalf("Unexpected stderr output: %s, wanted stderr output: %s", stdErr, expectedString)
 	}
 
 	for _, path := range []string{"stdout", "subpath/stderr"} {
