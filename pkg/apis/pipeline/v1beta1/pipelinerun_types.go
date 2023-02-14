@@ -228,7 +228,6 @@ type PipelineRunSpec struct {
 	// PipelineResources to use for the resources the Pipeline has declared
 	// it needs.
 	// +listType=atomic
-	Resources []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
 	// +listType=atomic
 	Params []Param `json:"params,omitempty"`

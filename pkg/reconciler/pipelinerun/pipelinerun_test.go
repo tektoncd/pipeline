@@ -72,12 +72,11 @@ import (
 
 var (
 	images = pipeline.Images{
-		EntrypointImage:          "override-with-entrypoint:latest",
-		NopImage:                 "override-with-nop:latest",
-		GitImage:                 "override-with-git:latest",
-		ShellImage:               "busybox",
-		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
+		EntrypointImage: "override-with-entrypoint:latest",
+		NopImage:        "override-with-nop:latest",
+		GitImage:        "override-with-git:latest",
+		ShellImage:      "busybox",
+		GsutilImage:     "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 
 	ignoreResourceVersion    = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
@@ -353,7 +352,7 @@ spec:
     kind: Task
 `)
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
@@ -787,7 +786,6 @@ spec:
 `, config.DefaultServiceAccountValue))
 
 	expectedTaskRun.ObjectMeta = taskRunObjectMeta("test-pipeline-run-success-unit-test-task-spec", "foo", "test-pipeline-run-success", "test-pipeline", "unit-test-task-spec", false)
-	expectedTaskRun.Spec.Resources = &v1beta1.TaskRunResources{}
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
@@ -6417,7 +6415,7 @@ spec:
     name: unit-test-task
 `, ref))
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
@@ -6492,7 +6490,7 @@ spec:
       optional: true
 `)
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
@@ -6907,7 +6905,6 @@ func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]
 				}},
 			},
 			ServiceAccountName: config.DefaultServiceAccountValue,
-			Resources:          &v1beta1.TaskRunResources{},
 		},
 	}
 }
@@ -9556,10 +9553,6 @@ spec:
 	}
 }
 
-func lessTaskResourceBindings(i, j v1beta1.TaskResourceBinding) bool {
-	return i.Name < j.Name
-}
-
 func TestReconcile_SetDefaults(t *testing.T) {
 	names.TestingSeed()
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
@@ -9661,7 +9654,7 @@ spec:
   resources: {}
 `)
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 

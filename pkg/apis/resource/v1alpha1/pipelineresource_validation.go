@@ -43,11 +43,5 @@ func (rs *PipelineResourceSpec) Validate(ctx context.Context) *apis.FieldError {
 		return apis.ErrMissingField("spec.type")
 	}
 
-	for _, allowedType := range AllResourceTypes {
-		if allowedType == rs.Type {
-			return nil
-		}
-	}
-
 	return apis.ErrInvalidValue("spec.type", rs.Type)
 }

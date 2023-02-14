@@ -38,8 +38,6 @@ type Images struct {
 	ShellImageWin string
 	// GsutilImage is the container image containing gsutil.
 	GsutilImage string
-	// ImageDigestExporterImage is the container image containing our image digest exporter binary.
-	ImageDigestExporterImage string
 	// WorkingDirInitImage is the container image containing our working dir init binary.
 	WorkingDirInitImage string
 
@@ -59,7 +57,6 @@ func (i Images) Validate() error {
 		{i.ShellImage, "shell-image"},
 		{i.ShellImageWin, "shell-image-win"},
 		{i.GsutilImage, "gsutil-image"},
-		{i.ImageDigestExporterImage, "imagedigest-exporter-image"},
 		{i.WorkingDirInitImage, "workingdirinit-image"},
 	} {
 		if f.v == "" {

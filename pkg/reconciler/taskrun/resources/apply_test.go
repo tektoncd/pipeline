@@ -24,8 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -38,12 +36,11 @@ import (
 
 var (
 	images = pipeline.Images{
-		EntrypointImage:          "override-with-entrypoint:latest",
-		NopImage:                 "override-with-nop:latest",
-		GitImage:                 "override-with-git:latest",
-		ShellImage:               "busybox",
-		GsutilImage:              "gcr.io/google.com/cloudsdktool/cloud-sdk",
-		ImageDigestExporterImage: "override-with-imagedigest-exporter-image:latest",
+		EntrypointImage: "override-with-entrypoint:latest",
+		NopImage:        "override-with-nop:latest",
+		GitImage:        "override-with-git:latest",
+		ShellImage:      "busybox",
+		GsutilImage:     "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 
 	simpleTaskSpec = &v1beta1.TaskSpec{
@@ -71,10 +68,6 @@ var (
 			WorkingDir: "$(inputs.resources.workspace.path)",
 			Args:       []string{"$(inputs.resources.workspace.url)"},
 		}, {
-			Name:  "qux",
-			Image: "$(params.something)",
-			Args:  []string{"$(outputs.resources.imageToUse.url)"},
-		}, {
 			Name:  "foo",
 			Image: `$(params["myimage"])`,
 		}, {
@@ -82,10 +75,6 @@ var (
 			Image:      "$(params.somethingelse)",
 			WorkingDir: "$(inputs.resources.workspace.path)",
 			Args:       []string{"$(inputs.resources.workspace.url)"},
-		}, {
-			Name:  "qux",
-			Image: "quux",
-			Args:  []string{"$(outputs.resources.imageToUse.url)"},
 		}, {
 			Name:  "foo",
 			Image: "busybox:$(params.FOO)",
@@ -128,12 +117,6 @@ var (
 					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(params.FOO)"},
 				},
 			}},
-		}, {
-			Name:  "outputs-resources-path-ab",
-			Image: "$(outputs.resources.imageToUse-ab.path)",
-		}, {
-			Name:  "outputs-resources-path-re",
-			Image: "$(outputs.resources.imageToUse-re.path)",
 		}},
 		Volumes: []corev1.Volume{{
 			Name: "$(params.FOO)",
@@ -204,17 +187,6 @@ var (
 			Inputs: []v1beta1.TaskResource{{
 				ResourceDeclaration: v1beta1.ResourceDeclaration{
 					Name: "workspace",
-				},
-			}},
-			Outputs: []v1beta1.TaskResource{{
-				ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name:       "imageToUse-ab",
-					TargetPath: "/foo/builtImage",
-				},
-			}, {
-				ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name:       "imageToUse-re",
-					TargetPath: "foo/builtImage",
 				},
 			}},
 		},
@@ -367,10 +339,6 @@ var (
 			WorkingDir: "$(inputs.resources.workspace.path)",
 			Args:       []string{"$(inputs.resources.workspace.url)"},
 		}, {
-			Name:  "qux",
-			Image: "$(params.something[0])",
-			Args:  []string{"$(outputs.resources.imageToUse.url)"},
-		}, {
 			Name:  "foo",
 			Image: `$(params["myimage"][0])`,
 		}, {
@@ -378,10 +346,6 @@ var (
 			Image:      "$(params.somethingelse)",
 			WorkingDir: "$(inputs.resources.workspace.path)",
 			Args:       []string{"$(inputs.resources.workspace.url)"},
-		}, {
-			Name:  "qux",
-			Image: "quux",
-			Args:  []string{"$(outputs.resources.imageToUse.url)"},
 		}, {
 			Name:  "foo",
 			Image: "busybox:$(params.FOO[1])",
@@ -424,12 +388,6 @@ var (
 					LocalObjectReference: corev1.LocalObjectReference{Name: "secret-$(params.FOO[1])"},
 				},
 			}},
-		}, {
-			Name:  "outputs-resources-path-ab",
-			Image: "$(outputs.resources.imageToUse-ab.path)",
-		}, {
-			Name:  "outputs-resources-path-re",
-			Image: "$(outputs.resources.imageToUse-re.path)",
 		}},
 		Volumes: []corev1.Volume{{
 			Name: "$(params.FOO[1])",
@@ -500,17 +458,6 @@ var (
 			Inputs: []v1beta1.TaskResource{{
 				ResourceDeclaration: v1beta1.ResourceDeclaration{
 					Name: "workspace",
-				},
-			}},
-			Outputs: []v1beta1.TaskResource{{
-				ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name:       "imageToUse-ab",
-					TargetPath: "/foo/builtImage",
-				},
-			}, {
-				ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name:       "imageToUse-re",
-					TargetPath: "foo/builtImage",
 				},
 			}},
 		},
@@ -692,23 +639,6 @@ var (
 			}},
 		},
 	}
-
-	outputs = map[string]v1beta1.PipelineResourceInterface{
-		"imageToUse": imageResource,
-	}
-
-	imageResource, _ = resource.FromType("image-resource", &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "image-resource",
-		},
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeImage,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "gcr.io/hans/sandwiches",
-			}},
-		},
-	}, images)
 )
 
 func applyMutation(ts *v1beta1.TaskSpec, f func(*v1beta1.TaskSpec)) *v1beta1.TaskSpec {
@@ -853,26 +783,24 @@ func TestApplyParameters(t *testing.T) {
 
 		spec.Steps[0].Image = "bar"
 		spec.Steps[2].Image = "mydefault"
-		spec.Steps[3].Image = "bar"
-		spec.Steps[4].Image = ""
+		spec.Steps[2].Image = "bar"
+		spec.Steps[3].Image = ""
 
-		spec.Steps[6].VolumeMounts[0].Name = "world"
-		spec.Steps[6].VolumeMounts[0].SubPath = "sub/world/path"
-		spec.Steps[6].VolumeMounts[0].MountPath = "path/to/world"
-		spec.Steps[6].Image = "busybox:world"
+		spec.Steps[4].VolumeMounts[0].Name = "world"
+		spec.Steps[4].VolumeMounts[0].SubPath = "sub/world/path"
+		spec.Steps[4].VolumeMounts[0].MountPath = "path/to/world"
+		spec.Steps[4].Image = "busybox:world"
 
-		spec.Steps[7].Env[0].Value = "value-world"
-		spec.Steps[7].Env[1].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "config-world"
-		spec.Steps[7].Env[1].ValueFrom.ConfigMapKeyRef.Key = "config-key-world"
-		spec.Steps[7].Env[2].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "secret-world"
-		spec.Steps[7].Env[2].ValueFrom.SecretKeyRef.Key = "secret-key-world"
-		spec.Steps[7].EnvFrom[0].Prefix = "prefix-0-world"
-		spec.Steps[7].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "config-world"
-		spec.Steps[7].EnvFrom[1].Prefix = "prefix-1-world"
-		spec.Steps[7].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
-		spec.Steps[7].Image = "busybox:world"
-		spec.Steps[8].Image = "$(outputs.resources.imageToUse-ab.path)"
-		spec.Steps[9].Image = "$(outputs.resources.imageToUse-re.path)"
+		spec.Steps[5].Env[0].Value = "value-world"
+		spec.Steps[5].Env[1].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "config-world"
+		spec.Steps[5].Env[1].ValueFrom.ConfigMapKeyRef.Key = "config-key-world"
+		spec.Steps[5].Env[2].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "secret-world"
+		spec.Steps[5].Env[2].ValueFrom.SecretKeyRef.Key = "secret-key-world"
+		spec.Steps[5].EnvFrom[0].Prefix = "prefix-0-world"
+		spec.Steps[5].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "config-world"
+		spec.Steps[5].EnvFrom[1].Prefix = "prefix-1-world"
+		spec.Steps[5].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
+		spec.Steps[5].Image = "busybox:world"
 
 		spec.Volumes[0].Name = "world"
 		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
@@ -921,27 +849,24 @@ func TestApplyParameters_ArrayIndexing(t *testing.T) {
 		spec.StepTemplate.Image = "bar"
 
 		spec.Steps[0].Image = "bar"
-		spec.Steps[2].Image = "mydefault"
-		spec.Steps[3].Image = "bar"
-		spec.Steps[4].Image = ""
+		spec.Steps[2].Image = "bar"
+		spec.Steps[3].Image = ""
 
-		spec.Steps[6].VolumeMounts[0].Name = "world"
-		spec.Steps[6].VolumeMounts[0].SubPath = "sub/world/path"
-		spec.Steps[6].VolumeMounts[0].MountPath = "path/to/world"
-		spec.Steps[6].Image = "busybox:world"
+		spec.Steps[4].VolumeMounts[0].Name = "world"
+		spec.Steps[4].VolumeMounts[0].SubPath = "sub/world/path"
+		spec.Steps[4].VolumeMounts[0].MountPath = "path/to/world"
+		spec.Steps[4].Image = "busybox:world"
 
-		spec.Steps[7].Env[0].Value = "value-world"
-		spec.Steps[7].Env[1].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "config-world"
-		spec.Steps[7].Env[1].ValueFrom.ConfigMapKeyRef.Key = "config-key-world"
-		spec.Steps[7].Env[2].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "secret-world"
-		spec.Steps[7].Env[2].ValueFrom.SecretKeyRef.Key = "secret-key-world"
-		spec.Steps[7].EnvFrom[0].Prefix = "prefix-0-world"
-		spec.Steps[7].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "config-world"
-		spec.Steps[7].EnvFrom[1].Prefix = "prefix-1-world"
-		spec.Steps[7].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
-		spec.Steps[7].Image = "busybox:world"
-		spec.Steps[8].Image = "$(outputs.resources.imageToUse-ab.path)"
-		spec.Steps[9].Image = "$(outputs.resources.imageToUse-re.path)"
+		spec.Steps[5].Env[0].Value = "value-world"
+		spec.Steps[5].Env[1].ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name = "config-world"
+		spec.Steps[5].Env[1].ValueFrom.ConfigMapKeyRef.Key = "config-key-world"
+		spec.Steps[5].Env[2].ValueFrom.SecretKeyRef.LocalObjectReference.Name = "secret-world"
+		spec.Steps[5].Env[2].ValueFrom.SecretKeyRef.Key = "secret-key-world"
+		spec.Steps[5].EnvFrom[0].Prefix = "prefix-0-world"
+		spec.Steps[5].EnvFrom[0].ConfigMapRef.LocalObjectReference.Name = "config-world"
+		spec.Steps[5].EnvFrom[1].Prefix = "prefix-1-world"
+		spec.Steps[5].EnvFrom[1].SecretRef.LocalObjectReference.Name = "secret-world"
+		spec.Steps[5].Image = "busybox:world"
 
 		spec.Volumes[0].Name = "world"
 		spec.Volumes[0].VolumeSource.ConfigMap.LocalObjectReference.Name = "world"
@@ -1050,22 +975,7 @@ func TestApplyResources(t *testing.T) {
 		rStr: "inputs",
 		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
 			spec.Steps[1].WorkingDir = "/workspace/workspace"
-			spec.Steps[4].WorkingDir = "/workspace/workspace"
-			spec.Steps[8].Image = "/foo/builtImage"
-			spec.Steps[9].Image = "/workspace/foo/builtImage"
-		}),
-	}, {
-		name: "output resource specified",
-		ts:   simpleTaskSpec,
-		r:    outputs,
-		rStr: "outputs",
-		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
-			spec.Steps[1].WorkingDir = "/workspace/workspace"
-			spec.Steps[2].Args = []string{"gcr.io/hans/sandwiches"}
-			spec.Steps[4].WorkingDir = "/workspace/workspace"
-			spec.Steps[5].Args = []string{"gcr.io/hans/sandwiches"}
-			spec.Steps[8].Image = "/foo/builtImage"
-			spec.Steps[9].Image = "/workspace/foo/builtImage"
+			spec.Steps[3].WorkingDir = "/workspace/workspace"
 		}),
 	}}
 	for _, tt := range tests {

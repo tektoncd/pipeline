@@ -31,14 +31,6 @@ import (
 // additional metatdata should be provided for it.
 type PipelineResourceType = resource.PipelineResourceType
 
-const (
-	// PipelineResourceTypeImage indicates that this source is a docker Image.
-	PipelineResourceTypeImage PipelineResourceType = resource.PipelineResourceTypeImage
-)
-
-// AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = resource.AllResourceTypes
-
 // TaskResources allows a Pipeline to declare how its DeclaredPipelineResources
 // should be provided to a Task as its inputs and outputs.
 type TaskResources struct {
@@ -61,27 +53,8 @@ type TaskResource struct {
 	ResourceDeclaration `json:",inline"`
 }
 
-// TaskRunResources allows a TaskRun to declare inputs and outputs TaskResourceBinding
-type TaskRunResources struct {
-	// Inputs holds the inputs resources this task was invoked with
-	// +listType=atomic
-	Inputs []TaskResourceBinding `json:"inputs,omitempty"`
-	// Outputs holds the inputs resources this task was invoked with
-	// +listType=atomic
-	Outputs []TaskResourceBinding `json:"outputs,omitempty"`
-}
-
 // TaskResourceBinding points to the PipelineResource that
 // will be used for the Task input or output called Name.
-type TaskResourceBinding struct {
-	PipelineResourceBinding `json:",inline"`
-	// Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead.
-	// The optional Path field corresponds to a path on disk at which the Resource can be found
-	// (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).
-	// +optional
-	// +listType=atomic
-	Paths []string `json:"paths,omitempty"`
-}
 
 // ResourceDeclaration defines an input or output PipelineResource declared as a requirement
 // by another type such as a Task or Condition. The Name field will be used to refer to these
@@ -89,22 +62,6 @@ type TaskResourceBinding struct {
 // path to the volume mounted containing this PipelineResource as an input (e.g.
 // an input Resource named `workspace` will be mounted at `/workspace`).
 type ResourceDeclaration = resource.ResourceDeclaration
-
-// PipelineResourceBinding connects a reference to an instance of a PipelineResource
-// with a PipelineResource dependency that the Pipeline has declared
-type PipelineResourceBinding struct {
-	// Name is the name of the PipelineResource in the Pipeline's declaration
-	Name string `json:"name,omitempty"`
-	// ResourceRef is a reference to the instance of the actual PipelineResource
-	// that should be used
-	// +optional
-	ResourceRef *PipelineResourceRef `json:"resourceRef,omitempty"`
-
-	// ResourceSpec is specification of a resource that should be created and
-	// consumed by the task
-	// +optional
-	ResourceSpec *resource.PipelineResourceSpec `json:"resourceSpec,omitempty"`
-}
 
 // PipelineResourceResult used to export the image name and digest as json
 type PipelineResourceResult struct {

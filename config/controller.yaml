@@ -69,7 +69,6 @@ spec:
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
           "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
           "-sidecarlogresults-image", "ko://github.com/tektoncd/pipeline/cmd/sidecarlogresults",
-          "-imagedigest-exporter-image", "ko://github.com/tektoncd/pipeline/cmd/imagedigestexporter",
           "-workingdirinit-image", "ko://github.com/tektoncd/pipeline/cmd/workingdirinit",
 
           # This is gcr.io/google.com/cloudsdktool/cloud-sdk:302.0.0-slim

@@ -25,14 +25,6 @@ import (
 // additional metatdata should be provided for it.
 type PipelineResourceType = string
 
-const (
-	// PipelineResourceTypeImage indicates that this source is a docker Image.
-	PipelineResourceTypeImage PipelineResourceType = "image"
-)
-
-// AllResourceTypes can be used for validation to check if a provided Resource type is one of the known types.
-var AllResourceTypes = []PipelineResourceType{PipelineResourceTypeImage}
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:noStatus
@@ -48,18 +40,6 @@ type PipelineResource struct {
 
 	// Spec holds the desired state of the PipelineResource from the client
 	Spec PipelineResourceSpec `json:"spec,omitempty"`
-
-	// Status is deprecated.
-	// It usually is used to communicate the observed state of the PipelineResource from
-	// the controller, but was unused as there is no controller for PipelineResource.
-	// +optional
-	Status *PipelineResourceStatus `json:"status,omitempty"`
-}
-
-// PipelineResourceStatus does not contain anything because PipelineResources on their own
-// do not have a status
-// Deprecated
-type PipelineResourceStatus struct {
 }
 
 // PipelineResourceSpec defines  an individual resources used in the pipeline.

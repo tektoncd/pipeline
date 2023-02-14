@@ -8,29 +8,27 @@ import (
 
 func TestValidate(t *testing.T) {
 	valid := pipeline.Images{
-		EntrypointImage:          "set",
-		SidecarLogResultsImage:   "set",
-		NopImage:                 "set",
-		GitImage:                 "set",
-		ShellImage:               "set",
-		ShellImageWin:            "set",
-		GsutilImage:              "set",
-		ImageDigestExporterImage: "set",
-		WorkingDirInitImage:      "set",
+		EntrypointImage:        "set",
+		SidecarLogResultsImage: "set",
+		NopImage:               "set",
+		GitImage:               "set",
+		ShellImage:             "set",
+		ShellImageWin:          "set",
+		GsutilImage:            "set",
+		WorkingDirInitImage:    "set",
 	}
 	if err := valid.Validate(); err != nil {
 		t.Errorf("valid Images returned error: %v", err)
 	}
 
 	invalid := pipeline.Images{
-		EntrypointImage:          "set",
-		SidecarLogResultsImage:   "set",
-		NopImage:                 "set",
-		GitImage:                 "", // unset!
-		ShellImage:               "", // unset!
-		ShellImageWin:            "set",
-		GsutilImage:              "set",
-		ImageDigestExporterImage: "set",
+		EntrypointImage:        "set",
+		SidecarLogResultsImage: "set",
+		NopImage:               "set",
+		GitImage:               "", // unset!
+		ShellImage:             "", // unset!
+		ShellImageWin:          "set",
+		GsutilImage:            "set",
 	}
 	wantErr := "found unset image flags: [git-image shell-image workingdirinit-image]"
 	if err := invalid.Validate(); err == nil {

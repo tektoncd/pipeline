@@ -94,7 +94,6 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
 	errs = errs.Also(validateSidecarNames(ts.Sidecars))
-	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(ValidateResourcesVariables(ctx, ts.Steps, ts.Resources))

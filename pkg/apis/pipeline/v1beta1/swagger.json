@@ -171,10 +171,6 @@
           "description": "Spec holds the desired state of the PipelineResource from the client",
           "default": {},
           "$ref": "#/definitions/v1alpha1.PipelineResourceSpec"
-        },
-        "status": {
-          "description": "Status is deprecated. It usually is used to communicate the observed state of the PipelineResource from the controller, but was unused as there is no controller for PipelineResource.",
-          "$ref": "#/definitions/v1alpha1.PipelineResourceStatus"
         }
       }
     },
@@ -240,10 +236,6 @@
           "default": ""
         }
       }
-    },
-    "v1alpha1.PipelineResourceStatus": {
-      "description": "PipelineResourceStatus does not contain anything because PipelineResources on their own do not have a status Deprecated",
-      "type": "object"
     },
     "v1alpha1.ResourceDeclaration": {
       "description": "ResourceDeclaration defines an input or output PipelineResource declared as a requirement by another type such as a Task or Condition. The Name field will be used to refer to these PipelineResources within the type's definition, and when provided as an Input, the Name will be the path to the volume mounted containing this PipelineResource as an input (e.g. an input Resource named `workspace` will be mounted at `/workspace`).",
@@ -907,24 +899,6 @@
         }
       }
     },
-    "v1beta1.PipelineResourceBinding": {
-      "description": "PipelineResourceBinding connects a reference to an instance of a PipelineResource with a PipelineResource dependency that the Pipeline has declared",
-      "type": "object",
-      "properties": {
-        "name": {
-          "description": "Name is the name of the PipelineResource in the Pipeline's declaration",
-          "type": "string"
-        },
-        "resourceRef": {
-          "description": "ResourceRef is a reference to the instance of the actual PipelineResource that should be used",
-          "$ref": "#/definitions/v1beta1.PipelineResourceRef"
-        },
-        "resourceSpec": {
-          "description": "ResourceSpec is specification of a resource that should be created and consumed by the task",
-          "$ref": "#/definitions/v1alpha1.PipelineResourceSpec"
-        }
-      }
-    },
     "v1beta1.PipelineResourceRef": {
       "description": "PipelineResourceRef can be used to refer to a specific instance of a Resource",
       "type": "object",
@@ -1092,13 +1066,16 @@
       "type": "object",
       "properties": {
         "params": {
-          "description": "Params is a list of parameter names and values.",
+          "description": "Resources is a list of bindings specifying which actual instances of PipelineResources to use for the resources the Pipeline has declared it needs. Params is a list of parameter names and values.",
           "type": "array",
           "items": {
             "default": {},
             "$ref": "#/definitions/v1beta1.Param"
           },
-          "x-kubernetes-list-type": "atomic"
+          "x-kubernetes-list-type": [
+            "atomic",
+            "atomic"
+          ]
         },
         "pipelineRef": {
           "$ref": "#/definitions/v1beta1.PipelineRef"
@@ -1109,15 +1086,6 @@
         "podTemplate": {
           "description": "PodTemplate holds pod specific configuration",
           "$ref": "#/definitions/pod.Template"
-        },
-        "resources": {
-          "description": "Resources is a list of bindings specifying which actual instances of PipelineResources to use for the resources the Pipeline has declared it needs.",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.PipelineResourceBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
         },
         "serviceAccountName": {
           "type": "string"
@@ -2517,33 +2485,6 @@
         }
       }
     },
-    "v1beta1.TaskResourceBinding": {
-      "description": "TaskResourceBinding points to the PipelineResource that will be used for the Task input or output called Name.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "description": "Name is the name of the PipelineResource in the Pipeline's declaration",
-          "type": "string"
-        },
-        "paths": {
-          "description": "Paths will probably be removed in #1284, and then PipelineResourceBinding can be used instead. The optional Path field corresponds to a path on disk at which the Resource can be found (used when providing the resource via mounted volume, overriding the default logic to fetch the Resource).",
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "resourceRef": {
-          "description": "ResourceRef is a reference to the instance of the actual PipelineResource that should be used",
-          "$ref": "#/definitions/v1beta1.PipelineResourceRef"
-        },
-        "resourceSpec": {
-          "description": "ResourceSpec is specification of a resource that should be created and consumed by the task",
-          "$ref": "#/definitions/v1alpha1.PipelineResourceSpec"
-        }
-      }
-    },
     "v1beta1.TaskResources": {
       "description": "TaskResources allows a Pipeline to declare how its DeclaredPipelineResources should be provided to a Task as its inputs and outputs.",
       "type": "object",
@@ -2638,28 +2579,6 @@
         }
       }
     },
-    "v1beta1.TaskRunInputs": {
-      "description": "TaskRunInputs holds the input values that this task was invoked with.",
-      "type": "object",
-      "properties": {
-        "params": {
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.Param"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "resources": {
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
-        }
-      }
-    },
     "v1beta1.TaskRunList": {
       "description": "TaskRunList contains a list of TaskRun",
       "type": "object",
@@ -2685,44 +2604,6 @@
         "metadata": {
           "default": {},
           "$ref": "#/definitions/v1.ListMeta"
-        }
-      }
-    },
-    "v1beta1.TaskRunOutputs": {
-      "description": "TaskRunOutputs holds the output values that this task was invoked with.",
-      "type": "object",
-      "properties": {
-        "resources": {
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
-        }
-      }
-    },
-    "v1beta1.TaskRunResources": {
-      "description": "TaskRunResources allows a TaskRun to declare inputs and outputs TaskResourceBinding",
-      "type": "object",
-      "properties": {
-        "inputs": {
-          "description": "Inputs holds the inputs resources this task was invoked with",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
-        },
-        "outputs": {
-          "description": "Outputs holds the inputs resources this task was invoked with",
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.TaskResourceBinding"
-          },
-          "x-kubernetes-list-type": "atomic"
         }
       }
     },
@@ -2792,9 +2673,6 @@
         "podTemplate": {
           "description": "PodTemplate holds pod specific configuration",
           "$ref": "#/definitions/pod.Template"
-        },
-        "resources": {
-          "$ref": "#/definitions/v1beta1.TaskRunResources"
         },
         "retries": {
           "description": "Retries represents how many times this TaskRun should be retried in the event of Task failure.",

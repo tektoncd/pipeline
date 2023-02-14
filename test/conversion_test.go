@@ -71,13 +71,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspace
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     volumeMounts:
       - name: messages
         mountPath: /messages
@@ -99,13 +92,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspaces
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     volumeMounts:
     - name: messages
       mountPath: /messages
@@ -121,13 +107,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspace
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     volumeMounts:
     - name: messages
       mountPath: /messages
@@ -162,20 +141,7 @@ metadata:
 spec:
   steps:
   - name: step
-    image: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
-    command: ['/bin/bash']
-    args: ['-c', 'gcloud auth activate-service-account --key-file /var/secret/bucket-secret/bucket-secret-key']
-    workingDir: /dir
-    env:
-    - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspace
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     volumeMounts:
       - name: messages
         mountPath: /messages
@@ -212,13 +178,6 @@ spec:
     env:
     - name: MY_VAR1
       value: foo
-    resources:
-      inputs:
-      - name: workspace
-        resource: source-repo
-      outputs:
-      - name: workspace
-        resource: source-repo
     readinessProbe:
       periodSeconds: 1
     volumeMounts:
