@@ -563,7 +563,6 @@ func testTaskRuns() []*v1beta1.TaskRun {
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
 				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 			Status: v1beta1.TaskRunStatus{
@@ -582,7 +581,6 @@ func testTaskRuns() []*v1beta1.TaskRun {
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
 				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 			Status: v1beta1.TaskRunStatus{
@@ -607,7 +605,6 @@ func testTaskRuns() []*v1beta1.TaskRun {
 			Spec: v1beta1.TaskRunSpec{
 				TaskRef:            &v1beta1.TaskRef{Name: "unit-test-task"},
 				ServiceAccountName: "test-sa",
-				Resources:          &v1beta1.TaskRunResources{},
 				Timeout:            &metav1.Duration{Duration: config.DefaultTimeoutMinutes * time.Minute},
 			},
 			Status: v1beta1.TaskRunStatus{

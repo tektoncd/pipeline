@@ -219,15 +219,6 @@ func getCRDYaml(ctx context.Context, cs *clients, ns string) ([]byte, error) {
 		printOrAdd(i)
 	}
 
-	v1alpha1PipelineResources, err := cs.V1alpha1PipelineResourceClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("could not get v1alpha1 pipelinerun resource: %w", err)
-	}
-	for _, i := range v1alpha1PipelineResources.Items {
-		i.SetManagedFields(nil)
-		printOrAdd(i)
-	}
-
 	v1beta1PipelineRuns, err := cs.V1beta1PipelineRunClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get v1beta1 pipelinerun: %w", err)

@@ -17,7 +17,6 @@ weight: 202
     - [Propagated Parameters](#propagated-parameters)
     - [Propagated Object Parameters](#propagated-object-parameters)
     - [Extra Parameters](#extra-parameters)
-  - [Specifying `Resources`](#specifying-resources)
   - [Specifying `Resource` limits](#specifying-resource-limits)
   - [Specifying Task-level `ComputeResources`](#specifying-task-level-computeresources)
   - [Specifying a `Pod` template](#specifying-a-pod-template)
@@ -242,7 +241,6 @@ spec:
     steps:
     - image: ubuntu
       name: default
-      resources: {}
       script: |
         echo $(params.message)
 status:
@@ -260,7 +258,6 @@ status:
     steps:
     - image: ubuntu
       name: default
-      resources: {}
       script: |
         echo "hello world!"
 ```
@@ -320,7 +317,6 @@ spec:
       - --commit=$(params.gitrepo.commit)
       image: bash
       name: echo-object-params
-      resources: {}
 status:
   completionTime: "2022-09-08T17:09:37Z"
   conditions:
@@ -341,7 +337,6 @@ status:
       - --commit=sha123
       image: bash
       name: echo-object-params
-      resources: {}
 ```
 
 #### Extra Parameters
@@ -352,50 +347,6 @@ You can pass in extra `Parameters` if needed depending on your use cases. An exa
 case is when your CI system autogenerates `TaskRuns` and it has `Parameters` it wants to
 provide to all `TaskRuns`. Because you can pass in extra `Parameters`, you don't have to
 go through the complexity of checking each `Task` and providing only the required params.
-
-### Specifying `Resources`
-
-> :warning: **`PipelineResources` are [deprecated](deprecations.md#deprecation-table).**
->
-> Consider using replacement features instead. Read more in [documentation](migrating-v1alpha1-to-v1beta1.md#replacing-pipelineresources-with-tasks)
-> and [TEP-0074](https://github.com/tektoncd/community/blob/main/teps/0074-deprecate-pipelineresources.md).
-
-If a `Task` requires [`Resources`](tasks.md#specifying-resources) (that is, `inputs` and `outputs`) you must
-specify them in your `TaskRun` definition. You can specify `Resources` by reference to existing
-[`PipelineResource` objects](resources.md) or embed their definitions directly in the `TaskRun`.
-
-**Note:** A `TaskRun` can use *either* a referenced *or* an embedded `Resource` but not both simultaneously.
-
-Below is an example of specifying `Resources` by reference:
-
-```yaml
-spec:
-  resources:
-    inputs:
-      - name: workspace
-        resourceRef:
-          name: java-git-resource
-    outputs:
-      - name: image
-        resourceRef:
-          name: my-app-image
-```
-
-And here is an example of specifying `Resources` by embedding their definitions:
-
-```yaml
-spec:
-  resources:
-    inputs:
-      - name: workspace
-        resourceSpec:
-          type: git
-          params:
-            - name: url
-              value: https://github.com/pivotal-nader-ziada/gohelloworld
-```
-
-**Note:** You can use the `paths` field to [override the paths to a `Resource`](resources.md#overriding-where-resources-are-copied-from).
 
 ### Specifying `Resource` limits
 

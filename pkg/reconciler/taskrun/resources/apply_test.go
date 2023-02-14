@@ -24,8 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	"github.com/tektoncd/pipeline/pkg/apis/resource"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -40,9 +38,7 @@ var (
 	images = pipeline.Images{
 		EntrypointImage: "override-with-entrypoint:latest",
 		NopImage:        "override-with-nop:latest",
-		GitImage:        "override-with-git:latest",
 		ShellImage:      "busybox",
-		GsutilImage:     "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 
 	simpleTaskSpec = &v1beta1.TaskSpec{
@@ -185,13 +181,6 @@ var (
 				},
 			},
 		}},
-		Resources: &v1beta1.TaskResources{
-			Inputs: []v1beta1.TaskResource{{
-				ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "workspace",
-				},
-			}},
-		},
 	}
 
 	// a taskspec for testing object var in all places i.e. Sidecars, StepTemplate, Steps and Volumns
@@ -456,28 +445,6 @@ var (
 				},
 			},
 		}},
-		Resources: &v1beta1.TaskResources{
-			Inputs: []v1beta1.TaskResource{{
-				ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "workspace",
-				},
-			}},
-		},
-	}
-
-	gcsTaskSpec = &v1beta1.TaskSpec{
-		Steps: []v1beta1.Step{{
-			Name:  "foobar",
-			Image: "someImage",
-			Args:  []string{"$(outputs.resources.bucket.path)"},
-		}},
-		Resources: &v1beta1.TaskResources{
-			Outputs: []v1beta1.TaskResource{{
-				ResourceDeclaration: v1beta1.ResourceDeclaration{
-					Name: "bucket",
-				},
-			}},
-		},
 	}
 
 	arrayParamTaskSpec = &v1beta1.TaskSpec{
@@ -656,43 +623,6 @@ var (
 			}},
 		},
 	}
-
-	inputs = map[string]v1beta1.PipelineResourceInterface{
-		"workspace": gitResource,
-	}
-
-	outputs = map[string]v1beta1.PipelineResourceInterface{
-		"bucket": gcsResource,
-	}
-
-	gitResource, _ = resource.FromType("git-resource", &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "git-resource",
-		},
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeGit,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "URL",
-				Value: "https://git-repo",
-			}},
-		},
-	}, images)
-
-	gcsResource, _ = resource.FromType("gcs-resource", &resourcev1alpha1.PipelineResource{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "gcs-resource",
-		},
-		Spec: resourcev1alpha1.PipelineResourceSpec{
-			Type: resourcev1alpha1.PipelineResourceTypeStorage,
-			Params: []resourcev1alpha1.ResourceParam{{
-				Name:  "type",
-				Value: "gcs",
-			}, {
-				Name:  "location",
-				Value: "theCloud?",
-			}},
-		},
-	}, images)
 )
 
 func applyMutation(ts *v1beta1.TaskSpec, f func(*v1beta1.TaskSpec)) *v1beta1.TaskSpec {
@@ -1012,61 +942,6 @@ func TestApplyObjectParameters(t *testing.T) {
 	got := resources.ApplyParameters(context.Background(), objectParamTaskSpec, tr, dp...)
 	if d := cmp.Diff(want, got); d != "" {
 		t.Errorf("ApplyParameters() got diff %s", diff.PrintWantGot(d))
-	}
-}
-
-func TestApplyResources(t *testing.T) {
-	tests := []struct {
-		name string
-		ts   *v1beta1.TaskSpec
-		r    map[string]v1beta1.PipelineResourceInterface
-		rStr string
-		want *v1beta1.TaskSpec
-	}{{
-		name: "no replacements specified",
-		ts:   simpleTaskSpec,
-		r:    make(map[string]v1beta1.PipelineResourceInterface),
-		rStr: "inputs",
-		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
-			spec.Steps[1].WorkingDir = "/workspace/workspace"
-			spec.Steps[3].WorkingDir = "/workspace/workspace"
-		}),
-	}, {
-		name: "input resource specified",
-		ts:   simpleTaskSpec,
-		r:    inputs,
-		rStr: "inputs",
-		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
-			spec.Steps[1].WorkingDir = "/workspace/workspace"
-			spec.Steps[1].Args = []string{"https://git-repo"}
-			spec.Steps[3].WorkingDir = "/workspace/workspace"
-			spec.Steps[3].Args = []string{"https://git-repo"}
-		}),
-	}, {
-		name: "output resource specified",
-		ts:   simpleTaskSpec,
-		r:    outputs,
-		rStr: "outputs",
-		want: applyMutation(simpleTaskSpec, func(spec *v1beta1.TaskSpec) {
-			spec.Steps[1].WorkingDir = "/workspace/workspace"
-			spec.Steps[3].WorkingDir = "/workspace/workspace"
-		}),
-	}, {
-		name: "output resource specified with path replacement",
-		ts:   gcsTaskSpec,
-		r:    outputs,
-		rStr: "outputs",
-		want: applyMutation(gcsTaskSpec, func(spec *v1beta1.TaskSpec) {
-			spec.Steps[0].Args = []string{"/workspace/output/bucket"}
-		}),
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := resources.ApplyResources(tt.ts, tt.r, tt.rStr)
-			if d := cmp.Diff(tt.want, got); d != "" {
-				t.Errorf("ApplyResources() %s", diff.PrintWantGot(d))
-			}
-		})
 	}
 }
 

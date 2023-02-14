@@ -31,16 +31,12 @@ import (
 func TestStoreLoadWithContext(t *testing.T) {
 	defaultConfig := test.ConfigMapFromTestFile(t, "config-defaults")
 	featuresConfig := test.ConfigMapFromTestFile(t, "feature-flags-all-flags-set")
-	artifactBucketConfig := test.ConfigMapFromTestFile(t, "config-artifact-bucket")
-	artifactPVCConfig := test.ConfigMapFromTestFile(t, "config-artifact-pvc")
 	metricsConfig := test.ConfigMapFromTestFile(t, "config-observability")
 	trustedresourcesConfig := test.ConfigMapFromTestFile(t, "config-trusted-resources")
 	spireConfig := test.ConfigMapFromTestFile(t, "config-spire")
 
 	expectedDefaults, _ := config.NewDefaultsFromConfigMap(defaultConfig)
 	expectedFeatures, _ := config.NewFeatureFlagsFromConfigMap(featuresConfig)
-	expectedArtifactBucket, _ := config.NewArtifactBucketFromConfigMap(artifactBucketConfig)
-	expectedArtifactPVC, _ := config.NewArtifactPVCFromConfigMap(artifactPVCConfig)
 	metrics, _ := config.NewMetricsFromConfigMap(metricsConfig)
 	expectedTrustedResources, _ := config.NewTrustedResourcesConfigFromConfigMap(trustedresourcesConfig)
 	expectedSpireConfig, _ := config.NewSpireConfigFromConfigMap(spireConfig)
@@ -48,8 +44,6 @@ func TestStoreLoadWithContext(t *testing.T) {
 	expected := &config.Config{
 		Defaults:         expectedDefaults,
 		FeatureFlags:     expectedFeatures,
-		ArtifactBucket:   expectedArtifactBucket,
-		ArtifactPVC:      expectedArtifactPVC,
 		Metrics:          metrics,
 		TrustedResources: expectedTrustedResources,
 		SpireConfig:      expectedSpireConfig,
@@ -58,8 +52,6 @@ func TestStoreLoadWithContext(t *testing.T) {
 	store := config.NewStore(logtesting.TestLogger(t))
 	store.OnConfigChanged(defaultConfig)
 	store.OnConfigChanged(featuresConfig)
-	store.OnConfigChanged(artifactBucketConfig)
-	store.OnConfigChanged(artifactPVCConfig)
 	store.OnConfigChanged(metricsConfig)
 	store.OnConfigChanged(trustedresourcesConfig)
 	store.OnConfigChanged(spireConfig)
@@ -74,8 +66,6 @@ func TestStoreLoadWithContext(t *testing.T) {
 func TestStoreLoadWithContext_Empty(t *testing.T) {
 	defaults, _ := config.NewDefaultsFromMap(map[string]string{})
 	featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{})
-	artifactBucket, _ := config.NewArtifactBucketFromMap(map[string]string{})
-	artifactPVC, _ := config.NewArtifactPVCFromMap(map[string]string{})
 	metrics, _ := config.NewMetricsFromConfigMap(&corev1.ConfigMap{Data: map[string]string{}})
 	trustedresources, _ := config.NewTrustedResourcesConfigFromMap(map[string]string{})
 	spireConfig, _ := config.NewSpireConfigFromMap(map[string]string{})
@@ -83,8 +73,6 @@ func TestStoreLoadWithContext_Empty(t *testing.T) {
 	want := &config.Config{
 		Defaults:         defaults,
 		FeatureFlags:     featureFlags,
-		ArtifactBucket:   artifactBucket,
-		ArtifactPVC:      artifactPVC,
 		Metrics:          metrics,
 		TrustedResources: trustedresources,
 		SpireConfig:      spireConfig,

@@ -152,21 +152,12 @@ spec:
     mountPath: /foo
     readOnly: true
     optional: true
-  resources:
-    inputs:
-      - name: git-repo
-        type: git
-        description: "The input is code from a git repository"
-        optional: true
 `
 
 	v1TaskYaml = `
 metadata:
   name: %s
   namespace: %s
-  annotations: {
-    tekton.dev/v1beta1Resources: '{"inputs":[{"name":"git-repo","type":"git","description":"The input is code from a git repository","optional":true}]}'
-  }
 spec:
   steps:
   - name: step
@@ -303,18 +294,12 @@ spec:
             then
               echo " Good night! echoed successfully"
             fi
-  resources:
-  - name: source-repo
-    type: git    
 `
 
 	v1PipelineYaml = `
 metadata:
   name: %s
   namespace: %s
-  annotations: {
-    tekton.dev/v1beta1Resources: '[{"name":"source-repo","type":"git"}]'
-  }
 spec:
   description: foo
   tasks:
@@ -376,13 +361,6 @@ spec:
     type: string
   serviceAccountName: default
   taskSpec:
-    resources:
-      inputs:
-      - name: skaffold
-        type: git
-      outputs:
-      - name: skaffoldout
-        type: git
     steps:
       - name: echo
         image: ubuntu
@@ -398,25 +376,6 @@ spec:
   podTemplate:
     securityContext:
       fsGroup: 65532
-  resources:
-    inputs:
-    - name: skaffold
-      resourceSpec:
-        type: git
-        params:
-          - name: revision
-            value: v0.32.0
-          - name: url
-            value: https://github.com/GoogleContainerTools/skaffold
-    outputs:
-    - name: skaffoldout
-      resourceSpec:
-        type: git
-        params:
-          - name: revision
-            value: v0.32.0
-          - name: url
-            value: https://github.com/GoogleContainerTools/skaffold
 `
 
 	v1beta1TaskRunExpectedYaml = `
@@ -505,10 +464,7 @@ spec:
 metadata:
   name: %s
   namespace: %s
-  annotations: {
-    tekton.dev/v1beta1Resources: '{"inputs":[{"name":"skaffold","resourceSpec":{"type":"git","params":[{"name":"revision","value":"v0.32.0"},{"name":"url","value":"https://github.com/GoogleContainerTools/skaffold"}]}}],"outputs":[{"name":"skaffoldout","resourceSpec":{"type":"git","params":[{"name":"revision","value":"v0.32.0"},{"name":"url","value":"https://github.com/GoogleContainerTools/skaffold"}]}}]}',
-    tekton.dev/v1beta1ResourcesResult: '[{"key":"commit","value":"6ed7aad5e8a36052ee5f6079fc91368e362121f7","resourceName":"skaffold"},{"key":"url","value":"https://github.com/GoogleContainerTools/skaffold","resourceName":"skaffold"}]',
-  }
+  annotations: {}
 spec:
   params:
   - name: STRING_LENGTH
@@ -549,14 +505,6 @@ status:
     workspaces:
     - name: output
   steps:
-  - container: step-create-dir-skaffoldout
-    name: create-dir-skaffoldout
-    terminated:
-      reason: Completed
-  - container: git-source-skaffold
-    name: git-source-skaffold
-    terminated:
-      reason: Completed
   - container: step-echo
     name: step-echo
     terminated:
@@ -586,18 +534,6 @@ spec:
         - name: fetch-and-write-secure
           image: ubuntu
           script: echo hello
-    resources:
-    - name: pipeline-git
-      type: git
-  resources:
-    - name: pipeline-git
-      resourceSpec:
-        type: git
-        params:
-          - name: revision
-            value: main
-          - name: url
-            value: https://github.com/tektoncd/pipeline
 `
 
 	v1beta1PipelineRunExpectedYaml = `
@@ -677,9 +613,6 @@ spec:
 metadata:
   name: %s
   namespace: %s
-  annotations: {
-    tekton.dev/v1beta1Resources: '[{"name":"pipeline-git","resourceSpec":{"type":"git","params":[{"name":"revision","value":"main"},{"name":"url","value":"https://github.com/tektoncd/pipeline"}]}}]',
-  }
 spec:
   params:
   - name: STRING_LENGTH

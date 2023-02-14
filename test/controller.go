@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	fakepipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/fake"
 	informersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1alpha1"
 	informersv1beta1 "github.com/tektoncd/pipeline/pkg/client/informers/externalversions/pipeline/v1beta1"
@@ -44,10 +43,6 @@ import (
 	resolutioninformersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resolution/informers/externalversions/resolution/v1beta1"
 	fakeresolutionrequestclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client/fake"
 	fakeresolutionrequestinformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest/fake"
-	fakeresourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned/fake"
-	resourceinformersv1alpha1 "github.com/tektoncd/pipeline/pkg/client/resource/informers/externalversions/resource/v1alpha1"
-	fakeresourceclient "github.com/tektoncd/pipeline/pkg/client/resource/injection/client/fake"
-	fakeresourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource/fake"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -77,7 +72,6 @@ type Data struct {
 	TaskRuns                []*v1beta1.TaskRun
 	Tasks                   []*v1beta1.Task
 	ClusterTasks            []*v1beta1.ClusterTask
-	PipelineResources       []*resourcev1alpha1.PipelineResource
 	Runs                    []*v1alpha1.Run
 	CustomRuns              []*v1beta1.CustomRun
 	Pods                    []*corev1.Pod
@@ -93,7 +87,6 @@ type Data struct {
 // Clients holds references to clients which are useful for reconciler tests.
 type Clients struct {
 	Pipeline           *fakepipelineclientset.Clientset
-	Resource           *fakeresourceclientset.Clientset
 	Kube               *fakekubeclientset.Clientset
 	CloudEvents        cloudeventclient.CEClient
 	ResolutionRequests *fakeresolutionclientset.Clientset
@@ -108,7 +101,6 @@ type Informers struct {
 	CustomRun          informersv1beta1.CustomRunInformer
 	Task               informersv1beta1.TaskInformer
 	ClusterTask        informersv1beta1.ClusterTaskInformer
-	PipelineResource   resourceinformersv1alpha1.PipelineResourceInformer
 	Pod                coreinformers.PodInformer
 	ConfigMap          coreinformers.ConfigMapInformer
 	ServiceAccount     coreinformers.ServiceAccountInformer
@@ -180,7 +172,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	c := Clients{
 		Kube:               fakekubeclient.Get(ctx),
 		Pipeline:           fakepipelineclient.Get(ctx),
-		Resource:           fakeresourceclient.Get(ctx),
 		CloudEvents:        cloudeventclient.Get(ctx),
 		ResolutionRequests: fakeresolutionrequestclient.Get(ctx),
 	}
@@ -195,7 +186,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 		CustomRun:          fakecustomruninformer.Get(ctx),
 		Task:               faketaskinformer.Get(ctx),
 		ClusterTask:        fakeclustertaskinformer.Get(ctx),
-		PipelineResource:   fakeresourceinformer.Get(ctx),
 		Pod:                fakefilteredpodinformer.Get(ctx, v1beta1.ManagedByLabelKey),
 		ConfigMap:          fakeconfigmapinformer.Get(ctx),
 		ServiceAccount:     fakeserviceaccountinformer.Get(ctx),
@@ -239,13 +229,6 @@ func SeedTestData(t *testing.T, ctx context.Context, d Data) (Clients, Informers
 	for _, ct := range d.ClusterTasks {
 		ct := ct.DeepCopy() // Avoid assumptions that the informer's copy is modified.
 		if _, err := c.Pipeline.TektonV1beta1().ClusterTasks().Create(ctx, ct, metav1.CreateOptions{}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	c.Resource.PrependReactor("*", "pipelineresources", AddToInformer(t, i.PipelineResource.Informer().GetIndexer()))
-	for _, r := range d.PipelineResources {
-		r := r.DeepCopy() // Avoid assumptions that the informer's copy is modified.
-		if _, err := c.Resource.TektonV1alpha1().PipelineResources(r.Namespace).Create(ctx, r, metav1.CreateOptions{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -354,19 +337,13 @@ func PrependResourceVersionReactor(f *ktesting.Fake) {
 
 // EnsureConfigurationConfigMapsExist makes sure all the configmaps exists.
 func EnsureConfigurationConfigMapsExist(d *Data) {
-	var defaultsExists, featureFlagsExists, artifactBucketExists, artifactPVCExists, metricsExists, trustedresourcesExists, spireconfigExists bool
+	var defaultsExists, featureFlagsExists, metricsExists, trustedresourcesExists, spireconfigExists bool
 	for _, cm := range d.ConfigMaps {
 		if cm.Name == config.GetDefaultsConfigName() {
 			defaultsExists = true
 		}
 		if cm.Name == config.GetFeatureFlagsConfigName() {
 			featureFlagsExists = true
-		}
-		if cm.Name == config.GetArtifactBucketConfigName() {
-			artifactBucketExists = true
-		}
-		if cm.Name == config.GetArtifactPVCConfigName() {
-			artifactPVCExists = true
 		}
 		if cm.Name == config.GetMetricsConfigName() {
 			metricsExists = true
@@ -387,18 +364,6 @@ func EnsureConfigurationConfigMapsExist(d *Data) {
 	if !featureFlagsExists {
 		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: config.GetFeatureFlagsConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !artifactBucketExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactBucketConfigName(), Namespace: system.Namespace()},
-			Data:       map[string]string{},
-		})
-	}
-	if !artifactPVCExists {
-		d.ConfigMaps = append(d.ConfigMaps, &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.GetArtifactPVCConfigName(), Namespace: system.Namespace()},
 			Data:       map[string]string{},
 		})
 	}

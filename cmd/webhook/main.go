@@ -31,7 +31,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/resolution"
 	resolutionv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	resolutionv1beta1 "github.com/tektoncd/pipeline/pkg/apis/resolution/v1beta1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -52,7 +51,6 @@ import (
 
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	// v1alpha1
-	v1alpha1.SchemeGroupVersion.WithKind("PipelineResource"):   &resourcev1alpha1.PipelineResource{},
 	v1alpha1.SchemeGroupVersion.WithKind("Run"):                &v1alpha1.Run{},
 	v1alpha1.SchemeGroupVersion.WithKind("VerificationPolicy"): &v1alpha1.VerificationPolicy{},
 	// v1beta1

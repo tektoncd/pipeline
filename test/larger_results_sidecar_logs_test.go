@@ -107,7 +107,6 @@ func TestLargerResultsSidecarLogs(t *testing.T) {
 					ignoreTaskRunStatus,
 					ignoreContainerStates,
 					ignoreStepState,
-					ignoreTaskRunSpec,
 					ignoreTaskRunStatusFields,
 					ignoreSidecarState,
 				)

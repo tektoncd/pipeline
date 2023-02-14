@@ -72,7 +72,6 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Validate propagated parameters
 	errs = errs.Also(ts.validateInlineParameters(ctx))
 	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
-	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	if ts.Debug != nil {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
 		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))

@@ -31,7 +31,6 @@ import (
 	pipelinerunreconciler "github.com/tektoncd/pipeline/pkg/client/injection/reconciler/pipeline/v1beta1/pipelinerun"
 	resolutionclient "github.com/tektoncd/pipeline/pkg/client/resolution/injection/client"
 	resolutioninformer "github.com/tektoncd/pipeline/pkg/client/resolution/injection/informers/resolution/v1beta1/resolutionrequest"
-	resourceinformer "github.com/tektoncd/pipeline/pkg/client/resource/injection/informers/resource/v1alpha1/pipelineresource"
 	"github.com/tektoncd/pipeline/pkg/pipelinerunmetrics"
 	cloudeventclient "github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
@@ -54,7 +53,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 		taskRunInformer := taskruninformer.Get(ctx)
 		customRunInformer := customruninformer.Get(ctx)
 		pipelineRunInformer := pipelineruninformer.Get(ctx)
-		resourceInformer := resourceinformer.Get(ctx)
 		resolutionInformer := resolutioninformer.Get(ctx)
 		runInformer := runinformer.Get(ctx)
 		verificationpolicyInformer := verificationpolicyinformer.Get(ctx)
@@ -70,7 +68,6 @@ func NewController(opts *pipeline.Options, clock clock.PassiveClock, tracerProvi
 			taskRunLister:            taskRunInformer.Lister(),
 			customRunLister:          customRunInformer.Lister(),
 			runLister:                runInformer.Lister(),
-			resourceLister:           resourceInformer.Lister(),
 			verificationPolicyLister: verificationpolicyInformer.Lister(),
 			cloudEventClient:         cloudeventclient.Get(ctx),
 			metrics:                  pipelinerunmetrics.Get(ctx),

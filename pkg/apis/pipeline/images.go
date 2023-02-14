@@ -30,14 +30,10 @@ type Images struct {
 	SidecarLogResultsImage string
 	// NopImage is the container image used to kill sidecars.
 	NopImage string
-	// GitImage is the container image with Git that we use to implement the Git source step.
-	GitImage string
 	// ShellImage is the container image containing bash shell.
 	ShellImage string
 	// ShellImageWin is the container image containing powershell.
 	ShellImageWin string
-	// GsutilImage is the container image containing gsutil.
-	GsutilImage string
 	// WorkingDirInitImage is the container image containing our working dir init binary.
 	WorkingDirInitImage string
 
@@ -53,10 +49,8 @@ func (i Images) Validate() error {
 		{i.EntrypointImage, "entrypoint-image"},
 		{i.SidecarLogResultsImage, "sidecarlogresults-image"},
 		{i.NopImage, "nop-image"},
-		{i.GitImage, "git-image"},
 		{i.ShellImage, "shell-image"},
 		{i.ShellImageWin, "shell-image-win"},
-		{i.GsutilImage, "gsutil-image"},
 		{i.WorkingDirInitImage, "workingdirinit-image"},
 	} {
 		if f.v == "" {

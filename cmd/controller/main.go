@@ -68,10 +68,8 @@ func main() {
 	flag.StringVar(&opts.Images.EntrypointImage, "entrypoint-image", "", "The container image containing our entrypoint binary.")
 	flag.StringVar(&opts.Images.SidecarLogResultsImage, "sidecarlogresults-image", "", "The container image containing the binary for accessing results.")
 	flag.StringVar(&opts.Images.NopImage, "nop-image", "", "The container image used to stop sidecars")
-	flag.StringVar(&opts.Images.GitImage, "git-image", "", "The container image containing our Git binary.")
 	flag.StringVar(&opts.Images.ShellImage, "shell-image", "", "The container image containing a shell")
 	flag.StringVar(&opts.Images.ShellImageWin, "shell-image-win", "", "The container image containing a windows shell")
-	flag.StringVar(&opts.Images.GsutilImage, "gsutil-image", "", "The container image containing gsutil")
 	flag.StringVar(&opts.Images.WorkingDirInitImage, "workingdirinit-image", "", "The container image containing our working dir init binary.")
 
 	// This parses flags.

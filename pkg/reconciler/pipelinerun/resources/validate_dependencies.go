@@ -71,10 +71,10 @@ func validateResultRef(ref *v1beta1.ResultRef, ptMap map[string]*ResolvedPipelin
 		// custom task executes.
 		return nil
 	}
-	if ptMap[ref.PipelineTask].ResolvedTaskResources == nil || ptMap[ref.PipelineTask].ResolvedTaskResources.TaskSpec == nil {
+	if ptMap[ref.PipelineTask].ResolvedTask == nil || ptMap[ref.PipelineTask].ResolvedTask.TaskSpec == nil {
 		return fmt.Errorf("unable to validate result referencing pipeline task %q: task spec not found", ref.PipelineTask)
 	}
-	for _, taskResult := range ptMap[ref.PipelineTask].ResolvedTaskResources.TaskSpec.Results {
+	for _, taskResult := range ptMap[ref.PipelineTask].ResolvedTask.TaskSpec.Results {
 		if taskResult.Name == ref.Result {
 			taskProvidesResult = true
 			break
@@ -101,7 +101,7 @@ func ValidateOptionalWorkspaces(pipelineWorkspaces []v1beta1.PipelineWorkspaceDe
 	for _, rpt := range state {
 		for _, pws := range rpt.PipelineTask.Workspaces {
 			if optionalWorkspaces.Has(pws.Workspace) {
-				for _, tws := range rpt.ResolvedTaskResources.TaskSpec.Workspaces {
+				for _, tws := range rpt.ResolvedTask.TaskSpec.Workspaces {
 					if tws.Name == pws.Name {
 						if !tws.Optional {
 							return fmt.Errorf("pipeline workspace %q is marked optional but pipeline task %q requires it be provided", pws.Workspace, rpt.PipelineTask.Name)
