@@ -139,7 +139,8 @@ func paramsFromPipelineRun(ctx context.Context, pr *v1beta1.PipelineRun) (map[st
 	return stringReplacements, arrayReplacements, objectReplacements
 }
 
-func getContextReplacements(pipelineName string, pr *v1beta1.PipelineRun) map[string]string {
+// GetContextReplacements returns the pipelineRun context which can be used to replace context variables in the specifications
+func GetContextReplacements(pipelineName string, pr *v1beta1.PipelineRun) map[string]string {
 	return map[string]string{
 		"context.pipelineRun.name":      pr.Name,
 		"context.pipeline.name":         pipelineName,
@@ -149,9 +150,9 @@ func getContextReplacements(pipelineName string, pr *v1beta1.PipelineRun) map[st
 }
 
 // ApplyContexts applies the substitution from $(context.(pipelineRun|pipeline).*) with the specified values.
-// Currently supports only name substitution. Uses "" as a default if name is not specified.
+// Currently, supports only name substitution. Uses "" as a default if name is not specified.
 func ApplyContexts(spec *v1beta1.PipelineSpec, pipelineName string, pr *v1beta1.PipelineRun) *v1beta1.PipelineSpec {
-	return ApplyReplacements(spec, getContextReplacements(pipelineName, pr), map[string][]string{}, map[string]map[string]string{})
+	return ApplyReplacements(spec, GetContextReplacements(pipelineName, pr), map[string][]string{}, map[string]map[string]string{})
 }
 
 // ApplyPipelineTaskContexts applies the substitution from $(context.pipelineTask.*) with the specified values.

@@ -4214,6 +4214,7 @@ func TestReconcileWithVolumeClaimTemplateWorkspaceUsingSubPaths(t *testing.T) {
 	subPath1 := "customdirectory"
 	subPath2 := "otherdirecory"
 	pipelineRunWsSubPath := "mypath"
+	pipelineRunName := "test-pipeline-run"
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: test-pipeline
@@ -4253,14 +4254,28 @@ spec:
     - name: taskWorkspaceName
       subPath: customdirectory
       workspace: ws2
+  - name: hello-world-6
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      workspace: ws3
+  - name: hello-world-7
+    taskRef:
+      name: hello-world
+    workspaces:
+    - name: taskWorkspaceName
+      subPath: customdirectory
+      workspace: ws3
   workspaces:
   - name: ws1
   - name: ws2
+  - name: ws3
 `)}
 
-	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
+	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
 metadata:
-  name: test-pipeline-run
+  name: %s
   namespace: foo
 spec:
   pipelineRef:
@@ -4277,7 +4292,13 @@ spec:
       metadata:
         creationTimestamp: null
         name: myclaim
-`)}
+  - name: ws3
+    subPath: $(context.pipelineRun.name)
+    volumeClaimTemplate:
+      metadata:
+        creationTimestamp: null
+        name: myclaim
+`, pipelineRunName))}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
 	d := test.Data{
@@ -4288,15 +4309,15 @@ spec:
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
 
-	reconciledRun, clients := prt.reconcileRun("foo", "test-pipeline-run", []string{}, false)
+	reconciledRun, clients := prt.reconcileRun("foo", pipelineRunName, []string{}, false)
 
 	taskRuns, err := clients.Pipeline.TektonV1beta1().TaskRuns("foo").List(prt.TestAssets.Ctx, metav1.ListOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error when listing TaskRuns: %v", err)
 	}
 
-	if len(taskRuns.Items) != 5 {
-		t.Fatalf("unexpected number of taskRuns found, expected 2, but found %d", len(taskRuns.Items))
+	if len(taskRuns.Items) != 7 {
+		t.Fatalf("unexpected number of taskRuns found, expected 7, but found %d", len(taskRuns.Items))
 	}
 
 	hasSeenWorkspaceWithPipelineTaskSubPath1 := false
@@ -4304,6 +4325,9 @@ spec:
 	hasSeenWorkspaceWithEmptyPipelineTaskSubPath := false
 	hasSeenWorkspaceWithRunSubPathAndEmptyPipelineTaskSubPath := false
 	hasSeenWorkspaceWithRunSubPathAndPipelineTaskSubPath1 := false
+	hasSeenWorkspaceWithRunSubPathContextAndEmptyPipelineTaskSubPath := false
+	hasSeenWorkspaceWithRunSubPathContextAndPipelineTaskSubPath := false
+
 	for _, tr := range taskRuns.Items {
 		for _, ws := range tr.Spec.Workspaces {
 			if ws.PersistentVolumeClaim == nil {
@@ -4329,6 +4353,13 @@ spec:
 			if ws.SubPath == fmt.Sprintf("%s/%s", pipelineRunWsSubPath, subPath1) {
 				hasSeenWorkspaceWithRunSubPathAndPipelineTaskSubPath1 = true
 			}
+
+			if ws.SubPath == pipelineRunName {
+				hasSeenWorkspaceWithRunSubPathContextAndEmptyPipelineTaskSubPath = true
+			}
+			if ws.SubPath == fmt.Sprintf("%s/%s", pipelineRunName, subPath1) {
+				hasSeenWorkspaceWithRunSubPathContextAndPipelineTaskSubPath = true
+			}
 		}
 	}
 
@@ -4350,6 +4381,14 @@ spec:
 
 	if !hasSeenWorkspaceWithRunSubPathAndPipelineTaskSubPath1 {
 		t.Fatalf("did not see a taskRun with workspace using pipelineTaks subPath1 and a subPath from pipelineRun")
+	}
+
+	if !hasSeenWorkspaceWithRunSubPathContextAndEmptyPipelineTaskSubPath {
+		t.Fatalf("did not see a taskRun with workspace using empty pipelineTaks subPath and a subPath from pipelineRun using context variables")
+	}
+
+	if !hasSeenWorkspaceWithRunSubPathContextAndPipelineTaskSubPath {
+		t.Fatalf("did not see a taskRun with workspace using pipelineTaks subPath1 and a subPath from pipelineRun using context variables")
 	}
 
 	if !reconciledRun.Status.GetCondition(apis.ConditionSucceeded).IsUnknown() {

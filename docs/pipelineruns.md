@@ -912,6 +912,9 @@ workspaces:
     subPath: my-subdir
 ```
 
+`workspaces[].subPath` can be an absolute value or can reference `pipelineRun` context variables, such as,
+`$(context.pipelineRun.name)` or `$(context.pipelineRun.uid)`.
+
 For more information, see the following topics:
 - For information on mapping `Workspaces` to `Volumes`, see [Specifying `Workspaces` in `PipelineRuns`](workspaces.md#specifying-workspaces-in-pipelineruns).
 - For a list of supported `Volume` types, see [Specifying `VolumeSources` in `Workspaces`](workspaces.md#specifying-volumesources-in-workspaces).

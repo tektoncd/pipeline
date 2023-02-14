@@ -53,6 +53,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/reconciler/volumeclaim"
 	"github.com/tektoncd/pipeline/pkg/remote"
 	resolution "github.com/tektoncd/pipeline/pkg/resolution/resource"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	"github.com/tektoncd/pipeline/pkg/trustedresources"
 	"github.com/tektoncd/pipeline/pkg/workspace"
 	"go.opentelemetry.io/otel/attribute"
@@ -1089,6 +1090,16 @@ func getTaskrunWorkspaces(ctx context.Context, pr *v1beta1.PipelineRun, rpt *res
 			}
 		}
 	}
+
+	// replace pipelineRun context variables in workspace subPath in the workspace binding
+	var p string
+	if pr.Spec.PipelineRef != nil {
+		p = pr.Spec.PipelineRef.Name
+	}
+	for j := range workspaces {
+		workspaces[j].SubPath = substitution.ApplyReplacements(workspaces[j].SubPath, resources.GetContextReplacements(p, pr))
+	}
+
 	return workspaces, pipelinePVCWorkspaceName, nil
 }
 
