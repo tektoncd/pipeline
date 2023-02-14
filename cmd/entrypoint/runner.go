@@ -22,7 +22,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -84,26 +83,25 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
-	// Build a list of tee readers that we'll read from after the command is
-	// started. If we are not configured to tee stdout/stderr this will be
-	// empty and contents will not be copied.
-	var readers []*namedReader
+	// if a standard output file is specified
+	// create the log file and add to the std multi writer
 	if rr.stdoutPath != "" {
-		stdout, err := newTeeReader(cmd.StdoutPipe, rr.stdoutPath)
+		stdout, err := newStdLogWriter(rr.stdoutPath)
 		if err != nil {
 			return err
 		}
-		readers = append(readers, stdout)
+		defer stdout.Close()
+		cmd.Stdout = io.MultiWriter(os.Stdout, stdout)
 	} else {
-		// This needs to be set in an else since StdoutPipe will fail if cmd.Stdout is already set.
 		cmd.Stdout = os.Stdout
 	}
 	if rr.stderrPath != "" {
-		stderr, err := newTeeReader(cmd.StderrPipe, rr.stderrPath)
+		stderr, err := newStdLogWriter(rr.stderrPath)
 		if err != nil {
 			return err
 		}
-		readers = append(readers, stderr)
+		defer stderr.Close()
+		cmd.Stderr = io.MultiWriter(os.Stderr, stderr)
 	} else {
 		cmd.Stderr = os.Stderr
 	}
@@ -134,22 +132,6 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 		}
 	}()
 
-	wg := new(sync.WaitGroup)
-	for _, r := range readers {
-		wg.Add(1)
-		// Read concurrently so that we can pipe stdout and stderr at the same
-		// time.
-		go func(r *namedReader) {
-			defer wg.Done()
-			if _, err := io.ReadAll(r); err != nil {
-				log.Printf("error reading to %s: %v", r.name, err)
-			}
-		}(r)
-	}
-
-	// Wait for stdout/err buffers to finish reading before returning.
-	wg.Wait()
-
 	// Wait for command to exit
 	if err := cmd.Wait(); err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
@@ -161,19 +143,11 @@ func (rr *realRunner) Run(ctx context.Context, args ...string) error {
 	return nil
 }
 
-// newTeeReader creates a new Reader that copies data from the given pipe function
-// (i.e. cmd.StdoutPipe, cmd.StderrPipe) into a file specified by path.
-// The file is opened with os.O_WRONLY|os.O_CREATE|os.O_APPEND, and will not
+// newStdLogWriter create a new file writer that used for collecting std log
+// the file is opened with os.O_WRONLY|os.O_CREATE|os.O_APPEND, and will not
 // override any existing content in the path. This means that the same file can
-// be used for multiple streams if desired.
-// The behavior of the Reader is the same as io.TeeReader - reads from the pipe
-// will be written to the file.
-func newTeeReader(pipe func() (io.ReadCloser, error), path string) (*namedReader, error) {
-	in, err := pipe()
-	if err != nil {
-		return nil, fmt.Errorf("error creating pipe: %w", err)
-	}
-
+// be used for multiple streams if desired. note that close after use
+func newStdLogWriter(path string) (*os.File, error) {
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 		return nil, fmt.Errorf("error creating parent directory: %w", err)
 	}
@@ -182,15 +156,5 @@ func newTeeReader(pipe func() (io.ReadCloser, error), path string) (*namedReader
 		return nil, fmt.Errorf("error opening %s: %w", path, err)
 	}
 
-	return &namedReader{
-		name:   path,
-		Reader: io.TeeReader(in, f),
-	}, nil
-}
-
-// namedReader is just a helper struct that lets us give a reader a name for
-// logging purposes.
-type namedReader struct {
-	io.Reader
-	name string
+	return f, nil
 }
