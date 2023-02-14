@@ -70,6 +70,7 @@ spec:
         - name: local-ws
           workspace: ws
 ---
+
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
@@ -88,4 +89,26 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 1Gi
+              storage: 16Mi
+---
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: pr-parameterized-subpath-
+spec:
+  pipelineRef:
+    name: pipeline-using-parameterized-subpaths
+  params:
+    - name: subPath-path
+      value: dir-2
+  workspaces:
+    - name: ws
+      subPath: $(context.pipelineRun.name)
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 16Mi

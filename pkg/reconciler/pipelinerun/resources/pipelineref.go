@@ -83,7 +83,7 @@ func GetPipelineFunc(ctx context.Context, k8s kubernetes.Interface, tekton clien
 	case pr != nil && pr.Resolver != "" && requester != nil:
 		return func(ctx context.Context, name string) (v1beta1.PipelineObject, *v1beta1.ConfigSource, error) {
 			stringReplacements, arrayReplacements, objectReplacements := paramsFromPipelineRun(ctx, pipelineRun)
-			for k, v := range getContextReplacements("", pipelineRun) {
+			for k, v := range GetContextReplacements("", pipelineRun) {
 				stringReplacements[k] = v
 			}
 			replacedParams := replaceParamValues(pr.Params, stringReplacements, arrayReplacements, objectReplacements)
