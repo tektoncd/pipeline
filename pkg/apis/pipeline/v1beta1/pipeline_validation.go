@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -57,11 +56,6 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// PipelineTask must have a valid unique label and at least one of taskRef or taskSpec should be specified
 	errs = errs.Also(ValidatePipelineTasks(ctx, ps.Tasks, ps.Finally))
-	// All declared resources should be used, and the Pipeline shouldn't try to use any resources
-	// that aren't declared
-	errs = errs.Also(validateDeclaredResources(ps.Resources, ps.Tasks, ps.Finally))
-	// The from values should make sense
-	errs = errs.Also(validateFrom(ps.Tasks))
 	// Validate the pipeline task graph
 	errs = errs.Also(validateGraph(ps.Tasks))
 	// The parameter variables should be valid
@@ -350,7 +344,6 @@ func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) (errs *
 	fts := PipelineTaskList(finalTasks).Names()
 
 	errs = errs.Also(validateTaskResultReferenceInFinallyTasks(finalTasks, ts, fts))
-	errs = errs.Also(validateTasksInputFrom(finalTasks).ViaField("finally"))
 
 	return errs
 }
@@ -390,115 +383,12 @@ func validateResultsVariablesExpressionsInFinally(expressions []string, pipeline
 	return errs
 }
 
-func validateTasksInputFrom(tasks []PipelineTask) (errs *apis.FieldError) {
-	for idx, t := range tasks {
-		inputResources := []PipelineTaskInputResource{}
-		if t.Resources != nil {
-			inputResources = append(inputResources, t.Resources.Inputs...)
-		}
-		for i, rd := range inputResources {
-			if len(rd.From) != 0 {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("no from allowed under inputs,"+
-					" final task %s has from specified", rd.Name), "").ViaFieldIndex("inputs", i).ViaField("resources").ViaIndex(idx))
-			}
-		}
-	}
-	return errs
-}
-
 func validateWhenExpressions(tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
 	for i, t := range tasks {
 		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("tasks", i))
 	}
 	for i, t := range finalTasks {
 		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("finally", i))
-	}
-	return errs
-}
-
-// validateDeclaredResources ensures that the specified resources have unique names and
-// validates that all the resources referenced by pipeline tasks are declared in the pipeline
-func validateDeclaredResources(resources []PipelineDeclaredResource, tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
-	encountered := sets.NewString()
-	for _, r := range resources {
-		if encountered.Has(r.Name) {
-			return apis.ErrInvalidValue(fmt.Sprintf("resource with name %q appears more than once", r.Name), "resources")
-		}
-		encountered.Insert(r.Name)
-	}
-	required := []string{}
-	for _, t := range tasks {
-		if t.Resources != nil {
-			for _, input := range t.Resources.Inputs {
-				required = append(required, input.Resource)
-			}
-			for _, output := range t.Resources.Outputs {
-				required = append(required, output.Resource)
-			}
-		}
-	}
-	for _, t := range finalTasks {
-		if t.Resources != nil {
-			for _, input := range t.Resources.Inputs {
-				required = append(required, input.Resource)
-			}
-			for _, output := range t.Resources.Outputs {
-				required = append(required, output.Resource)
-			}
-		}
-	}
-
-	provided := make([]string, 0, len(resources))
-	for _, resource := range resources {
-		provided = append(provided, resource.Name)
-	}
-	missing := list.DiffLeft(required, provided)
-	if len(missing) > 0 {
-		return apis.ErrInvalidValue(fmt.Sprintf("pipeline declared resources didn't match usage in Tasks: Didn't provide required values: %s", missing), "resources")
-	}
-	return nil
-}
-
-func isOutput(outputs []PipelineTaskOutputResource, resource string) bool {
-	for _, output := range outputs {
-		if output.Resource == resource {
-			return true
-		}
-	}
-	return false
-}
-
-// validateFrom ensures that the `from` values make sense: that they rely on values from Tasks
-// that ran previously, and that the PipelineResource is actually an output of the Task it should come from.
-func validateFrom(tasks []PipelineTask) (errs *apis.FieldError) {
-	taskOutputs := map[string][]PipelineTaskOutputResource{}
-	for _, task := range tasks {
-		var to []PipelineTaskOutputResource
-		if task.Resources != nil {
-			to = make([]PipelineTaskOutputResource, len(task.Resources.Outputs))
-			copy(to, task.Resources.Outputs)
-		}
-		taskOutputs[task.Name] = to
-	}
-	for i, t := range tasks {
-		inputResources := []PipelineTaskInputResource{}
-		if t.Resources != nil {
-			inputResources = append(inputResources, t.Resources.Inputs...)
-		}
-
-		for j, rd := range inputResources {
-			for _, pt := range rd.From {
-				outputs, found := taskOutputs[pt]
-				if !found {
-					return apis.ErrInvalidValue(fmt.Sprintf("expected resource %s to be from task %s, but task %s doesn't exist", rd.Resource, pt, pt),
-						"from").ViaFieldIndex("inputs", j).ViaField("resources").ViaFieldIndex("tasks", i)
-				}
-				if !isOutput(outputs, rd.Resource) {
-					return apis.ErrInvalidValue(fmt.Sprintf("the resource %s from %s must be an output but is an input", rd.Resource, pt),
-						"from").ViaFieldIndex("inputs", j).ViaField("resources").ViaFieldIndex("tasks", i)
-				}
-			}
-		}
 	}
 	return errs
 }

@@ -24,51 +24,11 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 )
-
-func validateResources(requiredResources []v1beta1.TaskResource, providedResources map[string]*resourcev1alpha1.PipelineResource) error {
-	required := make([]string, 0, len(requiredResources))
-	optional := make([]string, 0, len(requiredResources))
-	for _, resource := range requiredResources {
-		if resource.Optional {
-			// create a list of optional resources
-			optional = append(optional, resource.Name)
-		} else {
-			// create a list of required resources
-			required = append(required, resource.Name)
-		}
-	}
-	provided := make([]string, 0, len(providedResources))
-	for resource := range providedResources {
-		provided = append(provided, resource)
-	}
-	// verify that the list of required resources does exist in the provided resources
-	missing := list.DiffLeft(required, provided)
-	if len(missing) > 0 {
-		return fmt.Errorf("Task's declared required resources are missing from the TaskRun: %s", missing)
-	}
-	// verify that the list of provided resources does not have any extra resources (outside of required and optional resources combined)
-	extra := list.DiffLeft(provided, append(required, optional...))
-	if len(extra) > 0 {
-		return fmt.Errorf("TaskRun's declared resources didn't match usage in Task: %s", extra)
-	}
-	for _, resource := range requiredResources {
-		r := providedResources[resource.Name]
-		if !resource.Optional && r == nil {
-			// This case should never be hit due to the check for missing resources at the beginning of the function
-			return fmt.Errorf("resource %q is missing", resource.Name)
-		}
-		if r != nil && resource.Type != r.Spec.Type {
-			return fmt.Errorf("resource %q should be type %q but was %q", resource.Name, r.Spec.Type, resource.Type)
-		}
-	}
-	return nil
-}
 
 func validateParams(ctx context.Context, paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param, matrix *v1beta1.Matrix) error {
 	neededParamsNames, neededParamsTypes := neededParamsNamesAndTypes(paramSpecs)
@@ -211,19 +171,6 @@ func ValidateResolvedTaskResources(ctx context.Context, params []v1beta1.Param, 
 	if err := validateParams(ctx, rtr.TaskSpec.Params, params, matrix); err != nil {
 		return fmt.Errorf("invalid input params for task %s: %w", rtr.TaskName, err)
 	}
-	inputs := []v1beta1.TaskResource{}
-	outputs := []v1beta1.TaskResource{}
-	if rtr.TaskSpec.Resources != nil {
-		inputs = rtr.TaskSpec.Resources.Inputs
-		outputs = rtr.TaskSpec.Resources.Outputs
-	}
-	if err := validateResources(inputs, rtr.Inputs); err != nil {
-		return fmt.Errorf("invalid input resources for task %s: %w", rtr.TaskName, err)
-	}
-	if err := validateResources(outputs, rtr.Outputs); err != nil {
-		return fmt.Errorf("invalid output resources for task %s: %w", rtr.TaskName, err)
-	}
-
 	return nil
 }
 

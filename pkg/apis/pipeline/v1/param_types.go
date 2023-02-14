@@ -23,7 +23,6 @@ import (
 	"regexp"
 	"strings"
 
-	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -110,10 +109,6 @@ func (pp *ParamSpec) setDefaultsForProperties() {
 		}
 	}
 }
-
-// ResourceParam declares a string value to use for the parameter called Name, and is used in
-// the specific context of PipelineResources.
-type ResourceParam = resource.ResourceParam
 
 // Param declares an ParamValues to use for the parameter called name.
 type Param struct {

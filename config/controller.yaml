@@ -65,14 +65,10 @@ spec:
         args: [
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
-          "-git-image", "ko://github.com/tektoncd/pipeline/cmd/git-init",
           "-entrypoint-image", "ko://github.com/tektoncd/pipeline/cmd/entrypoint",
           "-nop-image", "ko://github.com/tektoncd/pipeline/cmd/nop",
           "-sidecarlogresults-image", "ko://github.com/tektoncd/pipeline/cmd/sidecarlogresults",
           "-workingdirinit-image", "ko://github.com/tektoncd/pipeline/cmd/workingdirinit",
-
-          # This is gcr.io/google.com/cloudsdktool/cloud-sdk:302.0.0-slim
-          "-gsutil-image", "gcr.io/google.com/cloudsdktool/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
 
           # The shell image must allow root in order to create directories and copy files to PVCs.
           # cgr.dev/chainguard/busybox as of April 14 2022

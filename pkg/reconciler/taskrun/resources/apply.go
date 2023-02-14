@@ -125,37 +125,6 @@ func paramsFromTaskRun(ctx context.Context, tr *v1beta1.TaskRun) (map[string]str
 	return stringReplacements, arrayReplacements
 }
 
-// ApplyResources applies the substitution from values in resources which are referenced in spec as subitems
-// of the replacementStr.
-func ApplyResources(spec *v1beta1.TaskSpec, resolvedResources map[string]v1beta1.PipelineResourceInterface, replacementStr string) *v1beta1.TaskSpec {
-	replacements := map[string]string{}
-	for name, r := range resolvedResources {
-		for k, v := range r.Replacements() {
-			replacements[fmt.Sprintf("resources.%s.%s.%s", replacementStr, name, k)] = v
-			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			replacements[fmt.Sprintf("%s.resources.%s.%s", replacementStr, name, k)] = v
-		}
-	}
-
-	// We always add replacements for 'path'
-	if spec.Resources != nil && spec.Resources.Inputs != nil {
-		for _, r := range spec.Resources.Inputs {
-			replacements[fmt.Sprintf("resources.inputs.%s.path", r.Name)] = v1beta1.InputResourcePath(r.ResourceDeclaration)
-			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			replacements[fmt.Sprintf("inputs.resources.%s.path", r.Name)] = v1beta1.InputResourcePath(r.ResourceDeclaration)
-		}
-	}
-	if spec.Resources != nil && spec.Resources.Outputs != nil {
-		for _, r := range spec.Resources.Outputs {
-			replacements[fmt.Sprintf("resources.outputs.%s.path", r.Name)] = v1beta1.OutputResourcePath(r.ResourceDeclaration)
-			// FIXME(vdemeester) Remove that with deprecating v1beta1
-			replacements[fmt.Sprintf("outputs.resources.%s.path", r.Name)] = v1beta1.OutputResourcePath(r.ResourceDeclaration)
-		}
-	}
-
-	return ApplyReplacements(spec, replacements, map[string][]string{})
-}
-
 func getContextReplacements(taskName string, tr *v1beta1.TaskRun) map[string]string {
 	return map[string]string{
 		"context.taskRun.name":      tr.Name,

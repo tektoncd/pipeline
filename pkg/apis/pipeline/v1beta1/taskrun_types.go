@@ -42,8 +42,6 @@ type TaskRunSpec struct {
 	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 	// +optional
-	Resources *TaskRunResources `json:"resources,omitempty"`
-	// +optional
 	ServiceAccountName string `json:"serviceAccountName"`
 	// no more than one of the TaskRef and TaskSpec may be specified.
 	// +optional
@@ -113,23 +111,6 @@ type TaskRunDebug struct {
 	// +optional
 	// +listType=atomic
 	Breakpoint []string `json:"breakpoint,omitempty"`
-}
-
-// TaskRunInputs holds the input values that this task was invoked with.
-type TaskRunInputs struct {
-	// +optional
-	// +listType=atomic
-	Resources []TaskResourceBinding `json:"resources,omitempty"`
-	// +optional
-	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
-}
-
-// TaskRunOutputs holds the output values that this task was invoked with.
-type TaskRunOutputs struct {
-	// +optional
-	// +listType=atomic
-	Resources []TaskResourceBinding `json:"resources,omitempty"`
 }
 
 var taskRunCondSet = apis.NewBatchConditionSet()

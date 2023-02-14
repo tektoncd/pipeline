@@ -690,8 +690,7 @@ spec:
           - --commit=$(params.gitrepo.commit)
           - --branch=$(params.gitrepo.branch)
           image: bash
-          name: write-result
-          resources: {}
+          name: write-result   
 status:
   completionTime: "2022-09-08T17:22:01Z"
   conditions:
@@ -719,7 +718,6 @@ status:
           - --branch=main
           image: bash
           name: write-result
-          resources: {}
   startTime: "2022-09-08T17:21:57Z"
   childReferences:
   - name: pipelinerun-object-param-resultpxp59-task1
@@ -735,7 +733,6 @@ status:
             - --branch=main
             image: bash
             name: write-result
-            resources: {}
 ```
 
 ### Specifying custom `ServiceAccount` credentials

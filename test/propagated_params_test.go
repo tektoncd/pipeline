@@ -44,7 +44,6 @@ var (
 	ignoreConditions        = cmpopts.IgnoreFields(duckv1.Status{}, "Conditions")
 	ignoreContainerStates   = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
 	ignoreStepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
-	ignoreTaskRunSpec       = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "Resources")
 )
 
 func TestPropagatedParams(t *testing.T) {
@@ -123,7 +122,6 @@ func TestPropagatedParams(t *testing.T) {
 					ignoreConditions,
 					ignoreContainerStates,
 					ignoreStepState,
-					ignoreTaskRunSpec,
 				)
 				if d != "" {
 					t.Fatalf(`The expected taskrun does not match created taskrun. Here is the diff: %v`, d)
@@ -209,7 +207,6 @@ metadata:
 spec:
   serviceAccountName: default
   timeout: 1h
-  resources:
   taskSpec:
     steps:
       - name: echo
@@ -403,7 +400,6 @@ metadata:
 spec:
   serviceAccountName: default
   timeout: 1h
-  resources:
   taskSpec:
     params:
       - name: HELLO

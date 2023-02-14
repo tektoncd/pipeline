@@ -63,13 +63,6 @@ metadata:
   name: %s
   namespace: %s
 spec:
-  resources:
-    inputs:
-    - name: repo
-      type: git
-    outputs:
-    - name: repo
-      type: git
   params:
   - name: text
     type: string
@@ -81,25 +74,9 @@ spec:
     # Sleep for N seconds so that we can check that tasks that
     # should be run in parallel have overlap.
     script: 'sleep %d'
-  - image: busybox
-    script: 'ln -s $(resources.inputs.repo.path) $(resources.outputs.repo.path)'
 `, helpers.ObjectNameForTest(t), namespace, int(sleepDuration.Seconds())))
 	if _, err := c.V1beta1TaskClient.Create(ctx, echoTask, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create echo Task: %s", err)
-	}
-
-	// Create the repo PipelineResource (doesn't really matter which repo we use)
-	repoResource := parse.MustParsePipelineResource(t, fmt.Sprintf(`
-metadata:
-  name: %s
-spec:
-  type: git
-  params:
-  - name: Url
-    value: https://github.com/githubtraining/example-basic
-`, helpers.ObjectNameForTest(t)))
-	if _, err := c.V1alpha1PipelineResourceClient.Create(ctx, repoResource, metav1.CreateOptions{}); err != nil {
-		t.Fatalf("Failed to create simple repo PipelineResource: %s", err)
 	}
 
 	// Intentionally declaring Tasks in a mixed up order to ensure the order
@@ -109,82 +86,44 @@ metadata:
   name: %s
   namespace: %s
 spec:
-  resources:
-  - name: repo
-    type: git
   tasks:
   - name: pipeline-task-3
     params:
     - name: text
       value: wow
-    resources:
-      inputs:
-      - from:
-        - pipeline-task-2-parallel-1
-        - pipeline-task-2-parallel-2
-        name: repo
-        resource: repo
-      outputs:
-      - name: repo
-        resource: repo
     taskRef:
       name: %s
+    runAfter:
+      - pipeline-task-2-parallel-1
+      - pipeline-task-2-parallel-2
   - name: pipeline-task-2-parallel-2
     params:
     - name: text
       value: such parallel
-    resources:
-      inputs:
-      - from:
-        - pipeline-task-1
-        name: repo
-        resource: repo
-      outputs:
-      - name: repo
-        resource: repo
     taskRef:
       name: %s
+    runAfter:
+      - pipeline-task-1
   - name: pipeline-task-4
     params:
     - name: text
       value: very cloud native
-    resources:
-      inputs:
-      - name: repo
-        resource: repo
-      outputs:
-      - name: repo
-        resource: repo
-    runAfter:
-    - pipeline-task-3
     taskRef:
       name: %s
+    runAfter:
+      - pipeline-task-3
   - name: pipeline-task-2-parallel-1
     params:
     - name: text
       value: much graph
-    resources:
-      inputs:
-      - from:
-        - pipeline-task-1
-        name: repo
-        resource: repo
-      outputs:
-      - name: repo
-        resource: repo
     taskRef:
       name: %s
+    runAfter:
+      - pipeline-task-1
   - name: pipeline-task-1
     params:
     - name: text
       value: how to ci/cd?
-    resources:
-      inputs:
-      - name: repo
-        resource: repo
-      outputs:
-      - name: repo
-        resource: repo
     taskRef:
       name: %s
 `, helpers.ObjectNameForTest(t), namespace, echoTask.Name, echoTask.Name, echoTask.Name, echoTask.Name, echoTask.Name))
@@ -198,11 +137,7 @@ metadata:
 spec:
   pipelineRef:
     name: %s
-  resources:
-  - name: repo
-    resourceRef:
-      name: %s
-`, helpers.ObjectNameForTest(t), namespace, pipeline.Name, repoResource.Name))
+`, helpers.ObjectNameForTest(t), namespace, pipeline.Name))
 	if _, err := c.V1beta1PipelineRunClient.Create(ctx, pipelineRun, metav1.CreateOptions{}); err != nil {
 		t.Fatalf("Failed to create dag-pipeline-run PipelineRun: %s", err)
 	}

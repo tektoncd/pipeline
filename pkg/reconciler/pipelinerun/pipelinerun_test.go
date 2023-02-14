@@ -35,7 +35,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	resolutionutil "github.com/tektoncd/pipeline/pkg/internal/resolution"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/cloudevent"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events/k8sevent"
@@ -74,9 +73,7 @@ var (
 	images = pipeline.Images{
 		EntrypointImage: "override-with-entrypoint:latest",
 		NopImage:        "override-with-nop:latest",
-		GitImage:        "override-with-git:latest",
 		ShellImage:      "busybox",
-		GsutilImage:     "gcr.io/google.com/cloudsdktool/cloud-sdk",
 	}
 
 	ignoreResourceVersion    = cmpopts.IgnoreFields(metav1.ObjectMeta{}, "ResourceVersion")
@@ -214,16 +211,6 @@ spec:
     value: somethingmorefun
   pipelineRef:
     name: test-pipeline
-  resources:
-  - name: git-repo
-    resourceRef:
-      name: some-repo
-  - name: best-image
-    resourceSpec:
-      params:
-      - name: url
-        value: gcr.io/sven
-      type: image
   serviceAccountName: test-sa
 `)}
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
@@ -240,37 +227,21 @@ spec:
     type: string
   - name: bar
     type: string
-  resources:
-  - name: git-repo
-    type: git
-  - name: best-image
-    type: image
   tasks:
-  - name: unit-test-3
+  - name: unit-test-2
     params:
     - name: foo
       value: somethingfun
     - name: bar
       value: $(params.bar)
-    - name: templatedparam
-      value: $(inputs.workspace.$(params.rev-param))
     - name: contextRunParam
       value: $(context.pipelineRun.name)
     - name: contextPipelineParam
       value: $(context.pipeline.name)
     - name: contextRetriesParam
       value: $(context.pipelineTask.retries)
-    resources:
-      inputs:
-      - name: workspace
-        resource: git-repo
-      outputs:
-      - name: image-to-use
-        resource: best-image
-      - name: workspace
-        resource: git-repo
     runAfter:
-    - unit-test-2
+    - unit-test-1
     taskRef:
       name: unit-test-task
   - name: unit-test-1
@@ -279,56 +250,25 @@ spec:
       value: somethingfun
     - name: bar
       value: $(params.bar)
-    - name: templatedparam
-      value: $(inputs.workspace.$(params.rev-param))
     - name: contextRunParam
       value: $(context.pipelineRun.name)
     - name: contextPipelineParam
       value: $(context.pipeline.name)
     - name: contextRetriesParam
       value: $(context.pipelineTask.retries)
-    resources:
-      inputs:
-      - name: workspace
-        resource: git-repo
-      outputs:
-      - name: image-to-use
-        resource: best-image
-      - name: workspace
-        resource: git-repo
     retries: 5
     taskRef:
       name: unit-test-task
-  - name: unit-test-2
-    resources:
-      inputs:
-      - from:
-        - unit-test-1
-        name: workspace
-        resource: git-repo
-    taskRef:
-      name: unit-test-followup-task
   - name: unit-test-cluster-task
     params:
     - name: foo
       value: somethingfun
     - name: bar
       value: $(params.bar)
-    - name: templatedparam
-      value: $(inputs.workspace.$(params.rev-param))
     - name: contextRunParam
       value: $(context.pipelineRun.name)
     - name: contextPipelineParam
       value: $(context.pipeline.name)
-    resources:
-      inputs:
-      - name: workspace
-        resource: git-repo
-      outputs:
-      - name: image-to-use
-        resource: best-image
-      - name: workspace
-        resource: git-repo
     taskRef:
       kind: ClusterTask
       name: unit-test-cluster-task
@@ -344,35 +284,13 @@ spec:
     type: string
   - name: bar
     type: string
-  - name: templatedparam
-    type: string
   - name: contextRunParam
     type: string
   - name: contextPipelineParam
     type: string
   - name: contextRetriesParam
     type: string
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-    outputs:
-    - name: image-to-use
-      type: image
-    - name: workspace
-      type: git
-`),
-		parse.MustParseV1beta1Task(t, `
-metadata:
-  name: unit-test-followup-task
-  namespace: foo
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-`),
-	}
+`)}
 	clusterTasks := []*v1beta1.ClusterTask{
 		parse.MustParseClusterTask(t, `
 metadata:
@@ -383,55 +301,18 @@ spec:
     type: string
   - name: bar
     type: string
-  - name: templatedparam
-    type: string
   - name: contextRunParam
     type: string
   - name: contextPipelineParam
     type: string
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-    outputs:
-    - name: image-to-use
-      type: image
-    - name: workspace
-      type: git
-`),
-		parse.MustParseClusterTask(t, `
-metadata:
-  name: unit-test-followup-task
-spec:
-  resources:
-    inputs:
-    - name: workspace
-      type: git
-`),
-	}
-	rs := []*resourcev1alpha1.PipelineResource{parse.MustParsePipelineResource(t, `
-metadata:
-  name: some-repo
-  namespace: foo
-spec:
-  params:
-  - name: url
-    value: https://github.com/kristoff/reindeer
-  type: git
 `)}
 
-	// When PipelineResources are created in the cluster, Kubernetes will add a SelfLink. We
-	// are using this to differentiate between Resources that we are referencing by Spec or by Ref
-	// after we have resolved them.
-	rs[0].SelfLink = "some/link"
-
 	d := test.Data{
-		PipelineRuns:      prs,
-		Pipelines:         ps,
-		Tasks:             ts,
-		ClusterTasks:      clusterTasks,
-		PipelineResources: rs,
-		ConfigMaps:        []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
+		PipelineRuns: prs,
+		Pipelines:    ps,
+		Tasks:        ts,
+		ClusterTasks: clusterTasks,
+		ConfigMaps:   []*corev1.ConfigMap{newFeatureFlagsConfigMap()},
 	}
 	prt := newPipelineRunTest(t, d)
 	defer prt.Cancel()
@@ -454,8 +335,6 @@ spec:
     value: somethingfun
   - name: bar
     value: somethingmorefun
-  - name: templatedparam
-    value: $(inputs.workspace.revision)
   - name: contextRunParam
     value: test-pipeline-run-success
   - name: contextPipelineParam
@@ -463,34 +342,13 @@ spec:
   - name: contextRetriesParam
     value: "5"
   retries: 5
-  resources:
-    inputs:
-    - name: workspace
-      resourceRef:
-        apiVersion: tekton.dev/v1alpha1
-        name: some-repo
-    outputs:
-    - name: image-to-use
-      paths:
-      - /pvc/unit-test-1/image-to-use
-      resourceSpec:
-        params:
-        - name: url
-          value: gcr.io/sven
-        type: image
-    - name: workspace
-      paths:
-      - /pvc/unit-test-1/workspace
-      resourceRef:
-        apiVersion: tekton.dev/v1alpha1
-        name: some-repo
   serviceAccountName: test-sa
   taskRef:
     name: unit-test-task
     kind: Task
 `)
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 	// test taskrun is able to recreate correct pipeline-pvc-name
@@ -506,9 +364,6 @@ spec:
 
 	verifyTaskRunStatusesCount(t, reconciledRun.Status, 2)
 	verifyTaskRunStatusesNames(t, reconciledRun.Status, tr1Name, tr2Name)
-
-	// A PVC should have been created to deal with output -> input linking
-	ensurePVCCreated(prt.TestAssets.Ctx, t, clients, expectedTaskRun.GetPipelineRunPVCName(), "foo")
 }
 
 // TestReconcile_CustomTask runs "Reconcile" on a PipelineRun with one Custom
@@ -927,7 +782,6 @@ spec:
 `, config.DefaultServiceAccountValue))
 
 	expectedTaskRun.ObjectMeta = taskRunObjectMeta("test-pipeline-run-success-unit-test-task-spec", "foo", "test-pipeline-run-success", "test-pipeline", "unit-test-task-spec", false)
-	expectedTaskRun.Spec.Resources = &v1beta1.TaskRunResources{}
 
 	// ignore IgnoreUnexported ignore both after and before steps fields
 	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(func(x, y v1beta1.TaskSpec) bool { return len(x.Steps) == len(y.Steps) })); d != "" {
@@ -981,16 +835,6 @@ spec:
         key1: {}
         key2: {}
 `, v1beta1.ParamTypeObject)),
-		parse.MustParseV1beta1Task(t, fmt.Sprintf(`
-metadata:
-  name: a-task-that-needs-a-resource
-  namespace: foo
-spec:
-  resources:
-    inputs:
-      - name: workspace
-        type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit)),
 	}
 
 	ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
@@ -1013,23 +857,6 @@ spec:
       taskRef:
         name: a-task-that-needs-params
 `),
-		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
-metadata:
-  name: a-fine-pipeline
-  namespace: foo
-spec:
-  tasks:
-    - name: some-task
-      taskRef:
-        name: a-task-that-exists
-      resources:
-        inputs:
-          - name: needed-resource
-            resource: a-resource
-  resources:
-    - name: a-resource
-      type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit)),
 		parse.MustParseV1beta1Pipeline(t, `
 metadata:
   name: a-pipeline-that-should-be-caught-by-admission-control
@@ -1039,10 +866,6 @@ spec:
     - name: some-task
       taskRef:
         name: a-task-that-exists
-      resources:
-        inputs:
-          - name: needed-resource
-            resource: a-resource
 `),
 		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
@@ -1148,58 +971,6 @@ spec:
 			"Warning Failed invalid input params for task a-task-that-needs-params: missing values",
 		},
 	}, {
-		name: "invalid-pipeline-run-resources-not-bound-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-resources-not-bound
-  namespace: foo
-spec:
-  pipelineRef:
-    name: a-fine-pipeline
-`),
-		reason:         ReasonInvalidBindings,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-resources-not-bound doesn't bind Pipeline",
-		},
-	}, {
-		name: "invalid-pipeline-run-missing-resource-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-resources-dont-exist
-  namespace: foo
-spec:
-  pipelineRef:
-    name: a-fine-pipeline
-  resources:
-    - name: a-resource
-      resourceRef:
-        name: missing-resource
-`),
-		reason:         ReasonCouldntGetResource,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed PipelineRun foo/pipeline-resources-dont-exist can't be Run; it tries to bind Resources",
-		},
-	}, {
-		name: "invalid-pipeline-missing-declared-resource-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
-metadata:
-  name: pipeline-resources-not-declared
-  namespace: foo
-spec:
-  pipelineRef:
-    name: a-pipeline-that-should-be-caught-by-admission-control
-`),
-		reason:         ReasonFailedValidation,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed Pipeline foo/a-pipeline-that-should-be-caught-by-admission-control can't be Run; it has an invalid spec",
-		},
-	}, {
 		name: "invalid-pipeline-mismatching-parameter-types",
 		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
 metadata:
@@ -1252,34 +1023,12 @@ spec:
       value:
         - "a"
         - "b"
-`),
+    `),
 		reason:         ReasonParamArrayIndexingInvalid,
 		permanentError: true,
 		wantEvents: []string{
 			"Normal Started",
 			"Warning Failed PipelineRun foo/pipeline-param-array-out-of-bound failed validation: failed to validate Pipeline foo/a-pipeline-with-array-indexing-params's parameter which has an invalid index while referring to an array: non-existent param references:[$(params.some-param[2]",
-		},
-	}, {
-		name: "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
-		pipelineRun: parse.MustParseV1beta1PipelineRun(t, fmt.Sprintf(`
-metadata:
-  name: embedded-pipeline-resources-not-bound
-  namespace: foo
-spec:
-  pipelineSpec:
-    tasks:
-      - name: some-task
-        taskRef:
-          name: a-task-that-needs-a-resource
-    resources:
-      - name: workspace
-        type: %s
-`, resourcev1alpha1.PipelineResourceTypeGit)),
-		reason:         ReasonInvalidBindings,
-		permanentError: true,
-		wantEvents: []string{
-			"Normal Started",
-			"Warning Failed PipelineRun foo/embedded-pipeline-resources-not-bound doesn't bind Pipeline",
 		},
 	}, {
 		name: "invalid-embedded-pipeline-bad-name-shd-stop-reconciling",
@@ -2553,7 +2302,6 @@ status:
 	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-hello-world-1", "foo", "test-pipeline-run-with-timeout",
 		"test-pipeline", "hello-world-1", false), `
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -2642,7 +2390,6 @@ status:
 	trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-hello-world-1", "foo", "test-pipeline-run-with-timeout",
 		"test-pipeline", "hello-world-1", false), `
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -2764,7 +2511,7 @@ status:
 		mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-finaltask-1", "foo", "test-pipeline-run-with-timeout",
 			"test-pipeline", "finaltask-1", false), `
 spec:
-  resources: {}
+  
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -3143,7 +2890,6 @@ spec:
 	expectedObjectMeta.Annotations["PipelineRunAnnotation"] = "PipelineRunValue"
 	expected := mustParseTaskRunWithObjectMeta(t, expectedObjectMeta, `
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -3280,7 +3026,6 @@ metadata:
 			taskRunObjectMeta(taskRunNames[0], "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "hello-world-0", false),
 			`
 spec:
-  resources: {}
   serviceAccountName: test-sa-0
   taskRef:
     name: hello-world-task
@@ -3290,7 +3035,6 @@ spec:
 			taskRunObjectMeta(taskRunNames[1], "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "hello-world-1", false),
 			`
 spec:
-  resources: {}
   serviceAccountName: test-sa-1
   taskRef:
     name: hello-world-task
@@ -3416,7 +3160,6 @@ spec:
   podTemplate:
     nodeSelector:
       workloadtype: tekton
-  resources: {}
   serviceAccountName: custom-sa
   sidecarOverrides:
   - name: bar
@@ -3574,7 +3317,6 @@ spec:
 			"test-pipeline", "a-task", true),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -3609,7 +3351,6 @@ status:
 		taskRunObjectMeta(expectedTaskRunName, "foo", "test-pipeline-run-different-service-accs", "test-pipeline", "b-task", false),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa-0
   taskRef:
     name: b-task
@@ -3800,7 +3541,6 @@ spec:
 				"test-pipeline", taskName, false),
 			fmt.Sprintf(`
 spec:
-  resources: {}
   serviceAccountName: test-sa-0
   taskRef:
     name: %s
@@ -3936,7 +3676,6 @@ spec:
 			true),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -4441,7 +4180,6 @@ spec:
 			"test-pipeline-run-different-service-accs", "test-pipeline", "a-task", true),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -4476,7 +4214,6 @@ spec:
   params:
   - name: bParam
     value: aResultValue
-  resources: {}
   serviceAccountName: test-sa-0
   taskRef:
     name: b-task
@@ -4565,7 +4302,6 @@ spec:
 			"test-pipeline-run-different-service-accs", "test-pipeline-run-different-service-accs", "a-task", false),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa-0
   taskRef:
     kind: Task
@@ -4944,7 +4680,6 @@ spec:
 			"test-failed-pr-with-task-results", "test-pipeline", "a-task", true),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: hello-world
@@ -4961,7 +4696,6 @@ status:
 			"test-failed-pr-with-task-results", "test-pipeline", "b-task", true),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
      name: hello-world
@@ -6307,7 +6041,6 @@ spec:
 		taskRunObjectMeta(pipelineRunName+"-task1-xxyy", "foo", pipelineRunName, pipelineName, "task1", false),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -6338,7 +6071,6 @@ spec:
   params:
   - name: pipelineRun-tasks-task1
     value: Failed
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: finaltask
@@ -6517,7 +6249,6 @@ spec:
   params:
   - name: finalParam
     value: aResultValue
-  resources: {}
   serviceAccountName: test-sa-0
   taskRef:
     name: final-task
@@ -6691,7 +6422,6 @@ metadata:
 			"test-pipeline", "unit-test-1", false),
 		fmt.Sprintf(`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     bundle: %s
@@ -6699,7 +6429,7 @@ spec:
     name: unit-test-task
 `, ref))
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
@@ -6764,7 +6494,6 @@ spec:
 			"test-pipeline-run-success", "unit-test-1", false),
 		`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskSpec:
     steps:
@@ -6774,7 +6503,7 @@ spec:
       optional: true
 `)
 
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
@@ -7189,7 +6918,6 @@ func getTaskRunWithTaskSpec(tr, pr, p, t string, labels, annotations map[string]
 				}},
 			},
 			ServiceAccountName: config.DefaultServiceAccountValue,
-			Resources:          &v1beta1.TaskRunResources{},
 		},
 	}
 }
@@ -7660,7 +7388,6 @@ spec:
 	expectedTaskRunObjectMeta.Annotations["PipelineTaskRunSpecAnnotation"] = "PipelineTaskRunSpecValue"
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
 spec:
-  resources: {}
   serviceAccountName: custom-sa
   taskRef:
     name: hello-world
@@ -7731,7 +7458,6 @@ spec:
 	expectedTaskRunObjectMeta.Annotations["TestPrecedenceAnnotation"] = "PipelineTaskRunSpecValue"
 	expectedTaskRun := mustParseTaskRunWithObjectMeta(t, expectedTaskRunObjectMeta, `
 spec:
-  resources: {}
   serviceAccountName: custom-sa
   taskSpec:
     steps:
@@ -7776,7 +7502,6 @@ spec:
     value: chrome
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -7794,7 +7519,6 @@ spec:
     value: chrome
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -7812,7 +7536,6 @@ spec:
     value: chrome
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -7830,7 +7553,6 @@ spec:
     value: safari
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -7848,7 +7570,6 @@ spec:
     value: safari
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -7866,7 +7587,6 @@ spec:
     value: safari
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -7884,7 +7604,6 @@ spec:
     value: firefox
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -7902,7 +7621,6 @@ spec:
     value: firefox
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -7920,7 +7638,6 @@ spec:
     value: firefox
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8091,7 +7808,6 @@ spec:
     value: chrome
   - name: version
     value: v0.22.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8310,7 +8026,6 @@ spec:
     value: chrome
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8328,7 +8043,6 @@ spec:
     value: chrome
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8346,7 +8060,6 @@ spec:
     value: chrome
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8364,7 +8077,6 @@ spec:
     value: safari
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8382,7 +8094,6 @@ spec:
     value: safari
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8400,7 +8111,6 @@ spec:
     value: safari
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8418,7 +8128,6 @@ spec:
     value: firefox
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8436,7 +8145,6 @@ spec:
     value: firefox
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8454,7 +8162,6 @@ spec:
     value: firefox
   - name: version
     value: v0.33.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8515,7 +8222,6 @@ spec:
 				"pr", "p-dag", "pt-with-result", false),
 			`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: taskwithresults
@@ -8679,7 +8385,6 @@ spec:
 				"pr", "p-finally", "pt-with-result", false),
 			`
 spec:
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: taskwithresults
@@ -8898,7 +8603,6 @@ spec:
     value: linux
   - name: browser
     value: chrome
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -8923,7 +8627,6 @@ spec:
     value: mac
   - name: browser
     value: chrome
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9034,7 +8737,6 @@ spec:
     value: linux
   - name: browser
     value: chrome
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9059,7 +8761,6 @@ spec:
     value: mac
   - name: browser
     value: chrome
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9084,7 +8785,6 @@ spec:
     value: linux
   - name: browser
     value: chrome
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9109,7 +8809,6 @@ spec:
     value: mac
   - name: browser
     value: chrome
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9224,7 +8923,6 @@ spec:
     value: linux
   - name: browser
     value: chrome
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9249,7 +8947,6 @@ spec:
     value: mac
   - name: browser
     value: chrome
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9346,7 +9043,6 @@ spec:
     value: chrome
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9366,7 +9062,6 @@ spec:
     value: chrome
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9386,7 +9081,6 @@ spec:
     value: chrome
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9406,7 +9100,6 @@ spec:
     value: safari
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9426,7 +9119,6 @@ spec:
     value: safari
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9446,7 +9138,6 @@ spec:
     value: safari
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9466,7 +9157,6 @@ spec:
     value: firefox
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9486,7 +9176,6 @@ spec:
     value: firefox
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9506,7 +9195,6 @@ spec:
     value: firefox
   - name: version
     value: v0.1
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9677,7 +9365,6 @@ spec:
     value: chrome
   - name: version
     value: v0.0
-  resources: {}
   serviceAccountName: test-sa
   taskRef:
     name: mytask
@@ -9838,10 +9525,6 @@ spec:
 	}
 }
 
-func lessTaskResourceBindings(i, j v1beta1.TaskResourceBinding) bool {
-	return i.Name < j.Name
-}
-
 func TestReconcile_SetDefaults(t *testing.T) {
 	names.TestingSeed()
 	prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
@@ -9940,10 +9623,9 @@ spec:
   taskRef:
     name: unit-test-task
     kind: Task
-  resources: {}
 `)
 	// ignore IgnoreUnexported ignore both after and before steps fields
-	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta, cmpopts.SortSlices(lessTaskResourceBindings)); d != "" {
+	if d := cmp.Diff(expectedTaskRun, actual, ignoreTypeMeta); d != "" {
 		t.Errorf("expected to see TaskRun %v created. Diff %s", expectedTaskRun, diff.PrintWantGot(d))
 	}
 
