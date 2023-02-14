@@ -1,10 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,7 +30,7 @@ func TestRealRunnerSignalForwarding(t *testing.T) {
 }
 
 func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "")
+	tmp, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -40,12 +41,50 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 		stdoutPath: filepath.Join(tmp, "stdout"),
 		stderrPath: filepath.Join(tmp, "subpath/stderr"),
 	}
+
+	// capture the std{out/err} output to verify whether we print log in the std
+	oldStdout := os.Stdout // keep backup of the real stdout
+	outReader, outWriter, _ := os.Pipe()
+	os.Stdout = outWriter
+
+	oldStderr := os.Stderr
+	errReader, errWriter, _ := os.Pipe()
+	os.Stderr = errWriter
+
 	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && echo %s >&2", expectedString, expectedString)); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
+	outC := make(chan string)
+	errC := make(chan string)
+	// copy the output in a separate goroutine so realRunner command can't block indefinitely
+	go func() {
+		var stdOutBuf bytes.Buffer
+		io.Copy(&stdOutBuf, outReader)
+		outC <- stdOutBuf.String()
+
+		var stdErrBuf bytes.Buffer
+		io.Copy(&stdErrBuf, errReader)
+		errC <- stdErrBuf.String()
+	}()
+	// back to normal state
+	outWriter.Close()
+	errWriter.Close()
+	os.Stdout = oldStdout // restoring the real stdout
+	os.Stderr = oldStderr // restoring the real stderr
+	stdOut := <-outC
+	stdErr := <-errC
+
+	// echo command will auto add \n in end, so we should remove trailing newline
+	if strings.TrimSuffix(stdOut, "\n") != expectedString {
+		t.Fatalf("Unexpected stdout output: %s, wanted stdout output: %s", stdOut, expectedString)
+	}
+	if strings.TrimSuffix(stdErr, "\n") != expectedString {
+		t.Fatalf("Unexpected stderr output: %s, wanted stderr output: %s", stdErr, expectedString)
+	}
+
 	for _, path := range []string{"stdout", "subpath/stderr"} {
-		if got, err := ioutil.ReadFile(filepath.Join(tmp, path)); err != nil {
+		if got, err := os.ReadFile(filepath.Join(tmp, path)); err != nil {
 			t.Fatalf("Unexpected error: %v", err)
 		} else if gotString := strings.TrimSpace(string(got)); gotString != expectedString {
 			t.Errorf("%v: got: %v, wanted: %v", path, gotString, expectedString)
@@ -54,7 +93,7 @@ func TestRealRunnerStdoutAndStderrPaths(t *testing.T) {
 }
 
 func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "")
+	tmp, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -72,7 +111,7 @@ func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
 
 	// Since writes to stdout and stderr might be racy, we only check for lengths here.
 	expectedSize := (len(expectedString) + 1) * 2
-	if got, err := ioutil.ReadFile(path); err != nil {
+	if got, err := os.ReadFile(path); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	} else if gotSize := len(got); gotSize != expectedSize {
 		t.Errorf("got: %v, wanted: %v", gotSize, expectedSize)
@@ -80,7 +119,7 @@ func TestRealRunnerStdoutAndStderrSamePath(t *testing.T) {
 }
 
 func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "")
+	tmp, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -113,7 +152,7 @@ func TestRealRunnerStdoutPathWithSignal(t *testing.T) {
 	if err := rr.Run(context.Background(), "sh", "-c", fmt.Sprintf("echo %s && sleep 20", expectedString)); err == nil || err.Error() != expectedError {
 		t.Fatalf("Expected error %v but got %v", expectedError, err)
 	}
-	if got, err := ioutil.ReadFile(path); err != nil {
+	if got, err := os.ReadFile(path); err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	} else if gotString := strings.TrimSpace(string(got)); gotString != expectedString {
 		t.Errorf("got: %v, wanted: %v", gotString, expectedString)
