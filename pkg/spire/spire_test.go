@@ -34,7 +34,10 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-const trustDomain = "example.org"
+const (
+	trustDomain    = "example.org"
+	notImplemented = "notImplemented"
+)
 
 var (
 	td           = spiffeid.RequireTrustDomainFromString(trustDomain)
@@ -65,6 +68,7 @@ func TestTaskRunSign(t *testing.T) {
 
 	cfg := &config.SpireConfig{}
 	cfg.SocketPath = wl.Addr()
+	cfg.ServerAddr = notImplemented
 	cfg.TrustDomain = trustDomain
 
 	cc := GetControllerAPIClient(ctx)
@@ -105,6 +109,7 @@ func TestCheckSpireVerifiedFlag(t *testing.T) {
 
 	cfg := &config.SpireConfig{}
 	cfg.SocketPath = wl.Addr()
+	cfg.ServerAddr = notImplemented
 	cfg.TrustDomain = trustDomain
 
 	cc := GetControllerAPIClient(ctx)
@@ -145,6 +150,7 @@ func TestCheckHashSimilarities(t *testing.T) {
 
 	cfg := &config.SpireConfig{}
 	cfg.SocketPath = wl.Addr()
+	cfg.ServerAddr = notImplemented
 	cfg.TrustDomain = trustDomain
 
 	cc := GetControllerAPIClient(ctx)
@@ -199,6 +205,7 @@ func TestCheckTamper(t *testing.T) {
 
 	cfg := &config.SpireConfig{}
 	cfg.SocketPath = wl.Addr()
+	cfg.ServerAddr = notImplemented
 	cfg.TrustDomain = trustDomain
 
 	cc := GetControllerAPIClient(ctx)
@@ -360,6 +367,7 @@ func TestBadPodIdentity(t *testing.T) {
 
 	cfg := &config.SpireConfig{}
 	cfg.SocketPath = wl.Addr()
+	cfg.ServerAddr = notImplemented
 	cfg.TrustDomain = trustDomain
 
 	ec := NewEntrypointerAPIClient(cfg)
@@ -406,6 +414,7 @@ func TestSignTaskRunResults(t *testing.T) {
 
 	cfg := &config.SpireConfig{
 		SocketPath:  wl.Addr(),
+		ServerAddr:  notImplemented,
 		TrustDomain: trustDomain,
 	}
 
@@ -453,6 +462,7 @@ func TestTaskRunResultsSignTamper(t *testing.T) {
 
 	cfg := &config.SpireConfig{}
 	cfg.SocketPath = wl.Addr()
+	cfg.ServerAddr = notImplemented
 	cfg.TrustDomain = trustDomain
 
 	ec := NewEntrypointerAPIClient(cfg)
