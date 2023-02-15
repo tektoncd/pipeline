@@ -43,10 +43,22 @@ spec:
     - name: echo-params
       image: bash:latest
       args: [
-        "echo",
-        "--foo=$(params.arg.foo)",
-        "--bar=$(params.arg.bar)"
+        "$(params.arg.foo)",
+        "$(params.arg.bar)"
       ]
+      script: |
+        if [[ $1 != "abc.com" ]]; then
+            echo "Want: abc.com, Got: $1"
+          exit 1
+        else
+          echo "validate the arg.foo successfully"
+        fi
+        if [[ $2 != "sha123" ]]; then
+            echo "Want: sha123, Got: $2"
+          exit 1
+        else
+          echo "validate the arg.bar successfully"
+        fi
 ---
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -75,7 +87,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: pipelinerun-object-param-result
+  generateName: pipelinerun-object-param-result-
 spec:
   params:
     - name: gitrepo
