@@ -387,10 +387,13 @@ func (tt TableTest) Test(t *testing.T, factory Factory) {
 		t.Run(test.Name, func(t *testing.T) {
 			t.Helper()
 			test.Test(t, factory)
+			opts := make([]cmp.Option, 0, len(defaultCmpOpts)+len(test.CmpOpts))
+			opts = append(opts, defaultCmpOpts...)
+			opts = append(opts, test.CmpOpts...)
 			// Validate cached objects do not get soiled after controller loops.
-			if !cmp.Equal(originObjects, test.Objects, defaultCmpOpts...) {
+			if !cmp.Equal(originObjects, test.Objects, opts...) {
 				t.Errorf("Unexpected objects (-want, +got):\n%s",
-					cmp.Diff(originObjects, test.Objects, defaultCmpOpts...))
+					cmp.Diff(originObjects, test.Objects, opts...))
 			}
 		})
 	}

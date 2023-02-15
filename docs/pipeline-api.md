@@ -2,7 +2,7 @@
 ---
 title: Pipeline API
 linkTitle: Pipeline API
-weight: 404
+weight: 1000
 ---
 -->
 
@@ -47,7 +47,7 @@ a Tekton resource like a pipeline.yaml.</p>
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -261,7 +261,7 @@ a Tekton resource like a pipeline.yaml.</p>
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -505,7 +505,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -658,7 +658,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -851,7 +851,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -924,7 +924,7 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volume-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
 []Kubernetes core/v1.Volume
 </a>
 </em>
@@ -1029,7 +1029,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -1239,7 +1239,7 @@ This field is only supported when the alpha feature gate is enabled.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -2223,7 +2223,7 @@ consume these fields via duck typing.</p>
 <td>
 <code>startTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -2236,7 +2236,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>completionTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -2304,7 +2304,7 @@ PipelineSpec
 <td>
 <code>finallyStartTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -2836,7 +2836,7 @@ PipelineTaskMetadata
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -3008,6 +3008,17 @@ ConfigSource
 </td>
 <td>
 <p>ConfigSource identifies the source where a resource came from.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>featureFlags</code><br/>
+<em>
+github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
+</em>
+</td>
+<td>
+<p>FeatureFlags identifies the feature flags that were used during the task/pipeline run</p>
 </td>
 </tr>
 </tbody>
@@ -3256,7 +3267,7 @@ Cannot be updated.</p>
 <td>
 <code>ports</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerport-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerport-v1-core">
 []Kubernetes core/v1.ContainerPort
 </a>
 </em>
@@ -3276,7 +3287,7 @@ Cannot be updated.</p>
 <td>
 <code>envFrom</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envfromsource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core">
 []Kubernetes core/v1.EnvFromSource
 </a>
 </em>
@@ -3295,7 +3306,7 @@ Cannot be updated.</p>
 <td>
 <code>env</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envvar-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envvar-v1-core">
 []Kubernetes core/v1.EnvVar
 </a>
 </em>
@@ -3310,7 +3321,7 @@ Cannot be updated.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -3326,7 +3337,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 <td>
 <code>volumeMounts</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumemount-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumemount-v1-core">
 []Kubernetes core/v1.VolumeMount
 </a>
 </em>
@@ -3341,7 +3352,7 @@ Cannot be updated.</p>
 <td>
 <code>volumeDevices</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumedevice-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumedevice-v1-core">
 []Kubernetes core/v1.VolumeDevice
 </a>
 </em>
@@ -3355,7 +3366,7 @@ Cannot be updated.</p>
 <td>
 <code>livenessProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -3372,7 +3383,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>readinessProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -3389,7 +3400,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>startupProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -3409,7 +3420,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>lifecycle</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#lifecycle-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#lifecycle-v1-core">
 Kubernetes core/v1.Lifecycle
 </a>
 </em>
@@ -3442,7 +3453,7 @@ Cannot be updated.</p>
 <td>
 <code>terminationMessagePolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#terminationmessagepolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#terminationmessagepolicy-v1-core">
 Kubernetes core/v1.TerminationMessagePolicy
 </a>
 </em>
@@ -3462,7 +3473,7 @@ Cannot be updated.</p>
 <td>
 <code>imagePullPolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#pullpolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pullpolicy-v1-core">
 Kubernetes core/v1.PullPolicy
 </a>
 </em>
@@ -3480,7 +3491,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/containers/images#updati
 <td>
 <code>securityContext</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#securitycontext-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
 Kubernetes core/v1.SecurityContext
 </a>
 </em>
@@ -3591,7 +3602,7 @@ not have access to it.</p>
 <td>
 <code>ContainerState</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerstate-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerstate-v1-core">
 Kubernetes core/v1.ContainerState
 </a>
 </em>
@@ -3837,7 +3848,7 @@ Cannot be updated.</p>
 <td>
 <code>envFrom</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envfromsource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core">
 []Kubernetes core/v1.EnvFromSource
 </a>
 </em>
@@ -3856,7 +3867,7 @@ Cannot be updated.</p>
 <td>
 <code>env</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envvar-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envvar-v1-core">
 []Kubernetes core/v1.EnvVar
 </a>
 </em>
@@ -3871,7 +3882,7 @@ Cannot be updated.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -3887,7 +3898,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 <td>
 <code>volumeMounts</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumemount-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumemount-v1-core">
 []Kubernetes core/v1.VolumeMount
 </a>
 </em>
@@ -3902,7 +3913,7 @@ Cannot be updated.</p>
 <td>
 <code>volumeDevices</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumedevice-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumedevice-v1-core">
 []Kubernetes core/v1.VolumeDevice
 </a>
 </em>
@@ -3916,7 +3927,7 @@ Cannot be updated.</p>
 <td>
 <code>imagePullPolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#pullpolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pullpolicy-v1-core">
 Kubernetes core/v1.PullPolicy
 </a>
 </em>
@@ -3934,7 +3945,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/containers/images#updati
 <td>
 <code>securityContext</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#securitycontext-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
 Kubernetes core/v1.SecurityContext
 </a>
 </em>
@@ -4087,7 +4098,7 @@ string
 <td>
 <code>ContainerState</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerstate-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerstate-v1-core">
 Kubernetes core/v1.ContainerState
 </a>
 </em>
@@ -4218,7 +4229,7 @@ Cannot be updated.</p>
 <td>
 <code>envFrom</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envfromsource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core">
 []Kubernetes core/v1.EnvFromSource
 </a>
 </em>
@@ -4237,7 +4248,7 @@ Cannot be updated.</p>
 <td>
 <code>env</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envvar-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envvar-v1-core">
 []Kubernetes core/v1.EnvVar
 </a>
 </em>
@@ -4252,7 +4263,7 @@ Cannot be updated.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -4268,7 +4279,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 <td>
 <code>volumeMounts</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumemount-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumemount-v1-core">
 []Kubernetes core/v1.VolumeMount
 </a>
 </em>
@@ -4283,7 +4294,7 @@ Cannot be updated.</p>
 <td>
 <code>volumeDevices</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumedevice-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumedevice-v1-core">
 []Kubernetes core/v1.VolumeDevice
 </a>
 </em>
@@ -4297,7 +4308,7 @@ Cannot be updated.</p>
 <td>
 <code>imagePullPolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#pullpolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pullpolicy-v1-core">
 Kubernetes core/v1.PullPolicy
 </a>
 </em>
@@ -4315,7 +4326,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/containers/images#updati
 <td>
 <code>securityContext</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#securitycontext-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
 Kubernetes core/v1.SecurityContext
 </a>
 </em>
@@ -4677,7 +4688,7 @@ string
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -4889,7 +4900,7 @@ This field is only supported when the alpha feature gate is enabled.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -5014,7 +5025,7 @@ string
 <td>
 <code>startTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -5027,7 +5038,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>completionTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -5153,7 +5164,7 @@ string
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -5227,7 +5238,7 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volume-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
 []Kubernetes core/v1.Volume
 </a>
 </em>
@@ -5456,7 +5467,7 @@ for this binding (i.e. the volume will be mounted at this sub directory).</p>
 <td>
 <code>volumeClaimTemplate</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#persistentvolumeclaim-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core">
 Kubernetes core/v1.PersistentVolumeClaim
 </a>
 </em>
@@ -5471,7 +5482,7 @@ The PipelineRun controller is responsible for creating a unique claim for each i
 <td>
 <code>persistentVolumeClaim</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#persistentvolumeclaimvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaimvolumesource-v1-core">
 Kubernetes core/v1.PersistentVolumeClaimVolumeSource
 </a>
 </em>
@@ -5486,7 +5497,7 @@ PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used
 <td>
 <code>emptyDir</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#emptydirvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#emptydirvolumesource-v1-core">
 Kubernetes core/v1.EmptyDirVolumeSource
 </a>
 </em>
@@ -5502,7 +5513,7 @@ Either this OR PersistentVolumeClaim can be used.</p>
 <td>
 <code>configMap</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#configmapvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#configmapvolumesource-v1-core">
 Kubernetes core/v1.ConfigMapVolumeSource
 </a>
 </em>
@@ -5516,7 +5527,7 @@ Kubernetes core/v1.ConfigMapVolumeSource
 <td>
 <code>secret</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#secretvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secretvolumesource-v1-core">
 Kubernetes core/v1.SecretVolumeSource
 </a>
 </em>
@@ -5530,7 +5541,7 @@ Kubernetes core/v1.SecretVolumeSource
 <td>
 <code>projected</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#projectedvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#projectedvolumesource-v1-core">
 Kubernetes core/v1.ProjectedVolumeSource
 </a>
 </em>
@@ -5544,7 +5555,7 @@ Kubernetes core/v1.ProjectedVolumeSource
 <td>
 <code>csi</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#csivolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#csivolumesource-v1-core">
 Kubernetes core/v1.CSIVolumeSource
 </a>
 </em>
@@ -5777,7 +5788,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -5994,7 +6005,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -6088,7 +6099,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -6324,7 +6335,7 @@ structs.</p>
 <td>
 <code>secretRef</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#secretreference-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secretreference-v1-core">
 Kubernetes core/v1.SecretReference
 </a>
 </em>
@@ -6997,7 +7008,7 @@ via duck typing.</p>
 <td>
 <code>startTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -7011,7 +7022,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>completionTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -7119,7 +7130,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -7208,7 +7219,7 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volume-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
 []Kubernetes core/v1.Volume
 </a>
 </em>
@@ -7311,7 +7322,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -7509,7 +7520,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -7676,7 +7687,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -7910,7 +7921,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -7999,7 +8010,7 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volume-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
 []Kubernetes core/v1.Volume
 </a>
 </em>
@@ -8104,7 +8115,7 @@ string
 <td>
 <code>metadata</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#objectmeta-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#objectmeta-v1-meta">
 Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
@@ -8327,7 +8338,7 @@ This field is only supported when the alpha feature gate is enabled.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -8491,7 +8502,7 @@ CloudEventCondition
 <td>
 <code>sentAt</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -8944,7 +8955,7 @@ TaskSpec
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volume-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
 []Kubernetes core/v1.Volume
 </a>
 </em>
@@ -9915,7 +9926,7 @@ consume these fields via duck typing.</p>
 <td>
 <code>startTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -9928,7 +9939,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>completionTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -9996,7 +10007,7 @@ PipelineSpec
 <td>
 <code>finallyStartTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -10712,7 +10723,7 @@ PipelineTaskMetadata
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -10842,6 +10853,17 @@ ConfigSource
 </td>
 <td>
 <p>ConfigSource identifies the source where a resource came from.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>featureFlags</code><br/>
+<em>
+github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
+</em>
+</td>
+<td>
+<p>FeatureFlags identifies the feature flags that were used during the task/pipeline run</p>
 </td>
 </tr>
 </tbody>
@@ -11087,7 +11109,7 @@ Cannot be updated.</p>
 <td>
 <code>ports</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerport-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerport-v1-core">
 []Kubernetes core/v1.ContainerPort
 </a>
 </em>
@@ -11107,7 +11129,7 @@ Cannot be updated.</p>
 <td>
 <code>envFrom</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envfromsource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core">
 []Kubernetes core/v1.EnvFromSource
 </a>
 </em>
@@ -11126,7 +11148,7 @@ Cannot be updated.</p>
 <td>
 <code>env</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envvar-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envvar-v1-core">
 []Kubernetes core/v1.EnvVar
 </a>
 </em>
@@ -11141,7 +11163,7 @@ Cannot be updated.</p>
 <td>
 <code>resources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -11157,7 +11179,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 <td>
 <code>volumeMounts</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumemount-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumemount-v1-core">
 []Kubernetes core/v1.VolumeMount
 </a>
 </em>
@@ -11172,7 +11194,7 @@ Cannot be updated.</p>
 <td>
 <code>volumeDevices</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumedevice-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumedevice-v1-core">
 []Kubernetes core/v1.VolumeDevice
 </a>
 </em>
@@ -11186,7 +11208,7 @@ Cannot be updated.</p>
 <td>
 <code>livenessProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -11203,7 +11225,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>readinessProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -11220,7 +11242,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>startupProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -11240,7 +11262,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>lifecycle</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#lifecycle-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#lifecycle-v1-core">
 Kubernetes core/v1.Lifecycle
 </a>
 </em>
@@ -11273,7 +11295,7 @@ Cannot be updated.</p>
 <td>
 <code>terminationMessagePolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#terminationmessagepolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#terminationmessagepolicy-v1-core">
 Kubernetes core/v1.TerminationMessagePolicy
 </a>
 </em>
@@ -11293,7 +11315,7 @@ Cannot be updated.</p>
 <td>
 <code>imagePullPolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#pullpolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pullpolicy-v1-core">
 Kubernetes core/v1.PullPolicy
 </a>
 </em>
@@ -11311,7 +11333,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/containers/images#updati
 <td>
 <code>securityContext</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#securitycontext-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
 Kubernetes core/v1.SecurityContext
 </a>
 </em>
@@ -11422,7 +11444,7 @@ not have access to it.</p>
 <td>
 <code>ContainerState</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerstate-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerstate-v1-core">
 Kubernetes core/v1.ContainerState
 </a>
 </em>
@@ -11629,7 +11651,7 @@ Cannot be updated.</p>
 <td>
 <code>ports</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerport-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerport-v1-core">
 []Kubernetes core/v1.ContainerPort
 </a>
 </em>
@@ -11650,7 +11672,7 @@ Cannot be updated.</p>
 <td>
 <code>envFrom</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envfromsource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core">
 []Kubernetes core/v1.EnvFromSource
 </a>
 </em>
@@ -11669,7 +11691,7 @@ Cannot be updated.</p>
 <td>
 <code>env</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envvar-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envvar-v1-core">
 []Kubernetes core/v1.EnvVar
 </a>
 </em>
@@ -11684,7 +11706,7 @@ Cannot be updated.</p>
 <td>
 <code>resources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -11700,7 +11722,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 <td>
 <code>volumeMounts</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumemount-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumemount-v1-core">
 []Kubernetes core/v1.VolumeMount
 </a>
 </em>
@@ -11715,7 +11737,7 @@ Cannot be updated.</p>
 <td>
 <code>volumeDevices</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumedevice-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumedevice-v1-core">
 []Kubernetes core/v1.VolumeDevice
 </a>
 </em>
@@ -11729,7 +11751,7 @@ Cannot be updated.</p>
 <td>
 <code>livenessProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -11747,7 +11769,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>readinessProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -11765,7 +11787,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>startupProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -11786,7 +11808,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>lifecycle</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#lifecycle-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#lifecycle-v1-core">
 Kubernetes core/v1.Lifecycle
 </a>
 </em>
@@ -11814,7 +11836,7 @@ string
 <td>
 <code>terminationMessagePolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#terminationmessagepolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#terminationmessagepolicy-v1-core">
 Kubernetes core/v1.TerminationMessagePolicy
 </a>
 </em>
@@ -11828,7 +11850,7 @@ Kubernetes core/v1.TerminationMessagePolicy
 <td>
 <code>imagePullPolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#pullpolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pullpolicy-v1-core">
 Kubernetes core/v1.PullPolicy
 </a>
 </em>
@@ -11846,7 +11868,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/containers/images#updati
 <td>
 <code>securityContext</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#securitycontext-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
 Kubernetes core/v1.SecurityContext
 </a>
 </em>
@@ -12047,7 +12069,7 @@ string
 <td>
 <code>ContainerState</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerstate-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerstate-v1-core">
 Kubernetes core/v1.ContainerState
 </a>
 </em>
@@ -12192,7 +12214,7 @@ Cannot be updated.</p>
 <td>
 <code>ports</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#containerport-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#containerport-v1-core">
 []Kubernetes core/v1.ContainerPort
 </a>
 </em>
@@ -12213,7 +12235,7 @@ Cannot be updated.</p>
 <td>
 <code>envFrom</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envfromsource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core">
 []Kubernetes core/v1.EnvFromSource
 </a>
 </em>
@@ -12232,7 +12254,7 @@ Cannot be updated.</p>
 <td>
 <code>env</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#envvar-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envvar-v1-core">
 []Kubernetes core/v1.EnvVar
 </a>
 </em>
@@ -12247,7 +12269,7 @@ Cannot be updated.</p>
 <td>
 <code>resources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -12263,7 +12285,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/configuration/manage-res
 <td>
 <code>volumeMounts</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumemount-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumemount-v1-core">
 []Kubernetes core/v1.VolumeMount
 </a>
 </em>
@@ -12278,7 +12300,7 @@ Cannot be updated.</p>
 <td>
 <code>volumeDevices</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volumedevice-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volumedevice-v1-core">
 []Kubernetes core/v1.VolumeDevice
 </a>
 </em>
@@ -12292,7 +12314,7 @@ Cannot be updated.</p>
 <td>
 <code>livenessProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -12310,7 +12332,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>readinessProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -12328,7 +12350,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>startupProbe</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#probe-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#probe-v1-core">
 Kubernetes core/v1.Probe
 </a>
 </em>
@@ -12349,7 +12371,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifec
 <td>
 <code>lifecycle</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#lifecycle-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#lifecycle-v1-core">
 Kubernetes core/v1.Lifecycle
 </a>
 </em>
@@ -12377,7 +12399,7 @@ string
 <td>
 <code>terminationMessagePolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#terminationmessagepolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#terminationmessagepolicy-v1-core">
 Kubernetes core/v1.TerminationMessagePolicy
 </a>
 </em>
@@ -12391,7 +12413,7 @@ Kubernetes core/v1.TerminationMessagePolicy
 <td>
 <code>imagePullPolicy</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#pullpolicy-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#pullpolicy-v1-core">
 Kubernetes core/v1.PullPolicy
 </a>
 </em>
@@ -12409,7 +12431,7 @@ More info: <a href="https://kubernetes.io/docs/concepts/containers/images#updati
 <td>
 <code>securityContext</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#securitycontext-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#securitycontext-v1-core">
 Kubernetes core/v1.SecurityContext
 </a>
 </em>
@@ -13017,7 +13039,7 @@ string
 <td>
 <code>resources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -13242,7 +13264,7 @@ This field is only supported when the alpha feature gate is enabled.</p>
 <td>
 <code>computeResources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -13351,7 +13373,7 @@ string
 <td>
 <code>startTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -13364,7 +13386,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>completionTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -13532,7 +13554,7 @@ string
 <td>
 <code>resources</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#resourcerequirements-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#resourcerequirements-v1-core">
 Kubernetes core/v1.ResourceRequirements
 </a>
 </em>
@@ -13622,7 +13644,7 @@ source mounted into /workspace.</p>
 <td>
 <code>volumes</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#volume-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#volume-v1-core">
 []Kubernetes core/v1.Volume
 </a>
 </em>
@@ -13851,7 +13873,7 @@ for this binding (i.e. the volume will be mounted at this sub directory).</p>
 <td>
 <code>volumeClaimTemplate</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#persistentvolumeclaim-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaim-v1-core">
 Kubernetes core/v1.PersistentVolumeClaim
 </a>
 </em>
@@ -13866,7 +13888,7 @@ The PipelineRun controller is responsible for creating a unique claim for each i
 <td>
 <code>persistentVolumeClaim</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#persistentvolumeclaimvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#persistentvolumeclaimvolumesource-v1-core">
 Kubernetes core/v1.PersistentVolumeClaimVolumeSource
 </a>
 </em>
@@ -13881,7 +13903,7 @@ PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used
 <td>
 <code>emptyDir</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#emptydirvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#emptydirvolumesource-v1-core">
 Kubernetes core/v1.EmptyDirVolumeSource
 </a>
 </em>
@@ -13897,7 +13919,7 @@ Either this OR PersistentVolumeClaim can be used.</p>
 <td>
 <code>configMap</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#configmapvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#configmapvolumesource-v1-core">
 Kubernetes core/v1.ConfigMapVolumeSource
 </a>
 </em>
@@ -13911,7 +13933,7 @@ Kubernetes core/v1.ConfigMapVolumeSource
 <td>
 <code>secret</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#secretvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#secretvolumesource-v1-core">
 Kubernetes core/v1.SecretVolumeSource
 </a>
 </em>
@@ -13925,7 +13947,7 @@ Kubernetes core/v1.SecretVolumeSource
 <td>
 <code>projected</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#projectedvolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#projectedvolumesource-v1-core">
 Kubernetes core/v1.ProjectedVolumeSource
 </a>
 </em>
@@ -13939,7 +13961,7 @@ Kubernetes core/v1.ProjectedVolumeSource
 <td>
 <code>csi</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#csivolumesource-v1-core">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#csivolumesource-v1-core">
 Kubernetes core/v1.CSIVolumeSource
 </a>
 </em>
@@ -14236,7 +14258,7 @@ via duck typing.</p>
 <td>
 <code>startTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>
@@ -14250,7 +14272,7 @@ Kubernetes meta/v1.Time
 <td>
 <code>completionTime</code><br/>
 <em>
-<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#time-v1-meta">
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#time-v1-meta">
 Kubernetes meta/v1.Time
 </a>
 </em>

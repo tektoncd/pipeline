@@ -55,7 +55,8 @@ func ValidateCreates(ctx context.Context, action clientgotesting.Action) (handle
 	if !ok {
 		return false, nil, nil
 	}
-	if err := obj.Validate(ctx); err != nil {
+	// Only return error-level errors; warnings should not block API calls.
+	if err := obj.Validate(ctx).Filter(apis.ErrorLevel); err != nil {
 		return true, nil, err
 	}
 	return false, nil, nil
@@ -67,7 +68,8 @@ func ValidateUpdates(ctx context.Context, action clientgotesting.Action) (handle
 	if !ok {
 		return false, nil, nil
 	}
-	if err := obj.Validate(ctx); err != nil {
+	// Only return error-level errors; warnings should not block API calls.
+	if err := obj.Validate(ctx).Filter(apis.ErrorLevel); err != nil {
 		return true, nil, err
 	}
 	return false, nil, nil

@@ -39,7 +39,10 @@ var (
 // The result will have a '-dirty' suffix if the workspace was not clean
 func Get() string {
 	once.Do(func() {
-		rev = get()
+		if rev == "" {
+			rev = get()
+		}
+		// It has been set through ldflags, do nothing
 	})
 
 	return rev

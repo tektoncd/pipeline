@@ -21,7 +21,7 @@ This guide explains how to install Tekton Pipelines.
 
 ## Prerequisites
 
--   A [Kubernetes cluster][k8s] running version 1.23 or later.
+-   A [Kubernetes cluster][k8s] running version 1.24 or later.
 -   If you are running on `macOS`, make sure Docker is running
 -   [Kubectl][].
 -   Grant `cluster-admin` privileges to the current user. See the [Kubernetes

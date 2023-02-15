@@ -110,7 +110,7 @@ func NewServer(handler http.Handler) *http.Server {
 		port = strconv.Itoa(ProfilingPort)
 	}
 
-	//nolint:gosec // https://github.com/knative/pkg/issues/2632
+	//nolint:gosec
 	return &http.Server{
 		Addr:    ":" + port,
 		Handler: handler,

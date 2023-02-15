@@ -82,7 +82,7 @@ func startNewPromSrv(e *prom.Exporter, host string, port int) *http.Server {
 	if curPromSrv != nil {
 		curPromSrv.Close()
 	}
-	//nolint:gosec // https://github.com/knative/pkg/issues/2632
+	//nolint:gosec
 	curPromSrv = &http.Server{
 		Addr:    host + ":" + strconv.Itoa(port),
 		Handler: sm,
