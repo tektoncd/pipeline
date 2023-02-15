@@ -1182,7 +1182,21 @@ For more information, see the [`LimitRange` support in Pipeline](./compute-resou
 
 ### Configuring a failure timeout
 
-You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.  There are three sub-fields than can be used to specify failures timeout for the entire pipeline, for tasks, and for `finally` tasks.
+You can use the `timeouts` field to set the `PipelineRun's` desired timeout value in minutes.
+There are three sub-fields:
+- `pipeline`: specifies the timeout for the entire PipelineRun. Defaults to to the global configurable default timeout of 60 minutes.
+When `timeouts.pipeline` has elapsed, any running child TaskRuns will be canceled, regardless of whether they are normal Tasks
+or `finally` Tasks, and the PipelineRun will fail.
+- `tasks`: specifies the timeout for the cumulative time taken by non-`finally` Tasks specified in `pipeline.spec.tasks`.
+To specify a timeout for an individual Task, use `pipeline.spec.tasks[].timeout`.
+When `timeouts.tasks` has elapsed, any running child TaskRuns will be canceled, finally Tasks will run if `timeouts.finally` is specified,
+and the PipelineRun will fail.
+- `finally`: the timeout for the cumulative time taken by `finally` Tasks specified in `pipeline.spec.finally`.
+(Since all `finally` Tasks run in parallel, this is functionally equivalent to the timeout for any `finally` Task.)
+When `timeouts.finally` has elapsed, any running `finally` TaskRuns will be canceled,
+and the PipelineRun will fail.
+
+For example:
 
 ```yaml
 timeouts:
@@ -1190,8 +1204,21 @@ timeouts:
   tasks: "0h0m40s"
   finally: "0h0m20s"
 ```
+
 All three sub-fields are optional, and will be automatically processed according to the following constraint:
 * `timeouts.pipeline >= timeouts.tasks + timeouts.finally`
+
+The global default timeout is set to 60 minutes when you first install Tekton. You can set
+a different global default timeout value using the `default-timeout-minutes` field in
+[`config/config-defaults.yaml`](./../config/config-defaults.yaml).
+
+Each `timeout` field is a `duration` conforming to Go's
+[`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
+values are `1h30m`, `1h`, `1m`, and `60s`.
+
+If any of the sub-fields are set to "0", there is no timeout for that section of the PipelineRun,
+meaning that it will run until it completes successfully or encounters an error.
+To set `timeouts.tasks` or `timeouts.finally` to "0", you must also set `timeouts.pipeline` to "0".
 
 Example timeouts usages are as follows:
 
@@ -1240,19 +1267,6 @@ If you do not specify this value in the `PipelineRun`, the global default timeou
 If you set the timeout to 0, the `PipelineRun` fails immediately upon encountering an error.
 
 > :warning: ** `timeout` is deprecated and will be removed in future versions. Consider using `timeouts` instead.
-
-If you do not specify the `timeout` value or `timeouts.pipeline` in the `PipelineRun`, the global default timeout value applies.
-If you set the `timeout` value or `timeouts.pipeline` to 0, the `PipelineRun` fails immediately upon encountering an error.
-If `timeouts.tasks` or `timeouts.finally` is set to 0, `timeouts.pipeline` must also be set to 0.
-
-The global default timeout is set to 60 minutes when you first install Tekton. You can set
-a different global default timeout value using the `default-timeout-minutes` field in
-[`config/config-defaults.yaml`](./../config/config-defaults.yaml).
-
-The `timeout` value is a `duration` conforming to Go's
-[`ParseDuration`](https://golang.org/pkg/time/#ParseDuration) format. For example, valid
-values are `1h30m`, `1h`, `1m`, and `60s`. If you set the global timeout to 0, all `PipelineRuns`
-that do not have an individual timeout set will fail immediately upon encountering an error.
 
 ## `PipelineRun` status
 
