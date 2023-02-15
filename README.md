@@ -40,6 +40,7 @@ Tekton Pipelines are **Typed**:
 - Starting from the v0.33.x release of Tekton: **Kubernetes version 1.21 or later**
 - Starting from the v0.39.x release of Tekton: **Kubernetes version 1.22 or later**
 - Starting from the v0.41.x release of Tekton: **Kubernetes version 1.23 or later**
+- Starting from the v0.45.x release of Tekton: **Kubernetes version 1.24 or later**
 
 ### Read the docs
 

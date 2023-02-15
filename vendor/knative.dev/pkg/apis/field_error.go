@@ -256,10 +256,15 @@ func (fe *FieldError) normalized() []*FieldError {
 	return errors
 }
 
+// WrappedErrors returns the value of the errors after normalizing and deduping using merge().
+func (fe *FieldError) WrappedErrors() []*FieldError {
+	return merge(fe.normalized())
+}
+
 // Error implements error
 func (fe *FieldError) Error() string {
 	// Get the list of errors as a flat merged list.
-	normedErrors := merge(fe.normalized())
+	normedErrors := fe.WrappedErrors()
 	errs := make([]string, 0, len(normedErrors))
 	for _, e := range normedErrors {
 		if e.Details == "" {

@@ -17,8 +17,10 @@ limitations under the License.
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"strconv"
 	texttemplate "text/template"
 
 	corev1 "k8s.io/api/core/v1"
@@ -81,6 +83,22 @@ type ObservabilityConfig struct {
 	MetricsCollectorAddress string
 }
 
+type ocfg struct{}
+
+// WithConfig associates a observability configuration with the context.
+func WithConfig(ctx context.Context, cfg *ObservabilityConfig) context.Context {
+	return context.WithValue(ctx, ocfg{}, cfg)
+}
+
+// GetObservability gets the observability config from the provided context.
+func GetObservabilityConfig(ctx context.Context) *ObservabilityConfig {
+	untyped := ctx.Value(ocfg{})
+	if untyped == nil {
+		return nil
+	}
+	return untyped.(*ObservabilityConfig)
+}
+
 func defaultConfig() *ObservabilityConfig {
 	return &ObservabilityConfig{
 		LoggingURLTemplate:    DefaultLogURLTemplate,
@@ -92,6 +110,9 @@ func defaultConfig() *ObservabilityConfig {
 // NewObservabilityConfigFromConfigMap creates a ObservabilityConfig from the supplied ConfigMap
 func NewObservabilityConfigFromConfigMap(configMap *corev1.ConfigMap) (*ObservabilityConfig, error) {
 	oc := defaultConfig()
+	if configMap == nil {
+		return oc, nil
+	}
 
 	if err := cm.Parse(configMap.Data,
 		cm.AsBool("logging.enable-var-log-collection", &oc.EnableVarLogCollection),
@@ -118,6 +139,21 @@ func NewObservabilityConfigFromConfigMap(configMap *corev1.ConfigMap) (*Observab
 	}
 
 	return oc, nil
+}
+
+func (oc *ObservabilityConfig) GetConfigMap() corev1.ConfigMap {
+	return corev1.ConfigMap{
+		Data: map[string]string{
+			"logging.enable-var-log-collection":           strconv.FormatBool(oc.EnableVarLogCollection),
+			"logging.revision-url-template":               oc.LoggingURLTemplate,
+			ReqLogTemplateKey:                             oc.RequestLogTemplate,
+			EnableReqLogKey:                               strconv.FormatBool(oc.EnableRequestLog),
+			EnableProbeReqLogKey:                          strconv.FormatBool(oc.EnableProbeRequestLog),
+			"metrics.request-metrics-backend-destination": oc.RequestMetricsBackend,
+			"profiling.enable":                            strconv.FormatBool(oc.EnableProfiling),
+			"metrics.opencensus-address":                  oc.MetricsCollectorAddress,
+		},
+	}
 }
 
 // ConfigMapName gets the name of the metrics ConfigMap
