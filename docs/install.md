@@ -22,7 +22,6 @@ This guide explains how to install Tekton Pipelines.
 ## Prerequisites
 
 -   A [Kubernetes cluster][k8s] running version 1.24 or later.
--   If you are running on `macOS`, make sure Docker is running
 -   [Kubectl][].
 -   Grant `cluster-admin` privileges to the current user. See the [Kubernetes
     role-based access control (RBAC) docs][rbac] for more information.
@@ -103,7 +102,7 @@ Kubernetes cluster.
 
 You can enable additional alpha and beta features, customize execution
 parameters, configure availability, and many more options. See the
-[addition configurations options][post-install] for more information.
+[addition configurations options](./additional-configs.md) for more information.
 
 ## Next steps
 
@@ -123,34 +122,9 @@ under the [Apache 2.0 License][apache2l].
 [examples]: https://github.com/tektoncd/pipeline/tree/main/examples/
 [cca4]: https://creativecommons.org/licenses/by/4.0/
 [apache2l]: https://www.apache.org/licenses/LICENSE-2.0
-[post-install]: ./additional-configs.md
+[k8s]: https://www.downloadkubernetes.com/
+[kubectl]: https://www.downloadkubernetes.com/
+[rbac]: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+[metrics]: https://github.com/kubernetes-sigs/metrics-server
+[local-install]: https://tekton.dev/docs/installation/local-installation/
 
-## Troubleshooting
-
-1. If `kind create cluster` fails to create cluster with below message. Please check if `Docker` is running on the machine.
-
-  ```
-    $ kind create cluster
-    ERROR: failed to create cluster: failed to list nodes: command "docker ps -a --filter label=io.x-k8s.kind.cluster=kind --format '{{.Names}}'" failed with error: exit status 1
-    Command Output: Cannot connect to the Docker daemon at unix:///Users/USER/.docker/run/docker.sock. Is the docker daemon running?
-    Ms-MacBook-Pro:~$ docker ps
-    Cannot connect to the Docker daemon at unix:///Users/USER/.docker/run/docker.sock. Is the docker daemon running?
-  ```
-  After starting docker
-
-  ```
-  Ms-MacBook-Pro:~$ kind create cluster
-  Creating cluster "kind" ...
-  ✓ Ensuring node image (kindest/node:v1.25.3) 🖼 
-  ✓ Preparing nodes 📦  
-  ✓ Writing configuration 📜 
-  ✓ Starting control-plane 🕹️ 
-  ✓ Installing CNI 🔌 
-  ✓ Installing StorageClass 💾 
-  Set kubectl context to "kind-kind"
-  You can now use your cluster with:
-
-  kubectl cluster-info --context kind-kind
-
-  Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
-  ```
