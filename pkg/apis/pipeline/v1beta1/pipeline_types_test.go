@@ -1079,10 +1079,49 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "matrixed",
+			name: "matrixed with params",
 			arg: arg{
 				Matrix: &Matrix{
 					Params: []Param{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+				},
+			},
+			expected: true,
+		}, {
+			name: "matrixed with include",
+			arg: arg{
+				Matrix: &Matrix{
+					Include: []MatrixInclude{
+						{Name: "build-1"},
+						{Params: []Param{
+							{Name: "IMAGE", Value: ParamValue{StringVal: "image-1"}},
+							{Name: "DOCKERFILE", Value: ParamValue{StringVal: "path/to/Dockerfile1"}},
+						}},
+						{Name: "build-2"},
+						{Params: []Param{
+							{Name: "IMAGE", Value: ParamValue{StringVal: "image-2"}},
+							{Name: "DOCKERFILE", Value: ParamValue{StringVal: "path/to/Dockerfile2"}},
+						}},
+						{Name: "build-3"},
+						{Params: []Param{
+							{Name: "IMAGE", Value: ParamValue{StringVal: "image-3"}},
+							{Name: "DOCKERFILE", Value: ParamValue{StringVal: "path/to/Dockerfile3"}},
+						}},
+					},
+				},
+			},
+			expected: true,
+		}, {
+			name: "matrixed with params and include",
+			arg: arg{
+				Matrix: &Matrix{
+					Params: []Param{{Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}}}},
+					Include: []MatrixInclude{
+						{Name: "s390x-no-race"},
+						{Params: []Param{
+							{Name: "GOARCH", Value: ParamValue{StringVal: "linux/s390x"}},
+							{Name: "flags", Value: ParamValue{StringVal: "-cover -v"}},
+						}},
+					},
 				},
 			},
 			expected: true,

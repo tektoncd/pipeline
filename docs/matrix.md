@@ -12,6 +12,7 @@ weight: 406
   - [Concurrency Control](#concurrency-control)
   - [Parameters](#parameters)
     - [Specifying both `params` and `matrix` in a `PipelineTask`](#specifying-both-params-and-matrix-in-a-pipelinetask)
+  - [Include](#Include)
   - [Context Variables](#context-variables)
   - [Results](#results)
     - [Specifying Results in a Matrix](#specifying-results-in-a-matrix)
@@ -24,7 +25,7 @@ weight: 406
 ## Overview
 
 `Matrix` is used to fan out `Tasks` in a `Pipeline`. This doc will explain the details of `matrix` support in
-Tekton. 
+Tekton.
 
 Documentation for specifying `Matrix` in a `Pipeline`:
 - [Specifying `Matrix` in `Tasks`](pipelines.md#specifying-matrix-in-pipelinetasks)
@@ -40,12 +41,12 @@ A `Matrix` supports the following features:
 * [Concurrency Control](#concurrency-control)
 * [Parameters](#parameters)
 * [Context Variables](#context-variables)
-* [Results](#results) 
+* [Results](#results)
 
 ### Concurrency Control
 
 The default maximum count of `TaskRuns` or `Runs` from a given `Matrix` is **256**. To customize the maximum count of
-`TaskRuns` or `Runs` generated from a given `Matrix`, configure the `default-max-matrix-combinations-count` in 
+`TaskRuns` or `Runs` generated from a given `Matrix`, configure the `default-max-matrix-combinations-count` in
 [config defaults](/config/config-defaults.yaml). When a `Matrix` in `PipelineTask` would generate more than the maximum
 `TaskRuns` or `Runs`, the `Pipeline` validation would fail.
 
@@ -92,7 +93,7 @@ spec:
       default:
         - chrome
         - safari
-        - firefox    
+        - firefox
   tasks:
   - name: fetch-repository
     taskRef:
@@ -110,7 +111,7 @@ spec:
   ...
 ```
 
-A `Parameter` can be passed to either the `matrix` or `params` field, not both. 
+A `Parameter` can be passed to either the `matrix` or `params` field, not both.
 
 For further details on specifying `Parameters` in the `Pipeline` and passing them to
 `PipelineTasks`, see [documentation](pipelines.md#specifying-parameters).
@@ -148,9 +149,15 @@ spec:
   ...
 ```
 
+### Include
+> :warning: This feature is in a preview mode.
+> It is still in a very early stage of development and is not yet fully functional.
+
+The `Include` section in the `Matrix` field exists, but is not yet functional.
+
 ### Context Variables
 
-Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Matrix` field will accept 
+Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Matrix` field will accept
 [context variables](variables.md) that will be substituted, including:
 
 * `PipelineRun` name, namespace and uid
@@ -161,7 +168,7 @@ Similarly to the `Parameters` in the `Params` field, the `Parameters` in the `Ma
 
 #### Specifying Results in a Matrix
 
-Consuming `Results` from previous `TaskRuns` or `Runs` in a `Matrix`, which would dynamically generate 
+Consuming `Results` from previous `TaskRuns` or `Runs` in a `Matrix`, which would dynamically generate
 `TaskRuns` or `Runs` from the fanned out `PipelineTask`, is supported. Producing `Results` in from a
 `PipelineTask` with a `Matrix` is not yet supported - see [further details](#results-from-fanned-out-pipelinetasks).
 
@@ -203,7 +210,7 @@ tasks:
 
 Consuming `Results` from fanned out `PipelineTasks` will not be in the supported in the initial iteration
 of `Matrix`. Supporting consuming `Results` from fanned out `PipelineTasks` will be revisited after array
-and object `Results` are supported. 
+and object `Results` are supported.
 
 ## Fan Out
 
@@ -487,7 +494,7 @@ status:
         name: platforms-and-browsers
         taskRef:
           apiVersion: cel.tekton.dev/v1alpha1
-          kind: CEL  
+          kind: CEL
   startTime: "2022-06-28T20:49:40Z"
   completionTime: "2022-06-28T20:49:41Z"
   conditions:
@@ -495,7 +502,7 @@ status:
       message: 'Tasks Completed: 1 (Failed: 0, Cancelled 0), Skipped: 0'
       reason: Succeeded
       status: "True"
-      type: Succeeded  
+      type: Succeeded
   childReferences:
     - apiVersion: tekton.dev/v1alpha1
       kind: Run
@@ -533,11 +540,11 @@ status:
 
 ## Retries
 
-The `retries` field is used to specify the number of times a `PipelineTask` should be retried when its `TaskRun` or 
-`Run` fails, see the [documentation][retries] for further details. When a `PipelineTask` is fanned out using `Matrix`, 
+The `retries` field is used to specify the number of times a `PipelineTask` should be retried when its `TaskRun` or
+`Run` fails, see the [documentation][retries] for further details. When a `PipelineTask` is fanned out using `Matrix`,
 a given `TaskRun` or `Run` executed will be retried as much as the field in the `retries` field of the `PipelineTask`.
 
-For example, the `PipelineTask` in this `PipelineRun` will be fanned out into three `TaskRuns` each of which will be 
+For example, the `PipelineTask` in this `PipelineRun` will be fanned out into three `TaskRuns` each of which will be
 retried once:
 
 ```yaml

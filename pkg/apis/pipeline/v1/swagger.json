@@ -7,7 +7,7 @@
   },
   "paths": {},
   "definitions": {
-    "pod.AffinityAssistantTemplate": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.pod.AffinityAssistantTemplate": {
       "description": "AffinityAssistantTemplate holds pod specific configuration and is a subset of the generic pod Template",
       "type": "object",
       "properties": {
@@ -39,7 +39,7 @@
         }
       }
     },
-    "pod.Template": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.pod.Template": {
       "description": "Template holds pod specific configuration",
       "type": "object",
       "properties": {
@@ -151,7 +151,7 @@
         }
       }
     },
-    "v1.ChildStatusReference": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.ChildStatusReference": {
       "description": "ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.",
       "type": "object",
       "properties": {
@@ -174,13 +174,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WhenExpression"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WhenExpression"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.ConfigSource": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.ConfigSource": {
       "description": "ConfigSource identifies the source where a resource came from. This can include Git repositories, Task Bundles, file checksums, or other information that allows users to identify where the resource came from and what version was used.",
       "type": "object",
       "properties": {
@@ -202,7 +202,7 @@
         }
       }
     },
-    "v1.EmbeddedTask": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.EmbeddedTask": {
       "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
       "type": "object",
       "properties": {
@@ -218,14 +218,14 @@
         },
         "metadata": {
           "default": {},
-          "$ref": "#/definitions/v1.PipelineTaskMetadata"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskMetadata"
         },
         "params": {
           "description": "Params is a list of input parameters required to run the task. Params must be supplied as inputs in TaskRuns unless they declare a default value.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.ParamSpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -234,7 +234,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskResult"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskResult"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -243,7 +243,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Sidecar"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Sidecar"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -254,14 +254,14 @@
         },
         "stepTemplate": {
           "description": "StepTemplate can be used as the basis for all step containers within the Task, so that the steps inherit settings on the base container.",
-          "$ref": "#/definitions/v1.StepTemplate"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepTemplate"
         },
         "steps": {
           "description": "Steps are the steps of the build; each step is run sequentially with the source mounted into /workspace.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Step"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Step"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -279,28 +279,56 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspaceDeclaration"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceDeclaration"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.Matrix": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.Matrix": {
       "description": "Matrix is used to fan out Tasks in a Pipeline",
       "type": "object",
       "properties": {
+        "include": {
+          "description": "Include is a list of MatrixInclude Note this field is in preview mode and not yet supported",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.MatrixInclude"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "params": {
           "description": "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Param"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.Param": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.MatrixInclude": {
+      "description": "MatrixInclude allows passing in a specific combinations of Parameters into the Matrix. Note this struct is in preview mode and not yet supported",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name the specified combination",
+          "type": "string"
+        },
+        "params": {
+          "description": "Params takes only `Parameters` of type `\"string\"` The names of the `params` must match the names of the `params` in the underlying `Task`",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.Param": {
       "description": "Param declares an ParamValues to use for the parameter called name.",
       "type": "object",
       "required": [
@@ -314,11 +342,11 @@
         },
         "value": {
           "default": {},
-          "$ref": "#/definitions/v1.ParamValue"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamValue"
         }
       }
     },
-    "v1.ParamSpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamSpec": {
       "description": "ParamSpec defines arbitrary parameters needed beyond typed inputs (such as resources). Parameter values are provided by users as inputs on a TaskRun or PipelineRun.",
       "type": "object",
       "required": [
@@ -327,7 +355,7 @@
       "properties": {
         "default": {
           "description": "Default is the value a parameter takes if no input value is supplied. If default is set, a Task may be executed without a supplied value for the parameter.",
-          "$ref": "#/definitions/v1.ParamValue"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamValue"
         },
         "description": {
           "description": "Description is a user-facing description of the parameter that may be used to populate a UI.",
@@ -343,7 +371,7 @@
           "type": "object",
           "additionalProperties": {
             "default": {},
-            "$ref": "#/definitions/v1.PropertySpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PropertySpec"
           }
         },
         "type": {
@@ -352,7 +380,7 @@
         }
       }
     },
-    "v1.ParamValue": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamValue": {
       "description": "ResultValue is a type alias of ParamValue",
       "type": "object",
       "required": [
@@ -388,7 +416,7 @@
         }
       }
     },
-    "v1.Pipeline": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.Pipeline": {
       "description": "Pipeline describes a list of Tasks to execute. It expresses how outputs of tasks feed into inputs of subsequent tasks.",
       "type": "object",
       "properties": {
@@ -407,11 +435,11 @@
         "spec": {
           "description": "Spec holds the desired state of the Pipeline from the client",
           "default": {},
-          "$ref": "#/definitions/v1.PipelineSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineSpec"
         }
       }
     },
-    "v1.PipelineList": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineList": {
       "description": "PipelineList contains a list of Pipeline",
       "type": "object",
       "required": [
@@ -426,7 +454,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Pipeline"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Pipeline"
           }
         },
         "kind": {
@@ -439,7 +467,7 @@
         }
       }
     },
-    "v1.PipelineRef": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRef": {
       "description": "PipelineRef can be used to refer to a specific instance of a Pipeline.",
       "type": "object",
       "properties": {
@@ -453,7 +481,7 @@
         }
       }
     },
-    "v1.PipelineResult": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineResult": {
       "description": "PipelineResult used to describe the results of a pipeline",
       "type": "object",
       "required": [
@@ -478,11 +506,11 @@
         "value": {
           "description": "Value the expression used to retrieve the value",
           "default": {},
-          "$ref": "#/definitions/v1.ParamValue"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamValue"
         }
       }
     },
-    "v1.PipelineRun": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRun": {
       "description": "PipelineRun represents a single execution of a Pipeline. PipelineRuns are how the graph of Tasks declared in a Pipeline are executed; they specify inputs to Pipelines such as parameter values and capture operational aspects of the Tasks execution such as service account and tolerations. Creating a PipelineRun creates TaskRuns for Tasks in the referenced Pipeline.",
       "type": "object",
       "properties": {
@@ -500,15 +528,15 @@
         },
         "spec": {
           "default": {},
-          "$ref": "#/definitions/v1.PipelineRunSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunSpec"
         },
         "status": {
           "default": {},
-          "$ref": "#/definitions/v1.PipelineRunStatus"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunStatus"
         }
       }
     },
-    "v1.PipelineRunList": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunList": {
       "description": "PipelineRunList contains a list of PipelineRun",
       "type": "object",
       "properties": {
@@ -520,7 +548,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.PipelineRun"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRun"
           }
         },
         "kind": {
@@ -533,7 +561,7 @@
         }
       }
     },
-    "v1.PipelineRunResult": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunResult": {
       "description": "PipelineRunResult used to describe the results of a pipeline",
       "type": "object",
       "required": [
@@ -549,11 +577,11 @@
         "value": {
           "description": "Value is the result returned from the execution of this PipelineRun",
           "default": {},
-          "$ref": "#/definitions/v1.ParamValue"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamValue"
         }
       }
     },
-    "v1.PipelineRunRunStatus": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunRunStatus": {
       "description": "PipelineRunRunStatus contains the name of the PipelineTask for this Run and the Run's Status",
       "type": "object",
       "properties": {
@@ -570,13 +598,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WhenExpression"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WhenExpression"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.PipelineRunSpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunSpec": {
       "description": "PipelineRunSpec defines the desired state of PipelineRun",
       "type": "object",
       "properties": {
@@ -585,15 +613,15 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Param"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
         },
         "pipelineRef": {
-          "$ref": "#/definitions/v1.PipelineRef"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRef"
         },
         "pipelineSpec": {
-          "$ref": "#/definitions/v1.PipelineSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineSpec"
         },
         "status": {
           "description": "Used for cancelling a pipelinerun (and maybe more later on)",
@@ -604,31 +632,31 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.PipelineTaskRunSpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskRunSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
         "taskRunTemplate": {
           "description": "TaskRunTemplate represent template of taskrun",
           "default": {},
-          "$ref": "#/definitions/v1.PipelineTaskRunTemplate"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskRunTemplate"
         },
         "timeouts": {
           "description": "Time after which the Pipeline times out. Currently three keys are accepted in the map pipeline, tasks and finally with Timeouts.pipeline \u003e= Timeouts.tasks + Timeouts.finally",
-          "$ref": "#/definitions/v1.TimeoutFields"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TimeoutFields"
         },
         "workspaces": {
           "description": "Workspaces holds a set of workspace bindings that must match names with those declared in the pipeline.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspaceBinding"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceBinding"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.PipelineRunStatus": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunStatus": {
       "description": "PipelineRunStatus defines the observed state of PipelineRun",
       "type": "object",
       "properties": {
@@ -645,7 +673,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.ChildStatusReference"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ChildStatusReference"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -674,18 +702,18 @@
         },
         "pipelineSpec": {
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
-          "$ref": "#/definitions/v1.PipelineSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineSpec"
         },
         "provenance": {
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
-          "$ref": "#/definitions/v1.Provenance"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Provenance"
         },
         "results": {
           "description": "Results are the list of results written out by the pipeline task's containers",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.PipelineRunResult"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunResult"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -694,7 +722,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.SkippedTask"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.SkippedTask"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -704,7 +732,7 @@
         }
       }
     },
-    "v1.PipelineRunStatusFields": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunStatusFields": {
       "description": "PipelineRunStatusFields holds the fields of PipelineRunStatus' status. This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
       "type": "object",
       "properties": {
@@ -713,7 +741,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.ChildStatusReference"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ChildStatusReference"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -727,18 +755,18 @@
         },
         "pipelineSpec": {
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
-          "$ref": "#/definitions/v1.PipelineSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineSpec"
         },
         "provenance": {
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
-          "$ref": "#/definitions/v1.Provenance"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Provenance"
         },
         "results": {
           "description": "Results are the list of results written out by the pipeline task's containers",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.PipelineRunResult"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunResult"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -747,7 +775,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.SkippedTask"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.SkippedTask"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -757,7 +785,7 @@
         }
       }
     },
-    "v1.PipelineRunTaskRunStatus": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineRunTaskRunStatus": {
       "description": "PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status",
       "type": "object",
       "properties": {
@@ -767,20 +795,20 @@
         },
         "status": {
           "description": "Status is the TaskRunStatus for the corresponding TaskRun",
-          "$ref": "#/definitions/v1.TaskRunStatus"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStatus"
         },
         "whenExpressions": {
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WhenExpression"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WhenExpression"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.PipelineSpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineSpec": {
       "description": "PipelineSpec defines the desired state of Pipeline.",
       "type": "object",
       "properties": {
@@ -793,7 +821,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.PipelineTask"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTask"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -802,7 +830,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.ParamSpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -811,7 +839,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.PipelineResult"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineResult"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -820,7 +848,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.PipelineTask"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTask"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -829,19 +857,19 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.PipelineWorkspaceDeclaration"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineWorkspaceDeclaration"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.PipelineTask": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTask": {
       "description": "PipelineTask defines a task in a Pipeline, passing inputs from both Params and from the output of previous tasks.",
       "type": "object",
       "properties": {
         "matrix": {
           "description": "Matrix declares parameters used to fan out this task.",
-          "$ref": "#/definitions/v1.Matrix"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Matrix"
         },
         "name": {
           "description": "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",
@@ -852,7 +880,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Param"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -872,11 +900,11 @@
         },
         "taskRef": {
           "description": "TaskRef is a reference to a task definition.",
-          "$ref": "#/definitions/v1.TaskRef"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRef"
         },
         "taskSpec": {
           "description": "TaskSpec is a specification of a task",
-          "$ref": "#/definitions/v1.EmbeddedTask"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.EmbeddedTask"
         },
         "timeout": {
           "description": "Time after which the TaskRun times out. Defaults to 1 hour. Specified TaskRun timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
@@ -887,7 +915,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WhenExpression"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WhenExpression"
           }
         },
         "workspaces": {
@@ -895,13 +923,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspacePipelineTaskBinding"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspacePipelineTaskBinding"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.PipelineTaskMetadata": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskMetadata": {
       "description": "PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask",
       "type": "object",
       "properties": {
@@ -921,7 +949,7 @@
         }
       }
     },
-    "v1.PipelineTaskParam": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskParam": {
       "description": "PipelineTaskParam is used to provide arbitrary string parameters to a Task.",
       "type": "object",
       "required": [
@@ -939,7 +967,7 @@
         }
       }
     },
-    "v1.PipelineTaskRun": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskRun": {
       "description": "PipelineTaskRun reports the results of running a step in the Task. Each task has the potential to succeed or fail (based on the exit code) and produces logs.",
       "type": "object",
       "properties": {
@@ -948,7 +976,7 @@
         }
       }
     },
-    "v1.PipelineTaskRunSpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskRunSpec": {
       "description": "PipelineTaskRunSpec  can be used to configure specific specs for a concrete Task",
       "type": "object",
       "properties": {
@@ -957,7 +985,7 @@
           "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "metadata": {
-          "$ref": "#/definitions/v1.PipelineTaskMetadata"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskMetadata"
         },
         "pipelineTaskName": {
           "type": "string"
@@ -972,7 +1000,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunSidecarSpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunSidecarSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -980,13 +1008,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunStepSpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.PipelineTaskRunTemplate": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineTaskRunTemplate": {
       "description": "PipelineTaskRunTemplate is used to specify run specifications for all Task in pipelinerun.",
       "type": "object",
       "properties": {
@@ -998,7 +1026,7 @@
         }
       }
     },
-    "v1.PipelineWorkspaceDeclaration": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PipelineWorkspaceDeclaration": {
       "description": "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding. Deprecated: use PipelineWorkspaceDeclaration type instead",
       "type": "object",
       "required": [
@@ -1020,7 +1048,7 @@
         }
       }
     },
-    "v1.PropertySpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.PropertySpec": {
       "description": "PropertySpec defines the struct for object keys",
       "type": "object",
       "properties": {
@@ -1029,13 +1057,13 @@
         }
       }
     },
-    "v1.Provenance": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.Provenance": {
       "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). For now, it only contains the subfield `ConfigSource` that identifies the source where a build config file came from. In future, it can be expanded as needed to include more metadata about the build. This field aims to be used to carry minimum amount of the authenticated metadata in *Run status so that Tekton Chains can pick it up and record in the provenance it generates.",
       "type": "object",
       "properties": {
         "configSource": {
           "description": "ConfigSource identifies the source where a resource came from.",
-          "$ref": "#/definitions/v1.ConfigSource"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ConfigSource"
         },
         "featureFlags": {
           "description": "FeatureFlags identifies the feature flags that were used during the task/pipeline run",
@@ -1043,7 +1071,7 @@
         }
       }
     },
-    "v1.ResolverRef": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.ResolverRef": {
       "description": "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in beta and these fields are only available when the beta feature gate is enabled.",
       "type": "object",
       "properties": {
@@ -1052,7 +1080,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Param"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1062,7 +1090,7 @@
         }
       }
     },
-    "v1.ResultRef": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.ResultRef": {
       "description": "ResultRef is a type that represents a reference to a task run result",
       "type": "object",
       "required": [
@@ -1091,7 +1119,7 @@
         }
       }
     },
-    "v1.Sidecar": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.Sidecar": {
       "description": "Sidecar has nearly the same data structure as Step but does not have the ability to timeout.",
       "type": "object",
       "required": [
@@ -1244,13 +1272,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspaceUsage"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceUsage"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.SidecarState": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.SidecarState": {
       "description": "SidecarState reports the results of running a sidecar in a Task.",
       "type": "object",
       "properties": {
@@ -1277,7 +1305,7 @@
         }
       }
     },
-    "v1.SkippedTask": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.SkippedTask": {
       "description": "SkippedTask is used to describe the Tasks that were skipped due to their When Expressions evaluating to False. This is a struct because we are looking into including more details about the When Expressions that caused this Task to be skipped.",
       "type": "object",
       "required": [
@@ -1300,13 +1328,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WhenExpression"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WhenExpression"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.Step": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.Step": {
       "description": "Step runs a subcomponent of a Task",
       "type": "object",
       "required": [
@@ -1383,11 +1411,11 @@
         },
         "stderrConfig": {
           "description": "Stores configuration for the stderr stream of the step.",
-          "$ref": "#/definitions/v1.StepOutputConfig"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepOutputConfig"
         },
         "stdoutConfig": {
           "description": "Stores configuration for the stdout stream of the step.",
-          "$ref": "#/definitions/v1.StepOutputConfig"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepOutputConfig"
         },
         "timeout": {
           "description": "Timeout is the time after which the step times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
@@ -1424,13 +1452,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspaceUsage"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceUsage"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.StepOutputConfig": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepOutputConfig": {
       "description": "StepOutputConfig stores configuration for a step output stream.",
       "type": "object",
       "properties": {
@@ -1440,7 +1468,7 @@
         }
       }
     },
-    "v1.StepState": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepState": {
       "description": "StepState reports the results of running a step in a Task.",
       "type": "object",
       "properties": {
@@ -1467,7 +1495,7 @@
         }
       }
     },
-    "v1.StepTemplate": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepTemplate": {
       "description": "StepTemplate is a template for a Step",
       "type": "object",
       "properties": {
@@ -1554,7 +1582,7 @@
         }
       }
     },
-    "v1.Task": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.Task": {
       "description": "Task represents a collection of sequential steps that are run as part of a Pipeline using a set of inputs and producing a set of outputs. Tasks execute when TaskRuns are created that provide the input parameters and resources and output resources the Task requires.",
       "type": "object",
       "properties": {
@@ -1573,11 +1601,11 @@
         "spec": {
           "description": "Spec holds the desired state of the Task from the client",
           "default": {},
-          "$ref": "#/definitions/v1.TaskSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskSpec"
         }
       }
     },
-    "v1.TaskList": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskList": {
       "description": "TaskList contains a list of Task",
       "type": "object",
       "required": [
@@ -1592,7 +1620,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Task"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Task"
           }
         },
         "kind": {
@@ -1605,7 +1633,7 @@
         }
       }
     },
-    "v1.TaskRef": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRef": {
       "description": "TaskRef can be used to refer to a specific instance of a task.",
       "type": "object",
       "properties": {
@@ -1623,7 +1651,7 @@
         }
       }
     },
-    "v1.TaskResult": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskResult": {
       "description": "TaskResult used to describe the results of a task",
       "type": "object",
       "required": [
@@ -1644,7 +1672,7 @@
           "type": "object",
           "additionalProperties": {
             "default": {},
-            "$ref": "#/definitions/v1.PropertySpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.PropertySpec"
           }
         },
         "type": {
@@ -1653,7 +1681,7 @@
         }
       }
     },
-    "v1.TaskRun": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRun": {
       "description": "TaskRun represents a single execution of a Task. TaskRuns are how the steps specified in a Task are executed; they specify the parameters and resources used to run the steps in a Task.",
       "type": "object",
       "properties": {
@@ -1671,15 +1699,15 @@
         },
         "spec": {
           "default": {},
-          "$ref": "#/definitions/v1.TaskRunSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunSpec"
         },
         "status": {
           "default": {},
-          "$ref": "#/definitions/v1.TaskRunStatus"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStatus"
         }
       }
     },
-    "v1.TaskRunDebug": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunDebug": {
       "description": "TaskRunDebug defines the breakpoint config for a particular TaskRun",
       "type": "object",
       "properties": {
@@ -1693,7 +1721,7 @@
         }
       }
     },
-    "v1.TaskRunInputs": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunInputs": {
       "description": "TaskRunInputs holds the input values that this task was invoked with.",
       "type": "object",
       "properties": {
@@ -1701,13 +1729,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Param"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.TaskRunList": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunList": {
       "description": "TaskRunList contains a list of TaskRun",
       "type": "object",
       "required": [
@@ -1722,7 +1750,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRun"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRun"
           }
         },
         "kind": {
@@ -1735,7 +1763,7 @@
         }
       }
     },
-    "v1.TaskRunResult": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunResult": {
       "description": "TaskRunResult used to describe the results of a task",
       "type": "object",
       "required": [
@@ -1755,11 +1783,11 @@
         "value": {
           "description": "Value the given value of the result",
           "default": {},
-          "$ref": "#/definitions/v1.ParamValue"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamValue"
         }
       }
     },
-    "v1.TaskRunSidecarSpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunSidecarSpec": {
       "description": "TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.",
       "type": "object",
       "required": [
@@ -1779,7 +1807,7 @@
         }
       }
     },
-    "v1.TaskRunSpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunSpec": {
       "description": "TaskRunSpec defines the desired state of TaskRun",
       "type": "object",
       "properties": {
@@ -1788,13 +1816,13 @@
           "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "debug": {
-          "$ref": "#/definitions/v1.TaskRunDebug"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunDebug"
         },
         "params": {
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Param"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1816,7 +1844,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunSidecarSpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunSidecarSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1833,16 +1861,16 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunStepSpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
         "taskRef": {
           "description": "no more than one of the TaskRef and TaskSpec may be specified.",
-          "$ref": "#/definitions/v1.TaskRef"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRef"
         },
         "taskSpec": {
-          "$ref": "#/definitions/v1.TaskSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskSpec"
         },
         "timeout": {
           "description": "Time after which one retry attempt times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
@@ -1853,13 +1881,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspaceBinding"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceBinding"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.TaskRunStatus": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStatus": {
       "description": "TaskRunStatus defines the observed state of TaskRun",
       "type": "object",
       "required": [
@@ -1900,14 +1928,14 @@
         },
         "provenance": {
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
-          "$ref": "#/definitions/v1.Provenance"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Provenance"
         },
         "results": {
           "description": "Results are the list of results written out by the task's containers",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunResult"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunResult"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1916,7 +1944,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunStatus"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStatus"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1925,7 +1953,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.SidecarState"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.SidecarState"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1938,17 +1966,17 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.StepState"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepState"
           },
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
           "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
-          "$ref": "#/definitions/v1.TaskSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskSpec"
         }
       }
     },
-    "v1.TaskRunStatusFields": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStatusFields": {
       "description": "TaskRunStatusFields holds the fields of TaskRun's status.  This is defined separately and inlined so that other types can readily consume these fields via duck typing.",
       "type": "object",
       "required": [
@@ -1966,14 +1994,14 @@
         },
         "provenance": {
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
-          "$ref": "#/definitions/v1.Provenance"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Provenance"
         },
         "results": {
           "description": "Results are the list of results written out by the task's containers",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunResult"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunResult"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1982,7 +2010,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunStatus"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStatus"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1991,7 +2019,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.SidecarState"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.SidecarState"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -2004,17 +2032,17 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.StepState"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepState"
           },
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
           "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
-          "$ref": "#/definitions/v1.TaskSpec"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskSpec"
         }
       }
     },
-    "v1.TaskRunStepSpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskRunStepSpec": {
       "description": "TaskRunStepSpec is used to override the values of a Step in the corresponding Task.",
       "type": "object",
       "required": [
@@ -2034,7 +2062,7 @@
         }
       }
     },
-    "v1.TaskSpec": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskSpec": {
       "description": "TaskSpec defines the desired state of Task.",
       "type": "object",
       "properties": {
@@ -2047,7 +2075,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.ParamSpec"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.ParamSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -2056,7 +2084,7 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskResult"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.TaskResult"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -2065,20 +2093,20 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Sidecar"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Sidecar"
           },
           "x-kubernetes-list-type": "atomic"
         },
         "stepTemplate": {
           "description": "StepTemplate can be used as the basis for all step containers within the Task, so that the steps inherit settings on the base container.",
-          "$ref": "#/definitions/v1.StepTemplate"
+          "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.StepTemplate"
         },
         "steps": {
           "description": "Steps are the steps of the build; each step is run sequentially with the source mounted into /workspace.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.Step"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.Step"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -2096,13 +2124,13 @@
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.WorkspaceDeclaration"
+            "$ref": "#/definitions/github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceDeclaration"
           },
           "x-kubernetes-list-type": "atomic"
         }
       }
     },
-    "v1.TimeoutFields": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.TimeoutFields": {
       "description": "TimeoutFields allows granular specification of pipeline, task, and finally timeouts",
       "type": "object",
       "properties": {
@@ -2120,7 +2148,7 @@
         }
       }
     },
-    "v1.WhenExpression": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.WhenExpression": {
       "description": "WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run to determine whether the Task should be executed or skipped",
       "type": "object",
       "required": [
@@ -2150,7 +2178,7 @@
         }
       }
     },
-    "v1.WorkspaceBinding": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceBinding": {
       "description": "WorkspaceBinding maps a Task's declared workspace to a Volume.",
       "type": "object",
       "required": [
@@ -2196,7 +2224,7 @@
         }
       }
     },
-    "v1.WorkspaceDeclaration": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceDeclaration": {
       "description": "WorkspaceDeclaration is a declaration of a volume that a Task requires.",
       "type": "object",
       "required": [
@@ -2226,7 +2254,7 @@
         }
       }
     },
-    "v1.WorkspacePipelineTaskBinding": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspacePipelineTaskBinding": {
       "description": "WorkspacePipelineTaskBinding describes how a workspace passed into the pipeline should be mapped to a task's declared workspace.",
       "type": "object",
       "required": [
@@ -2248,7 +2276,7 @@
         }
       }
     },
-    "v1.WorkspaceUsage": {
+    "github.com.tekton.pipeline.pkg.apis.pipeline.v1.WorkspaceUsage": {
       "description": "WorkspaceUsage is used by a Step or Sidecar to declare that it wants isolated access to a Workspace defined in a Task.",
       "type": "object",
       "required": [
