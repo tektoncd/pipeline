@@ -23,13 +23,25 @@ spec:
           IMAGE_URL: {type: string}
           IMAGE_DIGEST: {type: string}
     steps:
-      - name: echo-object-params
+      - name: validate-object-params
         image: bash
         args: [
-          "echo",
-          "--url=$(params.gitrepo.url)",
-          "--commit=$(params.gitrepo.commit)"
+          "$(params.gitrepo.url)",
+          "$(params.gitrepo.commit)"
         ]
+        script: |
+          if [[ $1 != "github.example.com" ]]; then
+              echo "Want: github.example.com, Got: $1"
+            exit 1
+          else
+            echo "validate the params.gitrepo.url successfully"
+          fi
+          if [[ $2 != "sha123" ]]; then
+              echo "Want: sha123, Got: $2"
+            exit 1
+          else
+            echo "validate the params.gitrepo.commit successfully"
+          fi
       - name: write-object-result
         image: bash:latest
         script: |
