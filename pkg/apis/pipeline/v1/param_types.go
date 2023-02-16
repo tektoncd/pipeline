@@ -25,6 +25,7 @@ import (
 
 	resource "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
@@ -61,6 +62,9 @@ type ParamSpec struct {
 	// +optional
 	Default *ParamValue `json:"default,omitempty"`
 }
+
+// ParamSpecs is a list of ParamSpec
+type ParamSpecs []ParamSpec
 
 // PropertySpec defines the struct for object keys
 type PropertySpec struct {
@@ -115,6 +119,216 @@ type ResourceParam = resource.ResourceParam
 type Param struct {
 	Name  string     `json:"name"`
 	Value ParamValue `json:"value"`
+}
+
+// extractParamValuesFromParams get all param values from params
+func (ps Params) extractParamValuesFromParams() []string {
+	pvs := []string{}
+	for i := range ps {
+		pvs = append(pvs, ps[i].Value.StringVal)
+		pvs = append(pvs, ps[i].Value.ArrayVal...)
+		for _, v := range ps[i].Value.ObjectVal {
+			pvs = append(pvs, v)
+		}
+	}
+	return pvs
+}
+
+// Params is a list of Param
+type Params []Param
+
+// extractParamArrayLengths extract and return the lengths of all array params
+// Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
+func (ps Params) extractParamArrayLengths() map[string]int {
+	// Collect all array params
+	arrayParamsLengths := make(map[string]int)
+
+	// Collect array params lengths from params
+	for _, p := range ps {
+		if p.Value.Type == ParamTypeArray {
+			arrayParamsLengths[p.Name] = len(p.Value.ArrayVal)
+		}
+	}
+	return arrayParamsLengths
+}
+
+// extractParamArrayLengths extract and return the lengths of all array params
+// Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
+func (ps ParamSpecs) extractParamArrayLengths() map[string]int {
+	// Collect all array params
+	arrayParamsLengths := make(map[string]int)
+
+	// Collect array params lengths from defaults
+	for _, p := range ps {
+		if p.Default != nil {
+			if p.Default.Type == ParamTypeArray {
+				arrayParamsLengths[p.Name] = len(p.Default.ArrayVal)
+			}
+		}
+	}
+	return arrayParamsLengths
+}
+
+// validateOutofBoundArrayParams validates if the array indexing params are out of bound
+// example of arrayIndexingParams: ["$(params.a-array-param[1])", "$(params.b-array-param[2])"]
+// example of arrayParamsLengths: {"a-array-params": 2,"b-array-params": 2 }
+func validateOutofBoundArrayParams(arrayIndexingParams []string, arrayParamsLengths map[string]int) error {
+	outofBoundParams := sets.String{}
+	for _, val := range arrayIndexingParams {
+		indexString := substitution.ExtractIndexString(val)
+		idx, _ := substitution.ExtractIndex(indexString)
+		// this will extract the param name from reference
+		// e.g. $(params.a-array-param[1]) -> a-array-param
+		paramName, _, _ := substitution.ExtractVariablesFromString(substitution.TrimArrayIndex(val), "params")
+
+		if paramLength, ok := arrayParamsLengths[paramName[0]]; ok {
+			if idx >= paramLength {
+				outofBoundParams.Insert(val)
+			}
+		}
+	}
+	if outofBoundParams.Len() > 0 {
+		return fmt.Errorf("non-existent param references:%v", outofBoundParams.List())
+	}
+	return nil
+}
+
+// extractArrayIndexingParamRefs takes a string of the form `foo-$(params.array-param[1])-bar` and extracts the portions of the string that reference an element in an array param.
+// For example, for the string “foo-$(params.array-param[1])-bar-$(params.other-array-param[2])-$(params.string-param)`,
+// it would return ["$(params.array-param[1])", "$(params.other-array-param[2])"].
+func extractArrayIndexingParamRefs(paramReference string) []string {
+	l := []string{}
+	list := substitution.ExtractParamsExpressions(paramReference)
+	for _, val := range list {
+		indexString := substitution.ExtractIndexString(val)
+		if indexString != "" {
+			l = append(l, val)
+		}
+	}
+	return l
+}
+
+// extractParamRefsFromSteps get all array indexing references from steps
+func extractParamRefsFromSteps(steps []Step) []string {
+	paramsRefs := []string{}
+	for _, step := range steps {
+		paramsRefs = append(paramsRefs, step.Script)
+		container := step.ToK8sContainer()
+		paramsRefs = append(paramsRefs, extractParamRefsFromContainer(container)...)
+	}
+	return paramsRefs
+}
+
+// extractParamRefsFromStepTemplate get all array indexing references from StepsTemplate
+func extractParamRefsFromStepTemplate(stepTemplate *StepTemplate) []string {
+	if stepTemplate == nil {
+		return nil
+	}
+	container := stepTemplate.ToK8sContainer()
+	return extractParamRefsFromContainer(container)
+}
+
+// extractParamRefsFromSidecars get all array indexing references from sidecars
+func extractParamRefsFromSidecars(sidecars []Sidecar) []string {
+	paramsRefs := []string{}
+	for _, s := range sidecars {
+		paramsRefs = append(paramsRefs, s.Script)
+		container := s.ToK8sContainer()
+		paramsRefs = append(paramsRefs, extractParamRefsFromContainer(container)...)
+	}
+	return paramsRefs
+}
+
+// extractParamRefsFromVolumes get all array indexing references from volumes
+func extractParamRefsFromVolumes(volumes []corev1.Volume) []string {
+	paramsRefs := []string{}
+	for i, v := range volumes {
+		paramsRefs = append(paramsRefs, v.Name)
+		if v.VolumeSource.ConfigMap != nil {
+			paramsRefs = append(paramsRefs, v.ConfigMap.Name)
+			for _, item := range v.ConfigMap.Items {
+				paramsRefs = append(paramsRefs, item.Key)
+				paramsRefs = append(paramsRefs, item.Path)
+			}
+		}
+		if v.VolumeSource.Secret != nil {
+			paramsRefs = append(paramsRefs, v.Secret.SecretName)
+			for _, item := range v.Secret.Items {
+				paramsRefs = append(paramsRefs, item.Key)
+				paramsRefs = append(paramsRefs, item.Path)
+			}
+		}
+		if v.PersistentVolumeClaim != nil {
+			paramsRefs = append(paramsRefs, v.PersistentVolumeClaim.ClaimName)
+		}
+		if v.Projected != nil {
+			for _, s := range volumes[i].Projected.Sources {
+				if s.ConfigMap != nil {
+					paramsRefs = append(paramsRefs, s.ConfigMap.Name)
+				}
+				if s.Secret != nil {
+					paramsRefs = append(paramsRefs, s.Secret.Name)
+				}
+				if s.ServiceAccountToken != nil {
+					paramsRefs = append(paramsRefs, s.ServiceAccountToken.Audience)
+				}
+			}
+		}
+		if v.CSI != nil {
+			if v.CSI.NodePublishSecretRef != nil {
+				paramsRefs = append(paramsRefs, v.CSI.NodePublishSecretRef.Name)
+			}
+			if v.CSI.VolumeAttributes != nil {
+				for _, value := range v.CSI.VolumeAttributes {
+					paramsRefs = append(paramsRefs, value)
+				}
+			}
+		}
+	}
+	return paramsRefs
+}
+
+// extractParamRefsFromContainer get all array indexing references from container
+func extractParamRefsFromContainer(c *corev1.Container) []string {
+	paramsRefs := []string{}
+	paramsRefs = append(paramsRefs, c.Name)
+	paramsRefs = append(paramsRefs, c.Image)
+	paramsRefs = append(paramsRefs, string(c.ImagePullPolicy))
+	paramsRefs = append(paramsRefs, c.Args...)
+
+	for ie, e := range c.Env {
+		paramsRefs = append(paramsRefs, e.Value)
+		if c.Env[ie].ValueFrom != nil {
+			if e.ValueFrom.SecretKeyRef != nil {
+				paramsRefs = append(paramsRefs, e.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
+				paramsRefs = append(paramsRefs, e.ValueFrom.SecretKeyRef.Key)
+			}
+			if e.ValueFrom.ConfigMapKeyRef != nil {
+				paramsRefs = append(paramsRefs, e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name)
+				paramsRefs = append(paramsRefs, e.ValueFrom.ConfigMapKeyRef.Key)
+			}
+		}
+	}
+
+	for _, e := range c.EnvFrom {
+		paramsRefs = append(paramsRefs, e.Prefix)
+		if e.ConfigMapRef != nil {
+			paramsRefs = append(paramsRefs, e.ConfigMapRef.LocalObjectReference.Name)
+		}
+		if e.SecretRef != nil {
+			paramsRefs = append(paramsRefs, e.SecretRef.LocalObjectReference.Name)
+		}
+	}
+
+	paramsRefs = append(paramsRefs, c.WorkingDir)
+	paramsRefs = append(paramsRefs, c.Command...)
+
+	for _, v := range c.VolumeMounts {
+		paramsRefs = append(paramsRefs, v.Name)
+		paramsRefs = append(paramsRefs, v.MountPath)
+		paramsRefs = append(paramsRefs, v.SubPath)
+	}
+	return paramsRefs
 }
 
 // ParamType indicates the type of an input parameter;

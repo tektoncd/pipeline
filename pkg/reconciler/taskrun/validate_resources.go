@@ -23,13 +23,11 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
-	"github.com/tektoncd/pipeline/pkg/substitution"
-	corev1 "k8s.io/api/core/v1"
+
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -158,7 +156,7 @@ func wrongTypeParamsNames(params []v1beta1.Param, matrix []v1beta1.Param, needed
 	return wrongTypeParamNames
 }
 
-// MissingKeysObjectParamNames checks if all required keys of object type params are provided in taskrun params or taskSpec's default.
+// MissingKeysObjectParamNames checks if all required keys of object type param definitions are provided in params or param definitions' defaults.
 func MissingKeysObjectParamNames(paramSpecs []v1beta1.ParamSpec, params []v1beta1.Param) map[string][]string {
 	neededKeys := make(map[string][]string)
 	providedKeys := make(map[string][]string)
@@ -363,200 +361,4 @@ func missingKeysofObjectResults(tr *v1beta1.TaskRun, specResults []v1beta1.TaskR
 		}
 	}
 	return findMissingKeys(neededKeys, providedKeys)
-}
-
-func validateParamArrayIndex(ctx context.Context, params []v1beta1.Param, spec *v1beta1.TaskSpec) error {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
-		return nil
-	}
-
-	var defaults []v1beta1.ParamSpec
-	if len(spec.Params) > 0 {
-		defaults = append(defaults, spec.Params...)
-	}
-	// Collect all array params
-	arrayParams := make(map[string]int)
-
-	patterns := []string{
-		"$(params.%s)",
-		"$(params[%q])",
-		"$(params['%s'])",
-	}
-
-	// Collect array params lengths from defaults
-	for _, p := range defaults {
-		if p.Default != nil {
-			if p.Default.Type == v1beta1.ParamTypeArray {
-				for _, pattern := range patterns {
-					for i := 0; i < len(p.Default.ArrayVal); i++ {
-						arrayParams[fmt.Sprintf(pattern, p.Name)] = len(p.Default.ArrayVal)
-					}
-				}
-			}
-		}
-	}
-
-	// Collect array params lengths from pipeline
-	for _, p := range params {
-		if p.Value.Type == v1beta1.ParamTypeArray {
-			for _, pattern := range patterns {
-				for i := 0; i < len(p.Value.ArrayVal); i++ {
-					arrayParams[fmt.Sprintf(pattern, p.Name)] = len(p.Value.ArrayVal)
-				}
-			}
-		}
-	}
-
-	outofBoundParams := sets.String{}
-
-	// Validate array param in steps fields.
-	validateStepsParamArrayIndexing(spec.Steps, arrayParams, &outofBoundParams)
-
-	// Validate array param in StepTemplate fields.
-	validateStepsTemplateParamArrayIndexing(spec.StepTemplate, arrayParams, &outofBoundParams)
-
-	// Validate array param in build's volumes
-	validateVolumesParamArrayIndexing(spec.Volumes, arrayParams, &outofBoundParams)
-
-	for _, v := range spec.Workspaces {
-		extractParamIndex(v.MountPath, arrayParams, &outofBoundParams)
-	}
-
-	validateSidecarsParamArrayIndexing(spec.Sidecars, arrayParams, &outofBoundParams)
-
-	if outofBoundParams.Len() > 0 {
-		return fmt.Errorf("non-existent param references:%v", outofBoundParams.List())
-	}
-
-	return nil
-}
-
-func extractParamIndex(paramReference string, arrayParams map[string]int, outofBoundParams *sets.String) {
-	list := substitution.ExtractParamsExpressions(paramReference)
-	for _, val := range list {
-		indexString := substitution.ExtractIndexString(paramReference)
-		idx, _ := substitution.ExtractIndex(indexString)
-		v := substitution.TrimArrayIndex(val)
-		if paramLength, ok := arrayParams[v]; ok {
-			if idx >= paramLength {
-				outofBoundParams.Insert(val)
-			}
-		}
-	}
-}
-
-func validateStepsParamArrayIndexing(steps []v1beta1.Step, arrayParams map[string]int, outofBoundParams *sets.String) {
-	for _, step := range steps {
-		extractParamIndex(step.Script, arrayParams, outofBoundParams)
-		container := step.ToK8sContainer()
-		validateContainerParamArrayIndexing(container, arrayParams, outofBoundParams)
-	}
-}
-
-func validateStepsTemplateParamArrayIndexing(stepTemplate *v1beta1.StepTemplate, arrayParams map[string]int, outofBoundParams *sets.String) {
-	if stepTemplate == nil {
-		return
-	}
-	container := stepTemplate.ToK8sContainer()
-	validateContainerParamArrayIndexing(container, arrayParams, outofBoundParams)
-}
-
-func validateSidecarsParamArrayIndexing(sidecars []v1beta1.Sidecar, arrayParams map[string]int, outofBoundParams *sets.String) {
-	for _, s := range sidecars {
-		extractParamIndex(s.Script, arrayParams, outofBoundParams)
-		container := s.ToK8sContainer()
-		validateContainerParamArrayIndexing(container, arrayParams, outofBoundParams)
-	}
-}
-
-func validateVolumesParamArrayIndexing(volumes []corev1.Volume, arrayParams map[string]int, outofBoundParams *sets.String) {
-	for i, v := range volumes {
-		extractParamIndex(v.Name, arrayParams, outofBoundParams)
-		if v.VolumeSource.ConfigMap != nil {
-			extractParamIndex(v.ConfigMap.Name, arrayParams, outofBoundParams)
-			for _, item := range v.ConfigMap.Items {
-				extractParamIndex(item.Key, arrayParams, outofBoundParams)
-				extractParamIndex(item.Path, arrayParams, outofBoundParams)
-			}
-		}
-		if v.VolumeSource.Secret != nil {
-			extractParamIndex(v.Secret.SecretName, arrayParams, outofBoundParams)
-			for _, item := range v.Secret.Items {
-				extractParamIndex(item.Key, arrayParams, outofBoundParams)
-				extractParamIndex(item.Path, arrayParams, outofBoundParams)
-			}
-		}
-		if v.PersistentVolumeClaim != nil {
-			extractParamIndex(v.PersistentVolumeClaim.ClaimName, arrayParams, outofBoundParams)
-		}
-		if v.Projected != nil {
-			for _, s := range volumes[i].Projected.Sources {
-				if s.ConfigMap != nil {
-					extractParamIndex(s.ConfigMap.Name, arrayParams, outofBoundParams)
-				}
-				if s.Secret != nil {
-					extractParamIndex(s.Secret.Name, arrayParams, outofBoundParams)
-				}
-				if s.ServiceAccountToken != nil {
-					extractParamIndex(s.ServiceAccountToken.Audience, arrayParams, outofBoundParams)
-				}
-			}
-		}
-		if v.CSI != nil {
-			if v.CSI.NodePublishSecretRef != nil {
-				extractParamIndex(v.CSI.NodePublishSecretRef.Name, arrayParams, outofBoundParams)
-			}
-			if v.CSI.VolumeAttributes != nil {
-				for _, value := range v.CSI.VolumeAttributes {
-					extractParamIndex(value, arrayParams, outofBoundParams)
-				}
-			}
-		}
-	}
-}
-
-func validateContainerParamArrayIndexing(c *corev1.Container, arrayParams map[string]int, outofBoundParams *sets.String) {
-	extractParamIndex(c.Name, arrayParams, outofBoundParams)
-	extractParamIndex(c.Image, arrayParams, outofBoundParams)
-	extractParamIndex(string(c.ImagePullPolicy), arrayParams, outofBoundParams)
-
-	for _, a := range c.Args {
-		extractParamIndex(a, arrayParams, outofBoundParams)
-	}
-
-	for ie, e := range c.Env {
-		extractParamIndex(e.Value, arrayParams, outofBoundParams)
-		if c.Env[ie].ValueFrom != nil {
-			if e.ValueFrom.SecretKeyRef != nil {
-				extractParamIndex(e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, arrayParams, outofBoundParams)
-				extractParamIndex(e.ValueFrom.SecretKeyRef.Key, arrayParams, outofBoundParams)
-			}
-			if e.ValueFrom.ConfigMapKeyRef != nil {
-				extractParamIndex(e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, arrayParams, outofBoundParams)
-				extractParamIndex(e.ValueFrom.ConfigMapKeyRef.Key, arrayParams, outofBoundParams)
-			}
-		}
-	}
-
-	for _, e := range c.EnvFrom {
-		extractParamIndex(e.Prefix, arrayParams, outofBoundParams)
-		if e.ConfigMapRef != nil {
-			extractParamIndex(e.ConfigMapRef.LocalObjectReference.Name, arrayParams, outofBoundParams)
-		}
-		if e.SecretRef != nil {
-			extractParamIndex(e.SecretRef.LocalObjectReference.Name, arrayParams, outofBoundParams)
-		}
-	}
-
-	extractParamIndex(c.WorkingDir, arrayParams, outofBoundParams)
-	for _, cc := range c.Command {
-		extractParamIndex(cc, arrayParams, outofBoundParams)
-	}
-
-	for _, v := range c.VolumeMounts {
-		extractParamIndex(v.Name, arrayParams, outofBoundParams)
-		extractParamIndex(v.MountPath, arrayParams, outofBoundParams)
-		extractParamIndex(v.SubPath, arrayParams, outofBoundParams)
-	}
 }
