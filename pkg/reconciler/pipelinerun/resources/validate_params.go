@@ -20,9 +20,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/taskrun"
+	"github.com/tektoncd/pipeline/pkg/substitution"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -92,48 +94,48 @@ func ValidateParamArrayIndex(ctx context.Context, p *v1beta1.PipelineSpec, pr *v
 	arrayParams := extractParamIndexes(p.Params, pr.Spec.Params)
 
 	outofBoundParams := sets.String{}
+	arrayIndexingParams := []string{}
 
 	// collect all the references
 	for i := range p.Tasks {
-		if err := findInvalidParamArrayReferences(ctx, p.Tasks[i].Params, arrayParams, &outofBoundParams); err != nil {
-			return err
-		}
+		extractArrayIndexingReferencesFromParams(ctx, p.Tasks[i].Params, arrayParams, &arrayIndexingParams)
 		if p.Tasks[i].IsMatrixed() {
-			if err := findInvalidParamArrayReferences(ctx, p.Tasks[i].Matrix.Params, arrayParams, &outofBoundParams); err != nil {
-				return err
-			}
+			extractArrayIndexingReferencesFromParams(ctx, p.Tasks[i].Matrix.Params, arrayParams, &arrayIndexingParams)
 		}
 		for j := range p.Tasks[i].Workspaces {
-			if err := taskrun.FindInvalidParamArrayReference(ctx, p.Tasks[i].Workspaces[j].SubPath, arrayParams, &outofBoundParams); err != nil {
-				return err
-			}
+			taskrun.ExtractArrayIndexingParamReference(ctx, p.Tasks[i].Workspaces[j].SubPath, arrayParams, &arrayIndexingParams)
 		}
 		for _, wes := range p.Tasks[i].WhenExpressions {
-			if err := taskrun.FindInvalidParamArrayReference(ctx, wes.Input, arrayParams, &outofBoundParams); err != nil {
-				return err
-			}
+			taskrun.ExtractArrayIndexingParamReference(ctx, wes.Input, arrayParams, &arrayIndexingParams)
 			for _, v := range wes.Values {
-				if err := taskrun.FindInvalidParamArrayReference(ctx, v, arrayParams, &outofBoundParams); err != nil {
-					return err
-				}
+				taskrun.ExtractArrayIndexingParamReference(ctx, v, arrayParams, &arrayIndexingParams)
 			}
 		}
 	}
 
 	for i := range p.Finally {
-		if err := findInvalidParamArrayReferences(ctx, p.Finally[i].Params, arrayParams, &outofBoundParams); err != nil {
-			return err
-		}
+		extractArrayIndexingReferencesFromParams(ctx, p.Finally[i].Params, arrayParams, &arrayIndexingParams)
 		if p.Finally[i].IsMatrixed() {
-			if err := findInvalidParamArrayReferences(ctx, p.Finally[i].Matrix.Params, arrayParams, &outofBoundParams); err != nil {
-				return err
-			}
+			extractArrayIndexingReferencesFromParams(ctx, p.Finally[i].Matrix.Params, arrayParams, &arrayIndexingParams)
 		}
 		for _, wes := range p.Finally[i].WhenExpressions {
 			for _, v := range wes.Values {
-				if err := taskrun.FindInvalidParamArrayReference(ctx, v, arrayParams, &outofBoundParams); err != nil {
-					return err
-				}
+				taskrun.ExtractArrayIndexingParamReference(ctx, v, arrayParams, &arrayIndexingParams)
+			}
+		}
+	}
+
+	if len(arrayIndexingParams) > 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
+		return fmt.Errorf(`indexing into array params: %v require "enable-api-fields" feature gate to be "alpha" or "beta"`, arrayIndexingParams)
+	}
+
+	for _, val := range arrayIndexingParams {
+		indexString := substitution.ExtractIndexString(val)
+		idx, _ := substitution.ExtractIndex(indexString)
+		v := substitution.TrimArrayIndex(val)
+		if paramLength, ok := arrayParams[v]; ok {
+			if idx >= paramLength {
+				outofBoundParams.Insert(val)
 			}
 		}
 	}
@@ -180,22 +182,15 @@ func extractParamIndexes(defaults []v1beta1.ParamSpec, params []v1beta1.Param) m
 	return arrayParams
 }
 
-// findInvalidParamArrayReferences validates all the params' array indexing references and check if they are valid
-func findInvalidParamArrayReferences(ctx context.Context, params []v1beta1.Param, arrayParams map[string]int, outofBoundParams *sets.String) error {
+// extractArrayIndexingReferencesFromParams validates all the params' array indexing references and check if they are valid
+func extractArrayIndexingReferencesFromParams(ctx context.Context, params []v1beta1.Param, arrayParams map[string]int, arrayIndexingParams *[]string) {
 	for i := range params {
-		if err := taskrun.FindInvalidParamArrayReference(ctx, params[i].Value.StringVal, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		taskrun.ExtractArrayIndexingParamReference(ctx, params[i].Value.StringVal, arrayParams, arrayIndexingParams)
 		for _, v := range params[i].Value.ArrayVal {
-			if err := taskrun.FindInvalidParamArrayReference(ctx, v, arrayParams, outofBoundParams); err != nil {
-				return err
-			}
+			taskrun.ExtractArrayIndexingParamReference(ctx, v, arrayParams, arrayIndexingParams)
 		}
 		for _, v := range params[i].Value.ObjectVal {
-			if err := taskrun.FindInvalidParamArrayReference(ctx, v, arrayParams, outofBoundParams); err != nil {
-				return err
-			}
+			taskrun.ExtractArrayIndexingParamReference(ctx, v, arrayParams, arrayIndexingParams)
 		}
 	}
-	return nil
 }

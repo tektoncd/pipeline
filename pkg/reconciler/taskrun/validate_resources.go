@@ -405,46 +405,23 @@ func validateParamArrayIndex(ctx context.Context, params []v1beta1.Param, spec *
 	}
 
 	outofBoundParams := sets.String{}
+	arrayIndexingParams := []string{}
 
-	// Validate array param in steps fields.
-	if err := validateStepsParamArrayIndexing(ctx, spec.Steps, arrayParams, &outofBoundParams); err != nil {
-		return err
-	}
-	// Validate array param in StepTemplate fields.
-	if err := validateStepsTemplateParamArrayIndexing(ctx, spec.StepTemplate, arrayParams, &outofBoundParams); err != nil {
-		return err
-	}
-	// Validate array param in build's volumes
-	if err := validateVolumesParamArrayIndexing(ctx, spec.Volumes, arrayParams, &outofBoundParams); err != nil {
-		return err
-	}
+	// extract all array indexing references
+	validateStepsParamArrayIndexing(ctx, spec.Steps, arrayParams, &arrayIndexingParams)
+	validateStepsTemplateParamArrayIndexing(ctx, spec.StepTemplate, arrayParams, &arrayIndexingParams)
+	validateVolumesParamArrayIndexing(ctx, spec.Volumes, arrayParams, &arrayIndexingParams)
 	for _, v := range spec.Workspaces {
-		if err := FindInvalidParamArrayReference(ctx, v.MountPath, arrayParams, &outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, v.MountPath, arrayParams, &arrayIndexingParams)
+	}
+	validateSidecarsParamArrayIndexing(ctx, spec.Sidecars, arrayParams, &arrayIndexingParams)
+
+	if len(arrayIndexingParams) > 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
+		return fmt.Errorf(`indexing into array params: %v require "enable-api-fields" feature gate to be "alpha" or "beta"`, arrayIndexingParams)
 	}
 
-	if err := validateSidecarsParamArrayIndexing(ctx, spec.Sidecars, arrayParams, &outofBoundParams); err != nil {
-		return err
-	}
-	if outofBoundParams.Len() > 0 {
-		return fmt.Errorf("non-existent param references:%v", outofBoundParams.List())
-	}
-
-	return nil
-}
-
-// FindInvalidParamArrayReference checks if the alpha feature gate is enabled when array
-// indexing is used. And also find out of bound params
-func FindInvalidParamArrayReference(ctx context.Context, paramReference string, arrayParams map[string]int, outofBoundParams *sets.String) error {
-	list := substitution.ExtractParamsExpressions(paramReference)
-	for _, val := range list {
-		indexString := substitution.ExtractIndexString(paramReference)
-		if indexString != "" {
-			if !config.CheckAlphaOrBetaAPIFields(ctx) {
-				return fmt.Errorf(`indexing into array param %s requires "enable-api-fields" feature gate to be "alpha" or "beta"`, paramReference)
-			}
-		}
+	for _, val := range arrayIndexingParams {
+		indexString := substitution.ExtractIndexString(val)
 		idx, _ := substitution.ExtractIndex(indexString)
 		v := substitution.TrimArrayIndex(val)
 		if paramLength, ok := arrayParams[v]; ok {
@@ -453,197 +430,143 @@ func FindInvalidParamArrayReference(ctx context.Context, paramReference string, 
 			}
 		}
 	}
+
+	if outofBoundParams.Len() > 0 {
+		return fmt.Errorf("non-existent param references:%v", outofBoundParams.List())
+	}
+
 	return nil
+}
+
+// ExtractArrayIndexingParamReference checks if the alpha feature gate is enabled when array
+// indexing is used. And also find out of bound params
+func ExtractArrayIndexingParamReference(ctx context.Context, paramReference string, arrayParams map[string]int, arrayIndexingParams *[]string) {
+	list := substitution.ExtractParamsExpressions(paramReference)
+	for _, val := range list {
+		indexString := substitution.ExtractIndexString(val)
+		if indexString != "" {
+			*arrayIndexingParams = append(*arrayIndexingParams, val)
+		}
+	}
 }
 
 // validateStepsParamArrayIndexing validates array indexing params references in steps
-func validateStepsParamArrayIndexing(ctx context.Context, steps []v1beta1.Step, arrayParams map[string]int, outofBoundParams *sets.String) error {
+func validateStepsParamArrayIndexing(ctx context.Context, steps []v1beta1.Step, arrayParams map[string]int, arrayIndexingParams *[]string) {
 	for _, step := range steps {
-		if err := FindInvalidParamArrayReference(ctx, step.Script, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, step.Script, arrayParams, arrayIndexingParams)
 		container := step.ToK8sContainer()
-		if err := validateContainerParamArrayIndexing(ctx, container, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		extractContainerParamArrayIndexing(ctx, container, arrayParams, arrayIndexingParams)
 	}
-	return nil
 }
 
 // validateStepsTemplateParamArrayIndexing validates array indexing params references in steps template
-func validateStepsTemplateParamArrayIndexing(ctx context.Context, stepTemplate *v1beta1.StepTemplate, arrayParams map[string]int, outofBoundParams *sets.String) error {
+func validateStepsTemplateParamArrayIndexing(ctx context.Context, stepTemplate *v1beta1.StepTemplate, arrayParams map[string]int, arrayIndexingParams *[]string) {
 	if stepTemplate == nil {
-		return nil
+		return
 	}
 	container := stepTemplate.ToK8sContainer()
-	return validateContainerParamArrayIndexing(ctx, container, arrayParams, outofBoundParams)
+	extractContainerParamArrayIndexing(ctx, container, arrayParams, arrayIndexingParams)
 }
 
 // validateSidecarsParamArrayIndexing validates array indexing params references in sidecars
-func validateSidecarsParamArrayIndexing(ctx context.Context, sidecars []v1beta1.Sidecar, arrayParams map[string]int, outofBoundParams *sets.String) error {
+func validateSidecarsParamArrayIndexing(ctx context.Context, sidecars []v1beta1.Sidecar, arrayParams map[string]int, arrayIndexingParams *[]string) {
 	for _, s := range sidecars {
-		if err := FindInvalidParamArrayReference(ctx, s.Script, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, s.Script, arrayParams, arrayIndexingParams)
 		container := s.ToK8sContainer()
-		if err := validateContainerParamArrayIndexing(ctx, container, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		extractContainerParamArrayIndexing(ctx, container, arrayParams, arrayIndexingParams)
 	}
-	return nil
 }
 
 // validateVolumesParamArrayIndexing validates array indexing params references in volumes
-func validateVolumesParamArrayIndexing(ctx context.Context, volumes []corev1.Volume, arrayParams map[string]int, outofBoundParams *sets.String) error {
+func validateVolumesParamArrayIndexing(ctx context.Context, volumes []corev1.Volume, arrayParams map[string]int, arrayIndexingParams *[]string) {
 	for i, v := range volumes {
-		if err := FindInvalidParamArrayReference(ctx, v.Name, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, v.Name, arrayParams, arrayIndexingParams)
 		if v.VolumeSource.ConfigMap != nil {
-			if err := FindInvalidParamArrayReference(ctx, v.ConfigMap.Name, arrayParams, outofBoundParams); err != nil {
-				return err
-			}
+			ExtractArrayIndexingParamReference(ctx, v.ConfigMap.Name, arrayParams, arrayIndexingParams)
 			for _, item := range v.ConfigMap.Items {
-				if err := FindInvalidParamArrayReference(ctx, item.Key, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
-				if err := FindInvalidParamArrayReference(ctx, item.Path, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
+				ExtractArrayIndexingParamReference(ctx, item.Key, arrayParams, arrayIndexingParams)
+				ExtractArrayIndexingParamReference(ctx, item.Path, arrayParams, arrayIndexingParams)
 			}
 		}
 		if v.VolumeSource.Secret != nil {
-			if err := FindInvalidParamArrayReference(ctx, v.Secret.SecretName, arrayParams, outofBoundParams); err != nil {
-				return err
-			}
+			ExtractArrayIndexingParamReference(ctx, v.Secret.SecretName, arrayParams, arrayIndexingParams)
 			for _, item := range v.Secret.Items {
-				if err := FindInvalidParamArrayReference(ctx, item.Key, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
-				if err := FindInvalidParamArrayReference(ctx, item.Path, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
+				ExtractArrayIndexingParamReference(ctx, item.Key, arrayParams, arrayIndexingParams)
+				ExtractArrayIndexingParamReference(ctx, item.Path, arrayParams, arrayIndexingParams)
 			}
 		}
 		if v.PersistentVolumeClaim != nil {
-			if err := FindInvalidParamArrayReference(ctx, v.PersistentVolumeClaim.ClaimName, arrayParams, outofBoundParams); err != nil {
-				return err
-			}
+			ExtractArrayIndexingParamReference(ctx, v.PersistentVolumeClaim.ClaimName, arrayParams, arrayIndexingParams)
 		}
 		if v.Projected != nil {
 			for _, s := range volumes[i].Projected.Sources {
 				if s.ConfigMap != nil {
-					if err := FindInvalidParamArrayReference(ctx, s.ConfigMap.Name, arrayParams, outofBoundParams); err != nil {
-						return err
-					}
+					ExtractArrayIndexingParamReference(ctx, s.ConfigMap.Name, arrayParams, arrayIndexingParams)
 				}
 				if s.Secret != nil {
-					if err := FindInvalidParamArrayReference(ctx, s.Secret.Name, arrayParams, outofBoundParams); err != nil {
-						return err
-					}
+					ExtractArrayIndexingParamReference(ctx, s.Secret.Name, arrayParams, arrayIndexingParams)
 				}
 				if s.ServiceAccountToken != nil {
-					if err := FindInvalidParamArrayReference(ctx, s.ServiceAccountToken.Audience, arrayParams, outofBoundParams); err != nil {
-						return err
-					}
+					ExtractArrayIndexingParamReference(ctx, s.ServiceAccountToken.Audience, arrayParams, arrayIndexingParams)
 				}
 			}
 		}
 		if v.CSI != nil {
 			if v.CSI.NodePublishSecretRef != nil {
-				if err := FindInvalidParamArrayReference(ctx, v.CSI.NodePublishSecretRef.Name, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
+				ExtractArrayIndexingParamReference(ctx, v.CSI.NodePublishSecretRef.Name, arrayParams, arrayIndexingParams)
 			}
 			if v.CSI.VolumeAttributes != nil {
 				for _, value := range v.CSI.VolumeAttributes {
-					if err := FindInvalidParamArrayReference(ctx, value, arrayParams, outofBoundParams); err != nil {
-						return err
-					}
+					ExtractArrayIndexingParamReference(ctx, value, arrayParams, arrayIndexingParams)
 				}
 			}
 		}
 	}
-	return nil
 }
 
-// validateContainerParamArrayIndexing validates array indexing params references in container
-func validateContainerParamArrayIndexing(ctx context.Context, c *corev1.Container, arrayParams map[string]int, outofBoundParams *sets.String) error {
-	if err := FindInvalidParamArrayReference(ctx, c.Name, arrayParams, outofBoundParams); err != nil {
-		return err
-	}
-	if err := FindInvalidParamArrayReference(ctx, c.Image, arrayParams, outofBoundParams); err != nil {
-		return err
-	}
-	if err := FindInvalidParamArrayReference(ctx, string(c.ImagePullPolicy), arrayParams, outofBoundParams); err != nil {
-		return err
-	}
+// extractContainerParamArrayIndexing extracts array indexing params references in container
+func extractContainerParamArrayIndexing(ctx context.Context, c *corev1.Container, arrayParams map[string]int, arrayIndexingParams *[]string) {
+	ExtractArrayIndexingParamReference(ctx, c.Name, arrayParams, arrayIndexingParams)
+	ExtractArrayIndexingParamReference(ctx, c.Image, arrayParams, arrayIndexingParams)
+	ExtractArrayIndexingParamReference(ctx, string(c.ImagePullPolicy), arrayParams, arrayIndexingParams)
 
 	for _, a := range c.Args {
-		if err := FindInvalidParamArrayReference(ctx, a, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, a, arrayParams, arrayIndexingParams)
 	}
 
 	for ie, e := range c.Env {
-		if err := FindInvalidParamArrayReference(ctx, e.Value, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, e.Value, arrayParams, arrayIndexingParams)
 		if c.Env[ie].ValueFrom != nil {
 			if e.ValueFrom.SecretKeyRef != nil {
-				if err := FindInvalidParamArrayReference(ctx, e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
-				if err := FindInvalidParamArrayReference(ctx, e.ValueFrom.SecretKeyRef.Key, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
+				ExtractArrayIndexingParamReference(ctx, e.ValueFrom.SecretKeyRef.LocalObjectReference.Name, arrayParams, arrayIndexingParams)
+				ExtractArrayIndexingParamReference(ctx, e.ValueFrom.SecretKeyRef.Key, arrayParams, arrayIndexingParams)
 			}
 			if e.ValueFrom.ConfigMapKeyRef != nil {
-				if err := FindInvalidParamArrayReference(ctx, e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
-				if err := FindInvalidParamArrayReference(ctx, e.ValueFrom.ConfigMapKeyRef.Key, arrayParams, outofBoundParams); err != nil {
-					return err
-				}
+				ExtractArrayIndexingParamReference(ctx, e.ValueFrom.ConfigMapKeyRef.LocalObjectReference.Name, arrayParams, arrayIndexingParams)
+				ExtractArrayIndexingParamReference(ctx, e.ValueFrom.ConfigMapKeyRef.Key, arrayParams, arrayIndexingParams)
 			}
 		}
 	}
 
 	for _, e := range c.EnvFrom {
-		if err := FindInvalidParamArrayReference(ctx, e.Prefix, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, e.Prefix, arrayParams, arrayIndexingParams)
 		if e.ConfigMapRef != nil {
-			if err := FindInvalidParamArrayReference(ctx, e.ConfigMapRef.LocalObjectReference.Name, arrayParams, outofBoundParams); err != nil {
-				return err
-			}
+			ExtractArrayIndexingParamReference(ctx, e.ConfigMapRef.LocalObjectReference.Name, arrayParams, arrayIndexingParams)
 		}
 		if e.SecretRef != nil {
-			if err := FindInvalidParamArrayReference(ctx, e.SecretRef.LocalObjectReference.Name, arrayParams, outofBoundParams); err != nil {
-				return err
-			}
+			ExtractArrayIndexingParamReference(ctx, e.SecretRef.LocalObjectReference.Name, arrayParams, arrayIndexingParams)
 		}
 	}
 
-	if err := FindInvalidParamArrayReference(ctx, c.WorkingDir, arrayParams, outofBoundParams); err != nil {
-		return err
-	}
+	ExtractArrayIndexingParamReference(ctx, c.WorkingDir, arrayParams, arrayIndexingParams)
 	for _, cc := range c.Command {
-		if err := FindInvalidParamArrayReference(ctx, cc, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, cc, arrayParams, arrayIndexingParams)
 	}
 
 	for _, v := range c.VolumeMounts {
-		if err := FindInvalidParamArrayReference(ctx, v.Name, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
-		if err := FindInvalidParamArrayReference(ctx, v.MountPath, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
-		if err := FindInvalidParamArrayReference(ctx, v.SubPath, arrayParams, outofBoundParams); err != nil {
-			return err
-		}
+		ExtractArrayIndexingParamReference(ctx, v.Name, arrayParams, arrayIndexingParams)
+		ExtractArrayIndexingParamReference(ctx, v.MountPath, arrayParams, arrayIndexingParams)
+		ExtractArrayIndexingParamReference(ctx, v.SubPath, arrayParams, arrayIndexingParams)
 	}
-	return nil
+
 }

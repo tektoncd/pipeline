@@ -1122,7 +1122,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 		},
 		expectedError: fmt.Errorf("non-existent param references:[%v]", "$(params.array-params[3])"),
 	}, {
-		name: "alpha gate not enabled",
+		name: "beta gate not enabled",
 		params: []v1beta1.Param{{
 			Name:  "array-params",
 			Value: *v1beta1.NewStructuredValues("bar", "foo"),
@@ -1138,7 +1138,7 @@ func TestValidateParamArrayIndex(t *testing.T) {
 			},
 		},
 		apifields:     config.StableAPIFields,
-		expectedError: fmt.Errorf(`indexing into array param %s requires "enable-api-fields" feature gate to be "alpha" or "beta"`, "$(params.array-params[3])"),
+		expectedError: fmt.Errorf(`indexing into array params: %v require "enable-api-fields" feature gate to be "alpha" or "beta"`, []string{"$(params.array-params[3])"}),
 	},
 	}
 	for _, tc := range tcs {

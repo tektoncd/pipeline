@@ -696,7 +696,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 		params:   []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
 		expected: fmt.Errorf("non-existent param references:[$(params.first-param[2]) $(params.second-param[3])]"),
 	}, {
-		name: "alpha gate not enabled",
+		name: "beta gate not enabled",
 		original: v1beta1.PipelineSpec{
 			Params: []v1beta1.ParamSpec{
 				{Name: "first-param", Type: v1beta1.ParamTypeArray, Default: v1beta1.NewStructuredValues("default-value", "default-value-again")},
@@ -718,7 +718,7 @@ func TestValidateParamArrayIndex_invalid(t *testing.T) {
 		},
 		params:    []v1beta1.Param{{Name: "second-param", Value: *v1beta1.NewStructuredValues("second-value", "second-value-again")}},
 		apifields: "stable",
-		expected:  fmt.Errorf(`indexing into array param %s requires "enable-api-fields" feature gate to be "alpha" or "beta"`, "$(params.first-param[2])"),
+		expected:  fmt.Errorf(`indexing into array params: %v require "enable-api-fields" feature gate to be "alpha" or "beta"`, []string{"$(params.first-param[2])", "$(params.second-param[3])"}),
 	},
 	} {
 		tt := tt // capture range variable
