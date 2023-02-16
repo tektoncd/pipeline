@@ -1258,7 +1258,7 @@ func storePipelineSpecAndMergeMeta(ctx context.Context, pr *v1beta1.PipelineRun,
 		pr.ObjectMeta.Labels[pipeline.PipelineLabelKey] = meta.Name
 
 		// Propagate annotations from Pipeline to PipelineRun. PipelineRun annotations take precedences over Pipeline.
-		pr.ObjectMeta.Annotations = kmap.Union(meta.Annotations, pr.ObjectMeta.Annotations)
+		pr.ObjectMeta.Annotations = kmap.Union(kmap.ExcludeKeys(meta.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), pr.ObjectMeta.Annotations)
 	}
 
 	// Propagate ConfigSource from remote resolution to PipelineRun Status

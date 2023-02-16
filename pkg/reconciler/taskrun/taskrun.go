@@ -624,7 +624,7 @@ func (c *Reconciler) updateLabelsAndAnnotations(ctx context.Context, tr *v1beta1
 		// to deal with Patch (setting resourceVersion, and optimistic concurrency checks).
 		newTr = newTr.DeepCopy()
 		newTr.Labels = kmap.Union(newTr.Labels, tr.Labels)
-		newTr.Annotations = kmap.Union(newTr.Annotations, tr.Annotations)
+		newTr.Annotations = kmap.Union(kmap.ExcludeKeys(newTr.Annotations, tknreconciler.KubectlLastAppliedAnnotationKey), tr.Annotations)
 		return c.PipelineClientSet.TektonV1beta1().TaskRuns(tr.Namespace).Update(ctx, newTr, metav1.UpdateOptions{})
 	}
 	return newTr, nil
@@ -945,7 +945,7 @@ func storeTaskSpecAndMergeMeta(ctx context.Context, tr *v1beta1.TaskRun, ts *v1b
 		}
 
 		// Propagate annotations from Task to TaskRun. TaskRun annotations take precedences over Task.
-		tr.ObjectMeta.Annotations = kmap.Union(meta.Annotations, tr.ObjectMeta.Annotations)
+		tr.ObjectMeta.Annotations = kmap.Union(kmap.ExcludeKeys(meta.Annotations, "kubectl.kubernetes.io/last-applied-configuration"), tr.ObjectMeta.Annotations)
 		// Propagate labels from Task to TaskRun. TaskRun labels take precedences over Task.
 		tr.ObjectMeta.Labels = kmap.Union(meta.Labels, tr.ObjectMeta.Labels)
 		if tr.Spec.TaskRef != nil {

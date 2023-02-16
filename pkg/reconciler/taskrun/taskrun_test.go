@@ -4244,7 +4244,7 @@ func Test_storeTaskSpec_metadata(t *testing.T) {
 	taskrunlabels := map[string]string{"lbl1": "value1", "lbl2": "value2"}
 	taskrunannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2"}
 	tasklabels := map[string]string{"lbl1": "another value", "lbl2": "another value", "lbl3": "value3"}
-	taskannotations := map[string]string{"io.annotation.1": "another value", "io.annotation.2": "another value", "io.annotation.3": "value3"}
+	taskannotations := map[string]string{"io.annotation.1": "another value", "io.annotation.2": "another value", "io.annotation.3": "value3", "kubectl.kubernetes.io/last-applied-configuration": "foo-is-bar"}
 	wantedlabels := map[string]string{"lbl1": "value1", "lbl2": "value2", "lbl3": "value3"}
 	wantedannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2", "io.annotation.3": "value3"}
 
