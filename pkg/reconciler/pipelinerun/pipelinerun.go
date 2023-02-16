@@ -94,6 +94,9 @@ const (
 	// ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec
 	// misses some keys required for the object param declared in Pipeline spec.
 	ReasonObjectParameterMissKeys = "ObjectParameterMissKeys"
+	// ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate
+	// or the array is out of bound.
+	ReasonParamArrayIndexingInvalid = "ParamArrayIndexingInvalid"
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
 	ReasonCouldntGetTask = "CouldntGetTask"
@@ -509,8 +512,8 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	// Ensure that the array reference is not out of bound
 	if err := resources.ValidateParamArrayIndex(ctx, pipelineSpec, pr); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
-		pr.Status.MarkFailed(ReasonObjectParameterMissKeys,
-			"PipelineRun %s/%s parameters is missing object keys required by Pipeline %s/%s's parameters: %s",
+		pr.Status.MarkFailed(ReasonParamArrayIndexingInvalid,
+			"PipelineRun %s/%s failed validation: failed to validate Pipeline %s/%s's parameter which has an invalid index while referring to an array: %s",
 			pr.Namespace, pr.Name, pr.Namespace, pipelineMeta.Name, err)
 		return controller.NewPermanentError(err)
 	}

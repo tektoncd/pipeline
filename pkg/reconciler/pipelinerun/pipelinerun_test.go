@@ -1061,6 +1061,22 @@ spec:
 `, v1beta1.ParamTypeArray)),
 		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
 metadata:
+  name: a-pipeline-with-array-indexing-params
+  namespace: foo
+spec:
+  params:
+    - name: some-param
+      type: %s
+  tasks:
+    - name: some-task
+      taskRef:
+        name: a-task-that-needs-array-params
+      params:
+        - name: param
+          value: "$(params.some-param[2])"
+`, v1beta1.ParamTypeArray)),
+		parse.MustParseV1beta1Pipeline(t, fmt.Sprintf(`
+metadata:
   name: a-pipeline-with-object-params
   namespace: foo
 spec:
@@ -1223,6 +1239,27 @@ spec:
 		wantEvents: []string{
 			"Normal Started",
 			"Warning Failed PipelineRun foo/pipeline-missing-object-param-keys parameters is missing object keys required by Pipeline foo/a-pipeline-with-object-params's parameters: PipelineRun missing object keys for parameters",
+		},
+	}, {
+		name: "invalid-pipeline-array-index-out-of-bound",
+		pipelineRun: parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: pipeline-param-array-out-of-bound
+  namespace: foo
+spec:
+  pipelineRef:
+    name: a-pipeline-with-array-indexing-params
+  params:
+    - name: some-param
+      value:
+        - "a"
+        - "b"
+`),
+		reason:         ReasonParamArrayIndexingInvalid,
+		permanentError: true,
+		wantEvents: []string{
+			"Normal Started",
+			"Warning Failed PipelineRun foo/pipeline-param-array-out-of-bound failed validation: failed to validate Pipeline foo/a-pipeline-with-array-indexing-params's parameter which has an invalid index while referring to an array: non-existent param references:[$(params.some-param[2]",
 		},
 	}, {
 		name: "invalid-embedded-pipeline-resources-bot-bound-shd-stop-reconciling",
