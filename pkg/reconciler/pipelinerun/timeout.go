@@ -72,14 +72,7 @@ func timeoutPipelineRun(ctx context.Context, logger *zap.SugaredLogger, pr *v1be
 
 	// If we successfully timed out all the TaskRuns and Runs, we can consider the PipelineRun timed out.
 	if len(errs) == 0 {
-		reason := v1beta1.PipelineRunReasonTimedOut.String()
-
-		pr.Status.SetCondition(&apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  corev1.ConditionFalse,
-			Reason:  reason,
-			Message: fmt.Sprintf("PipelineRun %q failed to finish within %q", pr.Name, pr.PipelineTimeout(ctx).String()),
-		})
+		pr.SetTimeoutCondition(ctx)
 		// update pr completed time
 		pr.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	} else {

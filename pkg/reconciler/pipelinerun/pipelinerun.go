@@ -179,6 +179,20 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, pr *v1beta1.PipelineRun)
 	// Read the initial condition
 	before := pr.Status.GetCondition(apis.ConditionSucceeded)
 
+	// Check if we are failing to mark this as timed out for a while. If we are, mark immediately and finish the
+	// reconcile. We are assuming here that if the PipelineRun has timed out for a long time, it had time to run
+	// before and it kept failing. One reason that can happen is exceeding etcd request size limit. Finishing it early
+	// makes sure the request size is manageable
+	if pr.HasTimedOutForALongTime(ctx, c.Clock) && !pr.IsTimeoutConditionSet() {
+		if err := timeoutPipelineRun(ctx, logger, pr, c.PipelineClientSet); err != nil {
+			return err
+		}
+		if err := c.finishReconcileUpdateEmitEvents(ctx, pr, before, nil); err != nil {
+			return err
+		}
+		return controller.NewPermanentError(errors.New("PipelineRun has timed out for a long time"))
+	}
+
 	if !pr.HasStarted() && !pr.IsPending() {
 		pr.Status.InitializeConditions(c.Clock)
 		// In case node time was not synchronized, when controller has been scheduled to other nodes.
