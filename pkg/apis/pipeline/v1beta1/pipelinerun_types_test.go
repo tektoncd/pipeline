@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -29,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clock "k8s.io/utils/clock/testing"
 	"knative.dev/pkg/apis"
+	v1 "knative.dev/pkg/apis/duck/v1"
 )
 
 var now = time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -211,6 +214,179 @@ func TestPipelineRunHasStarted(t *testing.T) {
 			}
 			if pr.HasStarted() != tc.expectedValue {
 				t.Fatalf("Expected pipelinerun HasStarted() to return %t but got %t", tc.expectedValue, pr.HasStarted())
+			}
+		})
+	}
+}
+
+func TestPipelineRunIsTimeoutConditionSet(t *testing.T) {
+	tcs := []struct {
+		name      string
+		condition apis.Condition
+		want      bool
+	}{{
+		name: "should return true when reason is timeout",
+		condition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: v1beta1.PipelineRunReasonTimedOut.String(),
+		},
+		want: true,
+	}, {
+		name: "should return false if status is not false",
+		condition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionUnknown,
+			Reason: v1beta1.PipelineRunReasonTimedOut.String(),
+		},
+		want: false,
+	}, {
+		name: "should return false if the reason is not timeout",
+		condition: apis.Condition{
+			Type:   apis.ConditionSucceeded,
+			Status: corev1.ConditionFalse,
+			Reason: v1beta1.PipelineRunReasonFailed.String(),
+		},
+		want: false,
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run"},
+				Status: v1beta1.PipelineRunStatus{
+					Status: v1.Status{
+						Conditions: v1.Conditions{tc.condition},
+					},
+				},
+			}
+			if got := pr.IsTimeoutConditionSet(); got != tc.want {
+				t.Errorf("pr.IsTimeoutConditionSet() (-want, +got):\n- %t\n+ %t", tc.want, got)
+			}
+		})
+	}
+}
+
+func TestPipelineRunSetTimeoutCondition(t *testing.T) {
+	ctx := config.ToContext(context.Background(), &config.Config{
+		Defaults: &config.Defaults{
+			DefaultTimeoutMinutes: 120,
+		},
+	})
+
+	tcs := []struct {
+		name        string
+		pipelineRun *v1beta1.PipelineRun
+		want        *apis.Condition
+	}{{
+		name:        "set condition to default timeout",
+		pipelineRun: &v1beta1.PipelineRun{ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run"}},
+		want: &apis.Condition{
+			Type:    "Succeeded",
+			Status:  "False",
+			Reason:  "PipelineRunTimeout",
+			Message: `PipelineRun "test-pipeline-run" failed to finish within "2h0m0s"`,
+		},
+	}, {
+		name: "set condition to spec.timeout value",
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run"},
+			Spec: v1beta1.PipelineRunSpec{
+				Timeout: &metav1.Duration{Duration: time.Hour},
+			},
+		},
+		want: &apis.Condition{
+			Type:    "Succeeded",
+			Status:  "False",
+			Reason:  "PipelineRunTimeout",
+			Message: `PipelineRun "test-pipeline-run" failed to finish within "1h0m0s"`,
+		},
+	}, {
+		name: "set condition to spec.timeouts.pipeline value",
+		pipelineRun: &v1beta1.PipelineRun{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-pipeline-run"},
+			Spec: v1beta1.PipelineRunSpec{
+				Timeouts: &v1beta1.TimeoutFields{
+					Pipeline: &metav1.Duration{Duration: time.Hour},
+				},
+			},
+		},
+		want: &apis.Condition{
+			Type:    "Succeeded",
+			Status:  "False",
+			Reason:  "PipelineRunTimeout",
+			Message: `PipelineRun "test-pipeline-run" failed to finish within "1h0m0s"`,
+		},
+	}}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.pipelineRun.SetTimeoutCondition(ctx)
+
+			got := tc.pipelineRun.Status.GetCondition(apis.ConditionSucceeded)
+			if d := cmp.Diff(tc.want, got, cmpopts.IgnoreFields(apis.Condition{}, "LastTransitionTime")); d != "" {
+				t.Errorf("Unexpected PipelineRun condition: %v", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
+func TestPipelineRunHasTimedOutForALongTime(t *testing.T) {
+	tcs := []struct {
+		name      string
+		timeout   time.Duration
+		starttime time.Time
+		expected  bool
+	}{{
+		name:      "has timed out for a long time",
+		timeout:   1 * time.Hour,
+		starttime: now.Add(-2 * time.Hour),
+		expected:  true,
+	}, {
+		name:      "has timed out for not a long time",
+		timeout:   1 * time.Hour,
+		starttime: now.Add(-90 * time.Minute),
+		expected:  false,
+	}, {
+		name:      "has not timed out",
+		timeout:   1 * time.Hour,
+		starttime: now.Add(-30 * time.Minute),
+		expected:  false,
+	}, {
+		name:      "has no timeout specified",
+		timeout:   0 * time.Second,
+		starttime: now.Add(-24 * time.Hour),
+		expected:  false,
+	}}
+
+	for _, tc := range tcs {
+		t.Run("pipeline.timeout "+tc.name, func(t *testing.T) {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.PipelineRunSpec{
+					Timeout: &metav1.Duration{Duration: tc.timeout},
+				},
+				Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: tc.starttime},
+				}},
+			}
+			if pr.HasTimedOutForALongTime(context.Background(), testClock) != tc.expected {
+				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeout", tc.expected)
+			}
+		})
+		t.Run("pipeline.timeouts.pipeline "+tc.name, func(t *testing.T) {
+			pr := &v1beta1.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+				Spec: v1beta1.PipelineRunSpec{
+					Timeouts: &v1beta1.TimeoutFields{Pipeline: &metav1.Duration{Duration: tc.timeout}},
+				},
+				Status: v1beta1.PipelineRunStatus{PipelineRunStatusFields: v1beta1.PipelineRunStatusFields{
+					StartTime: &metav1.Time{Time: tc.starttime},
+				}},
+			}
+
+			if pr.HasTimedOutForALongTime(context.Background(), testClock) != tc.expected {
+				t.Errorf("Expected HasTimedOut to be %t when using pipeline.timeouts.pipeline", tc.expected)
 			}
 		})
 	}

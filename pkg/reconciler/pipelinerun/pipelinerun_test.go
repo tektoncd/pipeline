@@ -28,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	"sigs.k8s.io/yaml"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/go-containerregistry/pkg/registry"
@@ -1385,7 +1387,7 @@ status:
     reason: Running
     status: Unknown
     type: Succeeded
-  startTime: "2021-12-31T00:00:00Z"
+  startTime: "2021-12-31T11:00:00Z"
   childReferences:
   - name: test-pipeline-run-custom-task-hello-world-1
     pipelineTaskName: hello-world-1
@@ -2039,7 +2041,7 @@ spec:
   serviceAccountName: test-sa
   timeout: 12h0m0s
 status:
-  startTime: "2021-12-31T00:00:00Z"
+  startTime: "2021-12-31T11:00:00Z"
 `)}
 	ts := []*v1beta1.Task{simpleHelloWorldTask}
 
@@ -2101,7 +2103,7 @@ spec:
   timeouts:
     pipeline: 12h0m0s
 status:
-  startTime: "2021-12-31T00:00:00Z"
+  startTime: "2021-12-31T11:00:00Z"
   childReferences:
   - name: test-pipeline-run-with-timeout-hello-world-1
     pipelineTaskName: hello-world-1
@@ -2158,6 +2160,148 @@ spec:
 	}
 	if updatedTaskRun.Spec.StatusMessage != v1beta1.TaskRunCancelledByPipelineTimeoutMsg {
 		t.Errorf("expected existing TaskRun Spec.StatusMessage to be set to %s, but was %s", v1beta1.TaskRunCancelledByPipelineTimeoutMsg, updatedTaskRun.Spec.StatusMessage)
+	}
+}
+
+func TestReconcileWithTimeoutForALongTimeAndEtcdLimit_Pipeline(t *testing.T) {
+	timeout := 12 * time.Hour
+	testCases := []struct {
+		name      string
+		startTime time.Time
+		wantError error
+	}{
+		{
+			name:      "pipelinerun has timed out for way too much time",
+			startTime: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC).Add(-3 * timeout),
+			wantError: errors.New("PipelineRun has timed out for a long time"),
+		},
+		{
+			name:      "pipelinerun has timed out for a long time",
+			startTime: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC).Add(-2 * timeout),
+			wantError: errors.New("PipelineRun has timed out for a long time"),
+		},
+		{
+			name:      "pipelinerun has timed out for a while",
+			startTime: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC).Add(-(3 / 2) * timeout),
+			wantError: errors.New("etcdserver: request too large"),
+		},
+		{
+			name:      "pipelinerun has just timed out",
+			startTime: time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC).Add(-timeout),
+			wantError: errors.New("etcdserver: request too large"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ps := []*v1beta1.Pipeline{parse.MustParseV1beta1Pipeline(t, `
+metadata:
+  name: test-pipeline
+  namespace: foo
+spec:
+  tasks:
+  - name: hello-world-1
+    taskRef:
+      name: hello-world
+  - name: hello-world-2
+    taskRef:
+      name: hello-world
+`)}
+			prs := []*v1beta1.PipelineRun{parse.MustParseV1beta1PipelineRun(t, `
+metadata:
+  name: test-pipeline-run-with-timeout
+  namespace: foo
+spec:
+  pipelineRef:
+    name: test-pipeline
+  serviceAccountName: test-sa
+  timeouts:
+    pipeline: 12h0m0s
+status:
+  startTime: "2021-12-30T00:00:00Z"
+`)}
+			ts := []*v1beta1.Task{simpleHelloWorldTask}
+
+			trs := []*v1beta1.TaskRun{mustParseTaskRunWithObjectMeta(t, taskRunObjectMeta("test-pipeline-run-with-timeout-hello-world-1", "foo", "test-pipeline-run-with-timeout",
+				"test-pipeline", "hello-world-1", false), `
+spec:
+  resources: {}
+  serviceAccountName: test-sa
+  taskRef:
+    name: hello-world
+    kind: Task
+`)}
+			start := metav1.NewTime(tc.startTime)
+			prs[0].Status.StartTime = &start
+
+			d := test.Data{
+				PipelineRuns: prs,
+				Pipelines:    ps,
+				Tasks:        ts,
+				TaskRuns:     trs,
+			}
+			prt := newPipelineRunTest(t, d)
+			defer prt.Cancel()
+
+			wantEvents := []string{
+				"Warning Failed PipelineRun \"test-pipeline-run-with-timeout\" failed to finish within \"12h0m0s\"",
+			}
+
+			// this limit is just enough to set the timeout condition, but not enough for extra metadata.
+			etcdRequestSizeLimit := 650
+			prt.TestAssets.Clients.Pipeline.PrependReactor("update", "pipelineruns", withEtcdRequestSizeLimit(t, etcdRequestSizeLimit))
+
+			c := prt.TestAssets.Controller
+			clients := prt.TestAssets.Clients
+			reconcileError := c.Reconciler.Reconcile(prt.TestAssets.Ctx, "foo/test-pipeline-run-with-timeout")
+			if tc.wantError != nil {
+				if reconcileError == nil {
+					t.Fatalf("expected error %q, but got nil", tc.wantError.Error())
+				}
+				if reconcileError.Error() != tc.wantError.Error() {
+					t.Fatalf("Expected error: %s Got: %s", tc.wantError, reconcileError)
+				}
+				return
+			}
+			if reconcileError != nil {
+				t.Fatalf("Reconcile error: %s", reconcileError)
+			}
+			prt.Test.Logf("Getting reconciled run")
+			reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns("foo").Get(prt.TestAssets.Ctx, "test-pipeline-run-with-timeout", metav1.GetOptions{})
+			if err != nil {
+				prt.Test.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
+			}
+			prt.Test.Logf("Getting events")
+			// Check generated events match what's expected
+			if err := k8sevent.CheckEventsOrdered(prt.Test, prt.TestAssets.Recorder.Events, "test-pipeline-run-with-timeout", wantEvents); err != nil {
+				prt.Test.Errorf(err.Error())
+			}
+
+			// The PipelineRun should be timed out.
+			if reconciledRun.Status.GetCondition(apis.ConditionSucceeded).Reason != "PipelineRunTimeout" {
+				t.Errorf("Expected PipelineRun to be timed out, but condition reason is %s", reconciledRun.Status.GetCondition(apis.ConditionSucceeded))
+			}
+		})
+	}
+}
+
+// withEtcdRequestSizeLimit calculates the yaml marshal of the payload and gives an `etcdserver: request too large` when
+// the limit is reached
+func withEtcdRequestSizeLimit(t *testing.T, limitBytes int) ktesting.ReactionFunc {
+	t.Helper()
+	return func(action ktesting.Action) (handled bool, ret runtime.Object, err error) {
+		obj := action.(ktesting.UpdateAction).GetObject()
+		bytes, err := yaml.Marshal(obj)
+		if err != nil {
+			t.Fatalf("returned a unserializable status: %+v", obj)
+		}
+
+		if len(bytes) > limitBytes {
+			t.Logf("request size: %d\nrequest limit: %d\n", len(bytes), limitBytes)
+			t.Logf("payload:\n%s\n", string(bytes))
+			return true, nil, errors.New("etcdserver: request too large")
+		}
+		return false, nil, nil
 	}
 }
 
@@ -6159,11 +6303,13 @@ func (prt PipelineRunTest) reconcileRun(namespace, pipelineRunName string, wantE
 	} else if reconcileError != nil {
 		prt.Test.Fatalf("Error reconciling: %s", reconcileError)
 	}
+	prt.Test.Logf("Getting reconciled run")
 	// Check that the PipelineRun was reconciled correctly
 	reconciledRun, err := clients.Pipeline.TektonV1beta1().PipelineRuns(namespace).Get(prt.TestAssets.Ctx, pipelineRunName, metav1.GetOptions{})
 	if err != nil {
 		prt.Test.Fatalf("Somehow had error getting reconciled run out of fake client: %s", err)
 	}
+	prt.Test.Logf("Getting events")
 
 	// Check generated events match what's expected
 	if len(wantEvents) > 0 {
