@@ -5120,7 +5120,7 @@ func Test_storePipelineSpec_metadata(t *testing.T) {
 	pipelinerunlabels := map[string]string{"lbl1": "value1", "lbl2": "value2"}
 	pipelinerunannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2"}
 	pipelinelabels := map[string]string{"lbl1": "another value", "lbl2": "another value", "lbl3": "value3"}
-	pipelineannotations := map[string]string{"io.annotation.1": "another value", "io.annotation.2": "another value", "io.annotation.3": "value3"}
+	pipelineannotations := map[string]string{"io.annotation.1": "another value", "io.annotation.2": "another value", "io.annotation.3": "value3", "kubectl.kubernetes.io/last-applied-configuration": "foo-is-bar"}
 	wantedlabels := map[string]string{"lbl1": "value1", "lbl2": "value2", "lbl3": "value3", pipeline.PipelineLabelKey: "bar"}
 	wantedannotations := map[string]string{"io.annotation.1": "value1", "io.annotation.2": "value2", "io.annotation.3": "value3"}
 
