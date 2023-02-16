@@ -100,7 +100,7 @@ type PipelineSpec struct {
 	// Params declares a list of input parameters that must be supplied when
 	// this Pipeline is run.
 	// +listType=atomic
-	Params []ParamSpec `json:"params,omitempty"`
+	Params ParamSpecs `json:"params,omitempty"`
 	// Workspaces declares a set of named workspaces that are expected to be
 	// provided by a PipelineRun.
 	// +optional
@@ -168,7 +168,7 @@ type Matrix struct {
 	// Each array element is supplied to the `PipelineTask` by substituting `params` of type `"string"` in the underlying `Task`.
 	// The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.
 	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
+	Params Params `json:"params,omitempty"`
 
 	// Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix.
 	// Note that Include is in preview mode and not yet supported.
@@ -186,7 +186,7 @@ type MatrixInclude struct {
 	// Params takes only `Parameters` of type `"string"`
 	// The names of the `params` must match the names of the `params` in the underlying `Task`
 	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
+	Params Params `json:"params,omitempty"`
 }
 
 // PipelineTask defines a task in a Pipeline, passing inputs from both
@@ -227,7 +227,7 @@ type PipelineTask struct {
 	// Parameters declares parameters passed to this task.
 	// +optional
 	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
+	Params Params `json:"params,omitempty"`
 
 	// Matrix declares parameters used to fan out this task.
 	// +optional

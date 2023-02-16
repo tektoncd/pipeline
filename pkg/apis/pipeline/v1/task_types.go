@@ -59,7 +59,7 @@ type TaskSpec struct {
 	// value.
 	// +optional
 	// +listType=atomic
-	Params []ParamSpec `json:"params,omitempty"`
+	Params ParamSpecs `json:"params,omitempty"`
 
 	// Description is a user-facing description of the task that may be
 	// used to populate a UI.

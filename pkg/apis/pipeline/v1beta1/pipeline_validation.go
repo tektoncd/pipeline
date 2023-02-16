@@ -535,3 +535,51 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 	}
 	return errs
 }
+
+// ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
+// error is returned when the array indexing reference is out of bound of the array param
+// e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
+func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
+	if !config.CheckAlphaOrBetaAPIFields(ctx) {
+		return nil
+	}
+
+	// Collect all array params lengths
+	arrayParamsLengths := ps.Params.extractParamArrayLengths()
+	for k, v := range params.extractParamArrayLengths() {
+		arrayParamsLengths[k] = v
+	}
+
+	paramsRefs := []string{}
+	for i := range ps.Tasks {
+		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractParamValuesFromParams()...)
+		if ps.Tasks[i].IsMatrixed() {
+			paramsRefs = append(paramsRefs, ps.Tasks[i].Matrix.Params.extractParamValuesFromParams()...)
+		}
+		for j := range ps.Tasks[i].Workspaces {
+			paramsRefs = append(paramsRefs, ps.Tasks[i].Workspaces[j].SubPath)
+		}
+		for _, wes := range ps.Tasks[i].WhenExpressions {
+			paramsRefs = append(paramsRefs, wes.Input)
+			paramsRefs = append(paramsRefs, wes.Values...)
+		}
+	}
+
+	for i := range ps.Finally {
+		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractParamValuesFromParams()...)
+		if ps.Finally[i].IsMatrixed() {
+			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractParamValuesFromParams()...)
+		}
+		for _, wes := range ps.Finally[i].WhenExpressions {
+			paramsRefs = append(paramsRefs, wes.Values...)
+		}
+	}
+
+	// extract all array indexing references, for example []{"$(params.array-params[1])"}
+	arrayIndexParamRefs := []string{}
+	for _, p := range paramsRefs {
+		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
+	}
+
+	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+}

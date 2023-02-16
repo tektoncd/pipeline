@@ -510,7 +510,7 @@ func (c *Reconciler) reconcile(ctx context.Context, pr *v1beta1.PipelineRun, get
 	}
 
 	// Ensure that the array reference is not out of bound
-	if err := resources.ValidateParamArrayIndex(ctx, pipelineSpec, pr); err != nil {
+	if err := pipelineSpec.ValidateParamArrayIndex(ctx, pr.Spec.Params); err != nil {
 		// This Run has failed, so we need to mark it as failed and stop reconciling it
 		pr.Status.MarkFailed(ReasonParamArrayIndexingInvalid,
 			"PipelineRun %s/%s failed validation: failed to validate Pipeline %s/%s's parameter which has an invalid index while referring to an array: %s",
