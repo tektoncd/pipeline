@@ -78,7 +78,7 @@ func ResolveTaskResources(ts *v1beta1.TaskSpec, taskName string, kind v1beta1.Ta
 // instantiating it from the embedded spec.
 func GetResourceFromBinding(r v1beta1.PipelineResourceBinding, getter GetResource) (*resourcev1alpha1.PipelineResource, error) {
 	if (r.ResourceRef != nil && r.ResourceRef.Name != "") && r.ResourceSpec != nil {
-		return nil, errors.New("Both ResourseRef and ResourceSpec are defined. Expected only one")
+		return nil, errors.New("Both ResourceRef and ResourceSpec are defined. Expected only one")
 	}
 	if r.ResourceRef != nil && r.ResourceRef.Name != "" {
 		return getter(r.ResourceRef.Name)
@@ -91,5 +91,5 @@ func GetResourceFromBinding(r v1beta1.PipelineResourceBinding, getter GetResourc
 			Spec: *r.ResourceSpec,
 		}, nil
 	}
-	return nil, errors.New("Neither ResourseRef nor ResourceSpec is defined")
+	return nil, errors.New("Neither ResourceRef nor ResourceSpec is defined")
 }
