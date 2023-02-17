@@ -45,6 +45,10 @@ var (
 	ignoreContainerStates   = cmpopts.IgnoreFields(corev1.ContainerState{}, "Terminated")
 	ignoreStepState         = cmpopts.IgnoreFields(v1beta1.StepState{}, "ImageID")
 	ignoreTaskRunSpec       = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "Resources")
+	// ignoreSATaskRunSpec ignores the service account in the TaskRunSpec as it may differ across platforms
+	ignoreSATaskRunSpec = cmpopts.IgnoreFields(v1beta1.TaskRunSpec{}, "ServiceAccountName")
+	// ignoreSAPipelineRunSpec ignores the service account in the PipelineRunSpec as it may differ across platforms
+	ignoreSAPipelineRunSpec = cmpopts.IgnoreFields(v1beta1.PipelineRunSpec{}, "ServiceAccountName")
 )
 
 func TestPropagatedParams(t *testing.T) {
@@ -108,6 +112,7 @@ func TestPropagatedParams(t *testing.T) {
 				ignoreConditions,
 				ignoreContainerStates,
 				ignoreStepState,
+				ignoreSAPipelineRunSpec,
 			)
 			if d != "" {
 				t.Fatalf(`The resolved spec does not match the expected spec. Here is the diff: %v`, d)
@@ -124,6 +129,7 @@ func TestPropagatedParams(t *testing.T) {
 					ignoreContainerStates,
 					ignoreStepState,
 					ignoreTaskRunSpec,
+					ignoreSATaskRunSpec,
 				)
 				if d != "" {
 					t.Fatalf(`The expected taskrun does not match created taskrun. Here is the diff: %v`, d)
@@ -165,7 +171,6 @@ metadata:
   name: propagated-parameters-fully
   namespace: %s
 spec:
-  serviceAccountName: default
   timeout: 1h
   params:
   - name: HELLO
@@ -207,7 +212,6 @@ metadata:
   name: propagated-parameters-fully-echo-hello
   namespace: %s
 spec:
-  serviceAccountName: default
   timeout: 1h
   resources:
   taskSpec:
@@ -231,7 +235,6 @@ metadata:
   name: propagated-parameters-fully-echo-hello-finally
   namespace: %s
 spec:
-  serviceAccountName: default
   timeout: 1h
   taskSpec:
     steps:
@@ -280,7 +283,6 @@ metadata:
   namespace: %s
 spec:
   timeout: 1h
-  serviceAccountName: default
   params:
   - name: HELLO
     value: "Pipeline Hello World!"
@@ -313,7 +315,6 @@ metadata:
   name: propagated-parameters-task-level-echo-hello
   namespace: %s
 spec:
-  serviceAccountName: default
   timeout: 1h
   params:
     - name: HELLO
@@ -365,7 +366,6 @@ metadata:
   name: propagated-parameters-default-task-level
   namespace: %s
 spec:
-  serviceAccountName: default
   timeout: 1h
   params:
   - name: HELLO
@@ -401,7 +401,6 @@ metadata:
   name: propagated-parameters-default-task-level-echo-hello
   namespace: %s
 spec:
-  serviceAccountName: default
   timeout: 1h
   resources:
   taskSpec:
