@@ -212,6 +212,24 @@ type Matrix struct {
 	// The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.
 	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
+
+	// Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix.
+	// Note that Include is in preview mode and not yet supported.
+	// +optional
+	// +listType=atomic
+	Include []MatrixInclude `json:"include,omitempty"`
+}
+
+// MatrixInclude allows passing in a specific combinations of Parameters into the Matrix.
+// Note this struct is in preview mode and not yet supported
+type MatrixInclude struct {
+	// Name the specified combination
+	Name string `json:"name,omitempty"`
+
+	// Params takes only `Parameters` of type `"string"`
+	// The names of the `params` must match the names of the `params` in the underlying `Task`
+	// +listType=atomic
+	Params []Param `json:"params,omitempty"`
 }
 
 // validateRefOrSpec validates at least one of taskRef or taskSpec is specified
@@ -275,7 +293,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 
 // IsMatrixed return whether pipeline task is matrixed
 func (pt *PipelineTask) IsMatrixed() bool {
-	return pt.Matrix != nil && len(pt.Matrix.Params) > 0
+	return pt.Matrix != nil && (len(pt.Matrix.Params) > 0 || len(pt.Matrix.Include) > 0)
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
