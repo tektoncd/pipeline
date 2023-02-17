@@ -18,6 +18,7 @@ package logstream
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"sync"
@@ -29,9 +30,11 @@ import (
 	logstreamv2 "knative.dev/pkg/test/logstream/v2"
 )
 
-// Canceler is the type of a function returned when a logstream is started to be
-// deferred so that the logstream can be stopped when the test is complete.
-type Canceler = logstreamv2.Canceler
+type (
+	// Canceler is the type of function returned when a logstream is started to be
+	// deferred so that the logstream can be stopped when the test is complete.
+	Canceler = logstreamv2.Canceler
+)
 
 type ti interface {
 	Name() string
@@ -41,35 +44,39 @@ type ti interface {
 }
 
 // Start begins streaming the logs from system components with a `key:` matching
-// `test.ObjectNameForTest(t)` to `t.Log`.  It returns a Canceler, which must
+// `test.ObjectNameForTest(t)` to `t.Log`. It returns a Canceler, which must
 // be called before the test completes.
 func Start(t ti) Canceler {
 	// Do this lazily to make import ordering less important.
 	once.Do(func() {
 		if ns := os.Getenv(system.NamespaceEnvKey); ns != "" {
-			config, err := test.Flags.GetRESTConfig()
-			if err != nil {
-				t.Error("Error loading client config", "error", err)
-				return
-			}
-
-			kc, err := kubernetes.NewForConfig(config)
-			if err != nil {
-				t.Error("Error creating kubernetes client", "error", err)
-				return
-			}
-
+			var err error
 			// handle case when ns contains a csv list
 			namespaces := strings.Split(ns, ",")
-			stream = &shim{logstreamv2.FromNamespaces(context.Background(), kc, namespaces)}
-
+			if sysStream, err = initStream(namespaces); err != nil {
+				t.Error("Error initializing logstream", "error", err)
+			}
 		} else {
-			// Otherwise set up a null stream.
-			stream = &null{}
+			// Otherwise, set up a null stream.
+			sysStream = &null{}
 		}
 	})
 
-	return stream.Start(t)
+	return sysStream.Start(t)
+}
+
+func initStream(namespaces []string) (streamer, error) {
+	config, err := test.Flags.GetRESTConfig()
+	if err != nil {
+		return &null{}, fmt.Errorf("error loading client config: %w", err)
+	}
+
+	kc, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return &null{}, fmt.Errorf("error creating kubernetes client: %w", err)
+	}
+
+	return &shim{logstreamv2.FromNamespaces(context.Background(), kc, namespaces)}, nil
 }
 
 type streamer interface {
@@ -77,8 +84,8 @@ type streamer interface {
 }
 
 var (
-	stream streamer
-	once   sync.Once
+	sysStream streamer
+	once      sync.Once
 )
 
 type shim struct {

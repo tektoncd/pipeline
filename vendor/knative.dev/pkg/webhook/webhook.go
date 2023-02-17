@@ -208,11 +208,11 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 		QuietPeriod: wh.Options.GracePeriod,
 	}
 
-	//nolint:gosec // https://github.com/knative/pkg/issues/2632
 	server := &http.Server{
-		Handler:   drainer,
-		Addr:      fmt.Sprint(":", wh.Options.Port),
-		TLSConfig: wh.tlsConfig,
+		Handler:           drainer,
+		Addr:              fmt.Sprint(":", wh.Options.Port),
+		TLSConfig:         wh.tlsConfig,
+		ReadHeaderTimeout: time.Minute, //https://medium.com/a-journey-with-go/go-understand-and-mitigate-slowloris-attack-711c1b1403f6
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)

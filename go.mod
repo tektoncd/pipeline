@@ -33,7 +33,7 @@ require (
 	k8s.io/code-generator v0.25.4
 	k8s.io/klog v1.0.0
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280
-	knative.dev/pkg v0.0.0-20221123011842-b78020c16606
+	knative.dev/pkg v0.0.0-20230215234751-2f55fe00c5a1
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -49,7 +49,7 @@ require (
 	go.opentelemetry.io/otel/exporters/jaeger v1.13.0
 	go.opentelemetry.io/otel/sdk v1.13.0
 	go.opentelemetry.io/otel/trace v1.13.0
-	k8s.io/utils v0.0.0-20221012122500-cfd413dd9e85
+	k8s.io/utils v0.0.0-20221108210102-8e77b1f39fe2
 )
 
 require (
@@ -114,7 +114,6 @@ require (
 	github.com/skeema/knownhosts v1.1.0 // indirect
 	github.com/theupdateframework/go-tuf v0.5.2-0.20220930112810-3890c1e7ace4 // indirect
 	github.com/zeebo/errs v1.3.0 // indirect
-	go.uber.org/goleak v1.2.0 // indirect
 )
 
 require (
@@ -223,9 +222,9 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/apiextensions-apiserver v0.25.2 // indirect
-	k8s.io/gengo v0.0.0-20220613173612-397b4ae3bce7 // indirect
-	k8s.io/klog/v2 v2.80.1 // indirect
+	k8s.io/apiextensions-apiserver v0.25.4 // indirect
+	k8s.io/gengo v0.0.0-20221011193443-fad74ee6edd9 // indirect
+	k8s.io/klog/v2 v2.80.2-0.20221028030830-9ae4992afb54 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
