@@ -686,95 +686,6 @@ func TestPipelineTaskList_Deps(t *testing.T) {
 	}
 }
 
-func TestPipelineTaskList_Validate(t *testing.T) {
-	tests := []struct {
-		name          string
-		tasks         PipelineTaskList
-		path          string
-		expectedError *apis.FieldError
-		wc            func(context.Context) context.Context
-	}{{
-		name: "validate all three valid custom task, bundle, and regular task",
-		tasks: PipelineTaskList{{
-			Name:    "valid-custom-task",
-			TaskRef: &TaskRef{APIVersion: "example.com", Kind: "custom"},
-		}, {
-			Name:    "valid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle", Name: "bundle"},
-		}, {
-			Name:    "valid-task",
-			TaskRef: &TaskRef{Name: "task"},
-		}},
-		path: "tasks",
-		wc:   enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
-	}, {
-		name: "validate list of tasks with valid custom task and bundle but invalid regular task",
-		tasks: PipelineTaskList{{
-			Name:    "valid-custom-task",
-			TaskRef: &TaskRef{APIVersion: "example.com", Kind: "custom"},
-		}, {
-			Name:    "valid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle", Name: "bundle"},
-		}, {
-			Name:    "invalid-task-without-name",
-			TaskRef: &TaskRef{Name: ""},
-		}},
-		path:          "tasks",
-		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name"),
-		wc:            enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
-	}, {
-		name: "validate list of tasks with valid custom task but invalid bundle and invalid regular task",
-		tasks: PipelineTaskList{{
-			Name:    "valid-custom-task",
-			TaskRef: &TaskRef{APIVersion: "example.com", Kind: "custom"},
-		}, {
-			Name:    "invalid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle"},
-		}, {
-			Name:    "invalid-task-without-name",
-			TaskRef: &TaskRef{Name: ""},
-		}},
-		path: "tasks",
-		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name").Also(
-			apis.ErrGeneric(`missing field(s)`, "tasks[1].taskRef.name")),
-		wc: enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
-	}, {
-		name: "validate all three invalid tasks - custom task, bundle and regular task",
-		tasks: PipelineTaskList{{
-			Name:    "invalid-custom-task",
-			TaskRef: &TaskRef{APIVersion: "example.com"},
-		}, {
-			Name:    "invalid-bundle",
-			TaskRef: &TaskRef{Bundle: "bundle"},
-		}, {
-			Name:    "invalid-task",
-			TaskRef: &TaskRef{Name: ""},
-		}},
-		path: "tasks",
-		expectedError: apis.ErrGeneric(`invalid value: taskRef must specify name`, "tasks[2].taskRef.name").Also(
-			apis.ErrGeneric(`missing field(s)`, "tasks[1].taskRef.name")).Also(
-			apis.ErrGeneric(`invalid value: custom task ref must specify kind`, "tasks[0].taskRef.kind")),
-		wc: enableFeatures(t, []string{"enable-tekton-oci-bundles"}),
-	}}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx := context.Background()
-			if tt.wc != nil {
-				ctx = tt.wc(ctx)
-			}
-			taskNames := sets.String{}
-			ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
-			err := tt.tasks.Validate(ctx, taskNames, tt.path)
-			if tt.expectedError != nil && err == nil {
-				t.Error("PipelineTaskList.Validate() did not return error for invalid pipeline tasks")
-			}
-			if d := cmp.Diff(tt.expectedError.Error(), err.Error(), cmpopts.IgnoreUnexported(apis.FieldError{})); d != "" {
-				t.Errorf("PipelineTaskList.Validate() errors diff %s", diff.PrintWantGot(d))
-			}
-		})
-	}
-}
-
 func TestPipelineTask_validateMatrix(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -832,6 +743,37 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 				}}},
 		},
 	}, {
+		name: "parameters in include matrix are strings",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+					}, {
+						Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"},
+					}}},
+				}},
+		},
+	}, {
+		name: "parameters in include matrix are arrays",
+		pt: &PipelineTask{
+			Name: "task",
+			Matrix: &Matrix{
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "foobar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}, {
+						Name: "barfoo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar", "foo"}}}},
+				}}},
+		},
+		wantErrs: &apis.FieldError{
+			Message: "invalid value: parameters of type string only are allowed in matrix",
+			Paths:   []string{"matrix[barfoo]", "matrix[foobar]"},
+		},
+	}, {
 		name: "parameters in matrix contain results references",
 		pt: &PipelineTask{
 			Name: "task",
@@ -841,32 +783,128 @@ func TestPipelineTask_validateMatrix(t *testing.T) {
 				}}},
 		},
 	}, {
-		name: "count of combinations of parameters in the matrix exceeds the maximum",
+		name: "include parameters in matrix contain results references",
 		pt: &PipelineTask{
 			Name: "task",
 			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
-				}, {
-					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox", "safari"}},
-				}}},
+				Include: []MatrixInclude{{
+					Name: "build-1",
+					Params: []Param{{
+						Name: "a-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.foo-task.results.a-result)"},
+					}, {
+						Name: "b-param", Value: ParamValue{Type: ParamTypeString, StringVal: "$(tasks.bar-task.results.b-result)"}},
+					}}},
+			},
 		},
-		wantErrs: &apis.FieldError{
-			Message: "expected 0 <= 9 <= 4",
-			Paths:   []string{"matrix"},
+	},
+		{
+			name: "count of combinations of parameters in the matrix exceeds the maximum",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac", "windows"}},
+					}, {
+						Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox", "safari"}},
+					}}},
+			},
+			wantErrs: &apis.FieldError{
+				Message: "expected 0 <= 9 <= 4",
+				Paths:   []string{"matrix"},
+			},
 		},
-	}, {
-		name: "count of combinations of parameters in the matrix equals the maximum",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
-				}, {
-					Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox"}},
-				}}},
+		{
+			name: "count of combinations of include parameters in the matrix exceeds the maximum",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Include: []MatrixInclude{{
+						Name: "build-1",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+					}, {
+						Name: "build-2",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
+					}, {
+						Name: "build-3",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"}}},
+					}, {
+						Name: "build-4",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-4"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile4"}}},
+					}, {
+						Name: "build-5",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-5"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile5"}}},
+					}},
+				},
+			},
+			wantErrs: &apis.FieldError{
+				Message: "expected 0 <= 5 <= 4",
+				Paths:   []string{"matrix"},
+			},
 		},
-	}}
+		{
+			name: "count of combinations of include parameters in the matrix exceeds the maximum",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "GOARCH", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+					}, {
+						Name: "version", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"go1.17", "go1.18.1"}},
+					}},
+					Include: []MatrixInclude{{
+						Name: "common-package",
+						Params: []Param{{
+							Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					}, {
+						Name: "s390x-no-race",
+						Params: []Param{{
+							Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+						}, {
+							Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+					}, {
+						Name: "go117-context",
+						Params: []Param{{
+							Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+						}, {
+							Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
+					}, {
+						Name: "non-existent-arch",
+						Params: []Param{{
+							Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}}},
+					}},
+				},
+			},
+			wantErrs: &apis.FieldError{
+				Message: "expected 0 <= 7 <= 4",
+				Paths:   []string{"matrix"},
+			},
+		}, {
+			name: "count of combinations of parameters in the matrix equals the maximum",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "platform", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux", "mac"}},
+					}, {
+						Name: "browser", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"chrome", "firefox"}},
+					}}},
+			},
+		}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			featureFlags, _ := config.NewFeatureFlagsFromMap(map[string]string{
@@ -892,73 +930,135 @@ func TestPipelineTask_GetMatrixCombinationsCount(t *testing.T) {
 		name                    string
 		pt                      *PipelineTask
 		matrixCombinationsCount int
-	}{{
-		name: "combinations count is zero",
-		pt: &PipelineTask{
-			Name: "task",
+	}{
+		{
+			name: "combinations count is zero",
+			pt: &PipelineTask{
+				Name: "task",
+			},
+			matrixCombinationsCount: 0,
+		}, {
+			name: "combinations count is one from one parameter",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+					}}},
+			},
+			matrixCombinationsCount: 1,
+		}, {
+			name: "combinations count is one from two parameters",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
+					}, {
+						Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
+					}}},
+			},
+			matrixCombinationsCount: 1,
+		}, {
+			name: "combinations count is two from one parameter",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
+					}}},
+			},
+			matrixCombinationsCount: 2,
+		}, {
+			name: "combinations count is nine",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+					}, {
+						Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+					}}},
+			},
+			matrixCombinationsCount: 9,
+		}, {
+			name: "combinations count is large",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
+					}, {
+						Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
+					}, {
+						Name: "quz", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
+					}, {
+						Name: "xyzzy", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
+					}}},
+			},
+			matrixCombinationsCount: 135,
+		}, {
+			name: "explicit combinations in the matrix",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Include: []MatrixInclude{{
+						Name: "build-1",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+					}, {
+						Name: "build-2",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-2"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile2"}}},
+					}, {
+						Name: "build-3",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-3"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile3"}},
+						}},
+					}},
+			},
+			matrixCombinationsCount: 3,
+		}, {
+			name: "explicit combinations with include params and matrix params",
+			pt: &PipelineTask{
+				Name: "task",
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "GOARCH", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+					}, {
+						Name: "version", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"go1.17", "go1.18.1"}},
+					}},
+					Include: []MatrixInclude{{
+						Name: "common-package",
+						Params: []Param{{
+							Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					}, {
+						Name: "s390x-no-race",
+						Params: []Param{{
+							Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "linux/s390x"},
+						}, {
+							Name: "flags", Value: ParamValue{Type: ParamTypeString, StringVal: "-cover -v"}}},
+					}, {
+						Name: "go117-context",
+						Params: []Param{{
+							Name: "version", Value: ParamValue{Type: ParamTypeString, StringVal: "go1.17"},
+						}, {
+							Name: "context", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/go117/context"}}},
+					}, {
+						Name: "non-existent-arch",
+						Params: []Param{{
+							Name: "GOARCH", Value: ParamValue{Type: ParamTypeString, StringVal: "I-do-not-exist"}}},
+					}},
+				}},
+			matrixCombinationsCount: 7,
 		},
-		matrixCombinationsCount: 0,
-	}, {
-		name: "combinations count is one from one parameter",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
-				}}},
-		},
-		matrixCombinationsCount: 1,
-	}, {
-		name: "combinations count is one from two parameters",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo"}},
-				}, {
-					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"bar"}},
-				}}},
-		},
-		matrixCombinationsCount: 1,
-	}, {
-		name: "combinations count is two from one parameter",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"foo", "bar"}},
-				}}},
-		},
-		matrixCombinationsCount: 2,
-	}, {
-		name: "combinations count is nine",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
-				}, {
-					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
-				}}},
-		},
-		matrixCombinationsCount: 9,
-	}, {
-		name: "combinations count is large",
-		pt: &PipelineTask{
-			Name: "task",
-			Matrix: &Matrix{
-				Params: []Param{{
-					Name: "foo", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"f", "o", "o"}},
-				}, {
-					Name: "bar", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"b", "a", "r"}},
-				}, {
-					Name: "quz", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"q", "u", "x"}},
-				}, {
-					Name: "xyzzy", Value: ParamValue{Type: ParamTypeArray, ArrayVal: []string{"x", "y", "z", "z", "y"}},
-				}}},
-		},
-		matrixCombinationsCount: 135,
-	}}
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if d := cmp.Diff(tt.matrixCombinationsCount, tt.pt.GetMatrixCombinationsCount()); d != "" {
@@ -1090,23 +1190,13 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			name: "matrixed with include",
 			arg: arg{
 				Matrix: &Matrix{
-					Include: []MatrixInclude{
-						{Name: "build-1"},
-						{Params: []Param{
-							{Name: "IMAGE", Value: ParamValue{StringVal: "image-1"}},
-							{Name: "DOCKERFILE", Value: ParamValue{StringVal: "path/to/Dockerfile1"}},
-						}},
-						{Name: "build-2"},
-						{Params: []Param{
-							{Name: "IMAGE", Value: ParamValue{StringVal: "image-2"}},
-							{Name: "DOCKERFILE", Value: ParamValue{StringVal: "path/to/Dockerfile2"}},
-						}},
-						{Name: "build-3"},
-						{Params: []Param{
-							{Name: "IMAGE", Value: ParamValue{StringVal: "image-3"}},
-							{Name: "DOCKERFILE", Value: ParamValue{StringVal: "path/to/Dockerfile3"}},
-						}},
-					},
+					Include: []MatrixInclude{{
+						Name: "build-1",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+					}},
 				},
 			},
 			expected: true,
@@ -1114,14 +1204,14 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			name: "matrixed with params and include",
 			arg: arg{
 				Matrix: &Matrix{
-					Params: []Param{{Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}}}},
-					Include: []MatrixInclude{
-						{Name: "s390x-no-race"},
-						{Params: []Param{
-							{Name: "GOARCH", Value: ParamValue{StringVal: "linux/s390x"}},
-							{Name: "flags", Value: ParamValue{StringVal: "-cover -v"}},
-						}},
-					},
+					Params: []Param{{
+						Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+					}},
+					Include: []MatrixInclude{{
+						Name: "common-package",
+						Params: []Param{{
+							Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					}},
 				},
 			},
 			expected: true,
@@ -1135,6 +1225,152 @@ func TestPipelineTask_IsMatrixed(t *testing.T) {
 			isMatrixed := pt.IsMatrixed()
 			if isMatrixed != tc.expected {
 				t.Errorf("PipelineTask.IsMatrixed() return bool: %v, but wanted: %v", isMatrixed, tc.expected)
+			}
+		})
+	}
+}
+
+func TestPipelineTask_MatrixHasParams(t *testing.T) {
+	type arg struct {
+		*Matrix
+	}
+	testCases := []struct {
+		name     string
+		arg      arg
+		expected bool
+	}{
+		{
+			name: "nil matrix",
+			arg: arg{
+				Matrix: nil,
+			},
+			expected: false,
+		},
+		{
+			name: "empty matrix",
+			arg: arg{
+				Matrix: &Matrix{},
+			},
+			expected: false,
+		},
+		{
+			name: "matrixed with params",
+			arg: arg{
+				Matrix: &Matrix{
+					Params: []Param{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+				},
+			},
+			expected: true,
+		}, {
+			name: "matrixed with include",
+			arg: arg{
+				Matrix: &Matrix{
+					Include: []MatrixInclude{{
+						Name: "build-1",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+					}},
+				},
+			},
+			expected: false,
+		}, {
+			name: "matrixed with params and include",
+			arg: arg{
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+					}},
+					Include: []MatrixInclude{{
+						Name: "common-package",
+						Params: []Param{{
+							Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					}},
+				},
+			},
+			expected: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			matrix := tc.arg.Matrix
+			matrixHasParams := matrix.MatrixHasParams()
+			if matrixHasParams != tc.expected {
+				t.Errorf("Matrix.MatrixHasParams() return bool: %v, but wanted: %v", matrixHasParams, tc.expected)
+			}
+		})
+	}
+}
+
+func TestPipelineTask_MatrixHasInclude(t *testing.T) {
+	type arg struct {
+		*Matrix
+	}
+	testCases := []struct {
+		name     string
+		arg      arg
+		expected bool
+	}{
+		{
+			name: "nil matrix",
+			arg: arg{
+				Matrix: nil,
+			},
+			expected: false,
+		},
+		{
+			name: "empty matrix",
+			arg: arg{
+				Matrix: &Matrix{},
+			},
+			expected: false,
+		},
+		{
+			name: "matrixed with params",
+			arg: arg{
+				Matrix: &Matrix{
+					Params: []Param{{Name: "platform", Value: ParamValue{ArrayVal: []string{"linux", "windows"}}}},
+				},
+			},
+			expected: false,
+		}, {
+			name: "matrixed with include",
+			arg: arg{
+				Matrix: &Matrix{
+					Include: []MatrixInclude{{
+						Name: "build-1",
+						Params: []Param{{
+							Name: "IMAGE", Value: ParamValue{Type: ParamTypeString, StringVal: "image-1"},
+						}, {
+							Name: "DOCKERFILE", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/Dockerfile1"}}},
+					}},
+				},
+			},
+			expected: true,
+		}, {
+			name: "matrixed with params and include",
+			arg: arg{
+				Matrix: &Matrix{
+					Params: []Param{{
+						Name: "GOARCH", Value: ParamValue{ArrayVal: []string{"linux/amd64", "linux/ppc64le", "linux/s390x"}},
+					}},
+					Include: []MatrixInclude{{
+						Name: "common-package",
+						Params: []Param{{
+							Name: "package", Value: ParamValue{Type: ParamTypeString, StringVal: "path/to/common/package/"}}},
+					}},
+				},
+			},
+			expected: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			matrix := tc.arg.Matrix
+			matrixHasInclude := matrix.MatrixHasInclude()
+			if matrixHasInclude != tc.expected {
+				t.Errorf("Matrix.MatrixHasParams() return bool: %v, but wanted: %v", matrixHasInclude, tc.expected)
 			}
 		})
 	}

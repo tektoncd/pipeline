@@ -293,7 +293,17 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 
 // IsMatrixed return whether pipeline task is matrixed
 func (pt *PipelineTask) IsMatrixed() bool {
-	return pt.Matrix != nil && (len(pt.Matrix.Params) > 0 || len(pt.Matrix.Include) > 0)
+	return pt.Matrix != nil && (pt.Matrix.MatrixHasParams() || pt.Matrix.MatrixHasInclude())
+}
+
+// MatrixHasInclude return whether matrix has Include
+func (matrix *Matrix) MatrixHasInclude() bool {
+	return matrix != nil && len(matrix.Include) > 0
+}
+
+// MatrixHasParams return whether matrix has Params
+func (matrix *Matrix) MatrixHasParams() bool {
+	return matrix != nil && len(matrix.Params) > 0
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
@@ -304,7 +314,7 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		errs = errs.Also(pt.validateMatrixCombinationsCount(ctx))
 	}
 	errs = errs.Also(validateParameterInOneOfMatrixOrParams(pt.Matrix, pt.Params))
-	errs = errs.Also(validateParametersInTaskMatrix(pt.Matrix))
+	errs = errs.Also(validateParamsTypesInMatrix(pt.Matrix))
 	return errs
 }
 
@@ -342,9 +352,57 @@ func (pt *PipelineTask) GetMatrixCombinationsCount() int {
 	if !pt.IsMatrixed() {
 		return 0
 	}
+
+	// Explicit combinations in the matrix
+	// Calculate based on number of include Names and return count
+	if pt.Matrix.MatrixHasInclude() && !pt.Matrix.MatrixHasParams() {
+		var count = 0
+		// Iterate over each includeParam.Name that has params
+		for _, include := range pt.Matrix.Include {
+			for _, includeParams := range include.Params {
+				// Increment count for every include name
+				if includeParams.Name != "" && includeParams.Value.StringVal != "" {
+					count++
+					break
+				}
+			}
+		}
+		return count
+	}
+
+	// Create a set of param names
+	paramNames := make(map[string][]string)
 	count := 1
+
+	// Iterate over matrix params and generate all combinations
 	for _, param := range pt.Matrix.Params {
 		count *= len(param.Value.ArrayVal)
+		// Add param name to set
+		paramNames[param.Name] = param.Value.ArrayVal
+	}
+
+	if pt.Matrix.MatrixHasInclude() {
+		// Filter out which include params will be replaced
+		for _, include := range pt.Matrix.Include {
+			for _, param := range include.Params {
+				// Check if specific param name is in mapped paramNames
+				if val, exist := paramNames[param.Name]; exist {
+					// If param value exists in mapping, it will overwrite existing param
+					// No new combinations generated
+					if contains(val, param.Value.StringVal) {
+						break
+					}
+				} else {
+					// Param name not found in mapping
+					// Common param will overwrite all params
+					// No new combinations generated
+					break
+				}
+				// Otherwise the param value does not exist
+				// New combination generated
+				count++
+			}
+		}
 	}
 	return count
 }
@@ -586,4 +644,15 @@ type PipelineList struct {
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Pipeline `json:"items"`
+}
+
+// Contains returns true if a string exists in a slice
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }

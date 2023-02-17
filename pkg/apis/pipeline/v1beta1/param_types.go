@@ -308,22 +308,50 @@ func validatePipelineParametersVariablesInTaskParameters(params []Param, prefix 
 	return errs
 }
 
-// validatePipelineParametersVariablesInMatrixParameters validates matrix param value
+// validatePipelineParametersVariablesInMatrixParameters validates all Matrix Params including Matrix.Params and Matrix.Include.Params
 // that may contain the reference(s) to other params to make sure those references are used appropriately.
-func validatePipelineParametersVariablesInMatrixParameters(matrix []Param, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
-	for _, param := range matrix {
-		for idx, arrayElement := range param.Value.ArrayVal {
-			errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
+func validatePipelineParametersVariablesInMatrixParameters(matrix *Matrix, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
+	if matrix != nil {
+		if matrix.MatrixHasInclude() {
+			for _, include := range matrix.Include {
+				for idx, param := range include.Params {
+					stringElement := param.Value.StringVal
+					errs = errs.Also(validateStringVariable(stringElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
+				}
+			}
+		}
+		if matrix.MatrixHasParams() {
+			for _, param := range matrix.Params {
+				for idx, arrayElement := range param.Value.ArrayVal {
+					errs = errs.Also(validateArrayVariable(arrayElement, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaFieldIndex("value", idx).ViaFieldKey("matrix", param.Name))
+				}
+			}
 		}
 	}
 	return errs
 }
 
-func validateParametersInTaskMatrix(matrix *Matrix) (errs *apis.FieldError) {
+// validateParamsTypesInMatrix validates the type of parameter
+// for Matrix.Params and Matrix.Include.Params
+// Matrix.Params must be of type array. Matrix.Include.Params must be of type string.
+func validateParamsTypesInMatrix(matrix *Matrix) (errs *apis.FieldError) {
 	if matrix != nil {
-		for _, param := range matrix.Params {
-			if param.Value.Type != ParamTypeArray {
-				errs = errs.Also(apis.ErrInvalidValue("parameters of type array only are allowed in matrix", "").ViaFieldKey("matrix", param.Name))
+		if matrix.MatrixHasInclude() {
+			for _, include := range matrix.Include {
+				for _, param := range include.Params {
+					// Validate Matrix.Include.Params are of type string
+					if param.Value.Type != ParamTypeString {
+						errs = errs.Also(apis.ErrInvalidValue("parameters of type string only are allowed in matrix", "").ViaFieldKey("matrix", param.Name))
+					}
+				}
+			}
+		}
+		if matrix.MatrixHasParams() {
+			for _, param := range matrix.Params {
+				// Validate Matrix.Params are of type array
+				if param.Value.Type != ParamTypeArray {
+					errs = errs.Also(apis.ErrInvalidValue("parameters of type array only are allowed in matrix", "").ViaFieldKey("matrix", param.Name))
+				}
 			}
 		}
 	}

@@ -48,7 +48,7 @@ A `Matrix` supports the following features:
 The default maximum count of `TaskRuns` or `Runs` from a given `Matrix` is **256**. To customize the maximum count of
 `TaskRuns` or `Runs` generated from a given `Matrix`, configure the `default-max-matrix-combinations-count` in
 [config defaults](/config/config-defaults.yaml). When a `Matrix` in `PipelineTask` would generate more than the maximum
-`TaskRuns` or `Runs`, the `Pipeline` validation would fail.
+`TaskRuns` or `Runs`, the `Pipeline` validation would fail. This is calculated using any `Matrix.Params` and `Matrix.Include.Params` specified.
 
 ```yaml
 apiVersion: v1
@@ -153,6 +153,10 @@ spec:
 > :warning: This feature is in a preview mode.
 > It is still in a very early stage of development and is not yet fully functional.
 The `Include` section in the `Matrix` field exists, but is not yet functional.
+
+The `Include` section in the `Matrix` will be specified with or without `Params` section adding a specific combination of input values for `Matrix Parameters` or defining explicit combinations in the `Matrix` without `Params`.
+
+Currently, it has validation to check that the include paramater is of type string, is in reference to a paramName or taskName, and does not exceed the max combination count.
 
 ### Context Variables
 

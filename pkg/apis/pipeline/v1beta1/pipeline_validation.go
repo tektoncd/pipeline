@@ -164,11 +164,13 @@ func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTas
 	return errs
 }
 
+// validatePipelineParametersVariables validates parameters with those specified by each pipeline task,
+// and ensures that the referenced param variable is defined is part of the param declarations
 func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 		if task.IsMatrixed() {
-			errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
+			errs = errs.Also(validatePipelineParametersVariablesInMatrixParameters(task.Matrix, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 		}
 		errs = errs.Also(task.WhenExpressions.validatePipelineParametersVariables(prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
 	}
