@@ -715,8 +715,36 @@
       "description": "Matrix is used to fan out Tasks in a Pipeline",
       "type": "object",
       "properties": {
+        "include": {
+          "description": "Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix. Note that Include is in preview mode and not yet supported.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.MatrixInclude"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "params": {
           "description": "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Param"
+          },
+          "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1beta1.MatrixInclude": {
+      "description": "MatrixInclude allows passing in a specific combinations of Parameters into the Matrix. Note this struct is in preview mode and not yet supported",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name the specified combination",
+          "type": "string"
+        },
+        "params": {
+          "description": "Params takes only `Parameters` of type `\"string\"` The names of the `params` must match the names of the `params` in the underlying `Task`",
           "type": "array",
           "items": {
             "default": {},
