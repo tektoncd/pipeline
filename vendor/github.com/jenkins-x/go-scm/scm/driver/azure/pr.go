@@ -75,7 +75,32 @@ func (s *pullService) ListCommits(ctx context.Context, repo string, number int, 
 }
 
 func (s *pullService) Merge(ctx context.Context, repo string, number int, opts *scm.PullRequestMergeOptions) (*scm.Response, error) {
-	return nil, scm.ErrNotSupported
+	ro, err := decodeRepo(repo)
+	if err != nil {
+		return nil, err
+	}
+	// https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-6.0
+	endpoint := fmt.Sprintf("%s/%s/_apis/git/repositories/%s/pullrequests/%d?api-version=6.0",
+		ro.org, ro.project, ro.name, number)
+
+	out := pr{}
+	_, err = s.client.do(ctx, "GET", endpoint, nil, &out)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch pr to merge: %v", err)
+	}
+
+	in := prUpdateInput{
+		Status:                PrCompleted,
+		LastMergeSourceCommit: out.LastMergeSourceCommit,
+	}
+	res, err := s.client.do(ctx, "PATCH", endpoint, in, &out)
+
+	if out.Status != PrCompleted {
+		// If you move fast, creating and immediately approving a pr, this often happens.
+		return res, fmt.Errorf("patch accepted, but status still %s", out.Status)
+	}
+
+	return res, err
 }
 
 func (s *pullService) Close(ctx context.Context, repo string, number int) (*scm.Response, error) {
@@ -84,8 +109,8 @@ func (s *pullService) Close(ctx context.Context, repo string, number int) (*scm.
 		return nil, err
 	}
 
-	// https://docs.microsoft.com/en-us/rest/api/azure/devops/git/pull-request-commits/get-pull-request-commits?view=azure-devops-rest-6.0
-	endpoint := fmt.Sprintf("%s/%s/_apis/git/repositories/%s/pullRequests/%d?api-version=6.0",
+	// https://learn.microsoft.com/en-us/rest/api/azure/devops/git/pull-requests/update?view=azure-devops-rest-6.0
+	endpoint := fmt.Sprintf("%s/%s/_apis/git/repositories/%s/pullrequests/%d?api-version=6.0",
 		ro.org, ro.project, ro.name, number)
 	body := prUpdateInput{
 		Status: PrAbandoned,
@@ -157,15 +182,9 @@ type pr struct {
 	TargetRefName         string      `json:"targetRefName"`
 	MergeStatus           string      `json:"mergeStatus"`
 	MergeID               string      `json:"mergeId"`
-	LastMergeSourceCommit struct {
-		CommitID string `json:"commitId"`
-		URL      string `json:"url"`
-	} `json:"lastMergeSourceCommit"`
-	LastMergeTargetCommit struct {
-		CommitID string `json:"commitId"`
-		URL      string `json:"url"`
-	} `json:"lastMergeTargetCommit"`
-	Reviewers []struct {
+	LastMergeSourceCommit *commitRef  `json:"lastMergeSourceCommit,omitempty"`
+	LastMergeTargetCommit *commitRef  `json:"lastMergeTargetCommit,omitempty"`
+	Reviewers             []struct {
 		ReviewerURL string `json:"reviewerUrl"`
 		Vote        int    `json:"vote"`
 		ID          string `json:"id"`
@@ -214,10 +233,12 @@ type prList struct {
 
 var (
 	PrAbandoned = "abandoned"
+	PrCompleted = "completed"
 )
 
 type prUpdateInput struct {
-	Status string `json:"status"`
+	Status                string     `json:"status"`
+	LastMergeSourceCommit *commitRef `json:"lastMergeSourceCommit,omitempty"`
 }
 
 func convertPullRequests(from *prList) []*scm.PullRequest {

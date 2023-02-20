@@ -55,13 +55,13 @@ func (s *contentService) Create(ctx context.Context, repo, path string, params *
 	cha.NewContent.Content = base64.StdEncoding.EncodeToString(params.Data)
 	cha.NewContent.ContentType = "base64encoded"
 
-	com := commit{
+	com := commitRef{
 		Comment: params.Message,
 		Changes: []change{cha},
 	}
 	in := &contentCreateUpdate{
 		RefUpdates: []refUpdate{ref},
-		Commits:    []commit{com},
+		Commits:    []commitRef{com},
 	}
 
 	res, err := s.client.do(ctx, "POST", endpoint, in, nil)
@@ -86,13 +86,13 @@ func (s *contentService) Update(ctx context.Context, repo, path string, params *
 	cha.NewContent.Content = base64.StdEncoding.EncodeToString(params.Data)
 	cha.NewContent.ContentType = "base64encoded"
 
-	com := commit{
+	com := commitRef{
 		Comment: params.Message,
 		Changes: []change{cha},
 	}
 	in := &contentCreateUpdate{
 		RefUpdates: []refUpdate{ref},
-		Commits:    []commit{com},
+		Commits:    []commitRef{com},
 	}
 
 	res, err := s.client.do(ctx, "POST", endpoint, in, nil)
@@ -114,13 +114,13 @@ func (s *contentService) Delete(ctx context.Context, repo, path string, params *
 		ChangeType: "delete",
 	}
 	change1.Item.Path = path
-	com := commit{
+	com := commitRef{
 		Comment: params.Message,
 		Changes: []change{change1},
 	}
 	in := &contentCreateUpdate{
 		RefUpdates: []refUpdate{ref},
-		Commits:    []commit{com},
+		Commits:    []commitRef{com},
 	}
 
 	res, err := s.client.do(ctx, "POST", endpoint, in, nil)
@@ -179,13 +179,15 @@ type change struct {
 		ContentType string `json:"contentType,omitempty"`
 	} `json:"newContent,omitempty"`
 }
-type commit struct {
-	Comment string   `json:"comment"`
-	Changes []change `json:"changes"`
+type commitRef struct {
+	Comment  string   `json:"comment,omitempty"`
+	Changes  []change `json:"changes,omitempty"`
+	CommitID string   `json:"commitId"`
+	URL      string   `json:"url"`
 }
 type contentCreateUpdate struct {
 	RefUpdates []refUpdate `json:"refUpdates"`
-	Commits    []commit    `json:"commits"`
+	Commits    []commitRef `json:"commits"`
 }
 
 func convertFileEntryList(from []*content) []*scm.FileEntry {
