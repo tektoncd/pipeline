@@ -196,7 +196,7 @@ func (d *Drainer) resetTimer() {
 
 	d.Lock()
 	defer d.Unlock()
-	if d.timer.Stop() {
+	if d.timer != nil && d.timer.Stop() {
 		d.timer.Reset(d.QuietPeriod)
 	}
 }

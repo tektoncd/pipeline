@@ -13824,7 +13824,7 @@ string
 <h3 id="tekton.dev/v1beta1.CustomRunStatus">CustomRunStatus
 </h3>
 <p>
-(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>)
+(<em>Appears on:</em><a href="#tekton.dev/v1beta1.CustomRun">CustomRun</a>, <a href="#tekton.dev/v1beta1.CustomRunStatusFields">CustomRunStatusFields</a>)
 </p>
 <div>
 <p>CustomRunStatus defines the observed state of CustomRun</p>

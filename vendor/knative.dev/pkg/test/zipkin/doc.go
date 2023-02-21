@@ -33,9 +33,8 @@ This package exposes following methods:
 
 A general flow for a Test Suite to use Zipkin Tracing support is as follows:
 
-		1. Call SetupZipkinTracing(kubernetes.Interface) in TestMain.
-		2. Use SpoofingClient to make HTTP requests.
-		3. Call CleanupZipkinTracingSetup on cleanup after tests are executed.
-
+ 1. Call SetupZipkinTracing(kubernetes.Interface) in TestMain.
+ 2. Use SpoofingClient to make HTTP requests.
+ 3. Call CleanupZipkinTracingSetup on cleanup after tests are executed.
 */
 package zipkin

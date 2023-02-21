@@ -28,15 +28,18 @@ import (
 
 // InduceFailure is used in conjunction with TableTest's WithReactors field.
 // Tests that want to induce a failure in a row of a TableTest would add:
-//   WithReactors: []clientgotesting.ReactionFunc{
-//      // Makes calls to create revisions return an error.
-//      InduceFailure("create", "revisions"),
-//   },
+//
+//	WithReactors: []clientgotesting.ReactionFunc{
+//	   // Makes calls to create revisions return an error.
+//	   InduceFailure("create", "revisions"),
+//	},
+//
 // Or to target a subresource, say a patch to InMemoryChannel.Status, you would add:
-//   WithReactors: []clientgotesting.ReactionFunc{
-//      // Makes calls to patch inmemorychannels status subresource return an error.
-//      InduceFailure("patch", "inmemorychannels/status"),
-//   },
+//
+//	WithReactors: []clientgotesting.ReactionFunc{
+//	   // Makes calls to patch inmemorychannels status subresource return an error.
+//	   InduceFailure("patch", "inmemorychannels/status"),
+//	},
 func InduceFailure(verb, resource string) clientgotesting.ReactionFunc {
 	return func(action clientgotesting.Action) (handled bool, ret runtime.Object, err error) {
 		if !action.Matches(verb, resource) {
