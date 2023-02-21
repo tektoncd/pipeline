@@ -1511,8 +1511,8 @@ The names of the <code>params</code> in the <code>Matrix</code> must match the n
 </td>
 <td>
 <em>(Optional)</em>
-<p>Include is a list of MatrixInclude
-Note this field is in preview mode and not yet supported</p>
+<p>Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix.
+Note that Include is in preview mode and not yet supported.</p>
 </td>
 </tr>
 </tbody>
@@ -9067,8 +9067,8 @@ The names of the <code>params</code> in the <code>Matrix</code> must match the n
 </td>
 <td>
 <em>(Optional)</em>
-<p>Include is a list of MatrixInclude
-Note this field is in preview mode and not yet supported</p>
+<p>Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix.
+Note that Include is in preview mode and not yet supported.</p>
 </td>
 </tr>
 </tbody>
