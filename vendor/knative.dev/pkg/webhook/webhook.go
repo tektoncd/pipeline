@@ -208,6 +208,7 @@ func (wh *Webhook) Run(stop <-chan struct{}) error {
 		QuietPeriod: wh.Options.GracePeriod,
 	}
 
+	//nolint:gosec // https://github.com/knative/pkg/issues/2632
 	server := &http.Server{
 		Handler:   drainer,
 		Addr:      fmt.Sprint(":", wh.Options.Port),

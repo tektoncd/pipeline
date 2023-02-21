@@ -35,8 +35,10 @@ const (
 // GetIngressEndpoint gets the ingress public IP or hostname.
 // address - is the endpoint to which we should actually connect.
 // portMap - translates the request's port to the port on address to which the caller
-//    should connect.  This is used when the resolution to address goes through some
-//    sort of port-mapping, e.g. Kubernetes node ports.
+//
+//	should connect.  This is used when the resolution to address goes through some
+//	sort of port-mapping, e.g. Kubernetes node ports.
+//
 // err - an error when address/portMap cannot be established.
 func GetIngressEndpoint(ctx context.Context, kubeClientset kubernetes.Interface, endpointOverride string) (address string, portMap func(string) string, err error) {
 	ingressName := istioIngressName

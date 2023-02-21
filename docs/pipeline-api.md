@@ -12443,6 +12443,12 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="tekton.dev/v1beta1.TaskRunConditionType">TaskRunConditionType
+(<code>string</code> alias)</h3>
+<div>
+<p>TaskRunConditionType is an enum used to store TaskRun custom conditions
+conditions such as one used in spire results verification</p>
+</div>
 <h3 id="tekton.dev/v1beta1.TaskRunDebug">TaskRunDebug
 </h3>
 <p>

@@ -35,7 +35,7 @@ type Logger interface {
 // Constructors is a map for specifying configmap names to
 // their function constructors
 //
-// The values of this map must be functions with the definition
+// # The values of this map must be functions with the definition
 //
 // func(*k8s.io/api/core/v1.ConfigMap) (... , error)
 //
@@ -60,7 +60,7 @@ type UntypedStore struct {
 // NewUntypedStore creates an UntypedStore with given name,
 // Logger and Constructors
 //
-// The Logger must not be nil
+// # The Logger must not be nil
 //
 // The values in the Constructors map must be functions with
 // the definition
