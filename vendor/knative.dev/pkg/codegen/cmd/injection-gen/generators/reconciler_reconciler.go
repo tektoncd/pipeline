@@ -150,6 +150,10 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 			Package: "go.uber.org/zap",
 			Name:    "SugaredLogger",
 		}),
+		"zapDebugLevel": c.Universe.Type(types.Name{
+			Package: "go.uber.org/zapcore",
+			Name:    "DebugLevel",
+		}),
 		"setsNewString": c.Universe.Function(types.Name{
 			Package: "k8s.io/apimachinery/pkg/util/sets",
 			Name:    "NewString",
@@ -520,7 +524,7 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 		// the elected leader is expected to write modifications.
 		logger.Warn("Saw status changes when we aren't the leader!")
 	default:
-		if err = r.updateStatus(ctx, original, resource); err != nil {
+		if err = r.updateStatus(ctx, logger, original, resource); err != nil {
 			logger.Warnw("Failed to update resource status", zap.Error(err))
 			r.Recorder.Eventf(resource, {{.corev1EventTypeWarning|raw}}, "UpdateFailed",
 				"Failed to update status for %q: %v", resource.Name, err)
@@ -559,7 +563,7 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 `
 
 var reconcilerStatusFactory = `
-func (r *reconcilerImpl) updateStatus(ctx {{.contextContext|raw}}, existing *{{.type|raw}}, desired *{{.type|raw}}) error {
+func (r *reconcilerImpl) updateStatus(ctx {{.contextContext|raw}}, logger *{{.zapSugaredLogger|raw}}, existing *{{.type|raw}}, desired *{{.type|raw}}) error {
 	existing = existing.DeepCopy()
 	return {{.reconcilerRetryUpdateConflicts|raw}}(func(attempts int) (err error) {
 		// The first iteration tries to use the injectionInformer's state, subsequent attempts fetch the latest state via API.
@@ -580,8 +584,10 @@ func (r *reconcilerImpl) updateStatus(ctx {{.contextContext|raw}}, existing *{{.
 			return nil
 		}
 
-		if diff, err := {{.kmpSafeDiff|raw}}(existing.Status, desired.Status); err == nil && diff != "" {
-			{{.loggingFromContext|raw}}(ctx).Debug("Updating status with: ", diff)
+		if logger.Desugar().Core().Enabled(zapcore.DebugLevel) {
+			if diff, err := {{.kmpSafeDiff|raw}}(existing.Status, desired.Status); err == nil && diff != "" {
+				logger.Debug("Updating status with: ", diff)
+			}
 		}
 
 		existing.Status = desired.Status
