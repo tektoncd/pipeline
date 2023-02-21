@@ -44,7 +44,7 @@ CreateHookFunc is a function for handling a Create hook. Its runtime.Object
 parameter will be the Kubernetes resource created. The resource can be cast
 to its actual type like this:
 
-		pod := obj.(*v1.Pod)
+	pod := obj.(*v1.Pod)
 
 A return value of true marks the hook as completed. Returning false allows
 the hook to run again when the next resource of the requested type is
@@ -57,7 +57,7 @@ UpdateHookFunc is a function for handling an update hook. its runtime.Object
 parameter will be the Kubernetes resource updated. The resource can be cast
 to its actual type like this:
 
-		pod := obj.(*v1.Pod)
+	pod := obj.(*v1.Pod)
 
 A return value of true marks the hook as completed. Returning false allows
 the hook to run again when the next resource of the requested type is
