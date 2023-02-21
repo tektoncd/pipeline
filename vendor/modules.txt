@@ -1586,7 +1586,7 @@ k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20230117181655-247510c00e9d
+# knative.dev/pkg v0.0.0-20230221145627-8efb3485adcf
 ## explicit; go 1.18
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
