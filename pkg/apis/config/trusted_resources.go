@@ -29,7 +29,9 @@ import (
 // TrustedResources holds the collection of configurations that we attach to contexts.
 // Configmap named with "config-trusted-resources" where cosign pub key path and
 // KMS pub key path can be configured
-// Deprecated.
+//
+// Deprecated: Use VerificationPolicy CRD instead.
+//
 // +k8s:deepcopy-gen=true
 type TrustedResources struct {
 	// Keys defines the name of the key in configmap data

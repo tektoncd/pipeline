@@ -42,7 +42,6 @@ type Step struct {
 	// Cannot be updated.
 	// +optional
 	WorkingDir string `json:"workingDir,omitempty" protobuf:"bytes,5,opt,name=workingDir"`
-	// Deprecated. This field will be removed in a future release.
 	// List of ports to expose from the Step's container. Exposing a port here gives
 	// the system additional information about the network connections a
 	// container uses, but is primarily informational. Not specifying a port here
@@ -50,6 +49,9 @@ type Step struct {
 	// listening on the default "0.0.0.0" address inside a container will be
 	// accessible from the network.
 	// Cannot be updated.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	// +patchMergeKey=containerPort
 	// +patchStrategy=merge
@@ -91,21 +93,25 @@ type Step struct {
 	// +optional
 	// +listType=atomic
 	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
-	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container liveness.
 	// Step will be restarted if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedLivenessProbe *corev1.Probe `json:"livenessProbe,omitempty" protobuf:"bytes,10,opt,name=livenessProbe"`
-	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container service readiness.
 	// Step will be removed from service endpoints if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty" protobuf:"bytes,11,opt,name=readinessProbe"`
-	// Deprecated. This field will be removed in a future release.
+
 	// DeprecatedStartupProbe indicates that the Pod this Step runs in has successfully initialized.
 	// If specified, no other probes are executed until this completes successfully.
 	// If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
@@ -113,17 +119,22 @@ type Step struct {
 	// when it might take a long time to load data or warm a cache, than during steady-state operation.
 	// This cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedStartupProbe *corev1.Probe `json:"startupProbe,omitempty" protobuf:"bytes,22,opt,name=startupProbe"`
-	// Deprecated. This field will be removed in a future release.
 	// Actions that the management system should take in response to container lifecycle events.
 	// Cannot be updated.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedLifecycle *corev1.Lifecycle `json:"lifecycle,omitempty" protobuf:"bytes,12,opt,name=lifecycle"`
-	// Deprecated. This field will be removed in a future release and can't be meaningfully used.
+	// Deprecated: This field will be removed in a future release and can't be meaningfully used.
 	// +optional
 	DeprecatedTerminationMessagePath string `json:"terminationMessagePath,omitempty" protobuf:"bytes,13,opt,name=terminationMessagePath"`
-	// Deprecated. This field will be removed in a future release and can't be meaningfully used.
+	// Deprecated: This field will be removed in a future release and can't be meaningfully used.
 	// +optional
 	DeprecatedTerminationMessagePolicy corev1.TerminationMessagePolicy `json:"terminationMessagePolicy,omitempty" protobuf:"bytes,20,opt,name=terminationMessagePolicy,casttype=TerminationMessagePolicy"`
 	// Image pull policy.
@@ -141,13 +152,14 @@ type Step struct {
 
 	// Variables for interactive containers, these are deprecated and should not be used.
 
-	// Deprecated. This field will be removed in a future release.
 	// Whether this container should allocate a buffer for stdin in the container runtime. If this
 	// is not set, reads from stdin in the container will always result in EOF.
 	// Default is false.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedStdin bool `json:"stdin,omitempty" protobuf:"varint,16,opt,name=stdin"`
-	// Deprecated. This field will be removed in a future release.
 	// Whether the container runtime should close the stdin channel after it has been opened by
 	// a single attach. When stdin is true the stdin stream will remain open across multiple attach
 	// sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the
@@ -155,11 +167,16 @@ type Step struct {
 	// at which time stdin is closed and remains closed until the container is restarted. If this
 	// flag is false, a container processes that reads from stdin will never receive an EOF.
 	// Default is false
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedStdinOnce bool `json:"stdinOnce,omitempty" protobuf:"varint,17,opt,name=stdinOnce"`
-	// Deprecated. This field will be removed in a future release.
 	// Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true.
 	// Default is false.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedTTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
 
@@ -270,10 +287,12 @@ func (s *Step) SetContainerFields(c corev1.Container) {
 
 // StepTemplate is a template for a Step
 type StepTemplate struct {
-	// Deprecated. This field will be removed in a future release.
 	// Default name for each Step specified as a DNS_LABEL.
 	// Each Step in a Task must have a unique name.
 	// Cannot be updated.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	DeprecatedName string `json:"name" protobuf:"bytes,1,opt,name=name"`
 	// Default image name to use for each Step.
 	// More info: https://kubernetes.io/docs/concepts/containers/images
@@ -309,7 +328,6 @@ type StepTemplate struct {
 	// Cannot be updated.
 	// +optional
 	WorkingDir string `json:"workingDir,omitempty" protobuf:"bytes,5,opt,name=workingDir"`
-	// Deprecated. This field will be removed in a future release.
 	// List of ports to expose from the Step's container. Exposing a port here gives
 	// the system additional information about the network connections a
 	// container uses, but is primarily informational. Not specifying a port here
@@ -317,6 +335,9 @@ type StepTemplate struct {
 	// listening on the default "0.0.0.0" address inside a container will be
 	// accessible from the network.
 	// Cannot be updated.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	// +patchMergeKey=containerPort
 	// +patchStrategy=merge
@@ -358,21 +379,24 @@ type StepTemplate struct {
 	// +optional
 	// +listType=atomic
 	VolumeDevices []corev1.VolumeDevice `json:"volumeDevices,omitempty" patchStrategy:"merge" patchMergeKey:"devicePath" protobuf:"bytes,21,rep,name=volumeDevices"`
-	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container liveness.
 	// Container will be restarted if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedLivenessProbe *corev1.Probe `json:"livenessProbe,omitempty" protobuf:"bytes,10,opt,name=livenessProbe"`
-	// Deprecated. This field will be removed in a future release.
 	// Periodic probe of container service readiness.
 	// Container will be removed from service endpoints if the probe fails.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty" protobuf:"bytes,11,opt,name=readinessProbe"`
-	// Deprecated. This field will be removed in a future release.
 	// DeprecatedStartupProbe indicates that the Pod has successfully initialized.
 	// If specified, no other probes are executed until this completes successfully.
 	// If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
@@ -380,17 +404,22 @@ type StepTemplate struct {
 	// when it might take a long time to load data or warm a cache, than during steady-state operation.
 	// This cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedStartupProbe *corev1.Probe `json:"startupProbe,omitempty" protobuf:"bytes,22,opt,name=startupProbe"`
-	// Deprecated. This field will be removed in a future release.
 	// Actions that the management system should take in response to container lifecycle events.
 	// Cannot be updated.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedLifecycle *corev1.Lifecycle `json:"lifecycle,omitempty" protobuf:"bytes,12,opt,name=lifecycle"`
-	// Deprecated. This field will be removed in a future release and cannot be meaningfully used.
+	// Deprecated: This field will be removed in a future release and cannot be meaningfully used.
 	// +optional
 	DeprecatedTerminationMessagePath string `json:"terminationMessagePath,omitempty" protobuf:"bytes,13,opt,name=terminationMessagePath"`
-	// Deprecated. This field will be removed in a future release and cannot be meaningfully used.
+	// Deprecated: This field will be removed in a future release and cannot be meaningfully used.
 	// +optional
 	DeprecatedTerminationMessagePolicy corev1.TerminationMessagePolicy `json:"terminationMessagePolicy,omitempty" protobuf:"bytes,20,opt,name=terminationMessagePolicy,casttype=TerminationMessagePolicy"`
 	// Image pull policy.
@@ -408,13 +437,14 @@ type StepTemplate struct {
 
 	// Variables for interactive containers, these are deprecated and should not be used.
 
-	// Deprecated. This field will be removed in a future release.
 	// Whether this Step should allocate a buffer for stdin in the container runtime. If this
 	// is not set, reads from stdin in the Step will always result in EOF.
 	// Default is false.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedStdin bool `json:"stdin,omitempty" protobuf:"varint,16,opt,name=stdin"`
-	// Deprecated. This field will be removed in a future release.
 	// Whether the container runtime should close the stdin channel after it has been opened by
 	// a single attach. When stdin is true the stdin stream will remain open across multiple attach
 	// sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the
@@ -422,11 +452,16 @@ type StepTemplate struct {
 	// at which time stdin is closed and remains closed until the container is restarted. If this
 	// flag is false, a container processes that reads from stdin will never receive an EOF.
 	// Default is false
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedStdinOnce bool `json:"stdinOnce,omitempty" protobuf:"varint,17,opt,name=stdinOnce"`
-	// Deprecated. This field will be removed in a future release.
 	// Whether this Step should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true.
 	// Default is false.
+	//
+	// Deprecated: This field will be removed in a future release.
+	//
 	// +optional
 	DeprecatedTTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
 }

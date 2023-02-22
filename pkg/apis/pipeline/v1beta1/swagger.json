@@ -173,7 +173,7 @@
           "$ref": "#/definitions/v1alpha1.PipelineResourceSpec"
         },
         "status": {
-          "description": "Status is deprecated. It usually is used to communicate the observed state of the PipelineResource from the controller, but was unused as there is no controller for PipelineResource.",
+          "description": "Status is used to communicate the observed state of the PipelineResource from the controller, but was unused as there is no controller for PipelineResource.\n\nDeprecated: Deprecated in v0.30.0.",
           "$ref": "#/definitions/v1alpha1.PipelineResourceStatus"
         }
       }
@@ -242,7 +242,7 @@
       }
     },
     "v1alpha1.PipelineResourceStatus": {
-      "description": "PipelineResourceStatus does not contain anything because PipelineResources on their own do not have a status Deprecated",
+      "description": "PipelineResourceStatus does not contain anything because PipelineResources on their own do not have a status\n\nDeprecated: Deprecated in v0.30.0.",
       "type": "object"
     },
     "v1alpha1.ResourceDeclaration": {
@@ -391,7 +391,7 @@
       }
     },
     "v1beta1.ClusterTask": {
-      "description": "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster. Deprecated: Please use the cluster resolver instead.",
+      "description": "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster.\n\nDeprecated: Please use the cluster resolver instead.",
       "type": "object",
       "properties": {
         "apiVersion": {
@@ -898,7 +898,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle. Deprecated: Please use ResolverRef with the bundles resolver instead.",
+          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
           "type": "string"
         },
         "name": {
@@ -1136,7 +1136,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "timeout": {
-          "description": "Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "description": "Timeout is the Time after which the Pipeline times out. Defaults to never. Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration\n\nDeprecated: use pipelineRunSpec.Timeouts.Pipeline instead",
           "$ref": "#/definitions/v1.Duration"
         },
         "timeouts": {
@@ -1615,7 +1615,7 @@
       }
     },
     "v1beta1.PipelineWorkspaceDeclaration": {
-      "description": "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding. Deprecated: use PipelineWorkspaceDeclaration type instead",
+      "description": "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding.\n\nDeprecated: use PipelineWorkspaceDeclaration type instead",
       "type": "object",
       "required": [
         "name"
@@ -2108,11 +2108,11 @@
           "type": "string"
         },
         "lifecycle": {
-          "description": "Deprecated. This field will be removed in a future release. Actions that the management system should take in response to container lifecycle events. Cannot be updated.",
+          "description": "Actions that the management system should take in response to container lifecycle events. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Lifecycle"
         },
         "livenessProbe": {
-          "description": "Deprecated. This field will be removed in a future release. Periodic probe of container liveness. Step will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "description": "Periodic probe of container liveness. Step will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Probe"
         },
         "name": {
@@ -2125,7 +2125,7 @@
           "type": "string"
         },
         "ports": {
-          "description": "Deprecated. This field will be removed in a future release. List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
+          "description": "List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
           "type": "array",
           "items": {
             "default": {},
@@ -2140,7 +2140,7 @@
           "x-kubernetes-patch-strategy": "merge"
         },
         "readinessProbe": {
-          "description": "Deprecated. This field will be removed in a future release. Periodic probe of container service readiness. Step will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "description": "Periodic probe of container service readiness. Step will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Probe"
         },
         "resources": {
@@ -2157,7 +2157,7 @@
           "$ref": "#/definitions/v1.SecurityContext"
         },
         "startupProbe": {
-          "description": "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod this Step runs in has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "description": "DeprecatedStartupProbe indicates that the Pod this Step runs in has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Probe"
         },
         "stderrConfig": {
@@ -2165,11 +2165,11 @@
           "$ref": "#/definitions/v1beta1.StepOutputConfig"
         },
         "stdin": {
-          "description": "Deprecated. This field will be removed in a future release. Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
+          "description": "Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.\n\nDeprecated: This field will be removed in a future release.",
           "type": "boolean"
         },
         "stdinOnce": {
-          "description": "Deprecated. This field will be removed in a future release. Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
+          "description": "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false\n\nDeprecated: This field will be removed in a future release.",
           "type": "boolean"
         },
         "stdoutConfig": {
@@ -2177,11 +2177,11 @@
           "$ref": "#/definitions/v1beta1.StepOutputConfig"
         },
         "terminationMessagePath": {
-          "description": "Deprecated. This field will be removed in a future release and can't be meaningfully used.",
+          "description": "Deprecated: This field will be removed in a future release and can't be meaningfully used.",
           "type": "string"
         },
         "terminationMessagePolicy": {
-          "description": "Deprecated. This field will be removed in a future release and can't be meaningfully used.",
+          "description": "Deprecated: This field will be removed in a future release and can't be meaningfully used.",
           "type": "string"
         },
         "timeout": {
@@ -2189,7 +2189,7 @@
           "$ref": "#/definitions/v1.Duration"
         },
         "tty": {
-          "description": "Deprecated. This field will be removed in a future release. Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.",
+          "description": "Whether this container should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.\n\nDeprecated: This field will be removed in a future release.",
           "type": "boolean"
         },
         "volumeDevices": {
@@ -2320,20 +2320,20 @@
           "type": "string"
         },
         "lifecycle": {
-          "description": "Deprecated. This field will be removed in a future release. Actions that the management system should take in response to container lifecycle events. Cannot be updated.",
+          "description": "Actions that the management system should take in response to container lifecycle events. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Lifecycle"
         },
         "livenessProbe": {
-          "description": "Deprecated. This field will be removed in a future release. Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "description": "Periodic probe of container liveness. Container will be restarted if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Probe"
         },
         "name": {
-          "description": "Deprecated. This field will be removed in a future release. Default name for each Step specified as a DNS_LABEL. Each Step in a Task must have a unique name. Cannot be updated.",
+          "description": "Default name for each Step specified as a DNS_LABEL. Each Step in a Task must have a unique name. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
           "type": "string",
           "default": ""
         },
         "ports": {
-          "description": "Deprecated. This field will be removed in a future release. List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.",
+          "description": "List of ports to expose from the Step's container. Exposing a port here gives the system additional information about the network connections a container uses, but is primarily informational. Not specifying a port here DOES NOT prevent that port from being exposed. Any port which is listening on the default \"0.0.0.0\" address inside a container will be accessible from the network. Cannot be updated.\n\nDeprecated: This field will be removed in a future release.",
           "type": "array",
           "items": {
             "default": {},
@@ -2348,7 +2348,7 @@
           "x-kubernetes-patch-strategy": "merge"
         },
         "readinessProbe": {
-          "description": "Deprecated. This field will be removed in a future release. Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "description": "Periodic probe of container service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Probe"
         },
         "resources": {
@@ -2361,27 +2361,27 @@
           "$ref": "#/definitions/v1.SecurityContext"
         },
         "startupProbe": {
-          "description": "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
+          "description": "DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes\n\nDeprecated: This field will be removed in a future release.",
           "$ref": "#/definitions/v1.Probe"
         },
         "stdin": {
-          "description": "Deprecated. This field will be removed in a future release. Whether this Step should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the Step will always result in EOF. Default is false.",
+          "description": "Whether this Step should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the Step will always result in EOF. Default is false.\n\nDeprecated: This field will be removed in a future release.",
           "type": "boolean"
         },
         "stdinOnce": {
-          "description": "Deprecated. This field will be removed in a future release. Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
+          "description": "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false\n\nDeprecated: This field will be removed in a future release.",
           "type": "boolean"
         },
         "terminationMessagePath": {
-          "description": "Deprecated. This field will be removed in a future release and cannot be meaningfully used.",
+          "description": "Deprecated: This field will be removed in a future release and cannot be meaningfully used.",
           "type": "string"
         },
         "terminationMessagePolicy": {
-          "description": "Deprecated. This field will be removed in a future release and cannot be meaningfully used.",
+          "description": "Deprecated: This field will be removed in a future release and cannot be meaningfully used.",
           "type": "string"
         },
         "tty": {
-          "description": "Deprecated. This field will be removed in a future release. Whether this Step should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.",
+          "description": "Whether this Step should allocate a DeprecatedTTY for itself, also requires 'stdin' to be true. Default is false.\n\nDeprecated: This field will be removed in a future release.",
           "type": "boolean"
         },
         "volumeDevices": {
@@ -2472,7 +2472,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle. Deprecated: Please use ResolverRef with the bundles resolver instead.",
+          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
           "type": "string"
         },
         "kind": {
@@ -2869,7 +2869,7 @@
           }
         },
         "cloudEvents": {
-          "description": "Deprecated. CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: Removed in v0.44.0.",
           "type": "array",
           "items": {
             "default": {},
@@ -2976,7 +2976,7 @@
       ],
       "properties": {
         "cloudEvents": {
-          "description": "Deprecated. CloudEvents describe the state of each cloud event requested via a CloudEventResource.",
+          "description": "CloudEvents describe the state of each cloud event requested via a CloudEventResource.\n\nDeprecated: Removed in v0.44.0.",
           "type": "array",
           "items": {
             "default": {},

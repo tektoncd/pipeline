@@ -2896,8 +2896,8 @@ string
 </p>
 <div>
 <p>WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
-is expected to populate with a workspace binding.
-Deprecated: use PipelineWorkspaceDeclaration type instead</p>
+is expected to populate with a workspace binding.</p>
+<p>Deprecated: use PipelineWorkspaceDeclaration type instead</p>
 </div>
 <table>
 <thead>
@@ -6187,9 +6187,9 @@ PipelineResourceStatus
 </td>
 <td>
 <em>(Optional)</em>
-<p>Status is deprecated.
-It usually is used to communicate the observed state of the PipelineResource from
+<p>Status is used to communicate the observed state of the PipelineResource from
 the controller, but was unused as there is no controller for PipelineResource.</p>
+<p>Deprecated: Deprecated in v0.30.0.</p>
 </td>
 </tr>
 </tbody>
@@ -6721,8 +6721,8 @@ string
 </p>
 <div>
 <p>PipelineResourceStatus does not contain anything because PipelineResources on their own
-do not have a status
-Deprecated</p>
+do not have a status</p>
+<p>Deprecated: Deprecated in v0.30.0.</p>
 </div>
 <h3 id="tekton.dev/v1alpha1.ResourceDeclaration">ResourceDeclaration
 </h3>
@@ -7099,7 +7099,8 @@ Resource Types:
 <div>
 <p>ClusterTask is a Task with a cluster scope. ClusterTasks are used to
 represent Tasks that should be publicly addressable from any namespace in the
-cluster. Deprecated: Please use the cluster resolver instead.</p>
+cluster.</p>
+<p>Deprecated: Please use the cluster resolver instead.</p>
 </div>
 <table>
 <thead>
@@ -7819,9 +7820,10 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead
-Time after which the Pipeline times out. Defaults to never.
+<p>Timeout is the Time after which the Pipeline times out.
+Defaults to never.
 Refer to Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+<p>Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead</p>
 </td>
 </tr>
 <tr>
@@ -9317,8 +9319,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Bundle url reference to a Tekton Bundle.
-Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
+<p>Bundle url reference to a Tekton Bundle.</p>
+<p>Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
 </td>
 </tr>
 <tr>
@@ -9798,9 +9800,10 @@ Kubernetes meta/v1.Duration
 </td>
 <td>
 <em>(Optional)</em>
-<p>Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead
-Time after which the Pipeline times out. Defaults to never.
+<p>Timeout is the Time after which the Pipeline times out.
+Defaults to never.
 Refer to Go&rsquo;s ParseDuration documentation for expected format: <a href="https://golang.org/pkg/time/#ParseDuration">https://golang.org/pkg/time/#ParseDuration</a></p>
+<p>Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead</p>
 </td>
 </tr>
 <tr>
@@ -10741,8 +10744,8 @@ Kubernetes core/v1.ResourceRequirements
 </p>
 <div>
 <p>WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
-is expected to populate with a workspace binding.
-Deprecated: use PipelineWorkspaceDeclaration type instead</p>
+is expected to populate with a workspace binding.</p>
+<p>Deprecated: use PipelineWorkspaceDeclaration type instead</p>
 </div>
 <table>
 <thead>
@@ -11658,14 +11661,14 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-List of ports to expose from the Step&rsquo;s container. Exposing a port here gives
+<p>List of ports to expose from the Step&rsquo;s container. Exposing a port here gives
 the system additional information about the network connections a
 container uses, but is primarily informational. Not specifying a port here
 DOES NOT prevent that port from being exposed. Any port which is
 listening on the default &ldquo;0.0.0.0&rdquo; address inside a container will be
 accessible from the network.
 Cannot be updated.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -11758,11 +11761,11 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Periodic probe of container liveness.
+<p>Periodic probe of container liveness.
 Step will be restarted if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -11776,11 +11779,11 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Periodic probe of container service readiness.
+<p>Periodic probe of container service readiness.
 Step will be removed from service endpoints if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -11794,14 +11797,14 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-DeprecatedStartupProbe indicates that the Pod this Step runs in has successfully initialized.
+<p>DeprecatedStartupProbe indicates that the Pod this Step runs in has successfully initialized.
 If specified, no other probes are executed until this completes successfully.
 If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
 This can be used to provide different probe parameters at the beginning of a Pod&rsquo;s lifecycle,
 when it might take a long time to load data or warm a cache, than during steady-state operation.
 This cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -11815,9 +11818,9 @@ Kubernetes core/v1.Lifecycle
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Actions that the management system should take in response to container lifecycle events.
+<p>Actions that the management system should take in response to container lifecycle events.
 Cannot be updated.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -11829,7 +11832,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release and can&rsquo;t be meaningfully used.</p>
+<p>Deprecated: This field will be removed in a future release and can&rsquo;t be meaningfully used.</p>
 </td>
 </tr>
 <tr>
@@ -11843,7 +11846,7 @@ Kubernetes core/v1.TerminationMessagePolicy
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release and can&rsquo;t be meaningfully used.</p>
+<p>Deprecated: This field will be removed in a future release and can&rsquo;t be meaningfully used.</p>
 </td>
 </tr>
 <tr>
@@ -11889,10 +11892,10 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Whether this container should allocate a buffer for stdin in the container runtime. If this
+<p>Whether this container should allocate a buffer for stdin in the container runtime. If this
 is not set, reads from stdin in the container will always result in EOF.
 Default is false.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -11904,14 +11907,14 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Whether the container runtime should close the stdin channel after it has been opened by
+<p>Whether the container runtime should close the stdin channel after it has been opened by
 a single attach. When stdin is true the stdin stream will remain open across multiple attach
 sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the
 first client attaches to stdin, and then remains open and accepts data until the client disconnects,
 at which time stdin is closed and remains closed until the container is restarted. If this
 flag is false, a container processes that reads from stdin will never receive an EOF.
 Default is false</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -11923,9 +11926,9 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Whether this container should allocate a DeprecatedTTY for itself, also requires &lsquo;stdin&rsquo; to be true.
+<p>Whether this container should allocate a DeprecatedTTY for itself, also requires &lsquo;stdin&rsquo; to be true.
 Default is false.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12136,10 +12139,10 @@ string
 </em>
 </td>
 <td>
-<p>Deprecated. This field will be removed in a future release.
-Default name for each Step specified as a DNS_LABEL.
+<p>Default name for each Step specified as a DNS_LABEL.
 Each Step in a Task must have a unique name.
 Cannot be updated.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12221,14 +12224,14 @@ Cannot be updated.</p>
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-List of ports to expose from the Step&rsquo;s container. Exposing a port here gives
+<p>List of ports to expose from the Step&rsquo;s container. Exposing a port here gives
 the system additional information about the network connections a
 container uses, but is primarily informational. Not specifying a port here
 DOES NOT prevent that port from being exposed. Any port which is
 listening on the default &ldquo;0.0.0.0&rdquo; address inside a container will be
 accessible from the network.
 Cannot be updated.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12321,11 +12324,11 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Periodic probe of container liveness.
+<p>Periodic probe of container liveness.
 Container will be restarted if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12339,11 +12342,11 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Periodic probe of container service readiness.
+<p>Periodic probe of container service readiness.
 Container will be removed from service endpoints if the probe fails.
 Cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12357,14 +12360,14 @@ Kubernetes core/v1.Probe
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-DeprecatedStartupProbe indicates that the Pod has successfully initialized.
+<p>DeprecatedStartupProbe indicates that the Pod has successfully initialized.
 If specified, no other probes are executed until this completes successfully.
 If this probe fails, the Pod will be restarted, just as if the livenessProbe failed.
 This can be used to provide different probe parameters at the beginning of a Pod&rsquo;s lifecycle,
 when it might take a long time to load data or warm a cache, than during steady-state operation.
 This cannot be updated.
 More info: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes</a></p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12378,9 +12381,9 @@ Kubernetes core/v1.Lifecycle
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Actions that the management system should take in response to container lifecycle events.
+<p>Actions that the management system should take in response to container lifecycle events.
 Cannot be updated.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12392,7 +12395,7 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release and cannot be meaningfully used.</p>
+<p>Deprecated: This field will be removed in a future release and cannot be meaningfully used.</p>
 </td>
 </tr>
 <tr>
@@ -12406,7 +12409,7 @@ Kubernetes core/v1.TerminationMessagePolicy
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release and cannot be meaningfully used.</p>
+<p>Deprecated: This field will be removed in a future release and cannot be meaningfully used.</p>
 </td>
 </tr>
 <tr>
@@ -12452,10 +12455,10 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Whether this Step should allocate a buffer for stdin in the container runtime. If this
+<p>Whether this Step should allocate a buffer for stdin in the container runtime. If this
 is not set, reads from stdin in the Step will always result in EOF.
 Default is false.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12467,14 +12470,14 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Whether the container runtime should close the stdin channel after it has been opened by
+<p>Whether the container runtime should close the stdin channel after it has been opened by
 a single attach. When stdin is true the stdin stream will remain open across multiple attach
 sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the
 first client attaches to stdin, and then remains open and accepts data until the client disconnects,
 at which time stdin is closed and remains closed until the container is restarted. If this
 flag is false, a container processes that reads from stdin will never receive an EOF.
 Default is false</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 <tr>
@@ -12486,9 +12489,9 @@ bool
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated. This field will be removed in a future release.
-Whether this Step should allocate a DeprecatedTTY for itself, also requires &lsquo;stdin&rsquo; to be true.
+<p>Whether this Step should allocate a DeprecatedTTY for itself, also requires &lsquo;stdin&rsquo; to be true.
 Default is false.</p>
+<p>Deprecated: This field will be removed in a future release.</p>
 </td>
 </tr>
 </tbody>
@@ -12572,8 +12575,8 @@ string
 </td>
 <td>
 <em>(Optional)</em>
-<p>Bundle url reference to a Tekton Bundle.
-Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
+<p>Bundle url reference to a Tekton Bundle.</p>
+<p>Deprecated: Please use ResolverRef with the bundles resolver instead.</p>
 </td>
 </tr>
 <tr>
@@ -13420,9 +13423,9 @@ Kubernetes meta/v1.Time
 </td>
 <td>
 <em>(Optional)</em>
-<p>Deprecated.
-CloudEvents describe the state of each cloud event requested via a
+<p>CloudEvents describe the state of each cloud event requested via a
 CloudEventResource.</p>
+<p>Deprecated: Removed in v0.44.0.</p>
 </td>
 </tr>
 <tr>

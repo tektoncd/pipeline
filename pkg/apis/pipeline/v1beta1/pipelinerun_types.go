@@ -245,9 +245,12 @@ type PipelineRunSpec struct {
 	// +optional
 	Timeouts *TimeoutFields `json:"timeouts,omitempty"`
 
-	// Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead
-	// Time after which the Pipeline times out. Defaults to never.
+	// Timeout is the Time after which the Pipeline times out.
+	// Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	//
+	// Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead
+	//
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration

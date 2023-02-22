@@ -66,16 +66,19 @@ type PipelineResource struct {
 	// Spec holds the desired state of the PipelineResource from the client
 	Spec PipelineResourceSpec `json:"spec,omitempty"`
 
-	// Status is deprecated.
-	// It usually is used to communicate the observed state of the PipelineResource from
+	// Status is used to communicate the observed state of the PipelineResource from
 	// the controller, but was unused as there is no controller for PipelineResource.
+	//
+	// Deprecated: Deprecated in v0.30.0.
+	//
 	// +optional
 	Status *PipelineResourceStatus `json:"status,omitempty"`
 }
 
 // PipelineResourceStatus does not contain anything because PipelineResources on their own
 // do not have a status
-// Deprecated
+//
+// Deprecated: Deprecated in v0.30.0.
 type PipelineResourceStatus struct {
 }
 

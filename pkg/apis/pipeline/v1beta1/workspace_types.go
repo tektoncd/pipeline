@@ -87,6 +87,7 @@ type WorkspaceBinding struct {
 
 // WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun
 // is expected to populate with a workspace binding.
+//
 // Deprecated: use PipelineWorkspaceDeclaration type instead
 type WorkspacePipelineDeclaration = PipelineWorkspaceDeclaration
 
