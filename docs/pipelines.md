@@ -1819,6 +1819,7 @@ We try to list as many known Custom Tasks as possible here so that users can eas
 | Custom Task                      | Description                                                                                                                      |
 |:---------------------------------|:---------------------------------------------------------------------------------------------------------------------------------|
 | [Wait Task Beta][wait-task-beta] | Waits a given amount of time before succeeding, specified by an input parameter named duration. Support `timeout` and `retries`. |
+| [Approvals][approvals-beta]| Pauses the execution of `PipelineRuns` and waits for manual approvals. Version 0.6.0 and up. |
 
 #### v1alpha1.Run
 
@@ -1827,7 +1828,7 @@ We try to list as many known Custom Tasks as possible here so that users can eas
 | [Pipeline Loops][pipeline-loops]| Runs a `Pipeline` in a loop with varying `Parameter` values.
 | [Common Expression Language][cel]| Provides Common Expression Language support in Tekton Pipelines.
 | [Wait][wait]| Waits a given amount of time, specified by a `Parameter` named "duration", before succeeding.
-| [Approvals][approvals]| Pauses the execution of `PipelineRuns` and waits for manual approvals.
+| [Approvals][approvals-alpha]| Pauses the execution of `PipelineRuns` and waits for manual approvals. Version up to (and including) 0.5.0 
 | [Pipelines in Pipelines][pipelines-in-pipelines]| Defines and executes a `Pipeline` in a `Pipeline`. 
 | [Task Group][task-group]| Groups `Tasks` together as a `Task`.
 | [Pipeline in a Pod][pipeline-in-pod]| Runs `Pipeline` in a `Pod`.
@@ -1836,7 +1837,8 @@ We try to list as many known Custom Tasks as possible here so that users can eas
 [task-loops]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/task-loops
 [cel]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/cel
 [wait]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/wait-task
-[approvals]: https://github.com/automatiko-io/automatiko-approval-task/tree/71da90361dff9444146d52d0a6e2b542d4bf4edc
+[approvals-alpha]: https://github.com/automatiko-io/automatiko-approval-task/tree/v0.5.0
+[approvals-beta]: https://github.com/automatiko-io/automatiko-approval-task/tree/v0.6.1
 [task-group]: https://github.com/openshift-pipelines/tekton-task-group/tree/39823f26be8f59504f242a45b9f2e791d4b36e1c
 [pipelines-in-pipelines]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/pipelines-in-pipelines
 [pipeline-in-pod]: https://github.com/tektoncd/experimental/tree/f60e1cd8ce22ed745e335f6f547bb9a44580dc7c/pipeline-in-pod
