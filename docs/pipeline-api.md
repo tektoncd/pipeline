@@ -2,7 +2,7 @@
 ---
 title: Pipeline API
 linkTitle: Pipeline API
-weight: 404
+weight: 1000
 ---
 -->
 
@@ -3008,6 +3008,17 @@ ConfigSource
 </td>
 <td>
 <p>ConfigSource identifies the source where a resource came from.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>featureFlags</code><br/>
+<em>
+github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
+</em>
+</td>
+<td>
+<p>FeatureFlags identifies the feature flags that were used during the task/pipeline run</p>
 </td>
 </tr>
 </tbody>
@@ -10842,6 +10853,17 @@ ConfigSource
 </td>
 <td>
 <p>ConfigSource identifies the source where a resource came from.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>featureFlags</code><br/>
+<em>
+github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags
+</em>
+</td>
+<td>
+<p>FeatureFlags identifies the feature flags that were used during the task/pipeline run</p>
 </td>
 </tr>
 </tbody>
