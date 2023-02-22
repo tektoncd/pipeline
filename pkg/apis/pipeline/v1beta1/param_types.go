@@ -138,6 +138,8 @@ type ParamValue struct {
 }
 
 // ArrayOrString is deprecated, this is to keep backward compatibility
+//
+// Deprecated: Use ParamValue instead.
 type ArrayOrString = ParamValue
 
 // UnmarshalJSON implements the json.Unmarshaller interface.
