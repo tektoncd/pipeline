@@ -413,6 +413,22 @@ type PipelineRunStatusFields struct {
 	// CompletionTime is the time the PipelineRun completed.
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
+	// TaskRuns is a map of PipelineRunTaskRunStatus with the taskRun name as the key.
+	//
+	// Deprecated: use ChildReferences instead. As of v0.45.0, this field is no
+	// longer populated and is only included for backwards compatibility with
+	// older server versions.
+	// +optional
+	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
+
+	// Runs is a map of PipelineRunRunStatus with the run name as the key
+	//
+	// Deprecated: use ChildReferences instead. As of v0.45.0, this field is no
+	// longer populated and is only included for backwards compatibility with
+	// older server versions.
+	// +optional
+	Runs map[string]*PipelineRunRunStatus `json:"runs,omitempty"`
+
 	// PipelineResults are the list of results written out by the pipeline task's containers
 	// +optional
 	// +listType=atomic

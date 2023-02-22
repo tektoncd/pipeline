@@ -973,6 +973,13 @@
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
           "$ref": "#/definitions/v1beta1.Provenance"
         },
+        "runs": {
+          "description": "Runs is a map of PipelineRunRunStatus with the run name as the key\n\nDeprecated: use ChildReferences instead. As of v0.45.0, this field is no longer populated and is only included for backwards compatibility with older server versions.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunRunStatus"
+          }
+        },
         "skippedTasks": {
           "description": "list of tasks that were skipped due to when expressions evaluating to false",
           "type": "array",
@@ -993,6 +1000,13 @@
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
           "$ref": "#/definitions/v1.Time"
+        },
+        "taskRuns": {
+          "description": "TaskRuns is a map of PipelineRunTaskRunStatus with the taskRun name as the key.\n\nDeprecated: use ChildReferences instead. As of v0.45.0, this field is no longer populated and is only included for backwards compatibility with older server versions.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunTaskRunStatus"
+          }
         }
       }
     },
@@ -1034,6 +1048,13 @@
           "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
           "$ref": "#/definitions/v1beta1.Provenance"
         },
+        "runs": {
+          "description": "Runs is a map of PipelineRunRunStatus with the run name as the key\n\nDeprecated: use ChildReferences instead. As of v0.45.0, this field is no longer populated and is only included for backwards compatibility with older server versions.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunRunStatus"
+          }
+        },
         "skippedTasks": {
           "description": "list of tasks that were skipped due to when expressions evaluating to false",
           "type": "array",
@@ -1054,6 +1075,13 @@
         "startTime": {
           "description": "StartTime is the time the PipelineRun is actually started.",
           "$ref": "#/definitions/v1.Time"
+        },
+        "taskRuns": {
+          "description": "TaskRuns is a map of PipelineRunTaskRunStatus with the taskRun name as the key.\n\nDeprecated: use ChildReferences instead. As of v0.45.0, this field is no longer populated and is only included for backwards compatibility with older server versions.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/v1beta1.PipelineRunTaskRunStatus"
+          }
         }
       }
     },
