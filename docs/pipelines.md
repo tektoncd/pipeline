@@ -316,7 +316,7 @@ tasks:
       value: https://github.com/tektoncd/catalog.git
     - name: revision
       # value can use params declared at the pipeline level or a static value like main
-      value: $(params.gitRevision) 
+      value: $(params.gitRevision)
     - name: pathInRepo
       value: task/golang-build/0.3/golang-build.yaml
 ```
@@ -923,17 +923,15 @@ Sharing `Results` between `Tasks` in a `Pipeline` happens via
 a `Result` and another receives it as a `Parameter` with a variable such as
 `$(tasks.<task-name>.results.<result-name>)`. Pipeline support two new types of
 results and parameters: array `[]string` and object `map[string]string`.
-Array result is a beta feature and can be enabled by setting `enable-api-fields` to `beta`
-and is also supported with `enable-api-fields` set to `alpha`.
-Object result is an alpha feature and can be enabled by setting `enable-api-fields` to `alpha`.
+Array and Object result is a beta feature and can be enabled by setting `enable-api-fields` to `alpha` or `beta`.
 
 | Result Type | Parameter Type | Specification                                    | `enable-api-fields` |
 |-------------|----------------|--------------------------------------------------|---------------------|
 | string      | string         | `$(tasks.<task-name>.results.<result-name>)`     | stable              |
 | array       | array          | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha or beta       |
 | array       | string         | `$(tasks.<task-name>.results.<result-name>[i])`  | alpha or beta       |
-| object      | object         | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha               |
-| object      | string         | `$(tasks.<task-name>.results.<result-name>.key)` | alpha               |
+| object      | object         | `$(tasks.<task-name>.results.<result-name>[*])`  | alpha or beta              |
+| object      | string         | `$(tasks.<task-name>.results.<result-name>.key)` | alpha or beta              |
 
 **Note:** Whole Array and Object `Results` (using star notation) cannot be referred in `script`.
 
@@ -1022,8 +1020,8 @@ results:
 
 For an end-to-end example, see [`Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/pipelinerun-results.yaml).
 
-Object result is supported as alpha feature and array result is a beta feature,
-see [`Array and Object Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/alpha/pipeline-emitting-results.yaml).
+Object result and array result are beta features,
+see [`Array and Object Results` in a `PipelineRun`](../examples/v1beta1/pipelineruns/beta/pipeline-emitting-results.yaml).
 
 ```yaml
     results:
@@ -1302,7 +1300,7 @@ results:
     value: $(finally.check-count.results.comment-count-validate)
 finally:
   - name: check-count
-    taskRef: 
+    taskRef:
       name: example-task-name
 ```
 
@@ -1790,7 +1788,7 @@ Consult the documentation of the custom task that you are using to determine whe
 Pipelines do not support the following items with custom tasks:
 * Pipeline Resources
 
-### Known Custom Tasks 
+### Known Custom Tasks
 
 We try to list as many known Custom Tasks as possible here so that users can easily find what they want. Please feel free to share the Custom Task you implemented in this table.
 

@@ -528,7 +528,7 @@ For example, `foo.Is-Bar_` is a valid parameter name for string or array type, b
 > 2. If a parameter name contains dots (.), it must be referenced by using the [bracket notation](#substituting-parameters-and-resources) with either single or double quotes i.e. `$(params['foo.bar'])`, `$(params["foo.bar"])`. See the following example for more information.
 
 #### Parameter type
-Each declared parameter has a `type` field, which can be set to `string`, `array` or `object` (alpha feature). 
+Each declared parameter has a `type` field, which can be set to `string`, `array` (beta feature) or `object` (beta feature).
 
 ##### `object` type
 
@@ -548,11 +548,11 @@ spec:
 
 Refer to the [TaskRun example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml) and the [PipelineRun example](../examples/v1beta1/pipelineruns/alpha/pipeline-object-param-and-result.yaml) in which `object` parameters are demonstrated.
 
-  > NOTE: 
-  > - `object` param is an `alpha` feature and gated by the `alpha` feature flag.
+  > NOTE:
+  > - `object` param is a `beta` feature and gated by the `alpha` or `beta` feature flag.
   > - `object` param must specify the `properties` section to define the schema i.e. what keys are available for this object param. See how to define `properties` section in the following example and the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#defaulting-to-string-types-for-values).
-  > - When providing value for an `object` param, one may provide values for just a subset of keys in spec's `default`, and provide values for the rest of keys at runtime ([example](../examples/v1beta1/taskruns/alpha/object-param-result.yaml)).
-  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object like [this example](https://github.com/tektoncd/pipeline/blob/55665765e4de35b3a4fb541549ae8cdef0996641/examples/v1beta1/pipelineruns/alpha/pipeline-object-param-and-result.yaml#L64-L65). See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
+  > - When providing value for an `object` param, one may provide values for just a subset of keys in spec's `default`, and provide values for the rest of keys at runtime ([example](../examples/v1beta1/taskruns/beta/object-param-result.yaml)).
+  > - When using object in variable replacement, users can only access its individual key ("child" member) of the object by its name i.e. `$(params.gitrepo.url)`. Using an entire object as a value is only allowed when the value is also an object like [this example](https://github.com/tektoncd/pipeline/blob/55665765e4de35b3a4fb541549ae8cdef0996641/examples/v1beta1/pipelineruns/beta/pipeline-object-param-and-result.yaml#L64-L65). See more details about using object param from the [TEP-0075](https://github.com/tektoncd/community/blob/main/teps/0075-object-param-and-result-types.md#using-objects-in-variable-replacement).
 
 ##### `array` type
 
@@ -928,7 +928,7 @@ At present, the limit is ["4096 bytes"](https://github.com/kubernetes/kubernetes
 This also means that the number of Steps in a Task affects the maximum size of a Result,
 as each Step is implemented as a container in the TaskRun's pod.
 The more containers we have in our pod, *the smaller the allowed size of each container's
-message*, meaning that the **more steps you have in a Task, the smaller the result for each step can be**. 
+message*, meaning that the **more steps you have in a Task, the smaller the result for each step can be**.
 For example, if you have 10 steps, the size of each step's Result will have a maximum of less than 1KB.
 
 If your `Task` writes a large number of small results, you can work around this limitation
@@ -945,7 +945,7 @@ As a general rule-of-thumb, if a result needs to be larger than a kilobyte, you 
 
 This is an experimental feature. The `results-from` feature flag must be set to `"sidecar-logs"`](./install.md#enabling-larger-results-using-sidecar-logs).
 
-Instead of using termination messages to store results, the taskrun controller injects a sidecar container which monitors the results of all the steps. The sidecar mounts the volume where results of all the steps are stored. As soon as it finds a new result, it logs it to std out. The controller has access to the logs of the sidecar container (Caution: we need you to enable access to [kubernetes pod/logs](./install.md#enabling-larger-results-using-sidecar-logs). 
+Instead of using termination messages to store results, the taskrun controller injects a sidecar container which monitors the results of all the steps. The sidecar mounts the volume where results of all the steps are stored. As soon as it finds a new result, it logs it to std out. The controller has access to the logs of the sidecar container (Caution: we need you to enable access to [kubernetes pod/logs](./install.md#enabling-larger-results-using-sidecar-logs).
 
 This feature allows users to store up to 4 KB per result by default. Because we are not limited by the size of the termination messages, users can have as many results as they require (or until the CRD reaches its limit). If the size of a result exceeds this limit, then the TaskRun will be placed into a failed state with the following message: `Result exceeded the maximum allowed limit.`
 
@@ -1008,7 +1008,7 @@ steps:
 ---
 # The secret 'test' part data is as follows.
 data:
-  # The decoded value of 'cHJpdmF0ZQo=' is 'private'. 
+  # The decoded value of 'cHJpdmF0ZQo=' is 'private'.
   token: "cHJpdmF0ZQo="
 ```
 
@@ -1247,7 +1247,7 @@ Study the following code examples to better understand how to configure your `Ta
 - [Using a `Secret` as an environment source](#using-a-secret-as-an-environment-source)
 - [Using a `Sidecar` in a `Task`](#using-a-sidecar-in-a-task)
 
-_Tip: See the collection of Tasks in the 
+_Tip: See the collection of Tasks in the
 [Tekton community catalog](https://github.com/tektoncd/catalog) for
 more examples.
 

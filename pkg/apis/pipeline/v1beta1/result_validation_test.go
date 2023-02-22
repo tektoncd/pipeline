@@ -146,7 +146,7 @@ func TestResultsValidateError(t *testing.T) {
 		},
 		apiFields: "stable",
 		expectedError: apis.FieldError{
-			Message: "results type requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\"",
+			Message: "results type requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"",
 		},
 	}, {
 		name: "invalid object properties type",

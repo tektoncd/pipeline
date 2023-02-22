@@ -29,10 +29,10 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	switch {
-	// Object are alpha features
+	// Object results is a beta feature - make sure the feature flag is set to "beta"
 	case tr.Type == ResultsTypeObject:
 		errs := validateObjectResult(tr)
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "results type", config.AlphaAPIFields))
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "results type", config.BetaAPIFields))
 		return errs
 	// Array results is a beta feature - make sure the feature flag is set to "beta"
 	case tr.Type == ResultsTypeArray:
