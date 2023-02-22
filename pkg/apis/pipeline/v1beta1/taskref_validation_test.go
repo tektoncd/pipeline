@@ -178,7 +178,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 				}},
 			},
 		},
-		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"stable\""),
+		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\""),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

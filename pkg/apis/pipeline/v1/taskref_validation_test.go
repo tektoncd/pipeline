@@ -137,7 +137,7 @@ func TestTaskRef_Invalid(t *testing.T) {
 		wantErr: apis.ErrMultipleOneOf("name", "params").Also(apis.ErrMissingField("resolver")),
 		wc:      config.EnableBetaAPIFields,
 	}, {
-		name: "taskref param object requires alpha",
+		name: "taskref param object requires beta",
 		taskRef: &v1.TaskRef{
 			ResolverRef: v1.ResolverRef{
 				Resolver: "some-resolver",
@@ -150,8 +150,10 @@ func TestTaskRef_Invalid(t *testing.T) {
 				}},
 			},
 		},
-		wc:      config.EnableBetaAPIFields,
-		wantErr: apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" but it is \"beta\""),
+		wc: config.EnableStableAPIFields,
+		wantErr: apis.ErrGeneric("resolver requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"").Also(
+			apis.ErrGeneric("resolver params requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")).Also(
+			apis.ErrGeneric("object type parameter requires \"enable-api-fields\" feature gate to be \"alpha\" or \"beta\" but it is \"stable\"")),
 	}}
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {

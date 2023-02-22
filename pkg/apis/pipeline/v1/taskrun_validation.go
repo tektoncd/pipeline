@@ -242,9 +242,9 @@ func ValidateParameters(ctx context.Context, params []Param) (errs *apis.FieldEr
 	var names []string
 	for _, p := range params {
 		if p.Value.Type == ParamTypeObject {
-			// Object type parameter is an alpha feature and will fail validation if it's used in a taskrun spec
-			// when the enable-api-fields feature gate is not "alpha".
-			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.AlphaAPIFields))
+			// Object type parameter is a beta feature and will fail validation if it's used in a taskrun spec
+			// when the enable-api-fields feature gate is not "alpha" or "beta".
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
 		}
 		names = append(names, p.Name)
 	}
